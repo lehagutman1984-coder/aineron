@@ -1,0 +1,558 @@
+/* ----- Fullscreen модальное окно (как в auth) ----- */
+.tariffs-fullscreen-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.tariffs-fullscreen-overlay.show {
+    display: flex;
+}
+
+.tariffs-fullscreen-modal {
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    max-height: 100%;
+    background: white;
+    overflow-y: auto;
+    position: relative;
+    padding: 40px 32px;
+    box-sizing: border-box;
+}
+
+/* Кнопка закрытия */
+.tariffs-global-close {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    background: rgba(0, 0, 0, 0.1);
+    border: none;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    font-size: 22px;
+    color: #0d0d0d;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease;
+    z-index: 20;
+}
+
+.tariffs-global-close:hover {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+/* Контейнер содержимого */
+.tariffs-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+    padding-bottom: 20px;
+}
+
+/* Заголовки */
+.tariffs-title {
+    font-size: 36px;
+    font-weight: 600;
+    color: #0d0d0d;
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+.tariffs-subtitle {
+    font-size: 16px;
+    color: rgba(13, 13, 13, 0.58);
+    margin-bottom: 40px;
+    text-align: center;
+}
+
+/* Hero-блок (только для мобильных) */
+.tariffs-hero {
+    display: none;
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.tariffs-hero h1 {
+    font-size: 28px;
+    font-weight: 600;
+    line-height: 1.2;
+    color: #0d0d0d;
+    margin-bottom: 8px;
+}
+
+.tariffs-hero h1 span {
+    background: linear-gradient(135deg, #0a7cff, #6f4ef0);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.tariffs-hero p {
+    font-size: 16px;
+    color: rgba(13, 13, 13, 0.58);
+}
+
+/* Сетка 4 колонки */
+.tariffs-plans-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+    margin-bottom: 40px;
+}
+
+/* Карточка тарифа */
+.tariff-card-modal {
+    background: #ffffff;
+    border-radius: 24px;
+    border: 1px solid rgba(13, 13, 13, 0.08);
+    padding: 24px 20px;
+    transition: all 0.2s ease;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.tariff-card-modal:hover {
+    border-color: rgba(10, 124, 255, 0.3);
+    transform: translateY(-4px);
+    box-shadow: 0 20px 25px -12px rgba(0, 0, 0, 0.1);
+}
+
+/* Популярный тариф (Ultima) */
+.tariff-card-modal.popular-card {
+    border: 1px solid rgba(10, 124, 255, 0.4);
+    background: linear-gradient(145deg, #ffffff 0%, #f8faff 100%);
+    overflow: hidden;
+}
+
+.tariff-card-modal.popular-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #0a7cff, #6f4ef0);
+}
+
+/* Бейджи */
+.tariff-badge {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 100px;
+    margin-top: 0px;
+    width: fit-content;
+}
+
+.tariff-badge.trial {
+    background: rgba(13, 13, 13, 0.06);
+    color: #0d0d0d;
+}
+
+.tariff-badge.popular {
+    background: #e8f2ff;
+    color: #0a7cff;
+}
+
+.tariff-badge.optimal {
+    background: rgba(33, 190, 25, 0.1);
+    color: #21be19;
+}
+
+.tariff-badge.featured {
+    background: linear-gradient(135deg, #0a7cff, #6f4ef0);
+    color: white;
+    position: absolute;
+    right: 20px;
+    font-size: 13px;
+    padding: 6px 16px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+}
+
+/* Заголовок карточки */
+.tariff-card-modal-header {
+    margin-bottom: 0px;
+}
+
+.tariff-name {
+    font-size: 28px;
+    font-weight: 700;
+    color: #0d0d0d;
+    margin: 0 0 12px 0;
+}
+
+.tariff-price-block {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px;
+    margin-bottom: -15px;
+}
+
+.tariff-price {
+    font-size: 32px;
+    font-weight: 700;
+    color: #0a7cff;
+}
+
+.tariff-period {
+    font-size: 15px;
+    font-weight: 500;
+    color: rgba(13, 13, 13, 0.5);
+}
+
+/* Кнопка активации */
+.tariff-activate-btn {
+    width: 100%;
+    padding: 12px 16px;
+    border: none;
+    background: #0a7cff;
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 40px;
+    transition: all 0.2s ease;
+    margin-bottom: 0px;
+}
+
+.tariff-activate-btn:hover {
+    background: #248aff;
+    transform: scale(0.97);
+}
+
+/* Список возможностей */
+.tariff-features {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex: 1;
+}
+
+.tariff-features li {
+    font-size: 13px;
+    color: #2c2c2c;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    line-height: 1.4;
+}
+
+.tariff-features li i {
+    color: #0a7cff;
+    font-size: 14px;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.tariff-features li i.fa-star {
+    color: #ffb800;
+}
+
+.star-month {
+    font-size: 12px;
+    color: rgba(13, 13, 13, 0.5);
+    margin-left: 4px;
+}
+
+.feature-note {
+    background: rgba(10, 124, 255, 0.05);
+    padding: 8px 10px;
+    border-radius: 16px;
+    margin-top: 8px;
+    font-size: 12px;
+}
+
+/* Футер */
+.tariffs-footer {
+    text-align: center;
+    font-size: 12px;
+    color: rgba(13, 13, 13, 0.4);
+    border-top: 1px solid rgba(13, 13, 13, 0.06);
+    padding-top: 24px;
+    margin-top: 20px;
+}
+
+.tariffs-footer a {
+    color: #0a7cff;
+    text-decoration: none;
+}
+
+.tariffs-footer a:hover {
+    text-decoration: underline;
+}
+
+/* Адаптив */
+@media (max-width: 1100px) {
+    .tariffs-plans-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+    }
+    .tariffs-fullscreen-modal {
+        padding: 32px 24px;
+    }
+}
+
+@media (max-width: 768px) {
+    .tariffs-fullscreen-modal {
+        padding: 20px 16px;
+        height: 100dvh;
+        width: 100%;
+    }
+    .tariffs-plans-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    .tariffs-hero {
+        display: block;
+    }
+    .tariffs-title {
+        font-size: 28px;
+        text-align: left;
+    }
+    .tariffs-subtitle {
+        text-align: left;
+        margin-bottom: 24px;
+    }
+    .tariffs-global-close {
+        top: 16px;
+        right: 16px;
+        background: rgba(0,0,0,0.05);
+    }
+    .tariff-name {
+        font-size: 26px;
+    }
+    .tariff-price {
+        font-size: 28px;
+    }
+    .tariff-badge.featured {
+        top: 0;
+        right: 12px;
+        font-size: 12px;
+        padding: 4px 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .tariffs-fullscreen-modal {
+        padding: 16px;
+    }
+    .tariff-card-modal {
+        padding: 20px 16px;
+    }
+    .tariff-name {
+        font-size: 24px;
+    }
+    .tariff-price {
+        font-size: 26px;
+    }
+}
+
+/* Стили для попапа подтверждения */
+.tariff-confirm-popup {
+    position: fixed;
+    background: white;
+    border-radius: 24px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+    width: 400px;
+    max-width: calc(100vw - 40px);
+    z-index: 10002;
+    animation: fadeInScale 0.2s ease;
+    overflow: hidden;
+}
+
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.tariff-confirm-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid rgba(13,13,13,0.08);
+}
+
+.tariff-confirm-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.tariff-confirm-close {
+    background: transparent;
+    border: none;
+    font-size: 20px;
+    color: rgba(13,13,13,0.58);
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.2s;
+}
+
+.tariff-confirm-close:hover {
+    background: rgba(13,13,13,0.05);
+}
+
+.tariff-confirm-body {
+    padding: 20px 24px;
+}
+
+.confirm-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(13,13,13,0.06);
+}
+
+.confirm-row:last-of-type {
+    border-bottom: none;
+}
+
+.confirm-row span {
+    font-size: 14px;
+    color: rgba(13,13,13,0.58);
+}
+
+.confirm-row strong {
+    font-size: 15px;
+    font-weight: 600;
+    color: #0d0d0d;
+}
+
+.confirm-checkbox {
+    margin-top: 16px;
+}
+
+.confirm-checkbox label {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    cursor: pointer;
+}
+
+.confirm-checkbox input {
+    margin-top: 2px;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+.confirm-checkbox span {
+    font-size: 12px;
+    color: rgba(13,13,13,0.58);
+    line-height: 1.4;
+}
+
+.confirm-checkbox a {
+    color: #0a7cff;
+    text-decoration: none;
+}
+
+.confirm-checkbox a:hover {
+    text-decoration: underline;
+}
+
+.tariff-confirm-footer {
+    display: flex;
+    gap: 12px;
+    padding: 16px 24px 24px;
+    border-top: 1px solid rgba(13,13,13,0.08);
+}
+
+.tariff-confirm-btn {
+    flex: 1;
+    padding: 12px 16px;
+    border-radius: 40px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+}
+
+.tariff-confirm-btn.cancel {
+    background: transparent;
+    border: 1px solid rgba(13,13,13,0.2);
+    color: #0d0d0d;
+}
+
+.tariff-confirm-btn.cancel:hover {
+    background: rgba(13,13,13,0.03);
+}
+
+.tariff-confirm-btn.pay {
+    background: #0a7cff;
+    color: white;
+}
+
+.tariff-confirm-btn.pay:hover:not(:disabled) {
+    background: #248aff;
+}
+
+.tariff-confirm-btn.pay:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Мобильная адаптация попапа */
+@media (max-width: 768px) {
+    .tariff-confirm-popup {
+        width: 90vw;
+        max-width: 90vw;
+        position: fixed !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+    }
+    .tariff-confirm-header {
+        padding: 16px 20px;
+    }
+    .tariff-confirm-body {
+        padding: 16px 20px;
+    }
+    .tariff-confirm-footer {
+        padding: 16px 20px 20px;
+    }
+}
+
+
+.tariff-confirm-body .confirm-row strong i.fa-star {
+    color: #ffb800;
+}
+
+.tariff-card-modal {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 30px;
+}

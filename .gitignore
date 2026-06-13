@@ -1,0 +1,11 @@
+backup.sql
+ssl/
+__pycache__/
+*.pyc
+.env
+.venv/
+venv/
+env/
+.vscode/
+.idea/
+*.log

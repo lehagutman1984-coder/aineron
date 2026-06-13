@@ -1,0 +1,10 @@
+User-agent: *
+Disallow: /chat/
+Disallow: /chat
+Disallow: *.fb2
+Disallow: *.txt
+Disallow: *.pdf
+Sitemap: https://aineron.ru/sitemap.xml
+
+User-agent: Yandex
+Host: aineron.ru

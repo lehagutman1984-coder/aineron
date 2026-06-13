@@ -1,0 +1,280 @@
+/* constructor.css – стили для кнопки настроек и попапа */
+
+/* Контейнер для кнопки настроек */
+.constructor-settings {
+    margin-right: auto;
+}
+
+/* Единая кнопка настроек */
+.constructor-settings-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 16px 0 12px;
+    height: 42px;
+    border-radius: 40px;
+    border: none;
+    background: transparent;
+    color: var(--icon-secondary);
+    font-size: 18px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.constructor-settings-btn i {
+    font-size: 18px;
+}
+
+.constructor-settings-btn:hover {
+    background: var(--background-tertiary);
+    color: var(--icon-primary);
+}
+
+/* Выпадающий попап */
+.constructor-popup-desktop {
+    position: fixed;
+    background: white;
+    border-radius: 24px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.03);
+    border: 1px solid var(--border-primary);
+    overflow: hidden;
+    width: 380px;
+    max-width: 90vw;
+    z-index: 10001;
+    animation: fadeInScale 0.15s ease;
+}
+
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.constructor-popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-tertiary);
+    background: white;
+}
+
+.constructor-popup-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.constructor-popup-close {
+    background: transparent;
+    border: none;
+    font-size: 18px;
+    color: var(--icon-secondary);
+    cursor: pointer;
+    transition: color 0.2s;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+}
+
+.constructor-popup-close:hover {
+    color: var(--icon-primary);
+    background: var(--background-tertiary);
+}
+
+.constructor-popup-body {
+    padding: 20px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.constructor-popup-footer {
+    padding: 12px 20px;
+    border-top: 1px solid var(--border-tertiary);
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.constructor-btn-primary {
+    background: var(--btn-primary);
+    border: none;
+    border-radius: 40px;
+    padding: 8px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    color: white;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.constructor-btn-primary:hover {
+    background: #248aff;
+}
+
+.constructor-btn-secondary {
+    background: transparent;
+    border: 1px solid var(--border-primary);
+    border-radius: 40px;
+    padding: 8px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.constructor-btn-secondary:hover {
+    background: var(--background-tertiary);
+}
+
+/* Стили для динамических полей настроек */
+.constructor-section {
+    margin-bottom: 24px;
+}
+
+.constructor-section-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--text-primary);
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border-tertiary);
+}
+
+.constructor-field {
+    margin-bottom: 16px;
+    position: relative;
+}
+
+.constructor-field label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: var(--text-primary);
+}
+
+.extra-cost-badge {
+    display: inline-block;
+    margin-left: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    background: #fff3e0;
+    color: #f5a623;
+    padding: 2px 6px;
+    border-radius: 20px;
+    white-space: nowrap;
+}
+
+.extra-cost-badge i {
+    font-size: 10px;
+    margin-left: 2px;
+    color: #f5a623;
+}
+
+.constructor-field .field-description {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    margin-top: 4px;
+    line-height: 1.4;
+}
+
+.constructor-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.constructor-checkbox-label input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+}
+
+.constructor-textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border-primary);
+    border-radius: 12px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+    transition: border 0.2s;
+}
+
+.constructor-textarea:focus {
+    border-color: var(--icon-accent);
+    outline: none;
+}
+
+.constructor-select,
+.constructor-number-input,
+.constructor-text-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border-primary);
+    border-radius: 12px;
+    font-size: 14px;
+    background: white;
+    color: var(--text-primary);
+    outline: none;
+    transition: border 0.2s;
+}
+
+.constructor-select:focus,
+.constructor-number-input:focus,
+.constructor-text-input:focus {
+    border-color: var(--icon-accent);
+}
+
+.constructor-range {
+    flex: 1;
+    width: 100%;
+    margin: 6px 0;
+}
+
+.constructor-range-value {
+    font-size: 14px;
+    color: var(--text-secondary);
+    min-width: 35px;
+    text-align: center;
+    display: inline-block;
+}
+
+.constructor-field .range-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Мобильная версия – центрируем попап */
+@media (max-width: 768px) {
+    .constructor-popup-desktop {
+        position: fixed !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        width: 85vw;
+        max-width: 85vw;
+        max-height: 80vh;
+    }
+    .constructor-settings-btn {
+        width: auto;
+        padding: 0 12px;
+    }
+}

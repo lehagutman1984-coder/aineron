@@ -1,0 +1,86 @@
+{% load static %}
+<div class="main-header">
+    <button class="mobile-menu-btn" id="mobileMenuBtn">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Десктопный chip -->
+    <div class="model-chip" id="desktopModelChip">
+        <img id="desktopModelAvatar" src="{% static '/images/loader.png' %}" alt="Аватар нейросети" class="model-avatar" width="28" height="28">
+        <span id="selectedModelName">Загрузка...</span>
+        <i class="fas fa-chevron-down"></i>
+    </div>
+
+    <!-- Попап для десктопного чипа -->
+    <div class="model-popup-desktop" id="modelPopupDesktop">
+        <div class="model-popup-header">
+            <h3>Выберите нейросеть</h3>
+            <div class="model-search">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="Поиск..." id="modelSearchInputDesktop">
+            </div>
+            <div class="model-categories" id="modelCategoriesDesktop">
+                <!-- Категории будут загружены динамически -->
+            </div>
+        </div>
+        <div class="model-list" id="modelListDesktop"></div>
+    </div>
+
+    <div class="right-actions">
+        {% if user.is_authenticated %}
+    <div class="stars" id="starsBlock">
+        <i class="fas fa-star"></i>
+        <span id="starBalance">{{ user_balance|default:0 }}</span>
+    </div>
+    {% endif %}
+        <button class="notification-btn" id="newsBtn"><i class="far fa-bell"></i></button>
+        <div class="news-popup" id="newsPopup">
+            <div class="news-popup-header">
+                <h3>Последние новости</h3>
+                <i class="fas fa-times" id="closeNewsPopup"></i>
+            </div>
+            <div class="news-list">
+                {% for post in notification_posts %}
+                <div class="news-item">
+                    <div class="news-title">{{ post.title }}</div>
+                    <div class="news-description">{{ post.preview_text|truncatechars:80 }}</div>
+                    <a href="{{ post.get_absolute_url }}" class="news-button">Читать подробнее</a>
+                </div>
+                {% empty %}
+                <div class="news-item">
+                    <div class="news-description">Нет новых новостей</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% if not user.is_authenticated %}
+        <button class="login-btn" onclick="openAuthModal()">Войти</button>
+        {% else %}
+        <button class="login-btn" onclick="openTariffsModal()">Тарифы</button>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Мобильный chip (вне .main-header, но в вашем проекте он может быть внутри другого контейнера) -->
+<div class="mobile-model-chip">
+    <div class="model-chip" id="mobileModelChip">
+        <img id="mobileModelAvatar" src="" alt="Аватар нейросети" class="model-avatar" width="28" height="28">
+        <span id="selectedModelNameMobile">Загрузка...</span>
+        <i class="fas fa-chevron-down"></i>
+    </div>
+
+    <!-- Попап для мобильного чипа -->
+    <div class="model-popup-mobile" id="modelPopupMobile">
+        <div class="model-popup-header">
+            <h3>Выберите нейросеть</h3>
+            <div class="model-search">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="Поиск..." id="modelSearchInputMobile">
+            </div>
+            <div class="model-categories" id="modelCategoriesMobile">
+                <!-- Категории будут загружены динамически -->
+            </div>
+        </div>
+        <div class="model-list" id="modelListMobile"></div>
+    </div>
+</div>

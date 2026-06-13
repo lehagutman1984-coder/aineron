@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ru">
+    {% load static %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <meta name="user-tariff-id" content="{{ user.tariff.id|default:'' }}">
+    <meta name="file-capabilities" content='{{ file_capabilities_json|safe }}'>
+    {% if config_json %}
+    <meta name="network-config" content='{{ config_json|safe }}'>
+    {% endif %}
+    <meta name="user-authenticated" content="{{ user.is_authenticated|yesno:'true,false' }}">
+
+    <title>{{ network.seo_title }}</title>
+    <meta name="description" content="{{ network.seo_description }}">
+    <meta name="keywords" content="{{ network.seo_keywords }}">
+    <meta name='image' content='https://{{ request.get_host }}{% static "/images/home.png" %}'>
+    <!-- Open Graph general (Facebook, Pinterest & Google+) -->
+    <meta property='og:locale' content='ru_RU'>
+    <meta property='og:type' content='website'>
+    <meta property='og:site_name' content='{{ site.name }}'>
+    <meta property='og:url' content='https://{{ request.get_host }}/'>
+    <meta property='og:title' content='{{ network.seo_title }}'>
+    <meta property='og:description' content='{{ network.seo_description }}'>
+    <meta property='og:image' content='https://{{ request.get_host }}{% static "/images/home.png" %}'>
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <!-- Twitter Card -->
+    <meta name='twitter:card' content='summary_large_image'>
+    <meta name='twitter:title' content='{{ network.seo_title }}'>
+    <meta name='twitter:description' content='{{ network.seo_description }}'>
+    <meta name='twitter:image' content='https://{{ request.get_host }}{% static "/images/home.png" %}'>
+    <!-- Метатеги для устройств -->
+    <meta name='msapplication-starturl' content='{{ site_url }}'>
+    <meta name='application-name' content='{{ network.seo_title }}'>
+    <meta name='apple-mobile-web-app-title' content='{{ network.seo_title }}'>
+    <meta name='msapplication-tooltip' content='{{ network.seo_description }}'>
+    <!-- Метатеги [end]-->
+    <link rel="canonical" href="{{ request.build_absolute_uri }}">
+    <!-- Иконки и стилизация -->
+    <!-- Фавиконки -->
+    <link rel='shortcut icon' type='shortcut icon' href='https://{{ request.get_host }}{% static "/images/favicon.ico" %}'>
+
+    <!-- Иконки для iOS & Android -->
+    <link rel='apple-touch-icon' sizes='60x60' href='https://{{ request.get_host }}{% static "images/apple-touch-icon-60x60.png" %}'>
+    <link rel='apple-touch-icon' sizes='76x76' href='https://{{ request.get_host }}{% static "images/apple-touch-icon-76x76.png" %}'>
+    <link rel='apple-touch-icon' sizes='120x120' href='https://{{ request.get_host }}{% static "images/apple-touch-icon-120x120.png" %}'>
+    <link rel='apple-touch-icon' sizes='152x152' href='https://{{ request.get_host }}{% static "images/apple-touch-icon-152x152.png" %}'>
+    <!-- Иконки для Microsoft -->
+    <meta name='theme-color' content='#D63384'>
+    <meta name='msapplication-tap-highlight' content='no'>
+    <meta name='msapplication-TileColor' content='#D63384'>
+    <meta name='msapplication-TileImage' content='https://{{ request.get_host }}{% static "images/mstile-144x144.png" %}'>
+    <meta name='msapplication-wide310x150logo' content='https://{{ request.get_host }}{% static "images/mstile-wide.png" %}'>
+    <meta name='msapplication-square70x70logo' content='https://{{ request.get_host }}{% static "images/mstile-small.png" %}'>
+    <meta name='msapplication-square310x310logo' content='https://{{ request.get_host }}{% static "images/mstile-large.png" %}'>
+    <meta name='msapplication-square150x150logo' content='https://{{ request.get_host }}{% static "images/mstile-medium.png" %}'>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'neuro/css/sidebar.css' %}">
+    <link rel="stylesheet" href="{% static 'neuro/css/index.css' %}">
+    <link rel="stylesheet" href="{% static 'neuro/css/auth.css' %}">
+    <link rel="stylesheet" href="{% static 'neuro/css/tariffs.css' %}">
+    <link rel="stylesheet" href="{% static 'neuro/css/constructor.css' %}">
+    <link rel="stylesheet" href="{% static 'neuro/css/stars_modals.css' %}">
+{{ site_counter.counter_text|safe }}
+</head>
+<body>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    {% include 'neuro/modals/delete_chat.html' %}
+
+<div class="app">
+    <!-- Подключение sidebar -->
+    {% include 'neuro/sidebar.html' %}
+
+    <!-- ОСНОВНОЙ КОНТЕНТ -->
+    <div class="main-content">
+        {% include 'neuro/main-header.html' %}
+
+        <div class="dialog-container">
+
+            <!-- Заголовок с названием и описанием нейросети -->
+            <div class="hero">
+                <h1><span>{{ network.name }}</span></h1>
+                <p>{{ network.description }}</p>
+{% if unlimited_tariffs %}
+    <p class="unlimited-info">
+        Безлимит этой нейросети доступен на тарифах:
+        {% for tariff in unlimited_tariffs %}
+            {{ tariff.display_name }}{% if not forloop.last %}, {% endif %}
+        {% endfor %}
+        !
+    </p>
+    {% endif %}
+            </div>
+
+            <div class="chat-input-container">
+                <div class="preview-container" id="previewContainer"></div>
+                <textarea placeholder="Напишите сообщение..." rows="1" id="messageInput"></textarea>
+                <div class="input-actions">
+                    <button class="attach-btn" id="attachBtn"><i class="fa-solid fa-paperclip"></i></button>
+                    <div class="constructor-settings">
+                        <button class="constructor-settings-btn" id="constructorSettingsBtn">
+                            <i class="fas fa-cog"></i>
+                            <span class="constructor-label">Настройки</span>
+                        </button>
+                    </div>
+                    <button class="send-btn" id="sendBtn"><i class="fa-regular fa-paper-plane"></i></button>
+                </div>
+                <input type="file" id="fileInput" multiple style="display: none;">
+            </div>
+
+            <h2 class="section-title">Популярные модели</h2>
+<div class="models-grid">
+    {% for net in popular_networks %}
+    <a href="{% url 'aitext:chat_landing' net.slug %}" class="model-card">
+        <img src="{{ net.get_avatar }}" alt="{{ net.name }}" onerror="this.src='https://placehold.co/80x80/0a7cff/white?text={{ net.name|slice:':1' }}'">
+        <span>{{ net.name }}</span>
+    </a>
+    {% empty %}
+    <div class="model-card" style="opacity:0.5; pointer-events:none;">
+        <img src="https://placehold.co/80x80/0a7cff/white?text=?" alt="Нет данных">
+        <span>Скоро появятся</span>
+    </div>
+    {% endfor %}
+    <a href="{% url 'aitext:catalog' %}" class="more-models-btn">
+        Более 400 нейросетей
+    </a>
+</div>
+
+            <!-- Блок новостей/статей по теме -->
+            <div class="news-section">
+                <h2 class="section-title">Последние новости</h2>
+                <div class="news-cards">
+                    {% if related_posts %}
+                        {% for post in related_posts %}
+                        <div class="news-card">
+                            {% if post.preview_image %}
+                            <img src="{{ post.preview_image.url }}" alt="{{ post.title }}">
+                            {% else %}
+                            <img src="https://picsum.photos/300/160?random={{ forloop.counter }}" alt="news">
+                            {% endif %}
+                            <div class="news-content">
+                                <h4>{{ post.title }}</h4>
+                                <p>{{ post.preview_text|truncatechars:80 }}</p>
+                                <a href="{{ post.get_absolute_url }}" class="read-more">Читать</a>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="news-card">
+                            <img src="https://picsum.photos/300/160?random=1" alt="news">
+                            <div class="news-content">
+                                <h4>Новости появятся скоро</h4>
+                                <p>Следите за обновлениями</p>
+                                <span class="read-more" onclick="window.open('#', '_blank')">Читать</span>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+                {% if related_posts %}
+                <button class="read-all-btn" onclick="window.open('{% url 'blog:list' %}', '_blank')">Читать все новости →</button>
+                {% endif %}
+            </div>
+           <!-- Откройте новые возможности 
+            <div class="features-section">
+                <h2>Открой новые возможности с Нейросети.com</h2>
+                <p>У нас есть нейросети для любой задачи</p>
+                <div class="feature-cards">
+                    <div class="feature-card">
+                        <div class="feature-media">
+                            <img src="https://picsum.photos/300/160?random=4" alt="оживите фото">
+                        </div>
+                        <h4>Оживите фото</h4>
+                        <p>Анимируйте старые снимки, создавайте короткие видео из фото.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-media">
+                            <video controls poster="https://picsum.photos/300/160?random=5">
+                                <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
+                                Your browser does not support the video tag.
+                            </video>
+                        </div>
+                        <h4>Генератор видео</h4>
+                        <p>Создавайте видео по тексту с помощью Kling, Veo, Sora.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-media">
+                            <img src="https://picsum.photos/300/160?random=6" alt="реферат">
+                        </div>
+                        <h4>Генератор рефератов</h4>
+                        <p>Автоматическое написание текстов, докладов и эссе.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-media">
+                            <img src="https://picsum.photos/300/160?random=7" alt="карточки товаров">
+                        </div>
+                        <h4>Карточки товаров для маркетплейса</h4>
+                        <p>Создавайте описания, фото и характеристики товаров за секунды.</p>
+                    </div>
+                </div>
+                <div class="tool-chips">
+                    <span class="tool-chip" onclick="window.open('#', '_blank')">Генерация музыки</span>
+                    <span class="tool-chip" onclick="window.open('#', '_blank')">Улучшение фотографии</span>
+                    <span class="tool-chip" onclick="window.open('#', '_blank')">Генератор текста</span>
+                    <span class="tool-chip" onclick="window.open('#', '_blank')">Ответы на вопросы</span>
+                    <span class="tool-chip" onclick="window.open('#', '_blank')">Генератор фото</span>
+                    <span class="tool-chip" onclick="window.open('#', '_blank')">Редактирование фото</span>
+                </div>
+            </div> -->
+
+            <!-- chatland.html — замените строку с безлимитным DeepSeek на динамическую -->
+            {% if trial_tariff and user.tariff.is_free %}
+            <div class="tariff-section">
+                <div class="tariff-card">
+                    <div class="tariff-info">
+                        <h3>{{ trial_tariff.display_name }}</h3>
+                        <div class="tariff-price">
+                            <span class="tokens">{{ trial_tariff.pages_count }}</span><i class="fas fa-star"></i>
+                            <span class="price">{{ trial_tariff.price }} ₽</span>
+                            <span class="period">/{% if trial_tariff.duration_days == 7 %}нед{% else %}мес{% endif %}</span>
+                        </div>
+                        <ul class="tariff-features">
+                            <li><i class="fas fa-check"></i> {{ trial_tariff.pages_count }} звезд</li>
+                            <li><i class="fas fa-check"></i> Доступ к ChatGPT, Gemini, Claude и еще 400 других нейросетей!</li>
+                            <li><i class="fas fa-check"></i> Безлимитный DeepSeek V3.1, GPT-5 Nano, Нейросети для развлечений и другие!</li>
+                            {% if trial_tariff.next_tariff %}
+                            <li><i class="fas fa-exchange-alt"></i> Пробный период {{ trial_tariff.duration_days }} дней, затем переход на {{ trial_tariff.next_tariff.display_name }} с оплатой {{ trial_tariff.next_tariff.price }} ₽</li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                    <div class="tariff-action">
+                        <button class="tariff-btn" id="activateTariffBtn"
+                            data-tariff-id="{{ trial_tariff.id }}"
+                            data-tariff-name="{{ trial_tariff.display_name }}"
+                            data-tariff-price="{{ trial_tariff.price }}"
+                            data-tariff-pages="{{ trial_tariff.pages_count }}">
+                            Выбрать тариф
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="faq-section">
+    <h2 class="section-title">Частые вопросы</h2>
+    {% for faq in faqs %}
+    <div class="faq-item">
+        <div class="faq-question">{{ faq.question }} <i class="fas fa-chevron-down"></i></div>
+        <div class="faq-answer">{{ faq.answer|linebreaks }}</div>
+    </div>
+    {% empty %}
+    <div class="faq-item">
+        <div class="faq-question">Вопросы появятся скоро</div>
+        <div class="faq-answer">Следите за обновлениями</div>
+    </div>
+    {% endfor %}
+</div>
+
+            <div class="social-section">
+                <div>
+                    <h3>Следи за нами в Telegram и VK</h3>
+                    <p>Будь в тренде и учись работать с AI быстрее</p>
+                </div>
+                <div class="social-links">
+                    <a href="{{ site_settings.telegram_url }}" target="_blank">Telegram</a>
+                    <a href="{{ site_settings.vk_url }}" target="_blank">Вконтакте</a>
+                </div>
+            </div>
+
+            <footer class="footer">
+                <div class="footer-columns">
+                    <div class="footer-col">
+                        <h4>Прямые нейросети</h4>
+                    {% for net in direct_networks %}
+                        <a href="{% url 'aitext:chat_landing' net.slug %}">{{ net.name }}</a>
+                        {% empty %}
+                        <a href="#">Скоро появятся</a>
+                    {% endfor %}
+                    </div>
+                    <div class="footer-col">
+                        <h4>Кастомные модели</h4>
+                    {% for net in custom_networks %}
+                        <a href="{% url 'aitext:chat_landing' net.slug %}">{{ net.name }}</a>
+                        {% empty %}
+                        <a href="#">Скоро появятся</a>
+                    {% endfor %}
+                    </div>
+                    <div class="footer-col">
+                        <h4>О компании</h4>
+                        <a href="{% url 'users_pages:privacy_policy' %}">Политика конфиденциальности</a>
+                        <a href="{% url 'users_pages:terms_of_service' %}">Пользовательское соглашение</a>
+                        <a href="{% url 'users_pages:referral_page' %}">Партнёрская программа</a>
+                        <a href="{% url 'blog:list' %}">Блог</a>
+                    </div>
+                </div>
+                <div class="footer-copyright">
+                    © 2024 – 2026 Все права защищены<br>
+                    {{ site_settings.inn }}
+                </div>
+            </footer>
+        </div>
+    </div>
+</div>
+<!-- Подключение модалки авторизации -->
+{% include 'neuro/modals/auth.html' %}
+<!-- Подключение модалки тарифов -->
+{% include 'neuro/modals/tariffs.html' %}
+<script src="{% static 'neuro/js/auth.js' %}"></script>
+<script src="{% static 'neuro/js/tariffs.js' %}"></script>
+<script src="{% static 'neuro/js/sidebar.js' %}"></script>
+<script src="{% static 'neuro/js/index.js' %}"></script>
+<script src="{% static 'neuro/js/chatland.js' %}"></script>
+<script src="{% static 'neuro/js/constructor.js' %}"></script>
+<script src="{% static 'neuro/js/stars_modal.js' %}"></script>
+</body>
+</html>

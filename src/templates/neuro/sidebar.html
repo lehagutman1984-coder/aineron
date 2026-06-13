@@ -1,0 +1,99 @@
+<div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <a href="/" class="logo-link">
+        <div class="logo-area">
+            <div class="logo-icon"><i class="fas fa-bolt"></i></div>
+            <span class="logo-text">{{ site.name }}</span>
+        </div>
+        </a>
+        <button class="collapse-btn" id="collapseSidebar">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+    </div>
+
+    <div class="nav-grid">
+        <div class="menu-row active">
+            <i class="fas fa-plus-circle menu-icon"></i>
+            <span class="menu-text">Новый чат</span>
+            <span class="tooltip">Новый чат</span>
+        </div>
+         {% if user.is_authenticated %}
+        <div class="menu-row" data-href="{% url 'aitext:files' %}">
+            <i class="fas fa-folder menu-icon"></i>
+            <span class="menu-text">Мои файлы</span>
+            <span class="tooltip">Мои файлы</span>
+        </div>
+        {% endif %}
+        <div class="menu-row" data-href="{% url 'aitext:catalog' %}">
+            <i class="fas fa-cube menu-icon"></i>
+            <span class="menu-text">Все нейросети</span>
+            <span class="tooltip">Все нейросети</span>
+        </div>
+         {% if not user.is_authenticated %}
+        <div class="menu-row" data-href="{% url 'blog:list' %}">
+            <i class="fas fa-book-open menu-icon"></i>
+            <span class="menu-text">Блог</span>
+            <span class="tooltip">Блог</span>
+        </div>
+        {% endif %}
+    </div>
+    {% if user.is_authenticated %}
+    <div class="chats-section" id="chatsSection">
+        <div class="section-label">Чаты</div>
+        <div id="chatsList">
+            {% for chat in user_chats %}
+            <div class="chat-row {% if chat.id == current_chat_id %}active{% endif %}" data-chat-id="{{ chat.id }}">
+                <img src="{{ chat.network.get_avatar }}" alt="{{ chat.network.name }}" class="chat-avatar" width="24" height="24">
+                <div class="chat-info">
+                    <div class="chat-name">{{ chat.title|default:chat.network.name }}</div>
+                    <div class="chat-preview">{{ chat.preview_text }}</div>
+                </div>
+                <button class="delete-chat" title="Удалить чат"><i class="fas fa-times"></i></button>
+                <span class="tooltip">{{ chat.title|default:chat.network.name }}</span>
+            </div>
+            {% empty %}
+
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="user-footer">
+        {% if user.is_authenticated %}
+        <div class="user-row" id="userMenuTrigger">
+            <div class="avatar">
+                <i class="fas fa-face-smile"></i>
+            </div>
+            <div class="user-info">
+                <div class="user-name">{{ user.username|default:"Гость" }}</div>
+                <div class="user-badge">
+                    <i class="fas fa-star"></i>
+                    {{ user.tariff.display_name|default:"Бесплатный" }}
+                </div>
+            </div>
+            <span class="tooltip">{{ user.username|default:"Гость" }}</span>
+        </div>
+        <div class="user-menu" id="userMenu">
+            <a href="{% url 'users_pages:profile_page' %}" class="menu-item">
+                <i class="far fa-user-circle"></i> Профиль
+            </a>
+            <a href="{% url 'users_pages:referral_page' %}" class="menu-item">
+                <i class="fas fa-user-plus"></i> Пригласи друга
+            </a>
+            {% if user.active_subscription and not user.tariff.is_free %}
+            <div class="menu-item" id="buyStarsMenuItem">
+                <i class="fas fa-shopping-cart"></i> Купить звезды
+            </div>
+            {% endif %}
+            <a href="{% url 'blog:list' %}" class="menu-item" id="whatsNewMenuItem">
+                <i class="far fa-bell"></i> Что нового?
+            </a>
+            <div class="menu-item" id="logoutMenuItem">
+                <i class="fas fa-sign-out-alt"></i> Выход
+            </div>
+        </div>
+        {% else %}
+        <button class="login-btn-sidebar" id="sidebarLoginBtn"><i class="fas fa-sign-in-alt"></i><span class="login-text">Войти</span></button>
+        {% endif %}
+    </div>
+</div>

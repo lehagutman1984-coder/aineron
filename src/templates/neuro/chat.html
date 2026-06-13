@@ -1,0 +1,175 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>{{ site.name }} · {{ network.name }}</title>
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <meta name="has-paid-subscription" content="{{ has_paid_subscription|yesno:'true,false' }}">
+    <meta name="current-network-name" content="{{ network.name }}">
+    <meta name="current-network-slug" content="{{ network.slug }}">
+    <meta name="current-network-avatar" content="{{ network.get_avatar }}">
+    <meta name="network-name" content="{{ network.name }}">
+    <meta name="network-cost" content="{{ network.cost_per_message }}">
+    <meta name="chat-id" content="{{ chat.id }}">
+    <meta name="user-tariff-id" content="{{ user.tariff.id|default:'' }}">
+    <meta name="file-capabilities" content='{{ file_capabilities_json|safe }}'>
+    <meta name="user-balance" content="{{ user.pages_count }}">
+    <meta name="network-config" content='{{ config_json|safe }}'>
+    <meta name="chat-settings" content='{{ chat_settings_json|safe }}'>
+
+    <meta name="description" content="Чат с нейросетью {{ network.name }}">
+    <meta name='image' content='https://{{ request.get_host }}{% static "/images/home.png" %}'>
+    <!-- Open Graph general (Facebook, Pinterest & Google+) -->
+    <meta property='og:locale' content='ru_RU'>
+    <meta property='og:type' content='website'>
+    <meta property='og:site_name' content='{{ site.name }}'>
+    <meta property='og:url' content='https://{{ request.get_host }}/'>
+    <meta property='og:title' content='{{ site.name }} · {{ network.name }}'>
+    <meta property='og:description' content='Чат с нейросетью {{ network.name }}'>
+    <meta property='og:image' content='https://{{ request.get_host }}{% static "/images/home.png" %}'>
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <!-- Twitter Card -->
+    <meta name='twitter:card' content='summary_large_image'>
+    <meta name='twitter:title' content='{{ site.name }} · {{ network.name }}'>
+    <meta name='twitter:description' content='Чат с нейросетью {{ network.name }}'>
+    <meta name='twitter:image' content='https://{{ request.get_host }}{% static "/images/home.png" %}'>
+    <!-- Метатеги для устройств -->
+    <meta name='msapplication-starturl' content='{{ site_url }}'>
+    <meta name='application-name' content='{{ site.name }} · {{ network.name }}'>
+    <meta name='apple-mobile-web-app-title' content='{{ site.name }} · {{ network.name }}'>
+    <meta name='msapplication-tooltip' content='Чат с нейросетью {{ network.name }}'>
+    <!-- Метатеги [end]-->
+    <link rel="canonical" href="{{ request.build_absolute_uri }}">
+    <!-- Иконки и стилизация -->
+    <!-- Фавиконки -->
+    <link rel='shortcut icon' type='shortcut icon' href='https://{{ request.get_host }}{% static "/images/favicon.ico" %}'>
+
+    <!-- Иконки для iOS & Android -->
+    <link rel='apple-touch-icon' sizes='60x60' href='https://{{ request.get_host }}{% static "images/apple-touch-icon-60x60.png" %}'>
+    <link rel='apple-touch-icon' sizes='76x76' href='https://{{ request.get_host }}{% static "images/apple-touch-icon-76x76.png" %}'>
+    <link rel='apple-touch-icon' sizes='120x120' href='https://{{ request.get_host }}{% static "images/apple-touch-icon-120x120.png" %}'>
+    <link rel='apple-touch-icon' sizes='152x152' href='https://{{ request.get_host }}{% static "images/apple-touch-icon-152x152.png" %}'>
+    <!-- Иконки для Microsoft -->
+    <meta name='theme-color' content='#D63384'>
+    <meta name='msapplication-tap-highlight' content='no'>
+    <meta name='msapplication-TileColor' content='#D63384'>
+    <meta name='msapplication-TileImage' content='https://{{ request.get_host }}{% static "images/mstile-144x144.png" %}'>
+    <meta name='msapplication-wide310x150logo' content='https://{{ request.get_host }}{% static "images/mstile-wide.png" %}'>
+    <meta name='msapplication-square70x70logo' content='https://{{ request.get_host }}{% static "images/mstile-small.png" %}'>
+    <meta name='msapplication-square310x310logo' content='https://{{ request.get_host }}{% static "images/mstile-large.png" %}'>
+    <meta name='msapplication-square150x150logo' content='https://{{ request.get_host }}{% static "images/mstile-medium.png" %}'>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'neuro/css/sidebar.css' %}">
+    <link rel="stylesheet" href="{% static 'neuro/css/index.css' %}">
+    <link rel="stylesheet" href="{% static 'neuro/css/chat.css' %}">
+    <link rel="stylesheet" href="{% static 'neuro/css/constructor.css' %}">
+    <link rel="stylesheet" href="{% static 'neuro/css/auth.css' %}">
+    <link rel="stylesheet" href="{% static 'neuro/css/tariffs.css' %}">
+    <link rel="stylesheet" href="{% static 'neuro/css/stars_modals.css' %}">
+{{ site_counter.counter_text|safe }}
+</head>
+<body>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    {% include 'neuro/modals/delete_chat.html' %}
+
+<div class="app">
+    {% include 'neuro/sidebar.html' %}
+
+    <div class="main-content">
+        {% include 'neuro/main-header.html' %}
+
+        <div class="chat-container">
+            <div class="chat-messages" id="chatMessages">
+                {% for msg in messages %}
+                {% if msg.role == 'assistant' and msg.status == 'pending' %}
+                <!-- Сообщение бота в ожидании (без кнопки копирования) -->
+                <div class="message bot" data-message-id="{{ msg.id }}" data-status="pending">
+                    <div class="typing-indicator">
+                        <span></span><span></span><span></span>
+                    </div>
+                    <div class="message-time">{{ msg.created_at|time:"H:i" }}</div>
+                </div>
+                {% elif msg.role == 'assistant' and msg.status == 'completed' %}
+                <!-- Сообщение бота с текстом и кнопкой копирования -->
+                <div class="message bot" data-message-id="{{ msg.id }}" data-status="completed" data-plain-text="{{ msg.plain_text|escapejs }}">
+                    <div class="message-bubble">
+                        <span class="message-text">{{ msg.content|safe }}</span>
+                        <button class="copy-btn" data-text="{{ msg.plain_text }}"><i class="far fa-copy"></i></button>
+                    </div>
+                    <div class="message-time">{{ msg.created_at|time:"H:i" }}</div>
+                </div>
+                {% elif msg.role == 'user' %}
+                <!-- Сообщение пользователя с кнопкой копирования -->
+                <div class="message user" data-message-id="{{ msg.id }}" data-status="completed">
+                    <div class="message-bubble">
+                        <div class="message-user-content">
+                            <div class="message-text-only">{{ msg.content|linebreaksbr }}</div>
+                            {% if msg.files %}
+                            <div class="message-file-preview">
+                                {% for file in msg.files %}
+                                <div class="message-file-item">
+                                    {% if file.type and file.type|slice:":5" == 'image' %}
+                                    <img src="{{ file.dataUrl }}" alt="{{ file.name }}">
+                                    {% else %}
+                                    <i class="fas fa-file"></i>
+                                    <span class="file-name">{{ file.name }}</span>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <button class="copy-btn" data-text="{{ msg.content }}"><i class="far fa-copy"></i></button>
+                    </div>
+                    <div class="message-time">{{ msg.created_at|time:"H:i" }}</div>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+
+            <div class="chat-input-wrapper">
+                <div class="chat-input-container">
+                    <div class="preview-container" id="previewContainer"></div>
+                    <textarea placeholder="Напишите сообщение..." rows="1" id="messageInput"></textarea>
+                    <div class="input-actions">
+                        <button class="attach-btn" id="attachBtn"><i class="fa-solid fa-paperclip"></i></button>
+                        <div class="constructor-settings">
+                            <button class="constructor-settings-btn" id="constructorSettingsBtn">
+                                <i class="fas fa-cog"></i>
+                                <span class="constructor-label">Настройки</span>
+                            </button>
+                        </div>
+                        <button class="send-btn" id="sendBtn"><i class="fa-regular fa-paper-plane"></i></button>
+                    </div>
+                    <input type="file" id="fileInput" multiple style="display: none;">
+                </div>
+                <div class="chat-footer-text">
+                    {% if free_info %}
+                        {{ free_info.message }}
+                    {% else %}
+                        Стоимость {{ cost }} <i class="fas fa-star"></i> за одно сообщение.
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Подключение модалки авторизации -->
+{% include 'neuro/modals/auth.html' %}
+<!-- Подключение модалки тарифов -->
+{% include 'neuro/modals/tariffs.html' %}
+<script src="{% static 'neuro/js/sidebar.js' %}"></script>
+<script src="{% static 'neuro/js/chat.js' %}"></script>
+<script src="{% static 'neuro/js/constructor.js' %}"></script>
+<script src="{% static 'neuro/js/auth.js' %}"></script>
+<script src="{% static 'neuro/js/index.js' %}"></script>
+<script src="{% static 'neuro/js/tariffs.js' %}"></script>
+<script src="{% static 'neuro/js/stars_modal.js' %}"></script>
+</body>
+</html>

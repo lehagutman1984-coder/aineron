@@ -1,0 +1,644 @@
+/* chat.css без лишних отступов */
+/* Контейнер чата занимает всю высоту main-content */
+.chat-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* Сообщения занимают всё свободное пространство */
+.chat-messages {
+    flex: 1 1 auto;
+    padding: 20px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow: visible;
+}
+
+/* Обертка для поля ввода — липкая снизу */
+.chat-input-wrapper {
+    flex-shrink: 0;
+    position: sticky;
+    bottom: 0;
+    background: var(--background-primary);
+    padding: 12px 0 20px;
+    border-top: 1px solid var(--border-tertiary);
+    width: 100%;
+    z-index: 10;
+}
+
+/* Сообщения */
+.message {
+    display: flex;
+    flex-direction: column;
+    max-width: 80%;
+    position: relative;
+}
+
+.message.user {
+    align-self: flex-end;
+}
+
+.message.bot {
+    align-self: flex-start;
+}
+
+.message-bubble {
+    padding: 12px 18px;
+    border-radius: 24px;
+    background: var(--background-secondary);
+    color: var(--text-primary);
+    line-height: 1.5;
+    word-wrap: break-word;
+}
+
+.message.user .message-bubble {
+    background: var(--icon-accent);
+    color: white;
+    border-bottom-right-radius: 4px;
+}
+
+.message.bot .message-bubble {
+    background: var(--background-tertiary);
+    border-bottom-left-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.message-text {
+    flex: 1;
+    width: 100%;
+    white-space: normal;
+}
+
+.copy-btn {
+    background: none;
+    border: none;
+    color: var(--icon-secondary);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 8px;
+    opacity: 0;
+    transition: opacity 0.2s, background 0.2s, color 0.2s;
+    flex-shrink: 0;
+    align-self: flex-end;
+}
+
+.message.bot:hover .copy-btn {
+    opacity: 1;
+}
+
+.copy-btn:hover {
+    background: var(--background-secondary);
+    color: var(--icon-accent);
+}
+
+.message-time {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    margin-top: 4px;
+    margin-left: 8px;
+}
+
+.message.user .message-time {
+    text-align: right;
+    margin-right: 8px;
+}
+
+/* Контент сообщения пользователя (текст + файлы) */
+.message-user-content {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.message-text-only {
+    padding: 2px 0;
+}
+
+/* Превью файлов в сообщении пользователя */
+.message-file-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.message-file-item {
+    width: 250px;
+    height: 250px;
+    border-radius: 24px;
+    overflow: hidden;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.message-file-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.message-file-item .file-icon {
+    font-size: 80px;
+    color: rgba(255,255,255,0.9);
+    margin-bottom: 8px;
+}
+
+.message-file-item .file-name {
+    font-size: 14px;
+    color: rgba(255,255,255,0.9);
+    max-width: 220px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0 8px;
+    text-align: center;
+}
+
+/* Изображения в сообщениях бота */
+.bot-message-image {
+    width: 100%;
+    max-width: 400px;
+    border-radius: 20px;
+    margin-top: 8px;
+    object-fit: cover;
+    border: 1px solid var(--border-tertiary);
+}
+
+/* Индикатор печатания */
+.typing-indicator {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 12px 18px;
+    background: var(--background-tertiary);
+    border-radius: 24px;
+    border-bottom-left-radius: 4px;
+    width: fit-content;
+}
+
+.typing-indicator span {
+    width: 8px;
+    height: 8px;
+    background: var(--text-secondary);
+    border-radius: 50%;
+    animation: typingBounce 1.4s infinite ease-in-out both;
+}
+
+.typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+.typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes typingBounce {
+    0%, 80%, 100% { transform: scale(0.6); opacity: 0.6; }
+    40% { transform: scale(1); opacity: 1; }
+}
+
+/* Футер с ценой */
+.chat-footer-text {
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-tertiary);
+    padding: 8px 0 0;
+}
+
+.chat-footer-text i {
+    color: #ffb347;
+    font-size: 12px;
+}
+
+/* Сообщение пользователя – располагаем содержимое вертикально, кнопку справа */
+.message.user .message-bubble {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.message.user .copy-btn {
+    align-self: flex-end;
+    margin-top: 4px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.message.user:hover .copy-btn {
+    opacity: 1;
+}
+
+.message.user .copy-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+/* Адаптив */
+@media (max-width: 768px) {
+    .chat-container {
+        padding: 0 12px;
+    }
+    .message {
+        max-width: 90%;
+    }
+    .message-file-item {
+        width: 180px;
+        height: 180px;
+    }
+    .bot-message-image {
+        max-width: 100%;
+    }
+    .main-header .model-chip {
+        display: flex;
+    }
+}
+
+@media (max-width: 480px) {
+    .message-file-item {
+        width: 140px;
+        height: 140px;
+    }
+}
+
+/* ========== ПЕРЕРАБОТАННЫЕ СТИЛИ ДЛЯ MARKDOWN И КОДА (КОМПАКТНЫЕ) ========== */
+
+/* Сброс отступов у всех элементов внутри .message-text */
+.message-text {
+    line-height: 1.5;
+}
+
+.message-text > *:first-child {
+    margin-top: 0;
+}
+.message-text > *:last-child {
+    margin-bottom: 0;
+}
+
+/* Параграфы */
+.message-text p {
+    margin: 0 0 0.4em 0;
+}
+.message-text p:last-child {
+    margin-bottom: 0;
+}
+
+/* Заголовки */
+.message-text h1,
+.message-text h2,
+.message-text h3,
+.message-text h4,
+.message-text h5,
+.message-text h6 {
+    margin: 0.6em 0 0.3em;
+    font-weight: 600;
+    line-height: 1.3;
+}
+.message-text h1 { font-size: 1.4em; }
+.message-text h2 { font-size: 1.25em; }
+.message-text h3 { font-size: 1.15em; }
+.message-text h4 { font-size: 1.05em; }
+.message-text h5 { font-size: 1em; }
+.message-text h6 { font-size: 0.95em; color: #555; }
+
+/* Списки */
+.message-text ul,
+.message-text ol {
+    margin: 0.3em 0;
+    padding-left: 1.5em;
+}
+.message-text li {
+    margin: 0.15em 0;
+}
+.message-text li > ul,
+.message-text li > ol {
+    margin: 0.1em 0;
+}
+
+/* Горизонтальная линия */
+.message-text hr {
+    margin: 0.6em 0;
+    border: none;
+    height: 1px;
+    background: #e0e0e0;
+}
+
+/* Таблицы */
+.message-text .ai-table-container {
+    overflow-x: auto;
+    margin: 0.5em 0;
+    border-radius: 10px;
+    border: 1px solid #eaeaea;
+}
+.message-text .ai-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+.message-text .ai-table th,
+.message-text .ai-table td {
+    border: 1px solid #e0e0e0;
+    padding: 6px 10px;
+    text-align: left;
+}
+.message-text .ai-table th {
+    background: #f7f7f7;
+    font-weight: 600;
+}
+
+/* Блоки кода */
+.message-text .code-block {
+    margin: 0.5em 0;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #1e1e1e;
+    font-family: 'Menlo', 'Consolas', monospace;
+    font-size: 12px;
+    width: 100%;
+}
+.message-text .code-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 10px;
+    background: #2a2a2a;
+    color: #bbb;
+    font-size: 11px;
+    border-bottom: 1px solid #3a3a3a;
+    margin: 0;
+}
+.message-text .code-language {
+    font-weight: 500;
+    letter-spacing: 0.3px;
+}
+.message-text .code-actions {
+    display: flex;
+    gap: 6px;
+}
+.message-text .code-actions button {
+    background: none;
+    border: none;
+    color: #aaa;
+    cursor: pointer;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.message-text .code-actions button i {
+    font-size: 11px;
+}
+.message-text .code-actions button:hover {
+    background: #3a3a3a;
+    color: white;
+}
+.message-text .code-content {
+    margin: 0;
+}
+.message-text .code-content pre {
+    margin: 0;
+    padding: 10px;
+    overflow-x: auto;
+    background: #1e1e1e;
+}
+.message-text .code-content code {
+    font-family: 'Menlo', 'Consolas', monospace;
+    font-size: 12px;
+    line-height: 1.45;
+    color: #d4d4d4;
+}
+
+/* Inline-код */
+.message-text .inline-code {
+    background: #f2f2f2;
+    padding: 2px 5px;
+    border-radius: 5px;
+    font-family: monospace;
+    font-size: 0.9em;
+    color: #d63384;
+}
+
+/* Ссылки */
+.message-text a {
+    color: #0a7cff;
+    text-decoration: none;
+    border-bottom: 1px dotted #0a7cff;
+}
+.message-text a:hover {
+    text-decoration: underline;
+}
+
+/* Генерированные медиа (картинки/видео) */
+.message-text .generated-media {
+    margin: 0.5em 0;
+    border: 1px solid #eaeaea;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fafafa;
+}
+.message-text .media-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 12px;
+    background: #f0f0f0;
+    font-size: 12px;
+    border-bottom: 1px solid #e0e0e0;
+}
+.message-text .media-actions button {
+    background: none;
+    border: none;
+    font-size: 12px;
+    color: #666;
+    cursor: pointer;
+    margin-left: 10px;
+    transition: color 0.2s;
+}
+.message-text .media-actions button:hover {
+    color: #0a7cff;
+}
+.message-text .media-content {
+    padding: 12px;
+    text-align: center;
+}
+.message-text .media-content img,
+.message-text .media-content video {
+    max-width: 100%;
+    border-radius: 10px;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* Блоки кода — светлый фон, тёмный текст */
+.message-text .code-block {
+    margin: 0.5em 0;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #f8f8f8;  /* светлый фон */
+    border: 1px solid #e0e0e0;
+    font-family: 'Menlo', 'Consolas', monospace;
+    font-size: 12px;
+    width: 100%;
+}
+.message-text .code-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 10px;
+    background: #efefef;  /* чуть темнее фона для шапки */
+    color: #333;
+    font-size: 11px;
+    border-bottom: 1px solid #ddd;
+    margin: 0;
+}
+.message-text .code-language {
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    color: #555;
+}
+.message-text .code-actions button {
+    background: none;
+    border: none;
+    color: #666;
+    cursor: pointer;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.message-text .code-actions button i {
+    font-size: 11px;
+}
+.message-text .code-actions button:hover {
+    background: #e0e0e0;
+    color: #000;
+}
+.message-text .code-content {
+    margin: 0;
+}
+.message-text .code-content pre {
+    margin: 0;
+    padding: 10px;
+    overflow-x: auto;
+    background: #f8f8f8;
+}
+.message-text .code-content code {
+    font-family: 'Menlo', 'Consolas', monospace;
+    font-size: 12px;
+    line-height: 1.45;
+    color: #333;  /* тёмный текст */
+}
+
+/* Таймер в форме — адаптирован под переменные дизайна */
+.chat-timer-bar {
+    background: linear-gradient(135deg, var(--background-secondary) 0%, var(--background-tertiary) 100%);
+    border-radius: 20px;
+    padding: 12px 20px;
+    margin-bottom: 16px;
+    border: 1px solid var(--border-tertiary);
+    position: relative;
+    overflow: hidden;
+}
+
+.timer-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.timer-icon {
+    font-size: 28px;
+    color: var(--icon-accent); /* акцентный цвет из твоего дизайна */
+}
+
+.timer-text {
+    flex: 1;
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.timer-text strong {
+    font-weight: 700;
+    display: block;
+    font-size: 16px;
+    margin-top: 2px;
+    color: var(--icon-accent); /* акцент для цифр таймера */
+}
+
+/* Кнопка подписки — без изменений (как ты просил) */
+.timer-subscribe-link {
+    background: #0a7cff;
+    border: none;
+    border-radius: 40px;
+    padding: 8px 20px;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.timer-subscribe-link:hover {
+    background: #248aff;
+}
+
+/* Прогресс-бар */
+.timer-progress {
+    margin-top: 12px;
+    height: 4px;
+    background: color-mix(in srgb, var(--icon-accent) 20%, transparent);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.timer-progress-fill {
+    height: 100%;
+    background: var(--icon-accent);
+    transition: width 0.2s linear;
+}
+
+/* Адаптив */
+@media (max-width: 480px) {
+    .timer-content {
+        flex-direction: column;
+        text-align: center;
+    }
+    .timer-subscribe-link {
+        width: 100%;
+    }
+}

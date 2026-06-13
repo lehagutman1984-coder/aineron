@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ru">
+{% load static %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <meta name="user-tariff-id" content="{{ user.tariff.id|default:'' }}">
+    <title>{{ blog_title }}</title>
+    <meta name="description" content="{{ blog_description }}">
+    <meta name="keywords" content="{{ blog_keywords }}">
+    <meta name='image' content='https://{{ request.get_host }}{% static "/images/home.png" %}'>
+    <!-- Open Graph general (Facebook, Pinterest & Google+) -->
+    <meta property='og:locale' content='ru_RU'>
+    <meta property='og:type' content='website'>
+    <meta property='og:site_name' content='{{ site.name }}'>
+    <meta property='og:url' content='https://{{ request.get_host }}/'>
+    <meta property='og:title' content='{{ blog_title }}'>
+    <meta property='og:description' content='{{ blog_description }}'>
+    <meta property='og:image' content='https://{{ request.get_host }}{% static "/images/home.png" %}'>
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <!-- Twitter Card -->
+    <meta name='twitter:card' content='summary_large_image'>
+    <meta name='twitter:title' content='{{ blog_title }}'>
+    <meta name='twitter:description' content='{{ blog_description }}'>
+    <meta name='twitter:image' content='https://{{ request.get_host }}{% static "/images/home.png" %}'>
+    <!-- Метатеги для устройств -->
+    <meta name='msapplication-starturl' content='{{ site_url }}'>
+    <meta name='application-name' content='{{ blog_title }}'>
+    <meta name='apple-mobile-web-app-title' content='{{ blog_title }}'>
+    <meta name='msapplication-tooltip' content='{{ blog_description }}'>
+    <!-- Метатеги [end]-->
+    <link rel="canonical" href="{{ request.build_absolute_uri }}">
+    <!-- Иконки и стилизация -->
+    <!-- Фавиконки -->
+    <link rel='shortcut icon' type='shortcut icon' href='https://{{ request.get_host }}{% static "/images/favicon.ico" %}'>
+
+    <!-- Иконки для iOS & Android -->
+    <link rel='apple-touch-icon' sizes='60x60' href='https://{{ request.get_host }}{% static "images/apple-touch-icon-60x60.png" %}'>
+    <link rel='apple-touch-icon' sizes='76x76' href='https://{{ request.get_host }}{% static "images/apple-touch-icon-76x76.png" %}'>
+    <link rel='apple-touch-icon' sizes='120x120' href='https://{{ request.get_host }}{% static "images/apple-touch-icon-120x120.png" %}'>
+    <link rel='apple-touch-icon' sizes='152x152' href='https://{{ request.get_host }}{% static "images/apple-touch-icon-152x152.png" %}'>
+    <!-- Иконки для Microsoft -->
+    <meta name='theme-color' content='#D63384'>
+    <meta name='msapplication-tap-highlight' content='no'>
+    <meta name='msapplication-TileColor' content='#D63384'>
+    <meta name='msapplication-TileImage' content='https://{{ request.get_host }}{% static "images/mstile-144x144.png" %}'>
+    <meta name='msapplication-wide310x150logo' content='https://{{ request.get_host }}{% static "images/mstile-wide.png" %}'>
+    <meta name='msapplication-square70x70logo' content='https://{{ request.get_host }}{% static "images/mstile-small.png" %}'>
+    <meta name='msapplication-square310x310logo' content='https://{{ request.get_host }}{% static "images/mstile-large.png" %}'>
+    <meta name='msapplication-square150x150logo' content='https://{{ request.get_host }}{% static "images/mstile-medium.png" %}'>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'neuro/css/sidebar.css' %}">
+    <link rel="stylesheet" href="{% static 'neuro/css/index.css' %}">
+    <link rel="stylesheet" href="{% static 'neuro/css/blog.css' %}">
+    <link rel="stylesheet" href="{% static 'neuro/css/auth.css' %}">
+    <link rel="stylesheet" href="{% static 'neuro/css/tariffs.css' %}">
+    <link rel="stylesheet" href="{% static 'neuro/css/stars_modals.css' %}">
+{{ site_counter.counter_text|safe }}
+</head>
+<body>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    {% include 'neuro/modals/delete_chat.html' %}
+
+<div class="app">
+    {% include 'neuro/sidebar.html' %}
+
+    <div class="main-content">
+        {% include 'neuro/main-header.html' %}
+
+        <div class="blog-main">
+            <div class="blog-header">
+                <h1 class="blog-title">Блог</h1>
+                <p class="blog-subtitle">Новости, обновления и полезные статьи о нейросетях</p>
+            </div>
+
+            <!-- Категории -->
+            <div class="blog-categories">
+                <a href="{% url 'blog:list' %}" class="blog-category-chip {% if not current_category_slug %}active{% endif %}">Все</a>
+                {% for cat in categories %}
+                <a href="{% url 'blog:category' cat.slug %}" class="blog-category-chip {% if current_category_slug == cat.slug %}active{% endif %}">{{ cat.name }}</a>
+                {% endfor %}
+            </div>
+
+            <!-- Сетка статей -->
+            <div class="blog-grid">
+                {% for post in page_obj %}
+                <div class="blog-card">
+                    <a href="{{ post.get_absolute_url }}" class="blog-card-link">
+                        <div class="blog-card-image">
+                            {% if post.preview_image %}
+                            <img src="{{ post.preview_image.url }}" alt="{{ post.title }}" loading="lazy">
+                            {% else %}
+                            <div class="blog-card-no-image"><i class="fas fa-newspaper"></i></div>
+                            {% endif %}
+                        </div>
+                        <div class="blog-card-content">
+                            <div class="blog-card-category">{{ post.category.name }}</div>
+                            <h3 class="blog-card-title">{{ post.title }}</h3>
+                            <p class="blog-card-preview">{{ post.preview_text|truncatechars:120 }}</p>
+                            <div class="blog-card-meta">
+                                <span class="blog-card-date">{{ post.published_at|date:"d.m.Y" }}</span>
+                                <span class="blog-article-views"><i class="far fa-eye"></i> {{ post.views_count }}</span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                {% empty %}
+                <div class="blog-empty">Статьи не найдены</div>
+                {% endfor %}
+            </div>
+
+            <!-- Пагинация -->
+            {% if page_obj.has_other_pages %}
+            <div class="blog-pagination">
+                {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}" class="pagination-prev"><i class="fas fa-chevron-left"></i></a>
+                {% endif %}
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                    <span class="pagination-current">{{ num }}</span>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <a href="?page={{ num }}" class="pagination-link">{{ num }}</a>
+                    {% endif %}
+                {% endfor %}
+                {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}" class="pagination-next"><i class="fas fa-chevron-right"></i></a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% include 'neuro/modals/auth.html' %}
+{% include 'neuro/modals/tariffs.html' %}
+
+<script src="{% static 'neuro/js/sidebar.js' %}"></script>
+<script src="{% static 'neuro/js/index.js' %}"></script>
+<script src="{% static 'neuro/js/auth.js' %}"></script>
+<script src="{% static 'neuro/js/tariffs.js' %}"></script>
+<script src="{% static 'neuro/js/stars_modal.js' %}"></script>
+</body>
+</html>

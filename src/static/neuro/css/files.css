@@ -1,0 +1,371 @@
+/* files.css */
+
+.files-container {
+    width: 100%;
+    max-width: none;
+    padding: 40px 40px 60px;
+}
+
+.files-title {
+    font-size: 36px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 24px;
+}
+
+.files-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 32px;
+    border-bottom: 1px solid var(--border-tertiary);
+    padding-bottom: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.files-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.files-tab {
+    background: none;
+    border: none;
+    padding: 8px 16px;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    position: relative;
+    white-space: nowrap;
+    transition: color 0.2s;
+}
+
+.files-tab.active {
+    color: var(--icon-accent);
+}
+
+.files-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -9px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--icon-accent);
+}
+
+.files-tab:hover {
+    color: var(--text-primary);
+}
+
+/* Сетка файлов */
+.files-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 28px;
+}
+
+/* Карточка файла */
+.file-card {
+    background: white;
+    border: 1px solid var(--border-tertiary);
+    border-radius: 24px;
+    overflow: hidden;
+    transition: box-shadow 0.2s, transform 0.2s;
+    cursor: pointer;
+}
+
+.file-card:hover {
+    box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+    transform: translateY(-4px);
+}
+
+.myfile-preview {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background: var(--background-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.myfile-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.myfile-preview video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.myfile-preview i {
+    font-size: 56px;
+    color: var(--icon-tertiary);
+}
+
+.file-info {
+    padding: 16px;
+}
+
+.file-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.file-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: var(--text-tertiary);
+    margin-bottom: 4px;
+}
+
+.file-type {
+    text-transform: uppercase;
+}
+
+.file-date {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* Модальное окно в стиле Instagram (без навигации) */
+.file-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.9);
+    backdrop-filter: blur(8px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.file-modal-overlay.show {
+    display: flex;
+}
+
+.file-modal {
+    position: relative;
+    width: 95vw;
+    height: 95vh;
+    max-width: 1600px;
+    background: #111;
+    border-radius: 24px;
+    overflow: hidden;
+    display: flex;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.5);
+}
+
+/* Левая колонка (медиа) — видео и фото на весь блок */
+.file-modal-media {
+    flex: 4;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.file-modal-media img,
+.file-modal-media video,
+.file-modal-media iframe,
+.file-modal-media embed {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+/* Правая колонка (информация) */
+.file-modal-sidebar {
+    flex: 1.2;
+    background: #1a1a1a;
+    color: white;
+    padding: 40px 30px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    border-left: 1px solid rgba(255,255,255,0.1);
+}
+
+.file-modal-header {
+    margin-bottom: 30px;
+}
+
+.file-modal-title {
+    font-size: 28px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    word-break: break-word;
+}
+
+.file-modal-date {
+    font-size: 14px;
+    color: rgba(255,255,255,0.6);
+}
+
+.file-modal-details {
+    margin-bottom: 40px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding: 20px 0;
+}
+
+.file-modal-detail-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    font-size: 15px;
+}
+
+.detail-label {
+    color: rgba(255,255,255,0.5);
+}
+
+.detail-value {
+    color: white;
+    font-weight: 500;
+}
+
+.file-modal-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.file-modal-action-btn {
+    background: rgba(255,255,255,0.1);
+    border: none;
+    border-radius: 60px;
+    padding: 14px 20px;
+    color: white;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background 0.2s;
+}
+
+.file-modal-action-btn:hover {
+    background: rgba(255,255,255,0.2);
+}
+
+.file-modal-action-btn i {
+    font-size: 18px;
+}
+
+/* Кнопка закрытия */
+.file-modal-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(0,0,0,0.5);
+    border: none;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    color: white;
+    font-size: 22px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+    z-index: 20;
+    backdrop-filter: blur(4px);
+}
+
+.file-modal-close:hover {
+    background: rgba(0,0,0,0.8);
+}
+
+/* Адаптив */
+@media (max-width: 768px) {
+    .files-container {
+        padding: 30px 20px 40px;
+    }
+    .files-title {
+        font-size: 28px;
+    }
+    .files-grid {
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 16px;
+    }
+    .file-modal {
+        flex-direction: column;
+        height: 100dvh;
+        width: 100%;
+        max-width: 100%;
+        border-radius: 0;
+    }
+    .file-modal-media {
+        flex: 2;
+    }
+    .file-modal-sidebar {
+        flex: 1;
+        padding: 20px;
+    }
+    .file-modal-title {
+        font-size: 22px;
+    }
+    .file-modal-close {
+        top: 10px;
+        right: 10px;
+        width: 40px;
+        height: 40px;
+        font-size: 18px;
+    }
+}
+
+/* Пустое состояние и загрузчик */
+.files-empty,
+.files-loading {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 80px 20px;
+    font-size: 18px;
+    color: var(--text-secondary);
+    background: var(--background-secondary);
+    border-radius: 24px;
+    margin-top: 20px;
+}
+
+.files-loading i {
+    margin-right: 8px;
+    color: var(--icon-accent);
+}
+
+.files-empty i,
+.files-loading i {
+    font-size: 48px;
+    margin-bottom: 16px;
+    display: block;
+}
+
+/* Дополнительно для мобильных */
+@media (max-width: 768px) {
+    .files-empty,
+    .files-loading {
+        padding: 60px 20px;
+        font-size: 16px;
+    }
+    .files-empty i,
+    .files-loading i {
+        font-size: 40px;
+    }
+}

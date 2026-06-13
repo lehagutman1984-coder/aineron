@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Вход через {{ provider.name }}</title>
+    <script>
+        // Автоматически отправляем форму при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelector('form').submit();
+        });
+    </script>
+</head>
+<body style="display: none;">
+    <form method="post">
+        {% csrf_token %}
+        {% if redirect_field_value %}
+            <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}"/>
+        {% endif %}
+        <button type="submit">Продолжить</button>
+    </form>
+
+    <noscript>
+        <h1>Вход через {{ provider.name }}</h1>
+        <p>Вы собираетесь войти через {{ provider.name }}.</p>
+        <form method="post">
+            {% csrf_token %}
+            {% if redirect_field_value %}
+                <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}"/>
+            {% endif %}
+            <button type="submit">Продолжить</button>
+        </form>
+    </noscript>
+</body>
+</html>

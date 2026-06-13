@@ -1,0 +1,146 @@
+<!-- auth.html -->{% load static %}
+<div class="auth-fullscreen-overlay" id="authModalOverlay">
+    <div class="auth-fullscreen-modal">
+        <button class="auth-global-close" id="authCloseBtn">
+            <i class="fas fa-times"></i>
+        </button>
+
+        <div class="auth-left-panel">
+            <div class="auth-hero">
+                <h1><span>Простой старт</span> в мир нейросетей</h1>
+                <p>Без VPN, зарубежных карт и сложностей</p>
+            </div>
+
+            <!-- Начальный экран -->
+            <div class="auth-screen auth-screen-initial active">
+                <h2 class="auth-title">Войдите, чтобы продолжить</h2>
+                <p class="auth-subtitle">Выберите удобный способ</p>
+                <div class="auth-social-grid">
+                    <button class="auth-social-btn yandex">
+                        <i class="fab fa-yandex"></i>
+                        <span>Яндекс ID</span>
+                    </button>
+                  <!--  <button class="auth-social-btn vk">
+                        <i class="fab fa-vk"></i>
+                        <span>VK ID</span>
+                    </button>
+                     <button class="auth-social-btn mailru">
+                        <i class="fas fa-envelope"></i>
+                        <span>Mail.ru</span>
+                    </button> -->
+                </div>
+                <div class="auth-divider">или</div>
+                <button class="auth-email-btn" id="authEmailBtn">
+                    <i class="fas fa-envelope"></i>
+                    <span>Войти через почту</span>
+                </button>
+            </div>
+
+            <!-- Экран входа/регистрации -->
+            <div class="auth-screen auth-screen-auth">
+                <div class="auth-tabs">
+                    <button class="auth-tab active" data-tab="login">Вход</button>
+                    <button class="auth-tab" data-tab="register">Регистрация</button>
+                </div>
+
+                <!-- Форма входа -->
+                <form class="auth-form auth-form-login active" id="loginForm" novalidate>
+                    <div class="auth-field">
+                        <label>Email</label>
+                        <input type="email" id="loginEmail" placeholder="your@email.com" required>
+                        <div class="auth-error-message" id="loginEmailError"></div>
+                    </div>
+                    <div class="auth-field password-field">
+                        <label>Пароль</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="loginPassword" placeholder="Пароль" required>
+                            <button type="button" class="password-toggle" aria-label="Показать пароль">
+                                <i class="far fa-eye"></i>
+                            </button>
+                        </div>
+                        <div class="auth-error-message" id="loginPasswordError"></div>
+                    </div>
+                    <button type="submit" class="auth-submit-btn" id="loginSubmitBtn">
+                        <span>Войти</span>
+                        <div class="btn-loader" style="display: none;"></div>
+                    </button>
+                    <button type="button" class="auth-forgot-link" id="forgotPasswordLink">Забыли пароль?</button>
+                </form>
+
+                <!-- Форма регистрации -->
+                <form class="auth-form auth-form-register" id="registerForm" novalidate>
+                    <div class="auth-field">
+                        <label>Email</label>
+                        <input type="email" id="registerEmail" placeholder="your@email.com" required>
+                        <div class="auth-error-message" id="registerEmailError"></div>
+                    </div>
+                    <div class="auth-field password-field">
+                        <label>Пароль</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="registerPassword" placeholder="Пароль" required>
+                            <button type="button" class="password-toggle" aria-label="Показать пароль">
+                                <i class="far fa-eye"></i>
+                            </button>
+                        </div>
+                        <div class="auth-error-message" id="registerPasswordError"></div>
+                    </div>
+                    <!-- Индикатор сложности пароля -->
+                    <div class="password-strength" id="passwordStrengthContainer">
+                        <div class="strength-bar" id="strengthBar"></div>
+                        <div class="strength-text" id="strengthText"></div>
+                    </div>
+                    <div class="auth-field password-field" id="confirmPasswordField">
+                        <label>Повторите пароль</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="registerConfirmPassword" placeholder="Пароль" required>
+                            <button type="button" class="password-toggle" aria-label="Показать пароль">
+                                <i class="far fa-eye"></i>
+                            </button>
+                        </div>
+                        <div class="auth-error-message" id="passwordMatchError">Пароли не совпадают</div>
+                    </div>
+                    <button type="submit" class="auth-submit-btn" id="registerSubmitBtn">
+                        <span>Зарегистрироваться</span>
+                        <div class="btn-loader" style="display: none;"></div>
+                    </button>
+                </form>
+
+                <button type="button" class="auth-back-link" id="backToInitialBtn">
+                    <i class="fas fa-arrow-left"></i> Другие способы входа
+                </button>
+            </div>
+
+            <!-- Экран восстановления пароля -->
+            <div class="auth-screen auth-screen-forgot">
+                <h2 class="auth-title">Восстановление пароля</h2>
+                <p class="auth-subtitle">Мы отправим ссылку на ваш email</p>
+                <form class="auth-form" id="forgotForm" novalidate style="display: flex;">
+                    <div class="auth-field">
+                        <label>Email</label>
+                        <input type="email" id="resetEmail" placeholder="your@email.com" required>
+                        <div class="auth-error-message" id="resetEmailError"></div>
+                    </div>
+                    <button type="submit" class="auth-submit-btn" id="resetSubmitBtn">
+                        <span>Отправить</span>
+                        <div class="btn-loader" style="display: none;"></div>
+                    </button>
+                </form>
+                <div class="auth-success-message" id="forgotSuccessMessage" style="display: none;">
+                    <p>Письмо для восстановления пароля отправлено на ваш email.</p>
+                </div>
+                <button type="button" class="auth-back-link" id="backToLoginBtn">
+                    <i class="fas fa-arrow-left"></i> Вернуться ко входу
+                </button>
+            </div>
+
+            <div class="auth-footer">
+                <p>Продолжая, вы принимаете наше <a href="{% url 'users_pages:terms_of_service' %}">Пользовательское соглашение</a> и <a href="{% url 'users_pages:privacy_policy' %}">Политику Конфиденциальности</a></p>
+            </div>
+        </div>
+
+        <div class="auth-right-panel">
+            <img src="https://{{ request.get_host }}{% static '/images/home.png' %}" alt="Abstract background">
+            <div class="auth-right-overlay"></div>
+        </div>
+    </div>
+</div>
