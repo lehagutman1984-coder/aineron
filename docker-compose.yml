@@ -93,6 +93,23 @@ services:
       redis:
         condition: service_healthy
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../Dockerfile.frontend
+      args:
+        NEXT_PUBLIC_API_URL: https://aineron.ru/api/v1
+        NEXT_PUBLIC_SITE_URL: https://aineron.ru
+    container_name: neiro_frontend
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - DJANGO_INTERNAL_URL=http://web:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - web
+
   nginx:
     image: nginx:1.25-alpine
     container_name: neiro_nginx
@@ -107,6 +124,7 @@ services:
       - ./ssl:/etc/nginx/ssl
     depends_on:
       - web
+      - frontend
 
 volumes:
   postgres_data:
