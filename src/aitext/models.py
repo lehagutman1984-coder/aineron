@@ -164,6 +164,13 @@ class NeuralNetwork(models.Model):
         verbose_name='Максимум токенов в запросе пользователя',
         help_text='0 = без ограничений. Обрезает текст сообщения пользователя до указанного количества символов.'
     )
+    stars_per_1k_tokens = models.DecimalField(
+        max_digits=8,
+        decimal_places=4,
+        default=0,
+        verbose_name='Звёзд за 1000 токенов (dev-API)',
+        help_text='Для токенного биллинга через API-ключи. 0 = авто-расчёт из cost_per_message.'
+    )
 
     class Meta:
         verbose_name = 'Нейросеть'
