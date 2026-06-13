@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
+import { Navbar } from "@/components/layout/Navbar";
+import { AuthInit } from "@/components/layout/AuthInit";
+import { ToastContainer } from "@/components/ui/toast";
 
 const inter = Inter({
   subsets: ["latin", "cyrillic"],
@@ -37,7 +40,12 @@ export default function RootLayout({
   return (
     <html lang="ru" className={inter.variable}>
       <body>
-        <Providers>{children}</Providers>
+        <Providers>
+          <AuthInit />
+          <Navbar />
+          <main>{children}</main>
+          <ToastContainer />
+        </Providers>
       </body>
     </html>
   );

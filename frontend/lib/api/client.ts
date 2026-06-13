@@ -10,6 +10,15 @@ import type {
   APIKeyCreateRequest,
   APIKeyCreateResponse,
   User,
+  Category,
+  NetworkListItem,
+  NetworkDetail,
+  WebMessage,
+  ChatListItem,
+  ChatDetail,
+  CreateChatResponse,
+  SendMessageResponse,
+  AuthUser,
 } from "./types";
 
 const BASE_URL =
@@ -115,15 +124,90 @@ export const createAPIKey = (body: APIKeyCreateRequest) =>
 export const deleteAPIKey = (id: number) =>
   request<void>(`/keys/${id}/`, { method: "DELETE" });
 
-// ============ User (Django session endpoint) ============
-// This hits the existing Django users/api/ — not the DRF /api/v1/.
-// Will be replaced with a DRF endpoint in Phase 3.
+// ============ Auth (DRF session endpoints) ============
+
+export const getMe = (): Promise<AuthUser> =>
+  request<AuthUser>("/auth/me/");
+
+export const authLogin = (email: string, password: string): Promise<AuthUser> =>
+  request<AuthUser>("/auth/login/", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+
+export const authLogout = (): Promise<{ ok: boolean }> =>
+  request<{ ok: boolean }>("/auth/logout/", { method: "POST" });
+
+export const authRegister = (email: string, password: string): Promise<AuthUser> =>
+  request<AuthUser>("/auth/register/", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+
+// ============ Catalog ============
+
+export const listCategories = (): Promise<Category[]> =>
+  request<Category[]>("/catalog/categories/");
+
+export const listNetworks = (params?: {
+  category?: string;
+  is_popular?: boolean;
+  provider?: string;
+}): Promise<NetworkListItem[]> => {
+  const qs = new URLSearchParams();
+  if (params?.category) qs.set("category", params.category);
+  if (params?.is_popular) qs.set("is_popular", "1");
+  if (params?.provider) qs.set("provider", params.provider);
+  const query = qs.toString();
+  return request<NetworkListItem[]>(`/catalog/networks/${query ? "?" + query : ""}`);
+};
+
+export const getNetwork = (slug: string): Promise<NetworkDetail> =>
+  request<NetworkDetail>(`/catalog/networks/${slug}/`);
+
+// ============ Web Chats ============
+
+export const listChats = (): Promise<ChatListItem[]> =>
+  request<ChatListItem[]>("/chats/");
+
+export const createChat = (body: {
+  network_slug: string;
+  message: string;
+  files?: unknown[];
+  settings?: Record<string, unknown>;
+}): Promise<CreateChatResponse> =>
+  request<CreateChatResponse>("/chats/", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+export const getChat = (id: number): Promise<ChatDetail> =>
+  request<ChatDetail>(`/chats/${id}/`);
+
+export const deleteChat = (id: number): Promise<void> =>
+  request<void>(`/chats/${id}/`, { method: "DELETE" });
+
+export const sendMessage = (
+  chatId: number,
+  body: {
+    message: string;
+    files?: unknown[];
+    settings?: Record<string, unknown>;
+  }
+): Promise<SendMessageResponse> =>
+  request<SendMessageResponse>(`/chats/${chatId}/messages/`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+export const getMessageStatus = (messageId: number): Promise<WebMessage> =>
+  request<WebMessage>(`/messages/${messageId}/status/`);
+
+// ============ User (legacy Django session endpoint, kept for compatibility) ============
 
 export async function getCurrentUser(): Promise<User | null> {
   try {
-    const res = await fetch("/users/api/user/", {
-      credentials: "include",
-    });
+    const res = await fetch("/users/api/user/", { credentials: "include" });
     if (!res.ok) return null;
     return res.json() as Promise<User>;
   } catch {

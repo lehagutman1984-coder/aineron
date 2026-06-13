@@ -162,3 +162,121 @@ export interface User {
   active_subscription: boolean;
   referral_code: string;
 }
+
+// ============ Catalog ============
+
+export interface Category {
+  id: number;
+  name: string;
+  slug: string;
+  icon: string;
+  order: number;
+}
+
+export interface NetworkListItem {
+  id: number;
+  name: string;
+  slug: string;
+  category: Category;
+  avatar: string | null;
+  description: string;
+  cost_per_message: number;
+  provider: string;
+  is_popular: boolean;
+  unlimited: boolean;
+  messages_limit: number;
+  handle_photo: boolean;
+  handle_video: boolean;
+  handle_archive: boolean;
+  handle_text_files: boolean;
+  seo_title: string;
+  seo_description: string;
+  model_name: string;
+  order: number;
+}
+
+export interface FAQ {
+  id: number;
+  question: string;
+  answer: string;
+  order: number;
+}
+
+export interface NetworkDetail extends NetworkListItem {
+  seo_keywords: string;
+  config_json: Record<string, unknown> | null;
+  has_prompt: boolean;
+  is_direct: boolean;
+  is_custom: boolean;
+  max_tokens: number;
+  faqs: FAQ[];
+}
+
+// ============ Web Chat ============
+
+export interface WebMessage {
+  id: number;
+  role: "user" | "assistant";
+  content: string;
+  files: unknown[];
+  status: "pending" | "completed" | "failed";
+  error_message: string | null;
+  created_at: string;
+}
+
+export interface NetworkMini {
+  id: number;
+  name: string;
+  slug: string;
+  avatar: string | null;
+  category: Category;
+}
+
+export interface ChatListItem {
+  id: number;
+  title: string;
+  network: NetworkMini;
+  last_message: {
+    role: "user" | "assistant";
+    preview: string;
+    status: "pending" | "completed" | "failed";
+  } | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChatDetail {
+  id: number;
+  title: string;
+  network: NetworkMini;
+  messages: WebMessage[];
+  settings: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateChatResponse {
+  chat_id: number;
+  user_message_id: number;
+  assistant_message_id: number;
+  new_balance: number;
+}
+
+export interface SendMessageResponse {
+  user_message_id: number;
+  assistant_message_id: number;
+  new_balance: number;
+}
+
+// ============ Auth (DRF /api/v1/auth/me/) ============
+
+export interface AuthUser {
+  id: number;
+  email: string;
+  username: string;
+  pages_count: number;
+  active_subscription: boolean;
+  referral_code: string;
+  tariff_name: string;
+  avatar: string;
+}
