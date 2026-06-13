@@ -154,10 +154,10 @@ def run_prompt(system: str, user: str, model="gpt-4o-mini") -> str:
     return response.choices[0].message.content
 
 # ШАГ 1: Извлечь характеристики продукта
-product_description = """
+product_description = '''
 SaaS-платформа для управления задачами малого бизнеса.
 Интеграция с 1С, мобильное приложение, от 590 руб/мес.
-"""
+'''
 
 features = run_prompt(
     system="Извлеки ключевые характеристики продукта в JSON: "
