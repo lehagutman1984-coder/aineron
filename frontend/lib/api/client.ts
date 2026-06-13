@@ -157,6 +157,15 @@ export const authRegister = (email: string, password: string): Promise<AuthUser>
     body: JSON.stringify({ email, password }),
   });
 
+export const authVerifyEmail = (code: string): Promise<{ ok: boolean }> =>
+  request<{ ok: boolean }>("/auth/verify-email/", {
+    method: "POST",
+    body: JSON.stringify({ code }),
+  });
+
+export const authResendVerification = (): Promise<{ ok: boolean }> =>
+  request<{ ok: boolean }>("/auth/resend-verification/", { method: "POST" });
+
 // ============ Catalog ============
 
 export const listCategories = (): Promise<Category[]> =>

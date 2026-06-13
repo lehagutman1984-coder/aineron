@@ -8,6 +8,7 @@ class UserSerializer(serializers.Serializer):
     pages_count = serializers.IntegerField()
     active_subscription = serializers.BooleanField()
     referral_code = serializers.CharField()
+    email_verified = serializers.BooleanField()
     tariff_name = serializers.SerializerMethodField()
     avatar = serializers.SerializerMethodField()
 

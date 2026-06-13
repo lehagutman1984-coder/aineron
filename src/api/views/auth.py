@@ -98,3 +98,36 @@ class RegisterView(APIView):
             pass
         login(request, user, backend='django.contrib.auth.backends.ModelBackend')
         return Response(UserSerializer(user).data, status=201)
+
+
+class VerifyEmailView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = [SessionAuthentication]
+
+    def post(self, request):
+        code = (request.data.get('code') or '').strip()
+        if not code or len(code) != 6:
+            return Response({'error': {'message': 'Введите 6-значный код', 'code': 'invalid_code'}}, status=400)
+
+        try:
+            user = User.objects.get(email_verification_code=code)
+        except User.DoesNotExist:
+            return Response({'error': {'message': 'Неверный или устаревший код', 'code': 'invalid_code'}}, status=400)
+
+        user.verify_email()
+        login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+        return Response({'ok': True})
+
+
+class ResendVerificationView(APIView):
+    authentication_classes = [SessionAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if request.user.email_verified:
+            return Response({'error': {'message': 'Email уже подтверждён', 'code': 'already_verified'}}, status=400)
+        try:
+            send_verification_email(request.user, request)
+        except Exception:
+            return Response({'error': {'message': 'Ошибка отправки письма', 'code': 'send_error'}}, status=500)
+        return Response({'ok': True})

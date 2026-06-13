@@ -32,7 +32,7 @@ function RegisterForm() {
     try {
       const user = await authRegister(email.trim().toLowerCase(), password);
       setUser(user);
-      router.push(next);
+      router.push("/verify-email/");
     } catch (err) {
       setError(
         err instanceof APIError ? err.message : "Ошибка регистрации. Попробуйте снова."

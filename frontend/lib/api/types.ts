@@ -450,4 +450,5 @@ export interface AuthUser {
   referral_code: string;
   tariff_name: string;
   avatar: string;
+  email_verified: boolean;
 }
