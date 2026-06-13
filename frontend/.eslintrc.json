@@ -1,0 +1,31 @@
+{
+  "extends": ["next/core-web-vitals"],
+  "rules": {
+    "no-restricted-syntax": [
+      "error",
+      {
+        "selector": "Literal[value=/[\\u{1F300}-\\u{1FAFF}\\u{2600}-\\u{27BF}\\u{FE00}-\\u{FEFF}]/u]",
+        "message": "Emoji are banned — use Lucide React icons instead."
+      },
+      {
+        "selector": "TemplateLiteral[quasis.0.value.raw=/[\\u{1F300}-\\u{1FAFF}\\u{2600}-\\u{27BF}]/u]",
+        "message": "Emoji are banned — use Lucide React icons instead."
+      }
+    ],
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "@fortawesome/fontawesome-svg-core",
+            "message": "Use Lucide React instead."
+          },
+          {
+            "name": "react-icons",
+            "message": "Use Lucide React instead."
+          }
+        ]
+      }
+    ]
+  }
+}
