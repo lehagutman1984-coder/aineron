@@ -19,6 +19,12 @@ from api.views.teams import (
 from api.views.invoices import InvoiceListCreateView
 from api.views.usage import UsageStatsView
 from api.views.blog import BlogCategoryListView, BlogPostListView, BlogPostDetailView
+from api.views.embeddings import EmbeddingsView
+from api.views.audio import AudioTranscriptionsView, AudioSpeechView
+from api.views.batch import BatchListCreateView, BatchDetailView, BatchResultsView, BatchCancelView
+from api.views.webhooks import WebhookListCreateView, WebhookDetailView, WebhookTestView
+from api.views.audit import AuditLogListView
+from api.views.api_status import APIStatusView
 
 app_name = 'api'
 
@@ -66,6 +72,20 @@ urlpatterns = [
     path('v1/blog/categories/', BlogCategoryListView.as_view(), name='blog_categories'),
     path('v1/blog/posts/', BlogPostListView.as_view(), name='blog_posts'),
     path('v1/blog/posts/<slug:slug>/', BlogPostDetailView.as_view(), name='blog_post_detail'),
+
+    # ========== Phase 6: Advanced API ==========
+    path('v1/embeddings', EmbeddingsView.as_view(), name='embeddings'),
+    path('v1/audio/transcriptions', AudioTranscriptionsView.as_view(), name='audio_transcriptions'),
+    path('v1/audio/speech', AudioSpeechView.as_view(), name='audio_speech'),
+    path('v1/batches/', BatchListCreateView.as_view(), name='batch_list_create'),
+    path('v1/batches/<int:pk>/', BatchDetailView.as_view(), name='batch_detail'),
+    path('v1/batches/<int:pk>/results/', BatchResultsView.as_view(), name='batch_results'),
+    path('v1/batches/<int:pk>/cancel/', BatchCancelView.as_view(), name='batch_cancel'),
+    path('v1/webhooks/', WebhookListCreateView.as_view(), name='webhook_list_create'),
+    path('v1/webhooks/<int:pk>/', WebhookDetailView.as_view(), name='webhook_detail'),
+    path('v1/webhooks/<int:pk>/test/', WebhookTestView.as_view(), name='webhook_test'),
+    path('v1/audit/', AuditLogListView.as_view(), name='audit_log'),
+    path('v1/status/', APIStatusView.as_view(), name='api_status'),
 
     # ========== OpenAPI / Swagger ==========
     path('v1/schema/', SpectacularAPIView.as_view(), name='schema'),
