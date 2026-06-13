@@ -1,0 +1,449 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>API для разработчиков — {{ site.name }}</title>
+    <meta name="description" content="OpenAI-совместимый API для доступа к нейросетям GPT-4o, Claude, Gemini и генерации изображений без VPN. Документация, примеры кода и инструкции.">
+    <meta name="keywords" content="API нейросети, OpenAI API Россия, GPT-4 API без VPN, Claude API, Anthropic API, LLM API">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="{{ site.name }}">
+    <meta property="og:url" content="{{ request.build_absolute_uri }}">
+    <meta property="og:title" content="API для разработчиков — {{ site.name }}">
+    <meta property="og:description" content="OpenAI-совместимый API для доступа к нейросетям без VPN. Документация и примеры.">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="canonical" href="{{ request.build_absolute_uri }}">
+    <link rel="shortcut icon" type="shortcut icon" href="https://{{ request.get_host }}{% static '/images/favicon.ico' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'neuro/css/sidebar.css' %}">
+    <link rel="stylesheet" href="{% static 'neuro/css/index.css' %}">
+    <link rel="stylesheet" href="{% static 'neuro/css/tariffs.css' %}">
+    <link rel="stylesheet" href="{% static 'neuro/css/stars_modals.css' %}">
+    <link rel="stylesheet" href="{% static 'neuro/css/dev.css' %}">
+    {{ site_counter.counter_text|safe }}
+</head>
+<body>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    {% include 'neuro/modals/delete_chat.html' %}
+
+<div class="app">
+    {% include 'neuro/sidebar.html' %}
+    <div class="main-content">
+        {% include 'neuro/main-header.html' %}
+
+        <div class="dev-wrapper">
+
+            <div class="dev-header">
+                <h1>API для разработчиков</h1>
+                <p>OpenAI-совместимый API для доступа к GPT-4o, Claude, Gemini, Mistral и генерации изображений — без VPN, без санкций, из любой точки России. Работает с openai SDK простой сменой <code>base_url</code>.</p>
+            </div>
+
+            <div class="dev-info-grid">
+                <div class="dev-info-card">
+                    <div class="dev-info-card__label">Base URL</div>
+                    <div class="dev-info-card__value">https://aineron.ru/api/v1</div>
+                </div>
+                <div class="dev-info-card">
+                    <div class="dev-info-card__label">Аутентификация</div>
+                    <div class="dev-info-card__value">Bearer ak_...</div>
+                </div>
+                <div class="dev-info-card">
+                    <div class="dev-info-card__label">Формат ошибок</div>
+                    <div class="dev-info-card__value">OpenAI-совместимый</div>
+                </div>
+                <div class="dev-info-card">
+                    <div class="dev-info-card__label">Биллинг</div>
+                    <div class="dev-info-card__value">Звёзды / 1000 токенов</div>
+                </div>
+            </div>
+
+            <!-- Быстрый старт -->
+            <div class="dev-section">
+                <h2>Быстрый старт</h2>
+                <ol class="dev-steps">
+                    <li>
+                        <div class="step-body">
+                            <strong>Создайте API-ключ</strong> в личном кабинете — раздел «API-ключи».<br>
+                            Ключ показывается один раз, сохраните его сразу.
+                        </div>
+                    </li>
+                    <li>
+                        <div class="step-body">
+                            <strong>Укажите наш base_url</strong> вместо api.openai.com в вашем SDK или HTTP-клиенте.
+                        </div>
+                    </li>
+                    <li>
+                        <div class="step-body">
+                            <strong>Пополните баланс звёзд</strong> и начните запросы — списание по токенам автоматически.
+                        </div>
+                    </li>
+                </ol>
+
+                <div class="code-tabs">
+                    <div class="code-tabs__nav">
+                        <button class="code-tab-btn active" data-tab="curl">curl</button>
+                        <button class="code-tab-btn" data-tab="python">Python</button>
+                        <button class="code-tab-btn" data-tab="nodejs">Node.js</button>
+                        <button class="code-tab-btn" data-tab="php">PHP</button>
+                    </div>
+
+                    <div class="code-tab-panel active" id="tab-curl">
+                        <div class="code-block">
+                            <button class="code-copy-btn" onclick="copyCode(this)">Копировать</button>
+                            <pre><code>curl https://aineron.ru/api/v1/chat/completions \
+  -H "Authorization: Bearer ak_ВАШ_КЛЮЧ" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4o",
+    "messages": [
+      {"role": "user", "content": "Привет! Напиши Hello World на Python"}
+    ]
+  }'</code></pre>
+                        </div>
+                    </div>
+
+                    <div class="code-tab-panel" id="tab-python">
+                        <div class="code-block">
+                            <button class="code-copy-btn" onclick="copyCode(this)">Копировать</button>
+                            <pre><code>from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://aineron.ru/api/v1",
+    api_key="ak_ВАШ_КЛЮЧ",
+)
+
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[
+        {"role": "user", "content": "Привет! Напиши Hello World на Python"}
+    ]
+)
+
+print(response.choices[0].message.content)</code></pre>
+                        </div>
+                        <div class="code-block">
+                            <button class="code-copy-btn" onclick="copyCode(this)">Копировать</button>
+                            <pre><code># Стриминг
+for chunk in client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "Расскажи анекдот"}],
+    stream=True,
+):
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="", flush=True)</code></pre>
+                        </div>
+                    </div>
+
+                    <div class="code-tab-panel" id="tab-nodejs">
+                        <div class="code-block">
+                            <button class="code-copy-btn" onclick="copyCode(this)">Копировать</button>
+                            <pre><code>import OpenAI from "openai";
+
+const client = new OpenAI({
+  baseURL: "https://aineron.ru/api/v1",
+  apiKey: "ak_ВАШ_КЛЮЧ",
+});
+
+const response = await client.chat.completions.create({
+  model: "gpt-4o",
+  messages: [
+    { role: "user", content: "Привет! Напиши Hello World на Python" }
+  ],
+});
+
+console.log(response.choices[0].message.content);</code></pre>
+                        </div>
+                        <div class="code-block">
+                            <button class="code-copy-btn" onclick="copyCode(this)">Копировать</button>
+                            <pre><code>// Стриминг
+const stream = await client.chat.completions.create({
+  model: "gpt-4o",
+  messages: [{ role: "user", content: "Расскажи анекдот" }],
+  stream: true,
+});
+
+for await (const chunk of stream) {
+  process.stdout.write(chunk.choices[0]?.delta?.content || "");
+}</code></pre>
+                        </div>
+                    </div>
+
+                    <div class="code-tab-panel" id="tab-php">
+                        <div class="code-block">
+                            <button class="code-copy-btn" onclick="copyCode(this)">Копировать</button>
+                            <pre><code>&lt;?php
+$curl = curl_init();
+curl_setopt_array($curl, [
+    CURLOPT_URL => 'https://aineron.ru/api/v1/chat/completions',
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_POST => true,
+    CURLOPT_HTTPHEADER => [
+        'Authorization: Bearer ak_ВАШ_КЛЮЧ',
+        'Content-Type: application/json',
+    ],
+    CURLOPT_POSTFIELDS => json_encode([
+        'model'    => 'gpt-4o',
+        'messages' => [
+            ['role' => 'user', 'content' => 'Привет! Напиши Hello World на Python']
+        ],
+    ]),
+]);
+
+$response = curl_exec($curl);
+curl_close($curl);
+
+$data = json_decode($response, true);
+echo $data['choices'][0]['message']['content'];</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Anthropic SDK -->
+            <div class="dev-section">
+                <h2>Anthropic SDK (Claude-модели)</h2>
+                <p>Если вы используете официальный Anthropic SDK, достаточно указать наш <code>base_url</code> — API полностью совместим с <code>POST /api/v1/messages</code>.</p>
+
+                <div class="code-tabs">
+                    <div class="code-tabs__nav">
+                        <button class="code-tab-btn active" data-tab="anthropic-py">Python</button>
+                        <button class="code-tab-btn" data-tab="anthropic-ts">Node.js</button>
+                    </div>
+
+                    <div class="code-tab-panel active" id="tab-anthropic-py">
+                        <div class="code-block">
+                            <button class="code-copy-btn" onclick="copyCode(this)">Копировать</button>
+                            <pre><code>import anthropic
+
+client = anthropic.Anthropic(
+    base_url="https://aineron.ru/api/v1",
+    api_key="ak_ВАШ_КЛЮЧ",
+)
+
+message = client.messages.create(
+    model="claude-3-5-sonnet-20241022",
+    max_tokens=1024,
+    messages=[
+        {"role": "user", "content": "Объясни теорему Пифагора"}
+    ]
+)
+
+print(message.content[0].text)</code></pre>
+                        </div>
+                    </div>
+
+                    <div class="code-tab-panel" id="tab-anthropic-ts">
+                        <div class="code-block">
+                            <button class="code-copy-btn" onclick="copyCode(this)">Копировать</button>
+                            <pre><code>import Anthropic from "@anthropic-ai/sdk";
+
+const client = new Anthropic({
+  baseURL: "https://aineron.ru/api/v1",
+  apiKey: "ak_ВАШ_КЛЮЧ",
+});
+
+const message = await client.messages.create({
+  model: "claude-3-5-sonnet-20241022",
+  max_tokens: 1024,
+  messages: [
+    { role: "user", content: "Объясни теорему Пифагора" }
+  ],
+});
+
+console.log(message.content[0].text);</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Генерация изображений -->
+            <div class="dev-section">
+                <h2>Генерация изображений и видео</h2>
+                <p>Уникальная возможность нашего API — доступ к Flux, SDXL, Wan, Kling и другим медиа-моделям через стандартный OpenAI Images API.</p>
+
+                <div class="code-tabs">
+                    <div class="code-tabs__nav">
+                        <button class="code-tab-btn active" data-tab="img-curl">curl</button>
+                        <button class="code-tab-btn" data-tab="img-python">Python</button>
+                    </div>
+
+                    <div class="code-tab-panel active" id="tab-img-curl">
+                        <div class="code-block">
+                            <button class="code-copy-btn" onclick="copyCode(this)">Копировать</button>
+                            <pre><code>curl https://aineron.ru/api/v1/images/generations \
+  -H "Authorization: Bearer ak_ВАШ_КЛЮЧ" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "flux-1-schnell",
+    "prompt": "Горный пейзаж на закате, фотореализм, 8K",
+    "n": 1,
+    "size": "1024x1024"
+  }'</code></pre>
+                        </div>
+                    </div>
+
+                    <div class="code-tab-panel" id="tab-img-python">
+                        <div class="code-block">
+                            <button class="code-copy-btn" onclick="copyCode(this)">Копировать</button>
+                            <pre><code>from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://aineron.ru/api/v1",
+    api_key="ak_ВАШ_КЛЮЧ",
+)
+
+image = client.images.generate(
+    model="flux-1-schnell",
+    prompt="Горный пейзаж на закате, фотореализм, 8K",
+    n=1,
+    size="1024x1024",
+)
+
+print(image.data[0].url)</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Эндпоинты -->
+            <div class="dev-section">
+                <h2>Список эндпоинтов</h2>
+                <table class="endpoints-table">
+                    <thead>
+                        <tr>
+                            <th>Метод</th>
+                            <th>Путь</th>
+                            <th>Описание</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="method-badge method-post">POST</span></td>
+                            <td class="endpoint-path">/api/v1/chat/completions</td>
+                            <td>Chat completions (OpenAI-совместимый, stream)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="method-badge method-post">POST</span></td>
+                            <td class="endpoint-path">/api/v1/messages</td>
+                            <td>Messages API (Anthropic-совместимый)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="method-badge method-get">GET</span></td>
+                            <td class="endpoint-path">/api/v1/models</td>
+                            <td>Список доступных моделей</td>
+                        </tr>
+                        <tr>
+                            <td><span class="method-badge method-post">POST</span></td>
+                            <td class="endpoint-path">/api/v1/images/generations</td>
+                            <td>Генерация изображений и видео</td>
+                        </tr>
+                        <tr>
+                            <td><span class="method-badge method-get">GET</span></td>
+                            <td class="endpoint-path">/api/v1/keys/</td>
+                            <td>Список API-ключей</td>
+                        </tr>
+                        <tr>
+                            <td><span class="method-badge method-post">POST</span></td>
+                            <td class="endpoint-path">/api/v1/keys/</td>
+                            <td>Создать API-ключ</td>
+                        </tr>
+                        <tr>
+                            <td><span class="method-badge method-delete">DELETE</span></td>
+                            <td class="endpoint-path">/api/v1/keys/{id}/</td>
+                            <td>Удалить API-ключ</td>
+                        </tr>
+                        <tr>
+                            <td><span class="method-badge method-get">GET</span></td>
+                            <td class="endpoint-path">/api/v1/schema/</td>
+                            <td>OpenAPI схема (YAML/JSON)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="method-badge method-get">GET</span></td>
+                            <td class="endpoint-path">/api/v1/docs/</td>
+                            <td>Swagger UI</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Ошибки -->
+            <div class="dev-section">
+                <h2>Коды ошибок</h2>
+                <p>Все ошибки возвращаются в OpenAI-совместимом формате:</p>
+                <div class="code-block">
+                    <pre><code>{
+  "error": {
+    "message": "Недостаточно звёзд для выполнения запроса",
+    "type": "insufficient_quota",
+    "code": "insufficient_quota"
+  }
+}</code></pre>
+                </div>
+                <table class="endpoints-table">
+                    <thead>
+                        <tr><th>HTTP</th><th>type</th><th>Причина</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>401</td><td><code>authentication_error</code></td><td>Неверный или отсутствующий API-ключ</td></tr>
+                        <tr><td>402</td><td><code>insufficient_quota</code></td><td>Недостаточно звёзд на балансе</td></tr>
+                        <tr><td>403</td><td><code>permission_error</code></td><td>Нет доступа к ресурсу</td></tr>
+                        <tr><td>429</td><td><code>rate_limit_exceeded</code></td><td>Превышен лимит запросов (120/мин)</td></tr>
+                        <tr><td>400</td><td><code>invalid_request_error</code></td><td>Неверные параметры запроса</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="dev-nav-links">
+                <a href="/api/v1/docs/" class="dev-nav-link dev-nav-link--primary" target="_blank">Swagger UI</a>
+                <a href="{% static 'docs/postman_collection.json' %}" class="dev-nav-link dev-nav-link--secondary" download="aineron_api.postman_collection.json">Скачать Postman-коллекцию</a>
+                <a href="{% url 'landing:ide_integrations' %}" class="dev-nav-link dev-nav-link--secondary">Интеграция с IDE</a>
+                <a href="/users/pages/profile/" class="dev-nav-link dev-nav-link--secondary">Создать API-ключ</a>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+{% include 'neuro/modals/auth.html' %}
+{% include 'neuro/modals/tariffs.html' %}
+<script src="{% static 'neuro/js/sidebar.js' %}"></script>
+<script src="{% static 'neuro/js/index.js' %}"></script>
+<script src="{% static 'neuro/js/auth.js' %}"></script>
+<script src="{% static 'neuro/js/tariffs.js' %}"></script>
+<script src="{% static 'neuro/js/stars_modal.js' %}"></script>
+<script>
+(function () {
+    document.querySelectorAll('.code-tabs').forEach(function (tabs) {
+        var buttons = tabs.querySelectorAll('.code-tab-btn');
+        var panels  = tabs.querySelectorAll('.code-tab-panel');
+
+        buttons.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var target = btn.getAttribute('data-tab');
+
+                buttons.forEach(function (b) { b.classList.remove('active'); });
+                panels.forEach(function (p) { p.classList.remove('active'); });
+
+                btn.classList.add('active');
+                var panel = tabs.querySelector('#tab-' + target);
+                if (panel) panel.classList.add('active');
+            });
+        });
+    });
+})();
+
+function copyCode(btn) {
+    var code = btn.parentElement.querySelector('code');
+    if (!code) return;
+    navigator.clipboard.writeText(code.innerText).then(function () {
+        var old = btn.textContent;
+        btn.textContent = 'Скопировано';
+        setTimeout(function () { btn.textContent = old; }, 1500);
+    });
+}
+</script>
+</body>
+</html>

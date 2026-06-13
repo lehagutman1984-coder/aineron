@@ -1,0 +1,244 @@
+{
+  "info": {
+    "name": "Aineron.ru API v1",
+    "_postman_id": "aineron-api-v1",
+    "description": "OpenAI-совместимый API aineron.ru. Base URL: https://aineron.ru/api/v1\n\nАутентификация: Bearer-токен в заголовке Authorization.\nКлюч создаётся в личном кабинете: https://aineron.ru/users/pages/profile/",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://aineron.ru/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "apiKey",
+      "value": "ak_ваш_ключ_здесь",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{apiKey}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Модели",
+      "item": [
+        {
+          "name": "Список моделей",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/models",
+              "host": ["{{baseUrl}}"],
+              "path": ["models"]
+            },
+            "description": "Возвращает список всех доступных моделей в формате OpenAI."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{"key": "Content-Type", "value": "application/json"}],
+              "body": "{\n  \"object\": \"list\",\n  \"data\": [\n    {\n      \"id\": \"gpt-4o\",\n      \"object\": \"model\",\n      \"created\": 1677610602,\n      \"owned_by\": \"aineron\"\n    }\n  ]\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Чат (OpenAI-совместимый)",
+      "item": [
+        {
+          "name": "Chat Completions (без стриминга)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model\": \"gpt-4o\",\n  \"messages\": [\n    {\"role\": \"user\", \"content\": \"Привет! Как дела?\"}\n  ],\n  \"temperature\": 0.7,\n  \"max_tokens\": 1000\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": {
+              "raw": "{{baseUrl}}/chat/completions",
+              "host": ["{{baseUrl}}"],
+              "path": ["chat", "completions"]
+            },
+            "description": "Генерирует ответ в формате OpenAI chat completions. Совместим с openai Python/Node.js SDK при указании base_url."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{"key": "Content-Type", "value": "application/json"}],
+              "body": "{\n  \"id\": \"chatcmpl-abc123\",\n  \"object\": \"chat.completion\",\n  \"created\": 1677858242,\n  \"model\": \"gpt-4o\",\n  \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\": \"assistant\",\n        \"content\": \"Привет! Всё отлично, спасибо. Чем могу помочь?\"\n      },\n      \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\": 12,\n    \"completion_tokens\": 18,\n    \"total_tokens\": 30\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Chat Completions (стриминг SSE)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model\": \"gpt-4o\",\n  \"messages\": [\n    {\"role\": \"user\", \"content\": \"Напиши короткое стихотворение про Россию\"}\n  ],\n  \"stream\": true\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": {
+              "raw": "{{baseUrl}}/chat/completions",
+              "host": ["{{baseUrl}}"],
+              "path": ["chat", "completions"]
+            },
+            "description": "Стриминг ответа через Server-Sent Events (SSE). Ответ возвращается чанками по мере генерации."
+          }
+        },
+        {
+          "name": "Chat с изображением (vision)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model\": \"gpt-4o\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": [\n        {\"type\": \"text\", \"text\": \"Что изображено на картинке?\"},\n        {\"type\": \"image_url\", \"image_url\": {\"url\": \"https://example.com/image.jpg\"}}\n      ]\n    }\n  ]\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": {
+              "raw": "{{baseUrl}}/chat/completions",
+              "host": ["{{baseUrl}}"],
+              "path": ["chat", "completions"]
+            },
+            "description": "Отправка изображения для анализа (vision-модели)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Anthropic-совместимый API",
+      "item": [
+        {
+          "name": "Messages (Anthropic формат)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "anthropic-version", "value": "2023-06-01"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model\": \"claude-3-5-sonnet-20241022\",\n  \"max_tokens\": 1024,\n  \"system\": \"Ты полезный ассистент.\",\n  \"messages\": [\n    {\"role\": \"user\", \"content\": \"Объясни квантовую запутанность простыми словами\"}\n  ]\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": {
+              "raw": "{{baseUrl}}/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["messages"]
+            },
+            "description": "Anthropic Messages API. Совместим с Anthropic Python/Node.js SDK при указании base_url."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Генерация изображений",
+      "item": [
+        {
+          "name": "Создать изображение",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model\": \"flux-1-schnell\",\n  \"prompt\": \"Горный пейзаж на закате, реализм, высокое качество\",\n  \"n\": 1,\n  \"size\": \"1024x1024\"\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": {
+              "raw": "{{baseUrl}}/images/generations",
+              "host": ["{{baseUrl}}"],
+              "path": ["images", "generations"]
+            },
+            "description": "Генерация изображений через OpenAI-совместимый интерфейс."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{"key": "Content-Type", "value": "application/json"}],
+              "body": "{\n  \"created\": 1677858242,\n  \"data\": [\n    {\n      \"url\": \"https://aineron.ru/media/generated_images/abc123.png\",\n      \"revised_prompt\": \"Горный пейзаж на закате...\"\n    }\n  ]\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "API-ключи",
+      "item": [
+        {
+          "name": "Список ключей",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/keys/",
+              "host": ["{{baseUrl}}"],
+              "path": ["keys", ""]
+            },
+            "description": "Список всех API-ключей текущего пользователя."
+          }
+        },
+        {
+          "name": "Создать ключ",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Мой ключ для Cursor\"\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": {
+              "raw": "{{baseUrl}}/keys/",
+              "host": ["{{baseUrl}}"],
+              "path": ["keys", ""]
+            },
+            "description": "Создаёт новый API-ключ. Plaintext показывается один раз."
+          }
+        },
+        {
+          "name": "Удалить ключ",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/keys/1/",
+              "host": ["{{baseUrl}}"],
+              "path": ["keys", "1", ""]
+            },
+            "description": "Деактивирует API-ключ по ID."
+          }
+        }
+      ]
+    }
+  ]
+}

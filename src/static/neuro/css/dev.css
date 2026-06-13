@@ -1,0 +1,397 @@
+/* Страницы документации для разработчиков */
+
+.dev-wrapper {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 40px 20px 60px;
+}
+
+.dev-header {
+    margin-bottom: 40px;
+}
+
+.dev-header h1 {
+    font-size: 32px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #0a7cff, #1dd6c1);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 12px;
+}
+
+.dev-header p {
+    font-size: 16px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    max-width: 700px;
+}
+
+/* Инфо-карточки */
+.dev-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 40px;
+}
+
+.dev-info-card {
+    background: var(--background-secondary);
+    border: 1px solid var(--border-secondary);
+    border-radius: 10px;
+    padding: 16px 20px;
+}
+
+.dev-info-card__label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-tertiary);
+    margin-bottom: 6px;
+}
+
+.dev-info-card__value {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    word-break: break-all;
+}
+
+/* Секции */
+.dev-section {
+    margin-bottom: 48px;
+}
+
+.dev-section h2 {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-secondary);
+}
+
+.dev-section h3 {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 24px 0 12px;
+}
+
+.dev-section p {
+    font-size: 15px;
+    line-height: 1.65;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+}
+
+.dev-section ul, .dev-section ol {
+    margin: 0 0 16px 20px;
+}
+
+.dev-section li {
+    font-size: 15px;
+    color: var(--text-secondary);
+    line-height: 1.65;
+    margin-bottom: 6px;
+}
+
+/* Языковые вкладки */
+.code-tabs {
+    margin-bottom: 24px;
+}
+
+.code-tabs__nav {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--border-secondary);
+    margin-bottom: 0;
+    padding-bottom: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.code-tabs__nav::-webkit-scrollbar { display: none; }
+
+.code-tab-btn {
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+    margin-bottom: -1px;
+}
+
+.code-tab-btn:hover { color: var(--text-primary); }
+
+.code-tab-btn.active {
+    color: #0a7cff;
+    border-bottom-color: #0a7cff;
+}
+
+.code-tab-panel {
+    display: none;
+}
+
+.code-tab-panel.active {
+    display: block;
+}
+
+/* Блоки кода */
+.code-block {
+    position: relative;
+    margin: 0 0 20px;
+}
+
+.code-block pre {
+    background: #1a1d23;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 20px;
+    overflow-x: auto;
+    margin: 0;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #abb2bf;
+}
+
+.code-block code {
+    font-family: inherit;
+    font-size: inherit;
+    background: none;
+    padding: 0;
+}
+
+.code-copy-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.code-copy-btn:hover {
+    background: rgba(255,255,255,0.12);
+    color: var(--text-primary);
+}
+
+/* Inline code */
+.dev-section code,
+.dev-section p code,
+.dev-section li code {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 13px;
+    background: var(--background-secondary);
+    border: 1px solid var(--border-secondary);
+    border-radius: 4px;
+    padding: 1px 5px;
+    color: #e06c75;
+}
+
+/* Таблица эндпоинтов */
+.endpoints-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    margin-bottom: 24px;
+}
+
+.endpoints-table th {
+    text-align: left;
+    padding: 10px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-tertiary);
+    border-bottom: 1px solid var(--border-secondary);
+}
+
+.endpoints-table td {
+    padding: 12px 14px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-tertiary);
+    vertical-align: top;
+}
+
+.endpoints-table tr:last-child td { border-bottom: none; }
+
+.method-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: monospace;
+    letter-spacing: 0.02em;
+}
+
+.method-get  { background: rgba(26, 188, 156, 0.15); color: #1abc9c; }
+.method-post { background: rgba(10, 124, 255, 0.15); color: #0a7cff; }
+.method-delete { background: rgba(231, 76, 60, 0.15); color: #e74c3c; }
+
+.endpoint-path {
+    font-family: monospace;
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+/* Шаги */
+.dev-steps {
+    counter-reset: step;
+    list-style: none;
+    padding: 0;
+    margin: 0 0 24px;
+}
+
+.dev-steps li {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+    counter-increment: step;
+}
+
+.dev-steps li::before {
+    content: counter(step);
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(10, 124, 255, 0.15);
+    color: #0a7cff;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2px;
+}
+
+.dev-steps li .step-body { flex: 1; }
+.dev-steps li .step-body strong { color: var(--text-primary); }
+
+/* IDE карточки */
+.ide-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    margin-bottom: 40px;
+}
+
+.ide-card {
+    background: var(--background-secondary);
+    border: 1px solid var(--border-secondary);
+    border-radius: 12px;
+    padding: 24px;
+    text-decoration: none;
+    transition: border-color 0.15s;
+    cursor: default;
+}
+
+.ide-card:hover { border-color: #0a7cff; }
+
+.ide-card__name {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+}
+
+.ide-card__desc {
+    font-size: 14px;
+    color: var(--text-tertiary);
+    margin-bottom: 16px;
+    line-height: 1.5;
+}
+
+.ide-card__link {
+    font-size: 13px;
+    font-weight: 500;
+    color: #0a7cff;
+    text-decoration: none;
+}
+
+.ide-card__link:hover { text-decoration: underline; }
+
+/* Предупреждение / инфо */
+.dev-alert {
+    padding: 14px 18px;
+    border-radius: 8px;
+    font-size: 14px;
+    line-height: 1.6;
+    margin-bottom: 20px;
+}
+
+.dev-alert--info {
+    background: rgba(10, 124, 255, 0.1);
+    border-left: 3px solid #0a7cff;
+    color: var(--text-secondary);
+}
+
+.dev-alert--warning {
+    background: rgba(241, 196, 15, 0.1);
+    border-left: 3px solid #f1c40f;
+    color: var(--text-secondary);
+}
+
+/* Нижние ссылки */
+.dev-nav-links {
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border-secondary);
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.dev-nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 18px;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.15s;
+}
+
+.dev-nav-link--primary {
+    background: #0a7cff;
+    color: #fff;
+}
+.dev-nav-link--primary:hover { background: #0066cc; color: #fff; }
+
+.dev-nav-link--secondary {
+    background: var(--background-secondary);
+    border: 1px solid var(--border-secondary);
+    color: var(--text-secondary);
+}
+.dev-nav-link--secondary:hover {
+    border-color: #0a7cff;
+    color: var(--text-primary);
+}
+
+@media (max-width: 768px) {
+    .dev-wrapper { padding: 20px 16px 40px; }
+    .dev-header h1 { font-size: 26px; }
+    .dev-section h2 { font-size: 20px; }
+    .code-block pre { font-size: 12px; padding: 14px; }
+    .endpoints-table { display: block; overflow-x: auto; }
+    .ide-grid { grid-template-columns: 1fr; }
+}

@@ -10,6 +10,16 @@ def custom_404_view(request, exception):
     return render(request, 'neuro/404.html', status=404)
 
 
+def api_docs(request):
+    """Документация API для разработчиков"""
+    return render(request, 'neuro/api_docs.html')
+
+
+def ide_integrations(request):
+    """Гайды по интеграции с IDE (Cursor, Cline, Continue)"""
+    return render(request, 'neuro/ide_integrations.html')
+
+
 def index(request):
     """Главная страница"""
     # Обработка реферального параметра
