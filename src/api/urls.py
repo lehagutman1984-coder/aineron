@@ -11,6 +11,13 @@ from api.views.chats import (
     ChatListCreateView, ChatDetailView, SendMessageView, MessageStatusView,
 )
 from api.views.auth import MeView, LoginView, LogoutView, RegisterView
+from api.views.teams import (
+    OrgListCreateView, OrgDetailView,
+    OrgMemberListView, OrgMemberDeleteView,
+    OrgInviteListCreateView, InviteAcceptView,
+)
+from api.views.invoices import InvoiceListCreateView
+from api.views.usage import UsageStatsView
 
 app_name = 'api'
 
@@ -41,6 +48,18 @@ urlpatterns = [
     path('v1/auth/login/', LoginView.as_view(), name='auth_login'),
     path('v1/auth/logout/', LogoutView.as_view(), name='auth_logout'),
     path('v1/auth/register/', RegisterView.as_view(), name='auth_register'),
+
+    # ========== Организации и B2B ==========
+    path('v1/orgs/', OrgListCreateView.as_view(), name='org_list_create'),
+    path('v1/orgs/<int:org_id>/', OrgDetailView.as_view(), name='org_detail'),
+    path('v1/orgs/<int:org_id>/members/', OrgMemberListView.as_view(), name='org_members'),
+    path('v1/orgs/<int:org_id>/members/<int:user_id>/', OrgMemberDeleteView.as_view(), name='org_member_delete'),
+    path('v1/orgs/<int:org_id>/invites/', OrgInviteListCreateView.as_view(), name='org_invites'),
+    path('v1/orgs/<int:org_id>/invoices/', InvoiceListCreateView.as_view(), name='org_invoices'),
+    path('v1/orgs/invites/<str:token>/accept/', InviteAcceptView.as_view(), name='invite_accept'),
+
+    # ========== Статистика использования ==========
+    path('v1/usage/', UsageStatsView.as_view(), name='usage_stats'),
 
     # ========== OpenAPI / Swagger ==========
     path('v1/schema/', SpectacularAPIView.as_view(), name='schema'),
