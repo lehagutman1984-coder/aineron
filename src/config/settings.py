@@ -219,7 +219,9 @@ SOCIALACCOUNT_PROVIDERS = {
 
 # ========== CSRF И TRUSTED ORIGINS ==========
 CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:3000',
     'http://localhost:8000',
+    'http://127.0.0.1:3000',
     'http://127.0.0.1:8000',
     'https://aineron.ru',
     'https://www.aineron.ru',
@@ -316,11 +318,13 @@ REST_FRAMEWORK = {
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
+    'http://frontend:3000',
     'https://aineron.ru',
     'https://www.aineron.ru',
 ]
 CORS_ALLOW_CREDENTIALS = True
-CORS_URLS_REGEX = r'^/api/.*$'
+# Allow CORS on /api/ (for external devs) and /users/api/ (for Next.js web-auth calls)
+CORS_URLS_REGEX = r'^/(api|users/api)/.*$'
 
 
 # ========== DRF SPECTACULAR ==========
