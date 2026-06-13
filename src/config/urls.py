@@ -33,6 +33,9 @@ urlpatterns = [
 
     path('blog/', include('blog.urls')),
 
+    # ========== DEV API ==========
+    path('api/', include('api.urls', namespace='api')),
+
     # ========== СТРАНИЦЫ ПОЛЬЗОВАТЕЛЕЙ ==========
     # ОДИН РАЗ! Включаем сюда и страницу auth, и blocked
     path('users/pages/', include('users.urls_pages')),
