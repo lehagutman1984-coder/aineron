@@ -229,18 +229,29 @@ IMAGE_MODELS = [
 class Command(BaseCommand):
     help = 'Добавляет популярные модели laozhang.ai в базу данных'
 
-    def handle(self, *args, **options):
-        # Создаём или получаем категории
-        text_cat, _ = Category.objects.get_or_create(
-            slug='text',
-            defaults={'name': 'Текст', 'icon': 'fas fa-comment-dots', 'order': 1}
-        )
-        image_cat, _ = Category.objects.get_or_create(
-            slug='images',
-            defaults={'name': 'Изображения', 'icon': 'fas fa-image', 'order': 2}
-        )
+    def _get_or_create_category(self, name, slug, icon, order):
+        cat = Category.objects.filter(name=name).first()
+        if cat:
+            return cat
+        # Если slug занят — добавляем суффикс
+        base_slug = slug
+        i = 1
+        while Category.objects.filter(slug=slug).exists():
+            slug = f"{base_slug}-{i}"
+            i += 1
+        cat = Category.objects.create(name=name, slug=slug, icon=icon, order=order)
+        return cat
 
-        self.stdout.write(f'Категории: "{text_cat.name}", "{image_cat.name}"')
+    def handle(self, *args, **options):
+        # Показываем существующие категории
+        self.stdout.write('Существующие категории:')
+        for cat in Category.objects.all():
+            self.stdout.write(f'  id={cat.id} slug={cat.slug} name={cat.name}')
+
+        text_cat = self._get_or_create_category('Текст', 'text', 'fas fa-comment-dots', 1)
+        image_cat = self._get_or_create_category('Изображения', 'images', 'fas fa-image', 2)
+
+        self.stdout.write(f'Используем категории: "{text_cat.name}" (id={text_cat.id}), "{image_cat.name}" (id={image_cat.id})')
 
         # Добавляем текстовые модели
         self.stdout.write('\n=== Текстовые модели ===')
