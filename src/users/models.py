@@ -678,7 +678,7 @@ class CustomUser(AbstractUser):
                 user.save()
             return user
         except Exception as e:
-            print(f"❌ Ошибка создания социального пользователя: {e}")
+            print(f"[ERROR] Ошибка создания социального пользователя: {e}")
             return None
 
 
@@ -851,7 +851,7 @@ class PromoCode(models.Model):
         verbose_name_plural = 'Промокоды'
 
     def __str__(self):
-        return f"{self.code} (+{self.stars}⭐) использован {self.used_count}/{self.usage_limit if self.usage_limit > 0 else '∞'}"
+        return f"{self.code} (+{self.stars} зв.) использован {self.used_count}/{self.usage_limit if self.usage_limit > 0 else 'inf'}"
 
     def is_valid(self):
         if not self.is_active:
@@ -925,7 +925,7 @@ class UserSpending(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.user.email} - {self.amount}⭐ - {self.created_at.strftime('%d.%m.%Y %H:%M')}"
+        return f"{self.user.email} - {self.amount} зв. - {self.created_at.strftime('%d.%m.%Y %H:%M')}"
 
 
 class SiteSettings(models.Model):

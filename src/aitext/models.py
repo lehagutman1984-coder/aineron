@@ -34,7 +34,7 @@ class NeuralNetwork(models.Model):
     avatar = models.ImageField(upload_to='neural_avatars/', blank=True, null=True, verbose_name='Аватар')
     avatar_url = models.URLField(blank=True, null=True, verbose_name='URL аватара')
     description = models.TextField(blank=True, verbose_name='Краткое описание')
-    cost_per_message = models.PositiveIntegerField(default=30, verbose_name='Стоимость за одно сообщение (⭐)')
+    cost_per_message = models.PositiveIntegerField(default=30, verbose_name='Стоимость за одно сообщение (зв.)')
     is_active = models.BooleanField(default=True, verbose_name='Активна')
     order = models.PositiveIntegerField(default=0, verbose_name='Порядок сортировки')
     model_name = models.CharField(
