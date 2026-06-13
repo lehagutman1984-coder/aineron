@@ -142,7 +142,7 @@ client = openai.OpenAI(
 )
 
 def run_prompt(system: str, user: str, model="gpt-4o-mini") -> str:
-    """Базовый блок пайплайна — один промпт."""
+    # Базовый блок пайплайна - один промпт.
     response = client.chat.completions.create(
         model=model,
         messages=[
