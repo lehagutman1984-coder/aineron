@@ -11,6 +11,14 @@ class APIKey(models.Model):
         related_name='api_keys',
         verbose_name='Пользователь',
     )
+    organization = models.ForeignKey(
+        'teams.Organization',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='api_keys',
+        verbose_name='Организация',
+    )
     name = models.CharField(max_length=100, verbose_name='Название ключа')
     key_prefix = models.CharField(max_length=8, verbose_name='Префикс (для отображения)', db_index=True)
     hashed_key = models.CharField(max_length=64, unique=True, verbose_name='Хеш ключа')
@@ -82,6 +90,14 @@ class TokenUsage(models.Model):
         null=True, blank=True,
         related_name='token_usages',
         verbose_name='API-ключ',
+    )
+    organization = models.ForeignKey(
+        'teams.Organization',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='token_usages',
+        verbose_name='Организация',
     )
     prompt_tokens = models.PositiveIntegerField(default=0, verbose_name='Токены запроса')
     completion_tokens = models.PositiveIntegerField(default=0, verbose_name='Токены ответа')
