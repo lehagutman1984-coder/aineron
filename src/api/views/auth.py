@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from api.serializers.auth import UserSerializer
+from users.email_service import send_verification_email
 
 User = get_user_model()
 
@@ -91,5 +92,9 @@ class RegisterView(APIView):
         user = User.objects.create_user(
             username=username, email=email, password=password
         )
+        try:
+            send_verification_email(user, request)
+        except Exception:
+            pass
         login(request, user, backend='django.contrib.auth.backends.ModelBackend')
         return Response(UserSerializer(user).data, status=201)
