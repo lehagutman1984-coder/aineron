@@ -16,6 +16,7 @@ class EmailVerificationMiddleware(MiddlewareMixin):
     def __call__(self, request):
         # Список URL, которые доступны без подтверждения email
         allowed_paths = [
+            '/api/',  # DRF API (Next.js frontend)
             '/users/api/auth/',  # Allauth URLs
             '/users/api/ajax/login/',  # AJAX вход
             '/users/api/ajax/register/',  # AJAX регистрация
