@@ -268,6 +268,76 @@ export interface SendMessageResponse {
   new_balance: number;
 }
 
+// ============ Organizations / B2B ============
+
+export interface Organization {
+  id: number;
+  name: string;
+  inn: string;
+  kpp: string;
+  legal_address: string;
+  balance_rub: string;
+  member_count: number;
+  user_role: "owner" | "admin" | "member" | null;
+  created_at: string;
+}
+
+export interface OrgMember {
+  id: number;
+  user_id: number;
+  email: string;
+  username: string;
+  role: "owner" | "admin" | "member";
+  created_at: string;
+}
+
+export interface OrgInvite {
+  id: number;
+  email: string;
+  token: string;
+  expires_at: string;
+  is_accepted: boolean;
+  created_at: string;
+}
+
+export interface Invoice {
+  id: number;
+  number: string;
+  amount_rub: string;
+  status: "pending" | "paid" | "cancelled";
+  description: string;
+  created_at: string;
+  paid_at: string | null;
+}
+
+// ============ Usage statistics ============
+
+export interface UsageDay {
+  date: string;
+  total_tokens: number;
+  stars_charged: number;
+  requests: number;
+}
+
+export interface UsageByModel {
+  model_name: string;
+  model_slug: string;
+  total_tokens: number;
+  stars_charged: number;
+  requests: number;
+}
+
+export interface UsageStats {
+  period_days: number;
+  totals: {
+    total_tokens: number;
+    total_stars: number;
+    total_requests: number;
+  };
+  by_day: UsageDay[];
+  by_model: UsageByModel[];
+}
+
 // ============ Auth (DRF /api/v1/auth/me/) ============
 
 export interface AuthUser {

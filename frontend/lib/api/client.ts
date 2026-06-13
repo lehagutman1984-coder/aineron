@@ -19,6 +19,11 @@ import type {
   CreateChatResponse,
   SendMessageResponse,
   AuthUser,
+  Organization,
+  OrgMember,
+  OrgInvite,
+  Invoice,
+  UsageStats,
 } from "./types";
 
 const BASE_URL =
@@ -202,6 +207,79 @@ export const sendMessage = (
 
 export const getMessageStatus = (messageId: number): Promise<WebMessage> =>
   request<WebMessage>(`/messages/${messageId}/status/`);
+
+// ============ Organizations ============
+
+export const listOrgs = (): Promise<Organization[]> =>
+  request<Organization[]>("/orgs/");
+
+export const createOrg = (body: {
+  name: string;
+  inn?: string;
+  kpp?: string;
+  legal_address?: string;
+}): Promise<Organization> =>
+  request<Organization>("/orgs/", { method: "POST", body: JSON.stringify(body) });
+
+export const getOrg = (id: number): Promise<Organization> =>
+  request<Organization>(`/orgs/${id}/`);
+
+export const updateOrg = (
+  id: number,
+  body: Partial<{ name: string; inn: string; kpp: string; legal_address: string }>
+): Promise<Organization> =>
+  request<Organization>(`/orgs/${id}/`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+
+export const listOrgMembers = (orgId: number): Promise<OrgMember[]> =>
+  request<OrgMember[]>(`/orgs/${orgId}/members/`);
+
+export const removeOrgMember = (orgId: number, userId: number): Promise<void> =>
+  request<void>(`/orgs/${orgId}/members/${userId}/`, { method: "DELETE" });
+
+export const listOrgInvites = (orgId: number): Promise<OrgInvite[]> =>
+  request<OrgInvite[]>(`/orgs/${orgId}/invites/`);
+
+export const createOrgInvite = (
+  orgId: number,
+  email: string
+): Promise<OrgInvite> =>
+  request<OrgInvite>(`/orgs/${orgId}/invites/`, {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+
+export const acceptInvite = (
+  token: string
+): Promise<{ ok: boolean; organization: Organization }> =>
+  request(`/orgs/invites/${token}/accept/`, { method: "POST" });
+
+export const listInvoices = (orgId: number): Promise<Invoice[]> =>
+  request<Invoice[]>(`/orgs/${orgId}/invoices/`);
+
+export const createInvoice = (
+  orgId: number,
+  body: { amount_rub: number; description?: string }
+): Promise<Invoice> =>
+  request<Invoice>(`/orgs/${orgId}/invoices/`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+// ============ Usage statistics ============
+
+export const getUsageStats = (params?: {
+  days?: number;
+  org_id?: number;
+}): Promise<UsageStats> => {
+  const qs = new URLSearchParams();
+  if (params?.days) qs.set("days", String(params.days));
+  if (params?.org_id) qs.set("org_id", String(params.org_id));
+  const query = qs.toString();
+  return request<UsageStats>(`/usage/${query ? "?" + query : ""}`);
+};
 
 // ============ User (legacy Django session endpoint, kept for compatibility) ============
 
