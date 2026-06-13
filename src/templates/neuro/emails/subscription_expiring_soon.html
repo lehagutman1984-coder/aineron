@@ -290,7 +290,7 @@
             <a href="{{ site_url }}" class="logo-link">
                 <div class="logo">{{ site_name }}</div>
             </a>
-            <div class="header-icon">⏰</div>
+            <div class="header-icon">!</div>
             <div class="header-title">Подписка скоро истечет</div>
             <div class="header-sub">Осталось всего несколько дней</div>
         </div>
@@ -309,11 +309,11 @@
 
             <div class="info-card">
                 <div class="info-row">
-                    <span class="info-label">📋 Тариф</span>
+                    <span class="info-label">Тариф</span>
                     <span class="info-value">{{ tariff_name }}</span>
                 </div>
                 <div class="info-row">
-                    <span class="info-label">📅 Дата окончания</span>
+                    <span class="info-label">Дата окончания</span>
                     <span class="info-value">{{ expires_at }}</span>
                 </div>
             </div>
@@ -321,14 +321,14 @@
             <div class="message-box">
                 {% if auto_renew %}
                     <p>
-                        ✅ <strong>Автопродление включено.</strong> Через {{ days_left }} {{ days_word }} мы автоматически продлим вашу подписку на месяц и спишем {{ price }} ₽.
+                        <strong>Автопродление включено.</strong> Через {{ days_left }} {{ days_word }} мы автоматически продлим вашу подписку на месяц и спишем {{ price }} ₽.
                     </p>
                     <p style="margin-top: 12px;">
                         Если вы хотите отменить автопродление, вы можете сделать это в личном кабинете.
                     </p>
                 {% else %}
                     <p>
-                        ⚠️ <strong>Автопродление отключено.</strong> Через {{ days_left }} {{ days_word }} доступ к тарифу {{ tariff_name }} будет прекращен.
+                        <strong>Автопродление отключено.</strong> Через {{ days_left }} {{ days_word }} доступ к тарифу {{ tariff_name }} будет прекращен.
                     </p>
                     <p style="margin-top: 12px;">
                         Чтобы не потерять доступ, вы можете продлить подписку вручную.
@@ -338,11 +338,11 @@
 
             <div class="btn-group">
                 <a href="{{ site_url }}" class="btn" style="color: #ffffff !important;">
-                    ⚙️ Управление подпиской
+                    Управление подпиской
                 </a>
                 {% if not auto_renew %}
                 <a href="{{ site_url }}" class="btn btn-outline">
-                    🔄 Продлить сейчас
+                    Продлить сейчас
                 </a>
                 {% endif %}
             </div>

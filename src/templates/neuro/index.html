@@ -290,7 +290,7 @@
         if (urlParams.has('first_purchase')) {
             if (typeof ym !== 'undefined') {
                 ym(108544585, 'reachGoal', 'first_payment');
-                console.log('✅ Отправлена цель "first_payment" в Яндекс.Метрику');
+                console.log('Отправлена цель "first_payment" в Яндекс.Метрику');
             }
             // Убираем параметр из URL, чтобы не отправлялось при обновлении страницы
             const newUrl = window.location.pathname + window.location.hash;

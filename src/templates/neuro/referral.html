@@ -134,7 +134,7 @@
                             <tr>
                                 <td>{{ e.created_at|date:"d.m.Y" }}</td>
                                 <td>{{ e.description|default:"Реферальный бонус" }}</td>
-                                <td>{% if e.amount_rub %}{{ e.amount_rub|floatformat:2 }} ₽{% else %}{{ e.amount_stars }} ⭐{% endif %}</td>
+                                <td>{% if e.amount_rub %}{{ e.amount_rub|floatformat:2 }} ₽{% else %}{{ e.amount_stars }} зв.{% endif %}</td>
                             </tr>
                             {% empty %}
                             <tr><td colspan="3">Нет начислений</td></tr>
