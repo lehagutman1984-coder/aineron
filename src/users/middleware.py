@@ -1,4 +1,4 @@
-from django.shortcuts import redirect
+﻿from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils.deprecation import MiddlewareMixin
 import logging
@@ -50,7 +50,7 @@ class EmailVerificationMiddleware(MiddlewareMixin):
                         break
 
                 if not is_allowed:
-                    logger.info(f"🔄 Перенаправление {request.user.email} на верификацию с {request.path}")
+                    logger.info(f"[RENEW] Перенаправление {request.user.email} на верификацию с {request.path}")
 
                     # Добавляем сообщение если нужно
                     if request.method == 'GET' and not request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -102,7 +102,7 @@ class ShadowBanMiddleware(MiddlewareMixin):
                 # Если путь не разрешен - перенаправляем на страницу блокировки
                 if not is_allowed and request.path != '/users/pages/blocked/':
                     logger.warning(
-                        f"🚫 Забаненный пользователь {request.user.email} пытался получить доступ к {request.path}")
+                        f"[BLOCK] Забаненный пользователь {request.user.email} пытался получить доступ к {request.path}")
 
                     # Для AJAX запросов возвращаем JSON
                     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -167,7 +167,7 @@ class UserActivityMiddleware(MiddlewareMixin):
 
             except Exception as e:
                 # Логируем ошибки, но не прерываем выполнение
-                logger.error(f"❌ Ошибка в UserActivityMiddleware: {e}")
+                logger.error(f"[ERR] Ошибка в UserActivityMiddleware: {e}")
 
         return response
 

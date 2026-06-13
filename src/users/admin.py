@@ -1,4 +1,4 @@
-from django.contrib import admin
+﻿from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
@@ -63,22 +63,22 @@ class TariffAdmin(admin.ModelAdmin):
 
     def make_free(self, request, queryset):
         queryset.update(is_free=True, price=0)
-        self.message_user(request, f'✅ {queryset.count()} тарифов помечены как бесплатные')
+        self.message_user(request, f'{queryset.count()} тарифов помечены как бесплатные')
     make_free.short_description = 'Сделать бесплатными'
 
     def make_paid(self, request, queryset):
         queryset.update(is_free=False)
-        self.message_user(request, f'✅ {queryset.count()} тарифов помечены как платные')
+        self.message_user(request, f'{queryset.count()} тарифов помечены как платные')
     make_paid.short_description = 'Сделать платными'
 
     def make_trial(self, request, queryset):
         queryset.update(is_trial=True)
-        self.message_user(request, f'✅ {queryset.count()} тарифов помечены как пробные')
+        self.message_user(request, f'{queryset.count()} тарифов помечены как пробные')
     make_trial.short_description = 'Отметить как пробные'
 
     def make_regular(self, request, queryset):
         queryset.update(is_trial=False)
-        self.message_user(request, f'✅ {queryset.count()} тарифов помечены как обычные')
+        self.message_user(request, f'{queryset.count()} тарифов помечены как обычные')
     make_regular.short_description = 'Отметить как обычные'
 
 
@@ -230,32 +230,32 @@ class UserSubscriptionAdmin(admin.ModelAdmin):
 
     def mark_as_active(self, request, queryset):
         queryset.update(status='active', is_active=True)
-        self.message_user(request, f'✅ {queryset.count()} подписок отмечены как активные')
+        self.message_user(request, f'{queryset.count()} подписок отмечены как активные')
     mark_as_active.short_description = 'Отметить как активные'
 
     def mark_as_expired(self, request, queryset):
         queryset.update(status='expired', is_active=False)
-        self.message_user(request, f'✅ {queryset.count()} подписок отмечены как истекшие')
+        self.message_user(request, f'{queryset.count()} подписок отмечены как истекшие')
     mark_as_expired.short_description = 'Отметить как истекшие'
 
     def mark_as_cancelled(self, request, queryset):
         queryset.update(status='cancelled', auto_renew=False)
-        self.message_user(request, f'✅ {queryset.count()} подписок отменены')
+        self.message_user(request, f'{queryset.count()} подписок отменены')
     mark_as_cancelled.short_description = 'Отметить как отмененные'
 
     def enable_auto_renew(self, request, queryset):
         queryset.update(auto_renew=True)
-        self.message_user(request, f'✅ Автопродление включено для {queryset.count()} подписок')
+        self.message_user(request, f'Автопродление включено для {queryset.count()} подписок')
     enable_auto_renew.short_description = 'Включить автопродление'
 
     def disable_auto_renew(self, request, queryset):
         queryset.update(auto_renew=False)
-        self.message_user(request, f'✅ Автопродление отключено для {queryset.count()} подписок')
+        self.message_user(request, f'Автопродление отключено для {queryset.count()} подписок')
     disable_auto_renew.short_description = 'Отключить автопродление'
 
     def reset_renewal_attempts(self, request, queryset):
         queryset.update(renewal_attempts=0, last_renewal_attempt=None)
-        self.message_user(request, f'✅ Счетчики попыток сброшены для {queryset.count()} подписок')
+        self.message_user(request, f'Счетчики попыток сброшены для {queryset.count()} подписок')
     reset_renewal_attempts.short_description = 'Сбросить попытки продления'
 
 
@@ -300,27 +300,27 @@ class PaymentHistoryAdmin(admin.ModelAdmin):
 
     def payment_type_display(self, obj):
         if obj.payment_type == 'pages':
-            return format_html('<span style="color: #9333ea; font-weight: bold; background: #f3e8ff; padding: 3px 8px; border-radius: 20px;">📄 Покупка звезд</span>')
+            return format_html('<span style="color: #9333ea; font-weight: bold; background: #f3e8ff; padding: 3px 8px; border-radius: 20px;"> Покупка звезд</span>')
         elif obj.payment_type == 'subscription':
             if obj.parent_payment is None:
-                return format_html('<span style="color: #2563eb; font-weight: bold; background: #dbeafe; padding: 3px 8px; border-radius: 20px;">🔷 Материнский (подписка)</span>')
+                return format_html('<span style="color: #2563eb; font-weight: bold; background: #dbeafe; padding: 3px 8px; border-radius: 20px;"> Материнский (подписка)</span>')
             else:
-                return format_html('<span style="color: #059669; font-weight: bold; background: #d1fae5; padding: 3px 8px; border-radius: 20px;">🔶 Дочерний (автопродление)</span>')
+                return format_html('<span style="color: #059669; font-weight: bold; background: #d1fae5; padding: 3px 8px; border-radius: 20px;"> Дочерний (автопродление)</span>')
         else:
-            return format_html('<span style="color: #6b7280; font-weight: bold; background: #f3f4f6; padding: 3px 8px; border-radius: 20px;">❓ Неизвестный</span>')
+            return format_html('<span style="color: #6b7280; font-weight: bold; background: #f3f4f6; padding: 3px 8px; border-radius: 20px;">? Неизвестный</span>')
     payment_type_display.short_description = 'Тип платежа'
 
     def payment_type_display_form(self, obj):
         if obj.payment_type == 'pages':
-            return format_html('<div style="background: #f3e8ff; padding: 10px; border-radius: 8px; border-left: 4px solid #9333ea;">📄 ПОКУПКА звезд<br>{} стр. за {} ₽</div>', obj.pages_count, obj.amount)
+            return format_html('<div style="background: #f3e8ff; padding: 10px; border-radius: 8px; border-left: 4px solid #9333ea;"> ПОКУПКА звезд<br>{} стр. за {} ₽</div>', obj.pages_count, obj.amount)
         elif obj.payment_type == 'subscription':
             if obj.parent_payment is None:
-                return format_html('<div style="background: #dbeafe; padding: 10px; border-radius: 8px; border-left: 4px solid #2563eb;">🔷 МАТЕРИНСКИЙ ПЛАТЕЖ<br>Первый платеж по тарифу {}</div>', obj.tariff.display_name if obj.tariff else '-')
+                return format_html('<div style="background: #dbeafe; padding: 10px; border-radius: 8px; border-left: 4px solid #2563eb;"> МАТЕРИНСКИЙ ПЛАТЕЖ<br>Первый платеж по тарифу {}</div>', obj.tariff.display_name if obj.tariff else '-')
             else:
                 parent_link = reverse('admin:users_paymenthistory_change', args=[obj.parent_payment.id])
-                return format_html('<div style="background: #d1fae5; padding: 10px; border-radius: 8px; border-left: 4px solid #059669;">🔶 ДОЧЕРНИЙ ПЛАТЕЖ<br>Привязан к <a href="{}">#{}</a> (InvId: {})<br>Тариф: {}</div>', parent_link, obj.parent_payment.id, obj.parent_payment.invoice_id, obj.tariff.display_name if obj.tariff else '-')
+                return format_html('<div style="background: #d1fae5; padding: 10px; border-radius: 8px; border-left: 4px solid #059669;"> ДОЧЕРНИЙ ПЛАТЕЖ<br>Привязан к <a href="{}">#{}</a> (InvId: {})<br>Тариф: {}</div>', parent_link, obj.parent_payment.id, obj.parent_payment.invoice_id, obj.tariff.display_name if obj.tariff else '-')
         else:
-            return format_html('<div style="background: #f3f4f6; padding: 10px; border-radius: 8px; border-left: 4px solid #6b7280;">❓ НЕИЗВЕСТНЫЙ ТИП</div>')
+            return format_html('<div style="background: #f3f4f6; padding: 10px; border-radius: 8px; border-left: 4px solid #6b7280;">? НЕИЗВЕСТНЫЙ ТИП</div>')
     payment_type_display_form.short_description = 'Тип платежа'
 
     def status_colored(self, obj):
@@ -331,15 +331,15 @@ class PaymentHistoryAdmin(admin.ModelAdmin):
     actions = ['mark_as_paid', 'mark_as_failed', 'refund_payment']
     def mark_as_paid(self, request, queryset):
         queryset.update(status='success', paid_at=timezone.now())
-        self.message_user(request, f'✅ {queryset.count()} платежей отмечены как успешные')
+        self.message_user(request, f'{queryset.count()} платежей отмечены как успешные')
     mark_as_paid.short_description = 'Отметить как оплаченные'
     def mark_as_failed(self, request, queryset):
         queryset.update(status='failed')
-        self.message_user(request, f'✅ {queryset.count()} платежей отмечены как неуспешные')
+        self.message_user(request, f'{queryset.count()} платежей отмечены как неуспешные')
     mark_as_failed.short_description = 'Отметить как неуспешные'
     def refund_payment(self, request, queryset):
         queryset.update(status='refunded')
-        self.message_user(request, f'✅ {queryset.count()} платежей отмечены как возвращенные')
+        self.message_user(request, f'{queryset.count()} платежей отмечены как возвращенные')
     refund_payment.short_description = 'Отметить как возврат'
 
 
@@ -433,11 +433,11 @@ class CustomUserAdmin(UserAdmin):
                 pages_count = int(pages_count)
                 for user in queryset:
                     user.add_pages(pages_count)
-                self.message_user(request, f'✅ Добавлено {pages_count} звезд {queryset.count()} пользователям')
+                self.message_user(request, f'Добавлено {pages_count} звезд {queryset.count()} пользователям')
             except ValueError:
-                self.message_user(request, '❌ Укажите корректное число', level='ERROR')
+                self.message_user(request, 'Укажите корректное число', level='ERROR')
         else:
-            self.message_user(request, '❌ Укажите количество звезд', level='ERROR')
+            self.message_user(request, 'Укажите количество звезд', level='ERROR')
     add_pages_to_users.short_description = 'Добавить звезды выбранным пользователям'
     def set_pages_count(self, request, queryset):
         pages_count = request.POST.get('pages_count')
@@ -446,11 +446,11 @@ class CustomUserAdmin(UserAdmin):
                 pages_count = int(pages_count)
                 for user in queryset:
                     user.set_pages(pages_count)
-                self.message_user(request, f'✅ Установлено {pages_count} звезд {queryset.count()} пользователям')
+                self.message_user(request, f'Установлено {pages_count} звезд {queryset.count()} пользователям')
             except ValueError:
-                self.message_user(request, '❌ Укажите корректное число', level='ERROR')
+                self.message_user(request, 'Укажите корректное число', level='ERROR')
         else:
-            self.message_user(request, '❌ Укажите количество звезд', level='ERROR')
+            self.message_user(request, 'Укажите количество звезд', level='ERROR')
     set_pages_count.short_description = 'Установить точное количество звезд'
     def change_tariff_for_users(self, request, queryset):
         tariff_id = request.POST.get('tariff_id')
@@ -461,11 +461,11 @@ class CustomUserAdmin(UserAdmin):
                     user.tariff = tariff
                     user.pages_count = tariff.pages_count
                     user.save()
-                self.message_user(request, f'✅ Тариф изменен на "{tariff.display_name}" для {queryset.count()} пользователей')
+                self.message_user(request, f'Тариф изменен на "{tariff.display_name}" для {queryset.count()} пользователей')
             except Tariff.DoesNotExist:
-                self.message_user(request, '❌ Указанный тариф не существует', level='ERROR')
+                self.message_user(request, 'Указанный тариф не существует', level='ERROR')
         else:
-            self.message_user(request, '❌ Укажите ID тарифа', level='ERROR')
+            self.message_user(request, 'Укажите ID тарифа', level='ERROR')
     change_tariff_for_users.short_description = 'Изменить тариф выбранным пользователям'
     def return_to_free_tariff(self, request, queryset):
         count = 0
@@ -473,7 +473,7 @@ class CustomUserAdmin(UserAdmin):
             if user.tariff and not user.tariff.is_free:
                 user.return_to_free_tariff()
                 count += 1
-        self.message_user(request, f'✅ {count} пользователей возвращены на бесплатный тариф')
+        self.message_user(request, f'{count} пользователей возвращены на бесплатный тариф')
     return_to_free_tariff.short_description = 'Вернуть на бесплатный тариф'
     def activate_paid_tariff(self, request, queryset):
         tariff_id = request.POST.get('tariff_id')
@@ -482,11 +482,11 @@ class CustomUserAdmin(UserAdmin):
                 tariff = Tariff.objects.get(id=tariff_id, is_free=False)
                 for user in queryset:
                     user.activate_paid_tariff(tariff, {'invoice_id': 'admin_activation'})
-                self.message_user(request, f'✅ Платный тариф "{tariff.display_name}" активирован для {queryset.count()} пользователей')
+                self.message_user(request, f'Платный тариф "{tariff.display_name}" активирован для {queryset.count()} пользователей')
             except Tariff.DoesNotExist:
-                self.message_user(request, '❌ Указанный платный тариф не существует', level='ERROR')
+                self.message_user(request, 'Указанный платный тариф не существует', level='ERROR')
         else:
-            self.message_user(request, '❌ Укажите ID платного тарифа', level='ERROR')
+            self.message_user(request, 'Укажите ID платного тарифа', level='ERROR')
     activate_paid_tariff.short_description = 'Активировать платный тариф'
     def export_users_stats(self, request, queryset):
         import csv
@@ -569,17 +569,17 @@ class LegalDocumentAdmin(admin.ModelAdmin):
     )
     def document_type_display(self, obj):
         colors = {'privacy': '#2563eb', 'terms': '#9333ea'}
-        icons = {'privacy': '🔒', 'terms': '📜'}
-        return format_html('<span style="color: {}; font-weight: bold;">{} {}</span>', colors.get(obj.document_type, '#000'), icons.get(obj.document_type, '📄'), obj.get_document_type_display())
+        icons = {'privacy': '', 'terms': ''}
+        return format_html('<span style="color: {}; font-weight: bold;">{} {}</span>', colors.get(obj.document_type, '#000'), icons.get(obj.document_type, ''), obj.get_document_type_display())
     document_type_display.short_description = 'Тип документа'
     def last_updated_display(self, obj):
         return format_html('<span title="{}">{}</span>', obj.last_updated.strftime('%d.%m.%Y %H:%M'), obj.last_updated.strftime('%d.%m.%Y'))
     last_updated_display.short_description = 'Обновлено'
     def document_type_info(self, obj):
         if obj.document_type == 'privacy':
-            return mark_safe('<div style="background: #dbeafe; padding: 10px; border-radius: 8px; border-left: 4px solid #2563eb;">🔒 ПОЛИТИКА КОНФИДЕНЦИАЛЬНОСТИ<br>Страница /privacy-policy/</div>')
+            return mark_safe('<div style="background: #dbeafe; padding: 10px; border-radius: 8px; border-left: 4px solid #2563eb;"> ПОЛИТИКА КОНФИДЕНЦИАЛЬНОСТИ<br>Страница /privacy-policy/</div>')
         elif obj.document_type == 'terms':
-            return mark_safe('<div style="background: #f3e8ff; padding: 10px; border-radius: 8px; border-left: 4px solid #9333ea;">📜 ПОЛЬЗОВАТЕЛЬСКОЕ СОГЛАШЕНИЕ<br>Страница /terms-of-service/</div>')
+            return mark_safe('<div style="background: #f3e8ff; padding: 10px; border-radius: 8px; border-left: 4px solid #9333ea;"> ПОЛЬЗОВАТЕЛЬСКОЕ СОГЛАШЕНИЕ<br>Страница /terms-of-service/</div>')
         return '-'
     document_type_info.short_description = 'Информация'
     def has_add_permission(self, request):
@@ -671,7 +671,7 @@ class WithdrawalRequestAdmin(admin.ModelAdmin):
                 req.processed_at = timezone.now()
                 req.save()
                 # Баланс уже уменьшен при создании запроса, здесь просто отмечаем
-        self.message_user(request, f'✅ {queryset.count()} запросов подтверждены.')
+        self.message_user(request, f'{queryset.count()} запросов подтверждены.')
     approve_withdrawals.short_description = 'Подтвердить вывод'
 
     def reject_withdrawals(self, request, queryset):
@@ -682,5 +682,5 @@ class WithdrawalRequestAdmin(admin.ModelAdmin):
                 req.save()
                 # Возвращаем средства пользователю
                 req.user.add_rub(req.amount)
-        self.message_user(request, f'✅ {queryset.count()} запросов отклонены, средства возвращены.')
+        self.message_user(request, f'{queryset.count()} запросов отклонены, средства возвращены.')
     reject_withdrawals.short_description = 'Отклонить вывод и вернуть средства'

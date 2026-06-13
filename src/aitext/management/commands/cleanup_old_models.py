@@ -1,4 +1,4 @@
-from django.core.management.base import BaseCommand
+﻿from django.core.management.base import BaseCommand
 from aitext.models import NeuralNetwork
 
 KEEP_SLUGS = {
@@ -45,4 +45,4 @@ class Command(BaseCommand):
             return
 
         to_delete.delete()
-        self.stdout.write(self.style.SUCCESS(f'✓ Удалено {count} старых моделей'))
+        self.stdout.write(self.style.SUCCESS(f'Удалено {count} старых моделей'))

@@ -177,7 +177,7 @@ def create_chat(request):
         if deduct_stars and request.user.pages_count < cost:
             return JsonResponse({
                 'success': False,
-                'message': f'Недостаточно звёзд. Нужно {cost}⭐, у вас {request.user.pages_count}⭐'
+                'message': f'Недостаточно звёзд. Нужно {cost} зв., у вас {request.user.pages_count} зв.'
             })
 
         # Создаём чат с настройками
@@ -352,7 +352,7 @@ def send_message(request, chat_id):
         if deduct_stars and request.user.pages_count < cost:
             return JsonResponse({
                 'success': False,
-                'message': f'Недостаточно звёзд. Нужно {cost}⭐, у вас {request.user.pages_count}⭐'
+                'message': f'Недостаточно звёзд. Нужно {cost} зв., у вас {request.user.pages_count} зв.'
             })
 
         # Обновляем настройки чата, если они отличаются

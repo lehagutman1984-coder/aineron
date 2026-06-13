@@ -1,4 +1,4 @@
-import json
+﻿import json
 import os
 import base64
 import logging
@@ -320,13 +320,13 @@ def save_media_from_url(url, message, prompt, media_type='image', max_retries=3,
     """
     for attempt in range(max_retries):
         try:
-            logger.info(f"📥 Скачивание медиа из {url}, попытка {attempt + 1}/{max_retries}")
+            logger.info(f"[RECV] Скачивание медиа из {url}, попытка {attempt + 1}/{max_retries}")
             response = requests.get(url, timeout=timeout, headers={'User-Agent': 'Mozilla/5.0'})
             response.raise_for_status()
 
             content_type = response.headers.get('content-type', '').lower()
             file_data = response.content
-            logger.info(f"✅ Медиа скачано, размер: {len(file_data)} байт, тип: {content_type}")
+            logger.info(f"[OK] Медиа скачано, размер: {len(file_data)} байт, тип: {content_type}")
 
             # Если тип не определён или application/octet-stream, определяем по расширению URL
             if content_type == 'application/octet-stream' or not content_type:
@@ -396,13 +396,13 @@ def save_media_from_url(url, message, prompt, media_type='image', max_retries=3,
             return gen_img
 
         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError, requests.exceptions.RequestException) as e:
-            logger.error(f"❌ Ошибка скачивания (попытка {attempt + 1}): {e}")
+            logger.error(f"[ERR] Ошибка скачивания (попытка {attempt + 1}): {e}")
             if attempt == max_retries - 1:
                 logger.error(f"Не удалось скачать {url} после {max_retries} попыток")
                 return None
             time.sleep(3)
         except Exception as e:
-            logger.error(f"❌ Неожиданная ошибка при скачивании {url}: {e}")
+            logger.error(f"[ERR] Неожиданная ошибка при скачивании {url}: {e}")
             return None
 
     return None
@@ -499,7 +499,7 @@ def generate_with_falai(network, user_msg, message, user_settings=None):
     model_name = config.get('name', network.name)
     media_count = len(saved_media)
     if media_count > 0:
-        text_parts = [f"✅ Сгенерировано {media_count} изображений моделью \"{model_name}\"."]
+        text_parts = [f"Сгенерировано {media_count} изображений моделью \"{model_name}\"."]
         for media in saved_media:
             if media.media_type == 'video':
                 text_parts.append(
@@ -511,6 +511,6 @@ def generate_with_falai(network, user_msg, message, user_settings=None):
                 )
         final_text = "\n\n".join(text_parts)
     else:
-        final_text = f"✅ Модель \"{model_name}\" обработала запрос: \"{prompt[:100]}\". (Нет изображений в ответе)"
+        final_text = f"Модель \"{model_name}\" обработала запрос: \"{prompt[:100]}\". (Нет изображений в ответе)"
 
     return final_text, saved_media, total_cost

@@ -1,4 +1,4 @@
-from celery import shared_task
+﻿from celery import shared_task
 from django.utils import timezone
 from datetime import timedelta
 from .models import UserSubscription, CustomUser, PaymentHistory, Tariff
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 @shared_task
 def check_expired_subscriptions():
-    logger.info("⚠️ Эта задача устарела, используйте process_pending_renewals")
+    logger.info("[WARN] Эта задача устарела, используйте process_pending_renewals")
     return "Deprecated"
 
 
@@ -42,7 +42,7 @@ def process_pending_renewals():
     Проверяет подписки, у которых скоро истекает срок, и пытается продлить их
     Запускается каждые 12 часов
     """
-    logger.info("🔄 Проверка подписок, требующих продления...")
+    logger.info("[RENEW] Проверка подписок, требующих продления...")
 
     renew_window_start = timezone.now()
     renew_window_end = timezone.now() + timedelta(days=3)
@@ -56,7 +56,7 @@ def process_pending_renewals():
         auto_renew=True,
     ).select_related('user', 'tariff')
 
-    logger.info(f"📊 Найдено подписок для проверки: {pending_subscriptions.count()}")
+    logger.info(f"[STAT] Найдено подписок для проверки: {pending_subscriptions.count()}")
 
     success_count = 0
     failed_count = 0
@@ -66,23 +66,23 @@ def process_pending_renewals():
             user = subscription.user
             days_left = subscription.days_until_expiration()
 
-            logger.info(f"📋 Проверка подписки пользователя {user.email}:")
+            logger.info(f"[DATA] Проверка подписки пользователя {user.email}:")
             logger.info(f"  - Истекает через: {days_left} дн.")
             logger.info(f"  - Попыток продления: {subscription.renewal_attempts}/{subscription.max_renewal_attempts}")
             logger.info(f"  - Последняя попытка: {subscription.last_renewal_attempt}")
 
             if subscription.renewal_attempts >= subscription.max_renewal_attempts:
-                logger.warning(f"❌ Достигнут лимит попыток продления для {user.email}")
+                logger.warning(f"[ERR] Достигнут лимит попыток продления для {user.email}")
                 user.return_to_free_tariff()
                 failed_count += 1
                 continue
 
             if subscription.last_renewal_attempt and \
                     subscription.last_renewal_attempt.date() == timezone.now().date():
-                logger.info(f"⏸️ Сегодня уже была попытка для {user.email}, пропускаем")
+                logger.info(f"Сегодня уже была попытка для {user.email}, пропускаем")
                 continue
 
-            logger.info(f"🔄 Попытка продления #{subscription.renewal_attempts + 1} для {user.email}")
+            logger.info(f"[RENEW] Попытка продления #{subscription.renewal_attempts + 1} для {user.email}")
 
             subscription.renewal_attempts += 1
             subscription.last_renewal_attempt = timezone.now()
@@ -91,22 +91,22 @@ def process_pending_renewals():
             success = attempt_auto_renewal(subscription)
 
             if success:
-                logger.info(f"✅ Подписка пользователя {user.email} успешно продлена")
+                logger.info(f"[OK] Подписка пользователя {user.email} успешно продлена")
                 success_count += 1
             else:
-                logger.warning(f"❌ Не удалось продлить подписку пользователя {user.email} (попытка {subscription.renewal_attempts})")
+                logger.warning(f"[ERR] Не удалось продлить подписку пользователя {user.email} (попытка {subscription.renewal_attempts})")
                 failed_count += 1
 
                 if days_left <= 1 and subscription.renewal_attempts >= subscription.max_renewal_attempts:
-                    logger.warning(f"⚠️ Последний день подписки, возвращаем {user.email} на бесплатный")
+                    logger.warning(f"[WARN] Последний день подписки, возвращаем {user.email} на бесплатный")
                     user.return_to_free_tariff()
 
         except Exception as e:
-            logger.error(f"❌ Ошибка при обработке подписки {subscription.id}: {e}")
+            logger.error(f"[ERR] Ошибка при обработке подписки {subscription.id}: {e}")
             import traceback
             logger.error(traceback.format_exc())
 
-    logger.info(f"📊 Итоги проверки: {success_count} успешно, {failed_count} неудачно")
+    logger.info(f"[STAT] Итоги проверки: {success_count} успешно, {failed_count} неудачно")
     return f"Processed: {success_count} success, {failed_count} failed"
 
 
@@ -126,7 +126,7 @@ def attempt_auto_renewal(subscription):
             new_tariff = tariff.next_tariff
             amount = float(new_tariff.price)
             description = f"Переход на тариф: {new_tariff.display_name}"
-            logger.info(f"🔄 Пробный тариф {tariff.display_name} -> переход на {new_tariff.display_name}, сумма {amount}")
+            logger.info(f"[RENEW] Пробный тариф {tariff.display_name} -> переход на {new_tariff.display_name}, сумма {amount}")
 
             parent_payment = PaymentHistory.objects.filter(
                 user=user,
@@ -136,7 +136,7 @@ def attempt_auto_renewal(subscription):
             ).order_by('-paid_at').first()
 
             if not parent_payment:
-                logger.error(f"❌ Не найден материнский платеж для пробного тарифа {tariff.display_name}")
+                logger.error(f"[ERR] Не найден материнский платеж для пробного тарифа {tariff.display_name}")
                 return False
 
             # Формируем чек (аналогично успешно работающей функции buy_pages)
@@ -193,10 +193,10 @@ def attempt_auto_renewal(subscription):
                 subscription.status = 'expired'
                 subscription.save()
 
-                logger.info(f"✅ Пользователь {user.email} переведён с {tariff.display_name} на {new_tariff.display_name}")
+                logger.info(f"[OK] Пользователь {user.email} переведён с {tariff.display_name} на {new_tariff.display_name}")
                 return True
             else:
-                logger.error(f"❌ Ошибка recurring-запроса для перехода: {response.text}")
+                logger.error(f"[ERR] Ошибка recurring-запроса для перехода: {response.text}")
                 return False
 
         # ----- ОБЫЧНОЕ ПРОДЛЕНИЕ (без смены тарифа) -----
@@ -208,7 +208,7 @@ def attempt_auto_renewal(subscription):
         ).order_by('-paid_at').first()
 
         if not parent_payment:
-            logger.error(f"❌ Не найден материнский платеж для {tariff.display_name}")
+            logger.error(f"[ERR] Не найден материнский платеж для {tariff.display_name}")
             return False
 
         description = f"Продление тарифа: {tariff.display_name}"
@@ -269,13 +269,13 @@ def attempt_auto_renewal(subscription):
             subscription.renewal_attempts = 0
             subscription.save()
 
-            logger.info(f"✅ Подписка {subscription.id} продлена, добавлено {tariff.pages_count} звезд, всего у пользователя: {user.pages_count}")
+            logger.info(f"[OK] Подписка {subscription.id} продлена, добавлено {tariff.pages_count} звезд, всего у пользователя: {user.pages_count}")
             return True
 
         return False
 
     except Exception as e:
-        logger.error(f"❌ Ошибка автопродления: {e}")
+        logger.error(f"[ERR] Ошибка автопродления: {e}")
         import traceback
         logger.error(traceback.format_exc())
         return False
@@ -311,7 +311,7 @@ def send_expiry_email(subscription):
             'site_url': site_url,
         }
 
-        subject = f'⏰ Подписка {tariff.display_name} истекает через 3 дня'
+        subject = f'Подписка {tariff.display_name} истекает через 3 дня'
         html_content = render_to_string('neuro/emails/subscription_expiring_soon.html', context)
         text_content = strip_tags(html_content)
 
@@ -327,11 +327,11 @@ def send_expiry_email(subscription):
         subscription.last_expiry_notification_sent = timezone.now()
         subscription.save(update_fields=['last_expiry_notification_sent'])
 
-        logger.info(f"📧 Письмо об истечении подписки отправлено {user.email}")
+        logger.info(f"[EMAIL] Письмо об истечении подписки отправлено {user.email}")
         return True
 
     except Exception as e:
-        logger.error(f"❌ Ошибка отправки письма: {e}")
+        logger.error(f"[ERR] Ошибка отправки письма: {e}")
         return False
 
 
@@ -365,5 +365,5 @@ def notify_upcoming_expiration():
         if success:
             sent_count += 1
 
-    logger.info(f"📊 Отправлено писем об истечении: {sent_count}")
+    logger.info(f"[STAT] Отправлено писем об истечении: {sent_count}")
     return f"Sent: {sent_count}"

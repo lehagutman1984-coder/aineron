@@ -1,4 +1,4 @@
-from django.core.management.base import BaseCommand
+﻿from django.core.management.base import BaseCommand
 from aitext.models import Category, NeuralNetwork
 
 
@@ -273,7 +273,7 @@ class Command(BaseCommand):
                     'is_popular': m.get('is_popular', False),
                 }
             )
-            status = '✓ создана' if created else '↻ обновлена'
+            status = 'создана' if created else 'обновлена'
             self.stdout.write(f'  {status}: {network.name} ({network.model_name})')
 
         # Добавляем модели изображений
@@ -298,7 +298,7 @@ class Command(BaseCommand):
                     'is_popular': m.get('is_popular', False),
                 }
             )
-            status = '✓ создана' if created else '↻ обновлена'
+            status = 'создана' if created else 'обновлена'
             self.stdout.write(f'  {status}: {network.name} ({network.model_name})')
 
         total = len(TEXT_MODELS) + len(IMAGE_MODELS)

@@ -1,4 +1,4 @@
-from django.core.mail import EmailMultiAlternatives
+﻿from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.contrib.sites.models import Site
@@ -85,21 +85,21 @@ def send_verification_email(user, request):
                 )
                 email.attach_alternative(html_content, "text/html")
                 email.send(fail_silently=False)
-                logger.info(f"✅ Письмо подтверждения отправлено на {user.email}")
-                logger.debug(f"🔗 Ссылка: {verification_url}")
-                logger.debug(f"🔢 Код: {verification_code}")
+                logger.info(f"[OK] Письмо подтверждения отправлено на {user.email}")
+                logger.debug(f"[LINK] Ссылка: {verification_url}")
+                logger.debug(f"[CODE] Код: {verification_code}")
             except Exception as e:
-                logger.error(f"❌ Ошибка отправки письма подтверждения: {e}")
+                logger.error(f"[ERR] Ошибка отправки письма подтверждения: {e}")
 
         thread = threading.Thread(target=send_email_thread)
         thread.daemon = True
         thread.start()
 
-        logger.info(f"📧 Письмо подтверждения поставлено в очередь на отправку для {user.email}")
+        logger.info(f"[EMAIL] Письмо подтверждения поставлено в очередь на отправку для {user.email}")
         return True
 
     except Exception as e:
-        logger.error(f"❌ Ошибка при подготовке письма подтверждения: {e}")
+        logger.error(f"[ERR] Ошибка при подготовке письма подтверждения: {e}")
         return False
 
 def send_password_reset_email(user, new_password, request):
@@ -150,20 +150,20 @@ def send_password_reset_email(user, new_password, request):
 
                 email.send(fail_silently=False)
 
-                logger.info(f"✅ Письмо с новым паролем отправлено на {user.email}")
+                logger.info(f"[OK] Письмо с новым паролем отправлено на {user.email}")
             except Exception as e:
-                logger.error(f"❌ Ошибка отправки письма с паролем: {e}")
+                logger.error(f"[ERR] Ошибка отправки письма с паролем: {e}")
 
         # Запускаем отправку в отдельном потоке
         thread = threading.Thread(target=send_email_thread)
         thread.daemon = True
         thread.start()
 
-        logger.info(f"📧 Письмо с паролем поставлено в очередь на отправку для {user.email}")
+        logger.info(f"[EMAIL] Письмо с паролем поставлено в очередь на отправку для {user.email}")
         return True
 
     except Exception as e:
-        logger.error(f"❌ Ошибка при подготовке письма с паролем: {e}")
+        logger.error(f"[ERR] Ошибка при подготовке письма с паролем: {e}")
         return False
 
 
@@ -179,7 +179,7 @@ def verify_email_token(token):
         # Подтверждаем email
         user.verify_email()
 
-        logger.info(f"✅ Email подтвержден по ссылке для {user.email}")
+        logger.info(f"[OK] Email подтвержден по ссылке для {user.email}")
         return user
 
     except CustomUser.DoesNotExist:
@@ -190,11 +190,11 @@ def verify_email_token(token):
             # Подтверждаем email
             user.verify_email()
 
-            logger.info(f"✅ Email подтвержден по коду для {user.email}")
+            logger.info(f"[OK] Email подтвержден по коду для {user.email}")
             return user
 
         except CustomUser.DoesNotExist:
-            logger.warning(f"❌ Недействительный токен/код подтверждения: {token}")
+            logger.warning(f"[ERR] Недействительный токен/код подтверждения: {token}")
             return None
 
 
@@ -219,19 +219,19 @@ def send_test_email(to_email):
                 email.attach_alternative(html_content, "text/html")
                 email.send(fail_silently=False)
 
-                logger.info(f"✅ Тестовое письмо отправлено на {to_email}")
+                logger.info(f"[OK] Тестовое письмо отправлено на {to_email}")
             except Exception as e:
-                logger.error(f"❌ Ошибка отправки тестового письма: {e}")
+                logger.error(f"[ERR] Ошибка отправки тестового письма: {e}")
 
         thread = threading.Thread(target=send_email_thread)
         thread.daemon = True
         thread.start()
 
-        logger.info(f"📧 Тестовое письмо поставлено в очередь на отправку для {to_email}")
+        logger.info(f"[EMAIL] Тестовое письмо поставлено в очередь на отправку для {to_email}")
         return True
 
     except Exception as e:
-        logger.error(f"❌ Ошибка при подготовке тестового письма: {e}")
+        logger.error(f"[ERR] Ошибка при подготовке тестового письма: {e}")
         return False
 
 
@@ -268,17 +268,17 @@ def send_welcome_email(user, request):
                 email.attach_alternative(html_content, "text/html")
                 email.send(fail_silently=False)
 
-                logger.info(f"✅ Приветственное письмо отправлено на {user.email}")
+                logger.info(f"[OK] Приветственное письмо отправлено на {user.email}")
             except Exception as e:
-                logger.error(f"❌ Ошибка отправки приветственного письма: {e}")
+                logger.error(f"[ERR] Ошибка отправки приветственного письма: {e}")
 
         thread = threading.Thread(target=send_email_thread)
         thread.daemon = True
         thread.start()
 
-        logger.info(f"📧 Приветственное письмо поставлено в очередь на отправку для {user.email}")
+        logger.info(f"[EMAIL] Приветственное письмо поставлено в очередь на отправку для {user.email}")
         return True
 
     except Exception as e:
-        logger.error(f"❌ Ошибка при подготовке приветственного письма: {e}")
+        logger.error(f"[ERR] Ошибка при подготовке приветственного письма: {e}")
         return False

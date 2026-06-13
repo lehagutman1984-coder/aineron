@@ -65,7 +65,7 @@ def generate_images_html(files):
             html_parts.append(f'''
             <div class="generated-media generated-video">
                 <div class="media-header">
-                    <span class="media-model">🎬 Сгенерировано видео: {model_name}</span>
+                    <span class="media-model">Сгенерировано видео: {model_name}</span>
                     <div class="media-actions">
                         <button class="media-action-btn download-media" data-url="{file_url}">
                             <i class="fas fa-download"></i> Скачать
@@ -81,7 +81,7 @@ def generate_images_html(files):
             html_parts.append(f'''
             <div class="generated-media generated-image">
                 <div class="media-header">
-                    <span class="media-model">🖼️ Сгенерировано изображение: {model_name}</span>
+                    <span class="media-model">Сгенерировано изображение: {model_name}</span>
                     <div class="media-actions">
                         <button class="media-action-btn download-media" data-url="{file_url}">
                             <i class="fas fa-download"></i> Скачать
@@ -147,7 +147,7 @@ def generate_ai_response(self, message_id):
                 total_cost = base_cost + extra_cost
 
                 if user.pages_count < total_cost:
-                    raise Exception(f"Недостаточно звёзд. Нужно {total_cost}⭐, у вас {user.pages_count}⭐")
+                    raise Exception(f"Недостаточно звёзд. Нужно {total_cost} зв., у вас {user.pages_count} зв.")
 
                 user.spend_pages(total_cost)
                 stars_deducted = True
@@ -156,7 +156,7 @@ def generate_ai_response(self, message_id):
                     amount=total_cost,
                     description=f"Сообщение в чате с {network.name} (включая настройки)"
                 )
-                logger.info(f"Списано {total_cost}⭐ у пользователя {user.email}")
+                logger.info(f"Списано {total_cost} зв. у пользователя {user.email}")
 
                 original_prompt = user_msg.content if user_msg else ""
                 if network.translate_to_english and original_prompt:
@@ -186,7 +186,7 @@ def generate_ai_response(self, message_id):
                 logger.error(f"Ошибка генерации изображения для сообщения {message_id}: {e}")
                 if stars_deducted:
                     user.add_pages(total_cost)
-                    logger.info(f"Возвращено {total_cost}⭐ пользователю {user.email} из-за ошибки генерации")
+                    logger.info(f"Возвращено {total_cost} зв. пользователю {user.email} из-за ошибки генерации")
                 message.status = Message.Status.FAILED
                 if 'billing' in error_str.lower() or 'balance' in error_str.lower() or 'quota' in error_str.lower():
                     message.error_message = "Проблема с провайдером, обратитесь к администратору сервиса для решения проблем."

@@ -1,4 +1,4 @@
-import urllib.parse
+﻿import urllib.parse
 import json
 import hashlib
 import logging
@@ -183,7 +183,7 @@ def ajax_register(request):
                 if existing_users_count > 0:
                     shadow_banned = True
                     user.shadow_banned = True
-                    logger.warning(f"⚠️ Теневой бан для {user.email} - множественные аккаунты с IP {client_ip}")
+                    logger.warning(f"[WARN] Теневой бан для {user.email} - множественные аккаунты с IP {client_ip}")
 
             if client_ip:
                 UserIPAddress.objects.create(user=user, ip_address=client_ip)
@@ -196,7 +196,7 @@ def ajax_register(request):
                 send_verification_email(user, request)
                 email_sent = True
             except Exception as e:
-                logger.error(f"⚠️ Ошибка отправки письма: {e}")
+                logger.error(f"[WARN] Ошибка отправки письма: {e}")
                 email_sent = False
 
             if shadow_banned:
@@ -588,8 +588,8 @@ def create_robokassa_payment(request):
         signature_str = f"{merchant_login}:{out_sum}:{inv_id}:{receipt_json}:{password_1}"
         signature = hashlib.md5(signature_str.encode('cp1251')).hexdigest()
 
-        logger.info(f"💰 Создание платежа: InvId={inv_id}, сумма={out_sum}, подпись={signature}")
-        logger.info(f"📋 Receipt JSON: {receipt_json}")
+        logger.info(f"[PAY] Создание платежа: InvId={inv_id}, сумма={out_sum}, подпись={signature}")
+        logger.info(f"[DATA] Receipt JSON: {receipt_json}")
 
         payment = PaymentHistory.objects.create(
             user=request.user,
@@ -644,14 +644,14 @@ def create_robokassa_payment(request):
         })
 
     except Exception as e:
-        logger.error(f"❌ Ошибка создания платежа: {e}")
+        logger.error(f"[ERR] Ошибка создания платежа: {e}")
         return JsonResponse({'success': False, 'message': str(e)}, status=500)
 
 @csrf_exempt
 def payment_success(request):
     """Обработка успешного платежа (Result URL)"""
     logger.info("=" * 50)
-    logger.info("📥 RESULT URL CALLED")
+    logger.info("[RECV] RESULT URL CALLED")
 
     if request.method == 'POST':
         out_sum = request.POST.get('OutSum')
@@ -667,7 +667,7 @@ def payment_success(request):
                 payment = PaymentHistory.objects.get(invoice_id=inv_id)
 
                 if payment.status == 'success':
-                    logger.info(f"⚠️ Платеж {inv_id} уже был обработан")
+                    logger.info(f"[WARN] Платеж {inv_id} уже был обработан")
                     return HttpResponse(f"OK{inv_id}")
 
                 payment.status = 'success'
@@ -679,7 +679,7 @@ def payment_success(request):
                 if payment.payment_type == 'subscription':
                     tariff = payment.tariff
                     if not tariff:
-                        logger.error(f"❌ Для платежа {inv_id} не указан тариф")
+                        logger.error(f"[ERR] Для платежа {inv_id} не указан тариф")
                         return HttpResponse(f"OK{inv_id}")
 
                     # Начисляем страницы
@@ -693,7 +693,7 @@ def payment_success(request):
                         subscription.status = 'active'
                         subscription.is_active = True
                         subscription.save()
-                        logger.info(f"🔄 Продление подписки для {user.email} +{tariff.pages_count} страниц")
+                        logger.info(f"[RENEW] Продление подписки для {user.email} +{tariff.pages_count} страниц")
                     else:
                         subscription = UserSubscription.objects.create(
                             user=user,
@@ -708,7 +708,7 @@ def payment_success(request):
 
                     user.tariff = tariff
                     user.save()
-                    logger.info(f"💰 У пользователя {user.email} теперь {user.pages_count} страниц")
+                    logger.info(f"[PAY] У пользователя {user.email} теперь {user.pages_count} страниц")
 
                     # ========== РЕФЕРАЛЬНЫЙ БОНУС ==========
                     if user.referrer:
@@ -718,13 +718,13 @@ def payment_success(request):
                             referrer.save(update_fields=['rub_balance'])
                             amount_rub = tariff.referral_bonus
                             amount_stars = 0
-                            logger.info(f"💰 Рефералу {referrer.email} начислено {tariff.referral_bonus} руб за покупку {tariff.display_name} пользователем {user.email}")
+                            logger.info(f"[PAY] Рефералу {referrer.email} начислено {tariff.referral_bonus} руб за покупку {tariff.display_name} пользователем {user.email}")
                         else:
                             referrer.pages_count += tariff.referral_bonus_stars
                             referrer.save(update_fields=['pages_count'])
                             amount_rub = 0
                             amount_stars = tariff.referral_bonus_stars
-                            logger.info(f"⭐ Рефералу {referrer.email} начислено {tariff.referral_bonus_stars} звёзд за покупку {tariff.display_name} пользователем {user.email}")
+                            logger.info(f" зв. Рефералу {referrer.email} начислено {tariff.referral_bonus_stars} звёзд за покупку {tariff.display_name} пользователем {user.email}")
 
                         if amount_rub > 0 or amount_stars > 0:
                             ReferralEarning.objects.create(
@@ -737,20 +737,20 @@ def payment_success(request):
 
                 elif payment.payment_type == 'pages':
                     user.add_pages(payment.pages_count)
-                    logger.info(f"✅ Пользователь {user.email} купил {payment.pages_count} страниц, теперь всего: {user.pages_count}")
+                    logger.info(f"[OK] Пользователь {user.email} купил {payment.pages_count} страниц, теперь всего: {user.pages_count}")
 
                 return HttpResponse(f"OK{inv_id}")
 
             except PaymentHistory.DoesNotExist:
-                logger.error(f"❌ Платеж {inv_id} не найден")
+                logger.error(f"[ERR] Платеж {inv_id} не найден")
                 return HttpResponse(f"Payment {inv_id} not found", status=404)
             except Exception as e:
-                logger.error(f"❌ Ошибка: {e}")
+                logger.error(f"[ERR] Ошибка: {e}")
                 import traceback
                 logger.error(traceback.format_exc())
                 return HttpResponse("Error", status=500)
         else:
-            logger.error("❌ Неверная подпись")
+            logger.error("[ERR] Неверная подпись")
             return HttpResponse("Invalid signature", status=400)
 
     return HttpResponse("Invalid request method", status=400)
@@ -760,7 +760,7 @@ def payment_fail(request):
     """Обработка неуспешного платежа"""
     inv_id = request.GET.get('InvId') or request.POST.get('InvId')
 
-    logger.info(f"❌ Платеж отменен: InvId={inv_id}")
+    logger.info(f"[ERR] Платеж отменен: InvId={inv_id}")
 
     if inv_id:
         try:
@@ -781,7 +781,7 @@ def payment_success_page(request):
     out_sum = request.GET.get('OutSum')
     signature = request.GET.get('SignatureValue')
 
-    logger.info(f"📥 Success page: GET запрос с параметрами")
+    logger.info(f"[RECV] Success page: GET запрос с параметрами")
     logger.info(f"  InvId: {inv_id}")
     logger.info(f"  OutSum: {out_sum}")
     logger.info(f"  Signature: {signature}")
@@ -826,7 +826,7 @@ def payment_fail_page(request):
     """
     inv_id = request.GET.get('InvId')
 
-    logger.info(f"📥 Fail page: GET запрос, InvId={inv_id}")
+    logger.info(f"[RECV] Fail page: GET запрос, InvId={inv_id}")
 
     if inv_id:
         try:
@@ -912,7 +912,7 @@ def buy_pages(request):
         out_sum = f"{float(total_price):.2f}"
         description = f"Покупка {pages_to_buy} звезд"
 
-        # ✅ Формируем чек
+        # [OK] Формируем чек
         receipt_data = {
             "items": [
                 {
@@ -930,13 +930,13 @@ def buy_pages(request):
             ensure_ascii=False
         )
 
-        # ✅ ВАЖНО: подпись с Receipt и UTF-8
+        # [OK] ВАЖНО: подпись с Receipt и UTF-8
         signature_str = f"{merchant_login}:{out_sum}:{inv_id}:{receipt_json}:{password_1}"
         signature = hashlib.md5(signature_str.encode('utf-8')).hexdigest()
 
-        logger.info(f"💰 Создание платежа: InvId={inv_id}, сумма={out_sum}")
-        logger.info(f"📋 Receipt: {receipt_json}")
-        logger.info(f"🔐 Signature: {signature_str}")
+        logger.info(f"[PAY] Создание платежа: InvId={inv_id}, сумма={out_sum}")
+        logger.info(f"[DATA] Receipt: {receipt_json}")
+        logger.info(f"[SEC] Signature: {signature_str}")
 
         payment = PaymentHistory.objects.create(
             user=request.user,
@@ -994,7 +994,7 @@ def buy_pages(request):
         })
 
     except Exception as e:
-        logger.error(f"❌ Ошибка создания платежа: {e}")
+        logger.error(f"[ERR] Ошибка создания платежа: {e}")
         import traceback
         logger.error(traceback.format_exc())
         return JsonResponse({
@@ -1058,7 +1058,7 @@ def send_renewal_confirmation_code(request):
             fail_silently=False,
         )
 
-        logger.info(f"📧 Код подтверждения для {action} отправлен пользователю {user.email}")
+        logger.info(f"[EMAIL] Код подтверждения для {action} отправлен пользователю {user.email}")
 
         return JsonResponse({
             'success': True,
@@ -1066,7 +1066,7 @@ def send_renewal_confirmation_code(request):
         })
 
     except Exception as e:
-        logger.error(f"❌ Ошибка отправки кода: {e}")
+        logger.error(f"[ERR] Ошибка отправки кода: {e}")
         return JsonResponse({
             'success': False,
             'message': 'Ошибка при отправке кода'
@@ -1144,7 +1144,7 @@ def verify_renewal_code(request):
         request.session.pop('renewal_action', None)
         request.session.pop('renewal_code_expires', None)
 
-        logger.info(f"✅ Автопродление {action} для пользователя {user.email}")
+        logger.info(f"[OK] Автопродление {action} для пользователя {user.email}")
 
         return JsonResponse({
             'success': True,
@@ -1153,7 +1153,7 @@ def verify_renewal_code(request):
         })
 
     except Exception as e:
-        logger.error(f"❌ Ошибка проверки кода: {e}")
+        logger.error(f"[ERR] Ошибка проверки кода: {e}")
         return JsonResponse({
             'success': False,
             'message': 'Ошибка при проверке кода'
@@ -1206,7 +1206,7 @@ def resend_renewal_code(request):
             fail_silently=False,
         )
 
-        logger.info(f"📧 Новый код подтверждения отправлен пользователю {user.email}")
+        logger.info(f"[EMAIL] Новый код подтверждения отправлен пользователю {user.email}")
 
         return JsonResponse({
             'success': True,
@@ -1214,7 +1214,7 @@ def resend_renewal_code(request):
         })
 
     except Exception as e:
-        logger.error(f"❌ Ошибка повторной отправки кода: {e}")
+        logger.error(f"[ERR] Ошибка повторной отправки кода: {e}")
         return JsonResponse({
             'success': False,
             'message': 'Ошибка при отправке кода'
@@ -1250,7 +1250,7 @@ def update_auto_renewal(request):
         subscription.auto_renew = auto_renew
         subscription.save()
 
-        logger.info(f"✅ Автопродление {'включено' if auto_renew else 'отключено'} для {user.email}")
+        logger.info(f"[OK] Автопродление {'включено' if auto_renew else 'отключено'} для {user.email}")
 
         return JsonResponse({
             'success': True,
@@ -1259,7 +1259,7 @@ def update_auto_renewal(request):
         })
 
     except Exception as e:
-        logger.error(f"❌ Ошибка обновления автопродления: {e}")
+        logger.error(f"[ERR] Ошибка обновления автопродления: {e}")
         return JsonResponse({
             'success': False,
             'message': 'Ошибка при обновлении автопродления'
@@ -1385,7 +1385,7 @@ def profile_data(request):
     history = []
     for p in payments:
         if p.payment_type == 'promo':
-            description = p.description or f"Активация промокода (+{p.pages_count}⭐)"
+            description = p.description or f"Активация промокода (+{p.pages_count} зв.)"
         elif p.payment_type == 'pages':
             description = p.description or f"Покупка {p.pages_count} страниц"
         else:  # subscription

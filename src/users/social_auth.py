@@ -1,4 +1,4 @@
-from allauth.socialaccount.signals import social_account_added, pre_social_login
+﻿from allauth.socialaccount.signals import social_account_added, pre_social_login
 from django.dispatch import receiver
 from django.contrib.auth import get_user_model
 from allauth.exceptions import ImmediateHttpResponse
@@ -28,7 +28,7 @@ def handle_social_account_added(request, sociallogin, **kwargs):
 
         provider_display = provider_names.get(provider, provider.capitalize())
 
-        logger.info(f"🔐 Социальный аккаунт добавлен: {provider} для {user.username}")
+        logger.info(f"[SEC] Социальный аккаунт добавлен: {provider} для {user.username}")
 
         # Автоматически подтверждаем email для соц. аккаунтов
         if not user.email_verified:
@@ -42,7 +42,7 @@ def handle_social_account_added(request, sociallogin, **kwargs):
         )
 
     except Exception as e:
-        logger.error(f"❌ Ошибка в handle_social_account_added: {e}")
+        logger.error(f"[ERR] Ошибка в handle_social_account_added: {e}")
 
 
 @receiver(pre_social_login)
@@ -71,16 +71,16 @@ def handle_pre_social_login(request, sociallogin, **kwargs):
                 # Привязываем к текущему пользователю
                 existing_account.user = request.user
                 existing_account.save()
-                logger.info(f"🔗 Социальный аккаунт {provider} привязан к {request.user.username}")
+                logger.info(f"[LINK] Социальный аккаунт {provider} привязан к {request.user.username}")
                 messages.success(request, f'Аккаунт {provider_display} успешно привязан!')
 
         else:
             # Если пользователь не авторизован - это вход
-            logger.info(f"🔐 Попытка входа через {provider}: {sociallogin.user.username}")
+            logger.info(f"[SEC] Попытка входа через {provider}: {sociallogin.user.username}")
 
             # Для VK может не быть email
             if provider == 'vk' and not user.email:
-                logger.info(f"📧 VK аккаунт без email: {user.username}")
+                logger.info(f"[EMAIL] VK аккаунт без email: {user.username}")
                 # Создаем временный email если нужно
                 if not user.email:
                     uid = sociallogin.account.uid
@@ -94,7 +94,7 @@ def handle_pre_social_login(request, sociallogin, **kwargs):
 
                     # Если пользователь существует, но не подтвердил email
                     if not existing_user.email_verified:
-                        logger.info(f"📧 Автоматическое подтверждение email для {email}")
+                        logger.info(f"[EMAIL] Автоматическое подтверждение email для {email}")
                         existing_user.email_verified = True
                         existing_user.save(update_fields=['email_verified'])
 
@@ -102,14 +102,14 @@ def handle_pre_social_login(request, sociallogin, **kwargs):
                     pass
 
     except Exception as e:
-        logger.error(f"❌ Ошибка в handle_pre_social_login: {e}")
+        logger.error(f"[ERR] Ошибка в handle_pre_social_login: {e}")
 
 
 def social_login_error_handler(request, error, **kwargs):
     """
     Обработчик ошибок социальной авторизации
     """
-    logger.error(f"❌ Ошибка социальной авторизации: {error}")
+    logger.error(f"[ERR] Ошибка социальной авторизации: {error}")
 
     messages.error(
         request,

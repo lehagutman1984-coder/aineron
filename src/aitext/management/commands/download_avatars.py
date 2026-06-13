@@ -1,4 +1,4 @@
-import io
+﻿import io
 import os
 import requests
 from django.core.management.base import BaseCommand
@@ -162,7 +162,7 @@ class Command(BaseCommand):
             img = url_cache[url]
 
             if img is None:
-                self.stdout.write(f'  ⚠ Не удалось скачать для {network.slug}, использую fallback')
+                self.stdout.write(f'  [WARN] Не удалось скачать для {network.slug}, использую fallback')
                 img = make_fallback_avatar(network.slug)
                 fallback += 1
             else:
@@ -171,7 +171,7 @@ class Command(BaseCommand):
             path = save_avatar(img, network.slug)
             network.avatar = path
             network.save(update_fields=['avatar'])
-            self.stdout.write(f'  ✓ {network.name} → {path}')
+            self.stdout.write(f'  {network.name} → {path}')
 
         self.stdout.write(self.style.SUCCESS(
             f'\nГотово! Официальных: {ok}, fallback (цветные): {fallback}'
