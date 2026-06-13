@@ -24,6 +24,9 @@ import type {
   OrgInvite,
   Invoice,
   UsageStats,
+  BlogCategory,
+  BlogPost,
+  BlogPostDetail,
 } from "./types";
 
 const BASE_URL =
@@ -280,6 +283,25 @@ export const getUsageStats = (params?: {
   const query = qs.toString();
   return request<UsageStats>(`/usage/${query ? "?" + query : ""}`);
 };
+
+// ============ Blog ============
+
+export const listBlogCategories = (): Promise<BlogCategory[]> =>
+  request<BlogCategory[]>("/blog/categories/");
+
+export const listBlogPosts = (params?: {
+  category?: string;
+  show_on_main?: boolean;
+}): Promise<BlogPost[]> => {
+  const qs = new URLSearchParams();
+  if (params?.category) qs.set("category", params.category);
+  if (params?.show_on_main) qs.set("show_on_main", "1");
+  const query = qs.toString();
+  return request<BlogPost[]>(`/blog/posts/${query ? "?" + query : ""}`);
+};
+
+export const getBlogPost = (slug: string): Promise<BlogPostDetail> =>
+  request<BlogPostDetail>(`/blog/posts/${slug}/`);
 
 // ============ User (legacy Django session endpoint, kept for compatibility) ============
 

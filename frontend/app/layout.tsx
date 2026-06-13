@@ -5,6 +5,7 @@ import { Providers } from "./providers";
 import { Navbar } from "@/components/layout/Navbar";
 import { AuthInit } from "@/components/layout/AuthInit";
 import { ToastContainer } from "@/components/ui/toast";
+import { Analytics } from "@/components/analytics/Analytics";
 
 const inter = Inter({
   subsets: ["latin", "cyrillic"],
@@ -45,6 +46,7 @@ export default function RootLayout({
           <Navbar />
           <main>{children}</main>
           <ToastContainer />
+          <Analytics />
         </Providers>
       </body>
     </html>

@@ -338,6 +338,40 @@ export interface UsageStats {
   by_model: UsageByModel[];
 }
 
+// ============ Blog ============
+
+export interface BlogCategory {
+  id: number;
+  name: string;
+  slug: string;
+  description: string;
+  seo_title: string | null;
+  seo_description: string | null;
+  seo_keywords: string | null;
+}
+
+export interface BlogPost {
+  id: number;
+  title: string;
+  slug: string;
+  category: BlogCategory | null;
+  preview_image_url: string | null;
+  preview_text: string;
+  author_name: string | null;
+  published_at: string;
+  views_count: number;
+  show_on_main: boolean;
+  seo_title: string | null;
+  seo_description: string | null;
+  seo_keywords: string | null;
+}
+
+export interface BlogPostDetail extends BlogPost {
+  content: string;
+  updated_at: string;
+  network_slugs: string[];
+}
+
 // ============ Auth (DRF /api/v1/auth/me/) ============
 
 export interface AuthUser {

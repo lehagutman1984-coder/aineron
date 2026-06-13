@@ -22,8 +22,7 @@ const nextConfig: NextConfig = {
       { source: "/aitext/:path*",   destination: `${djangoUrl}/aitext/:path*` },
       { source: "/blog/:path*",     destination: `${djangoUrl}/blog/:path*` },
       { source: "/accounts/:path*", destination: `${djangoUrl}/accounts/:path*` },
-      { source: "/sitemap.xml",     destination: `${djangoUrl}/sitemap.xml` },
-      { source: "/robots.txt",      destination: `${djangoUrl}/robots.txt` },
+      // sitemap.xml and robots.txt handled natively by Next.js (app/sitemap.ts, app/robots.ts)
     ];
   },
 };

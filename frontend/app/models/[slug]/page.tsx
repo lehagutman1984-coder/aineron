@@ -12,14 +12,17 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const network = await serverGetNetwork(params.slug);
   if (!network) return { title: "Модель не найдена" };
+  const title = network.seo_title || network.name;
+  const description = network.seo_description || network.description;
   return {
-    title: network.seo_title || network.name,
-    description: network.seo_description || network.description,
+    title,
+    description,
     keywords: network.seo_keywords,
     openGraph: {
-      title: network.seo_title || network.name,
-      description: network.seo_description || network.description,
+      title,
+      description,
       type: "website",
+      ...(network.avatar && { images: [{ url: network.avatar }] }),
     },
   };
 }
@@ -32,21 +35,60 @@ export async function generateStaticParams() {
 export const revalidate = 3600;
 
 export default async function ModelDetailPage({ params }: Props) {
-  const network = await serverGetNetwork(params.slug);
+  const [network, allNetworks] = await Promise.all([
+    serverGetNetwork(params.slug),
+    serverListNetworks(),
+  ]);
   if (!network) notFound();
 
-  const jsonLd = {
+  const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://aineron.ru";
+  const pageUrl = `${SITE_URL}/models/${network.slug}/`;
+
+  const softwareAppJsonLd = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     name: network.name,
-    description: network.description,
+    description: network.seo_description || network.description,
     applicationCategory: "AIApplication",
+    url: pageUrl,
+    inLanguage: "ru",
     offers: {
       "@type": "Offer",
       priceCurrency: "RUB",
-      price: "0",
+      price: network.unlimited ? "0" : String(network.cost_per_message),
+      description: network.unlimited ? "Безлимит по тарифу" : `${network.cost_per_message} звезд за сообщение`,
     },
+    ...(network.avatar && { image: network.avatar }),
   };
+
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Главная", item: SITE_URL },
+      { "@type": "ListItem", position: 2, name: "Каталог", item: `${SITE_URL}/models/` },
+      { "@type": "ListItem", position: 3, name: network.name, item: pageUrl },
+    ],
+  };
+
+  const faqJsonLd =
+    network.faqs.length > 0
+      ? {
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: network.faqs.map((faq) => ({
+            "@type": "Question",
+            name: faq.question,
+            acceptedAnswer: { "@type": "Answer", text: faq.answer },
+          })),
+        }
+      : null;
+
+  const relatedNetworks = (allNetworks ?? [])
+    .filter(
+      (n) => n.slug !== network.slug && n.category.slug === network.category.slug
+    )
+    .slice(0, 4);
 
   const isMedia = network.handle_photo || network.handle_video;
 
@@ -54,10 +96,29 @@ export default async function ModelDetailPage({ params }: Props) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareAppJsonLd) }}
       />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+      {faqJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+        />
+      )}
 
       <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
+        {/* Breadcrumbs */}
+        <nav className="mb-4 flex items-center gap-2 text-[13px] text-[rgba(13,13,13,0.45)]">
+          <Link href="/" className="hover:text-[#0d0d0d] transition-colors">Главная</Link>
+          <span>/</span>
+          <Link href="/models/" className="hover:text-[#0d0d0d] transition-colors">Каталог</Link>
+          <span>/</span>
+          <span className="text-[rgba(13,13,13,0.65)]">{network.name}</span>
+        </nav>
+
         {/* Back */}
         <Link
           href="/models/"
@@ -129,7 +190,7 @@ export default async function ModelDetailPage({ params }: Props) {
 
         {/* FAQ */}
         {network.faqs.length > 0 && (
-          <div>
+          <div className="mb-12">
             <h2 className="mb-5 text-[20px] font-semibold text-[#0d0d0d]">
               Частые вопросы
             </h2>
@@ -150,6 +211,35 @@ export default async function ModelDetailPage({ params }: Props) {
                     {faq.answer}
                   </div>
                 </details>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Related models */}
+        {relatedNetworks.length > 0 && (
+          <div>
+            <h2 className="mb-5 text-[18px] font-semibold text-[#0d0d0d]">
+              Похожие модели — {network.category.name}
+            </h2>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {relatedNetworks.map((n) => (
+                <Link
+                  key={n.id}
+                  href={`/models/${n.slug}/`}
+                  className="flex flex-col items-center gap-2 rounded-[10px] border border-[rgba(13,13,13,0.10)] bg-white p-4 text-center transition-all hover:border-[rgba(13,13,13,0.25)] hover:shadow-sm"
+                >
+                  {n.avatar ? (
+                    <img src={n.avatar} alt={n.name} width={36} height={36} className="rounded-[8px]" />
+                  ) : (
+                    <div className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[rgba(10,124,255,0.08)] text-[#0a7cff]">
+                      <Code2 size={16} />
+                    </div>
+                  )}
+                  <span className="text-[12px] font-medium leading-tight text-[#0d0d0d]">
+                    {n.name}
+                  </span>
+                </Link>
               ))}
             </div>
           </div>
