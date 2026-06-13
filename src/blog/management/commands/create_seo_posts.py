@@ -354,7 +354,7 @@ class Command(BaseCommand):
 
         # Статья 1: Преимущества сервиса
         post1, created1 = Post.objects.update_or_create(
-            slug='preimushchestva-aineron-dostup-k-nejrosetyam-bez-vpn',
+            slug='preimushchestva-aineron-nejroseti-bez-vpn',
             defaults={
                 'title': 'Aineron.ru: 8 причин выбрать этот сервис для работы с нейросетями в России',
                 'category': about_cat,
