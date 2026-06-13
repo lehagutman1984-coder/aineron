@@ -1,6 +1,5 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   output: "standalone",
 
   images: {
@@ -20,9 +19,7 @@ const nextConfig: NextConfig = {
       { source: "/admin/:path*",    destination: `${djangoUrl}/admin/:path*` },
       { source: "/users/:path*",    destination: `${djangoUrl}/users/:path*` },
       { source: "/aitext/:path*",   destination: `${djangoUrl}/aitext/:path*` },
-      { source: "/blog/:path*",     destination: `${djangoUrl}/blog/:path*` },
       { source: "/accounts/:path*", destination: `${djangoUrl}/accounts/:path*` },
-      // sitemap.xml and robots.txt handled natively by Next.js (app/sitemap.ts, app/robots.ts)
     ];
   },
 };
