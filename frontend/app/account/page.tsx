@@ -70,12 +70,12 @@ export default function AccountPage() {
           </div>
           <p className="mb-1 text-[36px] font-bold text-[#0d0d0d]">{profile.pages_count}</p>
           <p className="mb-4 text-[13px] text-[rgba(13,13,13,0.5)]">звёзд</p>
-          <a
-            href="/users/pages/buy-stars/"
+          <Link
+            href="/account/billing/"
             className="inline-flex h-9 items-center gap-2 rounded-[8px] bg-[#0a7cff] px-4 text-[13px] font-medium text-white hover:bg-[#0066cc] transition-colors"
           >
             Пополнить
-          </a>
+          </Link>
         </div>
 
         {/* Profile card */}
@@ -89,18 +89,12 @@ export default function AccountPage() {
             {"tariff_name" in profile ? profile.tariff_name : "Бесплатный тариф"}
           </p>
           <div className="flex flex-wrap gap-2">
-            <a
-              href="/users/pages/tariffs/"
+            <Link
+              href="/account/billing/"
               className="inline-flex h-9 items-center rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[13px] text-[rgba(13,13,13,0.7)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
             >
-              Тарифы
-            </a>
-            <a
-              href="/users/pages/payments/"
-              className="inline-flex h-9 items-center rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[13px] text-[rgba(13,13,13,0.7)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
-            >
-              Платежи
-            </a>
+              Тарифы и платежи
+            </Link>
           </div>
         </div>
 

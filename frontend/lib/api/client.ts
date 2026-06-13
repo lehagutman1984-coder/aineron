@@ -27,6 +27,11 @@ import type {
   BlogCategory,
   BlogPost,
   BlogPostDetail,
+  TariffsResponse,
+  CreatePaymentResponse,
+  PageSaleSettings,
+  PaymentHistory,
+  ApplyPromoResponse,
 } from "./types";
 
 const BASE_URL =
@@ -302,6 +307,34 @@ export const listBlogPosts = (params?: {
 
 export const getBlogPost = (slug: string): Promise<BlogPostDetail> =>
   request<BlogPostDetail>(`/blog/posts/${slug}/`);
+
+// ============ Billing ============
+
+export const getTariffs = (): Promise<TariffsResponse> =>
+  request<TariffsResponse>("/billing/tariffs/");
+
+export const payTariff = (tariffId: number): Promise<CreatePaymentResponse> =>
+  request<CreatePaymentResponse>(`/billing/tariffs/${tariffId}/pay/`, {
+    method: "POST",
+  });
+
+export const getPageSaleSettings = (): Promise<PageSaleSettings> =>
+  request<PageSaleSettings>("/billing/pages/");
+
+export const buyPages = (pages: number): Promise<CreatePaymentResponse> =>
+  request<CreatePaymentResponse>("/billing/pages/buy/", {
+    method: "POST",
+    body: JSON.stringify({ pages }),
+  });
+
+export const getPaymentHistory = (): Promise<PaymentHistory[]> =>
+  request<PaymentHistory[]>("/billing/history/");
+
+export const applyPromoCode = (code: string): Promise<ApplyPromoResponse> =>
+  request<ApplyPromoResponse>("/billing/promo/", {
+    method: "POST",
+    body: JSON.stringify({ code }),
+  });
 
 // ============ User (legacy Django session endpoint, kept for compatibility) ============
 

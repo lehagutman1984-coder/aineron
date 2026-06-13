@@ -19,6 +19,10 @@ from api.views.teams import (
 from api.views.invoices import InvoiceListCreateView
 from api.views.usage import UsageStatsView
 from api.views.blog import BlogCategoryListView, BlogPostListView, BlogPostDetailView
+from api.views.billing import (
+    TariffListView, TariffPayView, PageSaleSettingsView,
+    BuyPagesView, PaymentHistoryView, ApplyPromoView,
+)
 from api.views.embeddings import EmbeddingsView
 from api.views.audio import AudioTranscriptionsView, AudioSpeechView
 from api.views.batch import BatchListCreateView, BatchDetailView, BatchResultsView, BatchCancelView
@@ -72,6 +76,14 @@ urlpatterns = [
     path('v1/blog/categories/', BlogCategoryListView.as_view(), name='blog_categories'),
     path('v1/blog/posts/', BlogPostListView.as_view(), name='blog_posts'),
     path('v1/blog/posts/<slug:slug>/', BlogPostDetailView.as_view(), name='blog_post_detail'),
+
+    # ========== Billing (Phase 3) ==========
+    path('v1/billing/tariffs/', TariffListView.as_view(), name='billing_tariffs'),
+    path('v1/billing/tariffs/<int:tariff_id>/pay/', TariffPayView.as_view(), name='billing_tariff_pay'),
+    path('v1/billing/pages/', PageSaleSettingsView.as_view(), name='billing_pages_settings'),
+    path('v1/billing/pages/buy/', BuyPagesView.as_view(), name='billing_buy_pages'),
+    path('v1/billing/history/', PaymentHistoryView.as_view(), name='billing_history'),
+    path('v1/billing/promo/', ApplyPromoView.as_view(), name='billing_promo'),
 
     # ========== Phase 6: Advanced API ==========
     path('v1/embeddings', EmbeddingsView.as_view(), name='embeddings'),

@@ -372,6 +372,73 @@ export interface BlogPostDetail extends BlogPost {
   network_slugs: string[];
 }
 
+// ============ Billing ============
+
+export interface Tariff {
+  id: number;
+  display_name: string;
+  pages_count: number;
+  price: string;
+  is_free: boolean;
+  is_trial: boolean;
+  duration_days: number;
+}
+
+export interface UserSubscription {
+  id: number;
+  tariff: Tariff;
+  started_at: string;
+  expires_at: string;
+  is_active: boolean;
+  auto_renew: boolean;
+  days_left: number;
+}
+
+export interface TariffsResponse {
+  tariffs: Tariff[];
+  current_subscription: UserSubscription | null;
+  pages_count: number;
+}
+
+export interface RobokassaForm {
+  action: string;
+  method: string;
+  fields: Record<string, string>;
+}
+
+export interface CreatePaymentResponse {
+  payment_id: number;
+  invoice_id: number;
+  form: RobokassaForm;
+}
+
+export interface PageSaleSettings {
+  price_per_page: string;
+  min_pages_for_purchase: number;
+  max_pages_for_purchase: number;
+  is_active: boolean;
+}
+
+export interface PaymentHistory {
+  id: number;
+  payment_type: "subscription" | "pages" | "promo";
+  invoice_id: string;
+  amount: string;
+  pages_count: number;
+  status: "pending" | "success" | "failed" | "refunded";
+  description: string;
+  tariff_name: string | null;
+  paid_at: string | null;
+  created_at: string;
+}
+
+export interface ApplyPromoResponse {
+  ok: boolean;
+  stars_added: number;
+  new_balance: number;
+  message: string;
+}
+
 // ============ Auth (DRF /api/v1/auth/me/) ============
 
 export interface AuthUser {
