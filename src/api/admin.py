@@ -56,7 +56,7 @@ class AuditLogAdmin(admin.ModelAdmin):
     list_display = ['action', 'user', 'resource_type', 'resource_id', 'ip_address', 'created_at']
     list_filter = ['action', 'created_at']
     search_fields = ['user__email', 'resource_id', 'ip_address']
-    readonly_fields = list(AuditLog._meta.fields)
+    readonly_fields = [f.name for f in AuditLog._meta.fields]
     ordering = ['-created_at']
 
     def has_add_permission(self, request):
