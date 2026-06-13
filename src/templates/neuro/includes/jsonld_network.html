@@ -1,0 +1,24 @@
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "{{ network.name|escapejs }}",
+  "description": "{{ network.seo_description|default:network.description|escapejs }}",
+  "url": "{{ request.build_absolute_uri }}",
+  "applicationCategory": "UtilitiesApplication",
+  "operatingSystem": "Web",
+  "inLanguage": "ru",
+  "publisher": {
+    "@type": "Organization",
+    "name": "{{ site.name }}",
+    "url": "{{ request.scheme }}://{{ request.get_host }}"
+  },
+  "offers": {
+    "@type": "Offer",
+    "price": "{{ network.cost_per_message }}",
+    "priceCurrency": "RUB",
+    "description": "{{ network.cost_per_message }} звёзд за сообщение"
+  }{% if network.get_avatar %},
+  "image": "{{ request.scheme }}://{{ request.get_host }}{{ network.get_avatar }}"{% endif %}
+}
+</script>

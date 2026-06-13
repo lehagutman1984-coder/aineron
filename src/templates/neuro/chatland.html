@@ -65,6 +65,7 @@
     <link rel="stylesheet" href="{% static 'neuro/css/constructor.css' %}">
     <link rel="stylesheet" href="{% static 'neuro/css/stars_modals.css' %}">
 {{ site_counter.counter_text|safe }}
+    {% include 'neuro/includes/jsonld_network.html' %}
 </head>
 <body>
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
