@@ -18,6 +18,7 @@ from api.views.teams import (
 )
 from api.views.invoices import InvoiceListCreateView
 from api.views.usage import UsageStatsView
+from api.views.blog import BlogCategoryListView, BlogPostListView, BlogPostDetailView
 
 app_name = 'api'
 
@@ -60,6 +61,11 @@ urlpatterns = [
 
     # ========== Статистика использования ==========
     path('v1/usage/', UsageStatsView.as_view(), name='usage_stats'),
+
+    # ========== Блог (публичный) ==========
+    path('v1/blog/categories/', BlogCategoryListView.as_view(), name='blog_categories'),
+    path('v1/blog/posts/', BlogPostListView.as_view(), name='blog_posts'),
+    path('v1/blog/posts/<slug:slug>/', BlogPostDetailView.as_view(), name='blog_post_detail'),
 
     # ========== OpenAPI / Swagger ==========
     path('v1/schema/', SpectacularAPIView.as_view(), name='schema'),
