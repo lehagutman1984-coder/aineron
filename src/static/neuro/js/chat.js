@@ -452,7 +452,7 @@
         timerContainer.className = 'chat-timer-bar';
         timerContainer.innerHTML = `
             <div class="timer-content">
-                <div class="timer-icon">⏳</div>
+                <div class="timer-icon"></div>
                 <div class="timer-text">
                     <span>Бесплатный тариф</span>
                     <strong>Подождите ${timerSeconds} секунд</strong>

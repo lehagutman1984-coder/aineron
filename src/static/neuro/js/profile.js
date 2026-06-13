@@ -334,7 +334,7 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                console.log('📧 Код отправлен на почту');
+                console.log('Код отправлен на почту');
                 startResendTimer(60);
             } else {
                 showNotification(data.message || 'Ошибка при отправке кода', 'error');

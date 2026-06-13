@@ -378,12 +378,12 @@ class PagesModal {
                 const form = document.getElementById('robokassa_form');
                 if (form) form.submit();
                 else {
-                    if (window.showNotification) window.showNotification('✅ Платеж создан, перенаправление...', 'success');
+                    if (window.showNotification) window.showNotification('Платеж создан, перенаправление...', 'success');
                     setTimeout(() => window.location.href = '/users/pages/pricing/', 1500);
                 }
             } else {
                 this.showError(data.message || 'Ошибка при покупке');
-                if (window.showNotification) window.showNotification(`❌ ${data.message || 'Ошибка при покупке'}`, 'error');
+                if (window.showNotification) window.showNotification(data.message || 'Ошибка при покупке', 'error');
                 this.isLoading = false;
                 if (buyBtn) {
                     buyBtn.innerHTML = '<i class="fas fa-shopping-cart"></i> Купить';
@@ -394,7 +394,7 @@ class PagesModal {
         .catch(error => {
             console.error('Purchase error:', error);
             this.showError('Ошибка соединения с сервером');
-            if (window.showNotification) window.showNotification('❌ Ошибка соединения с сервером', 'error');
+            if (window.showNotification) window.showNotification('Ошибка соединения с сервером', 'error');
             this.isLoading = false;
             if (buyBtn) {
                 buyBtn.innerHTML = '<i class="fas fa-shopping-cart"></i> Купить';

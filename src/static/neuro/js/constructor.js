@@ -253,7 +253,7 @@
                         <select data-settings-name="${escapeHtml(fieldName)}" class="constructor-select">
                             ${field.options.map(opt => {
                                 const optExtra = opt.extra_cost ? parseFloat(opt.extra_cost) : 0;
-                                const extraText = optExtra > 0 ? ` (+${optExtra}⭐)` : '';
+                                const extraText = optExtra > 0 ? ` (+${optExtra} зв.)` : '';
                                 const selected = (opt.value == currentValue) ? 'selected' : '';
                                 return `<option value="${escapeHtml(opt.value)}" ${selected}>${escapeHtml(opt.label)}${extraText}</option>`;
                             }).join('')}
