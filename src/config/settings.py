@@ -45,11 +45,17 @@ INSTALLED_APPS = [
     'landing.apps.LandingConfig',
     'aitext',
     'blog',
+
+    'rest_framework',
+    'corsheaders',
+    'drf_spectacular',
+    'api',
 ]
 
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -278,3 +284,54 @@ handler404 = 'landing.views.custom_404_view'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUDIO_DIR = os.path.join(MEDIA_ROOT, 'audio')
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+
+
+# ========== DJANGO REST FRAMEWORK ==========
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'api.authentication.APIKeyAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_VERSIONING_CLASS': 'rest_framework.versioning.URLPathVersioning',
+    'DEFAULT_VERSION': 'v1',
+    'ALLOWED_VERSIONS': ['v1'],
+    'DEFAULT_THROTTLE_CLASSES': [
+        'api.throttling.APIKeyRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'api_key': '120/min',
+    },
+    'EXCEPTION_HANDLER': 'api.exceptions.openai_exception_handler',
+}
+
+
+# ========== CORS ==========
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'https://aineron.ru',
+    'https://www.aineron.ru',
+]
+CORS_ALLOW_CREDENTIALS = True
+CORS_URLS_REGEX = r'^/api/.*$'
+
+
+# ========== DRF SPECTACULAR ==========
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'aineron.ru API',
+    'DESCRIPTION': 'OpenAI-совместимый API для доступа к нейросетям без VPN',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,
+    'SWAGGER_UI_SETTINGS': {
+        'persistAuthorization': True,
+        'displayRequestDuration': True,
+    },
+}
