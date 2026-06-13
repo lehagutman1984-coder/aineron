@@ -258,12 +258,8 @@ CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 
 
 # ========== API КЛЮЧИ ==========
-ROUTERAI_API_KEY = os.environ.get('ROUTERAI_API_KEY', '')
-ROUTERAI_API_URL = "https://routerai.ru/api/v1"
-ROUTERAI_MODEL = "x-ai/grok-4.1-fast"
-
-OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY', '')
-FAL_KEY = os.environ.get('FAL_KEY', '')
+LAOZHANG_API_KEY = os.environ.get('LAOZHANG_API_KEY', '')
+LAOZHANG_API_URL = "https://api.laozhang.ai/v1"
 SITEMAP_CACHE_TIMEOUT = 3600
 
 

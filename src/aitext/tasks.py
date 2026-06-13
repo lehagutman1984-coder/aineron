@@ -11,7 +11,6 @@ from .models import Message, NeuralNetwork, GeneratedImage
 from .file_utils import prepare_media_for_ai
 from .fal_utils import generate_with_falai, validate_and_merge_settings
 from users.models import UserSpending
-from fal_client import FalClientHTTPError
 from .code_formatter import CodeFormatter
 
 logger = logging.getLogger(__name__)
@@ -19,29 +18,25 @@ logger = logging.getLogger(__name__)
 _client = None
 
 
-def get_openrouter_client():
+def get_laozhang_client():
     global _client
     if _client is None:
         _client = OpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=settings.OPENROUTER_API_KEY,
+            base_url=settings.LAOZHANG_API_URL,
+            api_key=settings.LAOZHANG_API_KEY,
         )
     return _client
 
 
 def translate_to_english(text, network_name):
-    """Переводит текст на английский через DeepSeek (OpenRouter)"""
+    """Переводит текст на английский через DeepSeek (laozhang.ai)"""
     if not text or not text.strip():
         return text
 
     try:
-        client = get_openrouter_client()
+        client = get_laozhang_client()
         completion = client.chat.completions.create(
-            extra_headers={
-                "HTTP-Referer": settings.SITE_URL,
-                "X-OpenRouter-Title": settings.SITE_NAME,
-            },
-            model="deepseek/deepseek-chat-v3-0324",
+            model="deepseek-v3",
             messages=[
                 {"role": "system",
                  "content": "You are a translator. Translate the user's message into English. Preserve the meaning and tone. Output only the translated text. If the text is already in English, return the text unchanged."},
@@ -186,37 +181,24 @@ def generate_ai_response(self, message_id):
                     f"fal.ai ответ сгенерирован для сообщения {message_id}, сохранено изображений: {len(saved_images)}")
                 return
 
-            except FalClientHTTPError as e:
-                if e.status_code == 403 and 'Exhausted balance' in str(e):
-                    message.status = Message.Status.FAILED
-                    message.error_message = "Проблема с провайдером 403, обратитесь к администратору сервиса для решения проблем."
-                    message.save()
-                    logger.error(f"fal.ai balance error for message {message_id}: {e}")
-                    return
-                else:
-                    logger.error(f"Ошибка fal.ai для сообщения {message_id}: {e}")
-                    if stars_deducted:
-                        user.add_pages(total_cost)
-                        logger.info(f"Возвращено {total_cost}⭐ пользователю {user.email} из-за ошибки fal.ai")
-                    message.status = Message.Status.FAILED
-                    message.error_message = "Произошла ошибка генерации, звезды возвращены на ваш баланс, пожалуйста выберите другую нейросеть из каталога, пока мы будем устранять проблему."
-                    message.save()
-                    return
-
             except Exception as e:
-                logger.error(f"Ошибка fal.ai для сообщения {message_id}: {e}")
+                error_str = str(e)
+                logger.error(f"Ошибка генерации изображения для сообщения {message_id}: {e}")
                 if stars_deducted:
                     user.add_pages(total_cost)
                     logger.info(f"Возвращено {total_cost}⭐ пользователю {user.email} из-за ошибки генерации")
                 message.status = Message.Status.FAILED
-                message.error_message = "Произошла ошибка генерации, звезды возвращены на ваш баланс, пожалуйста выберите другую нейросеть из каталога, пока мы будем устранять проблему."
+                if 'billing' in error_str.lower() or 'balance' in error_str.lower() or 'quota' in error_str.lower():
+                    message.error_message = "Проблема с провайдером, обратитесь к администратору сервиса для решения проблем."
+                else:
+                    message.error_message = "Произошла ошибка генерации, звезды возвращены на ваш баланс, пожалуйста выберите другую нейросеть из каталога, пока мы будем устранять проблему."
                 message.save()
                 return
 
-        # ========== OpenRouter провайдер ==========
+        # ========== laozhang.ai текст провайдер ==========
         if not network.model_name:
             message.status = Message.Status.FAILED
-            message.error_message = "У нейросети не указана модель OpenRouter"
+            message.error_message = "У нейросети не указана модель"
             message.save()
             return
 
@@ -283,12 +265,8 @@ def generate_ai_response(self, message_id):
         if not messages_for_api:
             messages_for_api.append({"role": "user", "content": "Привет"})
 
-        client = get_openrouter_client()
+        client = get_laozhang_client()
         completion_kwargs = {
-            "extra_headers": {
-                "HTTP-Referer": settings.SITE_URL,
-                "X-OpenRouter-Title": settings.SITE_NAME,
-            },
             "model": network.model_name,
             "messages": messages_for_api,
             "temperature": 0.7,

@@ -222,8 +222,8 @@ def create_chat(request):
             status=Message.Status.PENDING
         )
 
-        # ========== СПИСАНИЕ ЗВЁЗД (ТОЛЬКО ДЛЯ OPENROUTER) ==========
-        # Для fal.ai списание будет в задаче Celery, здесь не списываем
+        # ========== СПИСАНИЕ ЗВЁЗД (только для текстовых моделей) ==========
+        # Для моделей изображений/видео списание происходит в задаче Celery
         if network.provider != 'fal-ai' and deduct_stars:
             request.user.spend_pages(cost)
             UserSpending.objects.create(
@@ -394,8 +394,8 @@ def send_message(request, chat_id):
             status=Message.Status.PENDING
         )
 
-        # ========== СПИСАНИЕ ЗВЁЗД (ТОЛЬКО ДЛЯ OPENROUTER) ==========
-        # Для fal.ai списание будет в задаче Celery, здесь не списываем
+        # ========== СПИСАНИЕ ЗВЁЗД (только для текстовых моделей) ==========
+        # Для моделей изображений/видео списание происходит в задаче Celery
         if network.provider != 'fal-ai' and deduct_stars:
             request.user.spend_pages(cost)
             UserSpending.objects.create(

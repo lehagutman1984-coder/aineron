@@ -2,7 +2,7 @@
 
 ## Что это за проект
 
-SaaS-платформа для доступа к AI-нейросетям без VPN. Пользователи покупают «звёзды» (внутреннюю валюту) и тратят их на каждое сообщение к нейросети. Поддерживает как текстовые LLM (через OpenRouter), так и генерацию изображений/видео (через fal.ai).
+SaaS-платформа для доступа к AI-нейросетям без VPN. Пользователи покупают «звёзды» (внутреннюю валюту) и тратят их на каждое сообщение к нейросети. Поддерживает как текстовые LLM, так и генерацию изображений/видео — всё через единый провайдер api.laozhang.ai.
 
 Домен: **aineron.ru** | Язык интерфейса: **русский**
 
@@ -16,8 +16,8 @@ SaaS-платформа для доступа к AI-нейросетям без 
 | Task queue | Celery 5.6 + Redis 7 |
 | Database | PostgreSQL 15 (SQLite только для тестов) |
 | Auth | django-allauth 65 (Google, Yandex, VK, Mail.ru + email/password) |
-| AI — текст | OpenRouter (openai SDK, base_url: openrouter.ai/api/v1) |
-| AI — медиа | fal.ai (fal-client SDK) |
+| AI — текст | laozhang.ai (openai SDK, base_url: api.laozhang.ai/v1) |
+| AI — медиа | laozhang.ai (openai SDK, images.generate API) |
 | Платежи | Robokassa (recurring через POST /Merchant/Recurring) |
 | Frontend | Vanilla JS + CSS, без фреймворков |
 | Деплой | Docker Compose (6 сервисов) + Nginx reverse proxy |
@@ -97,17 +97,17 @@ aineron.ru/
 1. Пользователь POST → `create_chat` или `send_message`
 2. Проверка баланса / бесплатного лимита
 3. Создаётся `Message(role='assistant', status='pending')`
-4. Для OpenRouter — звёзды списываются сразу; для fal.ai — в Celery-задаче
+4. Для текстовых моделей — звёзды списываются сразу; для изображений/видео — в Celery-задаче
 5. `generate_ai_response.delay(assistant_message.id)` — задача Celery
 6. Frontend polling `message_status/{id}` пока status != completed/failed
 
 **Celery-задача `generate_ai_response`:**
-- **OpenRouter**: собирает историю (последние 20 сообщений), форматирует ответ через `CodeFormatter`, обрабатывает base64-изображения в ответе
-- **fal.ai**: валидирует настройки через `validate_and_merge_settings`, вызывает `fal_client.run(model_id, arguments)`, скачивает и сохраняет медиа через `save_media_from_url`
-- При ошибке fal.ai — возвращает звёзды пользователю
+- **Текст** (provider=openrouter): собирает историю (последние 20 сообщений), вызывает `chat.completions.create`, форматирует ответ через `CodeFormatter`, обрабатывает base64-изображения в ответе
+- **Изображения** (provider=fal-ai): валидирует настройки через `validate_and_merge_settings`, вызывает `client.images.generate`, скачивает и сохраняет медиа через `save_media_from_url`
+- При ошибке генерации изображений — возвращает звёзды пользователю
 - 3 retry с задержкой 60 сек
 
-**Translate to English**: если у нейросети `translate_to_english=True`, промт переводится через DeepSeek V3 перед отправкой в fal.ai
+**Translate to English**: если у нейросети `translate_to_english=True`, промт переводится через DeepSeek V3 (laozhang.ai) перед отправкой в модель изображений
 
 ### `blog` — блог
 
@@ -124,7 +124,7 @@ aineron.ru/
 
 - Новый пользователь получает `free_tariff.pages_count` звёзд (обычно 10)
 - Каждое сообщение списывает `network.cost_per_message` звёзд
-- При ошибке fal.ai — звёзды возвращаются
+- При ошибке генерации изображений — звёзды возвращаются
 - Покупка тарифа **добавляет** звёзды к существующим (`pages_count += tariff.pages_count`)
 - Покупка звёзд поштучно: через `PageSaleSettings` (цена за звезду, мин/макс)
 - Промокоды: начисляют звёзды напрямую
@@ -141,7 +141,7 @@ aineron.ru/
 
 ---
 
-## Конфигурация fal.ai (`config_json`)
+## Конфигурация моделей изображений (`config_json`)
 
 Поле `NeuralNetwork.config_json` — JSON-объект со структурой:
 ```json
@@ -200,10 +200,8 @@ ROBOKASSA_PASS1=
 ROBOKASSA_PASS2=
 ROBOKASSA_TEST_MODE=0
 
-# AI провайдеры
-OPENROUTER_API_KEY=
-FAL_KEY=
-ROUTERAI_API_KEY=   # резервный ключ, не используется активно
+# AI провайдер (laozhang.ai)
+LAOZHANG_API_KEY=
 
 # Сайт
 SITE_URL=https://aineron.ru

@@ -24,8 +24,8 @@ class Category(models.Model):
 
 class NeuralNetwork(models.Model):
     PROVIDER_CHOICES = [
-        ('openrouter', 'OpenRouter'),
-        ('fal-ai', 'fal.ai'),
+        ('openrouter', 'laozhang.ai (текст)'),
+        ('fal-ai', 'laozhang.ai (изображения/видео)'),
     ]
     """Модель нейросети"""
     name = models.CharField(max_length=100, verbose_name='Название нейросети')
@@ -41,8 +41,8 @@ class NeuralNetwork(models.Model):
         max_length=100,
         blank=True,
         null=True,
-        verbose_name='Название модели (OpenRouter)',
-        help_text='Например: deepseek/deepseek-chat-v3.1'
+        verbose_name='Название модели',
+        help_text='Например: gpt-4o, claude-sonnet-4-6, deepseek-v3, flux-2-pro'
     )
     is_default = models.BooleanField(
         default=False,
@@ -110,8 +110,8 @@ class NeuralNetwork(models.Model):
     config_json = models.JSONField(
         default=dict,
         blank=True,
-        verbose_name='Конфигурация модели (fal.ai)',
-        help_text='JSON конфигурация для моделей fal.ai (ui_settings, api_defaults, constraints, metadata)'
+        verbose_name='Конфигурация модели (изображения)',
+        help_text='JSON конфигурация для моделей изображений. api_defaults: {size, quality, style, n}. ui_settings, constraints, metadata'
     )
 
     is_popular = models.BooleanField(

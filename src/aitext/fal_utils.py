@@ -1,16 +1,28 @@
 import json
 import os
+import base64
 import logging
 import uuid
 import time
 import requests
-import urllib.request
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.conf import settings
-import fal_client
+from openai import OpenAI
 
 logger = logging.getLogger(__name__)
+
+_image_client = None
+
+
+def get_laozhang_image_client():
+    global _image_client
+    if _image_client is None:
+        _image_client = OpenAI(
+            api_key=settings.LAOZHANG_API_KEY,
+            base_url=settings.LAOZHANG_API_URL,
+        )
+    return _image_client
 
 
 def validate_and_merge_settings(config, user_settings):
@@ -280,10 +292,26 @@ def validate_and_merge_settings(config, user_settings):
     return final_args, errors, extra_cost
 
 
-def get_fal_client():
-    """Возвращает настроенный fal_client"""
-    os.environ['FAL_KEY'] = settings.FAL_KEY
-    return fal_client
+def save_image_from_b64(b64_data, message, prompt):
+    """Сохраняет изображение из base64 строки"""
+    try:
+        img_data = base64.b64decode(b64_data)
+        filename = f"generated_{uuid.uuid4()}.png"
+        path = f"generated_images/{filename}"
+        default_storage.save(path, ContentFile(img_data))
+        from .models import GeneratedImage
+        gen_img = GeneratedImage.objects.create(
+            message=message,
+            image=path,
+            prompt=prompt,
+            media_type='image'
+        )
+        logger.info(f"Изображение из base64 сохранено: {path}")
+        return gen_img
+    except Exception as e:
+        logger.error(f"Ошибка сохранения base64 изображения: {e}")
+        return None
+
 
 def save_media_from_url(url, message, prompt, media_type='image', max_retries=3, timeout=60):
     """
@@ -380,9 +408,42 @@ def save_media_from_url(url, message, prompt, media_type='image', max_retries=3,
     return None
 
 
+def _build_image_params(model_id, prompt, final_args):
+    """Формирует параметры для client.images.generate() из config api_defaults."""
+    params = {
+        'model': model_id,
+        'prompt': prompt,
+    }
+
+    # size: приоритет — прямой 'size', затем 'image_size', затем width+height
+    if 'size' in final_args:
+        params['size'] = str(final_args['size'])
+    elif 'image_size' in final_args:
+        size_val = final_args['image_size']
+        if isinstance(size_val, dict) and 'width' in size_val and 'height' in size_val:
+            params['size'] = f"{size_val['width']}x{size_val['height']}"
+        elif isinstance(size_val, str):
+            params['size'] = size_val
+    elif 'width' in final_args and 'height' in final_args:
+        params['size'] = f"{int(final_args['width'])}x{int(final_args['height'])}"
+
+    # Стандартные параметры images API
+    if 'quality' in final_args:
+        params['quality'] = final_args['quality']
+    if 'style' in final_args:
+        params['style'] = final_args['style']
+    if 'n' in final_args:
+        params['n'] = int(final_args['n'])
+    else:
+        params['n'] = 1
+
+    return params
+
+
 def generate_with_falai(network, user_msg, message, user_settings=None):
     """
-    Генерирует контент через fal.ai.
+    Генерирует изображения через laozhang.ai images API.
+    Имя функции сохранено для совместимости с tasks.py.
     network: объект NeuralNetwork
     user_msg: сообщение пользователя (Message)
     message: сообщение ассистента (pending)
@@ -391,11 +452,11 @@ def generate_with_falai(network, user_msg, message, user_settings=None):
     """
     config = network.config_json
     if not config:
-        raise Exception("Отсутствует конфигурация для fal.ai модели")
+        raise Exception("Отсутствует конфигурация для модели изображений")
 
     model_id = network.model_name
     if not model_id:
-        raise Exception("Не указан model_name для fal.ai")
+        raise Exception("Не указан model_name для модели изображений")
 
     base_cost = network.cost_per_message
 
@@ -410,77 +471,46 @@ def generate_with_falai(network, user_msg, message, user_settings=None):
 
     total_cost = base_cost + extra_cost
 
-    # Извлекаем промпт
     prompt = user_msg.content if user_msg else ""
-    final_args['prompt'] = prompt
 
-    # Вызываем fal.ai
-    logger.info(f"Запуск fal.ai модели {model_id} с аргументами: {final_args}")
-    client = get_fal_client()
+    image_params = _build_image_params(model_id, prompt, final_args)
+
+    logger.info(f"Запуск laozhang.ai images API: model={model_id}, params={image_params}")
+    client = get_laozhang_image_client()
+
     try:
-        result = client.run(model_id, arguments=final_args)
+        response = client.images.generate(**image_params)
     except Exception as e:
-        logger.error(f"Ошибка вызова fal.ai: {e}")
+        logger.error(f"Ошибка вызова laozhang.ai images API: {e}")
         raise
 
     # Обрабатываем результат
-    media_urls = []
-    possible_keys = ['image', 'images', 'video', 'videos', 'url', 'output']
-    for key in possible_keys:
-        if key in result:
-            value = result[key]
-            if isinstance(value, dict) and 'url' in value:
-                media_urls.append(value['url'])
-            elif isinstance(value, list):
-                for item in value:
-                    if isinstance(item, dict) and 'url' in item:
-                        media_urls.append(item['url'])
-                    elif isinstance(item, str) and item.startswith('http'):
-                        media_urls.append(item)
-            elif isinstance(value, str) and value.startswith('http'):
-                media_urls.append(value)
-
-    # Сохраняем медиа
     saved_media = []
-    failed_urls = []
-    for url in media_urls:
-        gen_img = save_media_from_url(url, message, prompt)
+    for img_data in response.data:
+        gen_img = None
+        if img_data.url:
+            gen_img = save_media_from_url(img_data.url, message, prompt)
+        elif img_data.b64_json:
+            gen_img = save_image_from_b64(img_data.b64_json, message, prompt)
         if gen_img:
             saved_media.append(gen_img)
-        else:
-            failed_urls.append(url)
 
     # Формируем текст ответа
     model_name = config.get('name', network.name)
     media_count = len(saved_media)
     if media_count > 0:
-        first_media = saved_media[0]
-        if first_media.media_type == 'video':
-            type_word = 'видео'
-            tag = 'video'
-            attrs = 'controls width="100%" style="max-width:100%; border-radius:12px;"'
-        else:
-            type_word = 'изображений'
-            tag = 'img'
-            attrs = 'alt="Сгенерированное изображение" style="max-width:100%; border-radius:12px;"'
-
-        text_parts = [f"✅ Сгенерировано {media_count} {type_word} моделью \"{model_name}\"."]
+        text_parts = [f"✅ Сгенерировано {media_count} изображений моделью \"{model_name}\"."]
         for media in saved_media:
             if media.media_type == 'video':
-                text_parts.append(f"<{tag} src='{media.image.url}' {attrs}></{tag}>")
+                text_parts.append(
+                    f"<video src='{media.image.url}' controls width='100%' style='max-width:100%; border-radius:12px;'></video>"
+                )
             else:
-                text_parts.append(f"<{tag} src='{media.image.url}' {attrs}>")
+                text_parts.append(
+                    f"<img src='{media.image.url}' alt='Сгенерированное изображение' style='max-width:100%; border-radius:12px;'>"
+                )
         final_text = "\n\n".join(text_parts)
     else:
-        # Если медиа не сохранены, но есть URL в ответе
-        if media_urls:
-            # Формируем ссылки для скачивания
-            download_links = []
-            for url in media_urls:
-                download_links.append(f'<a href="{url}" target="_blank" class="fal-download-link" download>скачать</a>')
-            links_text = ", ".join(download_links)
-            final_text = f"✅ Модель \"{model_name}\" обработала запрос: \"{prompt[:100]}\".\n\n⚠️ Извините, мы не смогли сохранить медиа на наши сервера, но вы можете {links_text} самостоятельно."
-        else:
-            final_text = f"✅ Модель \"{model_name}\" обработала запрос: \"{prompt[:100]}\". (Нет медиа в ответе)"
+        final_text = f"✅ Модель \"{model_name}\" обработала запрос: \"{prompt[:100]}\". (Нет изображений в ответе)"
 
     return final_text, saved_media, total_cost
