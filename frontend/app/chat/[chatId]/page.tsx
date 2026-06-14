@@ -4,9 +4,10 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw, Paperclip } from "lucide-react";
+import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw, Paperclip, BookMarked } from "lucide-react";
 import { MarkdownContent } from "@/components/chat/MarkdownContent";
 import { AttachmentPreview, type AttachmentState } from "@/components/chat/AttachmentPreview";
+import { PromptPicker } from "@/components/chat/PromptPicker";
 import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, uploadFile, APIError } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 import type { WebMessage, ChatDetail } from "@/lib/api/types";
@@ -23,6 +24,7 @@ export default function ChatPage() {
   const { setStars } = useAuthStore();
 
   const [text, setText] = useState("");
+  const [showPromptPicker, setShowPromptPicker] = useState(false);
   const [attachments, setAttachments] = useState<AttachmentState[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -468,8 +470,18 @@ export default function ChatPage() {
                 Выберите тему или напишите свой вопрос
               </p>
 
+              {/* Prompt library button */}
+              <button
+                onClick={() => setShowPromptPicker(true)}
+                className="mt-5 flex items-center gap-1.5 rounded-[8px] border px-3.5 py-2 text-[13px] font-medium transition-colors"
+                style={{ borderColor: "var(--chat-input-border)", color: "rgba(13,13,13,0.55)" }}
+              >
+                <BookMarked size={13} />
+                Шаблоны промтов
+              </button>
+
               {/* Starter prompt cards */}
-              <div className="mt-6 grid w-full grid-cols-1 gap-2.5 sm:grid-cols-2">
+              <div className="mt-4 grid w-full grid-cols-1 gap-2.5 sm:grid-cols-2">
                 {getStarterPrompts(chat.network).map((card, i) => (
                   <button
                     key={i}
@@ -598,6 +610,17 @@ export default function ChatPage() {
           )}
         </form>
       </div>
+
+      {/* Prompt picker modal */}
+      {showPromptPicker && (
+        <PromptPicker
+          onSelect={(content) => {
+            setText(content);
+            setShowPromptPicker(false);
+          }}
+          onClose={() => setShowPromptPicker(false)}
+        />
+      )}
     </div>
   );
 }

@@ -35,6 +35,7 @@ from api.views.legal import LegalPrivacyView, LegalTermsView
 from api.views.referral import ReferralView, ReferralWithdrawView
 from api.views.files import UserFilesView, UserFileDeleteView
 from api.views.compare import CompareView
+from api.views.prompts import PromptListCreateView, PromptDetailView
 
 app_name = 'api'
 
@@ -124,6 +125,10 @@ urlpatterns = [
 
     # ========== Model Arena (сравнение) ==========
     path('v1/compare/', CompareView.as_view(), name='compare'),
+
+    # ========== Промпт-библиотека ==========
+    path('v1/prompts/', PromptListCreateView.as_view(), name='prompts_list_create'),
+    path('v1/prompts/<int:pk>/', PromptDetailView.as_view(), name='prompt_detail'),
 
     # ========== OpenAPI / Swagger ==========
     path('v1/schema/', SpectacularAPIView.as_view(), name='schema'),

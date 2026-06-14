@@ -421,6 +421,39 @@ class GeneratedImage(models.Model):
         return f"{self.get_media_type_display()} для сообщения {self.message.id}"
 
 
+class PromptTemplate(models.Model):
+    CATEGORY_CHOICES = [
+        ('code', 'Код'),
+        ('translate', 'Перевод'),
+        ('analyze', 'Анализ'),
+        ('email', 'Письма'),
+        ('study', 'Учёба'),
+        ('creative', 'Творчество'),
+        ('other', 'Другое'),
+    ]
+
+    title = models.CharField(max_length=100, verbose_name='Название')
+    content = models.TextField(verbose_name='Текст промта')
+    category = models.CharField(max_length=50, choices=CATEGORY_CHOICES, default='other', verbose_name='Категория')
+    icon = models.CharField(max_length=50, default='FileText', verbose_name='Иконка (Lucide)')
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.CASCADE, related_name='prompt_templates',
+        verbose_name='Пользователь',
+    )
+    is_public = models.BooleanField(default=True, verbose_name='Публичный')
+    order = models.IntegerField(default=0, verbose_name='Порядок')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Шаблон промта'
+        verbose_name_plural = 'Шаблоны промтов'
+        ordering = ['order', 'created_at']
+
+    def __str__(self):
+        return self.title
+
+
 class FAQ(models.Model):
     question = models.CharField(max_length=500, verbose_name='Вопрос')
     answer = models.TextField(verbose_name='Ответ')

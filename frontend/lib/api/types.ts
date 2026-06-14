@@ -474,6 +474,19 @@ export interface FilesResponse {
   total: number;
 }
 
+// ============ Prompt Library ============
+
+export interface PromptTemplate {
+  id: number;
+  title: string;
+  content: string;
+  category: "code" | "translate" | "analyze" | "email" | "study" | "creative" | "other";
+  icon: string;
+  is_public: boolean;
+  is_own: boolean;
+  created_at: string;
+}
+
 // ============ Model Arena (compare) ============
 
 export interface CompareItem {

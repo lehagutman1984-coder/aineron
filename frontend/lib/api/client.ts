@@ -36,6 +36,7 @@ import type {
   ReferralData,
   FilesResponse,
   CompareResponse,
+  PromptTemplate,
 } from "./types";
 
 const BASE_URL =
@@ -455,6 +456,22 @@ export const getUserFiles = (params: {
 
 export const deleteUserFile = (fileId: string): Promise<void> =>
   request<void>(`/files/${fileId}/`, { method: "DELETE" });
+
+// ============ Prompt Library ============
+
+export const listPrompts = (category?: string): Promise<PromptTemplate[]> =>
+  request<PromptTemplate[]>(`/prompts/${category ? `?category=${category}` : ""}`);
+
+export const createPrompt = (body: {
+  title: string;
+  content: string;
+  category: string;
+  icon?: string;
+}): Promise<PromptTemplate> =>
+  request<PromptTemplate>("/prompts/", { method: "POST", body: JSON.stringify(body) });
+
+export const deletePrompt = (id: number): Promise<void> =>
+  request<void>(`/prompts/${id}/`, { method: "DELETE" });
 
 // ============ Model Arena ============
 
