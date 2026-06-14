@@ -500,10 +500,22 @@ def generate_video_laozhang(network, user_msg, message, user_settings=None):
                 status = (pd.get('status') or '').lower()
                 logger.info(f"Video poll {attempt + 1}/36: status={status}")
                 if status in ('completed', 'succeeded', 'success', 'done'):
-                    for item in pd.get('data', []):
-                        url = item.get('url') or item.get('video_url')
-                        if url and url.startswith('http'):
-                            video_urls.append(url)
+                    logger.info(f"Video completed response: {str(pd)[:800]}")
+                    # Пробуем все возможные поля с URL
+                    def _extract_urls(obj):
+                        found = []
+                        if isinstance(obj, dict):
+                            for key in ('url', 'video_url', 'video', 'mp4', 'download_url', 'file_url', 'src'):
+                                val = obj.get(key)
+                                if isinstance(val, str) and val.startswith('http'):
+                                    found.append(val)
+                            for val in obj.values():
+                                found.extend(_extract_urls(val))
+                        elif isinstance(obj, list):
+                            for item in obj:
+                                found.extend(_extract_urls(item))
+                        return found
+                    video_urls = _extract_urls(pd)
                     break
                 elif status in ('failed', 'error', 'cancelled'):
                     raise Exception(f"Генерация видео завершилась ошибкой: {pd.get('error', status)}")

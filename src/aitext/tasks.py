@@ -174,15 +174,15 @@ def generate_ai_response(self, message_id, web_search=False):
         if not user_msg:
             user_msg = chat.messages.filter(role='user').order_by('-created_at').first()
 
-        # ========== fal.ai провайдер ==========
+        # ========== изображения / видео (laozhang.ai) ==========
         if network.provider == 'fal-ai':
             if not network.model_name:
                 message.status = Message.Status.FAILED
-                message.error_message = "У нейросети не указан model_name для fal.ai"
+                message.error_message = "У нейросети не указан model_name"
                 message.save()
                 return
 
-            logger.info(f"=== Генерация через fal.ai для сообщения {message_id}, нейросеть: {network.name} ===")
+            logger.info(f"=== Генерация медиа для сообщения {message_id}, нейросеть: {network.name} ===")
             stars_deducted = False
             total_cost = 0
             try:
@@ -190,7 +190,7 @@ def generate_ai_response(self, message_id, web_search=False):
 
                 config = network.config_json
                 if not config:
-                    raise Exception("Отсутствует конфигурация для fal.ai модели")
+                    raise Exception("Отсутствует конфигурация модели")
 
                 base_cost = network.cost_per_message
                 if user_settings:
@@ -234,12 +234,12 @@ def generate_ai_response(self, message_id, web_search=False):
                 message.status = Message.Status.COMPLETED
                 message.save()
                 logger.info(
-                    f"fal.ai ответ сгенерирован для сообщения {message_id}, сохранено изображений: {len(saved_images)}")
+                    f"Медиа сгенерировано для сообщения {message_id}, сохранено файлов: {len(saved_images)}")
                 return
 
             except Exception as e:
                 error_str = str(e)
-                logger.error(f"Ошибка генерации изображения для сообщения {message_id}: {e}")
+                logger.error(f"Ошибка генерации медиа для сообщения {message_id}: {e}")
                 if stars_deducted:
                     user.add_pages(total_cost)
                     logger.info(f"Возвращено {total_cost} зв. пользователю {user.email} из-за ошибки генерации")
