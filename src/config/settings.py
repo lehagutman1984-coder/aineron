@@ -1,6 +1,8 @@
 from pathlib import Path
 import os
 import sys
+import warnings
+warnings.filterwarnings("ignore", message="allauth.exceptions is deprecated", category=UserWarning)
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
