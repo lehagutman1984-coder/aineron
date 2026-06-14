@@ -104,7 +104,8 @@ def truncate_text(text, max_length):
     return text
 
 
-WEB_SEARCH_MODEL = "grok-3-search"  # Grok 3 с встроенным веб-поиском (доступен на laozhang.ai)
+WEB_SEARCH_MODEL = "grok-3-deepsearch"  # Grok 3 DeepSearch — встроенный веб-поиск на laozhang.ai
+_WEB_SEARCH_FALLBACK = "grok-3-search"  # резерв, если deepsearch недоступен
 
 
 def build_web_search_message(search_results: str, user_query: str) -> dict:
@@ -126,29 +127,32 @@ def build_web_search_message(search_results: str, user_query: str) -> dict:
 
 
 def call_web_search(user_query: str, log_prefix: str = "") -> str:
-    """Вызывает grok-3-search и возвращает сырой текст с результатами (или '')."""
+    """Вызывает Grok DeepSearch (с fallback на grok-3-search), возвращает текст или ''."""
     client = get_laozhang_client()
-    try:
-        resp = client.chat.completions.create(
-            model=WEB_SEARCH_MODEL,
-            messages=[{
-                "role": "user",
-                "content": (
-                    f"{user_query[:1800]}\n\n"
-                    "Search the web and return findings as numbered facts:\n"
-                    "[1] key fact (date if applicable, source if available)\n"
-                    "[2] ...\n"
-                    "Be concise and factual. Match the language of the query."
-                ),
-            }],
-            max_tokens=2000,
-        )
-        result = resp.choices[0].message.content.strip()
-        logger.info(f"{log_prefix}Web search OK: {len(result)} chars")
-        return result
-    except Exception as e:
-        logger.error(f"{log_prefix}Web search FAILED: {e}", exc_info=True)
-        return ""
+    grok_message = [{
+        "role": "user",
+        "content": (
+            f"{user_query[:1800]}\n\n"
+            "Search the web and return findings as numbered facts:\n"
+            "[1] key fact (date if applicable, source if available)\n"
+            "[2] ...\n"
+            "Be concise and factual. Match the language of the query."
+        ),
+    }]
+    for model in (WEB_SEARCH_MODEL, _WEB_SEARCH_FALLBACK):
+        try:
+            resp = client.chat.completions.create(
+                model=model,
+                messages=grok_message,
+                max_tokens=2000,
+            )
+            result = resp.choices[0].message.content.strip()
+            logger.info(f"{log_prefix}Web search OK ({model}): {len(result)} chars")
+            return result
+        except Exception as e:
+            logger.warning(f"{log_prefix}Web search FAILED ({model}): {e}")
+    logger.error(f"{log_prefix}All web search models unavailable")
+    return ""
 
 
 @shared_task(bind=True, max_retries=3)
