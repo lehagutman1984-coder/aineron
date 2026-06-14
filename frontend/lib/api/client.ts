@@ -16,6 +16,7 @@ import type {
   WebMessage,
   ChatListItem,
   ChatDetail,
+  AttachmentItem,
   CreateChatResponse,
   SendMessageResponse,
   AuthUser,
@@ -228,12 +229,29 @@ export const sendMessage = (
     message: string;
     files?: unknown[];
     settings?: Record<string, unknown>;
+    attachment_ids?: string[];
   }
 ): Promise<SendMessageResponse> =>
   request<SendMessageResponse>(`/chats/${chatId}/messages/`, {
     method: "POST",
     body: JSON.stringify(body),
   });
+
+export const uploadFile = (chatId: number, file: File): Promise<AttachmentItem> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  return fetch(`${BASE_URL}/chats/${chatId}/upload/`, {
+    method: "POST",
+    body: formData,
+    credentials: "include",
+  }).then(async (res) => {
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({})) as { error?: { message?: string; code?: string } };
+      throw new APIError(res.status, body?.error?.message ?? `HTTP ${res.status}`, body?.error?.code ?? null);
+    }
+    return res.json() as Promise<AttachmentItem>;
+  });
+};
 
 export const getMessageStatus = (messageId: number): Promise<WebMessage> =>
   request<WebMessage>(`/messages/${messageId}/status/`);
@@ -248,7 +266,7 @@ type SSEEvent =
 
 export async function streamMessage(
   chatId: number,
-  body: { message: string; files?: unknown[]; settings?: Record<string, unknown> },
+  body: { message: string; files?: unknown[]; settings?: Record<string, unknown>; attachment_ids?: string[] },
   callbacks: {
     onInit: (data: { user_message_id: number; assistant_message_id: number; new_balance: number }) => void;
     onToken: (text: string) => void;

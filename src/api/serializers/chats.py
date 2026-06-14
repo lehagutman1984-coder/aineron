@@ -52,3 +52,6 @@ class SendMessageSerializer(serializers.Serializer):
         child=serializers.DictField(), required=False, default=list
     )
     settings = serializers.DictField(required=False, default=dict)
+    attachment_ids = serializers.ListField(
+        child=serializers.UUIDField(), required=False, default=list
+    )

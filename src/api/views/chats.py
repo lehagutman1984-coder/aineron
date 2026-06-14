@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from aitext.models import (
-    NeuralNetwork, Chat, Message, NeuralNetworkDailyUsage,
+    NeuralNetwork, Chat, Message, NeuralNetworkDailyUsage, FileAttachment,
 )
 from aitext.tasks import generate_ai_response, get_laozhang_client
 from aitext.code_formatter import CodeFormatter
@@ -42,6 +42,7 @@ class ChatListCreateView(ListCreateAPIView):
         message_text = (request.data.get('message') or '').strip()
         files = request.data.get('files', [])
         settings = request.data.get('settings', {})
+        attachment_ids = request.data.get('attachment_ids', [])
 
         if not network_slug:
             return Response({'error': {'message': 'Не указана нейросеть', 'type': 'invalid_request_error', 'code': None}}, status=400)
@@ -96,6 +97,12 @@ class ChatListCreateView(ListCreateAPIView):
                 description=f"Сообщение в чате с {network.name}",
             )
 
+        # Link pre-uploaded file attachments to this user message
+        if attachment_ids:
+            FileAttachment.objects.filter(
+                id__in=attachment_ids, message__isnull=True
+            ).update(message=user_message)
+
         chat.updated_at = timezone.now()
         chat.save(update_fields=['updated_at'])
 
@@ -141,6 +148,7 @@ class SendMessageView(APIView):
         message_text = serializer.validated_data['message'].strip()
         files = serializer.validated_data['files']
         settings = serializer.validated_data['settings']
+        attachment_ids = serializer.validated_data.get('attachment_ids', [])
 
         if not message_text and not files:
             return Response({'error': {'message': 'Нет текста или файлов', 'type': 'invalid_request_error', 'code': None}}, status=400)
@@ -185,6 +193,12 @@ class SendMessageView(APIView):
                 user=request.user, amount=cost,
                 description=f"Сообщение в чате с {network.name}",
             )
+
+        # Link pre-uploaded file attachments to this user message
+        if attachment_ids:
+            FileAttachment.objects.filter(
+                id__in=attachment_ids, message__isnull=True
+            ).update(message=user_message)
 
         chat.updated_at = timezone.now()
         chat.save(update_fields=['updated_at'])
@@ -262,6 +276,8 @@ class StreamMessageView(APIView):
                 }
             }, status=402)
 
+        attachment_ids = request.data.get('attachment_ids', [])
+
         user_message = Message.objects.create(
             chat=chat, role='user', content=message_text,
             files=files, status=Message.Status.COMPLETED,
@@ -269,6 +285,12 @@ class StreamMessageView(APIView):
         assistant_message = Message.objects.create(
             chat=chat, role='assistant', content='', status=Message.Status.PENDING,
         )
+
+        # Link pre-uploaded file attachments to this user message
+        if attachment_ids:
+            FileAttachment.objects.filter(
+                id__in=attachment_ids, message__isnull=True
+            ).update(message=user_message)
 
         if deduct_stars:
             request.user.spend_pages(cost)

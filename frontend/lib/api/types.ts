@@ -259,6 +259,15 @@ export interface ChatDetail {
   updated_at: string;
 }
 
+export interface AttachmentItem {
+  id: string;
+  url: string;
+  filename: string;
+  media_type: "image" | "video" | "audio" | "pdf" | "other";
+  mime_type: string;
+  file_size: number;
+}
+
 export interface CreateChatResponse {
   chat_id: number;
   user_message_id: number;

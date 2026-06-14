@@ -294,11 +294,13 @@ class FileAttachment(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
-    # Связь с сообщением
+    # Связь с сообщением (null=True для временных загрузок до отправки)
     message = models.ForeignKey(
         'Message',
         on_delete=models.CASCADE,
         related_name='attachments',
+        null=True,
+        blank=True,
         verbose_name='Сообщение'
     )
 

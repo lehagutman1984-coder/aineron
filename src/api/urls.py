@@ -11,6 +11,7 @@ from api.views.chats import (
     ChatListCreateView, ChatDetailView, SendMessageView, MessageStatusView,
     StreamMessageView, RegenerateView,
 )
+from api.views.uploads import ChatFileUploadView
 from api.views.auth import MeView, LoginView, LogoutView, RegisterView, VerifyEmailView, ResendVerificationView
 from api.views.teams import (
     OrgListCreateView, OrgDetailView,
@@ -58,6 +59,7 @@ urlpatterns = [
     path('v1/chats/<int:chat_id>/messages/', SendMessageView.as_view(), name='chat_send_message'),
     path('v1/chats/<int:chat_id>/messages/stream/', StreamMessageView.as_view(), name='chat_stream_message'),
     path('v1/chats/<int:chat_id>/regenerate/', RegenerateView.as_view(), name='chat_regenerate'),
+    path('v1/chats/<int:chat_id>/upload/', ChatFileUploadView.as_view(), name='chat_file_upload'),
     path('v1/messages/<int:message_id>/status/', MessageStatusView.as_view(), name='message_status'),
 
     # ========== Аутентификация (сессионная) ==========

@@ -4,9 +4,10 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw } from "lucide-react";
+import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw, Paperclip } from "lucide-react";
 import { MarkdownContent } from "@/components/chat/MarkdownContent";
-import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, APIError } from "@/lib/api/client";
+import { AttachmentPreview, type AttachmentState } from "@/components/chat/AttachmentPreview";
+import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, uploadFile, APIError } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 import type { WebMessage, ChatDetail } from "@/lib/api/types";
 
@@ -22,6 +23,9 @@ export default function ChatPage() {
   const { setStars } = useAuthStore();
 
   const [text, setText] = useState("");
+  const [attachments, setAttachments] = useState<AttachmentState[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   // Polling state (used for fal-ai image models)
   const [pendingMessageId, setPendingMessageId] = useState<number | null>(null);
@@ -78,8 +82,9 @@ export default function ChatPage() {
 
   // Mutation for fal-ai image models (uses polling)
   const sendMutation = useMutation({
-    mutationFn: (msg: string) => sendMessage(id, { message: msg }),
-    onMutate: async (msg) => {
+    mutationFn: ({ msg, attachmentIds }: { msg: string; attachmentIds: string[] }) =>
+      sendMessage(id, { message: msg, attachment_ids: attachmentIds }),
+    onMutate: async ({ msg }) => {
       const now = Date.now();
       qc.setQueryData<ChatDetail>(["chat", id], (prev) =>
         prev
@@ -94,6 +99,7 @@ export default function ChatPage() {
           : prev
       );
       setText("");
+      clearAttachments();
       if (textareaRef.current) textareaRef.current.style.height = "auto";
     },
     onSuccess: (res) => {
@@ -142,7 +148,7 @@ export default function ChatPage() {
 
   // Handler for text models — real SSE streaming
   const handleStreamSubmit = useCallback(
-    async (msg: string) => {
+    async (msg: string, attachmentIds: string[] = []) => {
       setIsStreaming(true);
       setStreamText("");
       setStreamError(null);
@@ -164,12 +170,13 @@ export default function ChatPage() {
           : prev
       );
       setText("");
+      clearAttachments();
       if (textareaRef.current) textareaRef.current.style.height = "auto";
 
       let realAssistId = tempAssistId;
 
       try {
-        await streamMessage(id, { message: msg }, {
+        await streamMessage(id, { message: msg, attachment_ids: attachmentIds }, {
           onInit: ({ user_message_id, assistant_message_id, new_balance }) => {
             realAssistId = assistant_message_id;
             setStars(new_balance);
@@ -245,14 +252,76 @@ export default function ChatPage() {
     [id, qc, setStars]
   );
 
-  // Click on starter prompt card → immediate submit
+  // File attachment upload
+  const handleFiles = useCallback(
+    async (fileList: FileList | File[]) => {
+      const files = Array.from(fileList);
+      for (const file of files) {
+        const tempId = `temp-${Date.now()}-${Math.random()}`;
+        const localUrl = file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined;
+        setAttachments((prev) => [
+          ...prev,
+          {
+            id: tempId,
+            url: localUrl ?? "",
+            filename: file.name,
+            media_type: file.type.startsWith("image/") ? "image" : "other",
+            mime_type: file.type,
+            file_size: file.size,
+            uploading: true,
+            localUrl,
+          },
+        ]);
+        try {
+          const result = await uploadFile(id, file);
+          setAttachments((prev) =>
+            prev.map((a) => (a.id === tempId ? { ...result, localUrl } : a))
+          );
+        } catch {
+          setAttachments((prev) =>
+            prev.map((a) => (a.id === tempId ? { ...a, uploading: false, error: "Ошибка загрузки" } : a))
+          );
+        }
+      }
+    },
+    [id]
+  );
+
+  const clearAttachments = useCallback(() => {
+    setAttachments((prev) => {
+      prev.forEach((a) => { if (a.localUrl) URL.revokeObjectURL(a.localUrl); });
+      return [];
+    });
+  }, []);
+
+  // Drag & drop handlers
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  }, []);
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragOver(false);
+  }, []);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragOver(false);
+      if (e.dataTransfer.files.length > 0) handleFiles(e.dataTransfer.files);
+    },
+    [handleFiles]
+  );
+
+  const isPending = pendingMessageId !== null;
+  const isBusy = isPending || sendMutation.isPending || isStreaming || regenerateMutation.isPending;
+
+  // Click on starter prompt card → immediate submit (no attachments)
   const handlePrompt = useCallback(
     (prompt: string) => {
       if (isBusy) return;
       if (chat?.network.provider === "fal-ai") {
-        sendMutation.mutate(prompt);
+        sendMutation.mutate({ msg: prompt, attachmentIds: [] });
       } else {
-        handleStreamSubmit(prompt);
+        handleStreamSubmit(prompt, []);
       }
     },
     [isBusy, chat?.network.provider, sendMutation, handleStreamSubmit]
@@ -261,11 +330,13 @@ export default function ChatPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const msg = text.trim();
-    if (!msg || isBusy) return;
+    const hasUploading = attachments.some((a) => a.uploading);
+    if ((!msg && attachments.filter((a) => !a.error && !a.uploading).length === 0) || isBusy || hasUploading) return;
+    const attachmentIds = attachments.filter((a) => !a.uploading && !a.error).map((a) => a.id);
     if (chat?.network.provider === "fal-ai") {
-      sendMutation.mutate(msg);
+      sendMutation.mutate({ msg: msg || " ", attachmentIds });
     } else {
-      handleStreamSubmit(msg);
+      handleStreamSubmit(msg || " ", attachmentIds);
     }
   };
 
@@ -302,15 +373,24 @@ export default function ChatPage() {
     );
   }
 
-  const isPending = pendingMessageId !== null;
-  const isBusy = isPending || sendMutation.isPending || isStreaming || regenerateMutation.isPending;
-
   const displayError =
     streamError ??
     (sendMutation.error instanceof APIError ? (sendMutation.error as APIError).message : null);
 
   return (
-    <div className="flex h-full flex-col" style={{ background: "var(--chat-page-bg)" }}>
+    <div
+      className="flex h-full flex-col"
+      style={{ background: "var(--chat-page-bg)" }}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {/* Drag overlay */}
+      {isDragOver && (
+        <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center rounded-[14px] border-2 border-dashed border-[#0a7cff] bg-[rgba(10,124,255,0.06)]">
+          <p className="text-[15px] font-medium text-[#0a7cff]">Отпустите для загрузки</p>
+        </div>
+      )}
       {/* Header */}
       <header
         className="flex h-12 shrink-0 items-center justify-between px-4"
@@ -464,6 +544,10 @@ export default function ChatPage() {
               boxShadow: "0 2px 12px rgba(0,0,0,0.07)",
             }}
           >
+            <AttachmentPreview
+              attachments={attachments}
+              onRemove={(removeId) => setAttachments((prev) => prev.filter((a) => a.id !== removeId))}
+            />
             <textarea
               ref={textareaRef}
               value={text}
@@ -475,12 +559,28 @@ export default function ChatPage() {
               placeholder="Введите сообщение..."
               rows={1}
               disabled={isBusy}
-              className="block w-full resize-none bg-transparent px-4 py-3.5 pr-14 text-[14px] leading-relaxed text-[#0d0d0d] outline-none disabled:opacity-50 dark:text-[#ececec] dark:placeholder:text-[rgba(236,236,236,0.35)]"
+              className="block w-full resize-none bg-transparent px-4 py-3.5 pr-24 text-[14px] leading-relaxed text-[#0d0d0d] outline-none disabled:opacity-50 dark:text-[#ececec] dark:placeholder:text-[rgba(236,236,236,0.35)]"
               style={{ maxHeight: "200px", caretColor: "#0a7cff" }}
             />
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="image/*,.pdf,.txt,.md,.csv,.doc,.docx,.xlsx,.json"
+              className="hidden"
+              onChange={(e) => { if (e.target.files) { handleFiles(e.target.files); e.target.value = ""; } }}
+            />
+            <button
+              type="button"
+              disabled={isBusy}
+              onClick={() => fileInputRef.current?.click()}
+              className="absolute bottom-2.5 right-[50px] flex h-9 w-9 items-center justify-center rounded-[10px] text-[rgba(13,13,13,0.4)] transition-all hover:bg-[rgba(13,13,13,0.06)] hover:text-[#0d0d0d] disabled:cursor-not-allowed disabled:opacity-30 dark:text-[rgba(236,236,236,0.4)] dark:hover:bg-[rgba(255,255,255,0.08)] dark:hover:text-[#ececec]"
+            >
+              <Paperclip size={16} />
+            </button>
             <button
               type="submit"
-              disabled={!text.trim() || isBusy}
+              disabled={(text.trim() === "" && attachments.filter((a) => !a.error && !a.uploading).length === 0) || isBusy}
               className="absolute bottom-2.5 right-2.5 flex h-9 w-9 items-center justify-center rounded-[10px] text-white transition-all disabled:cursor-not-allowed disabled:opacity-25"
               style={{ background: "#0d0d0d" }}
             >
