@@ -4,7 +4,7 @@ import { ArrowRight, Code2, Image, Search } from "lucide-react";
 import { serverListNetworks, serverListCategories } from "@/lib/api/server";
 import { CatalogClient } from "./CatalogClient";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Каталог нейросетей",

@@ -32,7 +32,7 @@ export async function generateStaticParams() {
   return (networks ?? []).map((n) => ({ slug: n.slug }));
 }
 
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
 
 export default async function ModelDetailPage({ params }: Props) {
   const [network, allNetworks] = await Promise.all([
