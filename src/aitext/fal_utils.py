@@ -613,8 +613,10 @@ def generate_seedance_video(network, user_msg, message, user_settings=None):
     total_cost = base_cost + extra_cost
 
     seedance_base = "https://api.laozhang.ai/seedance/api/v3"
+    # Seedance требует отдельный токен группы SeeDance2 (SEEDANCE_API_KEY в .env)
+    seedance_key = getattr(settings, 'SEEDANCE_API_KEY', '') or settings.LAOZHANG_API_KEY
     auth_headers = {
-        "Authorization": f"Bearer {settings.LAOZHANG_API_KEY}",
+        "Authorization": f"Bearer {seedance_key}",
         "Content-Type": "application/json",
     }
 
@@ -672,7 +674,7 @@ def generate_seedance_video(network, user_msg, message, user_settings=None):
                 try:
                     cr = requests.get(
                         dl_url,
-                        headers={"Authorization": f"Bearer {settings.LAOZHANG_API_KEY}"},
+                        headers={"Authorization": f"Bearer {seedance_key}"},
                         timeout=180,
                         allow_redirects=True,
                     )

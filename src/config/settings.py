@@ -276,6 +276,9 @@ SITEMAP_CACHE_TIMEOUT = 3600
 # Веб-поиск (используется в call_web_search)
 TAVILY_API_KEY = os.environ.get('TAVILY_API_KEY', '')  # tavily.com — 1000 req/month free
 
+# Seedance (ByteDance video) — отдельный токен группы SeeDance2 на laozhang.ai
+SEEDANCE_API_KEY = os.environ.get('SEEDANCE_API_KEY', '')
+
 
 # ========== ROBOKASSA ==========
 ROBOKASSA_LOGIN = os.environ.get('ROBOKASSA_LOGIN', 'aineron.ru')
