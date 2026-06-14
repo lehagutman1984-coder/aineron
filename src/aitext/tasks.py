@@ -7,7 +7,7 @@ from openai import OpenAI
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
-from .models import Message, NeuralNetwork, GeneratedImage
+from .models import Message, NeuralNetwork, GeneratedImage, Project
 from .file_utils import prepare_media_for_ai
 from .fal_utils import generate_with_falai, validate_and_merge_settings
 from users.models import UserSpending
@@ -214,6 +214,14 @@ def generate_ai_response(self, message_id, web_search=False):
         history = list(reversed(history_qs))
 
         messages_for_api = []
+
+        if chat.project_id:
+            try:
+                proj = Project.objects.get(id=chat.project_id)
+                if proj.system_prompt:
+                    messages_for_api.append({"role": "system", "content": proj.system_prompt})
+            except Exception:
+                pass
 
         if network.has_prompt and network.prompt:
             messages_for_api.append({"role": "system", "content": network.prompt})

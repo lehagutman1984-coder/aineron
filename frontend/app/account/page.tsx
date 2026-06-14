@@ -27,7 +27,7 @@ export default function AccountPage() {
 
   const { data: chats } = useQuery<ChatListItem[]>({
     queryKey: ["chats"],
-    queryFn: listChats,
+    queryFn: () => listChats(),
     enabled: !!user,
     staleTime: 30_000,
   });

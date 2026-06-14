@@ -12,14 +12,17 @@ import {
   Edit3,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Code2,
   ImageIcon,
   X,
   Check,
   MessageSquare,
+  Folder,
+  Plus,
 } from "lucide-react";
-import { listChats, deleteChat, renameChat } from "@/lib/api/client";
-import type { ChatListItem } from "@/lib/api/types";
+import { listChats, deleteChat, renameChat, listProjects } from "@/lib/api/client";
+import type { ChatListItem, Project } from "@/lib/api/types";
 
 // ── Date grouping ────────────────────────────────────────────
 
@@ -184,10 +187,19 @@ export function ChatSidebar() {
 
   const { data: chats = [] } = useQuery({
     queryKey: ["chats"],
-    queryFn: listChats,
+    queryFn: () => listChats(),
     staleTime: 30_000,
     refetchOnWindowFocus: false,
   });
+
+  const { data: projects = [] } = useQuery({
+    queryKey: ["projects"],
+    queryFn: listProjects,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const [projectsOpen, setProjectsOpen] = useState(true);
 
   const deleteMutation = useMutation({
     mutationFn: deleteChat,
@@ -406,6 +418,54 @@ export function ChatSidebar() {
             )}
           </div>
         </div>
+
+        {/* Projects section */}
+        {projects.length > 0 && (
+          <div className="border-b border-[rgba(13,13,13,0.06)] pb-1">
+            <button
+              onClick={() => setProjectsOpen((v) => !v)}
+              className="flex w-full items-center justify-between px-3 pb-1 pt-2.5"
+            >
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-[rgba(13,13,13,0.28)]">
+                Проекты
+              </span>
+              <ChevronDown
+                size={11}
+                className="text-[rgba(13,13,13,0.28)] transition-transform duration-150"
+                style={{ transform: projectsOpen ? "none" : "rotate(-90deg)" }}
+              />
+            </button>
+            {projectsOpen && (
+              <div className="pb-1">
+                {projects.map((project: Project) => (
+                  <Link
+                    key={project.id}
+                    href={`/projects/${project.id}/`}
+                    className="mx-1 flex items-center gap-2 rounded-[7px] px-2.5 py-1.5 text-[12px] text-[rgba(13,13,13,0.65)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#0d0d0d] transition-colors"
+                  >
+                    <span
+                      className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[3px]"
+                      style={{ background: `${project.color}20`, color: project.color }}
+                    >
+                      <Folder size={10} />
+                    </span>
+                    <span className="truncate">{project.name}</span>
+                    <span className="ml-auto shrink-0 text-[10px] text-[rgba(13,13,13,0.28)]">
+                      {project.chat_count}
+                    </span>
+                  </Link>
+                ))}
+                <Link
+                  href="/projects/"
+                  className="mx-1 flex items-center gap-2 rounded-[7px] px-2.5 py-1.5 text-[11px] text-[rgba(13,13,13,0.40)] hover:text-[#0a7cff] transition-colors"
+                >
+                  <Plus size={11} />
+                  Новый проект
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Chat list */}
         <div className="flex-1 overflow-y-auto">

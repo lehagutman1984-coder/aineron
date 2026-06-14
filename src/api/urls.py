@@ -36,6 +36,7 @@ from api.views.referral import ReferralView, ReferralWithdrawView
 from api.views.files import UserFilesView, UserFileDeleteView
 from api.views.compare import CompareView
 from api.views.prompts import PromptListCreateView, PromptDetailView
+from api.views.projects import ProjectListCreateView, ProjectDetailView
 
 app_name = 'api'
 
@@ -130,6 +131,10 @@ urlpatterns = [
     # ========== Промпт-библиотека ==========
     path('v1/prompts/', PromptListCreateView.as_view(), name='prompts_list_create'),
     path('v1/prompts/<int:pk>/', PromptDetailView.as_view(), name='prompt_detail'),
+
+    # ========== Проекты (папки чатов) ==========
+    path('v1/projects/', ProjectListCreateView.as_view(), name='projects_list_create'),
+    path('v1/projects/<int:pk>/', ProjectDetailView.as_view(), name='project_detail'),
 
     # ========== OpenAPI / Swagger ==========
     path('v1/schema/', SpectacularAPIView.as_view(), name='schema'),

@@ -30,12 +30,16 @@ class ChatListCreateView(ListCreateAPIView):
         return ChatListSerializer
 
     def get_queryset(self):
-        return (
+        qs = (
             Chat.objects.filter(user=self.request.user)
             .select_related('network', 'network__category')
             .prefetch_related('messages')
             .order_by('-updated_at')
         )
+        project_id = self.request.query_params.get('project_id')
+        if project_id is not None:
+            qs = qs.filter(project_id=project_id if project_id else None)
+        return qs
 
     def create(self, request, *args, **kwargs):
         network_slug = request.data.get('network_slug')
@@ -44,6 +48,7 @@ class ChatListCreateView(ListCreateAPIView):
         settings = request.data.get('settings', {})
         attachment_ids = request.data.get('attachment_ids', [])
         web_search = bool(request.data.get('web_search', False))
+        project_id = request.data.get('project_id')
 
         if not network_slug:
             return Response({'error': {'message': 'Не указана нейросеть', 'type': 'invalid_request_error', 'code': None}}, status=400)
@@ -75,9 +80,18 @@ class ChatListCreateView(ListCreateAPIView):
                 }
             }, status=402)
 
+        from aitext.models import Project
+        project = None
+        if project_id:
+            try:
+                project = Project.objects.get(id=project_id, user=request.user)
+            except Project.DoesNotExist:
+                pass
+
         chat = Chat.objects.create(
             user=request.user,
             network=network,
+            project=project,
             title=message_text[:50] if message_text else f"{network.name} - {timezone.now().strftime('%d.%m.%Y %H:%M')}",
             settings=settings,
         )
@@ -317,6 +331,14 @@ class StreamMessageView(APIView):
         history = list(reversed(history_qs))
 
         messages_for_api = []
+        if chat.project_id:
+            from aitext.models import Project
+            try:
+                proj = Project.objects.get(id=chat.project_id)
+                if proj.system_prompt:
+                    messages_for_api.append({"role": "system", "content": proj.system_prompt})
+            except Project.DoesNotExist:
+                pass
         if network.has_prompt and network.prompt:
             messages_for_api.append({"role": "system", "content": network.prompt})
 

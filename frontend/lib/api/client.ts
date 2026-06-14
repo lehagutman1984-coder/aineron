@@ -38,6 +38,7 @@ import type {
   FilesResponse,
   CompareResponse,
   PromptTemplate,
+  Project,
 } from "./types";
 
 const BASE_URL =
@@ -195,8 +196,10 @@ export const getNetwork = (slug: string): Promise<NetworkDetail> =>
 
 // ============ Web Chats ============
 
-export const listChats = (): Promise<ChatListItem[]> =>
-  request<ChatListItem[]>("/chats/");
+export const listChats = (params?: { project_id?: number | "none" }): Promise<ChatListItem[]> => {
+  const qs = params?.project_id !== undefined ? `?project_id=${params.project_id}` : "";
+  return request<ChatListItem[]>(`/chats/${qs}`);
+};
 
 export const createChat = (body: {
   network_slug: string;
@@ -204,6 +207,7 @@ export const createChat = (body: {
   files?: unknown[];
   settings?: Record<string, unknown>;
   web_search?: boolean;
+  project_id?: number;
 }): Promise<CreateChatResponse> =>
   request<CreateChatResponse>("/chats/", {
     method: "POST",
@@ -503,6 +507,28 @@ export const requestReferralWithdrawal = (body: {
     method: "POST",
     body: JSON.stringify(body),
   });
+
+// ============ Projects ============
+
+export const listProjects = (): Promise<Project[]> =>
+  request<Project[]>("/projects/");
+
+export const createProject = (body: {
+  name: string;
+  system_prompt?: string;
+  color?: string;
+  icon?: string;
+}): Promise<Project> =>
+  request<Project>("/projects/", { method: "POST", body: JSON.stringify(body) });
+
+export const updateProject = (
+  id: number,
+  body: Partial<{ name: string; system_prompt: string; color: string; icon: string }>
+): Promise<Project> =>
+  request<Project>(`/projects/${id}/`, { method: "PATCH", body: JSON.stringify(body) });
+
+export const deleteProject = (id: number): Promise<void> =>
+  request<void>(`/projects/${id}/`, { method: "DELETE" });
 
 // ============ User (legacy Django session endpoint, kept for compatibility) ============
 

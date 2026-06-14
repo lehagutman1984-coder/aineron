@@ -209,10 +209,33 @@ class NeuralNetworkDailyUsage(models.Model):
     def __str__(self):
         return f"{self.user} - {self.network} - {self.date} - {self.count}"
 
+
+class Project(models.Model):
+    """Проект — папка для группировки чатов"""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='projects')
+    name = models.CharField(max_length=100, verbose_name='Название')
+    system_prompt = models.TextField(blank=True, verbose_name='Системный промт')
+    color = models.CharField(max_length=7, default='#0a7cff', verbose_name='Цвет (hex)')
+    icon = models.CharField(max_length=30, default='Folder', verbose_name='Иконка (Lucide)')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Проект'
+        verbose_name_plural = 'Проекты'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.username} — {self.name}"
+
+
 class Chat(models.Model):
     """Чат пользователя с нейросетью"""
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='chats')
     network = models.ForeignKey(NeuralNetwork, on_delete=models.CASCADE, related_name='chats')
+    project = models.ForeignKey(
+        Project, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='chats', verbose_name='Проект',
+    )
     title = models.CharField(max_length=255, blank=True, verbose_name='Название чата')
     settings = models.JSONField(default=dict, blank=True, verbose_name='Настройки генерации для чата')
     created_at = models.DateTimeField(auto_now_add=True)

@@ -236,10 +236,21 @@ export interface NetworkMini {
   handle_video: boolean;
 }
 
+export interface Project {
+  id: number;
+  name: string;
+  system_prompt: string;
+  color: string;
+  icon: string;
+  chat_count: number;
+  created_at: string;
+}
+
 export interface ChatListItem {
   id: number;
   title: string;
   network: NetworkMini;
+  project_id: number | null;
   last_message: {
     role: "user" | "assistant";
     preview: string;

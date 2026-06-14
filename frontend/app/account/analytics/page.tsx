@@ -190,8 +190,6 @@ function DeltaBadge({ delta }: { delta: number }) {
 
 // ── Bar chart (pure CSS) ───────────────────────────────────────────────────────
 function BarChart({ days, period }: { days: StarsUsageDay[]; period: number }) {
-  const maxStars = Math.max(...days.map((d) => d.stars), 1);
-
   // Fill sparse data: create a map of date→row, then build full range
   const map = new Map(days.map((d) => [d.date, d]));
 
