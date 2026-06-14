@@ -297,13 +297,13 @@ export default function ChatPage() {
     (sendMutation.error instanceof APIError ? (sendMutation.error as APIError).message : null);
 
   return (
-    <div className="flex h-full flex-col" style={{ background: "#f7f7f5" }}>
+    <div className="flex h-full flex-col" style={{ background: "var(--chat-page-bg)" }}>
       {/* Header */}
       <header
         className="flex h-12 shrink-0 items-center justify-between px-4"
         style={{
-          background: "white",
-          borderBottom: "1px solid rgba(13,13,13,0.08)",
+          background: "var(--chat-surface)",
+          borderBottom: "1px solid var(--chat-header-border)",
         }}
       >
         <div className="flex min-w-0 items-center gap-2">
@@ -404,7 +404,7 @@ export default function ChatPage() {
       </div>
 
       {/* Input */}
-      <div className="shrink-0 px-4 pb-5 pt-2" style={{ background: "#f7f7f5" }}>
+      <div className="shrink-0 px-4 pb-5 pt-2" style={{ background: "var(--chat-page-bg)" }}>
         {displayError && (
           <p className="mx-auto mb-2 max-w-2xl text-[13px] text-[#e74c3c]">
             {displayError}
@@ -415,8 +415,8 @@ export default function ChatPage() {
           <div
             className="relative overflow-hidden rounded-[14px] transition-all"
             style={{
-              background: "white",
-              border: "1px solid rgba(13,13,13,0.12)",
+              background: "var(--chat-input-bg)",
+              border: "1px solid var(--chat-input-border)",
               boxShadow: "0 2px 12px rgba(0,0,0,0.07)",
             }}
           >
@@ -431,7 +431,7 @@ export default function ChatPage() {
               placeholder="Введите сообщение..."
               rows={1}
               disabled={isBusy}
-              className="block w-full resize-none bg-transparent px-4 py-3.5 pr-14 text-[14px] leading-relaxed text-[#0d0d0d] outline-none disabled:opacity-50"
+              className="block w-full resize-none bg-transparent px-4 py-3.5 pr-14 text-[14px] leading-relaxed text-[#0d0d0d] outline-none disabled:opacity-50 dark:text-[#ececec] dark:placeholder:text-[rgba(236,236,236,0.35)]"
               style={{ maxHeight: "200px", caretColor: "#0a7cff" }}
             />
             <button
@@ -502,7 +502,7 @@ function MessageRow({
       <div className="flex justify-end">
         <div
           className="max-w-[78%] rounded-[18px] rounded-br-[4px] px-4 py-3 text-[14px] leading-relaxed text-white"
-          style={{ background: "#0d0d0d" }}
+          style={{ background: "var(--chat-user-bubble)" }}
         >
           <PlainText text={message.content} />
         </div>

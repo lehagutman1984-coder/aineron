@@ -1,14 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { Star, User, Menu, X } from "lucide-react";
+import { Star, User, Menu, X, Sun, Moon, Monitor } from "lucide-react";
 import { useState } from "react";
 import { useAuthStore } from "@/lib/stores/auth";
+import { useUIStore, type Theme } from "@/lib/stores/ui";
 import { authLogout } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 
+const THEME_CYCLE: Theme[] = ["system", "light", "dark"];
+
+function ThemeIcon({ theme }: { theme: Theme }) {
+  if (theme === "dark") return <Moon size={15} />;
+  if (theme === "light") return <Sun size={15} />;
+  return <Monitor size={15} />;
+}
+
 export function Navbar() {
   const { user, stars, logout } = useAuthStore();
+  const { theme, setTheme } = useUIStore();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleLogout = async () => {
@@ -21,11 +31,16 @@ export function Navbar() {
     window.location.href = "/";
   };
 
+  const cycleTheme = () => {
+    const idx = THEME_CYCLE.indexOf(theme);
+    setTheme(THEME_CYCLE[(idx + 1) % THEME_CYCLE.length]);
+  };
+
   return (
-    <header className="sticky top-0 z-50 border-b border-[rgba(13,13,13,0.10)] bg-white/90 backdrop-blur-sm">
+    <header className="sticky top-0 z-50 border-b border-[rgba(13,13,13,0.10)] bg-white/90 backdrop-blur-sm dark:border-[rgba(255,255,255,0.08)] dark:bg-[#111113]/90">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 font-semibold text-[15px] text-[#0d0d0d]">
+        <Link href="/" className="flex items-center gap-2 font-semibold text-[15px] text-[#0d0d0d] dark:text-[#ececec]">
           aineron.ru
         </Link>
 
@@ -37,24 +52,33 @@ export function Navbar() {
           <NavLink href="/ide/">IDE</NavLink>
         </nav>
 
-        {/* Desktop auth */}
+        {/* Desktop auth + theme toggle */}
         <div className="hidden items-center gap-2 md:flex">
+          {/* Theme toggle */}
+          <button
+            onClick={cycleTheme}
+            className="flex h-8 w-8 items-center justify-center rounded-[8px] text-[rgba(13,13,13,0.55)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.50)] dark:hover:bg-[rgba(255,255,255,0.07)] dark:hover:text-[#ececec]"
+            title={theme === "system" ? "Системная тема" : theme === "light" ? "Светлая тема" : "Тёмная тема"}
+          >
+            <ThemeIcon theme={theme} />
+          </button>
+
           {user ? (
             <>
-              <div className="flex items-center gap-1.5 rounded-full border border-[rgba(13,13,13,0.12)] px-3 py-1.5 text-[13px] text-[#0d0d0d]">
+              <div className="flex items-center gap-1.5 rounded-full border border-[rgba(13,13,13,0.12)] px-3 py-1.5 text-[13px] text-[#0d0d0d] dark:border-[rgba(255,255,255,0.12)] dark:text-[#ececec]">
                 <Star size={13} className="text-[#0a7cff]" />
                 <span className="font-medium">{stars}</span>
               </div>
               <Link
                 href="/account/"
-                className="flex items-center gap-1.5 rounded-[8px] px-3 py-1.5 text-[13px] text-[rgba(13,13,13,0.7)] hover:bg-[rgba(13,13,13,0.06)] hover:text-[#0d0d0d] transition-colors"
+                className="flex items-center gap-1.5 rounded-[8px] px-3 py-1.5 text-[13px] text-[rgba(13,13,13,0.7)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.65)] dark:hover:bg-[rgba(255,255,255,0.07)] dark:hover:text-[#ececec]"
               >
                 <User size={15} />
                 Кабинет
               </Link>
               <button
                 onClick={handleLogout}
-                className="text-[13px] text-[rgba(13,13,13,0.5)] hover:text-[#0d0d0d] px-2 py-1.5 transition-colors"
+                className="px-2 py-1.5 text-[13px] text-[rgba(13,13,13,0.5)] transition-colors hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.4)] dark:hover:text-[#ececec]"
               >
                 Выйти
               </button>
@@ -63,13 +87,13 @@ export function Navbar() {
             <>
               <Link
                 href="/login/"
-                className="rounded-[8px] px-3 py-1.5 text-[13px] text-[rgba(13,13,13,0.7)] hover:bg-[rgba(13,13,13,0.06)] hover:text-[#0d0d0d] transition-colors"
+                className="rounded-[8px] px-3 py-1.5 text-[13px] text-[rgba(13,13,13,0.7)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.65)] dark:hover:bg-[rgba(255,255,255,0.07)] dark:hover:text-[#ececec]"
               >
                 Войти
               </Link>
               <Link
                 href="/register/"
-                className="rounded-[8px] bg-[#0a7cff] px-3 py-1.5 text-[13px] font-medium text-white hover:bg-[#0066cc] transition-colors"
+                className="rounded-[8px] bg-[#0a7cff] px-3 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-[#0066cc]"
               >
                 Начать бесплатно
               </Link>
@@ -77,35 +101,43 @@ export function Navbar() {
           )}
         </div>
 
-        {/* Mobile toggle */}
-        <button
-          className="flex items-center justify-center rounded-[8px] p-2 text-[rgba(13,13,13,0.7)] hover:bg-[rgba(13,13,13,0.06)] md:hidden"
-          onClick={() => setMobileOpen((v) => !v)}
-          aria-label="Меню"
-        >
-          {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-        </button>
+        {/* Mobile: theme toggle + hamburger */}
+        <div className="flex items-center gap-1 md:hidden">
+          <button
+            onClick={cycleTheme}
+            className="flex h-9 w-9 items-center justify-center rounded-[8px] text-[rgba(13,13,13,0.55)] transition-colors hover:bg-[rgba(13,13,13,0.06)] dark:text-[rgba(236,236,236,0.50)] dark:hover:bg-[rgba(255,255,255,0.07)]"
+          >
+            <ThemeIcon theme={theme} />
+          </button>
+          <button
+            className="flex items-center justify-center rounded-[8px] p-2 text-[rgba(13,13,13,0.7)] transition-colors hover:bg-[rgba(13,13,13,0.06)] dark:text-[rgba(236,236,236,0.65)] dark:hover:bg-[rgba(255,255,255,0.07)]"
+            onClick={() => setMobileOpen((v) => !v)}
+            aria-label="Меню"
+          >
+            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile menu */}
       {mobileOpen && (
-        <div className="border-t border-[rgba(13,13,13,0.10)] bg-white px-4 py-3 md:hidden">
+        <div className="border-t border-[rgba(13,13,13,0.10)] bg-white px-4 py-3 dark:border-[rgba(255,255,255,0.08)] dark:bg-[#111113] md:hidden">
           <div className="flex flex-col gap-1">
             <MobileNavLink href="/models/" onClick={() => setMobileOpen(false)}>Каталог</MobileNavLink>
             <MobileNavLink href="/blog/" onClick={() => setMobileOpen(false)}>Блог</MobileNavLink>
             <MobileNavLink href="/api-docs/" onClick={() => setMobileOpen(false)}>API</MobileNavLink>
             <MobileNavLink href="/ide/" onClick={() => setMobileOpen(false)}>IDE</MobileNavLink>
-            <div className="my-2 border-t border-[rgba(13,13,13,0.08)]" />
+            <div className="my-2 border-t border-[rgba(13,13,13,0.08)] dark:border-[rgba(255,255,255,0.06)]" />
             {user ? (
               <>
-                <div className="flex items-center gap-2 py-2 text-[13px] text-[rgba(13,13,13,0.7)]">
+                <div className="flex items-center gap-2 py-2 text-[13px] text-[rgba(13,13,13,0.7)] dark:text-[rgba(236,236,236,0.6)]">
                   <Star size={13} className="text-[#0a7cff]" />
                   <span>{stars} звёзд</span>
                 </div>
                 <MobileNavLink href="/account/" onClick={() => setMobileOpen(false)}>Личный кабинет</MobileNavLink>
                 <button
                   onClick={() => { setMobileOpen(false); handleLogout(); }}
-                  className="py-2 text-left text-[14px] text-[rgba(13,13,13,0.6)]"
+                  className="py-2 text-left text-[14px] text-[rgba(13,13,13,0.6)] dark:text-[rgba(236,236,236,0.5)]"
                 >
                   Выйти
                 </button>
@@ -133,7 +165,7 @@ function NavLink({ href, children }: { href: string; children: React.ReactNode }
   return (
     <Link
       href={href}
-      className="rounded-[8px] px-3 py-1.5 text-[13px] text-[rgba(13,13,13,0.7)] hover:bg-[rgba(13,13,13,0.06)] hover:text-[#0d0d0d] transition-colors"
+      className="rounded-[8px] px-3 py-1.5 text-[13px] text-[rgba(13,13,13,0.7)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.65)] dark:hover:bg-[rgba(255,255,255,0.07)] dark:hover:text-[#ececec]"
     >
       {children}
     </Link>
@@ -153,7 +185,7 @@ function MobileNavLink({
     <Link
       href={href}
       onClick={onClick}
-      className="py-2 text-[14px] text-[rgba(13,13,13,0.8)] hover:text-[#0d0d0d] transition-colors"
+      className="py-2 text-[14px] text-[rgba(13,13,13,0.8)] transition-colors hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.75)] dark:hover:text-[#ececec]"
     >
       {children}
     </Link>

@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Tailwind v4: enable dark: prefix via html[data-theme=dark] */
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
 @theme {
   /* Typography */
   --font-family-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
@@ -57,6 +60,25 @@
   --font-primary:          "Inter", sans-serif;
 }
 
+/* ===== Dark theme variables ===== */
+html[data-theme="dark"] {
+  --text-primary:          #ececec;
+  --text-secondary:        rgba(236, 236, 236, 0.58);
+  --text-tertiary:         rgba(236, 236, 236, 0.38);
+  --text-static-white:     #ffffff;
+  --icon-primary:          #ececec;
+  --icon-secondary:        rgba(236, 236, 236, 0.55);
+  --icon-accent:           #4da3ff;
+  --background-primary:    #111113;
+  --background-secondary:  rgba(255, 255, 255, 0.06);
+  --background-tertiary:   rgba(255, 255, 255, 0.03);
+  --border-primary:        rgba(255, 255, 255, 0.10);
+  --border-secondary:      rgba(255, 255, 255, 0.07);
+  --border-tertiary:       rgba(255, 255, 255, 0.04);
+  --btn-primary:           #0a7cff;
+  color-scheme: dark;
+}
+
 *,
 *::before,
 *::after {
@@ -72,6 +94,7 @@ body {
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 a {
@@ -292,3 +315,53 @@ a {
 }
 .chat-prose .ai-table tr:last-child td,
 .ai-table tr:last-child td { border-bottom: none; }
+
+/* ===== Dark mode overrides ===== */
+[data-theme="dark"] .chat-md,
+[data-theme="dark"] .chat-prose {
+  color: rgba(236, 236, 236, 0.86);
+}
+[data-theme="dark"] .chat-prose h1,
+[data-theme="dark"] .chat-prose h2,
+[data-theme="dark"] .chat-prose h3,
+[data-theme="dark"] .chat-prose h4,
+[data-theme="dark"] .chat-prose h5,
+[data-theme="dark"] .chat-prose h6 {
+  color: #ececec;
+}
+[data-theme="dark"] .chat-prose code:not(pre code) {
+  background: rgba(255, 255, 255, 0.10);
+  color: #ececec;
+}
+[data-theme="dark"] .chat-prose blockquote {
+  border-left-color: rgba(236, 236, 236, 0.20);
+  color: rgba(236, 236, 236, 0.55);
+}
+[data-theme="dark"] .ai-table-container {
+  border-color: rgba(255, 255, 255, 0.09);
+}
+[data-theme="dark"] .ai-table th {
+  background: rgba(255, 255, 255, 0.05);
+  border-bottom-color: rgba(255, 255, 255, 0.09);
+}
+[data-theme="dark"] .ai-table td {
+  border-bottom-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Chat surfaces — consumed via CSS vars in inline styles */
+:root {
+  --chat-page-bg:    #f7f7f5;
+  --chat-surface:    #ffffff;
+  --chat-input-bg:   #ffffff;
+  --chat-input-border: rgba(13,13,13,0.12);
+  --chat-header-border: rgba(13,13,13,0.08);
+  --chat-user-bubble: #0d0d0d;
+}
+html[data-theme="dark"] {
+  --chat-page-bg:    #0f0f11;
+  --chat-surface:    #18181b;
+  --chat-input-bg:   #1e1e22;
+  --chat-input-border: rgba(255,255,255,0.10);
+  --chat-header-border: rgba(255,255,255,0.07);
+  --chat-user-bubble: #2a2a2e;
+}
