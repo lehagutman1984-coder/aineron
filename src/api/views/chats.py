@@ -366,36 +366,22 @@ class StreamMessageView(APIView):
         messages_for_api.append({"role": "user", "content": message_text or "Привет"})
 
         # ── Шаг 1: веб-поиск СИНХРОННО до генератора ─────────────────────────
-        # Делаем здесь, а не в generate(), чтобы гарантированно выполнился
-        from aitext.tasks import WEB_SEARCH_MODEL
+        from aitext.tasks import call_web_search, build_web_search_message
         search_context_text = ""
         if web_search:
-            try:
-                sc = get_laozhang_client()
-                sr = sc.chat.completions.create(
-                    model=WEB_SEARCH_MODEL,
-                    messages=[{"role": "user", "content": (message_text or "информация")[:2000]}],
-                    max_tokens=1500,
-                )
-                search_context_text = sr.choices[0].message.content.strip()
-                logger.info(f"Web search OK for chat {chat.id}: {len(search_context_text)} chars")
-            except Exception as se:
-                logger.error(f"Web search FAILED for chat {chat.id}: {se}", exc_info=True)
-
+            search_context_text = call_web_search(
+                message_text or "информация",
+                log_prefix=f"[chat {chat.id}] ",
+            )
             if search_context_text:
                 assistant_message.search_context = search_context_text
                 assistant_message.save(update_fields=['search_context'])
-                messages_for_api.insert(0, {
-                    "role": "system",
-                    "content": (
-                        "[Актуальные данные из интернета]\n"
-                        "Ниже результаты поиска, только что полученные по запросу пользователя.\n"
-                        "Используй их для точного и актуального ответа. "
-                        "Ссылайся на конкретные факты. Отвечай на языке пользователя.\n\n"
-                        f"{search_context_text[:3000]}\n\n"
-                        "[Конец результатов поиска]"
-                    ),
-                })
+                # Вставляем прямо перед последним user-сообщением — как делает Perplexity
+                insert_pos = max(len(messages_for_api) - 1, 0)
+                messages_for_api.insert(
+                    insert_pos,
+                    build_web_search_message(search_context_text, message_text or ""),
+                )
 
         # Capture values for the generator closure
         user = request.user

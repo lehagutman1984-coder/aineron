@@ -2,6 +2,7 @@ import uuid
 import os
 import base64
 import logging
+import datetime
 from celery import shared_task
 from openai import OpenAI
 from django.conf import settings
@@ -104,6 +105,50 @@ def truncate_text(text, max_length):
 
 
 WEB_SEARCH_MODEL = "grok-3-search"  # Grok 3 с встроенным веб-поиском (доступен на laozhang.ai)
+
+
+def build_web_search_message(search_results: str, user_query: str) -> dict:
+    """Формирует system-сообщение с результатами поиска — как у Perplexity/ChatGPT."""
+    now = datetime.datetime.utcnow().strftime("%d.%m.%Y %H:%M UTC")
+    query_preview = user_query[:200].strip()
+    content = (
+        f"[Результаты веб-поиска — {now}]\n"
+        f"Запрос: {query_preview}\n\n"
+        f"{search_results[:4500]}\n\n"
+        "[Инструкция к использованию результатов]\n"
+        "• Факты выше актуальны и получены из интернета только что — давай им приоритет над тренировочными данными\n"
+        "• При ссылке на конкретный факт из поиска укажи его номер в скобках, например [1], [2]\n"
+        "• Если источник неизвестен или факт общеизвестен — не придумывай ссылку\n"
+        "• Отвечай на языке пользователя\n"
+        "[Конец результатов поиска]"
+    )
+    return {"role": "system", "content": content}
+
+
+def call_web_search(user_query: str, log_prefix: str = "") -> str:
+    """Вызывает grok-3-search и возвращает сырой текст с результатами (или '')."""
+    client = get_laozhang_client()
+    try:
+        resp = client.chat.completions.create(
+            model=WEB_SEARCH_MODEL,
+            messages=[{
+                "role": "user",
+                "content": (
+                    f"{user_query[:1800]}\n\n"
+                    "Search the web and return findings as numbered facts:\n"
+                    "[1] key fact (date if applicable, source if available)\n"
+                    "[2] ...\n"
+                    "Be concise and factual. Match the language of the query."
+                ),
+            }],
+            max_tokens=2000,
+        )
+        result = resp.choices[0].message.content.strip()
+        logger.info(f"{log_prefix}Web search OK: {len(result)} chars")
+        return result
+    except Exception as e:
+        logger.error(f"{log_prefix}Web search FAILED: {e}", exc_info=True)
+        return ""
 
 
 @shared_task(bind=True, max_retries=3)
@@ -289,43 +334,14 @@ def generate_ai_response(self, message_id, web_search=False):
             if not user_query:
                 user_query = "информация"
 
-            search_client = get_laozhang_client()
-            try:
-                search_resp = search_client.chat.completions.create(
-                    model=WEB_SEARCH_MODEL,
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": (
-                                "You are a web search tool. Search the internet and return ONLY the key facts "
-                                "you found as concise bullet points. No greetings, no analysis, no conclusions. "
-                                "Include relevant dates, numbers, and sources. "
-                                "Match the language of the user's query."
-                            ),
-                        },
-                        {"role": "user", "content": user_query[:2000]},
-                    ],
-                    temperature=0.1,
-                    max_tokens=2000,
-                )
-                search_results = search_resp.choices[0].message.content.strip()
-                logger.info(f"Web search step OK for message {message_id}, {len(search_results)} chars")
-            except Exception as search_err:
-                search_results = ""
-                logger.warning(f"Web search step failed for message {message_id}: {search_err}")
+            search_results = call_web_search(user_query, log_prefix=f"[msg {message_id}] ")
 
             if search_results:
                 message.search_context = search_results
                 message.save(update_fields=['search_context'])
-                search_system = (
-                    "[Актуальные данные из интернета]\n"
-                    "Ниже результаты поиска, только что полученные по запросу пользователя.\n"
-                    "Используй их для точного и актуального ответа. "
-                    "Ссылайся на конкретные факты. Отвечай на языке пользователя.\n\n"
-                    f"{search_results[:3000]}\n\n"
-                    "[Конец результатов поиска]"
-                )
-                messages_for_api.insert(0, {"role": "system", "content": search_system})
+                # Вставляем прямо перед последним user-сообщением — как делает Perplexity
+                insert_pos = max(len(messages_for_api) - 1, 0)
+                messages_for_api.insert(insert_pos, build_web_search_message(search_results, user_query))
 
         effective_model = network.model_name  # всегда используем выбранную пользователем модель
         client = get_laozhang_client()
