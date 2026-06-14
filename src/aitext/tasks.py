@@ -103,8 +103,11 @@ def truncate_text(text, max_length):
     return text
 
 
+WEB_SEARCH_MODEL = "perplexity/sonar"
+
+
 @shared_task(bind=True, max_retries=3)
-def generate_ai_response(self, message_id):
+def generate_ai_response(self, message_id, web_search=False):
     try:
         message = Message.objects.get(id=message_id)
         if message.role != 'assistant':
@@ -265,9 +268,10 @@ def generate_ai_response(self, message_id):
         if not messages_for_api:
             messages_for_api.append({"role": "user", "content": "Привет"})
 
+        effective_model = WEB_SEARCH_MODEL if web_search else network.model_name
         client = get_laozhang_client()
         completion_kwargs = {
-            "model": network.model_name,
+            "model": effective_model,
             "messages": messages_for_api,
             "temperature": 0.7,
         }

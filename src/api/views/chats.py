@@ -43,6 +43,7 @@ class ChatListCreateView(ListCreateAPIView):
         files = request.data.get('files', [])
         settings = request.data.get('settings', {})
         attachment_ids = request.data.get('attachment_ids', [])
+        web_search = bool(request.data.get('web_search', False))
 
         if not network_slug:
             return Response({'error': {'message': 'Не указана нейросеть', 'type': 'invalid_request_error', 'code': None}}, status=400)
@@ -106,7 +107,7 @@ class ChatListCreateView(ListCreateAPIView):
         chat.updated_at = timezone.now()
         chat.save(update_fields=['updated_at'])
 
-        generate_ai_response.delay(assistant_message.id)
+        generate_ai_response.delay(assistant_message.id, web_search=web_search)
 
         return Response({
             'chat_id': chat.id,
@@ -149,6 +150,7 @@ class SendMessageView(APIView):
         files = serializer.validated_data['files']
         settings = serializer.validated_data['settings']
         attachment_ids = serializer.validated_data.get('attachment_ids', [])
+        web_search = serializer.validated_data.get('web_search', False)
 
         if not message_text and not files:
             return Response({'error': {'message': 'Нет текста или файлов', 'type': 'invalid_request_error', 'code': None}}, status=400)
@@ -203,7 +205,7 @@ class SendMessageView(APIView):
         chat.updated_at = timezone.now()
         chat.save(update_fields=['updated_at'])
 
-        generate_ai_response.delay(assistant_message.id)
+        generate_ai_response.delay(assistant_message.id, web_search=web_search)
 
         return Response({
             'user_message_id': user_message.id,
@@ -246,6 +248,7 @@ class StreamMessageView(APIView):
 
         message_text = (request.data.get('message') or '').strip()
         files = request.data.get('files', [])
+        web_search = bool(request.data.get('web_search', False))
 
         if not message_text and not files:
             return Response({
@@ -341,10 +344,11 @@ class StreamMessageView(APIView):
         messages_for_api.append({"role": "user", "content": message_text or "Привет"})
 
         # Capture values for the generator closure
+        from aitext.tasks import WEB_SEARCH_MODEL
         user = request.user
         user_msg_id = user_message.id
         assist_msg_id = assistant_message.id
-        model_name = network.model_name
+        model_name = WEB_SEARCH_MODEL if web_search else network.model_name
         max_tokens = network.max_tokens
 
         def _sse(data):

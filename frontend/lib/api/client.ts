@@ -202,6 +202,7 @@ export const createChat = (body: {
   message: string;
   files?: unknown[];
   settings?: Record<string, unknown>;
+  web_search?: boolean;
 }): Promise<CreateChatResponse> =>
   request<CreateChatResponse>("/chats/", {
     method: "POST",
@@ -232,6 +233,7 @@ export const sendMessage = (
     files?: unknown[];
     settings?: Record<string, unknown>;
     attachment_ids?: string[];
+    web_search?: boolean;
   }
 ): Promise<SendMessageResponse> =>
   request<SendMessageResponse>(`/chats/${chatId}/messages/`, {
@@ -268,7 +270,7 @@ type SSEEvent =
 
 export async function streamMessage(
   chatId: number,
-  body: { message: string; files?: unknown[]; settings?: Record<string, unknown>; attachment_ids?: string[] },
+  body: { message: string; files?: unknown[]; settings?: Record<string, unknown>; attachment_ids?: string[]; web_search?: boolean },
   callbacks: {
     onInit: (data: { user_message_id: number; assistant_message_id: number; new_balance: number }) => void;
     onToken: (text: string) => void;

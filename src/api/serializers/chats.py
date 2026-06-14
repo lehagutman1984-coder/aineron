@@ -55,3 +55,4 @@ class SendMessageSerializer(serializers.Serializer):
     attachment_ids = serializers.ListField(
         child=serializers.UUIDField(), required=False, default=list
     )
+    web_search = serializers.BooleanField(required=False, default=False)

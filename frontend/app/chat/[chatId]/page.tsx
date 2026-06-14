@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw, Paperclip, BookMarked } from "lucide-react";
+import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw, Paperclip, BookMarked, Globe } from "lucide-react";
 import { MarkdownContent } from "@/components/chat/MarkdownContent";
 import { AttachmentPreview, type AttachmentState } from "@/components/chat/AttachmentPreview";
 import { PromptPicker } from "@/components/chat/PromptPicker";
@@ -28,6 +28,10 @@ export default function ChatPage() {
   const [attachments, setAttachments] = useState<AttachmentState[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [webSearch, setWebSearch] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("web_search_enabled") === "1";
+  });
 
   // Polling state (used for fal-ai image models)
   const [pendingMessageId, setPendingMessageId] = useState<number | null>(null);
@@ -84,8 +88,8 @@ export default function ChatPage() {
 
   // Mutation for fal-ai image models (uses polling)
   const sendMutation = useMutation({
-    mutationFn: ({ msg, attachmentIds }: { msg: string; attachmentIds: string[] }) =>
-      sendMessage(id, { message: msg, attachment_ids: attachmentIds }),
+    mutationFn: ({ msg, attachmentIds, ws }: { msg: string; attachmentIds: string[]; ws: boolean }) =>
+      sendMessage(id, { message: msg, attachment_ids: attachmentIds, web_search: ws }),
     onMutate: async ({ msg }) => {
       const now = Date.now();
       qc.setQueryData<ChatDetail>(["chat", id], (prev) =>
@@ -178,7 +182,7 @@ export default function ChatPage() {
       let realAssistId = tempAssistId;
 
       try {
-        await streamMessage(id, { message: msg, attachment_ids: attachmentIds }, {
+        await streamMessage(id, { message: msg, attachment_ids: attachmentIds, web_search: webSearch }, {
           onInit: ({ user_message_id, assistant_message_id, new_balance }) => {
             realAssistId = assistant_message_id;
             setStars(new_balance);
@@ -251,7 +255,7 @@ export default function ChatPage() {
         setStreamError(errMsg);
       }
     },
-    [id, qc, setStars]
+    [id, qc, setStars, webSearch]
   );
 
   // File attachment upload
@@ -321,7 +325,7 @@ export default function ChatPage() {
     (prompt: string) => {
       if (isBusy) return;
       if (chat?.network.provider === "fal-ai") {
-        sendMutation.mutate({ msg: prompt, attachmentIds: [] });
+        sendMutation.mutate({ msg: prompt, attachmentIds: [], ws: false });
       } else {
         handleStreamSubmit(prompt, []);
       }
@@ -336,7 +340,7 @@ export default function ChatPage() {
     if ((!msg && attachments.filter((a) => !a.error && !a.uploading).length === 0) || isBusy || hasUploading) return;
     const attachmentIds = attachments.filter((a) => !a.uploading && !a.error).map((a) => a.id);
     if (chat?.network.provider === "fal-ai") {
-      sendMutation.mutate({ msg: msg || " ", attachmentIds });
+      sendMutation.mutate({ msg: msg || " ", attachmentIds, ws: webSearch });
     } else {
       handleStreamSubmit(msg || " ", attachmentIds);
     }
@@ -600,11 +604,35 @@ export default function ChatPage() {
             </button>
           </div>
 
+          {/* Toolbar: web search toggle (+ future: voice, etc.) */}
+          {chat.network.provider !== "fal-ai" && (
+            <div className="mt-1.5 flex items-center gap-1 px-1">
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !webSearch;
+                  setWebSearch(next);
+                  localStorage.setItem("web_search_enabled", next ? "1" : "0");
+                }}
+                title={webSearch ? "Веб-поиск включён" : "Включить поиск в интернете"}
+                className={[
+                  "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all",
+                  webSearch
+                    ? "bg-[#0a7cff] text-white"
+                    : "text-[rgba(13,13,13,0.45)] hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.38)] dark:hover:text-[#ececec]",
+                ].join(" ")}
+              >
+                <Globe size={12} />
+                Поиск в интернете
+              </button>
+            </div>
+          )}
+
           {isBusy && (
             <div className="mt-2 flex items-center gap-2 px-1">
               <BouncingDots />
               <span className="text-[12px] text-[rgba(13,13,13,0.42)]">
-                {chat.network.name} отвечает...
+                {webSearch ? "Поиск + " : ""}{chat.network.name} отвечает...
               </span>
             </div>
           )}
