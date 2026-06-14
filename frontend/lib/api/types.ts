@@ -218,6 +218,7 @@ export interface WebMessage {
   id: number;
   role: "user" | "assistant";
   content: string;
+  plain_text: string | null;
   files: unknown[];
   status: "pending" | "completed" | "failed";
   error_message: string | null;

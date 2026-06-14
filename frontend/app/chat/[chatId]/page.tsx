@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Send, LayoutGrid, PenSquare, Code2 } from "lucide-react";
+import { MarkdownContent } from "@/components/chat/MarkdownContent";
 import { getChat, sendMessage, getMessageStatus, streamMessage, APIError } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 import type { WebMessage, ChatDetail } from "@/lib/api/types";
@@ -86,8 +87,8 @@ export default function ChatPage() {
               ...prev,
               messages: [
                 ...prev.messages,
-                { id: now, role: "user", content: msg, files: [], status: "completed", error_message: null, created_at: new Date().toISOString() },
-                { id: now + 1, role: "assistant", content: "", files: [], status: "pending", error_message: null, created_at: new Date().toISOString() },
+                { id: now, role: "user", content: msg, plain_text: msg, files: [], status: "completed", error_message: null, created_at: new Date().toISOString() },
+                { id: now + 1, role: "assistant", content: "", plain_text: null, files: [], status: "pending", error_message: null, created_at: new Date().toISOString() },
               ],
             }
           : prev
@@ -104,7 +105,7 @@ export default function ChatPage() {
           ...prev,
           messages: [
             ...prev.messages.slice(0, -1),
-            { id: res.assistant_message_id, role: "assistant" as const, content: "", files: [], status: "pending" as const, error_message: null, created_at: new Date().toISOString() },
+            { id: res.assistant_message_id, role: "assistant" as const, content: "", plain_text: null, files: [], status: "pending" as const, error_message: null, created_at: new Date().toISOString() },
           ],
         };
       });
@@ -131,8 +132,8 @@ export default function ChatPage() {
               ...prev,
               messages: [
                 ...prev.messages,
-                { id: tempUserId, role: "user", content: msg, files: [], status: "completed", error_message: null, created_at: new Date().toISOString() },
-                { id: tempAssistId, role: "assistant", content: "", files: [], status: "pending", error_message: null, created_at: new Date().toISOString() },
+                { id: tempUserId, role: "user", content: msg, plain_text: msg, files: [], status: "completed", error_message: null, created_at: new Date().toISOString() },
+                { id: tempAssistId, role: "assistant", content: "", plain_text: null, files: [], status: "pending", error_message: null, created_at: new Date().toISOString() },
               ],
             }
           : prev
@@ -163,14 +164,14 @@ export default function ChatPage() {
           onToken: (token) => {
             setStreamText((prev) => prev + token);
           },
-          onDone: ({ content }) => {
+          onDone: ({ content, plain_text }) => {
             qc.setQueryData<ChatDetail>(["chat", id], (prev) => {
               if (!prev) return prev;
               return {
                 ...prev,
                 messages: prev.messages.map((m) =>
                   m.id === realAssistId
-                    ? { ...m, content, status: "completed" as const }
+                    ? { ...m, content, plain_text, status: "completed" as const }
                     : m
                 ),
               };
@@ -509,7 +510,11 @@ function MessageRow({
             {message.error_message ?? "Ошибка генерации. Попробуйте ещё раз."}
           </p>
         ) : (
-          <AssistantContent content={message.content} shouldAnimate={shouldAnimate} />
+          <AssistantContent
+            content={message.content}
+            plain_text={message.plain_text ?? null}
+            shouldAnimate={shouldAnimate}
+          />
         )}
       </div>
     </div>
@@ -588,35 +593,24 @@ function StreamingDisplay({ text }: { text: string }) {
 /* ─── Completed assistant content ───────────────────────── */
 function AssistantContent({
   content,
+  plain_text,
   shouldAnimate,
 }: {
   content: string;
+  plain_text: string | null;
   shouldAnimate: boolean;
 }) {
-  const html = detectHTML(content);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Lock animation decision on mount — only animate plain text, not HTML
-  const doAnimate = useRef(shouldAnimate && !html && content.length > 0);
-  const [displayed, setDisplayed] = useState(doAnimate.current ? "" : content);
-  const [showCursor, setShowCursor] = useState(doAnimate.current);
+  // Prefer plain_text (raw markdown) → render with react-markdown
+  if (plain_text) {
+    return <MarkdownContent content={plain_text} />;
+  }
 
-  useEffect(() => {
-    if (!doAnimate.current) return;
-    let i = 0;
-    const delay = Math.max(5, Math.min(20, 1500 / content.length));
-    const timer = setInterval(() => {
-      i++;
-      setDisplayed(content.slice(0, i));
-      if (i >= content.length) {
-        clearInterval(timer);
-        setShowCursor(false);
-      }
-    }, delay);
-    return () => clearInterval(timer);
-  }, []); // runs once on mount
+  // Fallback: HTML from Django CodeFormatter (legacy / image model text)
+  const html = detectHTML(content);
 
-  // Attach copy handlers to Django CodeFormatter buttons
+  // Attach copy handlers to Django CodeFormatter buttons (legacy path)
   useEffect(() => {
     if (!containerRef.current) return;
     const buttons = containerRef.current.querySelectorAll<HTMLButtonElement>(".copy-code");
@@ -644,22 +638,37 @@ function AssistantContent({
     );
   }
 
+  // Plain text with optional typewriter for image-model text responses
+  return <PlainTextAnimated content={content} shouldAnimate={shouldAnimate} />;
+}
+
+function PlainTextAnimated({ content, shouldAnimate }: { content: string; shouldAnimate: boolean }) {
+  const doAnimate = useRef(shouldAnimate && content.length > 0);
+  const [displayed, setDisplayed] = useState(doAnimate.current ? "" : content);
+  const [showCursor, setShowCursor] = useState(doAnimate.current);
+
+  useEffect(() => {
+    if (!doAnimate.current) return;
+    let i = 0;
+    const delay = Math.max(5, Math.min(20, 1500 / content.length));
+    const timer = setInterval(() => {
+      i++;
+      setDisplayed(content.slice(0, i));
+      if (i >= content.length) {
+        clearInterval(timer);
+        setShowCursor(false);
+      }
+    }, delay);
+    return () => clearInterval(timer);
+  }, []); // runs once on mount
+
   return (
-    <div
-      className="text-[15px] leading-[1.75]"
-      style={{ color: "rgba(13,13,13,0.86)" }}
-    >
+    <div className="text-[15px] leading-[1.75]" style={{ color: "rgba(13,13,13,0.86)" }}>
       <PlainText text={displayed} />
       {showCursor && (
         <span
           className="ml-0.5 inline-block animate-pulse"
-          style={{
-            width: "2px",
-            height: "1.1em",
-            background: "#0a7cff",
-            verticalAlign: "text-bottom",
-            borderRadius: "1px",
-          }}
+          style={{ width: "2px", height: "1.1em", background: "#0a7cff", verticalAlign: "text-bottom", borderRadius: "1px" }}
         />
       )}
     </div>
