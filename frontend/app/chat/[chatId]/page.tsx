@@ -617,8 +617,8 @@ export default function ChatPage() {
                 }}
                 title={
                   webSearch
-                    ? "Веб-поиск включён — запрос идёт через Perplexity Sonar. Нажмите чтобы отключить"
-                    : "Включить поиск в интернете (через Perplexity Sonar)"
+                    ? "Веб-поиск включён — запрос идёт через Grok Search. Нажмите чтобы отключить"
+                    : "Включить поиск в интернете (через Grok Search)"
                 }
                 className={[
                   "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all",

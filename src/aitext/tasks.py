@@ -103,7 +103,7 @@ def truncate_text(text, max_length):
     return text
 
 
-WEB_SEARCH_MODEL = "sonar"  # Perplexity Sonar через laozhang.ai (без OpenRouter-префикса)
+WEB_SEARCH_MODEL = "grok-3-search"  # Grok 3 с встроенным веб-поиском (доступен на laozhang.ai)
 
 
 @shared_task(bind=True, max_retries=3)
