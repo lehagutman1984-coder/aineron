@@ -1,19 +1,14 @@
-// Server-side fetch helper for Next.js Server Components (RSC / SSG / SSR).
-// Uses the internal Docker network URL so fetches bypass Nginx entirely.
-
 import type { NetworkListItem, NetworkDetail, Category, BlogCategory, BlogPost, BlogPostDetail } from "./types";
-
-const DJANGO =
-  (process.env.DJANGO_INTERNAL_URL ?? "http://localhost:8000").replace(/\/$/, "");
 
 async function serverFetch<T>(
   path: string,
   opts: RequestInit & { revalidate?: number | false } = {}
 ): Promise<T | null> {
-  const { revalidate = 3600, ...rest } = opts;
+  const django = (process.env.DJANGO_INTERNAL_URL ?? "http://web:8000").replace(/\/$/, "");
+  const { revalidate = false, ...rest } = opts;
   try {
-    const res = await fetch(`${DJANGO}/api/v1${path}`, {
-      next: revalidate === false ? { revalidate: 0 } : { revalidate },
+    const res = await fetch(`${django}/api/v1${path}`, {
+      cache: "no-store",
       ...rest,
     });
     if (!res.ok) return null;
