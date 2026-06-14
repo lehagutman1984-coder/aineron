@@ -4,11 +4,12 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw, Paperclip, BookMarked, Globe } from "lucide-react";
+import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw, Paperclip, BookMarked, Globe, Volume2, Square, Loader } from "lucide-react";
 import { MarkdownContent } from "@/components/chat/MarkdownContent";
 import { AttachmentPreview, type AttachmentState } from "@/components/chat/AttachmentPreview";
 import { PromptPicker } from "@/components/chat/PromptPicker";
-import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, uploadFile, APIError } from "@/lib/api/client";
+import { VoiceButton } from "@/components/chat/VoiceButton";
+import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, uploadFile, synthesizeSpeech, APIError } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 import type { WebMessage, ChatDetail } from "@/lib/api/types";
 
@@ -604,7 +605,7 @@ export default function ChatPage() {
             </button>
           </div>
 
-          {/* Toolbar: web search toggle (+ future: voice, etc.) */}
+          {/* Toolbar: web search + voice */}
           {chat.network.provider !== "fal-ai" && (
             <div className="mt-1.5 flex items-center gap-1 px-1">
               <button
@@ -625,6 +626,13 @@ export default function ChatPage() {
                 <Globe size={12} />
                 Поиск в интернете
               </button>
+
+              <VoiceButton
+                disabled={isBusy}
+                onTranscript={(t) =>
+                  setText((prev) => (prev.trim() ? prev.trimEnd() + " " + t : t))
+                }
+              />
             </div>
           )}
 
@@ -769,11 +777,80 @@ function MessageRow({
                   <span>Ещё раз</span>
                 </button>
               )}
+              {(message.plain_text || message.content) && (
+                <SpeakButton
+                  text={message.plain_text?.slice(0, 2000) || message.content.replace(/<[^>]+>/g, " ").slice(0, 2000)}
+                />
+              )}
             </div>
           </>
         )}
       </div>
     </div>
+  );
+}
+
+/* ─── TTS speak button ───────────────────────────────────── */
+function SpeakButton({ text }: { text: string }) {
+  const [state, setState] = useState<"idle" | "loading" | "playing">("idle");
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const urlRef = useRef<string | null>(null);
+
+  const stop = () => {
+    audioRef.current?.pause();
+    if (urlRef.current) URL.revokeObjectURL(urlRef.current);
+    audioRef.current = null;
+    urlRef.current = null;
+    setState("idle");
+  };
+
+  const handleClick = async () => {
+    if (state === "playing") { stop(); return; }
+    if (state === "loading") return;
+    setState("loading");
+    try {
+      const blob = await synthesizeSpeech(text);
+      const url = URL.createObjectURL(blob);
+      urlRef.current = url;
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onended = stop;
+      audio.onerror = stop;
+      await audio.play();
+      setState("playing");
+    } catch {
+      setState("idle");
+    }
+  };
+
+  return (
+    <button
+      onClick={handleClick}
+      className="flex h-7 items-center gap-1.5 rounded-[6px] px-2 text-[12px] font-medium transition-colors"
+      style={{ color: state !== "idle" ? "#0a7cff" : "rgba(13,13,13,0.42)" }}
+      onMouseEnter={(e) => {
+        if (state === "idle") {
+          (e.currentTarget as HTMLButtonElement).style.background = "rgba(13,13,13,0.06)";
+          (e.currentTarget as HTMLButtonElement).style.color = "#0d0d0d";
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (state === "idle") {
+          (e.currentTarget as HTMLButtonElement).style.background = "";
+          (e.currentTarget as HTMLButtonElement).style.color = "rgba(13,13,13,0.42)";
+        }
+      }}
+      title={state === "playing" ? "Остановить" : "Озвучить ответ (TTS)"}
+    >
+      {state === "loading" ? (
+        <Loader size={13} className="animate-spin" />
+      ) : state === "playing" ? (
+        <Square size={13} />
+      ) : (
+        <Volume2 size={13} />
+      )}
+      <span>{state === "loading" ? "Загрузка..." : state === "playing" ? "Стоп" : "Озвучить"}</span>
+    </button>
   );
 }
 

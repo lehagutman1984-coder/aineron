@@ -508,6 +508,40 @@ export const requestReferralWithdrawal = (body: {
     body: JSON.stringify(body),
   });
 
+// ============ Audio ============
+
+export const transcribeAudio = (blob: Blob): Promise<string> => {
+  const ext = blob.type.includes("mp4") ? "mp4" : blob.type.includes("ogg") ? "ogg" : "webm";
+  const form = new FormData();
+  form.append("file", blob, `recording.${ext}`);
+  return fetch(`${BASE_URL}/audio/transcriptions`, {
+    method: "POST",
+    body: form,
+    credentials: "include",
+  }).then(async (res) => {
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({})) as { error?: { message?: string } };
+      throw new APIError(res.status, body?.error?.message ?? `HTTP ${res.status}`);
+    }
+    const data = await res.json() as { text: string };
+    return data.text ?? "";
+  });
+};
+
+export const synthesizeSpeech = (text: string, voice = "alloy"): Promise<Blob> =>
+  fetch(`${BASE_URL}/audio/speech`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ input: text.slice(0, 2000), model: "tts-1", voice }),
+  }).then(async (res) => {
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({})) as { error?: { message?: string } };
+      throw new APIError(res.status, body?.error?.message ?? `HTTP ${res.status}`);
+    }
+    return res.blob();
+  });
+
 // ============ Projects ============
 
 export const listProjects = (): Promise<Project[]> =>
