@@ -4,7 +4,6 @@ from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.generics import ListCreateAPIView, RetrieveDestroyAPIView
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.authentication import SessionAuthentication
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -22,7 +21,6 @@ logger = logging.getLogger(__name__)
 
 
 class ChatListCreateView(ListCreateAPIView):
-    authentication_classes = [SessionAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get_serializer_class(self):
@@ -109,7 +107,6 @@ class ChatListCreateView(ListCreateAPIView):
 
 
 class ChatDetailView(RetrieveDestroyAPIView):
-    authentication_classes = [SessionAuthentication]
     permission_classes = [IsAuthenticated]
     serializer_class = ChatDetailSerializer
 
@@ -123,7 +120,6 @@ class ChatDetailView(RetrieveDestroyAPIView):
 
 
 class SendMessageView(APIView):
-    authentication_classes = [SessionAuthentication]
     permission_classes = [IsAuthenticated]
 
     def post(self, request, chat_id):
@@ -192,7 +188,6 @@ class SendMessageView(APIView):
 
 
 class MessageStatusView(APIView):
-    authentication_classes = [SessionAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request, message_id):
