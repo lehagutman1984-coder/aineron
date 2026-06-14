@@ -273,6 +273,10 @@ LAOZHANG_API_KEY = os.environ.get('LAOZHANG_API_KEY', '')
 LAOZHANG_API_URL = "https://api.laozhang.ai/v1"
 SITEMAP_CACHE_TIMEOUT = 3600
 
+# Веб-поиск (используется в call_web_search)
+TAVILY_API_KEY = os.environ.get('TAVILY_API_KEY', '')        # tavily.com — 1000 req/month free
+BRAVE_SEARCH_API_KEY = os.environ.get('BRAVE_SEARCH_API_KEY', '')  # api.search.brave.com — 2000 req/month free
+
 
 # ========== ROBOKASSA ==========
 ROBOKASSA_LOGIN = os.environ.get('ROBOKASSA_LOGIN', 'aineron.ru')

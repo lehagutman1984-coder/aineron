@@ -3,6 +3,7 @@ import os
 import base64
 import logging
 import datetime
+import requests as _req
 from celery import shared_task
 from openai import OpenAI
 from django.conf import settings
@@ -123,39 +124,65 @@ def build_web_search_message(search_results: str, user_query: str) -> dict:
 
 
 def call_web_search(user_query: str, log_prefix: str = "") -> str:
-    """Веб-поиск через laozhang.ai: grok-3/4 с xAI LiveSearch (search_parameters)."""
-    client = get_laozhang_client()
-    search_prompt = (
-        f"{user_query[:1800]}\n\n"
-        "Search the web for current information. "
-        "Return 5-7 key facts with source URLs and publication dates where available. "
-        "Format each fact as: [N] fact — URL (date). "
-        "Match the language of the original query."
-    )
+    """Веб-поиск: Tavily (primary) → Brave Search (fallback)."""
 
-    # xAI LiveSearch: search_parameters передаётся базовым grok-моделям
-    # (grok-3-search — это алиас laozhang без каналов на pay-as-you-go)
-    search_candidates = [
-        ("grok-3", {"search_parameters": {"mode": "auto"}}),
-        ("grok-4", {"search_parameters": {"mode": "auto"}}),
-        ("grok-4-fast", {"search_parameters": {"mode": "auto"}}),
-    ]
-
-    for model, extra in search_candidates:
+    # ── Tavily ───────────────────────────────────────────────────────────────
+    tavily_key = getattr(settings, "TAVILY_API_KEY", "")
+    if tavily_key:
         try:
-            resp = client.chat.completions.create(
-                model=model,
-                messages=[{"role": "user", "content": search_prompt}],
-                max_tokens=2000,
-                extra_body=extra,
+            r = _req.post(
+                "https://api.tavily.com/search",
+                json={
+                    "api_key": tavily_key,
+                    "query": user_query[:400],
+                    "search_depth": "basic",
+                    "max_results": 6,
+                    "include_answer": False,
+                },
+                timeout=12,
             )
-            result = resp.choices[0].message.content.strip()
-            logger.info(f"{log_prefix}Web search OK ({model}+search_params): {len(result)} chars")
-            return result
+            r.raise_for_status()
+            items = r.json().get("results", [])
+            if items:
+                lines = []
+                for i, item in enumerate(items, 1):
+                    parts = [f"[{i}] {item['title']}", item.get("content", "")[:250]]
+                    parts.append(f"URL: {item['url']}")
+                    if item.get("published_date"):
+                        parts.append(f"Дата: {item['published_date']}")
+                    lines.append("\n".join(p for p in parts if p))
+                logger.info(f"{log_prefix}Tavily OK: {len(items)} results")
+                return "\n\n".join(lines)
         except Exception as e:
-            logger.warning(f"{log_prefix}Web search FAILED ({model}): {e}")
+            logger.warning(f"{log_prefix}Tavily FAILED: {e}")
 
-    logger.error(f"{log_prefix}All web search methods failed")
+    # ── Brave Search ─────────────────────────────────────────────────────────
+    brave_key = getattr(settings, "BRAVE_SEARCH_API_KEY", "")
+    if brave_key:
+        try:
+            r = _req.get(
+                "https://api.search.brave.com/res/v1/web/search",
+                headers={
+                    "Accept": "application/json",
+                    "Accept-Encoding": "gzip",
+                    "X-Subscription-Token": brave_key,
+                },
+                params={"q": user_query[:400], "count": 6},
+                timeout=12,
+            )
+            r.raise_for_status()
+            web = r.json().get("web", {}).get("results", [])
+            if web:
+                lines = [
+                    f"[{i}] {item['title']}\n{item.get('description', '')[:250]}\nURL: {item['url']}"
+                    for i, item in enumerate(web, 1)
+                ]
+                logger.info(f"{log_prefix}Brave Search OK: {len(web)} results")
+                return "\n\n".join(lines)
+        except Exception as e:
+            logger.warning(f"{log_prefix}Brave FAILED: {e}")
+
+    logger.error(f"{log_prefix}All search methods failed — check TAVILY_API_KEY / BRAVE_SEARCH_API_KEY in .env")
     return ""
 
 
