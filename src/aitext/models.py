@@ -289,6 +289,7 @@ class Message(models.Model):
     settings = models.JSONField(default=dict, blank=True, verbose_name='Настройки генерации')
     created_at = models.DateTimeField(auto_now_add=True)
     plain_text = models.TextField(blank=True, verbose_name='Оригинальный текст без форматирования')
+    search_context = models.TextField(blank=True, default='', verbose_name='Результаты веб-поиска')
 
     class Meta:
         verbose_name = 'Сообщение'

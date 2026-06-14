@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw, Paperclip, BookMarked, Globe, Volume2, Square, Loader } from "lucide-react";
+import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw, Paperclip, BookMarked, Globe, Volume2, Square, Loader, ChevronDown, ChevronRight } from "lucide-react";
 import { MarkdownContent } from "@/components/chat/MarkdownContent";
 import { AttachmentPreview, type AttachmentState } from "@/components/chat/AttachmentPreview";
 import { PromptPicker } from "@/components/chat/PromptPicker";
@@ -42,6 +42,10 @@ export default function ChatPage() {
   const [streamText, setStreamText] = useState("");
   const [streamingAssistId, setStreamingAssistId] = useState<number | null>(null);
   const [streamError, setStreamError] = useState<string | null>(null);
+
+  // Web search two-step state
+  const [searchPhase, setSearchPhase] = useState<"idle" | "searching" | "generating">("idle");
+  const [liveSearchPreview, setLiveSearchPreview] = useState("");
 
   const animatedIds = useRef<Set<number>>(new Set());
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -183,6 +187,7 @@ export default function ChatPage() {
       let realAssistId = tempAssistId;
 
       try {
+        if (webSearch) setSearchPhase("searching");
         await streamMessage(id, { message: msg, attachment_ids: attachmentIds, web_search: webSearch }, {
           onInit: ({ user_message_id, assistant_message_id, new_balance }) => {
             realAssistId = assistant_message_id;
@@ -200,17 +205,26 @@ export default function ChatPage() {
               };
             });
           },
+          onSearchStart: () => {
+            setSearchPhase("searching");
+            setLiveSearchPreview("");
+          },
+          onSearchDone: (preview) => {
+            setLiveSearchPreview(preview);
+            setSearchPhase("generating");
+          },
           onToken: (token) => {
+            if (searchPhase !== "idle") setSearchPhase("idle");
             setStreamText((prev) => prev + token);
           },
-          onDone: ({ content, plain_text }) => {
+          onDone: ({ content, plain_text, search_context }) => {
             qc.setQueryData<ChatDetail>(["chat", id], (prev) => {
               if (!prev) return prev;
               return {
                 ...prev,
                 messages: prev.messages.map((m) =>
                   m.id === realAssistId
-                    ? { ...m, content, plain_text, status: "completed" as const }
+                    ? { ...m, content, plain_text, status: "completed" as const, search_context: search_context ?? "" }
                     : m
                 ),
               };
@@ -218,6 +232,8 @@ export default function ChatPage() {
             setIsStreaming(false);
             setStreamText("");
             setStreamingAssistId(null);
+            setSearchPhase("idle");
+            setLiveSearchPreview("");
           },
           onError: (errorMsg) => {
             qc.setQueryData<ChatDetail>(["chat", id], (prev) => {
@@ -234,6 +250,8 @@ export default function ChatPage() {
             setIsStreaming(false);
             setStreamText("");
             setStreamingAssistId(null);
+            setSearchPhase("idle");
+            setLiveSearchPreview("");
             setStreamError(errorMsg);
           },
         });
@@ -647,13 +665,17 @@ export default function ChatPage() {
             <div className="mt-2 flex items-center gap-2 px-1">
               <BouncingDots />
               <span className="text-[12px] text-[rgba(13,13,13,0.42)]">
-                {webSearch ? (
+                {searchPhase === "searching" ? (
+                  <span className="font-medium text-[#0a7cff]">Grok ищет в интернете...</span>
+                ) : searchPhase === "generating" ? (
                   <>
-                    <span className="font-medium text-[#0a7cff]">Ищу в интернете</span>
+                    <span className="font-medium text-[#16a34a]">Найдено</span>
                     <span className="mx-1 text-[rgba(13,13,13,0.25)]">·</span>
+                    <span>{chat.network.name} анализирует...</span>
                   </>
-                ) : null}
-                {chat.network.name} отвечает...
+                ) : (
+                  <span>{chat.network.name} отвечает...</span>
+                )}
               </span>
             </div>
           )}
@@ -763,6 +785,9 @@ function MessageRow({
           </p>
         ) : (
           <>
+            {message.search_context && (
+              <SearchContextBlock context={message.search_context} />
+            )}
             <AssistantContent
               content={message.content}
               plain_text={message.plain_text ?? null}
@@ -1066,6 +1091,45 @@ function PlainTextAnimated({ content, shouldAnimate }: { content: string; should
           style={{ width: "2px", height: "1.1em", background: "#0a7cff", verticalAlign: "text-bottom", borderRadius: "1px" }}
         />
       )}
+    </div>
+  );
+}
+
+/* ─── Search context block ───────────────────────────────── */
+function SearchContextBlock({ context }: { context: string }) {
+  const [open, setOpen] = useState(false);
+  const lines = context.split("\n").filter(Boolean);
+  const preview = lines.slice(0, 3).join("\n");
+
+  return (
+    <div className="mb-3 rounded-[10px] border border-[rgba(10,124,255,0.18)] bg-[rgba(10,124,255,0.04)]">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-2 px-3 py-2 text-left"
+      >
+        <Globe size={13} className="shrink-0 text-[#0a7cff]" />
+        <span className="flex-1 text-[12px] font-medium text-[#0a7cff]">
+          Что нашёл Grok Search
+        </span>
+        {open ? (
+          <ChevronDown size={13} className="shrink-0 text-[rgba(10,124,255,0.6)]" />
+        ) : (
+          <ChevronRight size={13} className="shrink-0 text-[rgba(10,124,255,0.6)]" />
+        )}
+      </button>
+      <div className="border-t border-[rgba(10,124,255,0.12)] px-3 pb-3 pt-2">
+        <pre className="whitespace-pre-wrap font-sans text-[12px] leading-relaxed text-[rgba(13,13,13,0.65)] dark:text-[rgba(236,236,236,0.55)]">
+          {open ? context : preview + (lines.length > 3 ? "\n..." : "")}
+        </pre>
+        {!open && lines.length > 3 && (
+          <button
+            onClick={() => setOpen(true)}
+            className="mt-1 text-[11px] text-[rgba(10,124,255,0.7)] hover:text-[#0a7cff]"
+          >
+            Показать всё ({lines.length} строк)
+          </button>
+        )}
+      </div>
     </div>
   );
 }

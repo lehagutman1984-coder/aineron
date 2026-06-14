@@ -222,6 +222,7 @@ export interface WebMessage {
   files: unknown[];
   status: "pending" | "completed" | "failed";
   error_message: string | null;
+  search_context?: string;
   created_at: string;
 }
 

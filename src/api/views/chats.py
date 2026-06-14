@@ -370,7 +370,7 @@ class StreamMessageView(APIView):
         user = request.user
         user_msg_id = user_message.id
         assist_msg_id = assistant_message.id
-        model_name = WEB_SEARCH_MODEL if web_search else network.model_name
+        model_name = network.model_name  # всегда выбранная модель
         max_tokens = network.max_tokens
 
         def _sse(data):
@@ -384,12 +384,63 @@ class StreamMessageView(APIView):
                 "new_balance": new_balance,
             })
 
+            api_messages = list(messages_for_api)
             full_text = ""
+
             try:
+                # ── Шаг 1: веб-поиск (если включён) ────────────────────────────
+                if web_search:
+                    yield _sse({"type": "search_start"})
+
+                    user_query = message_text or "информация"
+                    search_client = get_laozhang_client()
+                    search_results = ""
+                    try:
+                        search_resp = search_client.chat.completions.create(
+                            model=WEB_SEARCH_MODEL,
+                            messages=[
+                                {
+                                    "role": "system",
+                                    "content": (
+                                        "You are a web search tool. Search the internet and return ONLY the key facts "
+                                        "you found as concise bullet points. No greetings, no analysis. "
+                                        "Include relevant dates, numbers, sources. "
+                                        "Match the language of the user's query."
+                                    ),
+                                },
+                                {"role": "user", "content": user_query[:2000]},
+                            ],
+                            temperature=0.1,
+                            max_tokens=2000,
+                        )
+                        search_results = search_resp.choices[0].message.content.strip()
+                        logger.info(f"SSE web search OK for msg {assist_msg_id}: {len(search_results)} chars")
+                    except Exception as se:
+                        logger.warning(f"SSE web search failed for msg {assist_msg_id}: {se}")
+
+                    if search_results:
+                        assistant_message.search_context = search_results
+                        assistant_message.save(update_fields=['search_context'])
+                        search_system = (
+                            "[Актуальные данные из интернета]\n"
+                            "Ниже результаты поиска, только что полученные по запросу пользователя.\n"
+                            "Используй их для точного и актуального ответа. "
+                            "Ссылайся на конкретные факты. Отвечай на языке пользователя.\n\n"
+                            f"{search_results[:3000]}\n\n"
+                            "[Конец результатов поиска]"
+                        )
+                        api_messages.insert(0, {"role": "system", "content": search_system})
+
+                    yield _sse({
+                        "type": "search_done",
+                        "preview": search_results[:400] if search_results else "",
+                    })
+
+                # ── Шаг 2: основная модель (выбранная пользователем) ────────────
                 client = get_laozhang_client()
                 kwargs = {
                     "model": model_name,
-                    "messages": messages_for_api,
+                    "messages": api_messages,
                     "temperature": 0.7,
                     "stream": True,
                 }
@@ -413,6 +464,7 @@ class StreamMessageView(APIView):
                     "type": "done",
                     "content": formatted_html,
                     "plain_text": full_text,
+                    "search_context": assistant_message.search_context,
                 })
 
             except Exception as e:

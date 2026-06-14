@@ -276,7 +276,58 @@ def generate_ai_response(self, message_id, web_search=False):
         if not messages_for_api:
             messages_for_api.append({"role": "user", "content": "Привет"})
 
-        effective_model = WEB_SEARCH_MODEL if web_search else network.model_name
+        # ── Двухэтапный веб-поиск ──────────────────────────────────────────────
+        if web_search:
+            user_query = ""
+            for m in reversed(messages_for_api):
+                if m.get("role") == "user":
+                    c = m.get("content", "")
+                    user_query = c if isinstance(c, str) else " ".join(
+                        p.get("text", "") for p in c if isinstance(p, dict) and p.get("type") == "text"
+                    )
+                    break
+            if not user_query:
+                user_query = "информация"
+
+            search_client = get_laozhang_client()
+            try:
+                search_resp = search_client.chat.completions.create(
+                    model=WEB_SEARCH_MODEL,
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": (
+                                "You are a web search tool. Search the internet and return ONLY the key facts "
+                                "you found as concise bullet points. No greetings, no analysis, no conclusions. "
+                                "Include relevant dates, numbers, and sources. "
+                                "Match the language of the user's query."
+                            ),
+                        },
+                        {"role": "user", "content": user_query[:2000]},
+                    ],
+                    temperature=0.1,
+                    max_tokens=2000,
+                )
+                search_results = search_resp.choices[0].message.content.strip()
+                logger.info(f"Web search step OK for message {message_id}, {len(search_results)} chars")
+            except Exception as search_err:
+                search_results = ""
+                logger.warning(f"Web search step failed for message {message_id}: {search_err}")
+
+            if search_results:
+                message.search_context = search_results
+                message.save(update_fields=['search_context'])
+                search_system = (
+                    "[Актуальные данные из интернета]\n"
+                    "Ниже результаты поиска, только что полученные по запросу пользователя.\n"
+                    "Используй их для точного и актуального ответа. "
+                    "Ссылайся на конкретные факты. Отвечай на языке пользователя.\n\n"
+                    f"{search_results[:3000]}\n\n"
+                    "[Конец результатов поиска]"
+                )
+                messages_for_api.insert(0, {"role": "system", "content": search_system})
+
+        effective_model = network.model_name  # всегда используем выбранную пользователем модель
         client = get_laozhang_client()
         completion_kwargs = {
             "model": effective_model,
