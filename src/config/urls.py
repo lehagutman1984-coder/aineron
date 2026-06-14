@@ -31,8 +31,6 @@ urlpatterns = [
     path('accounts/', include('allauth.urls')),
     path('aitext/', include('aitext.urls')),
 
-    path('blog/', include('blog.urls')),
-
     # ========== DEV API ==========
     path('api/', include('api.urls', namespace='api')),
 
