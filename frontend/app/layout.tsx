@@ -7,6 +7,7 @@ import { AuthInit } from "@/components/layout/AuthInit";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
 import { ToastContainer } from "@/components/ui/toast";
 import { Analytics } from "@/components/analytics/Analytics";
+import { PWAProvider } from "@/components/PWAProvider";
 
 const inter = Inter({
   subsets: ["latin", "cyrillic"],
@@ -31,6 +32,15 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
+  },
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "aineron",
+    statusBarStyle: "default",
+  },
+  icons: {
+    apple: "/icons/icon.svg",
   },
 };
 
@@ -57,6 +67,7 @@ export default function RootLayout({
           <main>{children}</main>
           <ToastContainer />
           <Analytics />
+          <PWAProvider />
         </Providers>
       </body>
     </html>
