@@ -105,7 +105,7 @@ def truncate_text(text, max_length):
 
 
 def build_web_search_message(search_results: str, user_query: str) -> dict:
-    """Формирует system-сообщение с результатами поиска — как у Perplexity/ChatGPT."""
+    """Формирует system-сообщение с результатами поиска (Perplexity-style)."""
     now = datetime.datetime.utcnow().strftime("%d.%m.%Y %H:%M UTC")
     query_preview = user_query[:200].strip()
     content = (
@@ -123,47 +123,39 @@ def build_web_search_message(search_results: str, user_query: str) -> dict:
 
 
 def call_web_search(user_query: str, log_prefix: str = "") -> str:
-    """Поиск: DuckDuckGo (lite backend) → grok-4 → grok-3-search → grok-3-deepsearch."""
-
-    # ── Шаг 1: DuckDuckGo lite (меньше rate-limit чем html) ───────────────────
-    try:
-        from duckduckgo_search import DDGS
-        with DDGS() as ddgs:
-            raw = list(ddgs.text(user_query[:300], max_results=6, backend="lite"))
-        if raw:
-            lines = [
-                f"[{i}] {r.get('title', '').strip()}\n{r.get('body', '').strip()}\nURL: {r.get('href', '').strip()}"
-                for i, r in enumerate(raw, 1)
-            ]
-            result = "\n\n".join(lines)
-            logger.info(f"{log_prefix}DuckDuckGo(lite) OK: {len(raw)} results")
-            return result
-        logger.warning(f"{log_prefix}DuckDuckGo returned 0 results")
-    except Exception as e:
-        logger.warning(f"{log_prefix}DuckDuckGo FAILED: {e}")
-
-    # ── Шаг 2: AI-модели с веб-поиском из laozhang.ai ─────────────────────────
+    """Веб-поиск через laozhang.ai: grok-3/4 с xAI LiveSearch (search_parameters)."""
     client = get_laozhang_client()
     search_prompt = (
         f"{user_query[:1800]}\n\n"
-        "Search the web and return 6 numbered facts:\n"
-        "[1] fact (date, source URL if available)\n"
-        "Match the language of the query."
+        "Search the web for current information. "
+        "Return 5-7 key facts with source URLs and publication dates where available. "
+        "Format each fact as: [N] fact — URL (date). "
+        "Match the language of the original query."
     )
-    for model in ("grok-4", "grok-3-search", "grok-3-deepsearch"):
+
+    # xAI LiveSearch: search_parameters передаётся базовым grok-моделям
+    # (grok-3-search — это алиас laozhang без каналов на pay-as-you-go)
+    search_candidates = [
+        ("grok-3", {"search_parameters": {"mode": "auto"}}),
+        ("grok-4", {"search_parameters": {"mode": "auto"}}),
+        ("grok-4-fast", {"search_parameters": {"mode": "auto"}}),
+    ]
+
+    for model, extra in search_candidates:
         try:
             resp = client.chat.completions.create(
                 model=model,
                 messages=[{"role": "user", "content": search_prompt}],
                 max_tokens=2000,
+                extra_body=extra,
             )
             result = resp.choices[0].message.content.strip()
-            logger.info(f"{log_prefix}AI search OK ({model}): {len(result)} chars")
+            logger.info(f"{log_prefix}Web search OK ({model}+search_params): {len(result)} chars")
             return result
         except Exception as e:
-            logger.warning(f"{log_prefix}AI search FAILED ({model}): {e}")
+            logger.warning(f"{log_prefix}Web search FAILED ({model}): {e}")
 
-    logger.error(f"{log_prefix}All search methods failed")
+    logger.error(f"{log_prefix}All web search methods failed")
     return ""
 
 
