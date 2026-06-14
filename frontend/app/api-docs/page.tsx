@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Code2, ExternalLink } from "lucide-react";
+import { Code2, ExternalLink, Play } from "lucide-react";
 import { CodeTabs, StandaloneCodeBlock } from "@/components/docs/CodeTabs";
 import type { CodeTabItem } from "@/components/docs/CodeTabs";
 
@@ -445,6 +445,13 @@ export default function ApiDocsPage() {
 
         {/* Action links */}
         <div className="flex flex-wrap gap-3 pb-4">
+          <Link
+            href="/api-docs/playground/"
+            className="inline-flex items-center gap-2 rounded-[10px] bg-[#0a7cff] px-5 py-2.5 text-[14px] font-medium text-white hover:bg-[#0066cc] transition-colors"
+          >
+            <Play size={14} />
+            Playground
+          </Link>
           <a
             href="/api/v1/docs/"
             target="_blank"
