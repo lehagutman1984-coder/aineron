@@ -230,6 +230,9 @@ export interface NetworkMini {
   slug: string;
   avatar: string | null;
   category: Category;
+  provider: string;
+  handle_photo: boolean;
+  handle_video: boolean;
 }
 
 export interface ChatListItem {

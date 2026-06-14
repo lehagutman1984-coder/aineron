@@ -227,6 +227,68 @@ export const sendMessage = (
 export const getMessageStatus = (messageId: number): Promise<WebMessage> =>
   request<WebMessage>(`/messages/${messageId}/status/`);
 
+// ============ SSE Streaming ============
+
+type SSEEvent =
+  | { type: "init"; user_message_id: number; assistant_message_id: number; new_balance: number }
+  | { type: "token"; text: string }
+  | { type: "done"; content: string; plain_text: string }
+  | { type: "error"; message: string };
+
+export async function streamMessage(
+  chatId: number,
+  body: { message: string; files?: unknown[]; settings?: Record<string, unknown> },
+  callbacks: {
+    onInit: (data: { user_message_id: number; assistant_message_id: number; new_balance: number }) => void;
+    onToken: (text: string) => void;
+    onDone: (data: { content: string; plain_text: string }) => void;
+    onError: (message: string) => void;
+  }
+): Promise<void> {
+  const res = await fetch(`${BASE_URL}/chats/${chatId}/messages/stream/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({})) as { error?: { message?: string; code?: string } };
+    throw new APIError(
+      res.status,
+      errBody?.error?.message ?? `HTTP ${res.status}`,
+      errBody?.error?.code ?? null
+    );
+  }
+
+  const reader = res.body!.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    const parts = buffer.split("\n\n");
+    buffer = parts.pop() ?? "";
+
+    for (const part of parts) {
+      const line = part.trim();
+      if (!line.startsWith("data: ")) continue;
+      try {
+        const event = JSON.parse(line.slice(6)) as SSEEvent;
+        if (event.type === "init") callbacks.onInit(event);
+        else if (event.type === "token") callbacks.onToken(event.text);
+        else if (event.type === "done") callbacks.onDone(event);
+        else if (event.type === "error") callbacks.onError(event.message);
+      } catch {
+        // ignore malformed SSE line
+      }
+    }
+  }
+}
+
 // ============ Organizations ============
 
 export const listOrgs = (): Promise<Organization[]> =>

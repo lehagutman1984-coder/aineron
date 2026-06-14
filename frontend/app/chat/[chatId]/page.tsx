@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Send, LayoutGrid, PenSquare, Code2 } from "lucide-react";
-import { getChat, sendMessage, getMessageStatus } from "@/lib/api/client";
-import { APIError } from "@/lib/api/client";
+import { getChat, sendMessage, getMessageStatus, streamMessage, APIError } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 import type { WebMessage, ChatDetail } from "@/lib/api/types";
 
@@ -22,7 +21,16 @@ export default function ChatPage() {
   const { setStars } = useAuthStore();
 
   const [text, setText] = useState("");
+
+  // Polling state (used for fal-ai image models)
   const [pendingMessageId, setPendingMessageId] = useState<number | null>(null);
+
+  // SSE streaming state (used for text models)
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamText, setStreamText] = useState("");
+  const [streamingAssistId, setStreamingAssistId] = useState<number | null>(null);
+  const [streamError, setStreamError] = useState<string | null>(null);
+
   const animatedIds = useRef<Set<number>>(new Set());
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -34,6 +42,7 @@ export default function ChatPage() {
     retry: 1,
   });
 
+  // Polling query — only active for fal-ai image models
   const { data: polledMessage } = useQuery<WebMessage>({
     queryKey: ["message-status", pendingMessageId],
     queryFn: () => getMessageStatus(pendingMessageId!),
@@ -64,8 +73,9 @@ export default function ChatPage() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chat?.messages, polledMessage]);
+  }, [chat?.messages, polledMessage, streamText]);
 
+  // Mutation for fal-ai image models (uses polling)
   const sendMutation = useMutation({
     mutationFn: (msg: string) => sendMessage(id, { message: msg }),
     onMutate: async (msg) => {
@@ -83,9 +93,7 @@ export default function ChatPage() {
           : prev
       );
       setText("");
-      if (textareaRef.current) {
-        textareaRef.current.style.height = "auto";
-      }
+      if (textareaRef.current) textareaRef.current.style.height = "auto";
     },
     onSuccess: (res) => {
       setStars(res.new_balance);
@@ -106,11 +114,120 @@ export default function ChatPage() {
     },
   });
 
+  // Handler for text models — real SSE streaming
+  const handleStreamSubmit = useCallback(
+    async (msg: string) => {
+      setIsStreaming(true);
+      setStreamText("");
+      setStreamError(null);
+      const now = Date.now();
+      const tempUserId = now;
+      const tempAssistId = now + 1;
+
+      // Optimistic UI
+      qc.setQueryData<ChatDetail>(["chat", id], (prev) =>
+        prev
+          ? {
+              ...prev,
+              messages: [
+                ...prev.messages,
+                { id: tempUserId, role: "user", content: msg, files: [], status: "completed", error_message: null, created_at: new Date().toISOString() },
+                { id: tempAssistId, role: "assistant", content: "", files: [], status: "pending", error_message: null, created_at: new Date().toISOString() },
+              ],
+            }
+          : prev
+      );
+      setText("");
+      if (textareaRef.current) textareaRef.current.style.height = "auto";
+
+      let realAssistId = tempAssistId;
+
+      try {
+        await streamMessage(id, { message: msg }, {
+          onInit: ({ user_message_id, assistant_message_id, new_balance }) => {
+            realAssistId = assistant_message_id;
+            setStars(new_balance);
+            setStreamingAssistId(assistant_message_id);
+            qc.setQueryData<ChatDetail>(["chat", id], (prev) => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                messages: prev.messages.map((m) => {
+                  if (m.id === tempUserId) return { ...m, id: user_message_id };
+                  if (m.id === tempAssistId) return { ...m, id: assistant_message_id };
+                  return m;
+                }),
+              };
+            });
+          },
+          onToken: (token) => {
+            setStreamText((prev) => prev + token);
+          },
+          onDone: ({ content }) => {
+            qc.setQueryData<ChatDetail>(["chat", id], (prev) => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                messages: prev.messages.map((m) =>
+                  m.id === realAssistId
+                    ? { ...m, content, status: "completed" as const }
+                    : m
+                ),
+              };
+            });
+            setIsStreaming(false);
+            setStreamText("");
+            setStreamingAssistId(null);
+          },
+          onError: (errorMsg) => {
+            qc.setQueryData<ChatDetail>(["chat", id], (prev) => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                messages: prev.messages.map((m) =>
+                  m.id === realAssistId
+                    ? { ...m, status: "failed" as const, error_message: errorMsg }
+                    : m
+                ),
+              };
+            });
+            setIsStreaming(false);
+            setStreamText("");
+            setStreamingAssistId(null);
+            setStreamError(errorMsg);
+          },
+        });
+      } catch (err) {
+        const errMsg = err instanceof APIError ? err.message : "Ошибка соединения. Попробуйте ещё раз.";
+        qc.setQueryData<ChatDetail>(["chat", id], (prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            messages: prev.messages.map((m) =>
+              m.id === realAssistId
+                ? { ...m, status: "failed" as const, error_message: errMsg }
+                : m
+            ),
+          };
+        });
+        setIsStreaming(false);
+        setStreamText("");
+        setStreamingAssistId(null);
+        setStreamError(errMsg);
+      }
+    },
+    [id, qc, setStars]
+  );
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const msg = text.trim();
-    if (!msg || sendMutation.isPending || pendingMessageId !== null) return;
-    sendMutation.mutate(msg);
+    if (!msg || isBusy) return;
+    if (chat?.network.provider === "fal-ai") {
+      sendMutation.mutate(msg);
+    } else {
+      handleStreamSubmit(msg);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -147,7 +264,11 @@ export default function ChatPage() {
   }
 
   const isPending = pendingMessageId !== null;
-  const isBusy = isPending || sendMutation.isPending;
+  const isBusy = isPending || sendMutation.isPending || isStreaming;
+
+  const displayError =
+    streamError ??
+    (sendMutation.error instanceof APIError ? (sendMutation.error as APIError).message : null);
 
   return (
     <div className="flex h-full flex-col" style={{ background: "#f7f7f5" }}>
@@ -236,6 +357,11 @@ export default function ChatPage() {
                 networkAvatar={chat.network.avatar}
                 networkName={chat.network.name}
                 shouldAnimate={animatedIds.current.has(msg.id)}
+                streamingText={
+                  msg.id === streamingAssistId && msg.role === "assistant"
+                    ? streamText
+                    : undefined
+                }
               />
             ))}
           </div>
@@ -246,9 +372,9 @@ export default function ChatPage() {
 
       {/* Input */}
       <div className="shrink-0 px-4 pb-5 pt-2" style={{ background: "#f7f7f5" }}>
-        {sendMutation.error instanceof APIError && (
+        {displayError && (
           <p className="mx-auto mb-2 max-w-2xl text-[13px] text-[#e74c3c]">
-            {(sendMutation.error as APIError).message}
+            {displayError}
           </p>
         )}
 
@@ -273,11 +399,7 @@ export default function ChatPage() {
               rows={1}
               disabled={isBusy}
               className="block w-full resize-none bg-transparent px-4 py-3.5 pr-14 text-[14px] leading-relaxed text-[#0d0d0d] outline-none disabled:opacity-50"
-              style={{
-                maxHeight: "200px",
-                color: "#0d0d0d",
-                caretColor: "#0a7cff",
-              }}
+              style={{ maxHeight: "200px", caretColor: "#0a7cff" }}
             />
             <button
               type="submit"
@@ -328,11 +450,13 @@ function MessageRow({
   networkAvatar,
   networkName,
   shouldAnimate,
+  streamingText,
 }: {
   message: WebMessage;
   networkAvatar: string | null;
   networkName: string;
   shouldAnimate: boolean;
+  streamingText?: string;
 }) {
   const isUser = message.role === "user";
 
@@ -373,7 +497,10 @@ function MessageRow({
 
       {/* Content */}
       <div className="min-w-0 flex-1">
-        {message.status === "pending" ? (
+        {/* Live streaming: show accumulated tokens with cursor */}
+        {streamingText !== undefined ? (
+          <StreamingDisplay text={streamingText} />
+        ) : message.status === "pending" ? (
           <div className="flex items-center gap-1 py-2">
             <BouncingDots />
           </div>
@@ -403,7 +530,29 @@ function PlainText({ text }: { text: string }) {
   );
 }
 
-/* ─── Assistant content with typewriter + copy buttons ─── */
+/* ─── Live streaming display (tokens arriving in real time) ─ */
+function StreamingDisplay({ text }: { text: string }) {
+  return (
+    <div
+      className="text-[15px] leading-[1.75]"
+      style={{ color: "rgba(13,13,13,0.86)" }}
+    >
+      <PlainText text={text || " "} />
+      <span
+        className="ml-0.5 inline-block animate-pulse"
+        style={{
+          width: "2px",
+          height: "1.1em",
+          background: "#0a7cff",
+          verticalAlign: "text-bottom",
+          borderRadius: "1px",
+        }}
+      />
+    </div>
+  );
+}
+
+/* ─── Completed assistant content ───────────────────────── */
 function AssistantContent({
   content,
   shouldAnimate,
@@ -414,17 +563,15 @@ function AssistantContent({
   const html = detectHTML(content);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Lock animation decision on mount
+  // Lock animation decision on mount — only animate plain text, not HTML
   const doAnimate = useRef(shouldAnimate && !html && content.length > 0);
   const [displayed, setDisplayed] = useState(doAnimate.current ? "" : content);
   const [showCursor, setShowCursor] = useState(doAnimate.current);
 
-  // Typewriter for plain text
   useEffect(() => {
     if (!doAnimate.current) return;
     let i = 0;
-    // Adaptive: target ~2s max, min 5ms per char
-    const delay = Math.max(5, Math.min(30, 2000 / content.length));
+    const delay = Math.max(5, Math.min(20, 1500 / content.length));
     const timer = setInterval(() => {
       i++;
       setDisplayed(content.slice(0, i));
@@ -434,9 +581,9 @@ function AssistantContent({
       }
     }, delay);
     return () => clearInterval(timer);
-  }, []); // intentionally runs once on mount
+  }, []); // runs once on mount
 
-  // Attach copy handlers to .copy-code buttons inside HTML content
+  // Attach copy handlers to Django CodeFormatter buttons
   useEffect(() => {
     if (!containerRef.current) return;
     const buttons = containerRef.current.querySelectorAll<HTMLButtonElement>(".copy-code");
@@ -464,7 +611,6 @@ function AssistantContent({
     );
   }
 
-  // Plain text with typewriter
   return (
     <div
       className="text-[15px] leading-[1.75]"
