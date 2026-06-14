@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { Send } from "lucide-react";
 import { createChat } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
@@ -14,6 +15,7 @@ interface Props {
 
 export function ChatStartForm({ networkSlug, isMedia }: Props) {
   const router = useRouter();
+  const qc = useQueryClient();
   const { user, setStars } = useAuthStore();
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
@@ -34,6 +36,7 @@ export function ChatStartForm({ networkSlug, isMedia }: Props) {
     try {
       const res = await createChat({ network_slug: networkSlug, message: text.trim() });
       setStars(res.new_balance);
+      qc.invalidateQueries({ queryKey: ["chats"] });
       router.push(`/chat/${res.chat_id}/`);
     } catch (err) {
       if (err instanceof APIError) {

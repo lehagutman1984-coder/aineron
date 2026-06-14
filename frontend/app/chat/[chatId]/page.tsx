@@ -153,7 +153,7 @@ export default function ChatPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-[calc(100vh-56px)] items-center justify-center text-[14px] text-[rgba(13,13,13,0.45)]">
+      <div className="flex h-full items-center justify-center text-[14px] text-[rgba(13,13,13,0.45)]">
         Загрузка...
       </div>
     );
@@ -161,7 +161,7 @@ export default function ChatPage() {
 
   if (error || !chat) {
     return (
-      <div className="flex h-[calc(100vh-56px)] flex-col items-center justify-center gap-4 text-center">
+      <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
         <p className="text-[15px] text-[rgba(13,13,13,0.6)]">Чат не найден</p>
         <Link href="/account/" className="text-[14px] text-[#0a7cff] hover:underline">
           Вернуться в кабинет
@@ -173,7 +173,7 @@ export default function ChatPage() {
   const isPending = pendingMessageId !== null;
 
   return (
-    <div className="flex h-[calc(100vh-56px)] flex-col">
+    <div className="flex h-full flex-col">
       {/* Header */}
       <div className="flex h-12 shrink-0 items-center gap-2 border-b border-[rgba(13,13,13,0.10)] bg-white px-4">
         {/* Model name */}
