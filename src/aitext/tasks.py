@@ -124,65 +124,38 @@ def build_web_search_message(search_results: str, user_query: str) -> dict:
 
 
 def call_web_search(user_query: str, log_prefix: str = "") -> str:
-    """Веб-поиск: Tavily (primary) → Brave Search (fallback)."""
-
-    # ── Tavily ───────────────────────────────────────────────────────────────
+    """Веб-поиск через Tavily."""
     tavily_key = getattr(settings, "TAVILY_API_KEY", "")
-    if tavily_key:
-        try:
-            r = _req.post(
-                "https://api.tavily.com/search",
-                json={
-                    "api_key": tavily_key,
-                    "query": user_query[:400],
-                    "search_depth": "basic",
-                    "max_results": 6,
-                    "include_answer": False,
-                },
-                timeout=12,
-            )
-            r.raise_for_status()
-            items = r.json().get("results", [])
-            if items:
-                lines = []
-                for i, item in enumerate(items, 1):
-                    parts = [f"[{i}] {item['title']}", item.get("content", "")[:250]]
-                    parts.append(f"URL: {item['url']}")
-                    if item.get("published_date"):
-                        parts.append(f"Дата: {item['published_date']}")
-                    lines.append("\n".join(p for p in parts if p))
-                logger.info(f"{log_prefix}Tavily OK: {len(items)} results")
-                return "\n\n".join(lines)
-        except Exception as e:
-            logger.warning(f"{log_prefix}Tavily FAILED: {e}")
-
-    # ── Brave Search ─────────────────────────────────────────────────────────
-    brave_key = getattr(settings, "BRAVE_SEARCH_API_KEY", "")
-    if brave_key:
-        try:
-            r = _req.get(
-                "https://api.search.brave.com/res/v1/web/search",
-                headers={
-                    "Accept": "application/json",
-                    "Accept-Encoding": "gzip",
-                    "X-Subscription-Token": brave_key,
-                },
-                params={"q": user_query[:400], "count": 6},
-                timeout=12,
-            )
-            r.raise_for_status()
-            web = r.json().get("web", {}).get("results", [])
-            if web:
-                lines = [
-                    f"[{i}] {item['title']}\n{item.get('description', '')[:250]}\nURL: {item['url']}"
-                    for i, item in enumerate(web, 1)
-                ]
-                logger.info(f"{log_prefix}Brave Search OK: {len(web)} results")
-                return "\n\n".join(lines)
-        except Exception as e:
-            logger.warning(f"{log_prefix}Brave FAILED: {e}")
-
-    logger.error(f"{log_prefix}All search methods failed — check TAVILY_API_KEY / BRAVE_SEARCH_API_KEY in .env")
+    if not tavily_key:
+        logger.error(f"{log_prefix}TAVILY_API_KEY не задан в .env")
+        return ""
+    try:
+        r = _req.post(
+            "https://api.tavily.com/search",
+            json={
+                "api_key": tavily_key,
+                "query": user_query[:400],
+                "search_depth": "basic",
+                "max_results": 6,
+                "include_answer": False,
+            },
+            timeout=12,
+        )
+        r.raise_for_status()
+        items = r.json().get("results", [])
+        if items:
+            lines = []
+            for i, item in enumerate(items, 1):
+                parts = [f"[{i}] {item['title']}", item.get("content", "")[:250],
+                         f"URL: {item['url']}"]
+                if item.get("published_date"):
+                    parts.append(f"Дата: {item['published_date']}")
+                lines.append("\n".join(p for p in parts if p))
+            logger.info(f"{log_prefix}Tavily OK: {len(items)} results")
+            return "\n\n".join(lines)
+        logger.warning(f"{log_prefix}Tavily вернул 0 результатов")
+    except Exception as e:
+        logger.error(f"{log_prefix}Tavily FAILED: {e}")
     return ""
 
 
