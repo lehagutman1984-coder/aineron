@@ -104,10 +104,6 @@ def truncate_text(text, max_length):
     return text
 
 
-WEB_SEARCH_MODEL = "grok-3-deepsearch"  # Grok 3 DeepSearch — встроенный веб-поиск на laozhang.ai
-_WEB_SEARCH_FALLBACK = "grok-3-search"  # резерв, если deepsearch недоступен
-
-
 def build_web_search_message(search_results: str, user_query: str) -> dict:
     """Формирует system-сообщение с результатами поиска — как у Perplexity/ChatGPT."""
     now = datetime.datetime.utcnow().strftime("%d.%m.%Y %H:%M UTC")
@@ -127,32 +123,26 @@ def build_web_search_message(search_results: str, user_query: str) -> dict:
 
 
 def call_web_search(user_query: str, log_prefix: str = "") -> str:
-    """Вызывает Grok DeepSearch (с fallback на grok-3-search), возвращает текст или ''."""
-    client = get_laozhang_client()
-    grok_message = [{
-        "role": "user",
-        "content": (
-            f"{user_query[:1800]}\n\n"
-            "Search the web and return findings as numbered facts:\n"
-            "[1] key fact (date if applicable, source if available)\n"
-            "[2] ...\n"
-            "Be concise and factual. Match the language of the query."
-        ),
-    }]
-    for model in (WEB_SEARCH_MODEL, _WEB_SEARCH_FALLBACK):
-        try:
-            resp = client.chat.completions.create(
-                model=model,
-                messages=grok_message,
-                max_tokens=2000,
-            )
-            result = resp.choices[0].message.content.strip()
-            logger.info(f"{log_prefix}Web search OK ({model}): {len(result)} chars")
-            return result
-        except Exception as e:
-            logger.warning(f"{log_prefix}Web search FAILED ({model}): {e}")
-    logger.error(f"{log_prefix}All web search models unavailable")
-    return ""
+    """Ищет через DuckDuckGo (бесплатно, без ключа), возвращает текст с нумерованными фактами."""
+    try:
+        from duckduckgo_search import DDGS
+        with DDGS() as ddgs:
+            raw = list(ddgs.text(user_query[:500], max_results=8, timelimit="m"))
+        if not raw:
+            logger.warning(f"{log_prefix}DuckDuckGo returned 0 results")
+            return ""
+        lines = []
+        for i, r in enumerate(raw, 1):
+            title = r.get("title", "").strip()
+            body = r.get("body", "").strip()
+            url = r.get("href", "").strip()
+            lines.append(f"[{i}] {title}\n{body}\nИсточник: {url}")
+        result = "\n\n".join(lines)
+        logger.info(f"{log_prefix}DuckDuckGo OK: {len(raw)} results, {len(result)} chars")
+        return result
+    except Exception as e:
+        logger.error(f"{log_prefix}DuckDuckGo FAILED: {e}", exc_info=True)
+        return ""
 
 
 @shared_task(bind=True, max_retries=3)

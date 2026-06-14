@@ -80,3 +80,4 @@ gevent==24.2.1
 djangorestframework==3.15.2
 drf-spectacular==0.28.0
 django-cors-headers==4.7.0
+duckduckgo-search==7.5.3
