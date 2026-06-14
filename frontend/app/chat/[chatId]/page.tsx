@@ -851,15 +851,8 @@ function AssistantContent({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Prefer plain_text (raw markdown) → render with react-markdown
-  if (plain_text) {
-    return <MarkdownContent content={plain_text} />;
-  }
-
-  // Fallback: HTML from Django CodeFormatter (legacy / image model text)
-  const html = detectHTML(content);
-
-  // Attach copy handlers to Django CodeFormatter buttons (legacy path)
+  // Attach copy handlers to Django CodeFormatter buttons (legacy HTML path).
+  // Must be before any early return to satisfy rules-of-hooks.
   useEffect(() => {
     if (!containerRef.current) return;
     const buttons = containerRef.current.querySelectorAll<HTMLButtonElement>(".copy-code");
@@ -876,6 +869,14 @@ function AssistantContent({
       });
     });
   }, [content]);
+
+  // Prefer plain_text (raw markdown) → render with react-markdown
+  if (plain_text) {
+    return <MarkdownContent content={plain_text} />;
+  }
+
+  // Fallback: HTML from Django CodeFormatter (legacy / image model text)
+  const html = detectHTML(content);
 
   if (html) {
     return (
@@ -896,6 +897,7 @@ function PlainTextAnimated({ content, shouldAnimate }: { content: string; should
   const [displayed, setDisplayed] = useState(doAnimate.current ? "" : content);
   const [showCursor, setShowCursor] = useState(doAnimate.current);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!doAnimate.current) return;
     let i = 0;
@@ -909,7 +911,7 @@ function PlainTextAnimated({ content, shouldAnimate }: { content: string; should
       }
     }, delay);
     return () => clearInterval(timer);
-  }, []); // runs once on mount
+  }, []); // intentionally runs once on mount — content is captured via closure at mount time
 
   return (
     <div className="text-[15px] leading-[1.75]" style={{ color: "rgba(13,13,13,0.86)" }}>
