@@ -384,3 +384,58 @@ class StreamMessageView(APIView):
         resp['Cache-Control'] = 'no-cache'
         resp['X-Accel-Buffering'] = 'no'
         return resp
+
+
+class RegenerateView(APIView):
+    """Reset last assistant message and re-run AI generation."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, chat_id):
+        chat = get_object_or_404(Chat, id=chat_id, user=request.user)
+        network = chat.network
+
+        last_user = chat.messages.filter(role='user').order_by('-created_at').first()
+        last_assistant = chat.messages.filter(role='assistant').order_by('-created_at').first()
+
+        if not last_user or not last_assistant:
+            return Response({
+                'error': {
+                    'message': 'Нет сообщений для повторной генерации',
+                    'type': 'invalid_request_error',
+                    'code': None,
+                }
+            }, status=400)
+
+        cost = network.cost_per_message
+
+        if network.provider != 'fal-ai' and request.user.pages_count < cost:
+            return Response({
+                'error': {
+                    'message': f'Недостаточно звёзд. Нужно {cost} зв., у вас {request.user.pages_count} зв.',
+                    'type': 'insufficient_quota',
+                    'code': 'insufficient_quota',
+                }
+            }, status=402)
+
+        if network.provider != 'fal-ai':
+            request.user.spend_pages(cost)
+            UserSpending.objects.create(
+                user=request.user, amount=cost,
+                description=f"Повторная генерация в чате с {network.name}",
+            )
+
+        last_assistant.content = ''
+        last_assistant.plain_text = ''
+        last_assistant.status = Message.Status.PENDING
+        last_assistant.error_message = None
+        last_assistant.save()
+
+        chat.updated_at = timezone.now()
+        chat.save(update_fields=['updated_at'])
+
+        generate_ai_response.delay(last_assistant.id)
+
+        return Response({
+            'assistant_message_id': last_assistant.id,
+            'new_balance': request.user.pages_count,
+        })

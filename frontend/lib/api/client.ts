@@ -217,6 +217,11 @@ export const renameChat = (id: number, title: string): Promise<{ id: number; tit
     body: JSON.stringify({ title }),
   });
 
+export const regenerateChat = (chatId: number): Promise<{ assistant_message_id: number; new_balance: number }> =>
+  request<{ assistant_message_id: number; new_balance: number }>(`/chats/${chatId}/regenerate/`, {
+    method: "POST",
+  });
+
 export const sendMessage = (
   chatId: number,
   body: {

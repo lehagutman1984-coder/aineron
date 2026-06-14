@@ -4,9 +4,9 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Send, LayoutGrid, PenSquare, Code2 } from "lucide-react";
+import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw } from "lucide-react";
 import { MarkdownContent } from "@/components/chat/MarkdownContent";
-import { getChat, sendMessage, getMessageStatus, streamMessage, APIError } from "@/lib/api/client";
+import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, APIError } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 import type { WebMessage, ChatDetail } from "@/lib/api/types";
 
@@ -109,6 +109,31 @@ export default function ChatPage() {
           ],
         };
       });
+    },
+    onError: () => {
+      qc.invalidateQueries({ queryKey: ["chat", id] });
+    },
+  });
+
+  // Regenerate mutation — resets last assistant message, re-runs AI via Celery polling
+  const regenerateMutation = useMutation({
+    mutationFn: () => regenerateChat(id),
+    onMutate: () => {
+      qc.setQueryData<ChatDetail>(["chat", id], (prev) => {
+        if (!prev) return prev;
+        const msgs = [...prev.messages];
+        for (let i = msgs.length - 1; i >= 0; i--) {
+          if (msgs[i].role === "assistant") {
+            msgs[i] = { ...msgs[i], content: "", plain_text: null, status: "pending", error_message: null };
+            break;
+          }
+        }
+        return { ...prev, messages: msgs };
+      });
+    },
+    onSuccess: (res) => {
+      setStars(res.new_balance);
+      setPendingMessageId(res.assistant_message_id);
     },
     onError: () => {
       qc.invalidateQueries({ queryKey: ["chat", id] });
@@ -265,7 +290,7 @@ export default function ChatPage() {
   }
 
   const isPending = pendingMessageId !== null;
-  const isBusy = isPending || sendMutation.isPending || isStreaming;
+  const isBusy = isPending || sendMutation.isPending || isStreaming || regenerateMutation.isPending;
 
   const displayError =
     streamError ??
@@ -351,20 +376,27 @@ export default function ChatPage() {
           )}
 
           <div className="flex flex-col gap-7">
-            {chat.messages.map((msg) => (
-              <MessageRow
-                key={msg.id}
-                message={msg}
-                networkAvatar={chat.network.avatar}
-                networkName={chat.network.name}
-                shouldAnimate={animatedIds.current.has(msg.id)}
-                streamingText={
-                  msg.id === streamingAssistId && msg.role === "assistant"
-                    ? streamText
-                    : undefined
-                }
-              />
-            ))}
+            {(() => {
+              const lastAssistantId = [...chat.messages]
+                .reverse()
+                .find((m) => m.role === "assistant" && m.status === "completed")?.id;
+              return chat.messages.map((msg) => (
+                <MessageRow
+                  key={msg.id}
+                  message={msg}
+                  networkAvatar={chat.network.avatar}
+                  networkName={chat.network.name}
+                  shouldAnimate={animatedIds.current.has(msg.id)}
+                  streamingText={
+                    msg.id === streamingAssistId && msg.role === "assistant"
+                      ? streamText
+                      : undefined
+                  }
+                  canRegenerate={!isBusy && msg.id === lastAssistantId}
+                  onRegenerate={() => regenerateMutation.mutate()}
+                />
+              ));
+            })()}
           </div>
 
           <div ref={bottomRef} className="h-4" />
@@ -452,12 +484,16 @@ function MessageRow({
   networkName,
   shouldAnimate,
   streamingText,
+  canRegenerate,
+  onRegenerate,
 }: {
   message: WebMessage;
   networkAvatar: string | null;
   networkName: string;
   shouldAnimate: boolean;
   streamingText?: string;
+  canRegenerate?: boolean;
+  onRegenerate?: () => void;
 }) {
   const isUser = message.role === "user";
 
@@ -475,7 +511,7 @@ function MessageRow({
   }
 
   return (
-    <div className="flex gap-3">
+    <div className="group flex gap-3">
       {/* Model avatar */}
       <div className="shrink-0 pt-[3px]">
         {networkAvatar ? (
@@ -510,14 +546,83 @@ function MessageRow({
             {message.error_message ?? "Ошибка генерации. Попробуйте ещё раз."}
           </p>
         ) : (
-          <AssistantContent
-            content={message.content}
-            plain_text={message.plain_text ?? null}
-            shouldAnimate={shouldAnimate}
-          />
+          <>
+            <AssistantContent
+              content={message.content}
+              plain_text={message.plain_text ?? null}
+              shouldAnimate={shouldAnimate}
+            />
+            {/* Hover action bar */}
+            <div className="mt-1.5 flex items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+              <CopyButton plainText={message.plain_text} htmlContent={message.content} />
+              {canRegenerate && onRegenerate && (
+                <button
+                  onClick={onRegenerate}
+                  className="flex h-7 items-center gap-1.5 rounded-[6px] px-2 text-[12px] font-medium transition-colors"
+                  style={{ color: "rgba(13,13,13,0.42)" }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.background = "rgba(13,13,13,0.06)";
+                    (e.currentTarget as HTMLButtonElement).style.color = "#0d0d0d";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.background = "";
+                    (e.currentTarget as HTMLButtonElement).style.color = "rgba(13,13,13,0.42)";
+                  }}
+                  title="Повторить генерацию"
+                >
+                  <RotateCcw size={13} />
+                  <span>Ещё раз</span>
+                </button>
+              )}
+            </div>
+          </>
         )}
       </div>
     </div>
+  );
+}
+
+/* ─── Copy button with 2s "Скопировано" state ───────────── */
+function CopyButton({
+  plainText,
+  htmlContent,
+}: {
+  plainText: string | null | undefined;
+  htmlContent: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    const text =
+      plainText ||
+      htmlContent.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    navigator.clipboard.writeText(text).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="flex h-7 items-center gap-1.5 rounded-[6px] px-2 text-[12px] font-medium transition-colors"
+      style={{ color: copied ? "#0a7cff" : "rgba(13,13,13,0.42)" }}
+      onMouseEnter={(e) => {
+        if (!copied) {
+          (e.currentTarget as HTMLButtonElement).style.background = "rgba(13,13,13,0.06)";
+          (e.currentTarget as HTMLButtonElement).style.color = "#0d0d0d";
+        }
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLButtonElement).style.background = "";
+        (e.currentTarget as HTMLButtonElement).style.color = copied
+          ? "#0a7cff"
+          : "rgba(13,13,13,0.42)";
+      }}
+      title="Скопировать"
+    >
+      {copied ? <Check size={13} /> : <Copy size={13} />}
+      <span>{copied ? "Скопировано" : "Копировать"}</span>
+    </button>
   );
 }
 

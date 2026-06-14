@@ -9,7 +9,7 @@ from api.views.models_list import ModelsListView
 from api.views.catalog import CategoryListView, NetworkListView, NetworkDetailView
 from api.views.chats import (
     ChatListCreateView, ChatDetailView, SendMessageView, MessageStatusView,
-    StreamMessageView,
+    StreamMessageView, RegenerateView,
 )
 from api.views.auth import MeView, LoginView, LogoutView, RegisterView, VerifyEmailView, ResendVerificationView
 from api.views.teams import (
@@ -57,6 +57,7 @@ urlpatterns = [
     path('v1/chats/<int:pk>/', ChatDetailView.as_view(), name='chat_detail'),
     path('v1/chats/<int:chat_id>/messages/', SendMessageView.as_view(), name='chat_send_message'),
     path('v1/chats/<int:chat_id>/messages/stream/', StreamMessageView.as_view(), name='chat_stream_message'),
+    path('v1/chats/<int:chat_id>/regenerate/', RegenerateView.as_view(), name='chat_regenerate'),
     path('v1/messages/<int:message_id>/status/', MessageStatusView.as_view(), name='message_status'),
 
     # ========== Аутентификация (сессионная) ==========
