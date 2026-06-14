@@ -440,10 +440,39 @@ def _build_image_params(model_id, prompt, final_args):
     return params
 
 
+def _size_to_resolution_and_ratio(size_str):
+    """Из '1280x720' возвращает ('720p', '16:9')"""
+    try:
+        w, h = (int(x) for x in str(size_str).lower().split('x'))
+    except Exception:
+        return '720p', '16:9'
+    if max(w, h) >= 3000:
+        res = '4k'
+    elif max(w, h) >= 1900:
+        res = '1080p'
+    else:
+        res = '720p'
+    ratio_map = {(16, 9): '16:9', (9, 16): '9:16', (1, 1): '1:1', (4, 3): '4:3', (3, 4): '3:4'}
+    from math import gcd
+    g = gcd(w, h)
+    ratio = ratio_map.get((w // g, h // g), '16:9' if w > h else ('9:16' if h > w else '1:1'))
+    return res, ratio
+
+
+def _save_video_binary(content, message, prompt):
+    """Сохраняет бинарные данные как mp4, возвращает GeneratedImage."""
+    path = f"generated_videos/generated_{uuid.uuid4()}.mp4"
+    default_storage.save(path, ContentFile(content))
+    from .models import GeneratedImage
+    return GeneratedImage.objects.create(message=message, image=path, prompt=prompt, media_type='video')
+
+
 def generate_video_laozhang(network, user_msg, message, user_settings=None):
     """
-    Генерирует видео через laozhang.ai /v1/video/generations endpoint.
-    Поддерживает синхронный и асинхронный (polling) ответ.
+    Генерирует видео через laozhang.ai.
+    Правильный эндпоинт: POST /v1/videos (multipart/form-data).
+    Статус: GET /v1/videos/{id}
+    Скачать: GET /v1/videos/{id}/content
     """
     config = network.config_json or {}
     model_id = network.model_name
@@ -461,128 +490,208 @@ def generate_video_laozhang(network, user_msg, message, user_settings=None):
     total_cost = base_cost + extra_cost
 
     base_url = settings.LAOZHANG_API_URL.rstrip('/')  # https://api.laozhang.ai/v1
-    headers = {
-        "Authorization": f"Bearer {settings.LAOZHANG_API_KEY}",
-        "Content-Type": "application/json",
-    }
-    body = {"model": model_id, "prompt": prompt, "n": int(final_args.get('n', 1))}
-    if 'size' in final_args:
-        body['size'] = str(final_args['size'])
+    auth_headers = {"Authorization": f"Bearer {settings.LAOZHANG_API_KEY}"}
 
-    logger.info(f"Video generation: POST {base_url}/video/generations model={model_id}")
-    resp = requests.post(f"{base_url}/video/generations", headers=headers, json=body, timeout=120)
+    size = str(final_args.get('size', '1280x720'))
+    seconds = str(final_args.get('seconds', '8'))
+    resolution, aspect_ratio = _size_to_resolution_and_ratio(size)
+
+    # multipart/form-data — requests задаёт Content-Type автоматически через files=
+    fields = {
+        "model": model_id,
+        "prompt": prompt,
+        "seconds": seconds,
+        "duration": seconds,
+        "size": size,
+        "resolution": resolution,
+        "aspectRatio": aspect_ratio,
+    }
+    if final_args.get('negativePrompt'):
+        fields['negativePrompt'] = str(final_args['negativePrompt'])
+
+    logger.info(f"Video POST /v1/videos model={model_id} size={size} seconds={seconds}")
+    resp = requests.post(
+        f"{base_url}/videos",
+        headers=auth_headers,
+        files={k: (None, v) for k, v in fields.items()},
+        timeout=120,
+    )
     resp.raise_for_status()
     data = resp.json()
-    logger.info(f"Video generation response: {str(data)[:300]}")
+    logger.info(f"Video creation response: {str(data)[:400]}")
 
+    saved_media_direct = []
     video_urls = []
-    saved_media_direct = []  # файлы сохранённые напрямую из бинарного контента
 
-    # Синхронный ответ — сразу data с URL
-    if 'data' in data and isinstance(data['data'], list):
-        for item in data['data']:
-            url = item.get('url') or item.get('video_url')
-            if url and url.startswith('http'):
-                video_urls.append(url)
+    # Синхронный ответ
+    for item in (data.get('data') or []):
+        url = item.get('url') or item.get('video_url')
+        if url and str(url).startswith('http'):
+            video_urls.append(url)
 
-    # Асинхронный ответ — есть job_id, polling
+    # Асинхронный polling
     if not video_urls:
-        job_id = data.get('id') or data.get('job_id') or data.get('generation_id')
+        job_id = data.get('id') or data.get('task_id')
         if job_id:
-            logger.info(f"Video generation async job_id={job_id}, polling...")
-            for attempt in range(36):  # до 6 минут (10 сек * 36)
-                time.sleep(10)
-                poll = requests.get(
-                    f"{base_url}/video/generations/{job_id}",
-                    headers=headers, timeout=30,
-                )
+            logger.info(f"Video async job_id={job_id}, polling /v1/videos/{job_id}")
+            for attempt in range(60):  # до 15 мин (15 сек × 60)
+                time.sleep(15)
+                poll = requests.get(f"{base_url}/videos/{job_id}", headers=auth_headers, timeout=30)
                 poll.raise_for_status()
                 pd = poll.json()
                 status = (pd.get('status') or '').lower()
-                logger.info(f"Video poll {attempt + 1}/36: status={status}")
-                if status in ('completed', 'succeeded', 'success', 'done'):
-                    logger.info(f"Video completed full response: {str(pd)[:1000]}")
+                logger.info(f"Video poll {attempt + 1}/60: status={status} progress={pd.get('progress', '?')}")
 
-                    # Шаг 3a: ищем URL прямо в ответе статуса
-                    for key in ('url', 'video_url', 'download_url', 'src', 'output', 'result'):
-                        val = pd.get(key)
-                        if isinstance(val, str) and val.startswith('http'):
-                            logger.info(f"Found video URL in status response key='{key}': {val[:100]}")
-                            video_urls.append(val)
-                            break
-                        if isinstance(val, dict):
-                            for sub in ('url', 'video_url', 'download_url', 'src'):
-                                u = val.get(sub)
+                if status == 'completed':
+                    logger.info(f"Video completed response: {str(pd)[:600]}")
+                    # Скачиваем бинарный MP4 через /v1/videos/{id}/content
+                    content_url = f"{base_url}/videos/{job_id}/content"
+                    logger.info(f"Downloading video: GET {content_url}")
+                    try:
+                        cr = requests.get(content_url, headers=auth_headers, timeout=180, allow_redirects=True)
+                        cr.raise_for_status()
+                        ct = cr.headers.get('content-type', '')
+                        logger.info(f"Download: status={cr.status_code} content-type={ct} size={len(cr.content)}")
+                        if 'video' in ct or str(cr.url).endswith('.mp4') or len(cr.content) > 100_000:
+                            gen = _save_video_binary(cr.content, message, prompt)
+                            saved_media_direct.append(gen)
+                        elif 'json' in ct:
+                            dj = cr.json()
+                            logger.info(f"Download JSON: {str(dj)[:400]}")
+                            for k in ('url', 'video_url', 'download_url', 'src'):
+                                u = dj.get(k)
                                 if u and str(u).startswith('http'):
-                                    logger.info(f"Found video URL in status[{key}][{sub}]: {u[:100]}")
                                     video_urls.append(u)
                                     break
-                        if isinstance(val, list) and val:
-                            item0 = val[0]
-                            if isinstance(item0, str) and item0.startswith('http'):
-                                logger.info(f"Found video URL in status[{key}][0]: {item0[:100]}")
-                                video_urls.append(item0)
-                                break
-                            if isinstance(item0, dict):
-                                for sub in ('url', 'video_url', 'download_url', 'src'):
-                                    u = item0.get(sub)
-                                    if u and str(u).startswith('http'):
-                                        logger.info(f"Found video URL in status[{key}][0][{sub}]: {u[:100]}")
-                                        video_urls.append(u)
-                                        break
-
-                    # Шаг 3b: если URL не нашли — скачиваем через /content/video (паттерн OpenAI Sora)
-                    if not video_urls:
-                        content_endpoint = f"{base_url}/video/generations/{job_id}/content/video"
-                        logger.info(f"No URL in status, fetching: GET {content_endpoint}")
-                        try:
-                            cr = requests.get(content_endpoint, headers=headers, timeout=120, allow_redirects=True)
-                            cr.raise_for_status()
-                            ct = cr.headers.get('content-type', '')
-                            logger.info(f"Content response: status={cr.status_code} content-type={ct} size={len(cr.content)}")
-                            if 'video' in ct or str(cr.url).endswith('.mp4'):
-                                path = f"generated_videos/generated_{uuid.uuid4()}.mp4"
-                                default_storage.save(path, ContentFile(cr.content))
-                                from .models import GeneratedImage
-                                gen = GeneratedImage.objects.create(
-                                    message=message, image=path, prompt=prompt, media_type='video'
-                                )
-                                video_urls = ['_saved_directly_']
-                                saved_media_direct.append(gen)
-                            elif 'json' in ct:
-                                data_c = cr.json()
-                                logger.info(f"Content JSON response: {str(data_c)[:600]}")
-                                for key in ('url', 'video_url', 'download_url', 'src'):
-                                    u = data_c.get(key)
-                                    if u and str(u).startswith('http'):
-                                        video_urls.append(u)
-                                        break
-                            elif cr.content and len(cr.content) > 10000:
-                                # Крупный бинарный ответ — скорее всего это видео
-                                logger.info(f"Saving binary response as video ({len(cr.content)} bytes)")
-                                path = f"generated_videos/generated_{uuid.uuid4()}.mp4"
-                                default_storage.save(path, ContentFile(cr.content))
-                                from .models import GeneratedImage
-                                gen = GeneratedImage.objects.create(
-                                    message=message, image=path, prompt=prompt, media_type='video'
-                                )
-                                video_urls = ['_saved_directly_']
-                                saved_media_direct.append(gen)
-                            else:
-                                logger.warning(f"Unknown content-type for video: {ct}, first 200 bytes: {cr.content[:200]}")
-                        except Exception as ce:
-                            logger.error(f"Failed to fetch /content/video: {ce}")
+                        else:
+                            logger.warning(f"Unexpected content-type: {ct}, bytes: {cr.content[:200]}")
+                    except Exception as ce:
+                        logger.error(f"Video download failed: {ce}")
                     break
                 elif status in ('failed', 'error', 'cancelled'):
-                    raise Exception(f"Генерация видео завершилась ошибкой: {pd.get('error', status)}")
+                    raise Exception(f"Видео завершилось ошибкой: {pd.get('error', status)}")
 
     model_name = config.get('name', network.name)
-
-    # saved_media_direct — файлы уже сохранённые напрямую (бинарный контент)
     saved_media = list(saved_media_direct)
     for url in video_urls:
-        if url == '_saved_directly_':
-            continue
+        gen = save_media_from_url(url, message, prompt, media_type='video')
+        if gen:
+            saved_media.append(gen)
+
+    if saved_media:
+        text_parts = [f"Сгенерировано {len(saved_media)} видео моделью \"{model_name}\"."]
+        for m in saved_media:
+            text_parts.append(
+                f"<video src='{m.image.url}' controls width='100%' style='max-width:100%; border-radius:12px;'></video>"
+            )
+        final_text = "\n\n".join(text_parts)
+    else:
+        final_text = f"Модель \"{model_name}\" не вернула видео. Попробуйте изменить промт."
+
+    return final_text, saved_media, total_cost
+
+
+def generate_seedance_video(network, user_msg, message, user_settings=None):
+    """
+    Генерирует видео через Seedance API (ByteDance).
+    Эндпоинт: https://api.laozhang.ai/seedance/api/v3/
+    Скачать: GET /v1/videos/{id}/content
+    """
+    config = network.config_json or {}
+    model_id = network.model_name
+    prompt = user_msg.content if user_msg else ""
+    base_cost = network.cost_per_message
+
+    if user_settings:
+        final_args, errors, extra_cost = validate_and_merge_settings(config, user_settings)
+        if errors:
+            raise Exception("Ошибки в настройках: " + "; ".join(errors))
+    else:
+        final_args = config.get('api_defaults', {}).copy()
+        extra_cost = 0
+
+    total_cost = base_cost + extra_cost
+
+    seedance_base = "https://api.laozhang.ai/seedance/api/v3"
+    auth_headers = {
+        "Authorization": f"Bearer {settings.LAOZHANG_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    body = {
+        "model": model_id,
+        "content": [{"type": "text", "text": prompt}],
+        "ratio": str(final_args.get('ratio', '16:9')),
+        "duration": int(final_args.get('duration', 5)),
+        "resolution": str(final_args.get('resolution', '720p')),
+    }
+
+    logger.info(f"Seedance POST {seedance_base}/contents/generations/tasks model={model_id}")
+    resp = requests.post(
+        f"{seedance_base}/contents/generations/tasks",
+        headers=auth_headers,
+        json=body,
+        timeout=120,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    logger.info(f"Seedance creation response: {str(data)[:400]}")
+
+    job_id = data.get('id')
+    if not job_id:
+        raise Exception(f"Нет task id в ответе Seedance: {str(data)[:200]}")
+
+    saved_media_direct = []
+    video_urls = []
+
+    logger.info(f"Seedance polling tasks/{job_id}")
+    for attempt in range(60):
+        time.sleep(15)
+        poll = requests.get(
+            f"{seedance_base}/contents/generations/tasks/{job_id}",
+            headers=auth_headers,
+            timeout=30,
+        )
+        poll.raise_for_status()
+        pd = poll.json()
+        status = (pd.get('status') or '').lower()
+        logger.info(f"Seedance poll {attempt + 1}/60: status={status}")
+
+        if status == 'succeeded':
+            logger.info(f"Seedance completed: {str(pd)[:600]}")
+            # URL в content.video_url
+            content_obj = pd.get('content') or {}
+            video_url = content_obj.get('video_url') if isinstance(content_obj, dict) else None
+            if video_url and str(video_url).startswith('http'):
+                logger.info(f"Seedance video_url: {video_url[:100]}")
+                video_urls.append(video_url)
+            else:
+                # Запасной вариант — /v1/videos/{id}/content
+                dl_url = f"{settings.LAOZHANG_API_URL.rstrip('/')}/videos/{job_id}/content"
+                logger.info(f"Seedance fallback download: GET {dl_url}")
+                try:
+                    cr = requests.get(
+                        dl_url,
+                        headers={"Authorization": f"Bearer {settings.LAOZHANG_API_KEY}"},
+                        timeout=180,
+                        allow_redirects=True,
+                    )
+                    cr.raise_for_status()
+                    ct = cr.headers.get('content-type', '')
+                    if 'video' in ct or len(cr.content) > 100_000:
+                        gen = _save_video_binary(cr.content, message, prompt)
+                        saved_media_direct.append(gen)
+                    else:
+                        logger.warning(f"Seedance fallback unexpected: {ct} size={len(cr.content)}")
+                except Exception as ce:
+                    logger.error(f"Seedance fallback download failed: {ce}")
+            break
+        elif status in ('failed', 'error', 'expired'):
+            raise Exception(f"Seedance генерация завершилась ошибкой: {pd.get('error', status)}")
+
+    model_name = config.get('name', network.name)
+    saved_media = list(saved_media_direct)
+    for url in video_urls:
         gen = save_media_from_url(url, message, prompt, media_type='video')
         if gen:
             saved_media.append(gen)
@@ -610,8 +719,10 @@ def generate_with_falai(network, user_msg, message, user_settings=None):
     if not config:
         raise Exception("Отсутствует конфигурация для модели")
 
-    # Видео-модели идут через отдельный endpoint
+    # Видео-модели — роутинг по video_api
     if config.get('metadata', {}).get('output_type') == 'video':
+        if config.get('metadata', {}).get('video_api') == 'seedance':
+            return generate_seedance_video(network, user_msg, message, user_settings)
         return generate_video_laozhang(network, user_msg, message, user_settings)
 
     model_id = network.model_name

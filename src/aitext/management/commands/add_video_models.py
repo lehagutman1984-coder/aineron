@@ -11,7 +11,7 @@ from aitext.models import Category, NeuralNetwork
 VIDEO_CONFIG = {
     'sora': {
         "name": "Sora",
-        "api_defaults": {"size": "1280x720", "n": 1},
+        "api_defaults": {"size": "1280x720", "seconds": "8"},
         "ui_settings": {
             "sections": [{
                 "title": "Настройки видео",
@@ -27,6 +27,17 @@ VIDEO_CONFIG = {
                             {"value": "1080x1080", "label": "1080×1080 (квадрат)", "extra_cost": 0},
                         ]
                     },
+                    {
+                        "name": "seconds",
+                        "type": "select",
+                        "label": "Длительность",
+                        "extra_cost": 0,
+                        "options": [
+                            {"value": "4", "label": "4 секунды", "extra_cost": 0},
+                            {"value": "8", "label": "8 секунд", "extra_cost": 0},
+                            {"value": "12", "label": "12 секунд", "extra_cost": 10},
+                        ]
+                    },
                 ]
             }]
         },
@@ -35,7 +46,7 @@ VIDEO_CONFIG = {
     },
     'veo': {
         "name": "Veo",
-        "api_defaults": {"size": "1280x720", "n": 1},
+        "api_defaults": {"size": "1280x720", "seconds": "8"},
         "ui_settings": {
             "sections": [{
                 "title": "Настройки видео",
@@ -48,8 +59,18 @@ VIDEO_CONFIG = {
                         "options": [
                             {"value": "1280x720", "label": "1280×720 (HD горизонталь)", "extra_cost": 0},
                             {"value": "720x1280", "label": "720×1280 (HD вертикаль)", "extra_cost": 0},
-                            {"value": "1920x1080", "label": "1920×1080 (Full HD)", "extra_cost": 5},
-                            {"value": "1080x1920", "label": "1080×1920 (Full HD вертикаль)", "extra_cost": 5},
+                            {"value": "1920x1080", "label": "1920×1080 (Full HD)", "extra_cost": 10},
+                            {"value": "1080x1920", "label": "1080×1920 (Full HD вертикаль)", "extra_cost": 10},
+                        ]
+                    },
+                    {
+                        "name": "seconds",
+                        "type": "select",
+                        "label": "Длительность",
+                        "extra_cost": 0,
+                        "options": [
+                            {"value": "4", "label": "4 секунды", "extra_cost": 0},
+                            {"value": "8", "label": "8 секунд", "extra_cost": 0},
                         ]
                     },
                 ]
@@ -57,6 +78,41 @@ VIDEO_CONFIG = {
         },
         "constraints": {},
         "metadata": {"output_type": "video", "requires_input_images": False},
+    },
+    'seedance': {
+        "name": "Seedance",
+        "api_defaults": {"ratio": "16:9", "duration": 5, "resolution": "720p"},
+        "ui_settings": {
+            "sections": [{
+                "title": "Настройки видео",
+                "fields": [
+                    {
+                        "name": "ratio",
+                        "type": "select",
+                        "label": "Формат",
+                        "extra_cost": 0,
+                        "options": [
+                            {"value": "16:9", "label": "16:9 (горизонталь)", "extra_cost": 0},
+                            {"value": "9:16", "label": "9:16 (вертикаль)", "extra_cost": 0},
+                            {"value": "1:1", "label": "1:1 (квадрат)", "extra_cost": 0},
+                        ]
+                    },
+                    {
+                        "name": "duration",
+                        "type": "select",
+                        "label": "Длительность",
+                        "extra_cost": 0,
+                        "options": [
+                            {"value": "5", "label": "5 секунд", "extra_cost": 0},
+                            {"value": "8", "label": "8 секунд", "extra_cost": 5},
+                            {"value": "10", "label": "10 секунд", "extra_cost": 10},
+                        ]
+                    },
+                ]
+            }]
+        },
+        "constraints": {},
+        "metadata": {"output_type": "video", "requires_input_images": False, "video_api": "seedance"},
     },
 }
 
@@ -105,14 +161,14 @@ VIDEO_MODELS = [
         is_popular=False,
     ),
     dict(
-        name='Veo Video',
-        slug='veo-video-api-1',
-        model_name='veo-video-api-1-视频生成',
-        cost_per_message=70,
+        name='Seedance Fast',
+        slug='seedance-fast',
+        model_name='doubao-seedance-2-0-fast-260128',
+        cost_per_message=40,
         order=5,
-        description='Генерация видео через прямой API Google Veo. Альтернативный провайдер.',
-        config_key='veo',
-        is_popular=False,
+        description='Быстрая генерация видео от ByteDance. Высокая скорость и качество, идеален для экспериментов.',
+        config_key='seedance',
+        is_popular=True,
     ),
 ]
 
