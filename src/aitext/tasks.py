@@ -123,26 +123,48 @@ def build_web_search_message(search_results: str, user_query: str) -> dict:
 
 
 def call_web_search(user_query: str, log_prefix: str = "") -> str:
-    """Ищет через DuckDuckGo (бесплатно, без ключа), возвращает текст с нумерованными фактами."""
+    """Поиск: DuckDuckGo (lite backend) → grok-4 → grok-3-search → grok-3-deepsearch."""
+
+    # ── Шаг 1: DuckDuckGo lite (меньше rate-limit чем html) ───────────────────
     try:
         from duckduckgo_search import DDGS
         with DDGS() as ddgs:
-            raw = list(ddgs.text(user_query[:500], max_results=8, timelimit="m"))
-        if not raw:
-            logger.warning(f"{log_prefix}DuckDuckGo returned 0 results")
-            return ""
-        lines = []
-        for i, r in enumerate(raw, 1):
-            title = r.get("title", "").strip()
-            body = r.get("body", "").strip()
-            url = r.get("href", "").strip()
-            lines.append(f"[{i}] {title}\n{body}\nИсточник: {url}")
-        result = "\n\n".join(lines)
-        logger.info(f"{log_prefix}DuckDuckGo OK: {len(raw)} results, {len(result)} chars")
-        return result
+            raw = list(ddgs.text(user_query[:300], max_results=6, backend="lite"))
+        if raw:
+            lines = [
+                f"[{i}] {r.get('title', '').strip()}\n{r.get('body', '').strip()}\nURL: {r.get('href', '').strip()}"
+                for i, r in enumerate(raw, 1)
+            ]
+            result = "\n\n".join(lines)
+            logger.info(f"{log_prefix}DuckDuckGo(lite) OK: {len(raw)} results")
+            return result
+        logger.warning(f"{log_prefix}DuckDuckGo returned 0 results")
     except Exception as e:
-        logger.error(f"{log_prefix}DuckDuckGo FAILED: {e}", exc_info=True)
-        return ""
+        logger.warning(f"{log_prefix}DuckDuckGo FAILED: {e}")
+
+    # ── Шаг 2: AI-модели с веб-поиском из laozhang.ai ─────────────────────────
+    client = get_laozhang_client()
+    search_prompt = (
+        f"{user_query[:1800]}\n\n"
+        "Search the web and return 6 numbered facts:\n"
+        "[1] fact (date, source URL if available)\n"
+        "Match the language of the query."
+    )
+    for model in ("grok-4", "grok-3-search", "grok-3-deepsearch"):
+        try:
+            resp = client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": search_prompt}],
+                max_tokens=2000,
+            )
+            result = resp.choices[0].message.content.strip()
+            logger.info(f"{log_prefix}AI search OK ({model}): {len(result)} chars")
+            return result
+        except Exception as e:
+            logger.warning(f"{log_prefix}AI search FAILED ({model}): {e}")
+
+    logger.error(f"{log_prefix}All search methods failed")
+    return ""
 
 
 @shared_task(bind=True, max_retries=3)
