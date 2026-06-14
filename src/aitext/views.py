@@ -74,67 +74,6 @@ def get_networks_by_category(request):
     })
 
 
-def chat_landing(request, network_slug):
-    network = get_object_or_404(NeuralNetwork, slug=network_slug, is_active=True)
-
-    user_chats = []
-    if request.user.is_authenticated:
-        user_chats = Chat.objects.filter(user=request.user).select_related('network').prefetch_related(
-            'messages').order_by('-updated_at')[:15]
-
-    # Популярные модели
-    popular_networks = NeuralNetwork.objects.filter(is_active=True, is_popular=True).order_by('order')[:7]
-
-    # Статьи блога
-    related_posts = Post.objects.filter(
-        is_published=True,
-        neural_networks=network
-    ).order_by('-published_at')[:3]
-
-    # Пробный тариф (если у пользователя нет платной подписки)
-    trial_tariff = None
-    if request.user.is_authenticated and (not request.user.active_subscription or request.user.tariff.is_free):
-        trial_tariff = Tariff.objects.filter(is_trial=True, is_active=True).first()
-
-    # Поддерживаемые типы файлов
-    file_capabilities = {
-        'archive': network.handle_archive,
-        'text_files': network.handle_text_files,
-        'photo': network.handle_photo,
-        'video': network.handle_video,
-    }
-    file_capabilities_json = json.dumps(file_capabilities)
-
-    # Конфигурация для fal.ai
-    config_json = None
-    if network.provider == 'fal-ai' and network.config_json:
-        config_json = json.dumps(network.config_json)
-
-    # FAQ для страницы нейросети
-    faqs = get_faqs_for_page(network_slug)
-
-    # URL для юридических документов (мета-теги)
-    terms_url = '/terms/'
-    privacy_url = '/privacy-policy/'
-
-    # Тарифы, дающие безлимит для этой нейросети
-    unlimited_tariffs = network.tariffs.all() if network.unlimited else []
-
-    return render(request, 'neuro/chatland.html', {
-        'network': network,
-        'user_chats': user_chats,
-        'current_chat_id': None,
-        'file_capabilities_json': file_capabilities_json,
-        'config_json': config_json,
-        'related_posts': related_posts,
-        'popular_networks': popular_networks,
-        'trial_tariff': trial_tariff,
-        'terms_url': terms_url,
-        'privacy_url': privacy_url,
-        'faqs': faqs,
-        'unlimited_tariffs': unlimited_tariffs,
-    })
-
 @login_required
 @csrf_exempt
 @require_POST
@@ -507,17 +446,6 @@ def user_chats(request):
     except Exception as e:
         logger.error(f"Ошибка получения чатов: {e}")
         return JsonResponse({'success': False, 'message': str(e)})
-
-
-def catalog(request):
-    """Страница каталога нейросетей (доступна всем)"""
-    user_chats = []
-    if request.user.is_authenticated:
-        user_chats = Chat.objects.filter(user=request.user).select_related('network').prefetch_related('messages').order_by('-updated_at')[:15]
-    return render(request, 'neuro/catalog.html', {
-        'user_chats': user_chats,
-        'current_chat_id': None,
-    })
 
 
 @login_required

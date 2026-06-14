@@ -4,7 +4,6 @@ from django.contrib.auth import get_user_model
 from allauth.exceptions import ImmediateHttpResponse
 from django.shortcuts import redirect
 from django.contrib import messages
-from django.urls import reverse
 import logging
 
 logger = logging.getLogger(__name__)
@@ -116,4 +115,4 @@ def social_login_error_handler(request, error, **kwargs):
         'Произошла ошибка при входе через социальную сеть. Пожалуйста, попробуйте еще раз или используйте email.'
     )
 
-    return redirect(reverse('users_pages:auth_page'))
+    return redirect('/login/')

@@ -447,25 +447,7 @@ def check_email_exists(request):
 # ========== СТРАНИЦЫ ==========
 
 
-def blocked_page(request):
-    """Страница для заблокированных пользователей"""
-    if not request.user.is_authenticated:
-        return redirect('users_pages:auth_page')
-
-    if not request.user.shadow_banned:
-        return redirect('/')
-
-    return render(request, 'neuro/blocked.html', {'email': request.user.email})
-
-
 # ========== ТАРИФЫ И ПОДПИСКИ ==========
-
-def pricing_page(request):
-    """
-    Страница с тарифами (перенаправляет на главную, так как используется модальное окно)
-    """
-    messages.info(request, 'Страница тарифов не используется, откройте модальное окно через кнопку "Тарифы" в шапке.')
-    return redirect('landing:index')
 
 @login_required
 def get_tariffs(request):
@@ -772,56 +754,6 @@ def payment_fail(request):
 
     return redirect('/users/pages/pricing/?payment=failed')
 
-
-def payment_success_page(request):
-    """
-    Страница успешной оплаты (GET редирект от Robokassa)
-    """
-    inv_id = request.GET.get('InvId')
-    out_sum = request.GET.get('OutSum')
-    signature = request.GET.get('SignatureValue')
-
-    logger.info(f"[RECV] Success page: GET запрос с параметрами")
-    logger.info(f"  InvId: {inv_id}")
-    logger.info(f"  OutSum: {out_sum}")
-    logger.info(f"  Signature: {signature}")
-
-    first_purchase = False
-
-    if inv_id:
-        try:
-            payment = PaymentHistory.objects.get(invoice_id=inv_id)
-            if payment.status == 'success':
-                # Проверяем, были ли у пользователя успешные платежи ранее (исключая текущий)
-                previous_success = PaymentHistory.objects.filter(
-                    user=payment.user,
-                    status='success'
-                ).exclude(id=payment.id).exists()
-
-                if not previous_success:
-                    first_purchase = True
-
-                if payment.payment_type == 'subscription':
-                    messages.success(request, f'Тариф {payment.tariff.display_name} успешно активирован!')
-                elif payment.payment_type == 'pages':
-                    messages.success(request, f'Успешно куплено {payment.pages_count} звезд!')
-                else:
-                    messages.success(request, 'Платеж успешно выполнен!')
-            elif payment.status == 'pending':
-                messages.info(request, 'Платеж обрабатывается. Это может занять несколько минут.')
-            else:
-                messages.error(request, 'Платеж не прошел. Попробуйте снова.')
-        except PaymentHistory.DoesNotExist:
-            messages.warning(request, 'Платеж получен, но информация обрабатывается.')
-
-    redirect_url = '/payment-success/'
-    if inv_id:
-        redirect_url += f'?InvId={inv_id}'
-    if first_purchase:
-        sep = '&' if inv_id else '?'
-        redirect_url += f'{sep}first_purchase=1'
-
-    return redirect(redirect_url)
 
 def payment_fail_page(request):
     """
@@ -1271,31 +1203,6 @@ def update_auto_renewal(request):
             'message': 'Ошибка при обновлении автопродления'
         }, status=500)
 
-def privacy_policy(request):
-    """Страница политики конфиденциальности"""
-    user_chats = []
-    current_chat_id = None
-    if request.user.is_authenticated:
-        user_chats = Chat.objects.filter(user=request.user).select_related('network').prefetch_related('messages').order_by('-updated_at')[:15]
-    document = LegalDocument.get_privacy()
-    return render(request, 'neuro/privacy_policy.html', {
-        'document': document,
-        'user_chats': user_chats,
-        'current_chat_id': current_chat_id,
-    })
-
-def terms_of_service(request):
-    """Страница пользовательского соглашения"""
-    user_chats = []
-    current_chat_id = None
-    if request.user.is_authenticated:
-        user_chats = Chat.objects.filter(user=request.user).select_related('network').prefetch_related('messages').order_by('-updated_at')[:15]
-    document = LegalDocument.get_terms()
-    return render(request, 'neuro/terms_of_service.html', {
-        'document': document,
-        'user_chats': user_chats,
-        'current_chat_id': current_chat_id,
-    })
 
 @login_required
 @require_POST
@@ -1426,90 +1333,6 @@ def profile_data(request):
         'trial_tariff': trial_tariff_data,
         'history': history,  # пополнения
         'spendings': spending_history  # списания
-    })
-@login_required
-def profile_page(request):
-    """Страница профиля пользователя"""
-    user_chats = Chat.objects.filter(user=request.user).select_related('network').prefetch_related('messages').order_by('-updated_at')[:15]
-    trial_tariff = None
-    if not request.user.active_subscription or request.user.tariff.is_free:
-        trial_tariff = Tariff.objects.filter(is_trial=True, is_active=True).first()
-    return render(request, 'neuro/profile.html', {
-        'user_chats': user_chats,
-        'current_chat_id': None,
-        'trial_tariff': trial_tariff,
-    })
-
-from .models import SiteSettings
-def referral_page(request):
-    """Страница партнёрской программы (лендинг для неавторизованных, кабинет для авторизованных)"""
-    # Если пользователь не авторизован – показываем лендинг
-    if not request.user.is_authenticated:
-        site_settings = SiteSettings.get_settings()
-        support_email = site_settings.support_email
-        return render(request, 'neuro/referral_landing.html', {
-            'support_email': support_email,
-        })
-
-    user = request.user
-
-    # Генерируем реферальный код, если его нет
-    if not user.referral_code:
-        import secrets
-        import string
-        alphabet = string.ascii_uppercase + string.digits
-        user.referral_code = ''.join(secrets.choice(alphabet) for _ in range(8))
-        user.save(update_fields=['referral_code'])
-
-    referral_link = f"{settings.SITE_URL}/?ref={user.referral_code}"
-
-    # Баланс
-    if user.can_convert_to_rub:
-        balance = float(user.rub_balance)
-        balance_type = 'rub'
-    else:
-        balance = user.pages_count
-        balance_type = 'stars'
-
-    # График дохода за последние 12 месяцев
-    now = timezone.now()
-    months = []
-    earnings_data = []
-    for i in range(11, -1, -1):
-        month = now - timedelta(days=30*i)
-        month_start = month.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        next_month = month_start + timedelta(days=32)
-        month_end = next_month.replace(day=1) - timedelta(seconds=1)
-        earnings = ReferralEarning.objects.filter(
-            user=user,
-            created_at__gte=month_start,
-            created_at__lte=month_end
-        ).aggregate(total=Sum('amount_rub') + Sum('amount_stars'))['total'] or 0
-        months.append(month.strftime('%b %Y'))
-        earnings_data.append(float(earnings))
-
-    # Таблица начислений
-    earnings_list = ReferralEarning.objects.filter(user=user).order_by('-created_at')[:50]
-
-    # Таблица выводов
-    withdrawals = WithdrawalRequest.objects.filter(user=user).order_by('-created_at')[:50]
-
-    # Количество приглашённых пользователей
-    referral_clicks = user.referral_clicks
-
-    # Возможность вывода
-    can_withdraw = user.can_convert_to_rub and user.rub_balance > 0
-
-    return render(request, 'neuro/referral.html', {
-        'balance': balance,
-        'balance_type': balance_type,
-        'referral_link': referral_link,
-        'months': months,
-        'earnings_data': earnings_data,
-        'earnings_list': earnings_list,
-        'withdrawals': withdrawals,
-        'can_withdraw': can_withdraw,
-        'referral_clicks': referral_clicks,
     })
 
 
