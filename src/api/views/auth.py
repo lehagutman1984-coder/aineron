@@ -1,8 +1,8 @@
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth import get_user_model
 from rest_framework.views import APIView
-from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from api.authentication import CsrfExemptSessionAuthentication
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -13,7 +13,7 @@ User = get_user_model()
 
 
 class MeView(APIView):
-    authentication_classes = [SessionAuthentication]
+    authentication_classes = [CsrfExemptSessionAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -51,7 +51,7 @@ class LoginView(APIView):
 
 
 class LogoutView(APIView):
-    authentication_classes = [SessionAuthentication]
+    authentication_classes = [CsrfExemptSessionAuthentication]
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -102,7 +102,7 @@ class RegisterView(APIView):
 
 class VerifyEmailView(APIView):
     permission_classes = [AllowAny]
-    authentication_classes = [SessionAuthentication]
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
     def post(self, request):
         code = (request.data.get('code') or '').strip()
@@ -120,7 +120,7 @@ class VerifyEmailView(APIView):
 
 
 class ResendVerificationView(APIView):
-    authentication_classes = [SessionAuthentication]
+    authentication_classes = [CsrfExemptSessionAuthentication]
     permission_classes = [IsAuthenticated]
 
     def post(self, request):

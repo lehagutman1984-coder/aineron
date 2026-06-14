@@ -1,6 +1,12 @@
 from django.utils import timezone
-from rest_framework.authentication import BaseAuthentication
+from rest_framework.authentication import BaseAuthentication, SessionAuthentication
 from rest_framework.exceptions import AuthenticationFailed
+
+
+class CsrfExemptSessionAuthentication(SessionAuthentication):
+    """SessionAuthentication без проверки CSRF — для DRF API с CORS-защитой."""
+    def enforce_csrf(self, request):
+        pass
 
 
 class APIKeyAuthentication(BaseAuthentication):
