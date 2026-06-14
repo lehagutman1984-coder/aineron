@@ -60,7 +60,7 @@ class CustomAccountAdapter(DefaultAccountAdapter):
 
         # Проверяем, подтвержден ли email
         if request.user.is_authenticated and not request.user.email_verified:
-            return reverse('users_api:verify_email_page')
+            return '/verify-email/'
 
         # Добавляем сообщение об успешном входе
         if not messages.get_messages(request):

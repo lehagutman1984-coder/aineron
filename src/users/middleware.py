@@ -60,7 +60,7 @@ class EmailVerificationMiddleware(MiddlewareMixin):
                             'Для доступа к этой странице необходимо подтвердить email'
                         )
 
-                    return redirect('users_api:verify_email_page')
+                    return redirect('/verify-email/')
 
         response = self.get_response(request)
         return response

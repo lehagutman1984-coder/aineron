@@ -98,7 +98,7 @@ def ajax_login(request):
                     return JsonResponse({
                         'success': True,
                         'message': 'Вход выполнен! Подтвердите email.',
-                        'redirect': reverse('users_api:verify_email_page'),
+                        'redirect': '/verify-email/',
                     })
 
                 return JsonResponse({
@@ -205,7 +205,7 @@ def ajax_register(request):
             else:
                 # Если требуется подтверждение email, отправляем на страницу верификации
                 if settings.ACCOUNT_EMAIL_VERIFICATION == 'mandatory':
-                    redirect_url = reverse('users_api:verify_email_page')
+                    redirect_url = '/verify-email/'
                     message = 'Регистрация прошла успешно! Проверьте почту для подтверждения.'
                 else:
                     redirect_url = next_url
@@ -313,15 +313,14 @@ def ajax_logout(request):
 
 @login_required
 def verify_email_page(request, token=None):
-    """Страница подтверждения email"""
+    """Перенаправляет на Next.js-страницу верификации"""
     if request.user.email_verified:
-        messages.info(request, 'Email уже подтвержден')
-        return redirect('/')
+        return redirect('/account/')
 
     if token:
         return verify_email(request, token)
 
-    return render(request, 'neuro/verified.html', {'email': request.user.email})
+    return redirect('/verify-email/')
 
 
 def verify_email(request, token):
@@ -330,17 +329,13 @@ def verify_email(request, token):
 
     if user:
         login(request, user, backend='django.contrib.auth.backends.ModelBackend')
-        messages.success(request, 'Email успешно подтвержден!')
-
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({'success': True, 'message': 'Email подтвержден!'})
-        return redirect('/')
+        return redirect('/account/?verified=1')
     else:
-        messages.error(request, 'Неверная или устаревшая ссылка')
-
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({'success': False, 'message': 'Неверная ссылка'})
-        return redirect('users_api:verify_email_page')
+        return redirect('/verify-email/?error=invalid_link')
 
 
 @csrf_exempt
