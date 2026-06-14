@@ -439,6 +439,28 @@ export interface ApplyPromoResponse {
   message: string;
 }
 
+// ============ Files ============
+
+export interface GeneratedFile {
+  id: string;
+  url: string;
+  prompt: string;
+  media_type: "image" | "video";
+  ext: string;
+  size: string;
+  width: number | null;
+  height: number | null;
+  created_at: string;
+}
+
+export interface FilesResponse {
+  files: GeneratedFile[];
+  has_next: boolean;
+  page: number;
+  total_pages: number;
+  total: number;
+}
+
 // ============ Referral ============
 
 export interface ReferralEarning {

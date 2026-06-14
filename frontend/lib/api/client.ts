@@ -33,6 +33,7 @@ import type {
   PaymentHistory,
   ApplyPromoResponse,
   ReferralData,
+  FilesResponse,
 } from "./types";
 
 const BASE_URL =
@@ -345,6 +346,23 @@ export const applyPromoCode = (code: string): Promise<ApplyPromoResponse> =>
     method: "POST",
     body: JSON.stringify({ code }),
   });
+
+// ============ Files ============
+
+export const getUserFiles = (params: {
+  page?: number;
+  per_page?: number;
+  category?: "all" | "images" | "videos";
+}): Promise<FilesResponse> => {
+  const q = new URLSearchParams();
+  if (params.page) q.set("page", String(params.page));
+  if (params.per_page) q.set("per_page", String(params.per_page));
+  if (params.category) q.set("category", params.category);
+  return request<FilesResponse>(`/files/?${q}`);
+};
+
+export const deleteUserFile = (fileId: string): Promise<void> =>
+  request<void>(`/files/${fileId}/`, { method: "DELETE" });
 
 // ============ Referral ============
 

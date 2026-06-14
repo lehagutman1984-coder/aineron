@@ -384,17 +384,6 @@ def user_chats(request):
 
 
 @login_required
-def files_page(request):
-    """Страница «Мои файлы»"""
-    user_chats = Chat.objects.filter(user=request.user).select_related('network').prefetch_related('messages').order_by(
-        '-updated_at')[:15]
-    return render(request, 'neuro/files.html', {
-        'user_chats': user_chats,
-        'current_chat_id': None,
-    })
-
-
-@login_required
 def user_files_api(request):
     """API для получения списка файлов пользователя с пагинацией и фильтрацией по категории"""
     try:

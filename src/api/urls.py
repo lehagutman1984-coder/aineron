@@ -31,6 +31,7 @@ from api.views.audit import AuditLogListView
 from api.views.api_status import APIStatusView
 from api.views.legal import LegalPrivacyView, LegalTermsView
 from api.views.referral import ReferralView, ReferralWithdrawView
+from api.views.files import UserFilesView, UserFileDeleteView
 
 app_name = 'api'
 
@@ -110,6 +111,10 @@ urlpatterns = [
     # ========== Реферальная программа ==========
     path('v1/referral/', ReferralView.as_view(), name='referral'),
     path('v1/referral/withdraw/', ReferralWithdrawView.as_view(), name='referral_withdraw'),
+
+    # ========== Файлы пользователя ==========
+    path('v1/files/', UserFilesView.as_view(), name='user_files'),
+    path('v1/files/<int:file_id>/', UserFileDeleteView.as_view(), name='user_file_delete'),
 
     # ========== OpenAPI / Swagger ==========
     path('v1/schema/', SpectacularAPIView.as_view(), name='schema'),

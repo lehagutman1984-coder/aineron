@@ -13,7 +13,6 @@ urlpatterns = [
     path('api/chat-settings/<int:chat_id>/', views.save_chat_settings, name='save_chat_settings'),
     path('api/network-config/<slug:slug>/', views.get_network_config_api, name='network_config_api'),
 
-    path('files/', views.files_page, name='files'),
     path('api/user-files/', views.user_files_api, name='user_files_api'),
     path('api/delete-file/<str:file_id>/', views.delete_file, name='delete_file'),
 ]
