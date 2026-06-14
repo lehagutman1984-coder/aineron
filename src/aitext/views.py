@@ -114,8 +114,8 @@ def chat_landing(request, network_slug):
     faqs = get_faqs_for_page(network_slug)
 
     # URL для юридических документов (мета-теги)
-    terms_url = reverse('users_pages:terms_of_service')
-    privacy_url = reverse('users_pages:privacy_policy')
+    terms_url = '/terms/'
+    privacy_url = '/privacy-policy/'
 
     # Тарифы, дающие безлимит для этой нейросети
     unlimited_tariffs = network.tariffs.all() if network.unlimited else []

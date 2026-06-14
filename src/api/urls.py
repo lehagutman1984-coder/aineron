@@ -29,6 +29,8 @@ from api.views.batch import BatchListCreateView, BatchDetailView, BatchResultsVi
 from api.views.webhooks import WebhookListCreateView, WebhookDetailView, WebhookTestView
 from api.views.audit import AuditLogListView
 from api.views.api_status import APIStatusView
+from api.views.legal import LegalPrivacyView, LegalTermsView
+from api.views.referral import ReferralView, ReferralWithdrawView
 
 app_name = 'api'
 
@@ -100,6 +102,14 @@ urlpatterns = [
     path('v1/webhooks/<int:pk>/test/', WebhookTestView.as_view(), name='webhook_test'),
     path('v1/audit/', AuditLogListView.as_view(), name='audit_log'),
     path('v1/status/', APIStatusView.as_view(), name='api_status'),
+
+    # ========== Юридические документы ==========
+    path('v1/legal/privacy/', LegalPrivacyView.as_view(), name='legal_privacy'),
+    path('v1/legal/terms/', LegalTermsView.as_view(), name='legal_terms'),
+
+    # ========== Реферальная программа ==========
+    path('v1/referral/', ReferralView.as_view(), name='referral'),
+    path('v1/referral/withdraw/', ReferralWithdrawView.as_view(), name='referral_withdraw'),
 
     # ========== OpenAPI / Swagger ==========
     path('v1/schema/', SpectacularAPIView.as_view(), name='schema'),

@@ -56,7 +56,7 @@ class CustomAccountAdapter(DefaultAccountAdapter):
         """
         # Проверяем, находится ли пользователь в теневом бане
         if request.user.is_authenticated and request.user.shadow_banned:
-            return reverse('users_pages:blocked_page')
+            return '/blocked/'
 
         # Проверяем, подтвержден ли email
         if request.user.is_authenticated and not request.user.email_verified:

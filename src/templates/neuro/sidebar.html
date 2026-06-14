@@ -74,10 +74,10 @@
             <span class="tooltip">{{ user.username|default:"Гость" }}</span>
         </div>
         <div class="user-menu" id="userMenu">
-            <a href="{% url 'users_pages:profile_page' %}" class="menu-item">
+            <a href="/account/" class="menu-item">
                 <i class="far fa-user-circle"></i> Профиль
             </a>
-            <a href="{% url 'users_pages:referral_page' %}" class="menu-item">
+            <a href="/account/referral/" class="menu-item">
                 <i class="fas fa-user-plus"></i> Пригласи друга
             </a>
             {% if user.active_subscription and not user.tariff.is_free %}

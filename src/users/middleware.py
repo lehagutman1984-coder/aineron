@@ -31,7 +31,7 @@ class EmailVerificationMiddleware(MiddlewareMixin):
             '/static/',  # Статические файлы
             '/media/',  # Медиа файлы
             '/__debug__/',  # Django Debug Toolbar
-            '/users/pages/blocked/',  # Страница блокировки
+            '/blocked/',  # Страница блокировки (Next.js)
         ]
 
         # Исключения для статических файлов и API
@@ -84,7 +84,7 @@ class ShadowBanMiddleware(MiddlewareMixin):
             '/static/',  # Статические файлы
             '/media/',  # Медиа файлы
             '/__debug__/',  # Django Debug Toolbar
-            '/users/pages/blocked/',  # Страница блокировки (чтобы не было цикла)
+            '/blocked/',  # Страница блокировки (Next.js) (чтобы не было цикла)
         ]
 
         # Проверяем, авторизован ли пользователь и находится ли в теневом бане
@@ -112,11 +112,10 @@ class ShadowBanMiddleware(MiddlewareMixin):
                             'success': False,
                             'error': 'account_blocked',
                             'message': 'Ваш аккаунт заблокирован',
-                            'redirect': '/users/pages/blocked/'
+                            'redirect': '/blocked/'
                         }, status=403)
 
-                    # ИСПРАВЛЕНО: добавляем namespace
-                    return redirect('users_pages:blocked_page')
+                    return redirect('/blocked/')
             else:
                 request.shadow_banned = False
 

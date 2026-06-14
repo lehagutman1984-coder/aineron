@@ -91,7 +91,7 @@ def ajax_login(request):
                         'success': True,
                         'message': 'Ваш аккаунт заблокирован',
                         'shadow_banned': True,
-                        'redirect': reverse('users_pages:blocked_page'),
+                        'redirect': '/blocked/',
                     })
 
                 if not user.email_verified:
@@ -200,7 +200,7 @@ def ajax_register(request):
                 email_sent = False
 
             if shadow_banned:
-                redirect_url = reverse('users_pages:blocked_page')
+                redirect_url = '/blocked/'
                 message = 'Регистрация прошла успешно! Ваш аккаунт заблокирован.'
             else:
                 # Если требуется подтверждение email, отправляем на страницу верификации
@@ -814,9 +814,12 @@ def payment_success_page(request):
         except PaymentHistory.DoesNotExist:
             messages.warning(request, 'Платеж получен, но информация обрабатывается.')
 
-    redirect_url = reverse('landing:index')
+    redirect_url = '/payment-success/'
+    if inv_id:
+        redirect_url += f'?InvId={inv_id}'
     if first_purchase:
-        redirect_url += '?first_purchase=1'
+        sep = '&' if inv_id else '?'
+        redirect_url += f'{sep}first_purchase=1'
 
     return redirect(redirect_url)
 
@@ -845,7 +848,10 @@ def payment_fail_page(request):
     else:
         messages.error(request, 'Оплата не прошла. Попробуйте снова или выберите другой способ оплаты.')
 
-    return redirect('landing:index')
+    redirect_url = '/payment-fail/'
+    if inv_id:
+        redirect_url += f'?InvId={inv_id}'
+    return redirect(redirect_url)
 
 
 # ========== РАБОТА СО СТРАНИЦАМИ ==========

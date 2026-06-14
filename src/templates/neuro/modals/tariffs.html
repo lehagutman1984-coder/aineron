@@ -6,8 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>Тарифы | LUMEN</title>
     <meta name="csrf-token" content="{{ csrf_token }}">
-    <meta name="terms-url" content="{% url 'users_pages:terms_of_service' %}">
-    <meta name="privacy-url" content="{% url 'users_pages:privacy_policy' %}">
+    <meta name="terms-url" content="/terms/">
+    <meta name="privacy-url" content="/privacy-policy/">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="{% static 'neuro/css/index.css' %}">
     <link rel="stylesheet" href="{% static 'neuro/css/tariffs.css' %}">
@@ -35,7 +35,7 @@
             </div>
 
             <div class="tariffs-footer">
-                <p>Продолжая, вы принимаете наше <a href="{% url 'users_pages:terms_of_service' %}">Пользовательское соглашение</a> и <a href="{% url 'users_pages:privacy_policy' %}">Политику Конфиденциальности</a></p>
+                <p>Продолжая, вы принимаете наше <a href="/terms/">Пользовательское соглашение</a> и <a href="/privacy-policy/">Политику Конфиденциальности</a></p>
             </div>
         </div>
     </div>

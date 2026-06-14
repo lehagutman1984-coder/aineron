@@ -32,6 +32,7 @@ import type {
   PageSaleSettings,
   PaymentHistory,
   ApplyPromoResponse,
+  ReferralData,
 } from "./types";
 
 const BASE_URL =
@@ -343,6 +344,20 @@ export const applyPromoCode = (code: string): Promise<ApplyPromoResponse> =>
   request<ApplyPromoResponse>("/billing/promo/", {
     method: "POST",
     body: JSON.stringify({ code }),
+  });
+
+// ============ Referral ============
+
+export const getReferral = (): Promise<ReferralData> =>
+  request<ReferralData>("/referral/");
+
+export const requestReferralWithdrawal = (body: {
+  amount: number;
+  card_number: string;
+}): Promise<{ ok: boolean }> =>
+  request<{ ok: boolean }>("/referral/withdraw/", {
+    method: "POST",
+    body: JSON.stringify(body),
   });
 
 // ============ User (legacy Django session endpoint, kept for compatibility) ============

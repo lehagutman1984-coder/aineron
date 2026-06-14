@@ -13,9 +13,9 @@ class StaticViewSitemap(Sitemap):
         if item == 'index':
             return reverse('landing:index')
         elif item == 'privacy_policy':
-            return reverse('users_pages:privacy_policy')
+            return '/privacy-policy/'
         elif item == 'terms_of_service':
-            return reverse('users_pages:terms_of_service')
+            return '/terms/'
         elif item == 'api_docs':
             return reverse('landing:api_docs')
         elif item == 'ide_integrations':

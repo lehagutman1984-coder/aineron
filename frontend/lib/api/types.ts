@@ -439,6 +439,38 @@ export interface ApplyPromoResponse {
   message: string;
 }
 
+// ============ Referral ============
+
+export interface ReferralEarning {
+  id: number;
+  amount_rub: number;
+  amount_stars: number;
+  tariff: string | null;
+  description: string;
+  created_at: string;
+}
+
+export interface ReferralWithdrawal {
+  id: number;
+  amount: number;
+  card_number: string;
+  status: "pending" | "completed" | "cancelled";
+  created_at: string;
+  processed_at: string | null;
+  note: string;
+}
+
+export interface ReferralData {
+  referral_link: string;
+  referral_code: string;
+  referral_clicks: number;
+  balance: number;
+  balance_type: "rub" | "stars";
+  can_withdraw: boolean;
+  earnings: ReferralEarning[];
+  withdrawals: ReferralWithdrawal[];
+}
+
 // ============ Auth (DRF /api/v1/auth/me/) ============
 
 export interface AuthUser {
