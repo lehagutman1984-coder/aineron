@@ -34,6 +34,7 @@ from api.views.api_status import APIStatusView
 from api.views.legal import LegalPrivacyView, LegalTermsView
 from api.views.referral import ReferralView, ReferralWithdrawView
 from api.views.files import UserFilesView, UserFileDeleteView
+from api.views.compare import CompareView
 
 app_name = 'api'
 
@@ -120,6 +121,9 @@ urlpatterns = [
     # ========== Файлы пользователя ==========
     path('v1/files/', UserFilesView.as_view(), name='user_files'),
     path('v1/files/<int:file_id>/', UserFileDeleteView.as_view(), name='user_file_delete'),
+
+    # ========== Model Arena (сравнение) ==========
+    path('v1/compare/', CompareView.as_view(), name='compare'),
 
     # ========== OpenAPI / Swagger ==========
     path('v1/schema/', SpectacularAPIView.as_view(), name='schema'),

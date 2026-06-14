@@ -474,6 +474,24 @@ export interface FilesResponse {
   total: number;
 }
 
+// ============ Model Arena (compare) ============
+
+export interface CompareItem {
+  chat_id: number;
+  network_slug: string;
+  network_name: string;
+  network_avatar: string | null;
+  provider: string;
+  assistant_message_id: number;
+  cost: number;
+}
+
+export interface CompareResponse {
+  items: CompareItem[];
+  total_cost: number;
+  new_balance: number;
+}
+
 // ============ Referral ============
 
 export interface ReferralEarning {

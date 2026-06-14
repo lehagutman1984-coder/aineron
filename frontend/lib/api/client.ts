@@ -35,6 +35,7 @@ import type {
   ApplyPromoResponse,
   ReferralData,
   FilesResponse,
+  CompareResponse,
 } from "./types";
 
 const BASE_URL =
@@ -454,6 +455,17 @@ export const getUserFiles = (params: {
 
 export const deleteUserFile = (fileId: string): Promise<void> =>
   request<void>(`/files/${fileId}/`, { method: "DELETE" });
+
+// ============ Model Arena ============
+
+export const compareModels = (body: {
+  message: string;
+  network_slugs: string[];
+}): Promise<CompareResponse> =>
+  request<CompareResponse>("/compare/", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
 
 // ============ Referral ============
 
