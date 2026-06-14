@@ -870,20 +870,23 @@ function AssistantContent({
     });
   }, [content]);
 
-  // Prefer plain_text (raw markdown) → render with react-markdown
-  if (plain_text) {
+  // Prefer plain_text (raw markdown) → render with react-markdown.
+  // Skip if plain_text is itself HTML — fal-ai stores HTML (with <img>) in plain_text.
+  if (plain_text && !detectHTML(plain_text)) {
     return <MarkdownContent content={plain_text} />;
   }
 
-  // Fallback: HTML from Django CodeFormatter (legacy / image model text)
-  const html = detectHTML(content);
+  // HTML path: CodeFormatter output for text models, or <img> HTML from fal-ai image models.
+  // Use content (formatted HTML) if it has HTML, otherwise fall back to plain_text.
+  const htmlSource = detectHTML(content) ? content : (plain_text ?? content);
+  const html = detectHTML(htmlSource);
 
   if (html) {
     return (
       <div
         ref={containerRef}
         className="chat-prose"
-        dangerouslySetInnerHTML={{ __html: content }}
+        dangerouslySetInnerHTML={{ __html: htmlSource }}
       />
     );
   }
