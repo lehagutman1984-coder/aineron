@@ -211,6 +211,12 @@ export const getChat = (id: number): Promise<ChatDetail> =>
 export const deleteChat = (id: number): Promise<void> =>
   request<void>(`/chats/${id}/`, { method: "DELETE" });
 
+export const renameChat = (id: number, title: string): Promise<{ id: number; title: string }> =>
+  request<{ id: number; title: string }>(`/chats/${id}/`, {
+    method: "PATCH",
+    body: JSON.stringify({ title }),
+  });
+
 export const sendMessage = (
   chatId: number,
   body: {

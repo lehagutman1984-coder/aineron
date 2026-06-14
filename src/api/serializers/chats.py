@@ -40,6 +40,12 @@ class ChatDetailSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'network', 'messages', 'settings', 'created_at', 'updated_at']
 
 
+class ChatUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Chat
+        fields = ['title']
+
+
 class SendMessageSerializer(serializers.Serializer):
     message = serializers.CharField(required=False, allow_blank=True, default='')
     files = serializers.ListField(

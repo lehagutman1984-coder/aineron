@@ -4,7 +4,7 @@ from django.http import StreamingHttpResponse
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
-from rest_framework.generics import ListCreateAPIView, RetrieveDestroyAPIView
+from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
@@ -16,7 +16,7 @@ from aitext.tasks import generate_ai_response, get_laozhang_client
 from aitext.code_formatter import CodeFormatter
 from users.models import UserSpending
 from api.serializers.chats import (
-    ChatListSerializer, ChatDetailSerializer,
+    ChatListSerializer, ChatDetailSerializer, ChatUpdateSerializer,
     MessageSerializer, SendMessageSerializer,
 )
 
@@ -109,12 +109,20 @@ class ChatListCreateView(ListCreateAPIView):
         }, status=201)
 
 
-class ChatDetailView(RetrieveDestroyAPIView):
+class ChatDetailView(RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
-    serializer_class = ChatDetailSerializer
 
     def get_queryset(self):
         return Chat.objects.filter(user=self.request.user).select_related('network', 'network__category')
+
+    def get_serializer_class(self):
+        if self.request.method in ('PATCH', 'PUT'):
+            return ChatUpdateSerializer
+        return ChatDetailSerializer
+
+    def update(self, request, *args, **kwargs):
+        kwargs['partial'] = True
+        return super().update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
         chat = self.get_object()
