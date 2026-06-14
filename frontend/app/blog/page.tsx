@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     "Статьи о нейросетях без VPN: подключение GPT, Claude, Gemini через API, сравнения моделей, гайды для разработчиков.",
 };
 
-export const revalidate = 3600;
+export const revalidate = 60;
 
 export default async function BlogListPage({
   searchParams,

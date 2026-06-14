@@ -35,7 +35,7 @@ export async function generateStaticParams() {
   return (posts ?? []).map((p) => ({ slug: p.slug }));
 }
 
-export const revalidate = 3600;
+export const revalidate = 60;
 
 export default async function BlogPostPage({ params }: Props) {
   const post = await serverGetBlogPost(params.slug);
