@@ -245,6 +245,19 @@ export default function ChatPage() {
     [id, qc, setStars]
   );
 
+  // Click on starter prompt card → immediate submit
+  const handlePrompt = useCallback(
+    (prompt: string) => {
+      if (isBusy) return;
+      if (chat?.network.provider === "fal-ai") {
+        sendMutation.mutate(prompt);
+      } else {
+        handleStreamSubmit(prompt);
+      }
+    },
+    [isBusy, chat?.network.provider, sendMutation, handleStreamSubmit]
+  );
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const msg = text.trim();
@@ -348,30 +361,61 @@ export default function ChatPage() {
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-2xl px-4 py-8">
           {chat.messages.length === 0 && (
-            <div className="flex flex-col items-center py-20 text-center">
+            <div className="flex flex-col items-center pt-14 pb-4 text-center">
+              {/* Model avatar */}
               {chat.network.avatar ? (
                 <img
                   src={chat.network.avatar}
                   alt=""
-                  width={60}
-                  height={60}
-                  className="mb-5 rounded-[16px]"
+                  width={56}
+                  height={56}
+                  className="rounded-[14px]"
                   style={{ boxShadow: "0 4px 16px rgba(0,0,0,0.10)" }}
                 />
               ) : (
                 <div
-                  className="mb-5 flex h-[60px] w-[60px] items-center justify-center rounded-[16px] text-[#0a7cff]"
+                  className="flex h-[56px] w-[56px] items-center justify-center rounded-[14px] text-[#0a7cff]"
                   style={{ background: "rgba(10,124,255,0.10)" }}
                 >
-                  <Code2 size={28} />
+                  <Code2 size={26} />
                 </div>
               )}
-              <p className="text-[18px] font-semibold text-[#0d0d0d]">
+
+              <p className="mt-4 text-[17px] font-semibold text-[#0d0d0d] dark:text-[#ececec]">
                 {chat.network.name}
               </p>
-              <p className="mt-1.5 text-[14px] text-[rgba(13,13,13,0.42)]">
-                Введите вопрос или задачу ниже
+              <p className="mt-1 text-[13px] text-[rgba(13,13,13,0.42)] dark:text-[rgba(236,236,236,0.40)]">
+                Выберите тему или напишите свой вопрос
               </p>
+
+              {/* Starter prompt cards */}
+              <div className="mt-6 grid w-full grid-cols-1 gap-2.5 sm:grid-cols-2">
+                {getStarterPrompts(chat.network).map((card, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handlePrompt(card.prompt)}
+                    disabled={isBusy}
+                    className="group rounded-[12px] border px-4 py-3.5 text-left transition-all disabled:cursor-not-allowed disabled:opacity-40"
+                    style={{
+                      background: "var(--chat-surface)",
+                      borderColor: "var(--chat-input-border)",
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 2px 10px rgba(0,0,0,0.08)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.boxShadow = "";
+                    }}
+                  >
+                    <p className="text-[13px] font-semibold text-[#0d0d0d] dark:text-[#ececec]">
+                      {card.label}
+                    </p>
+                    <p className="mt-0.5 line-clamp-2 text-[12px] leading-relaxed text-[rgba(13,13,13,0.48)] dark:text-[rgba(236,236,236,0.42)]">
+                      {card.prompt}
+                    </p>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -778,4 +822,48 @@ function PlainTextAnimated({ content, shouldAnimate }: { content: string; should
       )}
     </div>
   );
+}
+
+/* ─── Starter prompts ────────────────────────────────────── */
+type PromptCard = { label: string; prompt: string };
+
+function getStarterPrompts(network: { provider: string; category: { name: string; slug: string } | null }): PromptCard[] {
+  // Image generation models
+  if (network.provider === "fal-ai") {
+    return [
+      { label: "Пейзаж", prompt: "Реалистичное фото горного рассвета: туман над долиной, золотой час, высокое разрешение" },
+      { label: "Портрет", prompt: "Портрет молодой женщины в стиле арт-деко, детализированный, мягкое студийное освещение" },
+      { label: "Абстракция", prompt: "Абстрактная цифровая живопись в синих и фиолетовых тонах с неоновыми акцентами" },
+      { label: "Интерьер", prompt: "Уютная библиотека с высокими деревянными полками, тёплый свет, кресло у панорамного окна" },
+    ];
+  }
+
+  // Category-specific prompts
+  const cat = (network.category?.slug ?? network.category?.name ?? "").toLowerCase();
+
+  if (cat.includes("kod") || cat.includes("code") || cat.includes("програм") || cat.includes("разраб")) {
+    return [
+      { label: "Написать функцию", prompt: "Напиши функцию на Python, которая проверяет, является ли строка палиндромом, с тестами" },
+      { label: "Найти баг", prompt: "Найди и исправь баг в этом коде:\n\n```python\n# вставь код сюда\n```" },
+      { label: "SQL запрос", prompt: "Напиши SQL-запрос: топ-10 пользователей по количеству заказов за последние 30 дней" },
+      { label: "Code review", prompt: "Сделай code review этого кода и предложи улучшения по производительности и читаемости:" },
+    ];
+  }
+
+  if (cat.includes("перевод") || cat.includes("translat")) {
+    return [
+      { label: "На английский", prompt: "Переведи следующий текст на английский язык, сохранив стиль и тон:" },
+      { label: "На русский", prompt: "Translate the following text to Russian, keeping the original style:" },
+      { label: "Деловой стиль", prompt: "Переведи на английский в деловом стиле для международного письма:" },
+      { label: "Проверь перевод", prompt: "Проверь этот перевод и исправь ошибки, объясни каждое исправление:" },
+    ];
+  }
+
+  // General text model prompts
+  return [
+    { label: "Объяснение", prompt: "Объясни, как работает квантовое шифрование, простыми словами без технических терминов" },
+    { label: "Написать код", prompt: "Напиши Python-скрипт, который парсит JSON-файл и выводит топ-5 записей по полю \"score\"" },
+    { label: "Составить текст", prompt: "Помоги написать профессиональное письмо с предложением о партнёрстве — кратко и убедительно" },
+    { label: "Анализ", prompt: "Составь SWOT-анализ для небольшого онлайн-сервиса с подпиской и AI-функциями" },
+  ];
 }
