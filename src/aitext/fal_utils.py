@@ -498,8 +498,10 @@ def generate_with_falai(network, user_msg, message, user_settings=None):
     # Формируем текст ответа
     model_name = config.get('name', network.name)
     media_count = len(saved_media)
+    is_video_output = config.get('metadata', {}).get('output_type') == 'video'
     if media_count > 0:
-        text_parts = [f"Сгенерировано {media_count} изображений моделью \"{model_name}\"."]
+        media_word = 'видео' if is_video_output else 'изображений'
+        text_parts = [f"Сгенерировано {media_count} {media_word} моделью \"{model_name}\"."]
         for media in saved_media:
             if media.media_type == 'video':
                 text_parts.append(
@@ -511,6 +513,7 @@ def generate_with_falai(network, user_msg, message, user_settings=None):
                 )
         final_text = "\n\n".join(text_parts)
     else:
-        final_text = f"Модель \"{model_name}\" обработала запрос: \"{prompt[:100]}\". (Нет изображений в ответе)"
+        media_word = 'видео' if is_video_output else 'изображений'
+        final_text = f"Модель \"{model_name}\" обработала запрос: \"{prompt[:100]}\". (Нет {media_word} в ответе)"
 
     return final_text, saved_media, total_cost
