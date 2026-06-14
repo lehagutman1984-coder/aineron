@@ -94,6 +94,26 @@ VIDEO_MODELS = [
         config_key='veo',
         is_popular=True,
     ),
+    dict(
+        name='Veo 3.1',
+        slug='veo-3-1',
+        model_name='veo-3.1-generate-preview',
+        cost_per_message=100,
+        order=4,
+        description='Полное качество Veo 3.1 от Google DeepMind. Максимальная детализация и фотореализм.',
+        config_key='veo',
+        is_popular=False,
+    ),
+    dict(
+        name='Veo Video',
+        slug='veo-video-api-1',
+        model_name='veo-video-api-1-视频生成',
+        cost_per_message=70,
+        order=5,
+        description='Генерация видео через прямой API Google Veo. Альтернативный провайдер.',
+        config_key='veo',
+        is_popular=False,
+    ),
 ]
 
 

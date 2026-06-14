@@ -501,36 +501,77 @@ def generate_video_laozhang(network, user_msg, message, user_settings=None):
                 status = (pd.get('status') or '').lower()
                 logger.info(f"Video poll {attempt + 1}/36: status={status}")
                 if status in ('completed', 'succeeded', 'success', 'done'):
-                    logger.info(f"Video completed response: {str(pd)[:800]}")
-                    # Шаг 3: скачиваем само видео — /content/video (паттерн OpenAI Sora)
-                    content_endpoint = f"{base_url}/video/generations/{job_id}/content/video"
-                    logger.info(f"Fetching video content: GET {content_endpoint}")
-                    try:
-                        cr = requests.get(content_endpoint, headers=headers, timeout=120, allow_redirects=True)
-                        cr.raise_for_status()
-                        ct = cr.headers.get('content-type', '')
-                        logger.info(f"Content response: status={cr.status_code} content-type={ct} size={len(cr.content)}")
-                        if 'video' in ct or cr.url.endswith('.mp4'):
-                            path = f"generated_videos/generated_{uuid.uuid4()}.mp4"
-                            default_storage.save(path, ContentFile(cr.content))
-                            from .models import GeneratedImage
-                            gen = GeneratedImage.objects.create(
-                                message=message, image=path, prompt=prompt, media_type='video'
-                            )
-                            video_urls = ['_saved_directly_']
-                            saved_media_direct.append(gen)
-                        elif 'json' in ct:
-                            data_c = cr.json()
-                            logger.info(f"Content JSON response: {str(data_c)[:400]}")
-                            for key in ('url', 'video_url', 'download_url', 'src'):
-                                u = data_c.get(key)
+                    logger.info(f"Video completed full response: {str(pd)[:1000]}")
+
+                    # Шаг 3a: ищем URL прямо в ответе статуса
+                    for key in ('url', 'video_url', 'download_url', 'src', 'output', 'result'):
+                        val = pd.get(key)
+                        if isinstance(val, str) and val.startswith('http'):
+                            logger.info(f"Found video URL in status response key='{key}': {val[:100]}")
+                            video_urls.append(val)
+                            break
+                        if isinstance(val, dict):
+                            for sub in ('url', 'video_url', 'download_url', 'src'):
+                                u = val.get(sub)
                                 if u and str(u).startswith('http'):
+                                    logger.info(f"Found video URL in status[{key}][{sub}]: {u[:100]}")
                                     video_urls.append(u)
                                     break
-                        else:
-                            logger.warning(f"Unknown content-type for video: {ct}, first 200 bytes: {cr.content[:200]}")
-                    except Exception as ce:
-                        logger.error(f"Failed to fetch /content/video: {ce}")
+                        if isinstance(val, list) and val:
+                            item0 = val[0]
+                            if isinstance(item0, str) and item0.startswith('http'):
+                                logger.info(f"Found video URL in status[{key}][0]: {item0[:100]}")
+                                video_urls.append(item0)
+                                break
+                            if isinstance(item0, dict):
+                                for sub in ('url', 'video_url', 'download_url', 'src'):
+                                    u = item0.get(sub)
+                                    if u and str(u).startswith('http'):
+                                        logger.info(f"Found video URL in status[{key}][0][{sub}]: {u[:100]}")
+                                        video_urls.append(u)
+                                        break
+
+                    # Шаг 3b: если URL не нашли — скачиваем через /content/video (паттерн OpenAI Sora)
+                    if not video_urls:
+                        content_endpoint = f"{base_url}/video/generations/{job_id}/content/video"
+                        logger.info(f"No URL in status, fetching: GET {content_endpoint}")
+                        try:
+                            cr = requests.get(content_endpoint, headers=headers, timeout=120, allow_redirects=True)
+                            cr.raise_for_status()
+                            ct = cr.headers.get('content-type', '')
+                            logger.info(f"Content response: status={cr.status_code} content-type={ct} size={len(cr.content)}")
+                            if 'video' in ct or str(cr.url).endswith('.mp4'):
+                                path = f"generated_videos/generated_{uuid.uuid4()}.mp4"
+                                default_storage.save(path, ContentFile(cr.content))
+                                from .models import GeneratedImage
+                                gen = GeneratedImage.objects.create(
+                                    message=message, image=path, prompt=prompt, media_type='video'
+                                )
+                                video_urls = ['_saved_directly_']
+                                saved_media_direct.append(gen)
+                            elif 'json' in ct:
+                                data_c = cr.json()
+                                logger.info(f"Content JSON response: {str(data_c)[:600]}")
+                                for key in ('url', 'video_url', 'download_url', 'src'):
+                                    u = data_c.get(key)
+                                    if u and str(u).startswith('http'):
+                                        video_urls.append(u)
+                                        break
+                            elif cr.content and len(cr.content) > 10000:
+                                # Крупный бинарный ответ — скорее всего это видео
+                                logger.info(f"Saving binary response as video ({len(cr.content)} bytes)")
+                                path = f"generated_videos/generated_{uuid.uuid4()}.mp4"
+                                default_storage.save(path, ContentFile(cr.content))
+                                from .models import GeneratedImage
+                                gen = GeneratedImage.objects.create(
+                                    message=message, image=path, prompt=prompt, media_type='video'
+                                )
+                                video_urls = ['_saved_directly_']
+                                saved_media_direct.append(gen)
+                            else:
+                                logger.warning(f"Unknown content-type for video: {ct}, first 200 bytes: {cr.content[:200]}")
+                        except Exception as ce:
+                            logger.error(f"Failed to fetch /content/video: {ce}")
                     break
                 elif status in ('failed', 'error', 'cancelled'):
                     raise Exception(f"Генерация видео завершилась ошибкой: {pd.get('error', status)}")
