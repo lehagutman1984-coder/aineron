@@ -440,19 +440,107 @@ def _build_image_params(model_id, prompt, final_args):
     return params
 
 
+def generate_video_laozhang(network, user_msg, message, user_settings=None):
+    """
+    Генерирует видео через laozhang.ai /v1/video/generations endpoint.
+    Поддерживает синхронный и асинхронный (polling) ответ.
+    """
+    config = network.config_json or {}
+    model_id = network.model_name
+    prompt = user_msg.content if user_msg else ""
+    base_cost = network.cost_per_message
+
+    if user_settings:
+        final_args, errors, extra_cost = validate_and_merge_settings(config, user_settings)
+        if errors:
+            raise Exception("Ошибки в настройках: " + "; ".join(errors))
+    else:
+        final_args = config.get('api_defaults', {}).copy()
+        extra_cost = 0
+
+    total_cost = base_cost + extra_cost
+
+    base_url = settings.LAOZHANG_API_URL.rstrip('/')  # https://api.laozhang.ai/v1
+    headers = {
+        "Authorization": f"Bearer {settings.LAOZHANG_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    body = {"model": model_id, "prompt": prompt, "n": int(final_args.get('n', 1))}
+    if 'size' in final_args:
+        body['size'] = str(final_args['size'])
+
+    logger.info(f"Video generation: POST {base_url}/video/generations model={model_id}")
+    resp = requests.post(f"{base_url}/video/generations", headers=headers, json=body, timeout=120)
+    resp.raise_for_status()
+    data = resp.json()
+    logger.info(f"Video generation response: {str(data)[:300]}")
+
+    video_urls = []
+
+    # Синхронный ответ — сразу data с URL
+    if 'data' in data and isinstance(data['data'], list):
+        for item in data['data']:
+            url = item.get('url') or item.get('video_url')
+            if url and url.startswith('http'):
+                video_urls.append(url)
+
+    # Асинхронный ответ — есть job_id, polling
+    if not video_urls:
+        job_id = data.get('id') or data.get('job_id') or data.get('generation_id')
+        if job_id:
+            logger.info(f"Video generation async job_id={job_id}, polling...")
+            for attempt in range(36):  # до 6 минут (10 сек * 36)
+                time.sleep(10)
+                poll = requests.get(
+                    f"{base_url}/video/generations/{job_id}",
+                    headers=headers, timeout=30,
+                )
+                poll.raise_for_status()
+                pd = poll.json()
+                status = (pd.get('status') or '').lower()
+                logger.info(f"Video poll {attempt + 1}/36: status={status}")
+                if status in ('completed', 'succeeded', 'success', 'done'):
+                    for item in pd.get('data', []):
+                        url = item.get('url') or item.get('video_url')
+                        if url and url.startswith('http'):
+                            video_urls.append(url)
+                    break
+                elif status in ('failed', 'error', 'cancelled'):
+                    raise Exception(f"Генерация видео завершилась ошибкой: {pd.get('error', status)}")
+
+    model_name = config.get('name', network.name)
+    saved_media = []
+    for url in video_urls:
+        gen = save_media_from_url(url, message, prompt, media_type='video')
+        if gen:
+            saved_media.append(gen)
+
+    if saved_media:
+        text_parts = [f"Сгенерировано {len(saved_media)} видео моделью \"{model_name}\"."]
+        for m in saved_media:
+            text_parts.append(
+                f"<video src='{m.image.url}' controls width='100%' style='max-width:100%; border-radius:12px;'></video>"
+            )
+        final_text = "\n\n".join(text_parts)
+    else:
+        final_text = f"Модель \"{model_name}\" не вернула видео. Попробуйте изменить промт."
+
+    return final_text, saved_media, total_cost
+
+
 def generate_with_falai(network, user_msg, message, user_settings=None):
     """
-    Генерирует изображения через laozhang.ai images API.
+    Генерирует изображения/видео через laozhang.ai.
     Имя функции сохранено для совместимости с tasks.py.
-    network: объект NeuralNetwork
-    user_msg: сообщение пользователя (Message)
-    message: сообщение ассистента (pending)
-    user_settings: настройки от пользователя (словарь)
     Возвращает (final_text, saved_media, total_cost)
     """
     config = network.config_json
     if not config:
-        raise Exception("Отсутствует конфигурация для модели изображений")
+        raise Exception("Отсутствует конфигурация для модели")
+
+    # Видео-модели идут через отдельный endpoint
+    if config.get('metadata', {}).get('output_type') == 'video':
+        return generate_video_laozhang(network, user_msg, message, user_settings)
 
     model_id = network.model_name
     if not model_id:
