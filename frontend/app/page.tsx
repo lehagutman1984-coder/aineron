@@ -1,13 +1,18 @@
 import Link from "next/link";
-import { ArrowRight, Zap, Globe, Code2, ImageIcon } from "lucide-react";
+import {
+  ArrowRight, Zap, Globe, Code2, ImageIcon, Check, X,
+  Users, MessageSquare, Star, ShieldCheck,
+} from "lucide-react";
 import { serverListNetworks } from "@/lib/api/server";
 import type { NetworkListItem } from "@/lib/api/types";
+import { HeroTypewriter } from "@/components/landing/HeroTypewriter";
+import { UseCaseTabs } from "@/components/landing/UseCaseTabs";
+import { FaqAccordion } from "@/components/landing/FaqAccordion";
 
 export const revalidate = 3600;
 
 async function getPopularNetworks(): Promise<NetworkListItem[]> {
-  const networks = await serverListNetworks({ is_popular: true });
-  return networks ?? [];
+  return (await serverListNetworks({ is_popular: true })) ?? [];
 }
 
 export default async function HomePage() {
@@ -15,53 +20,66 @@ export default async function HomePage() {
 
   return (
     <>
-      {/* Hero */}
+      {/* ── Hero ──────────────────────────────────────────────────────────────── */}
       <section className="mx-auto max-w-4xl px-4 pb-16 pt-24 text-center sm:px-6">
-        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[rgba(10,124,255,0.25)] bg-[rgba(10,124,255,0.06)] px-3 py-1 text-[13px] text-[#0a7cff]">
-          <Zap size={13} />
-          Без VPN, без регистрации на зарубежных сервисах
+        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[rgba(10,124,255,0.25)] bg-[rgba(10,124,255,0.06)] px-3.5 py-1 text-[13px] text-[#0a7cff]">
+          <ShieldCheck size={13} />
+          Российский сервис — без VPN и зарубежных карт
         </div>
-        <h1 className="mb-5 text-[40px] font-bold leading-tight tracking-tight text-[#0d0d0d] sm:text-[52px]">
-          Нейросети для{" "}
-          <span
-            style={{
-              background: "linear-gradient(135deg, #0a7cff, #1dd6c1)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundClip: "text",
-            }}
-          >
-            всех задач
-          </span>
+
+        <h1 className="mb-4 text-[40px] font-bold leading-tight tracking-tight text-[#0d0d0d] sm:text-[54px]">
+          Нейросети без границ
         </h1>
-        <p className="mx-auto mb-8 max-w-2xl text-[17px] leading-relaxed text-[rgba(13,13,13,0.6)]">
-          GPT-4o, Claude, Gemini, Midjourney и десятки других моделей — в одном
-          интерфейсе. Оплата звёздами, без подписок на зарубежные сервисы.
+
+        <p className="mx-auto mb-3 max-w-2xl text-[18px] leading-relaxed text-[rgba(13,13,13,0.55)]">
+          <HeroTypewriter />
         </p>
+        <p className="mx-auto mb-9 max-w-xl text-[15px] text-[rgba(13,13,13,0.45)]">
+          GPT-4o, Claude, Gemini, Midjourney и 200+ моделей. Оплата рублями, один кошелёк.
+        </p>
+
         <div className="flex flex-wrap items-center justify-center gap-3">
           <Link
             href="/register/"
-            className="inline-flex items-center gap-2 rounded-[10px] bg-[#0a7cff] px-6 py-3 text-[15px] font-medium text-white hover:bg-[#0066cc] transition-colors"
+            className="inline-flex items-center gap-2 rounded-[10px] bg-[#0a7cff] px-7 py-3 text-[15px] font-medium text-white hover:bg-[#0066cc] transition-colors"
           >
             Начать бесплатно
             <ArrowRight size={16} />
           </Link>
           <Link
             href="/models/"
-            className="inline-flex items-center gap-2 rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-white px-6 py-3 text-[15px] font-medium text-[#0d0d0d] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
+            className="inline-flex items-center gap-2 rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-white px-7 py-3 text-[15px] font-medium text-[#0d0d0d] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
           >
             Смотреть каталог
           </Link>
         </div>
       </section>
 
-      {/* Featured models */}
+      {/* ── Social proof bar ──────────────────────────────────────────────────── */}
+      <section className="border-y border-[rgba(13,13,13,0.07)] bg-white">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-10 gap-y-4 px-4 py-5">
+          {STATS.map((s) => {
+            const Icon = s.icon;
+            return (
+              <div key={s.label} className="flex items-center gap-2.5">
+                <Icon size={16} className="text-[#0a7cff]" />
+                <span className="text-[14px] font-semibold text-[#0d0d0d]">{s.value}</span>
+                <span className="text-[13px] text-[rgba(13,13,13,0.50)]">{s.label}</span>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* ── Popular models ────────────────────────────────────────────────────── */}
       {popular.length > 0 && (
-        <section className="mx-auto max-w-7xl px-4 pb-20 sm:px-6">
+        <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
           <div className="mb-8 flex items-end justify-between">
             <div>
-              <h2 className="text-[22px] font-semibold text-[#0d0d0d]">Популярные модели</h2>
-              <p className="mt-1 text-[14px] text-[rgba(13,13,13,0.55)]">Самые часто используемые нейросети</p>
+              <h2 className="text-[22px] font-bold text-[#0d0d0d]">Популярные модели</h2>
+              <p className="mt-1 text-[14px] text-[rgba(13,13,13,0.50)]">
+                Самые востребованные нейросети
+              </p>
             </div>
             <Link
               href="/models/"
@@ -79,13 +97,64 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* Features */}
-      <section className="border-t border-[rgba(13,13,13,0.08)] bg-[rgba(13,13,13,0.02)]">
-        <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
-          <h2 className="mb-12 text-center text-[22px] font-semibold text-[#0d0d0d]">
+      {/* ── Use cases ─────────────────────────────────────────────────────────── */}
+      <section className="border-t border-[rgba(13,13,13,0.07)] bg-[rgba(13,13,13,0.015)]">
+        <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6">
+          <div className="mb-10 text-center">
+            <h2 className="text-[26px] font-bold text-[#0d0d0d]">Для любой задачи</h2>
+            <p className="mt-2 text-[15px] text-[rgba(13,13,13,0.52)]">
+              Выберите свою роль и посмотрите примеры
+            </p>
+          </div>
+          <UseCaseTabs />
+        </div>
+      </section>
+
+      {/* ── Comparison table ──────────────────────────────────────────────────── */}
+      <section className="mx-auto max-w-4xl px-4 py-16 sm:px-6">
+        <div className="mb-10 text-center">
+          <h2 className="text-[26px] font-bold text-[#0d0d0d]">Честное сравнение</h2>
+          <p className="mt-2 text-[15px] text-[rgba(13,13,13,0.52)]">
+            aineron.ru против главных альтернатив
+          </p>
+        </div>
+
+        <div className="overflow-x-auto rounded-[16px] border border-[rgba(13,13,13,0.10)] bg-white">
+          <table className="w-full min-w-[480px] text-[13px]">
+            <thead>
+              <tr className="border-b border-[rgba(13,13,13,0.08)]">
+                <th className="px-5 py-3.5 text-left font-medium text-[rgba(13,13,13,0.50)]">
+                  Возможность
+                </th>
+                <th className="px-4 py-3.5 text-center font-bold text-[#0a7cff]">aineron.ru</th>
+                <th className="px-4 py-3.5 text-center font-medium text-[rgba(13,13,13,0.55)]">ChatGPT</th>
+                <th className="px-4 py-3.5 text-center font-medium text-[rgba(13,13,13,0.55)]">RouterAI</th>
+              </tr>
+            </thead>
+            <tbody>
+              {COMPARISON.map((row, i) => (
+                <tr
+                  key={row.feature}
+                  className={i % 2 === 0 ? "bg-[rgba(13,13,13,0.015)]" : ""}
+                >
+                  <td className="px-5 py-3 text-[#0d0d0d]">{row.feature}</td>
+                  <td className="px-4 py-3 text-center"><Cell val={row.aineron} /></td>
+                  <td className="px-4 py-3 text-center"><Cell val={row.chatgpt} /></td>
+                  <td className="px-4 py-3 text-center"><Cell val={row.router} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* ── Features grid ─────────────────────────────────────────────────────── */}
+      <section className="border-t border-[rgba(13,13,13,0.07)] bg-[rgba(13,13,13,0.015)]">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
+          <h2 className="mb-10 text-center text-[24px] font-bold text-[#0d0d0d]">
             Почему aineron.ru
           </h2>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {FEATURES.map((f) => (
               <FeatureCard key={f.title} {...f} />
             ))}
@@ -93,26 +162,88 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="mx-auto max-w-3xl px-4 py-24 text-center sm:px-6">
-        <h2 className="mb-4 text-[28px] font-bold text-[#0d0d0d]">
-          Начните прямо сейчас
+      {/* ── Pricing preview ───────────────────────────────────────────────────── */}
+      <section className="mx-auto max-w-4xl px-4 py-16 sm:px-6">
+        <div className="overflow-hidden rounded-[20px] border border-[rgba(13,13,13,0.10)] bg-white">
+          <div className="px-8 py-8 text-center">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-[14px] bg-[rgba(10,124,255,0.10)]">
+              <Star size={22} className="text-[#0a7cff]" />
+            </div>
+            <h2 className="text-[24px] font-bold text-[#0d0d0d]">Звёзды — простая оплата</h2>
+            <p className="mt-2 text-[15px] text-[rgba(13,13,13,0.55)]">
+              Пополняйте баланс и тратьте на любую модель. Звёзды не сгорают.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 divide-y border-t border-[rgba(13,13,13,0.08)] sm:grid-cols-3 sm:divide-x sm:divide-y-0" style={{ borderColor: "rgba(13,13,13,0.08)" }}>
+            {PRICING.map((p) => (
+              <div key={p.title} className="px-7 py-6 text-center">
+                <p className="mb-1 text-[13px] font-medium text-[rgba(13,13,13,0.50)]">{p.title}</p>
+                <p className="text-[28px] font-bold text-[#0d0d0d]">{p.price}</p>
+                <p className="mt-1 text-[12px] text-[rgba(13,13,13,0.45)]">{p.sub}</p>
+              </div>
+            ))}
+          </div>
+          <div className="border-t border-[rgba(13,13,13,0.08)] px-8 py-5 text-center">
+            <Link
+              href="/register/"
+              className="inline-flex items-center gap-2 rounded-[10px] bg-[#0a7cff] px-8 py-3 text-[14px] font-medium text-white hover:bg-[#0066cc] transition-colors"
+            >
+              Начать с 10 бесплатными звёздами
+              <ArrowRight size={15} />
+            </Link>
+            <p className="mt-2 text-[12px] text-[rgba(13,13,13,0.38)]">
+              Не нужна карта для старта
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ── FAQ ───────────────────────────────────────────────────────────────── */}
+      <section className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
+        <h2 className="mb-8 text-center text-[24px] font-bold text-[#0d0d0d]">
+          Частые вопросы
         </h2>
-        <p className="mb-8 text-[16px] text-[rgba(13,13,13,0.6)]">
-          10 звёзд бесплатно после регистрации. Без VPN, без зарубежных карт.
-        </p>
-        <Link
-          href="/register/"
-          className="inline-flex items-center gap-2 rounded-[10px] bg-[#0a7cff] px-8 py-3.5 text-[15px] font-medium text-white hover:bg-[#0066cc] transition-colors"
-        >
-          Создать аккаунт
-          <ArrowRight size={16} />
-        </Link>
+        <FaqAccordion />
+      </section>
+
+      {/* ── Final CTA ─────────────────────────────────────────────────────────── */}
+      <section className="border-t border-[rgba(13,13,13,0.07)] bg-[#0d0d0d]">
+        <div className="mx-auto max-w-3xl px-4 py-20 text-center sm:px-6">
+          <h2 className="mb-3 text-[28px] font-bold text-white">
+            Начните прямо сейчас
+          </h2>
+          <p className="mb-8 text-[16px] text-[rgba(255,255,255,0.55)]">
+            10 звёзд бесплатно. Без VPN, без зарубежных карт.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Link
+              href="/register/"
+              className="inline-flex items-center gap-2 rounded-[10px] bg-white px-7 py-3 text-[15px] font-medium text-[#0d0d0d] hover:bg-[rgba(255,255,255,0.90)] transition-colors"
+            >
+              Создать аккаунт
+              <ArrowRight size={16} />
+            </Link>
+            <Link
+              href="/models/"
+              className="inline-flex items-center gap-2 rounded-[10px] border border-[rgba(255,255,255,0.20)] px-7 py-3 text-[15px] font-medium text-white hover:border-[rgba(255,255,255,0.40)] transition-colors"
+            >
+              Смотреть модели
+            </Link>
+          </div>
+        </div>
       </section>
     </>
   );
 }
 
+// ── Cell helper for comparison table ──────────────────────────────────────────
+function Cell({ val }: { val: boolean | string }) {
+  if (val === true) return <Check size={16} className="mx-auto text-[#22a85a]" />;
+  if (val === false) return <X size={15} className="mx-auto text-[rgba(13,13,13,0.25)]" />;
+  return <span className="text-[rgba(13,13,13,0.55)]">{val}</span>;
+}
+
+// ── Network card ──────────────────────────────────────────────────────────────
 function NetworkCard({ network }: { network: NetworkListItem }) {
   return (
     <Link
@@ -121,6 +252,7 @@ function NetworkCard({ network }: { network: NetworkListItem }) {
     >
       <div className="flex items-center gap-3">
         {network.avatar ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
           <img
             src={network.avatar}
             alt={network.name}
@@ -141,9 +273,7 @@ function NetworkCard({ network }: { network: NetworkListItem }) {
           <p className="text-[14px] font-semibold text-[#0d0d0d] group-hover:text-[#0a7cff] transition-colors">
             {network.name}
           </p>
-          <p className="text-[12px] text-[rgba(13,13,13,0.5)]">
-            {network.category.name}
-          </p>
+          <p className="text-[12px] text-[rgba(13,13,13,0.5)]">{network.category.name}</p>
         </div>
       </div>
       {network.description && (
@@ -155,21 +285,17 @@ function NetworkCard({ network }: { network: NetworkListItem }) {
         <span className="text-[12px] text-[rgba(13,13,13,0.45)]">
           {network.cost_per_message} зв. / сообщение
         </span>
-        <ArrowRight size={14} className="text-[rgba(13,13,13,0.3)] group-hover:text-[#0a7cff] transition-colors" />
+        <ArrowRight
+          size={14}
+          className="text-[rgba(13,13,13,0.3)] group-hover:text-[#0a7cff] transition-colors"
+        />
       </div>
     </Link>
   );
 }
 
-function FeatureCard({
-  icon: Icon,
-  title,
-  text,
-}: {
-  icon: React.ElementType;
-  title: string;
-  text: string;
-}) {
+// ── Feature card ──────────────────────────────────────────────────────────────
+function FeatureCard({ icon: Icon, title, text }: { icon: React.ElementType; title: string; text: string }) {
   return (
     <div className="rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white p-5">
       <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-[10px] bg-[rgba(10,124,255,0.10)] text-[#0a7cff]">
@@ -181,25 +307,41 @@ function FeatureCard({
   );
 }
 
+// ── Data ──────────────────────────────────────────────────────────────────────
+const STATS = [
+  { icon: Globe, value: "200+", label: "нейросетей" },
+  { icon: Users, value: "10 000+", label: "пользователей" },
+  { icon: MessageSquare, value: "1 млн+", label: "сообщений обработано" },
+  { icon: Zap, value: "< 1 сек", label: "среднее время ответа" },
+];
+
 const FEATURES = [
-  {
-    icon: Globe,
-    title: "Без VPN",
-    text: "Российский сервис, оплата рублями. Доступно с любого устройства.",
-  },
-  {
-    icon: Zap,
-    title: "Мгновенный старт",
-    text: "Регистрация за 30 секунд, 10 бесплатных звёзд для начала.",
-  },
-  {
-    icon: Code2,
-    title: "OpenAI-совместимый API",
-    text: "Подключите к Cursor, VS Code, Continue и другим IDE за 2 минуты.",
-  },
-  {
-    icon: ImageIcon,
-    title: "Текст и изображения",
-    text: "GPT-4o, Claude, Gemini и генерация изображений в одном кошельке.",
-  },
+  { icon: Globe, title: "Без VPN", text: "Российский сервис, оплата рублями. Доступно с любого устройства в РФ." },
+  { icon: Zap, title: "Мгновенный старт", text: "Регистрация за 30 секунд, 10 бесплатных звёзд сразу." },
+  { icon: Code2, title: "OpenAI API", text: "Подключите к Cursor, VS Code, Continue и любому OpenAI-совместимому приложению." },
+  { icon: ImageIcon, title: "Текст и медиа", text: "LLM, изображения и видео — один кошелёк, одна точка входа." },
+];
+
+const COMPARISON: {
+  feature: string;
+  aineron: boolean | string;
+  chatgpt: boolean | string;
+  router: boolean | string;
+}[] = [
+  { feature: "Без VPN (серверы в РФ)", aineron: true, chatgpt: false, router: false },
+  { feature: "Оплата рублями", aineron: true, chatgpt: false, router: true },
+  { feature: "200+ моделей", aineron: true, chatgpt: false, router: true },
+  { feature: "Генерация изображений в UI", aineron: true, chatgpt: true, router: false },
+  { feature: "Сравнение моделей side-by-side", aineron: true, chatgpt: false, router: false },
+  { feature: "Промпт-библиотека", aineron: true, chatgpt: false, router: false },
+  { feature: "OpenAI-совместимый API", aineron: true, chatgpt: true, router: true },
+  { feature: "Команды и организации", aineron: true, chatgpt: true, router: true },
+  { feature: "Загрузка файлов в чате", aineron: true, chatgpt: true, router: false },
+  { feature: "Веб-поиск", aineron: true, chatgpt: true, router: false },
+];
+
+const PRICING = [
+  { title: "10 звёзд", price: "бесплатно", sub: "после регистрации" },
+  { title: "Дополнительные", price: "от 1 ₽", sub: "за звезду, без минимума" },
+  { title: "Подписки", price: "со скидкой", sub: "пакеты для активных пользователей" },
 ];
