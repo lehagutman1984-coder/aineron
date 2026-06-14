@@ -23,7 +23,9 @@ function VerifyEmailForm() {
 
   useEffect(() => {
     if (user?.email_verified) {
-      router.replace("/account/");
+      // If onboarding not done yet, send to welcome; otherwise account
+      const done = typeof window !== "undefined" && localStorage.getItem("onboarding_done") === "1";
+      router.replace(done ? "/account/" : "/welcome/");
     }
   }, [user, router]);
 
@@ -68,7 +70,8 @@ function VerifyEmailForm() {
     try {
       await authVerifyEmail(code);
       if (user) setUser({ ...user, email_verified: true });
-      router.push("/account/");
+      // New users go through onboarding; /welcome/ checks localStorage and skips if already done
+      router.push("/welcome/");
     } catch (err) {
       setError(err instanceof APIError ? err.message : "Неверный код. Попробуйте снова.");
       setDigits(["", "", "", "", "", ""]);
