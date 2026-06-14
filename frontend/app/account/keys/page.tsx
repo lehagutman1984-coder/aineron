@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Plus, Trash2, Copy, Key, Eye, EyeOff } from "lucide-react";
+import { Plus, Trash2, Copy, Key, Eye, EyeOff } from "lucide-react";
 import { listAPIKeys, createAPIKey, deleteAPIKey } from "@/lib/api/client";
 import { APIError } from "@/lib/api/client";
 import type { APIKey } from "@/lib/api/types";
@@ -52,17 +52,7 @@ export default function KeysPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
-      <div className="mb-8 flex items-center gap-3">
-        <Link
-          href="/account/"
-          className="flex items-center gap-1 text-[13px] text-[rgba(13,13,13,0.5)] hover:text-[#0d0d0d] transition-colors"
-        >
-          <ArrowLeft size={14} />
-          Кабинет
-        </Link>
-        <span className="text-[rgba(13,13,13,0.25)]">/</span>
-        <h1 className="text-[20px] font-bold text-[#0d0d0d]">API-ключи</h1>
-      </div>
+      <h1 className="mb-8 text-[22px] font-bold text-[#0d0d0d]">API-ключи</h1>
 
       {/* Created key banner */}
       {createdKey && (

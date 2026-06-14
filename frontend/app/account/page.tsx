@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -18,7 +17,6 @@ import { useAuthStore } from "@/lib/stores/auth";
 import type { ChatListItem } from "@/lib/api/types";
 
 export default function AccountPage() {
-  const router = useRouter();
   const { user, isLoading, setUser } = useAuthStore();
 
   const { data: me, isLoading: meLoading } = useQuery({
@@ -38,11 +36,6 @@ export default function AccountPage() {
     if (me) setUser(me);
   }, [me, setUser]);
 
-  useEffect(() => {
-    if (!isLoading && !user && !meLoading) {
-      router.push("/login/?next=/account/");
-    }
-  }, [isLoading, user, meLoading, router]);
 
   const profile = me ?? user;
   if (!profile) {

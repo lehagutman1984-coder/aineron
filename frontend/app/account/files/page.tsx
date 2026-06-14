@@ -239,7 +239,7 @@ export default function FilesPage() {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="px-4 py-10 sm:px-6 space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-[22px] font-bold text-[#0d0d0d]">Мои файлы</h1>

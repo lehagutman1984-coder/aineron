@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Star, User, Code2, BookOpen, Menu, X } from "lucide-react";
+import { Star, User, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { useAuthStore } from "@/lib/stores/auth";
 import { authLogout } from "@/lib/api/client";
@@ -32,6 +32,7 @@ export function Navbar() {
         {/* Desktop nav */}
         <nav className="hidden items-center gap-1 md:flex">
           <NavLink href="/models/">Каталог</NavLink>
+          <NavLink href="/blog/">Блог</NavLink>
           <NavLink href="/api-docs/">API</NavLink>
           <NavLink href="/ide/">IDE</NavLink>
         </nav>
@@ -91,6 +92,7 @@ export function Navbar() {
         <div className="border-t border-[rgba(13,13,13,0.10)] bg-white px-4 py-3 md:hidden">
           <div className="flex flex-col gap-1">
             <MobileNavLink href="/models/" onClick={() => setMobileOpen(false)}>Каталог</MobileNavLink>
+            <MobileNavLink href="/blog/" onClick={() => setMobileOpen(false)}>Блог</MobileNavLink>
             <MobileNavLink href="/api-docs/" onClick={() => setMobileOpen(false)}>API</MobileNavLink>
             <MobileNavLink href="/ide/" onClick={() => setMobileOpen(false)}>IDE</MobileNavLink>
             <div className="my-2 border-t border-[rgba(13,13,13,0.08)]" />

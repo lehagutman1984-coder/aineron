@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Send, Code2 } from "lucide-react";
+import { PenSquare, Send, Code2, LayoutGrid } from "lucide-react";
 import {
   getChat,
   sendMessage,
@@ -175,24 +175,45 @@ export default function ChatPage() {
   return (
     <div className="flex h-[calc(100vh-56px)] flex-col">
       {/* Header */}
-      <div className="flex h-12 shrink-0 items-center gap-3 border-b border-[rgba(13,13,13,0.10)] bg-white px-4">
-        <Link
-          href="/account/"
-          className="flex items-center gap-1 text-[13px] text-[rgba(13,13,13,0.5)] hover:text-[#0d0d0d] transition-colors"
-        >
-          <ArrowLeft size={15} />
-        </Link>
-        <div className="flex items-center gap-2 min-w-0">
+      <div className="flex h-12 shrink-0 items-center gap-2 border-b border-[rgba(13,13,13,0.10)] bg-white px-4">
+        {/* Model name */}
+        <div className="flex min-w-0 flex-1 items-center gap-2">
           {chat.network.avatar ? (
-            <img src={chat.network.avatar} alt={chat.network.name} width={24} height={24} className="rounded-[6px]" />
+            <img
+              src={chat.network.avatar}
+              alt={chat.network.name}
+              width={22}
+              height={22}
+              className="rounded-[5px]"
+            />
           ) : (
-            <div className="flex h-6 w-6 items-center justify-center rounded-[6px] bg-[rgba(10,124,255,0.12)] text-[#0a7cff]">
-              <Code2 size={14} />
+            <div className="flex h-[22px] w-[22px] flex-shrink-0 items-center justify-center rounded-[5px] bg-[rgba(10,124,255,0.12)] text-[#0a7cff]">
+              <Code2 size={13} />
             </div>
           )}
           <span className="truncate text-[14px] font-medium text-[#0d0d0d]">
             {chat.network.name}
           </span>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-1">
+          <Link
+            href="/models/"
+            className="flex h-8 items-center gap-1.5 rounded-[7px] px-3 text-[12px] font-medium text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.06)] hover:text-[#0d0d0d] transition-colors"
+            title="Выбрать другую модель"
+          >
+            <LayoutGrid size={14} />
+            <span className="hidden sm:inline">Модели</span>
+          </Link>
+          <Link
+            href="/models/"
+            className="flex h-8 items-center gap-1.5 rounded-[7px] bg-[#0a7cff] px-3 text-[12px] font-medium text-white hover:bg-[#0066cc] transition-colors"
+            title="Начать новый чат"
+          >
+            <PenSquare size={14} />
+            <span className="hidden sm:inline">Новый чат</span>
+          </Link>
         </div>
       </div>
 

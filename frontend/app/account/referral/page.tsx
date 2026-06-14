@@ -77,7 +77,7 @@ export default function ReferralPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="px-4 py-10 sm:px-6 space-y-6">
       <div>
         <h1 className="text-[22px] font-bold text-[#0d0d0d]">Партнёрская программа</h1>
         <p className="mt-1 text-[13px] text-[rgba(13,13,13,0.55)]">
