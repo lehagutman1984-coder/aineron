@@ -269,7 +269,6 @@ export const getMessageStatus = (messageId: number): Promise<WebMessage> =>
 
 type SSEEvent =
   | { type: "init"; user_message_id: number; assistant_message_id: number; new_balance: number }
-  | { type: "search_start" }
   | { type: "search_done"; preview: string }
   | { type: "token"; text: string }
   | { type: "done"; content: string; plain_text: string; search_context?: string }
@@ -280,7 +279,6 @@ export async function streamMessage(
   body: { message: string; files?: unknown[]; settings?: Record<string, unknown>; attachment_ids?: string[]; web_search?: boolean },
   callbacks: {
     onInit: (data: { user_message_id: number; assistant_message_id: number; new_balance: number }) => void;
-    onSearchStart?: () => void;
     onSearchDone?: (preview: string) => void;
     onToken: (text: string) => void;
     onDone: (data: { content: string; plain_text: string; search_context?: string }) => void;
@@ -321,7 +319,6 @@ export async function streamMessage(
       try {
         const event = JSON.parse(line.slice(6)) as SSEEvent;
         if (event.type === "init") callbacks.onInit(event);
-        else if (event.type === "search_start") callbacks.onSearchStart?.();
         else if (event.type === "search_done") callbacks.onSearchDone?.(event.preview);
         else if (event.type === "token") callbacks.onToken(event.text);
         else if (event.type === "done") callbacks.onDone(event);

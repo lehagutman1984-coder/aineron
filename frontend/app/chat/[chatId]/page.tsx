@@ -187,6 +187,7 @@ export default function ChatPage() {
       let realAssistId = tempAssistId;
 
       try {
+        // Показываем "Ищу в интернете..." сразу при отправке (поиск синхронный на backend)
         if (webSearch) setSearchPhase("searching");
         await streamMessage(id, { message: msg, attachment_ids: attachmentIds, web_search: webSearch }, {
           onInit: ({ user_message_id, assistant_message_id, new_balance }) => {
@@ -205,16 +206,12 @@ export default function ChatPage() {
               };
             });
           },
-          onSearchStart: () => {
-            setSearchPhase("searching");
-            setLiveSearchPreview("");
-          },
           onSearchDone: (preview) => {
             setLiveSearchPreview(preview);
-            setSearchPhase("generating");
+            setSearchPhase(preview ? "generating" : "idle");
           },
           onToken: (token) => {
-            if (searchPhase !== "idle") setSearchPhase("idle");
+            setSearchPhase("idle");
             setStreamText((prev) => prev + token);
           },
           onDone: ({ content, plain_text, search_context }) => {

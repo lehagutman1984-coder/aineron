@@ -365,12 +365,43 @@ class StreamMessageView(APIView):
 
         messages_for_api.append({"role": "user", "content": message_text or "Привет"})
 
-        # Capture values for the generator closure
+        # ── Шаг 1: веб-поиск СИНХРОННО до генератора ─────────────────────────
+        # Делаем здесь, а не в generate(), чтобы гарантированно выполнился
         from aitext.tasks import WEB_SEARCH_MODEL
+        search_context_text = ""
+        if web_search:
+            try:
+                sc = get_laozhang_client()
+                sr = sc.chat.completions.create(
+                    model=WEB_SEARCH_MODEL,
+                    messages=[{"role": "user", "content": (message_text or "информация")[:2000]}],
+                    max_tokens=1500,
+                )
+                search_context_text = sr.choices[0].message.content.strip()
+                logger.info(f"Web search OK for chat {chat.id}: {len(search_context_text)} chars")
+            except Exception as se:
+                logger.error(f"Web search FAILED for chat {chat.id}: {se}", exc_info=True)
+
+            if search_context_text:
+                assistant_message.search_context = search_context_text
+                assistant_message.save(update_fields=['search_context'])
+                messages_for_api.insert(0, {
+                    "role": "system",
+                    "content": (
+                        "[Актуальные данные из интернета]\n"
+                        "Ниже результаты поиска, только что полученные по запросу пользователя.\n"
+                        "Используй их для точного и актуального ответа. "
+                        "Ссылайся на конкретные факты. Отвечай на языке пользователя.\n\n"
+                        f"{search_context_text[:3000]}\n\n"
+                        "[Конец результатов поиска]"
+                    ),
+                })
+
+        # Capture values for the generator closure
         user = request.user
         user_msg_id = user_message.id
         assist_msg_id = assistant_message.id
-        model_name = network.model_name  # всегда выбранная модель
+        model_name = network.model_name
         max_tokens = network.max_tokens
 
         def _sse(data):
@@ -384,63 +415,20 @@ class StreamMessageView(APIView):
                 "new_balance": new_balance,
             })
 
-            api_messages = list(messages_for_api)
+            # Сообщаем фронтенду итог поиска (поиск уже выполнен синхронно выше)
+            if web_search:
+                yield _sse({
+                    "type": "search_done",
+                    "preview": search_context_text[:400],
+                })
+
             full_text = ""
-
             try:
-                # ── Шаг 1: веб-поиск (если включён) ────────────────────────────
-                if web_search:
-                    yield _sse({"type": "search_start"})
-
-                    user_query = message_text or "информация"
-                    search_client = get_laozhang_client()
-                    search_results = ""
-                    try:
-                        search_resp = search_client.chat.completions.create(
-                            model=WEB_SEARCH_MODEL,
-                            messages=[
-                                {
-                                    "role": "system",
-                                    "content": (
-                                        "You are a web search tool. Search the internet and return ONLY the key facts "
-                                        "you found as concise bullet points. No greetings, no analysis. "
-                                        "Include relevant dates, numbers, sources. "
-                                        "Match the language of the user's query."
-                                    ),
-                                },
-                                {"role": "user", "content": user_query[:2000]},
-                            ],
-                            temperature=0.1,
-                            max_tokens=2000,
-                        )
-                        search_results = search_resp.choices[0].message.content.strip()
-                        logger.info(f"SSE web search OK for msg {assist_msg_id}: {len(search_results)} chars")
-                    except Exception as se:
-                        logger.warning(f"SSE web search failed for msg {assist_msg_id}: {se}")
-
-                    if search_results:
-                        assistant_message.search_context = search_results
-                        assistant_message.save(update_fields=['search_context'])
-                        search_system = (
-                            "[Актуальные данные из интернета]\n"
-                            "Ниже результаты поиска, только что полученные по запросу пользователя.\n"
-                            "Используй их для точного и актуального ответа. "
-                            "Ссылайся на конкретные факты. Отвечай на языке пользователя.\n\n"
-                            f"{search_results[:3000]}\n\n"
-                            "[Конец результатов поиска]"
-                        )
-                        api_messages.insert(0, {"role": "system", "content": search_system})
-
-                    yield _sse({
-                        "type": "search_done",
-                        "preview": search_results[:400] if search_results else "",
-                    })
-
                 # ── Шаг 2: основная модель (выбранная пользователем) ────────────
                 client = get_laozhang_client()
                 kwargs = {
                     "model": model_name,
-                    "messages": api_messages,
+                    "messages": messages_for_api,
                     "temperature": 0.7,
                     "stream": True,
                 }
@@ -464,7 +452,7 @@ class StreamMessageView(APIView):
                     "type": "done",
                     "content": formatted_html,
                     "plain_text": full_text,
-                    "search_context": assistant_message.search_context,
+                    "search_context": search_context_text,
                 })
 
             except Exception as e:
