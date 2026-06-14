@@ -6,21 +6,27 @@ Billing API для Next.js:
   POST /api/v1/billing/pages/buy/      — купить звёзды
   GET  /api/v1/billing/history/        — история платежей
   POST /api/v1/billing/promo/          — применить промокод
+  GET  /api/v1/billing/stars-usage/    — аналитика трат звёзд (по дням + по моделям)
 """
 import hashlib
 import json
 import logging
 import random
+import re
 import time
+from datetime import timedelta
 
 from django.conf import settings
+from django.db.models import Sum, Count
+from django.db.models.functions import TruncDate
+from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema
 
-from users.models import Tariff, PaymentHistory, PageSaleSettings, PromoCode, UsedPromoCode
+from users.models import Tariff, PaymentHistory, PageSaleSettings, PromoCode, UsedPromoCode, UserSpending
 from api.serializers.billing import (
     TariffSerializer, PaymentHistorySerializer,
     PageSaleSettingsSerializer, UserSubscriptionSerializer,
@@ -247,4 +253,80 @@ class ApplyPromoView(APIView):
             'stars_added': promo.stars,
             'new_balance': request.user.pages_count,
             'message': f'Промокод принят! Начислено {promo.stars} звёзд.',
+        })
+
+
+class StarsUsageView(APIView):
+    """GET /api/v1/billing/stars-usage/ — аналитика трат звёзд из UserSpending"""
+    permission_classes = [IsAuthenticated]
+
+    _MODEL_RE = re.compile(r' с (.+?)(?:\s*\(|$)')
+
+    @extend_schema(summary='Аналитика трат звёзд', tags=['Billing'])
+    def get(self, request):
+        try:
+            days = min(int(request.query_params.get('days', 30)), 90)
+        except (TypeError, ValueError):
+            days = 30
+
+        now = timezone.now()
+        since = now - timedelta(days=days)
+        prev_since = since - timedelta(days=days)
+
+        qs = UserSpending.objects.filter(user=request.user, created_at__gte=since)
+        prev_qs = UserSpending.objects.filter(
+            user=request.user, created_at__gte=prev_since, created_at__lt=since
+        )
+
+        by_day = list(
+            qs.annotate(day=TruncDate('created_at'))
+            .values('day')
+            .annotate(stars=Sum('amount'), requests=Count('id'))
+            .order_by('day')
+        )
+
+        by_desc = list(
+            qs.values('description')
+            .annotate(stars=Sum('amount'), requests=Count('id'))
+            .order_by('-stars')[:30]
+        )
+
+        def extract_model(desc):
+            m = self._MODEL_RE.search(desc)
+            return m.group(1).strip() if m else desc
+
+        by_model: dict = {}
+        for row in by_desc:
+            name = extract_model(row['description'])
+            if name not in by_model:
+                by_model[name] = {'name': name, 'stars': 0, 'requests': 0}
+            by_model[name]['stars'] += row['stars'] or 0
+            by_model[name]['requests'] += row['requests'] or 0
+
+        totals = qs.aggregate(total_stars=Sum('amount'), total_requests=Count('id'))
+        prev_totals = prev_qs.aggregate(total_stars=Sum('amount'), total_requests=Count('id'))
+
+        total_stars = totals['total_stars'] or 0
+        avg_per_day = round(total_stars / days, 1)
+
+        return Response({
+            'period_days': days,
+            'totals': {
+                'total_stars': total_stars,
+                'total_requests': totals['total_requests'] or 0,
+                'avg_per_day': avg_per_day,
+            },
+            'prev_period': {
+                'total_stars': prev_totals['total_stars'] or 0,
+                'total_requests': prev_totals['total_requests'] or 0,
+            },
+            'by_day': [
+                {
+                    'date': str(row['day']),
+                    'stars': row['stars'] or 0,
+                    'requests': row['requests'] or 0,
+                }
+                for row in by_day
+            ],
+            'by_model': sorted(by_model.values(), key=lambda x: -x['stars'])[:10],
         })

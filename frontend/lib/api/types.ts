@@ -505,6 +505,35 @@ export interface CompareResponse {
   new_balance: number;
 }
 
+// ============ Stars Usage Analytics ============
+
+export interface StarsUsageDay {
+  date: string;
+  stars: number;
+  requests: number;
+}
+
+export interface StarsUsageModel {
+  name: string;
+  stars: number;
+  requests: number;
+}
+
+export interface StarsUsage {
+  period_days: number;
+  totals: {
+    total_stars: number;
+    total_requests: number;
+    avg_per_day: number;
+  };
+  prev_period: {
+    total_stars: number;
+    total_requests: number;
+  };
+  by_day: StarsUsageDay[];
+  by_model: StarsUsageModel[];
+}
+
 // ============ Referral ============
 
 export interface ReferralEarning {

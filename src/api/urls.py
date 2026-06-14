@@ -23,7 +23,7 @@ from api.views.usage import UsageStatsView
 from api.views.blog import BlogCategoryListView, BlogPostListView, BlogPostDetailView
 from api.views.billing import (
     TariffListView, TariffPayView, PageSaleSettingsView,
-    BuyPagesView, PaymentHistoryView, ApplyPromoView,
+    BuyPagesView, PaymentHistoryView, ApplyPromoView, StarsUsageView,
 )
 from api.views.embeddings import EmbeddingsView
 from api.views.audio import AudioTranscriptionsView, AudioSpeechView
@@ -96,6 +96,7 @@ urlpatterns = [
     path('v1/billing/pages/buy/', BuyPagesView.as_view(), name='billing_buy_pages'),
     path('v1/billing/history/', PaymentHistoryView.as_view(), name='billing_history'),
     path('v1/billing/promo/', ApplyPromoView.as_view(), name='billing_promo'),
+    path('v1/billing/stars-usage/', StarsUsageView.as_view(), name='billing_stars_usage'),
 
     # ========== Phase 6: Advanced API ==========
     path('v1/embeddings', EmbeddingsView.as_view(), name='embeddings'),

@@ -1,4 +1,5 @@
 import type {
+  StarsUsage,
   ChatCompletionRequest,
   ChatCompletionResponse,
   AnthropicRequest,
@@ -435,6 +436,9 @@ export const buyPages = (pages: number): Promise<CreatePaymentResponse> =>
 
 export const getPaymentHistory = (): Promise<PaymentHistory[]> =>
   request<PaymentHistory[]>("/billing/history/");
+
+export const getStarsUsage = (days?: number): Promise<StarsUsage> =>
+  request<StarsUsage>(`/billing/stars-usage/${days ? `?days=${days}` : ""}`);
 
 export const applyPromoCode = (code: string): Promise<ApplyPromoResponse> =>
   request<ApplyPromoResponse>("/billing/promo/", {
