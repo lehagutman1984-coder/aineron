@@ -615,16 +615,23 @@ export default function ChatPage() {
                   setWebSearch(next);
                   localStorage.setItem("web_search_enabled", next ? "1" : "0");
                 }}
-                title={webSearch ? "Веб-поиск включён" : "Включить поиск в интернете"}
+                title={
+                  webSearch
+                    ? "Веб-поиск включён — запрос идёт через Perplexity Sonar. Нажмите чтобы отключить"
+                    : "Включить поиск в интернете (через Perplexity Sonar)"
+                }
                 className={[
                   "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all",
                   webSearch
-                    ? "bg-[#0a7cff] text-white"
+                    ? "bg-[rgba(10,124,255,0.12)] text-[#0a7cff] ring-1 ring-[rgba(10,124,255,0.35)]"
                     : "text-[rgba(13,13,13,0.45)] hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.38)] dark:hover:text-[#ececec]",
                 ].join(" ")}
               >
                 <Globe size={12} />
                 Поиск в интернете
+                {webSearch && (
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#0a7cff]" />
+                )}
               </button>
 
               <VoiceButton
@@ -640,7 +647,13 @@ export default function ChatPage() {
             <div className="mt-2 flex items-center gap-2 px-1">
               <BouncingDots />
               <span className="text-[12px] text-[rgba(13,13,13,0.42)]">
-                {webSearch ? "Поиск + " : ""}{chat.network.name} отвечает...
+                {webSearch ? (
+                  <>
+                    <span className="font-medium text-[#0a7cff]">Ищу в интернете</span>
+                    <span className="mx-1 text-[rgba(13,13,13,0.25)]">·</span>
+                  </>
+                ) : null}
+                {chat.network.name} отвечает...
               </span>
             </div>
           )}
