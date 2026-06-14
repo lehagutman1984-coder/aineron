@@ -530,14 +530,47 @@ function PlainText({ text }: { text: string }) {
   );
 }
 
-/* ─── Live streaming display (tokens arriving in real time) ─ */
+/* ─── Live streaming display — smooth drain from token queue ─ */
 function StreamingDisplay({ text }: { text: string }) {
+  const [displayed, setDisplayed] = useState("");
+  // queue of chars received but not yet shown
+  const queueRef = useRef("");
+  // how many chars of `text` we've already enqueued
+  const enqueuedRef = useRef(0);
+  const rafRef = useRef<number | null>(null);
+
+  // Feed new chars into queue whenever accumulated text grows
+  useEffect(() => {
+    if (text.length > enqueuedRef.current) {
+      queueRef.current += text.slice(enqueuedRef.current);
+      enqueuedRef.current = text.length;
+    }
+  }, [text]);
+
+  // Drain queue every animation frame at a smooth, adaptive rate
+  useEffect(() => {
+    function drain() {
+      const pending = queueRef.current.length;
+      if (pending > 0) {
+        // Adaptive speed: slow for small queue (smooth), fast for large queue (catch-up)
+        const take = pending < 15 ? 1 : pending < 60 ? 3 : 7;
+        setDisplayed((p) => p + queueRef.current.slice(0, take));
+        queueRef.current = queueRef.current.slice(take);
+      }
+      rafRef.current = requestAnimationFrame(drain);
+    }
+    rafRef.current = requestAnimationFrame(drain);
+    return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    };
+  }, []); // mount once
+
   return (
     <div
       className="text-[15px] leading-[1.75]"
       style={{ color: "rgba(13,13,13,0.86)" }}
     >
-      <PlainText text={text || " "} />
+      <PlainText text={displayed || " "} />
       <span
         className="ml-0.5 inline-block animate-pulse"
         style={{
