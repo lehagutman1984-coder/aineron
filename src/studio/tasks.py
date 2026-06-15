@@ -270,6 +270,30 @@ def notify_user_paused(project_id):
 
 
 @shared_task(queue=QUEUE)
+def rollback_to_version(project_id, version_id):
+    """Restore project files from a Gitea git_sha snapshot."""
+    from . import gitea_client
+    project = StudioProject.objects.get(id=project_id)
+    version = StudioVersion.objects.get(id=version_id, project=project)
+    owner = project.user.gitea_username
+    repo = project.repo_url.rstrip('/').split('/')[-1] if project.repo_url else None
+    if owner and repo and version.git_sha:
+        for studio_file in project.files.all():
+            content = gitea_client.get_file_content(owner, repo, studio_file.path, ref=version.git_sha)
+            if content:
+                studio_file.content = content
+                studio_file.last_modified_by = 'rollback'
+                studio_file.save(update_fields=['content', 'last_modified_by'])
+        if project.sandbox_container_id:
+            files = {f.path: f.content for f in project.files.all()}
+            sandbox.write_files(project.sandbox_container_id, files)
+    publish_event(project_id, {
+        'agent': 'system', 'level': 'info',
+        'text': f'Откат к шагу {version.step_index} ({version.git_sha[:7] if version.git_sha else "нет sha"})',
+    })
+
+
+@shared_task(queue=QUEUE)
 def reap_stale_sandboxes():
     """Beat: removes studio containers older than N hours."""
     import datetime
