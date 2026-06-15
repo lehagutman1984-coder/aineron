@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { studioApi } from "@/lib/api/studio";
 import type { StudioProject, StudioMode, StudioStack } from "@/lib/api/studio";
+import { TemplateGallery } from "@/components/studio/TemplateGallery";
 
 const STACK_OPTIONS: { value: StudioStack; label: string }[] = [
   { value: "nextjs", label: "Next.js" },
@@ -153,6 +154,13 @@ export default function StudioPage() {
 
           {entryTab === 'description' ? (
             <form onSubmit={handleSubmit} className="space-y-4">
+              <TemplateGallery
+                onSelect={(tplName, tplDesc, tplStack) => {
+                  setName(tplName);
+                  setDescription(tplDesc);
+                  setStack(tplStack);
+                }}
+              />
               <div>
                 <label className="block text-sm font-medium mb-1">Название</label>
                 <input

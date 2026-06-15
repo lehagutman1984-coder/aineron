@@ -49,6 +49,17 @@ export interface InterviewQuestion {
   options?: string[];
 }
 
+export interface StudioTemplate {
+  id: number;
+  slug: string;
+  name: string;
+  description: string;
+  stack: StudioStack;
+  preview_image: string;
+  seed_prompt: string;
+  order: number;
+}
+
 export interface StudioVersion {
   id: number;
   step_index: number;
@@ -124,4 +135,7 @@ export const studioApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  templates: () =>
+    request<StudioTemplate[]>('/studio/templates/'),
 };
