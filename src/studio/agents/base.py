@@ -19,6 +19,7 @@ def get_client() -> OpenAI:
         _client = OpenAI(
             api_key=settings.LAOZHANG_API_KEY,
             base_url=getattr(settings, 'LAOZHANG_API_URL', 'https://api.laozhang.ai/v1'),
+            timeout=90.0,
         )
     return _client
 
