@@ -1,4 +1,3 @@
-import json
 from django.http import StreamingHttpResponse
 from rest_framework import permissions
 from rest_framework.views import APIView
@@ -41,3 +40,41 @@ class PipelineEventsView(APIView):
         resp['Cache-Control'] = 'no-cache'
         resp['X-Accel-Buffering'] = 'no'
         return resp
+
+
+class PipelinePauseView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, id):
+        project = StudioProject.objects.get(id=id, user=request.user)
+        state = project.pipeline
+        state.status = 'paused_manual'
+        state.pause_reason = request.data.get('reason', 'Пауза пользователем')
+        state.save(update_fields=['status', 'pause_reason'])
+        return Response({'status': 'paused_manual'})
+
+
+class PipelineResumeView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, id):
+        project = StudioProject.objects.get(id=id, user=request.user)
+        state = project.pipeline
+        action = request.data.get('action', 'continue')
+        from ..tasks import coder_iteration, next_step
+        state.iteration_count = 0  # mandatory reset to avoid instant re-pause
+        if action == 'with_hint':
+            state.resume_hint = request.data.get('hint', '')
+            state.fix_plan = {'instructions': state.resume_hint, 'target_files': []}
+            state.status = 'running'
+            state.save()
+            coder_iteration.delay(str(project.id), state.step_index)
+        elif action == 'skip_step':
+            state.status = 'running'
+            state.save()
+            next_step.delay(str(project.id), state.step_index)
+        else:
+            state.status = 'running'
+            state.save()
+            coder_iteration.delay(str(project.id), state.step_index)
+        return Response({'status': 'running'})
