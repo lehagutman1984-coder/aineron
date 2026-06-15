@@ -1,93 +1,126 @@
 """
-Управление видео-моделями на laozhang.ai.
+Видео-модели через apimart.ai.
 Запуск: docker-compose exec web python manage.py add_video_models
 """
 from django.core.management.base import BaseCommand
 from aitext.models import Category, NeuralNetwork
 
 
-# ── Конфиги для video API (через client.images.generate) ─────────────────────
-
 VIDEO_CONFIG = {
-    'sora': {
-        "name": "Sora",
-        "api_defaults": {"size": "1280x720", "seconds": "8"},
+    'sora2': {
+        "name": "Sora 2",
+        "api_defaults": {"duration": 5, "aspect_ratio": "16:9"},
         "ui_settings": {
             "sections": [{
                 "title": "Настройки видео",
                 "fields": [
                     {
-                        "name": "size",
+                        "name": "aspect_ratio",
                         "type": "select",
-                        "label": "Разрешение",
+                        "label": "Формат",
                         "extra_cost": 0,
                         "options": [
-                            {"value": "1280x720", "label": "1280×720 (HD горизонталь)", "extra_cost": 0},
-                            {"value": "720x1280", "label": "720×1280 (HD вертикаль)", "extra_cost": 0},
-                            {"value": "1080x1080", "label": "1080×1080 (квадрат)", "extra_cost": 0},
+                            {"value": "16:9", "label": "16:9 (горизонталь)", "extra_cost": 0},
+                            {"value": "9:16", "label": "9:16 (вертикаль)", "extra_cost": 0},
                         ]
                     },
                     {
-                        "name": "seconds",
+                        "name": "duration",
                         "type": "select",
                         "label": "Длительность",
                         "extra_cost": 0,
                         "options": [
-                            {"value": "4", "label": "4 секунды", "extra_cost": 0},
-                            {"value": "8", "label": "8 секунд", "extra_cost": 0},
-                            {"value": "12", "label": "12 секунд", "extra_cost": 10},
+                            {"value": "5", "label": "5 секунд", "extra_cost": 0},
+                            {"value": "10", "label": "10 секунд", "extra_cost": 10},
+                            {"value": "20", "label": "20 секунд", "extra_cost": 25},
                         ]
                     },
                 ]
             }]
         },
         "constraints": {},
-        "metadata": {"output_type": "video", "requires_input_images": False},
+        "metadata": {"output_type": "video", "video_api": "apimart"},
     },
-    'veo': {
-        "name": "Veo",
-        "api_defaults": {"size": "1280x720", "seconds": "8"},
+
+    'veo3_fast': {
+        "name": "Veo 3.1 Fast",
+        "api_defaults": {"duration": 8, "aspect_ratio": "16:9", "resolution": "720p"},
         "ui_settings": {
             "sections": [{
                 "title": "Настройки видео",
                 "fields": [
                     {
-                        "name": "size",
+                        "name": "aspect_ratio",
                         "type": "select",
-                        "label": "Разрешение",
+                        "label": "Формат",
                         "extra_cost": 0,
                         "options": [
-                            {"value": "1280x720", "label": "1280×720 (HD горизонталь)", "extra_cost": 0},
-                            {"value": "720x1280", "label": "720×1280 (HD вертикаль)", "extra_cost": 0},
-                            {"value": "1920x1080", "label": "1920×1080 (Full HD)", "extra_cost": 10},
-                            {"value": "1080x1920", "label": "1080×1920 (Full HD вертикаль)", "extra_cost": 10},
+                            {"value": "16:9", "label": "16:9 (горизонталь)", "extra_cost": 0},
+                            {"value": "9:16", "label": "9:16 (вертикаль)", "extra_cost": 0},
                         ]
                     },
                     {
-                        "name": "seconds",
+                        "name": "resolution",
                         "type": "select",
-                        "label": "Длительность",
+                        "label": "Качество",
                         "extra_cost": 0,
                         "options": [
-                            {"value": "4", "label": "4 секунды", "extra_cost": 0},
-                            {"value": "8", "label": "8 секунд", "extra_cost": 0},
+                            {"value": "720p", "label": "720p (HD)", "extra_cost": 0},
+                            {"value": "1080p", "label": "1080p (Full HD)", "extra_cost": 10},
+                            {"value": "4k", "label": "4K (Ultra HD)", "extra_cost": 30},
                         ]
                     },
                 ]
             }]
         },
         "constraints": {},
-        "metadata": {"output_type": "video", "requires_input_images": False},
+        # duration фиксирован на 8 сек по API
+        "metadata": {"output_type": "video", "video_api": "apimart"},
     },
-    'seedance': {
-        "name": "Seedance",
-        "api_defaults": {"ratio": "16:9", "duration": 5, "resolution": "720p"},
+
+    'veo3_quality': {
+        "name": "Veo 3.1",
+        "api_defaults": {"duration": 8, "aspect_ratio": "16:9", "resolution": "1080p"},
         "ui_settings": {
             "sections": [{
                 "title": "Настройки видео",
                 "fields": [
                     {
-                        "name": "ratio",
+                        "name": "aspect_ratio",
+                        "type": "select",
+                        "label": "Формат",
+                        "extra_cost": 0,
+                        "options": [
+                            {"value": "16:9", "label": "16:9 (горизонталь)", "extra_cost": 0},
+                            {"value": "9:16", "label": "9:16 (вертикаль)", "extra_cost": 0},
+                        ]
+                    },
+                    {
+                        "name": "resolution",
+                        "type": "select",
+                        "label": "Качество",
+                        "extra_cost": 0,
+                        "options": [
+                            {"value": "1080p", "label": "1080p (Full HD)", "extra_cost": 0},
+                            {"value": "4k", "label": "4K (Ultra HD)", "extra_cost": 20},
+                        ]
+                    },
+                ]
+            }]
+        },
+        "constraints": {},
+        "metadata": {"output_type": "video", "video_api": "apimart"},
+    },
+
+    'kling_v26': {
+        "name": "Kling v2.6",
+        "api_defaults": {"mode": "std", "duration": 5, "aspect_ratio": "16:9", "audio": False},
+        "ui_settings": {
+            "sections": [{
+                "title": "Настройки видео",
+                "fields": [
+                    {
+                        "name": "aspect_ratio",
                         "type": "select",
                         "label": "Формат",
                         "extra_cost": 0,
@@ -104,80 +137,99 @@ VIDEO_CONFIG = {
                         "extra_cost": 0,
                         "options": [
                             {"value": "5", "label": "5 секунд", "extra_cost": 0},
-                            {"value": "8", "label": "8 секунд", "extra_cost": 5},
-                            {"value": "10", "label": "10 секунд", "extra_cost": 10},
+                            {"value": "10", "label": "10 секунд", "extra_cost": 8},
                         ]
+                    },
+                    {
+                        "name": "mode",
+                        "type": "select",
+                        "label": "Качество",
+                        "extra_cost": 0,
+                        "options": [
+                            {"value": "std", "label": "720p (стандарт)", "extra_cost": 0},
+                            {"value": "pro", "label": "1080p (профессионал)", "extra_cost": 5},
+                        ]
+                    },
+                    {
+                        "name": "audio",
+                        "type": "checkbox",
+                        "label": "Сгенерировать аудио (требует режим 1080p)",
+                        "extra_cost": 0,
+                    },
+                    {
+                        "name": "negative_prompt",
+                        "type": "text",
+                        "label": "Negative prompt",
+                        "extra_cost": 0,
+                        "max_length": 2500,
                     },
                 ]
             }]
         },
-        "constraints": {},
-        "metadata": {"output_type": "video", "requires_input_images": False, "video_api": "seedance"},
+        "constraints": {"max_negative_prompt_length": 2500},
+        "metadata": {"output_type": "video", "video_api": "apimart"},
     },
 }
 
-# ── Список видео-моделей для добавления ───────────────────────────────────────
-# model_name — точное имя из all_models_laozhang.ai.txt
 
 VIDEO_MODELS = [
     dict(
-        name='Sora',
+        name='Sora 2',
         slug='sora-character',
         model_name='sora-2',
         cost_per_message=60,
         order=1,
         description='Генерация видео от OpenAI. Создаёт реалистичные короткие видеоролики по текстовому описанию.',
-        config_key='sora',
+        config_key='sora2',
         is_popular=True,
     ),
     dict(
-        name='Sora Pro',
+        name='Sora 2 Pro',
         slug='sora-2-character',
         model_name='sora-2-pro',
         cost_per_message=100,
         order=2,
-        description='Продвинутая версия Sora от OpenAI — максимальное качество и детализация.',
-        config_key='sora',
+        description='Продвинутая версия Sora 2 от OpenAI — максимальное качество и детализация.',
+        config_key='sora2',
         is_popular=False,
     ),
     dict(
         name='Veo 3.1 Fast',
         slug='veo-3-1-fast',
-        model_name='veo-3.1-fast-generate-preview',
+        model_name='veo3.1-fast',
         cost_per_message=50,
         order=3,
         description='Быстрая генерация видео от Google DeepMind. Высокое качество движения и деталей.',
-        config_key='veo',
+        config_key='veo3_fast',
         is_popular=True,
     ),
     dict(
         name='Veo 3.1',
         slug='veo-3-1',
-        model_name='veo-3.1-generate-preview',
+        model_name='veo3.1-quality',
         cost_per_message=100,
         order=4,
         description='Полное качество Veo 3.1 от Google DeepMind. Максимальная детализация и фотореализм.',
-        config_key='veo',
+        config_key='veo3_quality',
         is_popular=False,
     ),
     dict(
-        name='Seedance Fast',
-        slug='seedance-fast',
-        model_name='doubao-seedance-2-0-fast-260128',
+        name='Kling v2.6',
+        slug='kling-v26',
+        model_name='kling-v2-6',
         cost_per_message=40,
         order=5,
-        description='Быстрая генерация видео от ByteDance. Высокая скорость и качество, идеален для экспериментов.',
-        config_key='seedance',
+        description='Генерация видео от Kuaishou с поддержкой аудиосопровождения. Быстрый и качественный результат.',
+        config_key='kling_v26',
         is_popular=True,
     ),
 ]
 
 
 class Command(BaseCommand):
-    help = 'Добавляет видео-модели laozhang.ai в базу данных'
+    help = 'Добавляет видео-модели apimart.ai в базу данных'
 
     def handle(self, *args, **options):
-        # Получаем или создаём категорию "Видео"
         video_cat, created = Category.objects.get_or_create(
             slug='video',
             defaults={'name': 'Видео', 'icon': 'fas fa-video', 'order': 3},
@@ -187,7 +239,7 @@ class Command(BaseCommand):
         else:
             self.stdout.write(f'Категория "Видео" уже есть (id={video_cat.id})')
 
-        self.stdout.write('\n=== Видео-модели ===')
+        self.stdout.write('\n=== Видео-модели (apimart.ai) ===')
         for m in VIDEO_MODELS:
             config_key = m.pop('config_key')
             config = dict(VIDEO_CONFIG[config_key])
@@ -212,4 +264,5 @@ class Command(BaseCommand):
             self.stdout.write(f'  {status}: {network.name} ({network.model_name})')
 
         self.stdout.write(f'\nГотово! Обработано видео-моделей: {len(VIDEO_MODELS)}')
-        self.stdout.write('Проверь в /admin → NeuralNetworks что модели активны.')
+        self.stdout.write('Проверь в /admin -> NeuralNetworks что модели активны.')
+        self.stdout.write('Убедись что APIMART_API_KEY задан в .env!')

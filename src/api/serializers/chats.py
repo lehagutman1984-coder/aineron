@@ -12,6 +12,13 @@ class MessageSerializer(serializers.ModelSerializer):
         ]
 
 
+class NeuralNetworkChatSerializer(NeuralNetworkListSerializer):
+    """Расширенный сериализатор для chat detail — включает config_json для рендеринга настроек."""
+
+    class Meta(NeuralNetworkListSerializer.Meta):
+        fields = NeuralNetworkListSerializer.Meta.fields + ['config_json']
+
+
 class ChatListSerializer(serializers.ModelSerializer):
     network = NeuralNetworkListSerializer(read_only=True)
     last_message = serializers.SerializerMethodField()
@@ -32,7 +39,7 @@ class ChatListSerializer(serializers.ModelSerializer):
 
 
 class ChatDetailSerializer(serializers.ModelSerializer):
-    network = NeuralNetworkListSerializer(read_only=True)
+    network = NeuralNetworkChatSerializer(read_only=True)
     messages = MessageSerializer(many=True, read_only=True)
 
     class Meta:

@@ -283,35 +283,36 @@ OpenAI-совместимый API для внешних клиентов, IDE-и
 
 ---
 
-## Видео модели — ТЕКУЩЕЕ СОСТОЯНИЕ И ПРОБЛЕМЫ
+## Видео модели — ТЕКУЩЕЕ СОСТОЯНИЕ
 
-Добавлены 5 видео-моделей через management-команду `add_video_models`:
+5 видео-моделей через management-команду `add_video_models`, провайдер: **apimart.ai**.
 
-| Модель | `model_name` | Стоимость |
-|--------|--------------|-----------|
-| Sora | `sora-2` | 60 звёзд |
-| Sora Pro | `sora-2-pro` | 100 звёзд |
-| Veo 3.1 Fast | `veo-3.1-fast-generate-preview` | 50 звёзд |
-| Veo 3.1 | `veo-3.1-generate-preview` | 100 звёзд |
-| Seedance Fast | `doubao-seedance-2-0-fast-260128` | 40 звёзд |
+| Модель | `model_name` (apimart) | Стоимость |
+|--------|------------------------|-----------|
+| Sora 2 | `sora-2` | 60 звёзд |
+| Sora 2 Pro | `sora-2-pro` | 100 звёзд |
+| Veo 3.1 Fast | `veo3.1-fast` | 50 звёзд |
+| Veo 3.1 | `veo3.1-quality` | 100 звёзд |
+| Kling v2.6 | `kling-v2-6` | 40 звёзд |
 
-Видео-генерация реализована в `src/aitext/fal_utils.py`.
+Видео-генерация реализована в `src/aitext/fal_utils.py` → `generate_video_apimart()`.
 
-**Veo / Sora** (через laozhang.ai `/v1/...`):
-- Создание задачи: `POST /v1/videos` — **multipart/form-data** (не JSON!)
-- Проверка статуса: `GET /v1/videos/{id}`
-- Скачивание результата: `GET /v1/videos/{id}/content`
+**Все модели через единый apimart.ai endpoint:**
+- Создание задачи: `POST https://api.apimart.ai/v1/videos/generations` — JSON body
+- Проверка статуса: `GET https://api.apimart.ai/v1/tasks/{task_id}`
+- Результат: `status_response.result.videos[].url` (url может быть строкой или массивом)
+- Роутинг в коде: `config_json.metadata.video_api == 'apimart'`
+- Ключ: `APIMART_API_KEY` в `.env`
 
-**Seedance** (отдельный endpoint и ключ):
-- Создание задачи: `POST https://api.laozhang.ai/seedance/api/v3/contents/generations/tasks` (JSON)
-- Требует **отдельный API-ключ** группы SeeDance2 на laozhang.ai → переменная `SEEDANCE_API_KEY`
+**Параметры по моделям:**
+- **Sora 2 / Sora 2 Pro**: `duration` (5/10/20 сек), `aspect_ratio` (16:9 / 9:16)
+- **Veo 3.1 Fast / Quality**: `duration=8` (фиксировано), `aspect_ratio`, `resolution` (720p/1080p/4k)
+- **Kling v2.6**: `mode` (std=720p / pro=1080p), `duration` (5/10 сек), `aspect_ratio` (16:9/9:16/1:1), **`audio`** (bool, только в pro mode), `negative_prompt`
 
-**Известные ограничения / проблемы:**
-- laozhang.ai ставит жёсткий **rate limit на видео** — при частых запросах подряд возвращает **429**
-- **Seedance** требует отдельный `SEEDANCE_API_KEY` с группой SeeDance2; без него Seedance не работает
-- **Veo 3.1 Fast** работает корректно (протестировано, задача создаётся примерно за $0.30)
-- **Polling до 15 минут** — 60 попыток с интервалом 15 секунд
+**Особенности:**
+- Polling до 15 минут — 60 попыток × 15 секунд
 - При любой ошибке генерации звёзды возвращаются пользователю
+- Ссылки на видео действительны 24 часа (скачиваем и сохраняем локально)
 
 ---
 
@@ -408,9 +409,12 @@ ROBOKASSA_PASS1=
 ROBOKASSA_PASS2=
 ROBOKASSA_TEST_MODE=0
 
-# AI провайдер (laozhang.ai)
+# AI провайдер (laozhang.ai) — текстовые модели и изображения
 LAOZHANG_API_KEY=
-SEEDANCE_API_KEY=         # laozhang.ai SeeDance2 group token (optional, для Seedance видео)
+SEEDANCE_API_KEY=         # laozhang.ai SeeDance2 group token (legacy, больше не используется)
+
+# APIMart — видео генерация (Sora, Veo, Kling)
+APIMART_API_KEY=          # apimart.ai — получить на https://apimart.ai/
 
 # Веб-поиск
 TAVILY_API_KEY=           # tavily.com — 1000 req/month free

@@ -279,6 +279,10 @@ TAVILY_API_KEY = os.environ.get('TAVILY_API_KEY', '')  # tavily.com — 1000 req
 # Seedance (ByteDance video) — отдельный токен группы SeeDance2 на laozhang.ai
 SEEDANCE_API_KEY = os.environ.get('SEEDANCE_API_KEY', '')
 
+# APIMart — видео генерация (Sora, Veo, Kling и другие)
+APIMART_API_KEY = os.environ.get('APIMART_API_KEY', '')
+APIMART_API_URL = "https://api.apimart.ai/v1"
+
 
 # ========== ROBOKASSA ==========
 ROBOKASSA_LOGIN = os.environ.get('ROBOKASSA_LOGIN', 'aineron.ru')

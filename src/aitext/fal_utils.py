@@ -711,6 +711,128 @@ def generate_seedance_video(network, user_msg, message, user_settings=None):
     return final_text, saved_media, total_cost
 
 
+def generate_video_apimart(network, user_msg, message, user_settings=None):
+    """
+    Генерирует видео через apimart.ai.
+    POST /v1/videos/generations → task_id
+    GET  /v1/tasks/{task_id}    → status → result.videos[].url
+    """
+    config = network.config_json or {}
+    model_id = network.model_name
+    prompt = user_msg.content if user_msg else ""
+    base_cost = network.cost_per_message
+
+    if user_settings:
+        final_args, errors, extra_cost = validate_and_merge_settings(config, user_settings)
+        if errors:
+            raise Exception("Ошибки в настройках: " + "; ".join(errors))
+    else:
+        final_args = config.get('api_defaults', {}).copy()
+        extra_cost = 0
+
+    total_cost = base_cost + extra_cost
+
+    api_key = getattr(settings, 'APIMART_API_KEY', '')
+    base_url = getattr(settings, 'APIMART_API_URL', 'https://api.apimart.ai/v1').rstrip('/')
+    auth_headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    body = {"model": model_id, "prompt": prompt}
+    for param in ['duration', 'aspect_ratio', 'resolution', 'audio', 'mode',
+                  'negative_prompt', 'generation_type', 'enable_gif', 'official_fallback']:
+        if param in final_args and final_args[param] is not None:
+            body[param] = final_args[param]
+
+    # duration должен быть integer (apimart ожидает число, select возвращает строку)
+    if 'duration' in body:
+        try:
+            body['duration'] = int(body['duration'])
+        except (ValueError, TypeError):
+            pass
+
+    # Kling: аудио работает только в pro mode — принудительно переключаем
+    if body.get('audio'):
+        body['mode'] = 'pro'
+
+    logger.info(f"APIMart Video POST model={model_id} params={body}")
+    resp = requests.post(
+        f"{base_url}/videos/generations",
+        headers=auth_headers,
+        json=body,
+        timeout=120,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    logger.info(f"APIMart creation response: {str(data)[:400]}")
+
+    # data.data — список [{status, task_id}]
+    task_id = None
+    items = data.get('data') or []
+    if isinstance(items, list):
+        for item in items:
+            task_id = item.get('task_id')
+            if task_id:
+                break
+    elif isinstance(items, dict):
+        task_id = items.get('task_id')
+
+    if not task_id:
+        raise Exception(f"Нет task_id в ответе APIMart: {str(data)[:200]}")
+
+    logger.info(f"APIMart task_id={task_id}, polling...")
+    video_urls = []
+
+    for attempt in range(60):
+        time.sleep(15)
+        poll_resp = requests.get(
+            f"{base_url}/tasks/{task_id}",
+            headers={"Authorization": f"Bearer {api_key}"},
+            timeout=30,
+        )
+        poll_resp.raise_for_status()
+        pd = poll_resp.json()
+
+        # Поддержка как top-level, так и вложенного в data
+        status_obj = pd['data'] if isinstance(pd.get('data'), dict) else pd
+        status = (status_obj.get('status') or '').lower()
+        progress = status_obj.get('progress', '?')
+        logger.info(f"APIMart poll {attempt + 1}/60: status={status} progress={progress}")
+
+        if status == 'completed':
+            result = status_obj.get('result') or {}
+            videos = result.get('videos', [])
+            for v in videos:
+                url = v.get('url')
+                if isinstance(url, list):
+                    url = url[0] if url else None
+                if url and str(url).startswith('http'):
+                    video_urls.append(url)
+            if not video_urls:
+                logger.warning(f"APIMart completed но нет видео URL. result={str(result)[:400]}")
+            break
+        elif status in ('failed', 'error', 'cancelled'):
+            raise Exception(f"APIMart генерация завершилась ошибкой: {status_obj.get('message', status)}")
+
+    model_name = config.get('name', network.name)
+    saved_media = []
+    for url in video_urls:
+        gen = save_media_from_url(url, message, prompt, media_type='video')
+        if gen:
+            saved_media.append(gen)
+
+    if saved_media:
+        text_parts = [f"Сгенерировано {len(saved_media)} видео моделью \"{model_name}\"."]
+        for m in saved_media:
+            text_parts.append(
+                f"<video src='{m.image.url}' controls width='100%' style='max-width:100%; border-radius:12px;'></video>"
+            )
+        return "\n\n".join(text_parts), saved_media, total_cost
+
+    return f"Модель \"{model_name}\" не вернула видео. Попробуйте изменить промт.", [], total_cost
+
+
 def generate_with_falai(network, user_msg, message, user_settings=None):
     """
     Генерирует изображения/видео через laozhang.ai.
@@ -723,7 +845,10 @@ def generate_with_falai(network, user_msg, message, user_settings=None):
 
     # Видео-модели — роутинг по video_api
     if config.get('metadata', {}).get('output_type') == 'video':
-        if config.get('metadata', {}).get('video_api') == 'seedance':
+        video_api = config.get('metadata', {}).get('video_api', '')
+        if video_api == 'apimart':
+            return generate_video_apimart(network, user_msg, message, user_settings)
+        if video_api == 'seedance':
             return generate_seedance_video(network, user_msg, message, user_settings)
         return generate_video_laozhang(network, user_msg, message, user_settings)
 
