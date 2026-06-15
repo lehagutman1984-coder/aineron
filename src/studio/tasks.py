@@ -177,7 +177,6 @@ def agent_review(project_id, step_index):
         _get_step_text(project, step_index),
         _existing_files(project),
     )
-    _billing_charge(project, 'reviewer', step_index)
     publish_event(project_id, {
         'agent': 'reviewer', 'level': 'info',
         'text': report.get('summary', ''),
@@ -193,7 +192,6 @@ def agent_test(project_id, step_index):
     if project.sandbox_container_id:
         logs = '\n'.join(sandbox.get_logs_stream(project.sandbox_container_id))
     report = TesterAgent(project).run(logs)
-    _billing_charge(project, 'tester', step_index)
     publish_event(project_id, {
         'agent': 'tester', 'level': 'info',
         'text': report.get('summary', ''),
@@ -211,6 +209,10 @@ def merge_reports(results, project_id, step_index):
     state.review_report = review
     state.test_report = test
     state.save(update_fields=['review_report', 'test_report'])
+    # Charge reviewer + tester here (not in parallel chord headers) to avoid
+    # concurrent read-modify-write race on interview_data['billing_log'].
+    _billing_charge(project, 'reviewer', step_index)
+    _billing_charge(project, 'tester', step_index)
     if review.get('passed') and test.get('passed'):
         publish_event(project_id, {
             'agent': 'system', 'level': 'success',
