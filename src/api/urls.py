@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, include
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 
 from api.views.keys import APIKeyListCreateView, APIKeyDeleteView
@@ -135,6 +135,9 @@ urlpatterns = [
     # ========== Проекты (папки чатов) ==========
     path('v1/projects/', ProjectListCreateView.as_view(), name='projects_list_create'),
     path('v1/projects/<int:pk>/', ProjectDetailView.as_view(), name='project_detail'),
+
+    # ========== STUDIO (Vibe-Coding Studio) ==========
+    path('v1/studio/', include('studio.urls')),
 
     # ========== OpenAPI / Swagger ==========
     path('v1/schema/', SpectacularAPIView.as_view(), name='schema'),
