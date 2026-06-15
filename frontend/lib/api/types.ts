@@ -226,6 +226,31 @@ export interface WebMessage {
   created_at: string;
 }
 
+export interface UiField {
+  name: string;
+  type: "select" | "checkbox" | "slider" | "number" | "text" | "textarea";
+  label: string;
+  extra_cost?: number;
+  options?: { value: string; label: string; extra_cost?: number }[];
+  min?: number;
+  max?: number;
+  step?: number;
+  max_length?: number;
+}
+
+export interface UiSection {
+  title: string;
+  fields: UiField[];
+}
+
+export interface ModelConfigJson {
+  name?: string;
+  api_defaults?: Record<string, unknown>;
+  ui_settings?: { sections: UiSection[] };
+  constraints?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+}
+
 export interface NetworkMini {
   id: number;
   name: string;
@@ -235,6 +260,7 @@ export interface NetworkMini {
   provider: string;
   handle_photo: boolean;
   handle_video: boolean;
+  config_json?: ModelConfigJson | null;
 }
 
 export interface Project {
