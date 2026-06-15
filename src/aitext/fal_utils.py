@@ -52,9 +52,8 @@ def validate_and_merge_settings(config, user_settings):
         if field.get('type') == 'checkbox' and value:
             extra_cost += float(field.get('extra_cost', 0))
         elif field.get('type') == 'select':
-            # Ищем выбранную опцию и её extra_cost
             for opt in field.get('options', []):
-                if opt.get('value') == value:
+                if str(opt.get('value')) == str(value):
                     extra_cost += float(opt.get('extra_cost', 0))
                     break
         elif field.get('type') in ('slider', 'number'):
@@ -93,12 +92,13 @@ def validate_and_merge_settings(config, user_settings):
                 except ValueError:
                     errors.append(f"Поле '{field.get('label', name)}' должно быть числом")
 
-            # 2. Select
+            # 2. Select — сравниваем как строки, чтобы int 5 == "5"
             elif field_type == 'select':
-                allowed = [opt['value'] for opt in field.get('options', [])]
-                if user_value in allowed:
-                    set_value(name, user_value)
-                    add_extra_cost(field, user_value)
+                allowed = [str(opt['value']) for opt in field.get('options', [])]
+                str_val = str(user_value)
+                if str_val in allowed:
+                    set_value(name, str_val)
+                    add_extra_cost(field, str_val)
                 else:
                     errors.append(f"Недопустимое значение для поля '{field.get('label', name)}'")
 

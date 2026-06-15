@@ -10,7 +10,7 @@ VIDEO_CONFIG = {
     # Sora 2 — базовая модель: только 720p, duration 4/8/12/16/20 сек
     'sora2': {
         "name": "Sora 2",
-        "api_defaults": {"duration": 4, "aspect_ratio": "16:9"},
+        "api_defaults": {"duration": "4", "aspect_ratio": "16:9"},
         "ui_settings": {
             "sections": [{
                 "title": "Настройки видео",
@@ -48,7 +48,7 @@ VIDEO_CONFIG = {
     # Sora 2 Pro — Pro: выбор разрешения (720p / 1024p / 1080p)
     'sora2_pro': {
         "name": "Sora 2 Pro",
-        "api_defaults": {"duration": 4, "aspect_ratio": "16:9", "resolution": "720p"},
+        "api_defaults": {"duration": "4", "aspect_ratio": "16:9", "resolution": "720p"},
         "ui_settings": {
             "sections": [{
                 "title": "Настройки видео",
@@ -168,7 +168,7 @@ VIDEO_CONFIG = {
 
     'kling_v26': {
         "name": "Kling v2.6",
-        "api_defaults": {"mode": "std", "duration": 5, "aspect_ratio": "16:9", "audio": False},
+        "api_defaults": {"mode": "std", "duration": "5", "aspect_ratio": "16:9", "audio": False},
         "ui_settings": {
             "sections": [{
                 "title": "Настройки видео",
