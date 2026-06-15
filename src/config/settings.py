@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'api',
     'teams',
+    'studio',
 ]
 
 
@@ -282,6 +283,17 @@ SEEDANCE_API_KEY = os.environ.get('SEEDANCE_API_KEY', '')
 # APIMart — видео генерация (Sora, Veo, Kling и другие)
 APIMART_API_KEY = os.environ.get('APIMART_API_KEY', '')
 APIMART_API_URL = "https://api.apimart.ai/v1"
+
+
+# ========== VIBE-CODING STUDIO ==========
+STUDIO_SANDBOX_IMAGE = os.getenv('STUDIO_SANDBOX_IMAGE', 'aineron-sandbox:latest')
+STUDIO_SANDBOX_NET = os.getenv('STUDIO_SANDBOX_NET', 'aineron_sandbox_net')
+STUDIO_SANDBOX_MEM = os.getenv('STUDIO_SANDBOX_MEM', '512m')
+STUDIO_SANDBOX_CPUS = float(os.getenv('STUDIO_SANDBOX_CPUS', '1'))
+STUDIO_GITEA_URL = os.getenv('STUDIO_GITEA_URL', 'http://gitea:3000')
+STUDIO_GITEA_ADMIN_USER = os.getenv('STUDIO_GITEA_ADMIN_USER', 'studio_admin')
+STUDIO_GITEA_ADMIN_TOKEN = os.getenv('STUDIO_GITEA_ADMIN_TOKEN', '')
+STUDIO_MAX_ITERATIONS = int(os.getenv('STUDIO_MAX_ITERATIONS', '3'))
 
 
 # ========== ROBOKASSA ==========
