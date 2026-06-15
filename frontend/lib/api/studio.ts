@@ -102,7 +102,7 @@ export const studioApi = {
     request<{ status: string }>(`/studio/projects/${id}/run/`, { method: 'POST' }),
 
   interview: (id: string) =>
-    request<{ questions: InterviewQuestion[] }>(`/studio/projects/${id}/interview/`),
+    request<{ questions: InterviewQuestion[]; status: string; interview_error?: string }>(`/studio/projects/${id}/interview/`),
 
   submitInterview: (id: string, answers: unknown[]) =>
     request<{ status: string }>(`/studio/projects/${id}/interview/`, {

@@ -59,6 +59,14 @@ def agent_interview(self, project_id):
         publish_event(project_id, {'agent': 'interviewer', 'level': 'info', 'text': 'Вопросы готовы'})
     except Exception as e:
         log.error('agent_interview FAILED project=%s: %s', project_id, repr(e), exc_info=True)
+        if self.request.retries >= self.max_retries:
+            project.status = 'draft'
+            project.interview_data['interview_error'] = repr(e)
+            project.save(update_fields=['status', 'interview_data'])
+            publish_event(project_id, {
+                'agent': 'interviewer', 'level': 'error',
+                'text': 'Не удалось запустить агента-интервьюера. Обновите страницу.',
+            })
         raise self.retry(exc=e, countdown=60)
 
 

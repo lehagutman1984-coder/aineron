@@ -1,20 +1,26 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { Loader2 } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Loader2, RefreshCw } from 'lucide-react';
 import { studioApi } from '@/lib/api/studio';
 import { InterviewCards } from '@/components/studio/InterviewCards';
 
 export default function InterviewPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
     queryKey: ['studio-interview', id],
     queryFn: () => studioApi.interview(id),
-    refetchInterval: (query) =>
-      (query.state.data?.questions?.length ?? 0) === 0 ? 3000 : false,
+    refetchInterval: (query) => {
+      const d = query.state.data;
+      if (!d) return 3000;
+      if ((d.questions?.length ?? 0) > 0) return false;
+      if (d.interview_error) return false;
+      return 3000;
+    },
   });
 
   const submitMutation = useMutation({
@@ -37,6 +43,23 @@ export default function InterviewPage() {
   }
 
   const questions = data?.questions ?? [];
+
+  if (data?.interview_error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+        <p className="text-sm text-red-500">
+          Агент не ответил. Нажмите кнопку чтобы попробовать снова.
+        </p>
+        <button
+          onClick={() => queryClient.invalidateQueries({ queryKey: ['studio-interview', id] })}
+          className="flex items-center gap-2 px-4 py-2 text-sm bg-[var(--bg-secondary)] border border-[var(--border)] rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+        >
+          <RefreshCw size={16} />
+          Попробовать снова
+        </button>
+      </div>
+    );
+  }
 
   if (questions.length === 0) {
     return (
