@@ -8,6 +8,7 @@ import { PreviewPanel } from './PreviewPanel';
 import { AgentLog } from './AgentLog';
 import { PipelineStatus } from './PipelineStatus';
 import { ContextChat } from './ContextChat';
+import { GitHistory } from './GitHistory';
 import type { StudioProject, StudioFileNode, StudioFileDetail, PipelineState } from '@/lib/api/studio';
 import { studioApi } from '@/lib/api/studio';
 
@@ -132,6 +133,9 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
                   selectedId={selectedFileId}
                   onSelect={handleFileSelect}
                 />
+              </div>
+              <div className="border-t border-[var(--border)] overflow-auto max-h-48">
+                <GitHistory projectId={project.id} />
               </div>
             </div>
             <div className="overflow-hidden flex flex-col">

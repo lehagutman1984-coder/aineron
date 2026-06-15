@@ -48,6 +48,15 @@ export interface InterviewQuestion {
   options?: string[];
 }
 
+export interface StudioVersion {
+  id: number;
+  step_index: number;
+  step_name: string;
+  git_sha: string;
+  stars_spent_at_version: number;
+  created_at: string;
+}
+
 export const studioApi = {
   list: () =>
     request<StudioProject[]>('/studio/projects/'),
@@ -99,5 +108,13 @@ export const studioApi = {
     request<{ status: string }>(`/studio/projects/${id}/resume/`, {
       method: 'POST',
       body: JSON.stringify(data),
+    }),
+
+  commits: (id: string) =>
+    request<StudioVersion[]>(`/studio/projects/${id}/commits/`),
+
+  rollback: (id: string, versionId: number) =>
+    request<{ status: string }>(`/studio/projects/${id}/rollback/${versionId}/`, {
+      method: 'POST',
     }),
 };
