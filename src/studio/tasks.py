@@ -293,6 +293,28 @@ def rollback_to_version(project_id, version_id):
     })
 
 
+@shared_task(bind=True, max_retries=2, queue=QUEUE)
+def crawl_and_analyze(self, project_id):
+    """Crawl the target_url of a clone-mode project, then continue to agent_analyze."""
+    from .crawler import crawl
+    project = StudioProject.objects.get(id=project_id)
+    try:
+        publish_event(project_id, {
+            'agent': 'system', 'level': 'info',
+            'text': f'Анализирую сайт: {project.target_url}',
+        })
+        data = crawl(project.target_url)
+        project.interview_data['crawled'] = {
+            'title': data['title'],
+            'text': data['text'][:8000],
+        }
+        project.status = 'planning'
+        project.save(update_fields=['interview_data', 'status'])
+        agent_analyze.delay(project_id)
+    except Exception as e:
+        raise self.retry(exc=e, countdown=60)
+
+
 @shared_task(queue=QUEUE)
 def reap_stale_sandboxes():
     """Beat: removes studio containers older than N hours."""
