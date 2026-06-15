@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { studioApi } from '@/lib/api/studio';
 import { StudioLayout } from '@/components/studio/StudioLayout';
+import { BillingEstimate } from '@/components/studio/BillingEstimate';
 
 export default function StudioProjectPage() {
   const { id } = useParams<{ id: string }>();
@@ -68,12 +69,28 @@ export default function StudioProjectPage() {
     );
   }
 
+  const plannedSteps = project.interview_data?.planned_steps as number | undefined;
+
   return (
-    <StudioLayout
-      project={project}
-      files={files}
-      pipeline={pipeline}
-      onRefresh={handleRefresh}
-    />
+    <div className="flex flex-col h-screen overflow-hidden">
+      {project.status === 'completed' && (
+        <div className="shrink-0 p-4 border-b border-[var(--border)]">
+          <BillingEstimate
+            completed
+            spentStars={project.stars_spent}
+            plannedSteps={plannedSteps}
+            repoUrl={project.repo_url}
+          />
+        </div>
+      )}
+      <div className="flex-1 overflow-hidden">
+        <StudioLayout
+          project={project}
+          files={files}
+          pipeline={pipeline}
+          onRefresh={handleRefresh}
+        />
+      </div>
+    </div>
   );
 }

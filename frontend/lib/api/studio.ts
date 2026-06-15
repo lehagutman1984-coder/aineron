@@ -19,6 +19,7 @@ export interface StudioProject {
   project_md_content: string;
   commits_md_content: string;
   interview_data: Record<string, unknown>;
+  repo_url: string;
   created_at: string;
 }
 
