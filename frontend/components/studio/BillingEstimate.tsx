@@ -39,7 +39,7 @@ export function BillingEstimate({
             <div className="flex items-center gap-2 text-[var(--text-secondary)]">
               <GitBranch size={14} />
               <a
-                href={repoUrl.replace('http://gitea:3001', '/git')}
+                href={repoUrl.replace('http://gitea:3000', '/git')}
                 target="_blank"
                 rel="noreferrer"
                 className="text-blue-500 hover:underline truncate"
