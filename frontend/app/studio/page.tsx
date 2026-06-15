@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { LayoutGrid, Plus, Loader2, Cpu, Clock, ChevronRight } from "lucide-react";
 import { studioApi } from "@/lib/api/studio";
-import type { StudioProject, StudioMode, EntryMode, StudioStack } from "@/lib/api/studio";
+import type { StudioProject, StudioMode, StudioStack } from "@/lib/api/studio";
 
 const STACK_OPTIONS: { value: StudioStack; label: string }[] = [
   { value: "nextjs", label: "Next.js" },

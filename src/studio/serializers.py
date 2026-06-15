@@ -16,7 +16,9 @@ class StudioProjectSerializer(serializers.ModelSerializer):
 class StudioProjectCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = StudioProject
-        fields = ('name', 'description', 'mode', 'entry_mode', 'target_url', 'target_stack')
+        fields = ('id', 'name', 'description', 'mode', 'entry_mode', 'target_url', 'target_stack',
+                  'status', 'created_at')
+        read_only_fields = ('id', 'status', 'created_at')
 
 
 class StudioFileSerializer(serializers.ModelSerializer):
