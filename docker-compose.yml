@@ -128,6 +128,44 @@ services:
       redis:
         condition: service_healthy
 
+  gitea_db:
+    image: postgres:15-alpine
+    container_name: neiro_gitea_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: gitea
+      POSTGRES_USER: gitea
+      POSTGRES_PASSWORD: ${GITEA_DB_PASSWORD}
+    volumes:
+      - gitea_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gitea -d gitea"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  gitea:
+    image: gitea/gitea:1.22
+    container_name: neiro_gitea
+    restart: unless-stopped
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - GITEA__database__DB_TYPE=postgres
+      - GITEA__database__HOST=gitea_db:5432
+      - GITEA__database__NAME=gitea
+      - GITEA__database__USER=gitea
+      - GITEA__database__PASSWD=${GITEA_DB_PASSWORD}
+      - GITEA__server__ROOT_URL=https://aineron.ru/git/
+      - GITEA__server__DOMAIN=aineron.ru
+      - GITEA__server__HTTP_PORT=3001
+      - GITEA__service__DISABLE_REGISTRATION=true
+    volumes:
+      - gitea_data:/data
+    depends_on:
+      gitea_db:
+        condition: service_healthy
+
   nginx:
     image: nginx:1.25-alpine
     container_name: neiro_nginx
@@ -143,6 +181,7 @@ services:
     depends_on:
       - web
       - frontend
+      - gitea
     networks:
       - default
       - aineron_sandbox_net
@@ -151,6 +190,8 @@ volumes:
   postgres_data:
   redis_data:
   static_volume:
+  gitea_data:
+  gitea_db_data:
 
 networks:
   aineron_sandbox_net:
