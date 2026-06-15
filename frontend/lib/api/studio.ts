@@ -16,6 +16,9 @@ export interface StudioProject {
   stars_spent: number;
   sandbox_container_id: string;
   preview_port: number | null;
+  project_md_content: string;
+  commits_md_content: string;
+  interview_data: Record<string, unknown>;
   created_at: string;
 }
 

@@ -51,8 +51,7 @@ export default function ReviewPage() {
   const { data: project, isLoading, refetch } = useQuery({
     queryKey: ['studio-project-review', id],
     queryFn: () => studioApi.get(id),
-    refetchInterval: (data) =>
-      data?.status === 'ready' || data?.status === 'planning' ? 3000 : false,
+    refetchInterval: 3000,
   });
 
   const runMutation = useMutation({
