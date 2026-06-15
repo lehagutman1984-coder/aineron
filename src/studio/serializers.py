@@ -7,7 +7,7 @@ class StudioProjectSerializer(serializers.ModelSerializer):
         model = StudioProject
         fields = '__all__'
         read_only_fields = (
-            'id', 'user', 'status', 'project_md_content', 'commits_md_content',
+            'id', 'user', 'status',
             'sandbox_container_id', 'preview_port', 'repo_url',
             'stars_reserved', 'stars_spent', 'created_at', 'updated_at',
         )
