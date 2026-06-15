@@ -59,6 +59,19 @@ class ChatListCreateView(ListCreateAPIView):
         cost = network.cost_per_message
         deduct_stars = True
 
+        # Медиа-генерация доступна только на платных тарифах
+        is_media = network.handle_video or network.handle_photo or (
+            (network.config_json or {}).get('metadata', {}).get('output_type') in ('image', 'video')
+        )
+        if is_media and getattr(request.user.tariff, 'is_free', True):
+            return Response({
+                'error': {
+                    'message': 'Генерация изображений и видео доступна только на платных тарифах.',
+                    'type': 'insufficient_permissions',
+                    'code': 'requires_paid_plan',
+                }
+            }, status=402)
+
         if (network.unlimited and
                 network.tariffs.filter(id=request.user.tariff.id).exists() and
                 network.messages_limit > 0):
@@ -172,6 +185,19 @@ class SendMessageView(APIView):
         network = chat.network
         cost = network.cost_per_message
         deduct_stars = True
+
+        # Медиа-генерация доступна только на платных тарифах
+        is_media = network.handle_video or network.handle_photo or (
+            (network.config_json or {}).get('metadata', {}).get('output_type') in ('image', 'video')
+        )
+        if is_media and getattr(request.user.tariff, 'is_free', True):
+            return Response({
+                'error': {
+                    'message': 'Генерация изображений и видео доступна только на платных тарифах.',
+                    'type': 'insufficient_permissions',
+                    'code': 'requires_paid_plan',
+                }
+            }, status=402)
 
         if (network.unlimited and
                 network.tariffs.filter(id=request.user.tariff.id).exists() and
