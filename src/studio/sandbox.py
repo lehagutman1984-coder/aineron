@@ -18,11 +18,16 @@ def get_docker():
 def spawn_sandbox(project_id: str) -> str:
     """Creates container on bridge network (internet available). Returns container name (DNS-resolvable)."""
     client = get_docker()
+    name = f'sandbox_{project_id[:8]}'
+    try:
+        client.containers.get(name).remove(force=True)
+    except docker.errors.NotFound:
+        pass
     container = client.containers.run(
         settings.STUDIO_SANDBOX_IMAGE,
         command='sleep infinity',
         detach=True,
-        name=f'sandbox_{project_id[:8]}',
+        name=name,
         mem_limit=settings.STUDIO_SANDBOX_MEM,
         nano_cpus=int(settings.STUDIO_SANDBOX_CPUS * 1e9),
         pids_limit=256,
