@@ -83,3 +83,4 @@ django-cors-headers==4.7.0
 tiktoken
 docker
 beautifulsoup4
+playwright
