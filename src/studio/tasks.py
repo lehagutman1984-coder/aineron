@@ -111,6 +111,8 @@ def agent_plan(self, project_id):
 @shared_task(queue=QUEUE)
 def run_pipeline(project_id):
     project = StudioProject.objects.get(id=project_id)
+    if project.status not in ('coding', 'ready', 'paused'):
+        return
     if not can_afford(project.user, _agent_cost('coder')):
         publish_event(project_id, {
             'agent': 'system', 'level': 'error',

@@ -37,16 +37,22 @@ class InterviewView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, id):
+        # Atomic check-and-set: only the first request with status='draft' triggers the task
+        triggered = StudioProject.objects.filter(
+            id=id, user=request.user, status='draft'
+        ).update(status='interviewing')
+
         project = StudioProject.objects.get(id=id, user=request.user)
-        questions = project.interview_data.get('questions')
-        interview_error = project.interview_data.get('interview_error')
-        if not questions and project.status == 'draft':
+
+        if triggered:
             project.interview_data.pop('interview_error', None)
-            project.status = 'interviewing'
-            project.save(update_fields=['status', 'interview_data'])
+            project.save(update_fields=['interview_data'])
             from ..tasks import agent_interview
             agent_interview.delay(str(project.id))
-        resp = {'questions': questions or [], 'status': project.status}
+
+        questions = project.interview_data.get('questions') or []
+        interview_error = project.interview_data.get('interview_error')
+        resp = {'questions': questions, 'status': project.status}
         if interview_error:
             resp['interview_error'] = interview_error
         return Response(resp)

@@ -19,9 +19,15 @@ class PipelineRunView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, id):
-        project = StudioProject.objects.get(id=id, user=request.user)
+        # Atomic guard: only dispatch if project is in a startable state
+        triggered = StudioProject.objects.filter(
+            id=id, user=request.user, status__in=['ready', 'paused']
+        ).update(status='coding')
+        if not triggered:
+            project = StudioProject.objects.get(id=id, user=request.user)
+            return Response({'status': project.status}, status=200)
         from ..tasks import run_pipeline
-        run_pipeline.delay(str(project.id))
+        run_pipeline.delay(str(id))
         return Response({'status': 'running'}, status=202)
 
 
