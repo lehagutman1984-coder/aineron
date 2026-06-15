@@ -58,6 +58,7 @@ class PipelineResumeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, id):
+        from ..billing import estimate_stars, can_afford
         project = StudioProject.objects.get(id=id, user=request.user)
         state = project.pipeline
         action = request.data.get('action', 'continue')
@@ -77,4 +78,9 @@ class PipelineResumeView(APIView):
             state.status = 'running'
             state.save()
             coder_iteration.delay(str(project.id), state.step_index)
-        return Response({'status': 'running'})
+        remaining_steps = max(0, project.interview_data.get('planned_steps', 5) - state.step_index)
+        low_balance = not can_afford(
+            request.user,
+            estimate_stars(project, planned_steps=remaining_steps),
+        )
+        return Response({'status': 'running', 'low_balance': low_balance})

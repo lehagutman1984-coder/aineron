@@ -4,8 +4,31 @@ from django.conf import settings
 from .models import StudioProject, StudioFile, StudioVersion
 from .events import publish_event
 from . import sandbox
+from .billing import STAR_RATE, AGENT_BUDGET, can_afford, charge, refund
 
 QUEUE = 'studio_queue'
+
+
+def _agent_cost(agent_name: str) -> int:
+    tier, budget = AGENT_BUDGET.get(agent_name, ('fast', 2000))
+    return max(1, int((budget / 1000.0) * STAR_RATE[tier]))
+
+
+def _billing_charge(project, agent_name: str, step_index: int):
+    """Charge stars for one agent run, emit SSE billing event, update billing_log."""
+    cost = _agent_cost(agent_name)
+    user = project.user
+    if not can_afford(user, cost):
+        return 0
+    charge(user, cost, project)
+    publish_event(str(project.id), {
+        'agent': agent_name, 'level': 'billing',
+        'text': f'-{cost} зв. (шаг {step_index})',
+    })
+    log = project.interview_data.setdefault('billing_log', [])
+    log.append({'agent': agent_name, 'stars': cost, 'step': step_index})
+    project.save(update_fields=['interview_data'])
+    return cost
 
 
 def _set_status(project, status):
@@ -43,6 +66,7 @@ def agent_analyze(self, project_id):
     try:
         publish_event(project_id, {'agent': 'analyst', 'level': 'info', 'text': 'Анализирую требования...'})
         AnalystAgent(project).run()
+        _billing_charge(project, 'analyst', 0)
         publish_event(project_id, {'agent': 'analyst', 'level': 'info', 'text': 'PROJECT.md готов'})
         agent_plan.delay(project_id)
     except Exception as e:
@@ -56,6 +80,7 @@ def agent_plan(self, project_id):
     try:
         publish_event(project_id, {'agent': 'planner', 'level': 'info', 'text': 'Составляю план...'})
         md, steps = PlannerAgent(project).run()
+        _billing_charge(project, 'planner', 0)
         state = project.pipeline
         state.review_report = {}
         state.save()
@@ -75,6 +100,12 @@ def agent_plan(self, project_id):
 @shared_task(queue=QUEUE)
 def run_pipeline(project_id):
     project = StudioProject.objects.get(id=project_id)
+    if not can_afford(project.user, _agent_cost('coder')):
+        publish_event(project_id, {
+            'agent': 'system', 'level': 'error',
+            'text': 'Недостаточно звёзд для запуска кодинга',
+        })
+        return
     project.status = 'coding'
     project.save(update_fields=['status'])
     state = project.pipeline
@@ -122,6 +153,7 @@ def coder_iteration(self, project_id, step_index):
             'text': f'Шаг {step_index}, итерация {project.pipeline.iteration_count}',
         })
         files = CoderAgent(project).run(step_index, step_text, existing)
+        _billing_charge(project, 'coder', step_index)
         for path, content in files.items():
             StudioFile.objects.update_or_create(
                 project=project, path=path,
@@ -145,6 +177,7 @@ def agent_review(project_id, step_index):
         _get_step_text(project, step_index),
         _existing_files(project),
     )
+    _billing_charge(project, 'reviewer', step_index)
     publish_event(project_id, {
         'agent': 'reviewer', 'level': 'info',
         'text': report.get('summary', ''),
@@ -160,6 +193,7 @@ def agent_test(project_id, step_index):
     if project.sandbox_container_id:
         logs = '\n'.join(sandbox.get_logs_stream(project.sandbox_container_id))
     report = TesterAgent(project).run(logs)
+    _billing_charge(project, 'tester', step_index)
     publish_event(project_id, {
         'agent': 'tester', 'level': 'info',
         'text': report.get('summary', ''),
@@ -190,12 +224,20 @@ def merge_reports(results, project_id, step_index):
             from .agents.fixer import FixerAgent
             state.fix_plan = FixerAgent(project).run(review, test)
             state.save(update_fields=['fix_plan'])
+            _billing_charge(project, 'fixer', step_index)
             publish_event(project_id, {
                 'agent': 'fixer', 'level': 'warning',
                 'text': 'Готовлю исправления',
             })
             coder_iteration.delay(project_id, step_index)
         else:
+            # Reached max iterations — refund last step's agent costs
+            step_refund = _agent_cost('coder') + _agent_cost('reviewer') + _agent_cost('tester')
+            refund(project.user, step_refund, project)
+            publish_event(project_id, {
+                'agent': 'system', 'level': 'billing',
+                'text': f'+{step_refund} зв. возврат (шаг не сошёлся)',
+            })
             state.status = 'paused_on_loop'
             state.pause_reason = (
                 f'Шаг {step_index} не сошёлся за {settings.STUDIO_MAX_ITERATIONS} итераций'
