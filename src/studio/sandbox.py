@@ -16,7 +16,7 @@ def get_docker():
 
 
 def spawn_sandbox(project_id: str) -> str:
-    """Creates container on bridge network (internet available). Returns container_id."""
+    """Creates container on bridge network (internet available). Returns container name (DNS-resolvable)."""
     client = get_docker()
     container = client.containers.run(
         settings.STUDIO_SANDBOX_IMAGE,
@@ -31,7 +31,7 @@ def spawn_sandbox(project_id: str) -> str:
         network_mode='bridge',
         labels={'studio_project': project_id},
     )
-    return container.id
+    return container.name
 
 
 def write_files(container_id: str, files: dict):
