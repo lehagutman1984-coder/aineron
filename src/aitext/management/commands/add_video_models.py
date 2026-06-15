@@ -451,7 +451,7 @@ class Command(BaseCommand):
             config['name'] = m['name']
             active_slugs.append(m['slug'])
 
-            network, created = NeuralNetwork.objects.update_or_create(
+            network, created = NeuralNetwork.objects.get_or_create(
                 slug=m['slug'],
                 defaults={
                     'name': m['name'],
@@ -466,7 +466,7 @@ class Command(BaseCommand):
                     'is_popular': m.get('is_popular', False),
                 }
             )
-            status = self.style.SUCCESS('создана') if created else 'обновлена'
+            status = self.style.SUCCESS('создана') if created else 'уже есть (не тронута)'
             self.stdout.write(f'  {status}: {network.name} ({network.model_name})')
 
         # Деактивируем старые laozhang-видеомодели (не входят в наш список)
