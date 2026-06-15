@@ -14,7 +14,7 @@ export function middleware(request: NextRequest) {
     request.cookies.get("sessionid") ?? request.cookies.get("session");
 
   if (!sessionCookie) {
-    const loginUrl = new URL("/users/pages/auth/", request.url);
+    const loginUrl = new URL("/login/", request.url);
     loginUrl.searchParams.set("next", pathname);
     return NextResponse.redirect(loginUrl);
   }
