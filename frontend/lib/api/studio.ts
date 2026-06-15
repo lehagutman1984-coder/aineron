@@ -118,4 +118,10 @@ export const studioApi = {
     request<{ status: string }>(`/studio/projects/${id}/rollback/${versionId}/`, {
       method: 'POST',
     }),
+
+  clone: (data: { url: string; name?: string }) =>
+    request<StudioProject>('/studio/clone/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };

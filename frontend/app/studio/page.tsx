@@ -3,7 +3,16 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { LayoutGrid, Plus, Loader2, Cpu, Clock, ChevronRight } from "lucide-react";
+import {
+  LayoutGrid,
+  Plus,
+  Loader2,
+  Cpu,
+  Clock,
+  ChevronRight,
+  FilePlus,
+  Link,
+} from "lucide-react";
 import { studioApi } from "@/lib/api/studio";
 import type { StudioProject, StudioMode, StudioStack } from "@/lib/api/studio";
 
@@ -31,14 +40,24 @@ const STATUS_LABEL: Record<string, string> = {
   failed: "Ошибка",
 };
 
+type EntryTab = "description" | "clone_url";
+
 export default function StudioPage() {
   const router = useRouter();
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [entryTab, setEntryTab] = useState<EntryTab>("description");
+
+  // "С нуля" form state
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [mode, setMode] = useState<StudioMode>("auto");
   const [stack, setStack] = useState<StudioStack>("nextjs");
+
+  // "Клон по URL" form state
+  const [cloneUrl, setCloneUrl] = useState("");
+  const [cloneName, setCloneName] = useState("");
+  const [cloneUrlError, setCloneUrlError] = useState("");
 
   const { data: projects, isLoading } = useQuery({
     queryKey: ["studio-projects"],
@@ -54,11 +73,44 @@ export default function StudioPage() {
     },
   });
 
+  const cloneMutation = useMutation({
+    mutationFn: () => studioApi.clone({ url: cloneUrl, name: cloneName || undefined }),
+    onSuccess: (project: StudioProject) => {
+      qc.invalidateQueries({ queryKey: ["studio-projects"] });
+      router.push(`/studio/${project.id}/review`);
+    },
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
     createMutation.mutate();
   };
+
+  const validateUrl = (url: string) => {
+    try {
+      const parsed = new URL(url);
+      if (!['http:', 'https:'].includes(parsed.protocol)) {
+        return 'URL должен начинаться с http:// или https://';
+      }
+      return '';
+    } catch {
+      return 'Введите корректный URL';
+    }
+  };
+
+  const handleCloneSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const err = validateUrl(cloneUrl);
+    if (err) { setCloneUrlError(err); return; }
+    setCloneUrlError('');
+    cloneMutation.mutate();
+  };
+
+  const ENTRY_TABS: { key: EntryTab; label: string; icon: React.ReactNode }[] = [
+    { key: 'description', label: 'С нуля', icon: <FilePlus size={14} /> },
+    { key: 'clone_url', label: 'Клон по URL', icon: <Link size={14} /> },
+  ];
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
@@ -77,99 +129,180 @@ export default function StudioPage() {
       </div>
 
       {showForm && (
-        <form
-          onSubmit={handleSubmit}
-          className="bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-6 mb-8 space-y-5"
-        >
+        <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-6 mb-8 space-y-5">
           <h2 className="text-lg font-semibold">Новый проект</h2>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Название</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Мой стартап"
-              className="w-full border border-[var(--border)] bg-[var(--input-bg)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            />
+          {/* Entry mode tabs */}
+          <div className="flex gap-1 p-1 bg-[var(--hover)] rounded-lg w-fit">
+            {ENTRY_TABS.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setEntryTab(tab.key)}
+                className={`flex items-center gap-1.5 px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  entryTab === tab.key
+                    ? 'bg-[var(--card-bg)] text-[var(--text)] shadow-sm'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text)]'
+                }`}
+              >
+                {tab.icon}
+                {tab.label}
+              </button>
+            ))}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Описание</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Опишите что хотите создать..."
-              rows={3}
-              className="w-full border border-[var(--border)] bg-[var(--input-bg)] rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+          {entryTab === 'description' ? (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Название</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Мой стартап"
+                  className="w-full border border-[var(--border)] bg-[var(--input-bg)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2">Режим</label>
-            <div className="flex gap-2">
-              {MODE_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setMode(opt.value)}
-                  title={opt.hint}
-                  className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                    mode === opt.value
-                      ? "border-blue-500 bg-blue-600 text-white"
-                      : "border-[var(--border)] hover:border-blue-400"
-                  }`}
+              <div>
+                <label className="block text-sm font-medium mb-1">Описание</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Опишите что хотите создать..."
+                  rows={3}
+                  className="w-full border border-[var(--border)] bg-[var(--input-bg)] rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">Режим</label>
+                <div className="flex gap-2">
+                  {MODE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setMode(opt.value)}
+                      title={opt.hint}
+                      className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                        mode === opt.value
+                          ? 'border-blue-500 bg-blue-600 text-white'
+                          : 'border-[var(--border)] hover:border-blue-400'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Стек</label>
+                <select
+                  value={stack}
+                  onChange={(e) => setStack(e.target.value as StudioStack)}
+                  className="w-full border border-[var(--border)] bg-[var(--input-bg)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  {opt.label}
+                  {STACK_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex gap-3 pt-1">
+                <button
+                  type="submit"
+                  disabled={createMutation.isPending || !name.trim()}
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors"
+                >
+                  {createMutation.isPending ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <Cpu size={16} />
+                  )}
+                  Создать
                 </button>
-              ))}
-            </div>
-          </div>
+                <button
+                  type="button"
+                  onClick={() => setShowForm(false)}
+                  className="px-5 py-2 rounded-lg text-sm border border-[var(--border)] hover:bg-[var(--hover)] transition-colors"
+                >
+                  Отмена
+                </button>
+              </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Стек</label>
-            <select
-              value={stack}
-              onChange={(e) => setStack(e.target.value as StudioStack)}
-              className="w-full border border-[var(--border)] bg-[var(--input-bg)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {STACK_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex gap-3 pt-1">
-            <button
-              type="submit"
-              disabled={createMutation.isPending || !name.trim()}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors"
-            >
-              {createMutation.isPending ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <Cpu size={16} />
+              {createMutation.isError && (
+                <p className="text-red-500 text-sm">
+                  Ошибка при создании проекта. Попробуйте ещё раз.
+                </p>
               )}
-              Создать
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowForm(false)}
-              className="px-5 py-2 rounded-lg text-sm border border-[var(--border)] hover:bg-[var(--hover)] transition-colors"
-            >
-              Отмена
-            </button>
-          </div>
+            </form>
+          ) : (
+            <form onSubmit={handleCloneSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">URL сайта</label>
+                <input
+                  type="text"
+                  value={cloneUrl}
+                  onChange={(e) => { setCloneUrl(e.target.value); setCloneUrlError(''); }}
+                  placeholder="https://example.com"
+                  className={`w-full border rounded-lg px-3 py-2 text-sm bg-[var(--input-bg)] focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    cloneUrlError ? 'border-red-500' : 'border-[var(--border)]'
+                  }`}
+                  required
+                />
+                {cloneUrlError && (
+                  <p className="text-red-500 text-xs mt-1">{cloneUrlError}</p>
+                )}
+                <p className="text-xs text-[var(--text-secondary)] mt-1">
+                  AI проанализирует сайт и создаст похожий проект
+                </p>
+              </div>
 
-          {createMutation.isError && (
-            <p className="text-red-500 text-sm">
-              Ошибка при создании проекта. Попробуйте ещё раз.
-            </p>
+              <div>
+                <label className="block text-sm font-medium mb-1">Название проекта (опционально)</label>
+                <input
+                  type="text"
+                  value={cloneName}
+                  onChange={(e) => setCloneName(e.target.value)}
+                  placeholder="Клон сайта"
+                  className="w-full border border-[var(--border)] bg-[var(--input-bg)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-1">
+                <button
+                  type="submit"
+                  disabled={cloneMutation.isPending || !cloneUrl.trim()}
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors"
+                >
+                  {cloneMutation.isPending ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <Link size={16} />
+                  )}
+                  Клонировать
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowForm(false)}
+                  className="px-5 py-2 rounded-lg text-sm border border-[var(--border)] hover:bg-[var(--hover)] transition-colors"
+                >
+                  Отмена
+                </button>
+              </div>
+
+              {cloneMutation.isError && (
+                <p className="text-red-500 text-sm">
+                  Ошибка. Проверьте URL и попробуйте снова.
+                </p>
+              )}
+            </form>
           )}
-        </form>
+        </div>
       )}
 
       {isLoading ? (
@@ -195,10 +328,21 @@ export default function StudioPage() {
                     <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--hover)] text-[var(--text-secondary)]">
                       {STATUS_LABEL[project.status] ?? project.status}
                     </span>
+                    {project.entry_mode === 'clone_url' && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 flex items-center gap-1">
+                        <Link size={10} />
+                        Клон
+                      </span>
+                    )}
                   </div>
                   {project.description && (
                     <p className="text-sm text-[var(--text-secondary)] truncate mt-0.5">
                       {project.description}
+                    </p>
+                  )}
+                  {project.target_url && (
+                    <p className="text-xs text-[var(--text-secondary)] truncate mt-0.5">
+                      {project.target_url}
                     </p>
                   )}
                 </div>
