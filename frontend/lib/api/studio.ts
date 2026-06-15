@@ -83,4 +83,16 @@ export const studioApi = {
       method: 'POST',
       body: JSON.stringify({ answers }),
     }),
+
+  pause: (id: string, reason?: string) =>
+    request<{ status: string }>(`/studio/projects/${id}/pause/`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    }),
+
+  resume: (id: string, data: { action: 'continue' | 'with_hint' | 'skip_step'; hint?: string }) =>
+    request<{ status: string }>(`/studio/projects/${id}/resume/`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };
