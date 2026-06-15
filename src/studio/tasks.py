@@ -50,12 +50,15 @@ def _existing_files(project):
 
 @shared_task(bind=True, max_retries=3, queue=QUEUE)
 def agent_interview(self, project_id):
+    import logging
+    log = logging.getLogger('studio.tasks')
     project = StudioProject.objects.get(id=project_id)
     from .agents.interviewer import InterviewerAgent
     try:
         InterviewerAgent(project).run()
         publish_event(project_id, {'agent': 'interviewer', 'level': 'info', 'text': 'Вопросы готовы'})
     except Exception as e:
+        log.error('agent_interview FAILED project=%s: %s', project_id, repr(e), exc_info=True)
         raise self.retry(exc=e, countdown=60)
 
 
