@@ -1,8 +1,11 @@
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from ..models import StudioProject, StudioPipelineState
-from ..serializers import StudioProjectSerializer, StudioProjectCreateSerializer
+from ..models import StudioProject, StudioPipelineState, StudioTemplate
+from ..serializers import (
+    StudioProjectSerializer, StudioProjectCreateSerializer,
+    StudioTemplateSerializer,
+)
 
 
 class StudioProjectListCreateView(generics.ListCreateAPIView):
@@ -52,6 +55,12 @@ class InterviewView(APIView):
         from ..tasks import agent_analyze
         agent_analyze.delay(str(project.id))
         return Response({'status': 'planning'}, status=status.HTTP_202_ACCEPTED)
+
+
+class TemplateListView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = StudioTemplateSerializer
+    queryset = StudioTemplate.objects.all()
 
 
 class CloneView(APIView):

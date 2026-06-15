@@ -107,3 +107,23 @@ class StudioVersion(models.Model):
 
     def __str__(self):
         return f'v{self.step_index} ({self.git_sha[:7] if self.git_sha else "—"})'
+
+
+class StudioTemplate(models.Model):
+    STACK_CHOICES = [
+        ('nextjs', 'Next.js'), ('react', 'React'), ('vue', 'Vue'), ('html', 'HTML'),
+    ]
+
+    slug = models.SlugField(unique=True)
+    name = models.CharField(max_length=120)
+    description = models.TextField()
+    stack = models.CharField(max_length=10, choices=STACK_CHOICES, default='nextjs')
+    preview_image = models.CharField(max_length=300, blank=True)
+    seed_prompt = models.TextField()
+    order = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ['order']
+
+    def __str__(self):
+        return self.name

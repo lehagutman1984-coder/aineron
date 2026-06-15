@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import StudioProject, StudioFile, StudioPipelineState, StudioVersion
+from .models import StudioProject, StudioFile, StudioPipelineState, StudioVersion, StudioTemplate
 
 
 class StudioProjectSerializer(serializers.ModelSerializer):
@@ -42,4 +42,10 @@ class PipelineStateSerializer(serializers.ModelSerializer):
 class StudioVersionSerializer(serializers.ModelSerializer):
     class Meta:
         model = StudioVersion
+        fields = '__all__'
+
+
+class StudioTemplateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StudioTemplate
         fields = '__all__'
