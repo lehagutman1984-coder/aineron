@@ -41,9 +41,7 @@ class InterviewView(APIView):
         questions = project.interview_data.get('questions')
         if not questions:
             from ..tasks import agent_interview
-            agent_interview.apply(args=[str(project.id)])
-            project.refresh_from_db()
-            questions = project.interview_data.get('questions', [])
+            agent_interview.delay(str(project.id))
         return Response({'questions': questions})
 
     def post(self, request, id):
