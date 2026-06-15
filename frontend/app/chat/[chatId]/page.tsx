@@ -9,6 +9,7 @@ import { MarkdownContent } from "@/components/chat/MarkdownContent";
 import { AttachmentPreview, type AttachmentState } from "@/components/chat/AttachmentPreview";
 import { PromptPicker } from "@/components/chat/PromptPicker";
 import { VoiceButton } from "@/components/chat/VoiceButton";
+import { MediaSettingsPanel } from "@/components/chat/MediaSettingsPanel";
 import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, uploadFile, synthesizeSpeech, APIError } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 import type { WebMessage, ChatDetail, UiSection } from "@/lib/api/types";
@@ -16,7 +17,7 @@ import type { WebMessage, ChatDetail, UiSection } from "@/lib/api/types";
 const POLL_INTERVAL = 800;
 
 const detectHTML = (s: string) =>
-  /<(pre|code|div|p|ul|ol|h[1-6]|blockquote|table|img|br)\b/i.test(s);
+  /<(pre|code|div|p|ul|ol|h[1-6]|blockquote|table|img|br|video)\b/i.test(s);
 
 export default function ChatPage() {
   const { chatId } = useParams<{ chatId: string }>();
@@ -1216,140 +1217,4 @@ function getStarterPrompts(network: { provider: string; category: { name: string
   ];
 }
 
-/* ─── Media settings panel ───────────────────────────────── */
-function MediaSettingsPanel({
-  sections,
-  values,
-  onChange,
-}: {
-  sections: UiSection[];
-  values: Record<string, unknown>;
-  onChange: (v: Record<string, unknown>) => void;
-}) {
-  const set = (name: string, value: unknown) => onChange({ ...values, [name]: value });
-
-  return (
-    <div
-      className="mt-2 rounded-[12px] border p-3"
-      style={{
-        background: "var(--chat-surface)",
-        borderColor: "var(--chat-header-border)",
-      }}
-    >
-      {sections.map((section) => (
-        <div key={section.title}>
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[rgba(13,13,13,0.38)] dark:text-[rgba(236,236,236,0.35)]">
-            {section.title}
-          </p>
-          <div className="flex flex-wrap gap-3">
-            {section.fields.map((field) => {
-              const val = values[field.name];
-
-              if (field.type === "select") {
-                return (
-                  <div key={field.name} className="flex flex-col gap-1">
-                    <label className="text-[11px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">
-                      {field.label}
-                    </label>
-                    <select
-                      value={String(val ?? "")}
-                      onChange={(e) => set(field.name, e.target.value)}
-                      className="rounded-[8px] border px-2 py-1 text-[12px] font-medium focus:outline-none"
-                      style={{
-                        background: "var(--chat-bg)",
-                        borderColor: "var(--chat-header-border)",
-                        color: "var(--chat-text)",
-                        minWidth: "120px",
-                      }}
-                    >
-                      {(field.options ?? []).map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                          {opt.extra_cost ? ` (+${opt.extra_cost})` : ""}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                );
-              }
-
-              if (field.type === "checkbox") {
-                const checked = Boolean(val);
-                return (
-                  <div key={field.name} className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={checked}
-                      onClick={() => set(field.name, !checked)}
-                      className={[
-                        "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-none",
-                        checked ? "bg-[#0a7cff]" : "bg-[rgba(13,13,13,0.15)] dark:bg-[rgba(255,255,255,0.15)]",
-                      ].join(" ")}
-                    >
-                      <span
-                        className={[
-                          "inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform",
-                          checked ? "translate-x-4" : "translate-x-0.5",
-                        ].join(" ")}
-                      />
-                    </button>
-                    <label className="cursor-pointer text-[12px] text-[rgba(13,13,13,0.65)] dark:text-[rgba(236,236,236,0.6)]" onClick={() => set(field.name, !checked)}>
-                      {field.label}
-                    </label>
-                  </div>
-                );
-              }
-
-              if (field.type === "slider") {
-                return (
-                  <div key={field.name} className="flex flex-col gap-1" style={{ minWidth: "160px" }}>
-                    <label className="flex items-center justify-between text-[11px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">
-                      <span>{field.label}</span>
-                      <span className="font-medium text-[#0d0d0d] dark:text-[#ececec]">{String(val ?? field.min ?? 0)}</span>
-                    </label>
-                    <input
-                      type="range"
-                      min={field.min ?? 0}
-                      max={field.max ?? 100}
-                      step={field.step ?? 1}
-                      value={Number(val ?? field.min ?? 0)}
-                      onChange={(e) => set(field.name, Number(e.target.value))}
-                      className="w-full accent-[#0a7cff]"
-                    />
-                  </div>
-                );
-              }
-
-              if (field.type === "text" || field.type === "textarea") {
-                return (
-                  <div key={field.name} className="flex w-full flex-col gap-1">
-                    <label className="text-[11px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">
-                      {field.label}
-                    </label>
-                    <input
-                      type="text"
-                      value={String(val ?? "")}
-                      maxLength={field.max_length}
-                      onChange={(e) => set(field.name, e.target.value)}
-                      placeholder={field.label}
-                      className="rounded-[8px] border px-2 py-1 text-[12px] focus:outline-none"
-                      style={{
-                        background: "var(--chat-bg)",
-                        borderColor: "var(--chat-header-border)",
-                        color: "var(--chat-text)",
-                        width: "100%",
-                      }}
-                    />
-                  </div>
-                );
-              }
-
-              return null;
-            })}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
+// MediaSettingsPanel is imported from @/components/chat/MediaSettingsPanel

@@ -52,8 +52,19 @@ function FileCard({
         style={{ aspectRatio: "1 / 1" }}
       >
         {file.media_type === "video" ? (
-          <div className="flex h-full w-full items-center justify-center">
-            <Video size={40} className="text-[rgba(13,13,13,0.25)]" />
+          <div className="relative h-full w-full bg-black">
+            {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+            <video
+              src={file.url}
+              className="h-full w-full object-cover"
+              preload="metadata"
+              muted
+            />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-black/50">
+                <Video size={16} className="text-white" />
+              </div>
+            </div>
           </div>
         ) : (
           // eslint-disable-next-line @next/next/no-img-element

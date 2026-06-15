@@ -1,19 +1,22 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Send } from "lucide-react";
+import { Send, Settings2, ChevronDown } from "lucide-react";
 import { createChat } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 import { APIError } from "@/lib/api/client";
+import { MediaSettingsPanel } from "@/components/chat/MediaSettingsPanel";
+import type { ModelConfigJson } from "@/lib/api/types";
 
 interface Props {
   networkSlug: string;
   isMedia: boolean;
+  configJson?: ModelConfigJson | null;
 }
 
-export function ChatStartForm({ networkSlug, isMedia }: Props) {
+export function ChatStartForm({ networkSlug, isMedia, configJson }: Props) {
   const router = useRouter();
   const qc = useQueryClient();
   const { user, setStars } = useAuthStore();
@@ -21,6 +24,17 @@ export function ChatStartForm({ networkSlug, isMedia }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const hasSettings = Boolean(configJson?.ui_settings?.sections?.length);
+  const [showSettings, setShowSettings] = useState(hasSettings);
+  const [mediaSettings, setMediaSettings] = useState<Record<string, unknown>>({});
+
+  // Инициализируем настройки из api_defaults при загрузке
+  useEffect(() => {
+    if (configJson?.api_defaults) {
+      setMediaSettings(configJson.api_defaults as Record<string, unknown>);
+    }
+  }, [configJson]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +48,11 @@ export function ChatStartForm({ networkSlug, isMedia }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const res = await createChat({ network_slug: networkSlug, message: text.trim() });
+      const res = await createChat({
+        network_slug: networkSlug,
+        message: text.trim(),
+        settings: hasSettings ? mediaSettings : undefined,
+      });
       setStars(res.new_balance);
       qc.invalidateQueries({ queryKey: ["chats"] });
       router.push(`/chat/${res.chat_id}/`);
@@ -56,7 +74,33 @@ export function ChatStartForm({ networkSlug, isMedia }: Props) {
   };
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+      {/* Settings panel for media models */}
+      {hasSettings && (
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowSettings((v) => !v)}
+            className="mb-2 flex items-center gap-1.5 text-[12px] font-medium text-[rgba(13,13,13,0.5)] hover:text-[#0d0d0d] transition-colors"
+          >
+            <Settings2 size={13} />
+            Настройки генерации
+            <ChevronDown
+              size={12}
+              className={showSettings ? "rotate-180 transition-transform" : "transition-transform"}
+            />
+          </button>
+          {showSettings && (
+            <MediaSettingsPanel
+              sections={configJson!.ui_settings!.sections}
+              values={mediaSettings}
+              onChange={setMediaSettings}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Prompt input */}
       <div className="relative">
         <textarea
           ref={textareaRef}
@@ -65,7 +109,7 @@ export function ChatStartForm({ networkSlug, isMedia }: Props) {
           onKeyDown={handleKeyDown}
           placeholder={
             isMedia
-              ? "Опишите изображение подробно..."
+              ? "Опишите, что нужно сгенерировать..."
               : "Введите сообщение... (Enter — отправить, Shift+Enter — новая строка)"
           }
           rows={4}
@@ -79,11 +123,12 @@ export function ChatStartForm({ networkSlug, isMedia }: Props) {
           <Send size={15} />
         </button>
       </div>
+
       {error && (
-        <p className="mt-2 text-[13px] text-[#e74c3c]">{error}</p>
+        <p className="text-[13px] text-[#e74c3c]">{error}</p>
       )}
       {!user && (
-        <p className="mt-2 text-[13px] text-[rgba(13,13,13,0.5)]">
+        <p className="text-[13px] text-[rgba(13,13,13,0.5)]">
           Нужна{" "}
           <a href="/login/" className="text-[#0a7cff] hover:underline">
             авторизация

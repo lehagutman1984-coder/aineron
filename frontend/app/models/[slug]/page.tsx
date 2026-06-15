@@ -185,7 +185,11 @@ export default async function ModelDetailPage({ params }: Props) {
           <h2 className="mb-4 text-[16px] font-semibold text-[#0d0d0d]">
             {isMedia ? "Опишите, что нужно сгенерировать" : "Начать диалог"}
           </h2>
-          <ChatStartForm networkSlug={network.slug} isMedia={isMedia} />
+          <ChatStartForm
+            networkSlug={network.slug}
+            isMedia={isMedia}
+            configJson={network.config_json as import("@/lib/api/types").ModelConfigJson | null}
+          />
         </div>
 
         {/* FAQ */}

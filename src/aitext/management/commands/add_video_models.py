@@ -7,9 +7,10 @@ from aitext.models import Category, NeuralNetwork
 
 
 VIDEO_CONFIG = {
+    # Sora 2 — базовая модель: только 720p, duration 4/8/12/16/20 сек
     'sora2': {
         "name": "Sora 2",
-        "api_defaults": {"duration": 5, "aspect_ratio": "16:9"},
+        "api_defaults": {"duration": 4, "aspect_ratio": "16:9"},
         "ui_settings": {
             "sections": [{
                 "title": "Настройки видео",
@@ -30,9 +31,11 @@ VIDEO_CONFIG = {
                         "label": "Длительность",
                         "extra_cost": 0,
                         "options": [
-                            {"value": "5", "label": "5 секунд", "extra_cost": 0},
-                            {"value": "10", "label": "10 секунд", "extra_cost": 10},
-                            {"value": "20", "label": "20 секунд", "extra_cost": 25},
+                            {"value": "4", "label": "4 секунды", "extra_cost": 0},
+                            {"value": "8", "label": "8 секунд", "extra_cost": 5},
+                            {"value": "12", "label": "12 секунд", "extra_cost": 15},
+                            {"value": "16", "label": "16 секунд", "extra_cost": 25},
+                            {"value": "20", "label": "20 секунд", "extra_cost": 35},
                         ]
                     },
                 ]
@@ -42,12 +45,62 @@ VIDEO_CONFIG = {
         "metadata": {"output_type": "video", "video_api": "apimart"},
     },
 
+    # Sora 2 Pro — Pro: выбор разрешения (720p / 1024p / 1080p)
+    'sora2_pro': {
+        "name": "Sora 2 Pro",
+        "api_defaults": {"duration": 4, "aspect_ratio": "16:9", "resolution": "720p"},
+        "ui_settings": {
+            "sections": [{
+                "title": "Настройки видео",
+                "fields": [
+                    {
+                        "name": "aspect_ratio",
+                        "type": "select",
+                        "label": "Формат",
+                        "extra_cost": 0,
+                        "options": [
+                            {"value": "16:9", "label": "16:9 (горизонталь)", "extra_cost": 0},
+                            {"value": "9:16", "label": "9:16 (вертикаль)", "extra_cost": 0},
+                        ]
+                    },
+                    {
+                        "name": "duration",
+                        "type": "select",
+                        "label": "Длительность",
+                        "extra_cost": 0,
+                        "options": [
+                            {"value": "4", "label": "4 секунды", "extra_cost": 0},
+                            {"value": "8", "label": "8 секунд", "extra_cost": 5},
+                            {"value": "12", "label": "12 секунд", "extra_cost": 15},
+                            {"value": "16", "label": "16 секунд", "extra_cost": 25},
+                            {"value": "20", "label": "20 секунд", "extra_cost": 35},
+                        ]
+                    },
+                    {
+                        "name": "resolution",
+                        "type": "select",
+                        "label": "Разрешение",
+                        "extra_cost": 0,
+                        "options": [
+                            {"value": "720p", "label": "720p (HD)", "extra_cost": 0},
+                            {"value": "1024p", "label": "1024p", "extra_cost": 10},
+                            {"value": "1080p", "label": "1080p (Full HD)", "extra_cost": 15},
+                        ]
+                    },
+                ]
+            }]
+        },
+        "constraints": {},
+        "metadata": {"output_type": "video", "video_api": "apimart"},
+    },
+
+    # Veo 3.1 Fast — длительность фиксирована 8 сек, resolution 720p/1080p/4k
     'veo3_fast': {
         "name": "Veo 3.1 Fast",
         "api_defaults": {"duration": 8, "aspect_ratio": "16:9", "resolution": "720p"},
         "ui_settings": {
             "sections": [{
-                "title": "Настройки видео",
+                "title": "Настройки видео (8 сек, фиксировано)",
                 "fields": [
                     {
                         "name": "aspect_ratio",
@@ -74,16 +127,16 @@ VIDEO_CONFIG = {
             }]
         },
         "constraints": {},
-        # duration фиксирован на 8 сек по API
         "metadata": {"output_type": "video", "video_api": "apimart"},
     },
 
+    # Veo 3.1 Quality — те же опции, другое качество по умолчанию
     'veo3_quality': {
         "name": "Veo 3.1",
         "api_defaults": {"duration": 8, "aspect_ratio": "16:9", "resolution": "1080p"},
         "ui_settings": {
             "sections": [{
-                "title": "Настройки видео",
+                "title": "Настройки видео (8 сек, фиксировано)",
                 "fields": [
                     {
                         "name": "aspect_ratio",
@@ -101,6 +154,7 @@ VIDEO_CONFIG = {
                         "label": "Качество",
                         "extra_cost": 0,
                         "options": [
+                            {"value": "720p", "label": "720p (HD)", "extra_cost": 0},
                             {"value": "1080p", "label": "1080p (Full HD)", "extra_cost": 0},
                             {"value": "4k", "label": "4K (Ultra HD)", "extra_cost": 20},
                         ]
@@ -189,8 +243,8 @@ VIDEO_MODELS = [
         model_name='sora-2-pro',
         cost_per_message=100,
         order=2,
-        description='Продвинутая версия Sora 2 от OpenAI — максимальное качество и детализация.',
-        config_key='sora2',
+        description='Продвинутая версия Sora 2 от OpenAI — выбор разрешения до 1080p, максимальная детализация.',
+        config_key='sora2_pro',
         is_popular=False,
     ),
     dict(
