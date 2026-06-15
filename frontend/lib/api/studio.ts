@@ -14,6 +14,8 @@ export interface StudioProject {
   target_url: string;
   target_stack: StudioStack;
   stars_spent: number;
+  sandbox_container_id: string;
+  preview_port: number | null;
   created_at: string;
 }
 
