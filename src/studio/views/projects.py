@@ -39,10 +39,12 @@ class InterviewView(APIView):
     def get(self, request, id):
         project = StudioProject.objects.get(id=id, user=request.user)
         questions = project.interview_data.get('questions')
-        if not questions:
+        if not questions and project.status == 'draft':
+            project.status = 'interviewing'
+            project.save(update_fields=['status'])
             from ..tasks import agent_interview
             agent_interview.delay(str(project.id))
-        return Response({'questions': questions})
+        return Response({'questions': questions, 'status': project.status})
 
     def post(self, request, id):
         project = StudioProject.objects.get(id=id, user=request.user)

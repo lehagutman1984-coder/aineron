@@ -13,6 +13,8 @@ export default function InterviewPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['studio-interview', id],
     queryFn: () => studioApi.interview(id),
+    refetchInterval: (query) =>
+      (query.state.data?.questions?.length ?? 0) === 0 ? 3000 : false,
   });
 
   const submitMutation = useMutation({
@@ -38,8 +40,11 @@ export default function InterviewPage() {
 
   if (questions.length === 0) {
     return (
-      <div className="flex items-center justify-center min-h-screen text-sm text-[var(--text-secondary)]">
-        Вопросы не найдены. Попробуйте обновить страницу.
+      <div className="flex flex-col items-center justify-center min-h-screen gap-3">
+        <Loader2 size={24} className="animate-spin text-blue-500" />
+        <p className="text-sm text-[var(--text-secondary)]">
+          Агент готовит вопросы...
+        </p>
       </div>
     );
   }
