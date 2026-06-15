@@ -7,4 +7,4 @@ class StudioConfig(AppConfig):
     verbose_name = 'Vibe-Coding Studio'
 
     def ready(self):
-        pass
+        from . import signals  # noqa: F401
