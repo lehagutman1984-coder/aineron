@@ -110,6 +110,24 @@ services:
     depends_on:
       - web
 
+  celery_studio:
+    build: .
+    container_name: neiro_celery_studio
+    restart: unless-stopped
+    env_file:
+      - .env
+    command: celery -A config worker --loglevel=info --pool=gevent --concurrency=50 -Q studio_queue
+    volumes:
+      - ./src:/app
+      - /var/run/docker.sock:/var/run/docker.sock
+    ulimits:
+      nofile: 65535
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   nginx:
     image: nginx:1.25-alpine
     container_name: neiro_nginx
@@ -125,8 +143,16 @@ services:
     depends_on:
       - web
       - frontend
+    networks:
+      - default
+      - aineron_sandbox_net
 
 volumes:
   postgres_data:
   redis_data:
   static_volume:
+
+networks:
+  aineron_sandbox_net:
+    name: aineron_sandbox_net
+    internal: true

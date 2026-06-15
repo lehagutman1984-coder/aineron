@@ -267,6 +267,7 @@ CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+CELERY_TASK_ROUTES = {'studio.tasks.*': {'queue': 'studio_queue'}}
 
 
 # ========== API КЛЮЧИ ==========
