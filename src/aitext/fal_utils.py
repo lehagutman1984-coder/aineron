@@ -741,7 +741,8 @@ def generate_video_apimart(network, user_msg, message, user_settings=None):
 
     body = {"model": model_id, "prompt": prompt}
     for param in ['duration', 'aspect_ratio', 'resolution', 'audio', 'mode',
-                  'negative_prompt', 'generation_type', 'enable_gif', 'official_fallback']:
+                  'negative_prompt', 'generation_type', 'enable_gif', 'official_fallback',
+                  'size', 'generate_audio', 'camerafixed']:
         if param in final_args and final_args[param] is not None:
             body[param] = final_args[param]
 
