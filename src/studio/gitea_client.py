@@ -1,0 +1,69 @@
+import base64
+import requests
+from django.conf import settings
+
+
+def _api(path):
+    return f"{settings.STUDIO_GITEA_URL}/api/v1{path}"
+
+
+def _headers():
+    return {
+        'Authorization': f'token {settings.STUDIO_GITEA_ADMIN_TOKEN}',
+        'Content-Type': 'application/json',
+    }
+
+
+def create_user(username, email, password) -> dict:
+    r = requests.post(_api('/admin/users'), headers=_headers(), json={
+        'username': username,
+        'email': email,
+        'password': password,
+        'must_change_password': False,
+        'send_notify': False,
+    })
+    return r.json()
+
+
+def create_repo(username, repo, private=True) -> dict:
+    r = requests.post(_api(f'/admin/users/{username}/repos'), headers=_headers(), json={
+        'name': repo,
+        'private': private,
+        'auto_init': True,
+        'default_branch': 'main',
+    })
+    return r.json()
+
+
+def put_file(owner, repo, path, content, message, branch='main') -> dict:
+    """Create or update a file in a Gitea repo. Fetches current sha for updates."""
+    enc = base64.b64encode(content.encode()).decode()
+    url = _api(f'/repos/{owner}/{repo}/contents/{path}')
+    get = requests.get(url, headers=_headers(), params={'ref': branch})
+    payload = {'content': enc, 'message': message, 'branch': branch}
+    if get.status_code == 200:
+        payload['sha'] = get.json().get('sha')
+        r = requests.put(url, headers=_headers(), json=payload)
+    else:
+        r = requests.post(url, headers=_headers(), json=payload)
+    return r.json()
+
+
+def get_commits(owner, repo, limit=20) -> list:
+    r = requests.get(
+        _api(f'/repos/{owner}/{repo}/commits'),
+        headers=_headers(),
+        params={'limit': limit},
+    )
+    return r.json() if r.status_code == 200 else []
+
+
+def get_file_content(owner, repo, path, ref='main') -> str:
+    r = requests.get(
+        _api(f'/repos/{owner}/{repo}/contents/{path}'),
+        headers=_headers(),
+        params={'ref': ref},
+    )
+    if r.status_code == 200:
+        return base64.b64decode(r.json()['content']).decode()
+    return ''
