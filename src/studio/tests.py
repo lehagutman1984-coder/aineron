@@ -148,6 +148,40 @@ class BillingChargeOrderTest(APITestCase):
         mock_charge.assert_not_called()
 
 
+class InsufficientStarsTest(APITestCase):
+    """Commit 3 — InsufficientStars pauses pipeline; no charge on empty wallet."""
+
+    def _make_project(self):
+        project = MagicMock()
+        project.id = 'test-uuid'
+        project.interview_data = {}
+        project.sandbox_container_id = None
+        project.commits_md_content = '## Step 0\ndo something'
+        state = MagicMock()
+        state.iteration_count = 0
+        state.fix_plan = None
+        state.pause_reason = ''
+        project.pipeline = state
+        return project
+
+    @patch('studio.tasks.charge')
+    @patch('studio.tasks.can_afford', return_value=False)
+    @patch('studio.tasks.publish_event')
+    @patch('studio.tasks.StudioProject')
+    def test_coder_iteration_no_funds_sets_paused(self, MockQS, mock_pub, mock_afford, mock_charge):
+        from studio.tasks import coder_iteration
+        project = self._make_project()
+        MockQS.objects.get.return_value = project
+
+        with patch('studio.tasks.CoderAgent') as MockCoder:
+            MockCoder.return_value.run.return_value = {}
+            coder_iteration(str(project.id), 0)
+
+        mock_charge.assert_not_called()
+        self.assertEqual(project.status, 'paused')
+        self.assertEqual(project.pipeline.status, 'paused_on_loop')
+
+
 class SandboxFailureTest(APITestCase):
     """Commit 4 — sandbox setup failure sets project.status='failed', not leaves it as 'coding'."""
 

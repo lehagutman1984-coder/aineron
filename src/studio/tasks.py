@@ -9,6 +9,13 @@ from .billing import STAR_RATE, AGENT_BUDGET, can_afford, charge, refund
 QUEUE = 'studio_queue'
 
 
+class InsufficientStars(Exception):
+    """Raised when a user can't afford an agent run. Pauses the pipeline."""
+    def __init__(self, needed):
+        self.needed = needed
+        super().__init__(f'Недостаточно звёзд: нужно {needed}')
+
+
 def _agent_cost(agent_name: str) -> int:
     tier, budget = AGENT_BUDGET.get(agent_name, ('fast', 2000))
     return max(1, int((budget / 1000.0) * STAR_RATE[tier]))
@@ -18,8 +25,9 @@ def _billing_charge(project, agent_name: str, step_index: int):
     """Charge stars for one agent run, emit SSE billing event, update billing_log."""
     cost = _agent_cost(agent_name)
     user = project.user
+    user.refresh_from_db(fields=['pages_count'])
     if not can_afford(user, cost):
-        return 0
+        raise InsufficientStars(cost)
     charge(user, cost, project)
     publish_event(str(project.id), {
         'agent': agent_name, 'level': 'billing',
@@ -29,6 +37,19 @@ def _billing_charge(project, agent_name: str, step_index: int):
     log.append({'agent': agent_name, 'stars': cost, 'step': step_index})
     project.save(update_fields=['interview_data'])
     return cost
+
+
+def _pause_no_funds(project, needed):
+    state = project.pipeline
+    state.status = 'paused_on_loop'
+    state.pause_reason = f'Недостаточно звёзд для продолжения (нужно ещё ~{needed})'
+    state.save(update_fields=['status', 'pause_reason'])
+    project.status = 'paused'
+    project.save(update_fields=['status'])
+    publish_event(str(project.id), {
+        'agent': 'system', 'level': 'error',
+        'text': state.pause_reason, 'type': 'paused',
+    })
 
 
 def _set_status(project, status):
@@ -80,6 +101,9 @@ def agent_analyze(self, project_id):
         publish_event(project_id, {'agent': 'analyst', 'level': 'info', 'text': 'PROJECT.md готов'})
         agent_plan.delay(project_id)
         _billing_charge(project, 'analyst', 0)
+    except InsufficientStars as e:
+        _pause_no_funds(project, e.needed)
+        return
     except Exception as e:
         raise self.retry(exc=e, countdown=60)
 
@@ -102,6 +126,9 @@ def agent_plan(self, project_id):
             'text': f'COMMITS.md готов: {steps} шагов',
         })
         _billing_charge(project, 'planner', 0)
+    except InsufficientStars as e:
+        _pause_no_funds(project, e.needed)
+        return
     except Exception as e:
         raise self.retry(exc=e, countdown=60)
 
@@ -199,6 +226,9 @@ def coder_iteration(self, project_id, step_index):
             merge_reports.s(project_id, step_index),
         ).apply_async()
         _billing_charge(project, 'coder', step_index)
+    except InsufficientStars as e:
+        _pause_no_funds(project, e.needed)
+        return
     except Exception as e:
         raise self.retry(exc=e, countdown=60)
 
@@ -245,8 +275,12 @@ def merge_reports(results, project_id, step_index):
     state.save(update_fields=['review_report', 'test_report'])
     # Charge reviewer + tester here (not in parallel chord headers) to avoid
     # concurrent read-modify-write race on interview_data['billing_log'].
-    _billing_charge(project, 'reviewer', step_index)
-    _billing_charge(project, 'tester', step_index)
+    try:
+        _billing_charge(project, 'reviewer', step_index)
+        _billing_charge(project, 'tester', step_index)
+    except InsufficientStars as e:
+        _pause_no_funds(project, e.needed)
+        return
     if review.get('passed') and test.get('passed'):
         publish_event(project_id, {
             'agent': 'system', 'level': 'success',
@@ -260,7 +294,11 @@ def merge_reports(results, project_id, step_index):
             from .agents.fixer import FixerAgent
             state.fix_plan = FixerAgent(project).run(review, test)
             state.save(update_fields=['fix_plan'])
-            _billing_charge(project, 'fixer', step_index)
+            try:
+                _billing_charge(project, 'fixer', step_index)
+            except InsufficientStars as e:
+                _pause_no_funds(project, e.needed)
+                return
             publish_event(project_id, {
                 'agent': 'fixer', 'level': 'warning',
                 'text': 'Готовлю исправления',
