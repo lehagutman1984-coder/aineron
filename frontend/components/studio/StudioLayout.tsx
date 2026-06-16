@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Play, Pause, Files, Code2, Monitor, CheckCircle, Download, ArrowLeft } from 'lucide-react';
+import { Play, Pause, Files, Code2, Monitor, CheckCircle, Download, ArrowLeft, Rocket, Share2, HelpCircle } from 'lucide-react';
 import Link from 'next/link';
 import { FileTree } from './FileTree';
 import { CodeViewer } from './CodeViewer';
@@ -13,6 +13,7 @@ import { GitHistory } from './GitHistory';
 import { SandboxStatusBadge } from './SandboxStatusBadge';
 import { StepDetailDrawer } from './StepDetailDrawer';
 import { DiffViewer } from './DiffViewer';
+import { ShortcutsModal } from './ShortcutsModal';
 import type { StudioProject, StudioFileNode, StudioFileDetail, PipelineState } from '@/lib/api/studio';
 import { studioApi } from '@/lib/api/studio';
 
@@ -39,6 +40,8 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
   const [hintText, setHintText] = useState('');
   const [resuming, setResuming] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [deploying, setDeploying] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   const AGENT_LABELS: Record<string, string> = {
     interviewer: 'Интервью', analyst: 'Анализ', planner: 'План',
@@ -97,6 +100,33 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
     onRefresh();
   };
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && e.key === '`') { e.preventDefault(); setLogOpen((v) => !v); }
+      else if (mod && e.key === 'Enter' && pipeline.status === 'paused_on_loop') { e.preventDefault(); doResume('continue'); }
+      else if (e.key === 'Escape') { setShortcutsOpen(false); setDrawerAgent(null); setChatOpen(false); }
+      else if (e.key === '?' && !mod) { setShortcutsOpen(true); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pipeline.status]);
+
+  const handleDeploy = async () => {
+    setDeploying(true);
+    try {
+      await studioApi.deploy(project.id);
+      onRefresh();
+    } finally {
+      setDeploying(false);
+    }
+  };
+
+  const handleShare = () => {
+    navigator.clipboard.writeText(window.location.href);
+  };
+
   const doResume = async (action: 'continue' | 'with_hint' | 'skip_step', hint?: string) => {
     setResuming(true);
     try {
@@ -151,6 +181,9 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
           onStepClick={(key) => setDrawerAgent(key)}
         />
         <div className="ml-auto flex items-center gap-2">
+          <button onClick={() => setShortcutsOpen(true)} title="Горячие клавиши" className="text-[var(--text-secondary)] hover:text-[var(--text)] p-1.5">
+            <HelpCircle size={16} />
+          </button>
           {!isCompleted && !isRunning && !isPaused && (
             <button
               onClick={handleRun}
@@ -180,6 +213,24 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
               Скачать ZIP
             </a>
           )}
+          {isCompleted && (
+            <button
+              onClick={handleDeploy}
+              disabled={deploying}
+              className="flex items-center gap-1.5 border border-[var(--border)] hover:bg-[var(--hover)] disabled:opacity-50 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+            >
+              <Rocket size={14} />
+              {deploying ? 'Публикуем...' : 'Развернуть на Vercel'}
+            </button>
+          )}
+          <button
+            onClick={handleShare}
+            title="Скопировать ссылку"
+            className="flex items-center gap-1.5 border border-[var(--border)] hover:bg-[var(--hover)] px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+          >
+            <Share2 size={14} />
+            Поделиться
+          </button>
         </div>
       </div>
 
@@ -359,6 +410,8 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
           onClose={() => setDrawerAgent(null)}
         />
       )}
+
+      {shortcutsOpen && <ShortcutsModal onClose={() => setShortcutsOpen(false)} />}
     </div>
   );
 }
