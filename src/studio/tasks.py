@@ -476,10 +476,21 @@ def next_step(project_id, step_index):
     nxt = step_index + 1
     if nxt >= total:
         release_reserve(project)
+        # Kill and clear the sandbox so the frontend stops loading a dead preview
+        if project.sandbox_container_id:
+            try:
+                sandbox.kill_sandbox(project.sandbox_container_id)
+            except Exception:
+                pass
         project.status = 'completed'
-        project.save(update_fields=['status'])
-        project.pipeline.status = 'completed'
-        project.pipeline.save(update_fields=['status'])
+        project.sandbox_container_id = ''
+        project.save(update_fields=['status', 'sandbox_container_id'])
+        state = project.pipeline
+        state.status = 'completed'
+        state.pause_reason = ''
+        state.resume_hint = ''
+        state.pause_requested = False
+        state.save(update_fields=['status', 'pause_reason', 'resume_hint', 'pause_requested'])
         publish_event(project_id, {
             'agent': 'system', 'level': 'success',
             'text': 'Проект завершён',
@@ -646,7 +657,12 @@ def reap_stale_sandboxes():
         try:
             created = datetime.datetime.fromisoformat(created_str[:19])
             if created < cutoff:
+                pid = container.labels.get('studio_project')
                 container.remove(force=True)
+                if pid:
+                    StudioProject.objects.filter(
+                        id=pid, sandbox_container_id=container.name,
+                    ).update(sandbox_container_id='')
         except Exception:
             pass
 
