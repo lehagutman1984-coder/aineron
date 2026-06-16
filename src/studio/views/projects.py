@@ -40,6 +40,12 @@ class StudioProjectDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         return accessible_projects(self.request.user)
 
+    def perform_destroy(self, instance):
+        if instance.sandbox_container_id:
+            from .. import sandbox
+            sandbox.kill_sandbox(instance.sandbox_container_id)
+        instance.delete()
+
 
 class InterviewView(APIView):
     permission_classes = [permissions.IsAuthenticated]
