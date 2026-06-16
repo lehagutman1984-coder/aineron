@@ -537,4 +537,652 @@ vercel_account_label   = models.CharField(max_length=128, blank=True, default=''
 | Mobile/Desktop preview | `Smartphone` / `Monitor` | `var(--fg)` |
 | Объяснение кода | `HelpCircle` | `var(--muted)` |
 
+---
+
+# ДОПОЛНЕНИЕ V2.1 — Краулер, промты, синхронизация, выбор модели, онбординг
+
+> Это дополнение к плану выше. Все задачи опираются на **фактический код** (`src/studio/*`), а не на гипотезы. Где брифом предлагалось «добавить с нуля», но функционал уже существует — это явно отмечено, чтобы не плодить дубли (принцип «no lazy shortcuts», см. раздел E).
+
+---
+
+## A. Краулинг и копирование сайтов — профессиональный рефакторинг
+
+### A.1 Честный аудит текущего краулера
+
+Текущий `src/studio/crawler.py` — это **две функции-заглушки**, достаточные для «понять о чём сайт», но непригодные для копирования:
+
+| Что краулер делает сейчас | Что НЕ делает |
+|---------------------------|----------------|
+| `crawl()` — один GET через `requests`, парсит `<title>`, текст (`get_text`, обрезан до 20000), список `<link rel=stylesheet href>` | Не скачивает CSS-файлы — только собирает их URL и выбрасывает |
+| `crawl_spa()` — Playwright рендерит SPA, отдаёт HTML+текст | Не скачивает JS, шрифты, изображения |
+| `is_safe_url()` защищает от SSRF | Не обходит вложенные страницы — только переданный URL |
+| `crawl_and_analyze` falls back на `crawl_spa` если текста < 200 символов | Не удаляет аналитику (GA/YM/Hotjar) — она утечёт в клон |
+| Результат складывается в `interview_data['crawled']` (только `title` + `text[:8000]`) | Не нормализует относительные URL → ресурсы 404 при сборке клона |
+| | Не извлекает структуру навигации (меню, разделы) для планировщика |
+| | Не уникализирует ресурсы (EXIF, хэши имён классов) |
+
+**Вывод:** сегодня «Клон по URL» по сути даёт AI текстовый пересказ страницы, по которому агенты пишут *новый* сайт «по мотивам». Это не копирование — это «вдохновлённая реконструкция». Для честного позиционирования «клон» нужен настоящий ресурсный краулер.
+
+### A.2 Gap-анализ против KopirkaCMS
+
+| Возможность | KopirkaCMS | Studio сейчас | Цель V2.1 |
+|-------------|------------|---------------|-----------|
+| Копирование 1-10 страниц | да | 1 (только входной URL) | до N=10, рекурсивно по внутренним ссылкам |
+| Скачивание CSS/JS/шрифтов/картинок | да | нет (только URL CSS) | да, полная выгрузка ресурсов |
+| Уникализация изображений (EXIF, quality) | да | нет | да (Pillow), опционально |
+| Удаление аналитики (GA, YM, Hotjar, Intercom) | да | нет | да, чёрный список доменов/скриптов |
+| AI-переписывание контента | да (GPT) | да (наш AnalystAgent/CoderAgent уже переписывают) | оставляем как есть — это наша сильная сторона |
+| Рандомизация CSS-классов | да | нет | опционально, фаза 2 |
+| JS-движок для SPA | scrape.do | свой Playwright-воркер (`celery_studio_playwright`) | улучшаем — у нас уже есть, бесплатно |
+
+**Наше преимущество:** у нас уже есть собственный Playwright-воркер (не платный scrape.do) и агенты, которые переписывают контент осмысленно, а не «спинят» текст. Дыра — именно ресурсный слой.
+
+### A.3 Архитектура нового краулера
+
+Многоуровневый модуль `src/studio/crawler.py` + новый пакет `src/studio/crawl/`:
+
+```
+src/studio/crawl/
+├── __init__.py
+├── fetcher.py        # Уровень 1 (requests) и Уровень 2 (Playwright) с единым интерфейсом
+├── resources.py      # Скачивание и сохранение CSS/JS/шрифтов/картинок
+├── sanitizer.py      # Удаление аналитики/чатов, нормализация URL
+├── navigation.py     # Извлечение структуры навигации для PlannerAgent
+└── pipeline.py       # Оркестрация: fetch → recurse → resources → sanitize → pack
+```
+
+**Уровень 1 — статика (`fetcher.fetch_static`)**
+- `requests.get` + BeautifulSoup (как сейчас), но возвращает полный распарсенный DOM-объект, а не обрезанный текст.
+- Используется по умолчанию; если итоговый текст < 200 символов → эскалация на Уровень 2.
+
+**Уровень 2 — SPA (`fetcher.fetch_spa`)**
+- Playwright (`celery_studio_playwright`, prefork, не gevent — это критично, уже соблюдается).
+- `wait_until='networkidle'` + перехват сетевых ответов (`page.on('response')`), чтобы собрать реальные URL подгруженных ресурсов (CSS/JS/шрифты), а не только статические `<link>`.
+
+**Полная загрузка ресурсов (`resources.download_all`)**
+- Из DOM + перехваченных ответов собираем множество URL: `<link rel=stylesheet>`, `<script src>`, `<img src/srcset>`, `@font-face` в CSS, `url(...)` в CSS.
+- Каждый ресурс качаем (с `is_safe_url` проверкой), складываем как `StudioFile` с относительным путём (`assets/css/...`, `assets/js/...`, `assets/img/...`, `assets/fonts/...`).
+- Переписываем ссылки в HTML/CSS на локальные относительные пути.
+
+**Рекурсивный обход (`pipeline.crawl_site`)**
+- Параметр `max_pages` (default 1, максимум 10), BFS по внутренним ссылкам того же домена.
+- Дедупликация по нормализованному URL (без query/fragment, trailing slash).
+- Лимит глубины + общий timeout (используем тот же паттерн, что `wait_for_ready`).
+
+**Удаление аналитики/чатов (`sanitizer.strip_trackers`)**
+- Чёрный список хостов/паттернов: `google-analytics.com`, `googletagmanager.com`, `mc.yandex.ru`, `mc.webvisor.org`, `static.hotjar.com`, `widget.intercom.io`, `connect.facebook.net`, `vk.com/js/api/openapi`, `top-fwz1.mail.ru`, `cdn.jsdelivr.net/npm/@vkontakte`, чат-виджеты (`jivo`, `carrotquest`, `tawk.to`, `bitrix24`).
+- Удаляем соответствующие `<script>`, `<noscript>` пиксели и inline-`dataLayer`/`ym(`/`gtag(` блоки.
+
+**Нормализация URL (`sanitizer.normalize_urls`)**
+- Абсолютные → относительные локальные пути.
+- Устранение дублей: один и тот же ресурс с разными query-хвостами сохраняется один раз (хэш содержимого).
+
+**Извлечение навигации (`navigation.extract_nav`)**
+- Парсим `<nav>`, `<header>`, `role=navigation`, частые селекторы меню.
+- Возвращаем структуру `[{label, href, children}]`, кладём в `interview_data['crawled']['navigation']`.
+- PlannerAgent использует её, чтобы спланировать многостраничную структуру (раздел B/G).
+
+### A.4 Задачи по коммитам — краулер
+
+- [ ] **Коммит A-1. Каркас пакета `crawl/` + единый fetcher.**
+  Создать `src/studio/crawl/__init__.py`, `fetcher.py` с `fetch_static()` и `fetch_spa()` (перенести логику из `crawler.py`, добавить перехват `page.on('response')` в SPA-режиме). Сохранить `is_safe_url()` на входе обеих функций. Файлы: `src/studio/crawl/fetcher.py`, рефактор `src/studio/crawler.py` (делегирует в новый пакет, сохраняет публичные `crawl`/`crawl_spa` для обратной совместимости с `tasks.py`).
+
+- [ ] **Коммит A-2. Скачивание и сохранение ресурсов.**
+  `src/studio/crawl/resources.py` — `collect_urls(dom, captured)`, `download_all(urls, project)` → создаёт `StudioFile` записи (`assets/...`). Лимит размера на ресурс (например 5 МБ), общий лимит на проект. Файлы: `src/studio/crawl/resources.py`.
+
+- [ ] **Коммит A-3. Санитайзер аналитики и чатов.**
+  `src/studio/crawl/sanitizer.py` — `strip_trackers(dom)` по чёрному списку, удаление inline-трекинга. Юнит-тест с фикстурой HTML, содержащей GA+YM+Jivo. Файлы: `src/studio/crawl/sanitizer.py`, `src/studio/tests.py`.
+
+- [ ] **Коммит A-4. Нормализация URL и дедуп ресурсов.**
+  В `sanitizer.normalize_urls(dom, base_url)` + дедуп по SHA-256 содержимого в `resources.py`. Переписать ссылки в HTML и внутри CSS (`url(...)`, `@import`). Файлы: `src/studio/crawl/sanitizer.py`, `src/studio/crawl/resources.py`.
+
+- [ ] **Коммит A-5. Рекурсивный обход страниц.**
+  `src/studio/crawl/pipeline.py` — `crawl_site(url, max_pages, mode)` BFS, дедуп URL, общий timeout. Параметр `max_pages` приходит из `project.interview_data['clone_opts']`. Файлы: `src/studio/crawl/pipeline.py`.
+
+- [ ] **Коммит A-6. Извлечение навигации для планировщика.**
+  `src/studio/crawl/navigation.py` — `extract_nav(dom)`. Складывать в `interview_data['crawled']['navigation']`. Файлы: `src/studio/crawl/navigation.py`, правка `src/studio/tasks.py` (`crawl_and_analyze`, `crawl_spa_task`).
+
+- [ ] **Коммит A-7. Опциональная уникализация изображений.**
+  `resources.uniquify_image(bytes)` — снять EXIF, лёгкая ре-компрессия (Pillow). Включается флагом `clone_opts.uniquify=True`. Файлы: `src/studio/crawl/resources.py`.
+
+- [ ] **Коммит A-8. Интеграция в задачи + UI-опции клонирования.**
+  Переключить `crawl_and_analyze`/`crawl_spa_task` на `pipeline.crawl_site`. На фронте — поля «Страниц (1-10)» и чекбоксы «Удалить аналитику», «Уникализировать картинки» в форме «Клон по URL». Файлы: `src/studio/tasks.py`, `frontend/app/studio/page.tsx`, `frontend/lib/api/studio.ts`.
+
+### A.5 Новые Python-зависимости
+
+| Пакет | Зачем | Примечание |
+|-------|-------|------------|
+| `playwright` | уже используется (`crawl_spa`) | без изменений |
+| `beautifulsoup4` | уже используется | без изменений |
+| `Pillow` | уникализация изображений (EXIF, recompress) | вероятно уже в зависимостях (медиа) — проверить `requirements.txt` |
+| `tinycss2` | парсинг CSS для извлечения `url(...)` и `@font-face` | **новый**, лёгкий, без C-расширений |
+
+> Не тянем тяжёлых зависимостей (Scrapy, selenium). Playwright + tinycss2 покрывают всё.
+
+---
+
+## B. Профессиональные промты агентов — билингвальный подход
+
+### B.1 Принцип переключения языков
+
+Факт из кода: сейчас **все** системные промты в `src/studio/agents/*.py` написаны по-русски, а пользовательский ввод (`PROJECT.md`, описание) — тоже русский. Модели laozhang.ai (Claude, GPT, DeepSeek, Qwen) дают заметно более стабильный код и строже следуют JSON-схемам, когда **системные инструкции на английском**, при этом **контент для пользователя** (вопросы интервью, PROJECT.md, COMMITS.md) должен оставаться **русским**.
+
+**Правило:**
+- **System prompt → английский.** Инструкции, схемы JSON, ограничения. Модель «думает» по-английски надёжнее.
+- **Пользовательский вывод → русский.** В конце каждого английского промта явно указываем: `All user-facing text (questions, PROJECT.md, COMMITS.md, summaries) MUST be in Russian.`
+- **Код и идентификаторы → английский** всегда (имена файлов, переменные, комментарии — на усмотрение, по умолчанию русские комментарии для не-кодера).
+- Реализация: каждый агент хранит `SYSTEM_RU` и `SYSTEM_EN`; выбор управляется `settings.STUDIO_PROMPT_LANG` (default `'en'`). Это даёт A/B без передеплоя и быстрый откат, если конкретная модель деградирует на английском.
+
+Ниже — полные промты. RU оставляем как fallback/референс; EN — рабочий по умолчанию.
+
+### B.2 InterviewerAgent (`src/studio/agents/interviewer.py`)
+
+**RU:**
+```
+Ты интервьюер сервиса генерации веб-приложений. По краткому описанию проекта
+задай 3-5 умных уточняющих вопросов, которые реально влияют на функционал,
+дизайн и стек. Не задавай очевидных или избыточных вопросов. Учитывай выбранный
+стек. Для вопросов с выбором давай 2-4 варианта.
+Верни СТРОГО JSON-массив: [{"id":"q1","question":"...","type":"text|choice","options":["..."]}].
+Вопросы — на русском. Никакого текста вне JSON.
+```
+
+**EN (рабочий):**
+```
+You are an interviewer for a web-app generation service. Given a short project
+description, ask 3-5 smart clarifying questions that materially affect scope,
+design, and stack. Do not ask obvious or redundant questions. Respect the chosen
+stack (Next.js/React/Vue/HTML). For choice questions provide 2-4 options.
+Return STRICTLY a JSON array: [{"id":"q1","question":"...","type":"text|choice","options":["..."]}].
+The "question" and "options" text MUST be written in Russian. Output nothing outside the JSON.
+```
+
+### B.3 AnalystAgent (`src/studio/agents/analyst.py`)
+
+**RU:**
+```
+Ты системный аналитик. На основе описания проекта, ответов интервью и (если есть)
+данных краулинга составь технический документ PROJECT.md: цель, целевая аудитория,
+функциональные требования (нумерованный список), карта страниц, модель данных,
+стек и обоснование, нефункциональные требования (производительность, адаптив,
+доступность), ограничения и допущения. Документ должен быть конкретным и
+реализуемым. Markdown на русском, без преамбулы.
+```
+
+**EN (рабочий):**
+```
+You are a systems analyst. Using the project description, interview answers, and
+(if present) crawled site data, produce a technical PROJECT.md document containing:
+goal, target audience, functional requirements (numbered), page map, data model,
+chosen stack with justification, non-functional requirements (performance,
+responsiveness, accessibility), constraints and assumptions. Be concrete and
+buildable — avoid vague aspirations. Output Markdown in Russian, no preamble.
+```
+
+### B.4 PlannerAgent (`src/studio/agents/planner.py`)
+
+**RU:**
+```
+Ты технический планировщик. На основе PROJECT.md составь COMMITS.md — пошаговый
+план реализации. Каждый шаг (коммит) атомарный: заголовок, краткая цель, точный
+список создаваемых/изменяемых файлов. Порядок шагов учитывает зависимости
+(сначала каркас и конфиг, затем компоненты, затем интеграции). Помечай заголовок
+тегом [COMPLEX], если шаг включает auth, оплату, интеграции, realtime, миграции БД
+или затрагивает 5+ файлов. Не превышай 15 шагов. В конце верни маркер
+<STEPS_COUNT>N</STEPS_COUNT>. Markdown на русском, без преамбулы.
+```
+
+**EN (рабочий):**
+```
+You are a technical planner. From PROJECT.md, produce COMMITS.md — a step-by-step
+implementation plan. Each step (commit) is atomic: a heading, a one-line goal, and
+the exact list of files created/modified. Order steps by dependency (scaffold and
+config first, then components, then integrations). Tag a heading with [COMPLEX] if
+the step involves auth, payments, third-party integrations, realtime, DB migrations,
+or touches 5+ files. Do not exceed 15 steps. End the document with the marker
+<STEPS_COUNT>N</STEPS_COUNT> where N is the number of steps. Output Markdown in
+Russian, no preamble.
+```
+> Совместимо с `planner.py`: код по-прежнему парсит `<STEPS_COUNT>` и `_split_steps` по `##`/`###` заголовкам, а `[COMPLEX]` читается `coder._pick_model`.
+
+### B.5 CoderAgent (`src/studio/agents/coder.py`)
+
+**RU:**
+```
+Ты senior-разработчик. Реализуй РОВНО ОДИН шаг из COMMITS.md. Ты владеешь
+TypeScript, Next.js 14 (App Router), React (hooks, функциональные компоненты),
+Vue 3 (Composition API) и семантическим HTML/CSS. Пиши production-ready код:
+типобезопасный, без TODO-заглушек, с обработкой ошибок и состояний загрузки.
+Для Vite-проектов всегда указывай server.host:true. Не выдумывай несуществующие
+зависимости. Учитывай уже существующие файлы (даны в контексте) — не дублируй и
+не ломай их. Верни СТРОГО JSON: {"files":{"относительный/путь":"полное содержимое"}}.
+Полные файлы целиком, не диффы.
+```
+
+**EN (рабочий):**
+```
+You are a senior software engineer. Implement EXACTLY ONE step from COMMITS.md.
+You are fluent in TypeScript, Next.js 14 (App Router), React (hooks, function
+components), Vue 3 (Composition API), and semantic HTML/CSS. Write production-ready
+code: type-safe, no TODO stubs, with error handling and loading states. For Vite
+projects always set server.host:true in vite.config. Never invent nonexistent
+dependencies. Respect existing project files (provided in context) — do not
+duplicate or break them. If a FixPlan is provided, change ONLY the listed files.
+Return STRICTLY JSON: {"files":{"relative/path":"full file content"}} — whole files,
+never diffs. Code comments may be in Russian; identifiers must be English.
+```
+> Совместимо с `coder.run()`: парсер ждёт `{"files": {...}}`, `allowed_files` фильтрует результат. Упоминание FixPlan соответствует ветке `iteration_count > 0` в `tasks.coder_iteration`.
+
+### B.6 ReviewerAgent (`src/studio/agents/reviewer.py`)
+
+**RU:**
+```
+Ты ревьюер кода уровня senior. Проверь ТОЛЬКО изменённые файлы (раздел «Изменённые
+файлы»; полный список — лишь контекст). Проверяй: синтаксис и типы, корректность
+импортов и путей, соответствие шагу, явные баги и edge-cases, БЕЗОПАСНОСТЬ (XSS,
+инъекции, секреты в коде, небезопасный dangerouslySetInnerHTML/eval, открытые
+CORS). severity=error — блокирует; severity=warning — желательно поправить.
+Верни СТРОГО JSON: {"passed":bool,"issues":[{"file":"...","severity":"error|warning","message":"..."}],"summary":"..."}.
+summary — на русском.
+```
+
+**EN (рабочий):**
+```
+You are a senior code reviewer. Review ONLY the changed files (the "Изменённые
+файлы" section; the full list is context only). Check: syntax and types, import
+correctness and paths, conformance to the step, obvious bugs and edge cases, and
+SECURITY (XSS, injection, secrets in code, unsafe dangerouslySetInnerHTML/eval,
+permissive CORS). severity=error blocks the step; severity=warning is advisory.
+Return STRICTLY JSON:
+{"passed":bool,"issues":[{"file":"...","severity":"error|warning","message":"..."}],"summary":"..."}.
+The "summary" and "message" text MUST be in Russian.
+```
+
+### B.7 TesterAgent (`src/studio/agents/tester.py`)
+
+**RU:**
+```
+Ты QA-инженер. Проанализируй логи сборки/typecheck из sandbox и exit_code.
+Определи ошибки компиляции (TS/build) и рантайма. Для каждой ошибки укажи тип,
+файл (если виден) и понятное сообщение. Если exit_code != 0 — build_ok=false.
+Верни СТРОГО JSON: {"passed":bool,"errors":[{"type":"build|runtime","message":"...","file":"..."}],"build_ok":bool,"summary":"..."}.
+summary — на русском.
+```
+
+**EN (рабочий):**
+```
+You are a QA engineer. Analyze the sandbox build/typecheck logs and exit_code.
+Identify compilation (TS/build) and runtime errors. For each error give type, file
+(if identifiable), and a clear message. If exit_code != 0 then build_ok=false.
+Return STRICTLY JSON:
+{"passed":bool,"errors":[{"type":"build|runtime","message":"...","file":"..."}],"build_ok":bool,"summary":"..."}.
+The "summary" and "message" text MUST be in Russian.
+```
+> Совместимо с `tester.run()`: код принудительно ставит `build_ok=false`/`passed=false`, если `exit_code != 0`.
+
+### B.8 FixerAgent (`src/studio/agents/fixer.py`)
+
+**RU:**
+```
+Ты ведущий инженер. Сведи ReviewReport и TestReport в чёткий FixPlan для кодера.
+Сначала устраняй ошибки сборки (build), затем error-уровня ревью, затем warning.
+Инструкции — конкретные, по делу: что именно и в каком файле поправить. Минимизируй
+список target_files (только реально затронутые). Если ошибки указывают на ошибки
+из console превью — учитывай их.
+Верни СТРОГО JSON: {"instructions":"...","target_files":["..."],"priority":"high|medium"}.
+instructions — на русском.
+```
+
+**EN (рабочий):**
+```
+You are a lead engineer. Merge the ReviewReport and TestReport into a precise
+FixPlan for the coder. Prioritize: build errors first, then error-severity review
+issues, then warnings. Instructions must be concrete and actionable: exactly what
+to change and in which file. Keep target_files minimal (only genuinely affected
+files). If errors come from the preview console, account for them.
+Return STRICTLY JSON: {"instructions":"...","target_files":["..."],"priority":"high|medium"}.
+The "instructions" text MUST be in Russian.
+```
+> Совместимо с `fixer.run()` и потреблением `fix_plan` в `tasks.coder_iteration` (читает `target_files`/`instructions`).
+
+### B.9 Задачи по коммитам — промты
+
+- [ ] **Коммит B-1.** Ввести `STUDIO_PROMPT_LANG` (`settings.py`, default `'en'`) и хелпер `pick_prompt(ru, en)` в `src/studio/agents/base.py`.
+- [ ] **Коммит B-2.** Вынести `SYSTEM_RU`/`SYSTEM_EN` во все 7 агентов, переключение через `pick_prompt`. Файлы: `src/studio/agents/{interviewer,analyst,planner,coder,reviewer,tester,fixer}.py`.
+- [ ] **Коммит B-3.** Тесты: парсинг JSON-схем не сломан на EN-промтах (мок-ответы модели). Файл: `src/studio/tests.py`.
+
+---
+
+## C. Синхронизация агентов — анти-зацикливание и визуальный статус
+
+### C.1 Аудит текущей защиты
+
+Что **уже есть** в коде:
+- `StudioPipelineState.iteration_count` + `settings.STUDIO_MAX_ITERATIONS` (default 3). В `tasks.merge_reports` при недостижении `passed` инкремент и повтор `coder_iteration`; при достижении лимита — возврат звёзд и `status='paused_on_loop'`.
+- `pause_requested` / `paused_manual` / `paused_on_loop` — проверяются в начале `start_step`, `coder_iteration`, `merge_reports`, `next_step`.
+- `current_task_id` сохраняется в `coder_iteration` — есть точка для `celery revoke`.
+- `reap_stale_sandboxes` (beat) убивает контейнеры старше 6 ч.
+- Финансовый предохранитель: `reserve` → `charge_from_reserve` → `_pause_no_funds`.
+
+### C.2 Анализ дыр
+
+| Дыра | Почему зацикливание/зависание всё ещё возможно |
+|------|-----------------------------------------------|
+| Лимит на **шаг**, а не на проект | 12 шагов × 3 итерации = до 36 прогонов CoderAgent — пользователь ждёт и платит, прогресса нет |
+| **Нет детектора одинакового diff** | `interview_data['last_changed'][step]` хранит только **пути файлов**, не содержимое — модель может 3 раза подряд вернуть идентичный код, лимит «сгорит» впустую |
+| **Нет глобального timeout пайплайна** | если задача Celery зависла внутри `run_prompt` (synchronous, timeout 180с на вызов, но цепочка задач может тянуться часами на ретраях) — проект «висит» в `coding` |
+| **Нет heartbeat** | `pipeline.updated_at` обновляется, но никто не проверяет «давно не было событий → агент завис» |
+| `reap_stale_sandboxes` судит по **возрасту контейнера**, а не по активности пайплайна | живой, но зависший проект не освобождается до 6 ч |
+
+### C.3 Многоуровневая защита
+
+1. **Лимит итераций на шаг** (есть) — оставляем `STUDIO_MAX_ITERATIONS`, но логируем в SSE «Попытка K из N» (для UI, раздел C.4).
+2. **Детектор одинакового diff.** В `coder_iteration` после генерации считать `sha256` от конкатенации `sorted(files.items())` и хранить в `pipeline` (новое поле `last_files_hash` + `same_diff_count`). Если хэш совпал с предыдущей итерацией → инкремент `same_diff_count`; при `>= 2` — не тратить ещё одну итерацию впустую, а сразу `paused_on_loop` с понятным reason «Агент не может изменить код — нужна ваша подсказка».
+3. **Детектор зацикленных тестов.** Если `test_report.passed=false` с **той же** первой ошибкой N раз подряд (хранить `last_error_signature`), эскалировать модель кодера на `smart` на одну попытку (см. раздел D), затем пауза.
+4. **Глобальный timeout пайплайна.** Новое поле `pipeline.started_at`; новый beat-таск `watchdog_pipelines` (каждые 2 мин): если `status='running'` и `now - updated_at > STUDIO_STEP_STALL_SEC` (например 240с) → пометить `paused_on_loop`, при `now - started_at > STUDIO_PIPELINE_MAX_SEC` (например 45 мин) → `failed` + освободить sandbox + `release_reserve`.
+5. **Heartbeat.** Каждый агент уже шлёт события через `publish_event`. Watchdog (п.4) использует `updated_at` как heartbeat. Дополнительно — `coder_iteration`/`agent_test` обновляют `pipeline.save()` (touch `updated_at`) в начале работы. Если воркер завис на `run_prompt`, `current_task_id` позволяет `app.control.revoke(task_id, terminate=True)`.
+
+### C.4 Визуальный статус для пользователя
+
+Компонент `frontend/components/studio/PipelineTimeline.tsx`:
+- **Timeline шагов** из COMMITS.md: каждый шаг — строка с иконкой Lucide:
+  - выполнен — `Check` (`var(--success)`)
+  - текущий — `Loader2` (spin, `var(--muted)`)
+  - ожидает — `Circle` (приглушённый)
+  - ошибка/пауза — `AlertCircle` (`var(--danger)`)
+- **Текущий агент** + дружелюбная фраза (маппинг агент→текст):
+  - `analyst` → «Разбираю, что нужно построить»
+  - `planner` → «Составляю план по шагам»
+  - `coder` → «Пишу код»
+  - `reviewer` → «Проверяю код на ошибки»
+  - `tester` → «Запускаю сборку»
+  - `fixer` → «Готовлю исправления»
+- **Счётчик попыток**: «Попытка 2 из 3» (из `iteration_count` + `STUDIO_MAX_ITERATIONS`, отдаётся в pipeline-статусе).
+- **Таймер на шаге**: время с момента `pipeline.updated_at` для текущего шага.
+
+### C.5 Информативное восстановление после ошибки
+
+Компонент `frontend/components/studio/PipelineRecovery.tsx` (показывается при `status='paused'`/`paused_on_loop`/`failed`):
+- **Понятное объяснение** из `pause_reason` (мы уже пишем человекочитаемые причины: «Шаг N не сошёлся за K итераций», «Недостаточно звёзд», «Агент не может изменить код»).
+- **Три кнопки:**
+  - «Попробовать снова» → `POST .../pipeline/resume` (существующий `PipelineResumeView`), при «одинаковом diff» — открыть поле подсказки и переслать её в FixPlan.
+  - «Пропустить шаг» → новый эндпоинт `POST .../pipeline/skip` (помечает шаг как принятый, `next_step.delay`).
+  - «Описать проблему» → текстовое поле, текст уходит в `fix_plan.instructions` и запускает `coder_iteration` заново.
+- **При зависании** (watchdog пометил `failed` по timeout) — автоматически: `kill_sandbox` + `release_reserve` уже сделаны, UI предлагает «Продолжить с этого шага» (re-spawn sandbox через `_ensure_sandbox`).
+
+### C.6 Задачи по коммитам — синхронизация
+
+- [ ] **Коммит C-1. Поля анти-цикла.** Миграция: `pipeline.last_files_hash` (char), `same_diff_count` (int), `last_error_signature` (char), `started_at` (datetime). Файлы: `src/studio/models.py`, `src/studio/migrations/00XX_pipeline_antiloop.py`.
+- [ ] **Коммит C-2. Детектор одинакового diff + зацикленных тестов.** Логика в `coder_iteration` (хэш файлов) и `merge_reports` (сигнатура ошибки, эскалация модели). Файл: `src/studio/tasks.py`.
+- [ ] **Коммит C-3. Watchdog-beat.** `watchdog_pipelines` + регистрация в beat-расписании; настройки `STUDIO_STEP_STALL_SEC`, `STUDIO_PIPELINE_MAX_SEC`. Использует `current_task_id` для revoke. Файлы: `src/studio/tasks.py`, `src/config/celery.py`, `src/config/settings.py`.
+- [ ] **Коммит C-4. PipelineTimeline + дружелюбные фразы.** Компонент + расширить pipeline-статус (`step_index`, `iteration_count`, `max_iterations`, фразы). Файлы: `frontend/components/studio/PipelineTimeline.tsx`, `src/studio/views/pipeline.py` (сериализация статуса).
+- [ ] **Коммит C-5. PipelineRecovery + эндпоинт skip.** Компонент с 3 кнопками + `PipelineSkipView`. Файлы: `frontend/components/studio/PipelineRecovery.tsx`, `src/studio/views/pipeline.py`, `src/studio/urls.py`.
+- [ ] **Коммит C-6. Подсказка пользователя → FixPlan.** Поле подсказки в Recovery прокидывает текст в `fix_plan.instructions` через resume. Файлы: `frontend/components/studio/PipelineRecovery.tsx`, `src/studio/views/pipeline.py`.
+
+---
+
+## D. Выбор нейросети в проекте (из каталога laozhang.ai)
+
+### D.1 Важно: НЕ плодим поле — заменяем существующее
+
+В `StudioProject` **уже есть** поле `coder_model` с двумя значениями (`fast`→DeepSeek V3, `smart`→Opus 4.8). База агентов (`base.py`) хардкодит `MODEL_FAST='deepseek-v3'`, `MODEL_SMART='claude-opus-4-8'`, а биллинг (`billing.py`) знает только два тарифа `STAR_RATE={'smart':3,'fast':1}` и `coder_tier_for_model()`.
+
+Бриф предлагал «добавить поле `ai_model`». Делать это **рядом** с `coder_model` — дубль и источник рассинхрона. Решение: **новое поле `ai_model` ЗАМЕНЯЕТ `coder_model`** (миграция переносит данные и удаляет старое поле). Так мы держим один источник истины.
+
+### D.2 Отобранные 15 моделей для генерации кода
+
+Исключены видео/изображения/embeddings и заведомо неподходящие для кодинга. `model_name` — точные ID laozhang.ai (заметь: в каталоге `deepseek-v3.2`, а не `deepseek-v3` из `base.py` — при миграции исправляем).
+
+| # | model_name | Категория | Описание | Тариф | Звёзд/шаг* |
+|---|-----------|-----------|----------|-------|------------|
+| 1 | `claude-sonnet-4-6` | Smart | Баланс качества и скорости, лучший по умолчанию для кода | smart | ~36 |
+| 2 | `claude-opus-4-8` | Smart | Максимальное качество, сложная архитектура, дорого/медленно | smart | ~36 |
+| 3 | `claude-haiku-4-5-20251001` | Fast | Быстрый Claude для простых шагов | fast | ~12 |
+| 4 | `gpt-5` | Smart | Топовый GPT, сильная логика и рефакторинг | smart | ~36 |
+| 5 | `gpt-5-mini` | Fast | Дешёвый GPT-5 для рутинных шагов | fast | ~12 |
+| 6 | `gpt-4.1` | Smart | Надёжный генералист по коду | smart | ~36 |
+| 7 | `gpt-4.1-mini` | Fast | Быстрый и дешёвый генералист | fast | ~12 |
+| 8 | `gpt-4o` | Fast | Быстрый мультимодальный, ок для UI-кода | fast | ~12 |
+| 9 | `deepseek-v3.2` | Fast | Сильный код за низкую цену — наш текущий «fast» | fast | ~12 |
+| 10 | `deepseek-v4-pro` | Smart | Старшая DeepSeek, качество ближе к топу за меньшую цену | smart | ~36 |
+| 11 | `deepseek-r1` | Reasoning | Пошаговые рассуждения, сложная логика/алгоритмы | smart | ~36 |
+| 12 | `qwen3-coder-plus` | Coder | Специализирован на коде, отличный для генерации файлов | coder | ~20 |
+| 13 | `qwen3-235b-a22b` | Smart | Крупная Qwen, сильный генералист | smart | ~36 |
+| 14 | `kimi-k2` | Coder | Сильна в кодовых задачах и длинном контексте | coder | ~20 |
+| 15 | `gemini-2.5-pro` | Smart | Длинный контекст, хороша для больших проектов | smart | ~36 |
+
+\* «Звёзд/шаг» — оценка для одного прогона CoderAgent: `(AGENT_BUDGET['coder']=12000 ток / 1000) × STAR_RATE[tier]`. То есть fast: 12·1=12, coder: 12·~1.7≈20, smart/reasoning: 12·3=36. **Числа выводятся из биллинга, не выдуманы** (раздел D.5 расширяет `STAR_RATE`).
+
+Дополнительные быстрые опции, доступные не как «модель проекта», а как fallback: `gemini-2.5-flash`, `o3-mini` (reasoning-lite), `grok-4` (smart). Их можно включить в список позже — каталог хранится в одном месте (D.3).
+
+### D.3 Модель по умолчанию и рекомендации
+
+- **По умолчанию: `claude-sonnet-4-6`** (Smart) — лучший баланс «качество кода / скорость / цена» для типового проекта. (Меняем дефолт с прежнего «fast/DeepSeek», т.к. для незнакомого с кодом пользователя предсказуемость качества важнее экономии.)
+- **Простой лендинг/HTML:** `deepseek-v3.2` или `gpt-4.1-mini` (Fast) — дёшево и достаточно.
+- **Сложное приложение (auth, БД, интеграции):** `claude-sonnet-4-6` или `gpt-5` (Smart).
+- **Алгоритмически тяжёлое (расчёты, парсеры):** `deepseek-r1` (Reasoning).
+- **Много файлов/большой контекст:** `gemini-2.5-pro` или `kimi-k2`.
+- **Экономный режим максимум:** `claude-haiku-4-5` / `gpt-5-mini`.
+
+Каталог моделей выносим в один источник — `src/studio/models_catalog.py`:
+```python
+STUDIO_MODELS = [
+    {'id': 'claude-sonnet-4-6', 'label': 'Claude Sonnet 4.6', 'category': 'smart', 'tier': 'smart'},
+    {'id': 'deepseek-v3.2',     'label': 'DeepSeek V3.2',     'category': 'fast',  'tier': 'fast'},
+    {'id': 'qwen3-coder-plus',  'label': 'Qwen3 Coder Plus',  'category': 'coder', 'tier': 'coder'},
+    {'id': 'deepseek-r1',       'label': 'DeepSeek R1',       'category': 'reasoning', 'tier': 'smart'},
+    # ... все 15
+]
+DEFAULT_STUDIO_MODEL = 'claude-sonnet-4-6'
+```
+
+### D.4 Backend-реализация
+
+- Поле на `StudioProject`: `ai_model = CharField(max_length=40, default='claude-sonnet-4-6')` — **заменяет** `coder_model`.
+- `BaseAgent` читает модель из проекта: убрать хардкод констант как «истину», ввести `BaseAgent.resolve_model(self)`:
+  - Для CoderAgent — `project.ai_model`.
+  - Для остальных агентов оставить разумные дефолты, но допускать общий проектный выбор (например analyst/planner — тот же `ai_model`, tester/interviewer могут оставаться на дешёвой модели для экономии; решаем на уровне `AGENT_MODEL_POLICY`).
+- `coder._pick_model()`: **остаётся как эскалация ВНУТРИ выбора пользователя.** Логика: базовая модель = `project.ai_model`; если шаг помечен `[COMPLEX]` И пользовательская модель относится к tier `fast` → разово эскалировать до парной `smart`-модели того же вендора (например `deepseek-v3.2`→`deepseek-v4-pro`, `gpt-4.1-mini`→`gpt-4.1`). Если пользователь уже выбрал smart/reasoning/coder — `_pick_model` не понижает и не меняет. Это сохраняет автоэскалацию, но уважает явный выбор.
+- `billing.coder_tier_for_model()`: переписать на таблицу `MODEL_TIER` из `models_catalog.py` (не сравнение с единственным `MODEL_SMART`).
+
+### D.5 Расширение биллинга (новые тарифы)
+
+```python
+# src/studio/billing.py
+STAR_RATE = {'fast': 1, 'coder': 1.7, 'smart': 3}   # добавлен 'coder'; reasoning маппится на 'smart'
+```
+`MODEL_TIER = {m['id']: m['tier'] for m in STUDIO_MODELS}` — единый маппинг. `coder_tier_for_model(model)` → `MODEL_TIER.get(model, 'fast')`. `estimate_stars` использует тот же tier-маппинг для предоплаты, чтобы оценка совпадала с фактом.
+
+### D.6 Frontend-реализация
+
+- В форме создания (`frontend/app/studio/page.tsx`) — `<select>` модели, **сгруппированный** через `<optgroup>`: Smart / Fast / Coder / Reasoning.
+- Рядом — оценка стоимости: «≈ N звёзд за шаг» (берём `tier`→`STAR_RATE`→`×12`), и «≈ N звёзд за весь проект» (× planned_steps, как в `estimate_stars`).
+- Подсказки-tooltips из `description` каждой модели.
+- Каталог отдаётся новым эндпоинтом `GET /api/.../studio/models` (читает `models_catalog.STUDIO_MODELS`), чтобы фронт не дублировал список.
+
+### D.7 Задачи по коммитам — выбор модели
+
+- [ ] **Коммит D-1. Каталог моделей + замена поля.** `src/studio/models_catalog.py`; миграция: добавить `ai_model`, перенести `coder_model` (`fast`→`deepseek-v3.2`, `smart`→`claude-opus-4-8`), удалить `coder_model`. Файлы: `src/studio/models_catalog.py`, `src/studio/models.py`, `src/studio/migrations/00XX_ai_model.py`.
+- [ ] **Коммит D-2. Резолвинг модели в агентах.** `BaseAgent.resolve_model`, `coder._pick_model` уважает явный выбор + эскалация по вендору; `MODEL_TIER` в биллинге, расширенный `STAR_RATE`. Файлы: `src/studio/agents/base.py`, `src/studio/agents/coder.py`, `src/studio/billing.py`.
+- [ ] **Коммит D-3. Эндпоинт каталога моделей.** `GET studio/models` → `STUDIO_MODELS`. Файлы: `src/studio/views/projects.py` (или новый view), `src/studio/urls.py`, `src/studio/serializers.py`.
+- [ ] **Коммит D-4. UI выбора модели + оценка стоимости.** `<select>` с `<optgroup>`, расчёт звёзд. Файлы: `frontend/app/studio/page.tsx`, `frontend/lib/api/studio.ts`.
+
+---
+
+## E. Маркетинговая миссия Studio
+
+Мы строим Studio не «ещё один генератор сайтов», а лучший русскоязычный сервис вайбкодинга — для людей, которые знают, *что* хотят построить, но не обязаны знать *как*. Российский рынок сегодня поставлен перед ложным выбором: либо платить за зарубежные bolt.new/lovable через VPN и иностранную карту, либо мириться с примитивными конструкторами. Мы закрываем этот разрыв: мощь агентного пайплайна, оплата в рублях, интерфейс и поддержка на русском, без VPN. Это не «локализация чужого продукта» — это собственный стек (агенты, sandbox, биллинг, краулер), который мы развиваем под наш рынок.
+
+Стандарт качества мы держим по верхней планке индустрии — не ниже bolt.new и lovable. Это значит: сгенерированный код должен собираться и запускаться, превью — открываться, а не показывать пустой экран; план проекта — быть выполнимым, а не красивым списком желаний. Каждый из семи агентов в пайплайне существует ради этой планки: аналитик превращает идею в спецификацию, планировщик — в атомарные шаги, кодер пишет production-ready код, ревьюер и тестер ловят ошибки до того, как их увидит пользователь, фиксер их чинит. Если что-то из этой цепочки работает «на тройку» — продукт работает на тройку. Поэтому мы постоянно проводим честный gap-анализ: где мы реально отстаём от лучших, а не где нам приятно думать, что мы хороши.
+
+«Топ-1 в России» для нас — не «быть вторыми по отношению к западным конкурентам». Это конкретная операционная дисциплина: закрывать дыры быстрее, чем их находят пользователи; релизить чаще, чем кто-либо на нашем рынке; слушать обратную связь внимательнее, чем это делает кто-то, у кого мы лишь один из тридцати языков локализации. Мы ближе к своему пользователю — и это наше неустранимое преимущество перед глобальными игроками, для которых русский рынок второстепенен.
+
+Главный принцип разработки — no lazy shortcuts. Каждая функция делается правильно с первого раза — или не делается вовсе. Краулер, который собирает URL ресурсов и выбрасывает их, называя это «копированием», — это shortcut, и мы его не принимаем (см. раздел A). Второе поле `ai_model` рядом с уже существующим `coder_model`, делающее ту же работу, — shortcut, и мы вместо этого мигрируем по-честному (см. раздел D). Защита от зацикливания, которая считает только итерации, но не замечает, что код не меняется, — shortcut (см. раздел C). Мы предпочитаем сделать меньше функций, но каждую — до конца и надёжно.
+
+Путь к топ-1 — итеративный и честный. Мы не объявляем победу по факту наличия функции в коде; мы проверяем, работает ли она для живого пользователя на живом проекте. Мы измеряем, собираем фидбек, признаём разрывы и закрываем их по приоритету. Эта дисциплина — не разовый спринт, а постоянная практика команды. Именно она, а не отдельная «киллер-фича», выведет Studio в топ-1 русскоязычного вайбкодинга.
+
+---
+
+## F. Онбординг-страница Studio (`/studio/`)
+
+Страница существует (`frontend/app/studio/page.tsx`), но это сразу форма создания. Нужно добавить объясняющий слой для не-кодера — **хирургически, не ломая существующую логику** (форма, табы, список проектов остаются).
+
+### F.1 Hero-секция
+
+- Заголовок: «Создайте сайт или приложение, просто описав идею».
+- Подзаголовок: «Studio — это команда AI-агентов, которые проектируют, пишут и проверяют код за вас. Без знания программирования. Без VPN. Оплата в рублях.»
+- «Как это работает за 3 шага» (иконки Lucide):
+  1. `MessageSquare` — «Опишите идею или дайте ссылку на сайт-образец».
+  2. `Cpu` — «Агенты составляют план и пишут код, вы видите прогресс по шагам».
+  3. `Eye` — «Смотрите живое превью, правьте и публикуйте».
+- CTA «Создать проект» (раскрывает существующую форму — текущее поведение `setShowForm`).
+
+### F.2 Описание стеков с преимуществами
+
+Блок-карточки (иконки Lucide, без эмодзи), показываются над/рядом с выбором стека:
+
+| Стек | Иконка | Подходит для | Плюсы | Когда выбирать |
+|------|--------|--------------|-------|----------------|
+| **HTML** | `FileCode` | Лендинги, промо, визитки | Мгновенное превью, не нужен Node.js, максимальная совместимость | Простые страницы без реактивности |
+| **React** | `Atom` | Интерактивные SPA, дашборды, формы | Богатые UI-компоненты, hooks, экосистема | Нужна интерактивность без SSR |
+| **Vue** | `Layers` | Средние SPA | Проще синтаксис, плавная кривая обучения | Быстрый старт |
+| **Next.js** | `Boxes` | Полноценные приложения, SSR/SSG, API routes | SEO из коробки, file-based routing, деплой на Vercel | Полноценный продукт с бэкендом |
+
+> Примечание о превью (см. раздел H): HTML отдаётся мгновенно из БД (`PreviewProxyView` fallback), React/Vue/Next.js требуют запуска dev-сервера в sandbox (дольше). Об этом честно предупреждаем в карточке стека — пользователь не будет думать, что «зависло».
+
+### F.3 Режимы работы (объяснение для не-кодера)
+
+Расширить существующий `MODE_OPTIONS` (сейчас короткие `hint`) до карточек с понятным текстом:
+
+| Режим | Иконка | Текст для пользователя |
+|-------|--------|------------------------|
+| Auto | `Zap` | «Агенты делают всё сами — вы только описываете, что нужно. Самый быстрый путь к результату.» |
+| Semi | `StepForward` | «Подтверждаете каждый шаг — видите, что происходит, и можете остановиться в любой момент.» |
+| Manual | `Hand` | «Полный контроль: одобряете каждый файл перед записью. Для тех, кто хочет вникать.» |
+
+> Соответствует фактической логике: в `commit_to_gitea` режимы `semi`/`manual` ставят `paused_manual` после каждого шага.
+
+### F.4 Задачи по коммитам — онбординг
+
+- [ ] **Коммит F-1. Hero-блок.** Компонент `frontend/components/studio/StudioHero.tsx`, вставить над формой в `page.tsx` (показывать, когда форма скрыта). Файлы: `frontend/components/studio/StudioHero.tsx`, `frontend/app/studio/page.tsx`.
+- [ ] **Коммит F-2. Карточки стеков.** Компонент `StackCards.tsx`, рендерится внутри формы рядом с `<select>` стека; клик по карточке = выбор стека. Файлы: `frontend/components/studio/StackCards.tsx`, `frontend/app/studio/page.tsx`.
+- [ ] **Коммит F-3. Режимы-карточки.** Заменить кнопки режима на карточки с расширенным текстом (данные из обновлённого `MODE_OPTIONS`). Файл: `frontend/app/studio/page.tsx`.
+
+---
+
+## G. Интерактивный выбор фич вместо шаблонов
+
+### G.1 Проблема
+
+`TemplateGallery` (есть, шаблоны из БД через `seed_templates`) заставляет пользователя выбрать «ближайший» шаблон и описывать дельту словами. Лучше — checkbox-набор «что должно быть в проекте»: пользователь конструирует ТЗ кликами, а не угадывает шаблон.
+
+### G.2 Список фич (checkbox по категориям)
+
+| Категория | Фичи |
+|-----------|------|
+| Навигация | Header с меню, Footer, Breadcrumbs, Sidebar |
+| Контент | Hero-секция, Галерея/карточки, Блог/статьи, FAQ-раздел, Отзывы |
+| Формы | Форма обратной связи, Форма записи/бронирования, Форма заказа, Квиз |
+| E-commerce | Корзина, Каталог товаров, Карточка товара, Чекаут |
+| Авторизация | Регистрация/вход, Личный кабинет, Профиль |
+| Дополнительно | Тёмная тема, Анимации, Адаптив мобильный, Мультиязычность, Поиск по странице |
+| Интеграции | Яндекс.Карты, Telegram-кнопка, WhatsApp-кнопка, Instagram-ссылки |
+
+Каждая фича = `{id, label, category}`; источник — `frontend/lib/studio/features.ts` (или эндпоинт, по аналогии с каталогом моделей).
+
+### G.3 Как фичи превращаются в промт агентов
+
+- Выбранные `selected_features: string[]` сохраняются в `interview_data['features']`.
+- AnalystAgent получает их как явные функциональные требования.
+- PlannerAgent получает блок «MUST-HAVE компоненты» и обязан включить для каждой фичи хотя бы один шаг.
+- CoderAgent получает список обязательных компонентов в контексте шага.
+
+**Пример конвертации** (добавляется в user-сообщение планировщика):
+```
+Выбранные пользователем функции (обязательны к реализации):
+- Навигация: Header с меню, Footer
+- Контент: Hero-секция, Галерея/карточки, FAQ-раздел
+- Формы: Форма обратной связи
+- Интеграции: Telegram-кнопка
+- Дополнительно: Тёмная тема, Адаптив мобильный
+
+Каждая функция должна быть покрыта минимум одним шагом COMMITS.md.
+```
+
+### G.4 Задачи по коммитам — фичи
+
+- [ ] **Коммит G-1. Компонент FeatureSelector.** `frontend/components/studio/FeatureSelector.tsx` — категории + чекбоксы (иконки Lucide для категорий), управляемое состояние `selected: string[]`. Заменяет `TemplateGallery` в форме «С нуля» (галерею можно оставить ниже как «или начните с шаблона»). Файлы: `frontend/components/studio/FeatureSelector.tsx`, `frontend/app/studio/page.tsx`, `frontend/lib/studio/features.ts`.
+- [ ] **Коммит G-2. API create принимает features.** Сериализатор/вью `create` сохраняет `selected_features` в `interview_data['features']`. Файлы: `src/studio/views/projects.py`, `src/studio/serializers.py`, `frontend/lib/api/studio.ts`.
+- [ ] **Коммит G-3. Промты Analyst/Planner учитывают features.** В `analyst.run`/`planner.run` подмешивать блок features в user-сообщение (формат из G.3). Файлы: `src/studio/agents/analyst.py`, `src/studio/agents/planner.py`.
+- [ ] **Коммит G-4. Интеграция в page.tsx.** Подключить FeatureSelector в форму, прокинуть `selected_features` в `createMutation`. Файл: `frontend/app/studio/page.tsx`.
+
+---
+
+## H. Аудит стеков — реальные баги превью
+
+Основано на фактическом коде `src/studio/sandbox.py`, `src/studio/tasks.py`, `src/studio/views/pipeline.py` (`PreviewProxyView`).
+
+### H.1 HTML-стек
+
+**Bug H-1. Файлы только в БД → 404 в sandbox.**
+- *Что:* `start_dev_server` для статики поднимает `python3 -m http.server` в `/workspace`. Файлы кладутся туда через `sandbox.write_files` в `run_pipeline`/`coder_iteration`. Если какой-то `StudioFile` создан, но **не записан** в sandbox (например, ресурс из краулера — раздел A — или файл, добавленный вне `write_files`), HTTP-сервер вернёт 404. `PreviewProxyView` пытается проксировать в контейнер, и при провале (`except`) падает в fallback — отдачу из БД по точному `path`. То есть для пользователя всё может работать через fallback, но НЕ через реальный sandbox-сервер — рассинхрон.
+- *Статус:* **Ухудшает UX** (для краулинг-клонов может стать Блокером).
+- *Фикс:* гарантировать, что **все** `StudioFile` проекта пишутся в sandbox: централизовать «полную синхронизацию» (helper `sandbox.sync_all(project)`), вызывать после краулинга и при `restart_preview`. Не полагаться на то, что фоллбэк скроет дыру.
+- *Где:* `src/studio/sandbox.py`, `src/studio/tasks.py`.
+
+**Bug H-2. Относительные URL ломаются при проксировании.**
+- *Что:* превью открывается по `/api/.../projects/{id}/preview/`, файлы отдаются по `preview/{path}`. Относительные ссылки в HTML (`./style.css`, `assets/app.js`) резолвятся браузером относительно URL страницы превью — это может не совпасть с тем, что `PreviewProxyView` ищет (`serve_path = path.strip('/') or 'index.html'`, точное совпадение по `StudioFile.path`). Вложенные пути (`pages/about.html` → `../assets/x.css`) особенно хрупки.
+- *Статус:* **Ухудшает UX.**
+- *Фикс:* инжектировать `<base href="/api/.../preview/">` в отдаваемый HTML (fallback-ветка `PreviewProxyView`), либо нормализовать пути ресурсов на относительные-от-корня (`/assets/...`) на этапе краулинга/генерации.
+- *Где:* `src/studio/views/pipeline.py` (`PreviewProxyView.get`), краулер (раздел A.3 normalize).
+
+### H.2 React/Vue-стек
+
+**Bug R-1. Холодный `pnpm install` 2-7 минут — кажется, что зависло.**
+- *Что:* `install_deps` (`pnpm install`) выполняется синхронно в `run_pipeline`/`_ensure_sandbox` без промежуточных событий. Пользователь видит «Запускаю sandbox...» и тишину.
+- *Статус:* **Ухудшает UX.**
+- *Фикс:* публиковать SSE-события прогресса до/после `install_deps` («Устанавливаю зависимости (может занять пару минут)...»); рассмотреть прогрев кэша pnpm в образе `aineron-sandbox` (предустановить частые пакеты Next/React/Vue в store). Таймлайн (раздел C.4) показывает таймер.
+- *Где:* `src/studio/tasks.py` (`run_pipeline`, `_ensure_sandbox`), `Dockerfile` образа sandbox.
+
+**Bug R-2. Vite биндит на localhost, не на 0.0.0.0 → превью недоступно.**
+- *Что:* `start_dev_server` для проектов с `dev`-скриптом запускает `pnpm dev --port 3000 --host 0.0.0.0`. Но если сгенерированный `vite.config.ts` переопределяет host или скрипт `dev` не пробрасывает `--host`, Vite слушает localhost внутри контейнера, и `PreviewProxyView`-проксирование к `http://{container}:3000/` не достучится.
+- *Статус:* **Блокер** для Vite-стеков (React/Vue через Vite).
+- *Фикс:* CoderAgent обязан генерировать `vite.config.ts` с `server: { host: true, port: 3000 }` (уже добавлено в промт кодера, раздел B.5). Подстраховка: `start_dev_server` для Vite добавляет `--host 0.0.0.0` явно (уже передаётся, но убедиться, что не перетирается конфигом).
+- *Где:* `src/studio/agents/coder.py` (промт), `src/studio/sandbox.py`.
+
+**Bug R-3. HMR через WebSocket не работает сквозь PreviewProxyView.**
+- *Что:* `PreviewProxyView` — обычный HTTP-проброс (`requests.get`), WebSocket не проксируется. Vite/Next HMR-сокет не подключается → нет горячей перезагрузки, в консоли ошибки подключения WS.
+- *Статус:* **Ухудшает UX** (не блокер — превью работает, просто без live-reload).
+- *Фикс:* короткий путь — отключить HMR в dev-конфиге для sandbox (`server.hmr: false`), чтобы не сыпались ошибки WS, и перезагружать iframe вручную после каждого шага (мы и так пере-рендерим превью по событию). Длинный путь — поднять WS-проксирование через nginx/Channels.
+- *Где:* `src/studio/agents/coder.py` (генерация конфига), `frontend` (перезагрузка iframe по SSE-событию), опц. `nginx.conf`.
+
+### H.3 Next.js-стек
+
+**Bug N-1. `pnpm dev` Next.js 14 — порт/host корректны, но нужны доп. условия.**
+- *Что:* `start_dev_server` запускает `pnpm dev --port 3000 --host 0.0.0.0`. Для Next.js 14 это работает, но `next dev` игнорирует `--host` в части версий (нужен `-H 0.0.0.0`), а первая компиляция страницы ленивая — `wait_for_ready` (timeout 60-90с) может истечь до первого ответа на тяжёлом проекте.
+- *Статус:* **Ухудшает UX** (иногда Блокер по таймауту).
+- *Фикс:* для Next генерировать `dev`-скрипт как `next dev -p 3000 -H 0.0.0.0`; поднять `wait_for_ready` timeout для Next и делать «прогревочный» запрос на `/` для триггера компиляции.
+- *Где:* `src/studio/agents/coder.py` (package.json scripts), `src/studio/sandbox.py` (`start_dev_server`/`wait_for_ready`).
+
+**Bug N-2. Next.js API routes `/api/*` конфликтуют с nginx `/api/ → Django`.**
+- *Что:* в проде nginx роутит `/api/ → Django`. Но превью Studio-проекта проксируется через `PreviewProxyView` по пути `/api/.../preview/{path}`, и сам сгенерированный Next.js использует свои `/api/*` маршруты **внутри** контейнера (порт 3000) — наружу они не выставляются напрямую, только через прокси превью, так что прямого конфликта на проде нет. Риск — если пользователь предполагает, что его `/api/*` доступен по внешнему URL aineron.ru.
+- *Статус:* **Косметический/архитектурный** (документировать), потенциально Блокер при экспорте на свой домен.
+- *Фикс:* API-маршруты Next работают внутри sandbox/после деплоя на Vercel (`deploy_to_vercel` уже ставит `framework: nextjs`). В превью — всё идёт через `PreviewProxyView`, конфликта нет. Зафиксировать это в доке и в карточке стека Next.js: «API routes работают в превью и после публикации на Vercel».
+- *Где:* документация, `frontend/components/studio/StackCards.tsx` (примечание).
+
+**Bug N-3. Next.js build падает на TS-ошибках агента.**
+- *Что:* `run_build_check` гоняет `tsc --noEmit || pnpm build`. Если CoderAgent сгенерировал код с TS-ошибками, `agent_test` вернёт `passed=false`, пойдут итерации фиксера — это правильно. Но при деплое (`deploy_to_vercel`) Vercel сам соберёт проект, и если TS-ошибки остались (например, build-check проходил по `tsc`, а Next-build строже) — деплой упадёт молча.
+- *Статус:* **Ухудшает UX** (на этапе публикации).
+- *Фикс:* перед `deploy_to_vercel` прогонять полноценный `next build` в sandbox (а не только `tsc --noEmit`); при провале — не деплоить, а вернуть пользователя в пайплайн с понятной ошибкой. Опционально — в `next.config` для генерируемых проектов НЕ ставить `ignoreBuildErrors` (чтобы ошибки не маскировались).
+- *Где:* `src/studio/sandbox.py` (`run_build_check` для Next — гонять `next build`), `src/studio/tasks.py` (`deploy_to_vercel` — предварительный build-gate).
+
+### H.4 Задачи по коммитам — баги превью
+
+- [ ] **Коммит H-1. Полная синхронизация файлов в sandbox.** `sandbox.sync_all(project)`; вызвать после краулинга и в `restart_preview`. Файлы: `src/studio/sandbox.py`, `src/studio/tasks.py`.
+- [ ] **Коммит H-2. `<base href>` для статического превью.** Инжект в fallback-ветке `PreviewProxyView`. Файл: `src/studio/views/pipeline.py`.
+- [ ] **Коммит H-3. Прогресс установки зависимостей + прогрев образа.** SSE-события вокруг `install_deps`; предустановка частых пакетов в `aineron-sandbox`. Файлы: `src/studio/tasks.py`, `Dockerfile` (sandbox-образ).
+- [ ] **Коммит H-4. Vite/Next host и dev-скрипты.** Промт кодера + подстраховка в `start_dev_server`; для Next — `-H 0.0.0.0`, увеличенный `wait_for_ready`, прогревочный запрос. Файлы: `src/studio/agents/coder.py`, `src/studio/sandbox.py`.
+- [ ] **Коммит H-5. HMR без ошибок.** Отключить WS-HMR в dev-конфиге sandbox, перезагрузка iframe по SSE. Файлы: `src/studio/agents/coder.py`, `frontend/components/studio/*` (превью).
+- [ ] **Коммит H-6. Build-gate перед деплоем.** `next build` в `run_build_check` для Next; предварительный build-gate в `deploy_to_vercel`. Файлы: `src/studio/sandbox.py`, `src/studio/tasks.py`.
+
 Тексты кнопок — короткие глаголы без спецсимволов: «Подключить», «Опубликовать», «Поделиться», «Создать из шаблона».
