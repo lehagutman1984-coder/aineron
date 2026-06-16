@@ -1,2143 +1,1707 @@
-# STUDIO_COMMITS.md — Пошаговый план коммитов Vibe-Coding Studio
+# STUDIO_COMMITS.md
 
-Детальный, исполняемый план улучшения студии vibe-кодинга (`src/studio/` + `frontend/app/studio/`, `frontend/components/studio/`).
+План пошаговой разработки aineron.ru Studio v2 по коммитам.
+Базовый продуктовый документ: `STUDIO_V2_PLAN.md`.
 
-Этот документ — единственный источник для реализации. Каждый коммит самодостаточен: содержит точные пути, before/after-сниппеты на основе **реального текущего кода** и конкретный способ проверки. Открывайте его в новом чате и начинайте с Commit 1.
+Этот файл — рабочая инструкция для исполнителя (человека или LLM). Каждый коммит описан настолько подробно, чтобы его можно было реализовать без дополнительных уточнений: указаны точные файлы, что именно изменить и готовый код. Реализуй коммиты строго по порядку — поздние зависят от ранних.
 
-## Как пользоваться
+## Правила работы
 
-- Коммиты пронумерованы и идут в порядке реализации. Соблюдайте `Dependencies`.
-- Каждый коммит — **одна забота**. Не объединяйте.
-- После любого изменения поля модели — обязательно `cd src && python manage.py makemigrations studio && python manage.py migrate`.
-- Тесты студии лежат в `src/studio/tests.py`. Запуск: `cd src && python manage.py test studio`.
-- Не трогайте старый `VIBECODING_STUDIO_COMMITS.md` — это отдельный legacy-документ.
-- UI: только Lucide React, ноль эмодзи (см. CLAUDE.md).
+- Один коммит = одна логическая единица. Не смешивать коммиты.
+- После каждого коммита: `git add -A && git commit` с осмысленным сообщением, затем `git push origin main`.
+- Дизайн-система обязательна: только иконки Lucide React (`import { X } from 'lucide-react'`), без эмодзи. Стили только через CSS-переменные (`var(--bg)`, `var(--card-bg)`, `var(--border)`, `var(--text)`, `var(--text-secondary)`, `var(--hover)`, `var(--success)`, `var(--danger)`, `var(--muted)`). Стиль минималистичный (Linear/Vercel).
+- После изменения моделей Django: создать миграцию (`python manage.py makemigrations studio`) и применить (`python manage.py migrate`).
+- Промты агентов по умолчанию на английском (`STUDIO_PROMPT_LANG=en`), но видимый пользователю текст (вопросы, summary, instructions) генерируется на русском — это закреплено в самих промтах.
 
-## Карта багов → коммитов (аудит, чтобы ничего не задублировать)
+## Таблица коммитов
 
-| Баг | Описание | Коммит | Спринт |
-|-----|----------|--------|--------|
-| BUG-01 | STATUS: модель `'interview'`, view пишет `'interviewing'` | Commit 1 | Fix |
-| BUG-02 | BILLING HOLE: `_billing_charge` тихо возвращает 0, пайплайн бежит бесплатно | Commit 3 | Fix |
-| BUG-05 | Double-charge на retry: charge до возможного `raise` | Commit 2 | Fix |
-| BUG-03 | `run_pipeline` без try/except вокруг Docker → застревание `coding` | Commit 4 | Fix |
-| BUG-04 | Pause не останавливает in-flight Celery-задачи | Commit 5 | Fix |
-| BUG-06 | `<STEPS_COUNT>` planner ≠ число секций в COMMITS.md | Commit 6 | Fix |
-| BUG-07 | AgentLog SSE: `onerror→close` без reconnect, двойная подписка | Commit 11 | E |
-| BUG-08 | Hardcoded `estimatedStars={50}` на review-странице | Commit 10 | E |
-| BUG-09 | `reap_stale_sandboxes` не в расписании Celery beat | Commit 7 | Fix |
-| BUG-10 | Ручные правки (`FileDetailView` PATCH) не идут в sandbox/Gitea | Commit 14 | E |
+| № | Сессия | Название | Ключевые файлы | Время |
+|---|--------|----------|----------------|-------|
+| 1 | 1 | Каталог моделей | `src/studio/models_catalog.py` | 20 мин |
+| 2 | 1 | Миграция coder_model → ai_model + поля анти-цикла | `src/studio/models.py`, миграции | 40 мин |
+| 3 | 1 | Билинг по tier + resolve_model | `src/studio/billing.py`, `agents/base.py`, `agents/coder.py` | 40 мин |
+| 4 | 1 | STUDIO_PROMPT_LANG + pick_prompt | `src/config/settings.py`, `agents/base.py` | 20 мин |
+| 5 | 2 | EN промты: Interviewer, Analyst, Planner | `agents/interviewer.py`, `analyst.py`, `planner.py` | 40 мин |
+| 6 | 2 | EN промты: Coder, Reviewer, Tester, Fixer | `agents/coder.py`, `reviewer.py`, `tester.py`, `fixer.py` | 40 мин |
+| 7 | 3 | Детектор одинакового diff + повторной ошибки | `src/studio/tasks.py` | 50 мин |
+| 8 | 3 | Watchdog beat-задача | `tasks.py`, `config/settings.py`, `config/celery.py` | 50 мин |
+| 9 | 3 | PipelineSkipView | `views/pipeline.py`, `urls.py`, `serializers.py` | 30 мин |
+| 10 | 4 | sandbox.sync_all + dev-server для Next.js | `src/studio/sandbox.py`, `tasks.py` | 50 мин |
+| 11 | 4 | Инжект `<base href>` в PreviewProxyView | `views/pipeline.py` | 30 мин |
+| 12 | 4 | SSE-события установки зависимостей | `src/studio/tasks.py` | 20 мин |
+| 13 | 5 | Компонент PipelineTimeline | `components/studio/PipelineTimeline.tsx`, `StudioLayout.tsx` | 40 мин |
+| 14 | 5 | Компонент PipelineRecovery | `components/studio/PipelineRecovery.tsx`, `lib/api/studio.ts` | 40 мин |
+| 15 | 5 | UI выбора модели + оценка стоимости | `app/studio/page.tsx`, `lib/api/studio.ts`, `views/projects.py`, `urls.py` | 50 мин |
+| 16 | 6 | Компонент StudioHero | `components/studio/StudioHero.tsx`, `app/studio/page.tsx` | 30 мин |
+| 17 | 6 | Компонент StackCards | `components/studio/StackCards.tsx`, `app/studio/page.tsx` | 40 мин |
+| 18 | 6 | Карточки режимов + интеграция | `app/studio/page.tsx` | 30 мин |
+| 19 | 7 | features.ts + FeatureSelector | `lib/studio/features.ts`, `components/studio/FeatureSelector.tsx` | 40 мин |
+| 20 | 7 | API принимает selected_features | `serializers.py`, `views/projects.py`, `lib/api/studio.ts` | 30 мин |
+| 21 | 7 | Analyst/Planner учитывают features + UI | `agents/analyst.py`, `planner.py`, `app/studio/page.tsx` | 40 мин |
+| 22 | 8 | Отключить HMR + перезагрузка iframe | `agents/coder.py`, `components/studio/PreviewPanel.tsx` | 30 мин |
+| 23 | 8 | Build-gate перед деплоем | `src/studio/sandbox.py`, `tasks.py` | 30 мин |
+| 24 | 8 | Итоговый аудит + .env.example | `.env.example`, общий аудит | 30 мин |
 
-> **Важно по BUG-01 (расхождение с формулировкой задачи).** В задаче сказано, что код пишет `'interviewing'` «везде». Это не так. Эталонное значение — **`'interview'`**: его используют `STATUS_CHOICES` в `models.py`, фронтенд `PipelineStatus.STATUS_TO_ACTIVE` (`interview: 'interviewer'`) и review-страница (`status === 'interview'`). Единственный нарушитель — `InterviewView.get`, который пишет `'interviewing'`. Чиним выброс, а НЕ добавляем `'interviewing'` в модель.
-
----
-
-# Sprint Fix — Критические баги
-
-## Commit 1: Унифицировать статус интервью на 'interview'
-
-**Sprint:** Fix
-**Fixes/Implements:** BUG-01
-**Files changed:**
-- `src/studio/views/projects.py`
-
-**What to do:**
-В `InterviewView.get` атомарный guard пишет несуществующий в `STATUS_CHOICES` статус `'interviewing'`. Канон — `'interview'`. Заменить:
-
-```python
-# BEFORE (projects.py, InterviewView.get)
-triggered = StudioProject.objects.filter(
-    id=id, user=request.user, status='draft'
-).update(status='interviewing')
-
-# AFTER
-triggered = StudioProject.objects.filter(
-    id=id, user=request.user, status='draft'
-).update(status='interview')
-```
-
-Прогрепать весь репозиторий на `interviewing`, чтобы не осталось других вхождений в backend (фронтенд уже использует `interview` корректно):
-
-```bash
-cd src && grep -rn "interviewing" . --include="*.py"
-```
-
-Ожидаемый результат grep после правки: пусто.
-
-**Test:**
-```bash
-cd src && grep -rn "interviewing" . --include="*.py"   # должно быть пусто
-cd src && python manage.py shell -c "from studio.models import StudioProject; print([c[0] for c in StudioProject.STATUS_CHOICES])"
-```
-Ручная проверка: создать проект, открыть `/studio/<id>/interview/` — фронт `PipelineStatus` должен подсветить точку «Интервью» (она маппится с `interview`), редирект на `[id]/page.tsx` должен работать.
-
-**Dependencies:** —
+Всего: 24 коммита, 8 сессий.
 
 ---
 
-## Commit 2: Убрать double-charge на retry (charge только после успеха)
+## Сессия 1: Фундамент — модели, поля, язык промтов
 
-**Sprint:** Fix
-**Fixes/Implements:** BUG-05
-**Files changed:**
-- `src/studio/tasks.py`
+Цель: ввести расширяемый каталог из 15 моделей с tier-биллингом, заменить устаревшее поле `coder_model` на `ai_model`, добавить поля состояния для защиты от зацикливания, ввести переключатель языка промтов. После сессии система готова работать с любой моделью из каталога и считать звёзды по её tier.
 
-**What to do:**
-Сейчас `agent_analyze`, `agent_plan`, `coder_iteration` вызывают `_billing_charge(...)` внутри `try`, а при ошибке делают `raise self.retry(...)`. Если charge прошёл, а потом что-то упало (или задача ретраится по другой причине), пользователь оплачивается повторно при каждом ретрае.
+Коммиты: 1, 2, 3, 4.
 
-Принцип: **списываем звёзды последним действием, после того как работа агента точно завершилась успешно и не будет переигрываться этим же вызовом.** В текущем коде `_billing_charge` уже стоит после `Agent(...).run()` — это правильно. Проблема в том, что между `run()` и `_billing_charge` (или после него) есть ещё работа, которая может бросить исключение и привести к ретраю всего тела.
+### Коммит 1: Каталог моделей
 
-Гарантировать порядок: `run()` → побочные эффекты (запись файлов, диспетчеризация следующей задачи) → **charge в самом конце, после диспетчеризации**, чтобы ретрай тела никогда не повторял charge для уже выполненной работы. Конкретно перенести `_billing_charge` ниже:
+**Файлы**
+- Создать: `src/studio/models_catalog.py`
 
-`agent_analyze`:
+**Что делать**
+
+Создать единый источник правды по доступным моделям Studio. Каталог содержит id (как его понимает провайдер laozhang.ai), человекочитаемый label, category (для UI-группировки) и tier (для биллинга и эскалации). `MODEL_TIER` — производный словарь id → tier. `ESCALATION_MAP` задаёт, на какую smart-модель эскалировать конкретную fast-модель на шагах с тегом `[COMPLEX]` или при повторных ошибках (эскалация в рамках того же вендора).
+
+**Код**
+
 ```python
-# AFTER
-@shared_task(bind=True, max_retries=3, queue=QUEUE)
-def agent_analyze(self, project_id):
-    project = StudioProject.objects.get(id=project_id)
-    from .agents.analyst import AnalystAgent
-    try:
-        publish_event(project_id, {'agent': 'analyst', 'level': 'info', 'text': 'Анализирую требования...'})
-        AnalystAgent(project).run()
-        publish_event(project_id, {'agent': 'analyst', 'level': 'info', 'text': 'PROJECT.md готов'})
-        agent_plan.delay(project_id)
-        _billing_charge(project, 'analyst', 0)   # charge last
-    except Exception as e:
-        raise self.retry(exc=e, countdown=60)
+# src/studio/models_catalog.py
+"""Каталог моделей Studio: единый источник правды для UI, биллинга и эскалации."""
+
+STUDIO_MODELS = [
+    {'id': 'claude-sonnet-4-6',          'label': 'Claude Sonnet 4.6',  'category': 'smart',     'tier': 'smart',  'description': 'Лучший баланс качества и скорости'},
+    {'id': 'claude-opus-4-8',            'label': 'Claude Opus 4.8',    'category': 'smart',     'tier': 'smart',  'description': 'Максимальное качество, сложная архитектура'},
+    {'id': 'claude-haiku-4-5-20251001',  'label': 'Claude Haiku 4.5',   'category': 'fast',      'tier': 'fast',   'description': 'Быстрый Claude для простых задач'},
+    {'id': 'gpt-5',                      'label': 'GPT-5',              'category': 'smart',     'tier': 'smart',  'description': 'Топовый GPT, сильная логика и рефакторинг'},
+    {'id': 'gpt-5-mini',                 'label': 'GPT-5 Mini',         'category': 'fast',      'tier': 'fast',   'description': 'Дешёвый GPT-5 для рутинных шагов'},
+    {'id': 'gpt-4.1',                    'label': 'GPT-4.1',           'category': 'smart',     'tier': 'smart',  'description': 'Надёжный генералист по коду'},
+    {'id': 'gpt-4.1-mini',               'label': 'GPT-4.1 Mini',      'category': 'fast',      'tier': 'fast',   'description': 'Быстрый и дешёвый генералист'},
+    {'id': 'gpt-4o',                     'label': 'GPT-4o',            'category': 'fast',      'tier': 'fast',   'description': 'Быстрый мультимодальный'},
+    {'id': 'deepseek-v3.2',              'label': 'DeepSeek V3.2',     'category': 'fast',      'tier': 'fast',   'description': 'Сильный код за низкую цену'},
+    {'id': 'deepseek-v4-pro',            'label': 'DeepSeek V4 Pro',   'category': 'smart',     'tier': 'smart',  'description': 'Старшая DeepSeek, качество ближе к топу'},
+    {'id': 'deepseek-r1',                'label': 'DeepSeek R1',       'category': 'reasoning', 'tier': 'smart',  'description': 'Пошаговые рассуждения, сложная логика'},
+    {'id': 'qwen3-coder-plus',           'label': 'Qwen3 Coder Plus',  'category': 'coder',     'tier': 'coder',  'description': 'Специализирован на коде'},
+    {'id': 'qwen3-235b-a22b',            'label': 'Qwen3 235B',        'category': 'smart',     'tier': 'smart',  'description': 'Крупная Qwen, сильный генералист'},
+    {'id': 'kimi-k2',                    'label': 'Kimi K2',           'category': 'coder',     'tier': 'coder',  'description': 'Длинный контекст, сильна в коде'},
+    {'id': 'gemini-2.5-pro',             'label': 'Gemini 2.5 Pro',    'category': 'smart',     'tier': 'smart',  'description': 'Длинный контекст, крупные проекты'},
+]
+
+DEFAULT_STUDIO_MODEL = 'claude-sonnet-4-6'
+
+# id -> tier (для биллинга и эскалации)
+MODEL_TIER = {m['id']: m['tier'] for m in STUDIO_MODELS}
+
+# Эскалация fast -> smart по вендору для шагов [COMPLEX] и при повторных ошибках.
+ESCALATION_MAP = {
+    'deepseek-v3.2':             'deepseek-v4-pro',
+    'gpt-4.1-mini':              'gpt-4.1',
+    'gpt-5-mini':                'gpt-5',
+    'gpt-4o':                    'gpt-4.1',
+    'claude-haiku-4-5-20251001': 'claude-sonnet-4-6',
+}
+
+
+def is_valid_model(model_id: str) -> bool:
+    return model_id in MODEL_TIER
 ```
 
-`agent_plan`: перенести `_billing_charge(project, 'planner', 0)` так, чтобы он шёл **после** `_set_status(project, 'ready')` и publish:
+**Проверка**: `python -c "from studio.models_catalog import MODEL_TIER; print(MODEL_TIER['gpt-5'])"` выводит `smart`.
+
+### Коммит 2: Миграция coder_model → ai_model + поля анти-цикла
+
+**Файлы**
+- Изменить: `src/studio/models.py`
+- Создать: миграцию `src/studio/migrations/XXXX_ai_model_and_loop_fields.py` (через `makemigrations`) + data-миграцию
+
+**Что делать**
+
+1. В `StudioProject` добавить поле `ai_model` с дефолтом `'claude-sonnet-4-6'`. Старое поле `coder_model` оставить временно (его удалит data-миграция после переноса данных).
+2. В `StudioPipelineState` добавить поля состояния анти-цикла и тайминга.
+3. Сгенерировать схемную миграцию, затем добавить data-миграцию: перенос значений `coder_model` → `ai_model` и удаление `coder_model`.
+
+**Код**
+
+В `src/studio/models.py`, класс `StudioProject` (добавить поле рядом с `coder_model`):
+
 ```python
-# AFTER (хвост try-блока agent_plan)
-        _set_status(project, 'ready')
-        publish_event(project_id, {
-            'agent': 'planner', 'level': 'info',
-            'text': f'COMMITS.md готов: {steps} шагов',
-        })
-        _billing_charge(project, 'planner', 0)   # charge last
+    ai_model = models.CharField(max_length=64, default='claude-sonnet-4-6')
+    # coder_model сохраняется до применения data-миграции, затем удаляется.
 ```
 
-`coder_iteration`: перенести `_billing_charge(project, 'coder', step_index)` так, чтобы он шёл **после** записи файлов и **после** `chord(...).apply_async()`:
+В `src/studio/models.py`, класс `StudioPipelineState` (добавить поля):
+
 ```python
-# AFTER (хвост try-блока coder_iteration)
-        if project.sandbox_container_id:
-            sandbox.write_files(project.sandbox_container_id, files)
-        chord(
-            [agent_review.s(project_id, step_index), agent_test.s(project_id, step_index)],
-            merge_reports.s(project_id, step_index),
-        ).apply_async()
-        _billing_charge(project, 'coder', step_index)   # charge last
+    last_files_hash = models.CharField(max_length=64, blank=True, default='')
+    same_diff_count = models.IntegerField(default=0)
+    last_error_signature = models.CharField(max_length=256, blank=True, default='')
+    error_repeat_count = models.IntegerField(default=0)
+    started_at = models.DateTimeField(null=True, blank=True)
 ```
 
-> Примечание про идемпотентность: ретрай `coder_iteration` после успешного charge всё ещё теоретически возможен, если упадёт сам Celery между charge и завершением. Полная идемпотентность звёзд — это Commit 28 (star reservation). Здесь убираем самый частый кейс — charge перед `raise`.
+Замечание: поле `error_repeat_count` нужно для коммита 7 (детектор повторной ошибки), добавляем его сразу здесь, чтобы не плодить лишние миграции.
 
-**Test:**
+Сгенерировать схемную миграцию:
+
 ```bash
-cd src && python manage.py test studio
+cd src && python manage.py makemigrations studio --name ai_model_and_loop_fields
 ```
-Добавить юнит-тест в `studio/tests.py`: замокать `AnalystAgent.run` так, чтобы `agent_plan.delay` бросал исключение ПОСЛЕ записи (или замокать `charge` и проверить, что при двух ретраях `charge` зовётся не больше одного раза на успешный проход). Минимум — мокнуть `studio.tasks.charge` и убедиться, что в успешном прогоне он вызван ровно 1 раз.
 
-**Dependencies:** —
+Затем создать data-миграцию (отдельный файл) для переноса и удаления `coder_model`:
+
+```python
+# src/studio/migrations/XXXX_migrate_coder_model.py
+from django.db import migrations
+
+
+def forwards(apps, schema_editor):
+    StudioProject = apps.get_model('studio', 'StudioProject')
+    mapping = {'fast': 'deepseek-v3.2', 'smart': 'claude-opus-4-8'}
+    for p in StudioProject.objects.all():
+        old = getattr(p, 'coder_model', None)
+        p.ai_model = mapping.get(old, 'claude-sonnet-4-6')
+        p.save(update_fields=['ai_model'])
+
+
+def backwards(apps, schema_editor):
+    StudioProject = apps.get_model('studio', 'StudioProject')
+    reverse = {'deepseek-v3.2': 'fast', 'claude-opus-4-8': 'smart'}
+    for p in StudioProject.objects.all():
+        if hasattr(p, 'coder_model'):
+            p.coder_model = reverse.get(p.ai_model, 'fast')
+            p.save(update_fields=['coder_model'])
+
+
+class Migration(migrations.Migration):
+    dependencies = [
+        ('studio', 'XXXX_ai_model_and_loop_fields'),  # подставить имя миграции из makemigrations
+    ]
+    operations = [
+        migrations.RunPython(forwards, backwards),
+        migrations.RemoveField(model_name='studioproject', name='coder_model'),
+    ]
+```
+
+После этого удалить определение поля `coder_model` из `models.py`.
+
+**Проверка**: `python manage.py migrate studio` проходит без ошибок; `StudioProject._meta.get_field('ai_model')` существует, `coder_model` — нет.
+
+### Коммит 3: Билинг по tier + resolve_model + эскалация в Coder
+
+**Файлы**
+- Изменить: `src/studio/billing.py`
+- Изменить: `src/studio/agents/base.py`
+- Изменить: `src/studio/agents/coder.py`
+
+**Что делать**
+
+1. В `billing.py` ввести tier `coder` в `STAR_RATE`, привязать `coder_tier_for_model` и `estimate_stars` к `MODEL_TIER`.
+2. В `base.py` убрать хардкод `MODEL_FAST`/`MODEL_SMART`, добавить метод `resolve_model()`: для CoderAgent — `project.ai_model`, для остальных агентов — также `project.ai_model` (вся пайплайн-команда работает на выбранной пользователем модели; интервью/анализ/план/ревью получают ту же модель).
+3. В `coder.py` `_pick_model()` реализовать эскалацию для `[COMPLEX]`-шагов.
+
+**Код**
+
+В `src/studio/billing.py`:
+
+```python
+from .models_catalog import MODEL_TIER
+
+STAR_RATE = {'fast': 1, 'coder': 1.7, 'smart': 3}
+
+
+def coder_tier_for_model(model: str) -> str:
+    return MODEL_TIER.get(model, 'fast')
+```
+
+В `estimate_stars()` использовать tier через `MODEL_TIER` (привести к виду):
+
+```python
+def estimate_stars(model: str, agent: str = 'coder') -> int:
+    tier = MODEL_TIER.get(model, 'fast')
+    rate = STAR_RATE[tier]
+    base = AGENT_BUDGET.get(agent, 12)
+    return int(round(rate * base))
+```
+
+(Если в текущей реализации `estimate_stars` имеет другую сигнатуру — сохранить существующую сигнатуру, заменив только источник tier на `MODEL_TIER` и формулу множителя на `STAR_RATE[tier]`.)
+
+В `src/studio/agents/base.py`:
+
+```python
+from django.conf import settings
+from ..models_catalog import ESCALATION_MAP, MODEL_TIER, DEFAULT_STUDIO_MODEL
+
+
+class BaseAgent:
+    # Удалить: MODEL_FAST = 'deepseek-v3'
+    # Удалить: MODEL_SMART = 'claude-opus-4-8'
+
+    def resolve_model(self) -> str:
+        """Модель, на которой работает агент. Вся команда использует выбранную пользователем ai_model."""
+        model = getattr(self.project, 'ai_model', None)
+        return model if model in MODEL_TIER else DEFAULT_STUDIO_MODEL
+```
+
+В `src/studio/agents/coder.py`:
+
+```python
+from ..models_catalog import ESCALATION_MAP, MODEL_TIER
+
+    def _pick_model(self, step_title: str) -> str:
+        base = self.resolve_model()
+        if '[COMPLEX]' in (step_title or '') and MODEL_TIER.get(base) == 'fast':
+            return ESCALATION_MAP.get(base, base)
+        return base
+```
+
+Все вызовы `run_prompt(..., model=self.MODEL_FAST/SMART)` заменить на `model=self.resolve_model()` (или `self._pick_model(step_title)` в Coder).
+
+**Проверка**: импорты разрешаются, `estimate_stars('gpt-5')` использует rate=3.
+
+### Коммит 4: STUDIO_PROMPT_LANG + pick_prompt
+
+**Файлы**
+- Изменить: `src/config/settings.py`
+- Изменить: `src/studio/agents/base.py`
+
+**Что делать**
+
+Ввести переключатель языка системных промтов через env. Хелпер `pick_prompt(ru, en)` возвращает английскую версию по умолчанию.
+
+**Код**
+
+В `src/config/settings.py` (в блоке Studio-настроек):
+
+```python
+STUDIO_PROMPT_LANG = os.getenv('STUDIO_PROMPT_LANG', 'en')
+```
+
+В `src/studio/agents/base.py` (на уровне модуля):
+
+```python
+from django.conf import settings
+
+
+def pick_prompt(ru: str, en: str) -> str:
+    return en if getattr(settings, 'STUDIO_PROMPT_LANG', 'en') == 'en' else ru
+```
+
+**Проверка**: `pick_prompt('ру', 'en')` возвращает `'en'` при дефолтных настройках.
 
 ---
 
-## Commit 3: Закрыть billing hole — pre-flight гейт вместо тихого return 0
+## Сессия 2: Английские промты для всех агентов
 
-**Sprint:** Fix
-**Fixes/Implements:** BUG-02
-**Files changed:**
-- `src/studio/tasks.py`
+Цель: перевести системные промты всех 7 агентов на английский для повышения качества и стабильности генерации, сохранив русский язык всего пользовательского вывода (вопросы, summary, instructions, комментарии в коде). Каждый агент получает константы `SYSTEM_RU` и `SYSTEM_EN`, выбор через `pick_prompt`.
 
-**What to do:**
-Сейчас `_billing_charge` при `can_afford=False` молча `return 0`, и пайплайн продолжает работать — агенты выполняются бесплатно. Нужно: если денег не хватает, **остановить пайплайн** (поставить паузу) и сообщить пользователю, а не продолжать.
+Коммиты: 5, 6.
 
-Ввести исключение и менять `_billing_charge` так, чтобы при нехватке средств оно бросалось, а вызывающая задача переводила проект в паузу:
+### Коммит 5: EN промты — Interviewer, Analyst, Planner
+
+**Файлы**
+- Изменить: `src/studio/agents/interviewer.py`
+- Изменить: `src/studio/agents/analyst.py`
+- Изменить: `src/studio/agents/planner.py`
+
+**Что делать**
+
+В каждом файле объявить константы `SYSTEM_RU` и `SYSTEM_EN` на уровне модуля. В методе агента, где формируется system prompt, заменить хардкод на `pick_prompt(SYSTEM_RU, SYSTEM_EN)` (импортировать `from .base import pick_prompt`).
+
+**Код**
+
+`src/studio/agents/interviewer.py`:
 
 ```python
-# tasks.py — рядом с _agent_cost
-class InsufficientStars(Exception):
-    """Raised when a user can't afford an agent run. Pauses the pipeline."""
-    def __init__(self, needed):
-        self.needed = needed
-        super().__init__(f'Недостаточно звёзд: нужно {needed}')
+from .base import BaseAgent, pick_prompt
 
+SYSTEM_RU = """Ты интервьюер сервиса генерации веб-приложений. По краткому описанию проекта задай 3-5 умных уточняющих вопросов, которые реально влияют на функционал, дизайн и стек. Не задавай очевидных или избыточных вопросов. Для вопросов с выбором давай 2-4 варианта.
+Верни СТРОГО JSON-массив: [{"id":"q1","question":"...","type":"text|choice","options":["..."]}].
+Вопросы — на русском. Никакого текста вне JSON."""
 
-def _billing_charge(project, agent_name: str, step_index: int):
-    cost = _agent_cost(agent_name)
-    user = project.user
-    user.refresh_from_db(fields=['pages_count'])
-    if not can_afford(user, cost):
-        raise InsufficientStars(cost)
-    charge(user, cost, project)
-    publish_event(str(project.id), {
-        'agent': agent_name, 'level': 'billing',
-        'text': f'-{cost} зв. (шаг {step_index})',
-    })
-    log = project.interview_data.setdefault('billing_log', [])
-    log.append({'agent': agent_name, 'stars': cost, 'step': step_index})
-    project.save(update_fields=['interview_data'])
-    return cost
+SYSTEM_EN = """You are an interviewer for a web-app generation service. Given a short project description, ask 3-5 smart clarifying questions that materially affect scope, design, and stack. Do not ask obvious or redundant questions. Respect the chosen stack (Next.js/React/Vue/HTML). For choice questions provide 2-4 options.
+Return STRICTLY a JSON array: [{"id":"q1","question":"...","type":"text|choice","options":["..."]}].
+The "question" and "options" text MUST be written in Russian. Output nothing outside the JSON."""
 ```
 
-Добавить общий helper для перевода пайплайна в паузу по нехватке средств:
+В методе `run()` Interviewer: `system = pick_prompt(SYSTEM_RU, SYSTEM_EN)` и передать в `run_prompt(system=system, ...)`.
+
+`src/studio/agents/analyst.py`:
 
 ```python
-def _pause_no_funds(project, needed):
-    state = project.pipeline
-    state.status = 'paused_on_loop'
-    state.pause_reason = f'Недостаточно звёзд для продолжения (нужно ещё ~{needed})'
+from .base import BaseAgent, pick_prompt
+
+SYSTEM_RU = """Ты системный аналитик. На основе описания проекта и ответов интервью составь технический документ PROJECT.md: цель, целевая аудитория, функциональные требования (нумерованный список), карта страниц, модель данных, стек и обоснование, нефункциональные требования (производительность, адаптив, доступность), ограничения и допущения. Документ должен быть конкретным и реализуемым. Markdown на русском, без преамбулы."""
+
+SYSTEM_EN = """You are a systems analyst. Using the project description and interview answers, produce a technical PROJECT.md document containing: goal, target audience, functional requirements (numbered), page map, data model, chosen stack with justification, non-functional requirements (performance, responsiveness, accessibility), constraints and assumptions. Be concrete and buildable — avoid vague aspirations. Output Markdown in Russian, no preamble."""
+```
+
+`src/studio/agents/planner.py`:
+
+```python
+from .base import BaseAgent, pick_prompt
+
+SYSTEM_RU = """Ты технический планировщик. На основе PROJECT.md составь COMMITS.md — пошаговый план реализации. Каждый шаг атомарный: заголовок, краткая цель, точный список файлов. Порядок учитывает зависимости. Помечай заголовок тегом [COMPLEX] если шаг включает auth, оплату, интеграции, realtime, миграции БД или затрагивает 5+ файлов. Не превышай 15 шагов. В конце: <STEPS_COUNT>N</STEPS_COUNT>. Markdown на русском, без преамбулы."""
+
+SYSTEM_EN = """You are a technical planner. From PROJECT.md, produce COMMITS.md — a step-by-step implementation plan. Each step is atomic: a heading, a one-line goal, and the exact list of files created/modified. Order by dependency (scaffold first, then components, then integrations). Tag a heading [COMPLEX] if it involves auth, payments, third-party integrations, realtime, DB migrations, or touches 5+ files. Do not exceed 15 steps. End with <STEPS_COUNT>N</STEPS_COUNT>. Output Markdown in Russian, no preamble."""
+```
+
+**Проверка**: при `STUDIO_PROMPT_LANG=en` агенты отдают system на английском; вопросы/документы по-прежнему генерируются на русском.
+
+### Коммит 6: EN промты — Coder, Reviewer, Tester, Fixer
+
+**Файлы**
+- Изменить: `src/studio/agents/coder.py`
+- Изменить: `src/studio/agents/reviewer.py`
+- Изменить: `src/studio/agents/tester.py`
+- Изменить: `src/studio/agents/fixer.py`
+
+**Что делать**
+
+Аналогично коммиту 5: добавить `SYSTEM_RU`/`SYSTEM_EN`, заменить хардкод на `pick_prompt(SYSTEM_RU, SYSTEM_EN)`.
+
+**Код**
+
+`src/studio/agents/coder.py`:
+
+```python
+SYSTEM_RU = """Ты senior-разработчик. Реализуй РОВНО ОДИН шаг из COMMITS.md. Пиши production-ready код: типобезопасный, без TODO, с обработкой ошибок и состояний загрузки. Для Vite: vite.config.ts с server:{host:true,port:3000}. Для Next.js: dev-скрипт "next dev -p 3000 -H 0.0.0.0". Не выдумывай несуществующие зависимости. Не дублируй существующие файлы. Если задан FixPlan — меняй ТОЛЬКО указанные файлы.
+Верни СТРОГО JSON: {"files":{"путь":"полное содержимое файла"}}. Полные файлы целиком, не диффы."""
+
+SYSTEM_EN = """You are a senior software engineer. Implement EXACTLY ONE step from COMMITS.md. Write production-ready code: type-safe, no TODO stubs, with error handling and loading states. For Vite projects: vite.config.ts MUST include server:{host:true,port:3000}. For Next.js projects: package.json dev script MUST be "next dev -p 3000 -H 0.0.0.0". Never invent nonexistent dependencies. Respect existing project files (provided in context) — do not duplicate or break them. If a FixPlan is provided, change ONLY the listed files.
+Return STRICTLY JSON: {"files":{"relative/path":"full file content"}} — whole files, never diffs. Code comments may be in Russian."""
+```
+
+`src/studio/agents/reviewer.py`:
+
+```python
+SYSTEM_RU = """Ты ревьюер кода уровня senior. Проверь ТОЛЬКО изменённые файлы. Проверяй: синтаксис и типы, корректность импортов, соответствие шагу, явные баги, БЕЗОПАСНОСТЬ (XSS, инъекции, секреты в коде, dangerouslySetInnerHTML/eval, открытые CORS). severity=error — блокирует; severity=warning — желательно.
+Верни СТРОГО JSON: {"passed":bool,"issues":[{"file":"...","severity":"error|warning","message":"..."}],"summary":"..."}. summary — на русском."""
+
+SYSTEM_EN = """You are a senior code reviewer. Review ONLY the changed files. Check: syntax and types, import correctness and paths, conformance to the step, obvious bugs and edge cases, SECURITY (XSS, injection, secrets in code, unsafe dangerouslySetInnerHTML/eval, permissive CORS). severity=error blocks; severity=warning is advisory.
+Return STRICTLY JSON: {"passed":bool,"issues":[{"file":"...","severity":"error|warning","message":"..."}],"summary":"..."}. The "summary" and "message" text MUST be in Russian."""
+```
+
+`src/studio/agents/tester.py`:
+
+```python
+SYSTEM_RU = """Ты QA-инженер. Проанализируй логи сборки из sandbox и exit_code. Определи ошибки компиляции и рантайма. Если exit_code != 0 — build_ok=false.
+Верни СТРОГО JSON: {"passed":bool,"errors":[{"type":"build|runtime","message":"...","file":"..."}],"build_ok":bool,"summary":"..."}. summary — на русском."""
+
+SYSTEM_EN = """You are a QA engineer. Analyze the sandbox build/typecheck logs and exit_code. Identify compilation (TS/build) and runtime errors. If exit_code != 0 then build_ok=false.
+Return STRICTLY JSON: {"passed":bool,"errors":[{"type":"build|runtime","message":"...","file":"..."}],"build_ok":bool,"summary":"..."}. The "summary" and "message" MUST be in Russian."""
+```
+
+`src/studio/agents/fixer.py`:
+
+```python
+SYSTEM_RU = """Ты ведущий инженер. Сведи ReviewReport и TestReport в чёткий FixPlan. Сначала — ошибки сборки, затем error-уровня ревью, затем warning. Инструкции конкретные: что именно и в каком файле поправить. Минимизируй target_files.
+Верни СТРОГО JSON: {"instructions":"...","target_files":["..."],"priority":"high|medium"}. instructions — на русском."""
+
+SYSTEM_EN = """You are a lead engineer. Merge the ReviewReport and TestReport into a precise FixPlan for the coder. Prioritize: build errors first, then error-severity review issues, then warnings. Instructions must be concrete and actionable: exactly what to change and in which file. Keep target_files minimal (only genuinely affected files).
+Return STRICTLY JSON: {"instructions":"...","target_files":["..."],"priority":"high|medium"}. The "instructions" MUST be in Russian."""
+```
+
+В каждом методе: `system = pick_prompt(SYSTEM_RU, SYSTEM_EN)`.
+
+**Проверка**: пайплайн проходит на тестовом проекте, JSON-ответы парсятся, пользовательские строки на русском.
+
+---
+
+## Сессия 3: Защита от зацикливания
+
+Цель: исключить бесконечные циклы и зависания пайплайна. Три механизма: детектор одинакового diff (агент не меняет код), детектор повторяющейся ошибки теста (с авто-эскалацией модели), watchdog-задача (тайм-ауты шага и всего пайплайна), а также ручной обход — пропуск шага.
+
+Коммиты: 7, 8, 9.
+
+### Коммит 7: Детектор одинакового diff + повторной ошибки
+
+**Файлы**
+- Изменить: `src/studio/tasks.py`
+
+**Что делать**
+
+1. В `coder_iteration` после получения файлов от CoderAgent посчитать стабильный хэш набора файлов. Если хэш совпал с предыдущим — увеличить `same_diff_count`; при достижении 2 — поставить пайплайн в `paused_on_loop` и опубликовать событие `paused`.
+2. В `merge_reports` при провале теста сравнить сигнатуру первой ошибки с `last_error_signature`. При повторе ≥2 — эскалировать модель проекта по `ESCALATION_MAP` и опубликовать `escalated`.
+
+**Код**
+
+В начале файла добавить импорт:
+
+```python
+import hashlib
+```
+
+В `coder_iteration`, сразу после `result = coder.run(...)`:
+
+```python
+files = result.get('files', {})
+files_hash = hashlib.sha256(
+    ''.join(f'{k}:{v}' for k, v in sorted(files.items())).encode()
+).hexdigest()[:16]
+
+state = project.pipeline
+if files_hash == state.last_files_hash and files_hash:
+    state.same_diff_count = (state.same_diff_count or 0) + 1
+    if state.same_diff_count >= 2:
+        state.status = 'paused_on_loop'
+        state.pause_reason = (
+            f'Агент не может изменить код на шаге {state.step_index + 1}. '
+            f'Опишите, что именно должно измениться.'
+        )
+        state.save(update_fields=['status', 'pause_reason', 'same_diff_count', 'last_files_hash'])
+        publish_event(str(project.id), 'paused', {'reason': state.pause_reason, 'type': 'same_diff'})
+        return
+else:
+    state.same_diff_count = 0
+
+state.last_files_hash = files_hash
+state.save(update_fields=['last_files_hash', 'same_diff_count'])
+```
+
+В `merge_reports`, после получения `test_report` (где `test_errors` — список ошибок теста):
+
+```python
+from .models_catalog import ESCALATION_MAP
+
+state = project.pipeline
+first_error = test_errors[0]['message'][:100] if test_errors else ''
+if first_error and first_error == state.last_error_signature:
+    state.error_repeat_count = (state.error_repeat_count or 0) + 1
+    if state.error_repeat_count >= 2:
+        escalated = ESCALATION_MAP.get(project.ai_model)
+        if escalated:
+            project.ai_model = escalated
+            project.save(update_fields=['ai_model'])
+            publish_event(str(project.id), 'escalated', {'model': escalated})
+            state.error_repeat_count = 0
+else:
+    state.error_repeat_count = 0
+state.last_error_signature = first_error
+state.save(update_fields=['last_error_signature', 'error_repeat_count'])
+```
+
+**Проверка**: при двукратном идентичном выводе CoderAgent пайплайн переходит в `paused_on_loop`; при повторной ошибке теста `project.ai_model` меняется на эскалированную.
+
+### Коммит 8: Watchdog beat-задача
+
+**Файлы**
+- Изменить: `src/studio/tasks.py`
+- Изменить: `src/config/settings.py`
+- Изменить: `src/config/celery.py`
+
+**Что делать**
+
+1. Добавить задачу `watchdog_pipelines`, которая каждые 2 минуты находит зависшие (нет прогресса по шагу > `STUDIO_STEP_STALL_SEC`) и истёкшие (общее время > `STUDIO_PIPELINE_MAX_SEC`) пайплайны, отзывает зависшие задачи и помечает пайплайн как failed (с уборкой sandbox и возвратом резерва).
+2. Добавить env-настройки и зарегистрировать задачу в beat.
+3. В начале `run_pipeline` проставлять `state.started_at`.
+
+**Код**
+
+В `src/studio/tasks.py`:
+
+```python
+@shared_task(name='studio.watchdog_pipelines')
+def watchdog_pipelines():
+    """Каждые 2 минуты: обнаруживает зависшие и истёкшие пайплайны."""
+    from django.utils import timezone
+    from celery import current_app
+
+    stall_sec = getattr(settings, 'STUDIO_STEP_STALL_SEC', 240)
+    max_sec = getattr(settings, 'STUDIO_PIPELINE_MAX_SEC', 2700)  # 45 минут
+    now = timezone.now()
+
+    running = StudioPipelineState.objects.filter(
+        status__in=['running']
+    ).select_related('project')
+
+    for state in running:
+        age_total = (now - state.started_at).total_seconds() if state.started_at else 0
+        age_step = (now - state.last_changed).total_seconds() if state.last_changed else 0
+
+        if age_total > max_sec:
+            _timeout_pipeline(state, 'Пайплайн превысил максимальное время выполнения')
+        elif age_step > stall_sec:
+            if state.current_task_id:
+                try:
+                    current_app.control.revoke(state.current_task_id, terminate=True, signal='SIGTERM')
+                except Exception:
+                    pass
+            _timeout_pipeline(
+                state,
+                f'Агент завис на шаге {state.step_index + 1} (нет ответа > {stall_sec // 60} мин)',
+            )
+
+
+def _timeout_pipeline(state, reason):
+    from .sandbox import kill_sandbox
+    from .billing import release_reserve
+
+    project = state.project
+    state.status = 'failed'
+    state.pause_reason = reason
     state.save(update_fields=['status', 'pause_reason'])
-    project.status = 'paused'
+    project.status = 'failed'
     project.save(update_fields=['status'])
-    publish_event(str(project.id), {
-        'agent': 'system', 'level': 'error',
-        'text': state.pause_reason, 'type': 'paused',
-    })
-```
-
-В каждой задаче, которая зовёт `_billing_charge` (`agent_analyze`, `agent_plan`, `coder_iteration`, `merge_reports`), обернуть и НЕ ретраить при `InsufficientStars` — вместо этого пауза. Пример для `coder_iteration`:
-
-```python
-    except InsufficientStars as e:
-        _pause_no_funds(project, e.needed)
-        return
-    except Exception as e:
-        raise self.retry(exc=e, countdown=60)
-```
-
-Для `merge_reports` (не bind, без retry) — тот же `except InsufficientStars: _pause_no_funds(...)` вокруг `_billing_charge(project, 'reviewer'...)` / `'tester'` / `'fixer'`.
-
-> Связка с Commit 2: т.к. charge теперь идёт ПОСЛЕДНИМ (после диспетчеризации `chord`), при `InsufficientStars` в `coder_iteration` работа уже частично запущена. Это приемлемо для Fix-спринта; полноценное резервирование звёзд до старта — Commit 28.
-
-**Test:**
-```bash
-cd src && python manage.py test studio
-```
-Юнит-тест: создать пользователя с `pages_count=0`, проект в статусе `ready`, вызвать `coder_iteration` (замокав `CoderAgent.run`), проверить, что `project.pipeline.status == 'paused_on_loop'`, `project.status == 'paused'`, и `charge` НЕ вызывался.
-
-**Dependencies:** Commit 2 (порядок charge), т.к. оба меняют `_billing_charge` и порядок списания — делать подряд.
-
----
-
-## Commit 4: try/except вокруг Docker-вызовов в run_pipeline
-
-**Sprint:** Fix
-**Fixes/Implements:** BUG-03
-**Files changed:**
-- `src/studio/tasks.py`
-
-**What to do:**
-`run_pipeline` дёргает `spawn_sandbox`, `write_files`, `install_deps`, `isolate`, `start_dev_server` без обработки ошибок. Любой сбой Docker оставляет проект навсегда в `status='coding'`. Обернуть всю sandbox-секцию и при ошибке вернуть звёзды (если что-то уже списано) и поставить `failed`/`paused`.
-
-```python
-# AFTER (run_pipeline, секция запуска sandbox)
-    publish_event(project_id, {'agent': 'system', 'level': 'info', 'text': 'Запускаю sandbox...'})
-    try:
-        cid = sandbox.spawn_sandbox(project_id)
-        initial_files = _existing_files(project) or {'package.json': '{"name":"app","private":true}'}
-        sandbox.write_files(cid, initial_files)
-        sandbox.install_deps(cid)
-        sandbox.isolate(cid)
-        sandbox.start_dev_server(cid)
-    except Exception as exc:
-        import logging
-        logging.getLogger('studio.tasks').error(
-            'run_pipeline sandbox setup FAILED project=%s: %s', project_id, repr(exc), exc_info=True)
-        # try to clean up a half-spawned container
-        try:
-            if 'cid' in dir() and cid:
-                sandbox.kill_sandbox(cid)
-        except Exception:
-            pass
-        state.status = 'failed'
-        state.last_error = repr(exc)
-        state.save(update_fields=['status', 'last_error'])
-        project.status = 'failed'
-        project.save(update_fields=['status'])
-        publish_event(project_id, {
-            'agent': 'system', 'level': 'error',
-            'text': 'Не удалось поднять sandbox. Попробуйте перезапустить.',
-            'type': 'failed',
-        })
-        return
-    project.sandbox_container_id = cid
-    project.preview_port = 3000
-    project.save(update_fields=['sandbox_container_id', 'preview_port'])
-    start_step.delay(project_id, 0)
-```
-
-`kill_sandbox` уже есть в `sandbox.py`. Использовать его в cleanup. Проверка `'cid' in dir()` нужна, т.к. ошибка могла произойти прямо в `spawn_sandbox`.
-
-**Test:**
-```bash
-cd src && python manage.py test studio
-```
-Юнит-тест: замокать `studio.sandbox.spawn_sandbox` так, чтобы он бросал `RuntimeError`; вызвать `run_pipeline(project_id)`; проверить `project.status == 'failed'` и `project.pipeline.status == 'failed'`, а не зависание в `coding`.
-
-**Dependencies:** —
-
----
-
-## Commit 5: Pause реально останавливает in-flight задачи (revoke)
-
-**Sprint:** Fix
-**Fixes/Implements:** BUG-04
-**Files changed:**
-- `src/studio/models.py` (миграция)
-- `src/studio/tasks.py`
-- `src/studio/views/pipeline.py`
-
-**What to do:**
-`PipelinePauseView` только меняет `state.status`, но уже запущенные Celery-задачи (`coder_iteration`, `agent_review`, `agent_test`, `merge_reports`) продолжают работать и доводят шаг до конца. Нужен «pause-флаг», который задачи проверяют, плюс попытка `revoke` текущей задачи.
-
-1. Добавить поле в `StudioPipelineState` (models.py):
-```python
-    pause_requested = models.BooleanField(default=False)
-    current_task_id = models.CharField(max_length=64, blank=True)
-```
-Затем `cd src && python manage.py makemigrations studio && python manage.py migrate`.
-
-2. В `coder_iteration` сохранять id текущей задачи и проверять флаг паузы в начале:
-```python
-@shared_task(bind=True, max_retries=3, queue=QUEUE)
-def coder_iteration(self, project_id, step_index):
-    project = StudioProject.objects.get(id=project_id)
-    state = project.pipeline
-    if state.pause_requested or state.status in ('paused_manual', 'paused_on_loop'):
-        publish_event(project_id, {'agent': 'system', 'level': 'warning', 'text': 'Пайплайн на паузе — шаг не запущен'})
-        return
-    state.current_task_id = self.request.id
-    state.save(update_fields=['current_task_id'])
-    ...
-```
-Аналогичную проверку `if state.pause_requested: return` добавить в начало `start_step`, `next_step`, и в `merge_reports` перед диспетчеризацией следующего шага / `coder_iteration`.
-
-3. `PipelinePauseView.post`:
-```python
-    def post(self, request, id):
-        from celery import current_app
-        project = StudioProject.objects.get(id=id, user=request.user)
-        state = project.pipeline
-        state.status = 'paused_manual'
-        state.pause_requested = True
-        state.pause_reason = request.data.get('reason', 'Пауза пользователем')
-        state.save(update_fields=['status', 'pause_requested', 'pause_reason'])
-        if state.current_task_id:
-            current_app.control.revoke(state.current_task_id, terminate=True, signal='SIGTERM')
-        project.status = 'paused'
-        project.save(update_fields=['status'])
-        return Response({'status': 'paused_manual'})
-```
-
-4. В `PipelineResumeView.post` сбрасывать флаг: добавить `state.pause_requested = False` рядом с `state.iteration_count = 0`.
-
-> Замечание про gevent: `celery_studio` работает на gevent — `terminate=True` корректно прерывает только выполняющиеся задачи; задачи в очереди revoke-нутся без запуска. Главная защита от продолжения — флаг `pause_requested`, проверяемый на границах задач. `revoke` — best-effort поверх флага.
-
-**Test:**
-```bash
-cd src && python manage.py test studio
-```
-Юнит-тест: проект в `coding`, `state.pause_requested=False`; вызвать `PipelinePauseView` (через APIRequestFactory с аутентифицированным юзером); проверить `state.pause_requested == True`, `state.status == 'paused_manual'`, `project.status == 'paused'`. Отдельный тест: вызвать `start_step` при `pause_requested=True` и убедиться, что `coder_iteration.delay` не вызывается (замокать).
-
-**Dependencies:** Commit 1 (статусы), Commit 3 (`paused_on_loop`/`paused`-семантика уже устаканена).
-
----
-
-## Commit 6: Считать planned_steps по реальным секциям COMMITS.md
-
-**Sprint:** Fix
-**Fixes/Implements:** BUG-06
-**Files changed:**
-- `src/studio/agents/planner.py`
-- `src/studio/tasks.py`
-
-**What to do:**
-`PlannerAgent` берёт число шагов из маркера `<STEPS_COUNT>N</STEPS_COUNT>`, но `_get_step_text` в tasks.py режет план по `\n(?=#{2,3}\s)` (заголовки `##`/`###`). N от модели и фактическое число секций часто расходятся → `next_step` завершает проект раньше или зацикливает на несуществующих шагах.
-
-Единый источник истины — фактическое число секций. Вынести функцию подсчёта секций и использовать её и в planner, и в `_get_step_text`.
-
-1. В `tasks.py` сделать helper:
-```python
-def _split_steps(commits_md: str):
-    return [p for p in re.split(r'\n(?=#{2,3}\s)', commits_md or '') if p.strip()]
-```
-Переписать `_get_step_text` через него:
-```python
-def _get_step_text(project, step_index):
-    parts = _split_steps(project.commits_md_content)
-    return parts[step_index] if step_index < len(parts) else project.commits_md_content
-```
-
-2. В `planner.py` после генерации `md` считать шаги по секциям, маркер использовать только как fallback:
-```python
-        md = re.sub(r'<STEPS_COUNT>\d+</STEPS_COUNT>', '', md).strip()
-        from ..tasks import _split_steps
-        sections = len(_split_steps(md))
-        m = re.search(r'<STEPS_COUNT>(\d+)</STEPS_COUNT>', raw_md_before_strip)  # см. ниже
-        steps = sections if sections > 0 else (int(m.group(1)) if m else 5)
-```
-Чтобы не возиться с порядком strip/search — проще: сначала `search` по исходному `md`, потом strip, потом `sections`, и взять `steps = sections or marker or 5`:
-```python
-        md_raw = self.run_prompt(PLANNER_SYSTEM, user, model=MODEL_SMART, max_tokens=8192)
-        m = re.search(r'<STEPS_COUNT>(\d+)</STEPS_COUNT>', md_raw)
-        marker = int(m.group(1)) if m else 0
-        md = re.sub(r'<STEPS_COUNT>\d+</STEPS_COUNT>', '', md_raw).strip()
-        from ..tasks import _split_steps
-        steps = len(_split_steps(md)) or marker or 5
-        self.project.commits_md_content = md
-        self.project.save(update_fields=['commits_md_content'])
-        return md, steps
-```
-
-3. `next_step` уже читает `project.interview_data['planned_steps']` — ничего менять не нужно, но т.к. пользователь может править COMMITS.md на review-странице, добавить пересчёт `planned_steps` при старте: в `run_pipeline`, перед `start_step.delay`, синхронизировать:
-```python
-    project.interview_data['planned_steps'] = len(_split_steps(project.commits_md_content)) or project.interview_data.get('planned_steps', 5)
-    project.save(update_fields=['interview_data'])
-```
-
-**Test:**
-```bash
-cd src && python manage.py test studio
-```
-Юнит-тест: задать `commits_md_content` с 3 секциями `## ...`; проверить `len(_split_steps(...)) == 3`; замокать `PlannerAgent.run_prompt`, вернуть план с 3 секциями и маркером `<STEPS_COUNT>7</STEPS_COUNT>`; проверить, что `run()` вернул `steps == 3` (секции, а не маркер).
-
-**Dependencies:** —
-
----
-
-## Commit 7: Добавить reap_stale_sandboxes в Celery beat
-
-**Sprint:** Fix
-**Fixes/Implements:** BUG-09
-**Files changed:**
-- `src/config/settings.py`
-
-**What to do:**
-Задача `reap_stale_sandboxes` определена в `tasks.py`, но нигде не запланирована. Проект использует `DatabaseScheduler` (`CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'`), а статического `CELERY_BEAT_SCHEDULE` в settings нет. Чтобы расписание было воспроизводимым из кода (а не только через админку), добавить `CELERY_BEAT_SCHEDULE` — `DatabaseScheduler` подхватывает статические записи при старте beat.
-
-В `src/config/settings.py` рядом с `CELERY_BEAT_SCHEDULER` добавить:
-```python
-from celery.schedules import crontab  # вверх к остальным celery-импортам, если ещё нет
-
-CELERY_BEAT_SCHEDULE = {
-    **(globals().get('CELERY_BEAT_SCHEDULE') or {}),
-    'studio-reap-stale-sandboxes': {
-        'task': 'studio.tasks.reap_stale_sandboxes',
-        'schedule': crontab(minute='*/30'),  # каждые 30 минут
-        'options': {'queue': 'studio_queue'},
-    },
-}
-```
-
-Проверить, что имя задачи зарегистрировано как `studio.tasks.reap_stale_sandboxes` (по умолчанию Celery именует задачи по módule path; в `tasks.py` декоратор `@shared_task(queue=QUEUE)` без явного `name`, значит имя = `studio.tasks.reap_stale_sandboxes`).
-
-**Test:**
-```bash
-cd src && python manage.py shell -c "from django.conf import settings; print(settings.CELERY_BEAT_SCHEDULE['studio-reap-stale-sandboxes'])"
-cd src && python manage.py shell -c "from studio.tasks import reap_stale_sandboxes; print(reap_stale_sandboxes.name)"
-```
-Имя из второй команды должно совпадать со значением `task` в расписании. В проде убедиться по логам `celery_beat`, что задача тикает.
-
-**Dependencies:** —
-
----
-
-# Sprint E — Стабильность и UX
-
-## Commit 8: Backend — endpoint реальной оценки стоимости (estimate API)
-
-**Sprint:** E
-**Fixes/Implements:** Real billing estimate API (подготовка к BUG-08)
-**Files changed:**
-- `src/studio/views/pipeline.py` (новый view) или `src/studio/views/projects.py`
-- `src/studio/urls.py`
-
-**What to do:**
-`billing.estimate_stars(project, planned_steps)` уже есть. Не хватает HTTP-эндпоинта, чтобы фронт получал реальную оценку вместо хардкода. Добавить `EstimateView`:
-
-```python
-# views/pipeline.py
-from ..billing import estimate_stars
-
-class EstimateView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get(self, request, id):
-        project = StudioProject.objects.get(id=id, user=request.user)
-        planned = project.interview_data.get('planned_steps')
-        if not planned:
-            from ..tasks import _split_steps
-            planned = len(_split_steps(project.commits_md_content)) or 5
-        estimate = estimate_stars(project, planned_steps=planned)
-        return Response({
-            'estimated_stars': estimate,
-            'planned_steps': planned,
-            'balance': request.user.pages_count,
-            'affordable': request.user.pages_count >= estimate,
-        })
-```
-
-URL в `urls.py`:
-```python
-from .views.pipeline import EstimateView
-...
-    path('projects/<uuid:id>/estimate/', EstimateView.as_view(), name='pipeline_estimate'),
-```
-
-**Test:**
-```bash
-cd src && python manage.py test studio
-```
-Юнит-тест: создать проект с `planned_steps=3`; GET `/studio/projects/<id>/estimate/`; проверить, что `estimated_stars` совпадает с `estimate_stars(project, 3)` и `affordable` отражает баланс.
-
-**Dependencies:** Commit 6 (`_split_steps` доступен).
-
----
-
-## Commit 9: Frontend — клиент studioApi.estimate
-
-**Sprint:** E
-**Fixes/Implements:** Real billing estimate API (frontend)
-**Files changed:**
-- `frontend/lib/api/studio.ts`
-
-**What to do:**
-Добавить тип и метод:
-```ts
-export interface StudioEstimate {
-  estimated_stars: number;
-  planned_steps: number;
-  balance: number;
-  affordable: boolean;
-}
-
-// внутри studioApi
-  estimate: (id: string) =>
-    request<StudioEstimate>(`/studio/projects/${id}/estimate/`),
-```
-
-**Test:**
-```bash
-cd frontend && npm run build
-```
-Сборка проходит, тип `StudioEstimate` экспортируется.
-
-**Dependencies:** Commit 8.
-
----
-
-## Commit 10: Frontend — review-страница использует реальную оценку
-
-**Sprint:** E
-**Fixes/Implements:** BUG-08
-**Files changed:**
-- `frontend/app/studio/[id]/review/page.tsx`
-
-**What to do:**
-Заменить хардкод `estimatedStars={50}`. Добавить запрос оценки и пробросить в `BillingEstimate`:
-
-```tsx
-  const { data: estimate } = useQuery({
-    queryKey: ['studio-estimate', id],
-    queryFn: () => studioApi.estimate(id),
-    enabled: !!project && (project.status === 'ready' || project.status === 'planning'),
-  });
-...
-  <BillingEstimate
-    estimatedStars={estimate?.estimated_stars}
-    plannedSteps={estimate?.planned_steps ?? plannedSteps}
-  />
-```
-Если `estimate?.affordable === false`, под кнопкой «Начать кодинг» показать предупреждение (Lucide `AlertTriangle`, без эмодзи): «Недостаточно звёзд: нужно ~{estimated_stars}, на балансе {balance}». Кнопку при этом не блокировать насильно (бэкенд сам поставит паузу), но визуально предупредить.
-
-`BillingEstimate` уже корректно рендерит `~{estimatedStars ?? '?'}` — отдельных правок компонента не нужно.
-
-**Test:**
-```bash
-cd frontend && npm run build
-```
-Ручная проверка: открыть `/studio/<id>/review` — отображается реальная оценка из API, а не «~50».
-
-**Dependencies:** Commit 9.
-
----
-
-## Commit 11: AgentLog SSE — авто-reconnect, одна подписка, без дублей
-
-**Sprint:** E
-**Fixes/Implements:** BUG-07
-**Files changed:**
-- `frontend/components/studio/AgentLog.tsx`
-
-**What to do:**
-Две проблемы: (1) `es.onerror = () => es.close()` навсегда убивает поток без reconnect; (2) при двух монтированиях компонента создаются две EventSource → две Redis-подписки (через `PipelineEventsView`).
-
-Переписать `useEffect` с реконнектом и единственным активным соединением через ref + флаг закрытия:
-
-```tsx
-  useEffect(() => {
-    const base = process.env.NEXT_PUBLIC_API_URL ?? '';
-    let es: EventSource | null = null;
-    let closed = false;
-    let retryTimer: ReturnType<typeof setTimeout> | null = null;
-
-    const connect = () => {
-      if (closed) return;
-      es = new EventSource(
-        `${base}/studio/projects/${projectId}/events/`,
-        { withCredentials: true },
-      );
-      es.onmessage = (e) => {
-        try {
-          const data = JSON.parse(e.data);
-          if (data.type !== 'connected') {
-            setLines((prev) => [...prev, data]);
-          }
-        } catch {}
-      };
-      es.onerror = () => {
-        es?.close();
-        if (!closed) {
-          retryTimer = setTimeout(connect, 3000);  // backoff reconnect
-        }
-      };
-    };
-
-    connect();
-    return () => {
-      closed = true;
-      if (retryTimer) clearTimeout(retryTimer);
-      es?.close();
-    };
-  }, [projectId]);
-```
-
-Это гарантирует ровно одно живое соединение на смонтированный компонент и переподключение при разрыве. Для защиты от двойного монтирования (React StrictMode dev) флаг `closed` в cleanup корректно закрывает старое соединение до создания нового.
-
-**Test:**
-```bash
-cd frontend && npm run build
-```
-Ручная: открыть workspace, в DevTools → Network → EventSource видно одно соединение `/events/`; перезапустить `celery_studio` — после разрыва соединение восстанавливается через ~3с, лог продолжает капать.
-
-**Dependencies:** —
-
----
-
-## Commit 12: CodeViewer — подсветка синтаксиса
-
-**Sprint:** E
-**Fixes/Implements:** Syntax highlighting
-**Files changed:**
-- `frontend/components/studio/CodeViewer.tsx`
-- `frontend/package.json` (если нужна зависимость)
-
-**What to do:**
-Проект уже использует `rehype-highlight` (highlight.js) для markdown. Переиспользовать highlight.js напрямую для CodeViewer, чтобы не тащить новый пакет. В `CodeViewer.tsx`:
-
-```tsx
-'use client';
-import { useEffect, useRef } from 'react';
-import hljs from 'highlight.js';
-import 'highlight.js/styles/github-dark.css';
-
-export function CodeViewer({ content, language }: { content: string; language?: string }) {
-  const ref = useRef<HTMLElement>(null);
-  useEffect(() => {
-    if (ref.current) {
-      ref.current.removeAttribute('data-highlighted');
-      hljs.highlightElement(ref.current);
-    }
-  }, [content, language]);
-
-  return (
-    <pre className="text-xs overflow-auto h-full m-0">
-      <code ref={ref} className={language ? `language-${language}` : ''}>
-        {content}
-      </code>
-    </pre>
-  );
-}
-```
-Если `highlight.js` не в зависимостях фронта напрямую (он приходит транзитивно через `rehype-highlight`) — добавить явно: `cd frontend && npm i highlight.js`. Сопоставление расширения файла → language: маппить из `StudioFile.language` (бэкенд) или из расширения пути в месте вызова.
-
-**Test:**
-```bash
-cd frontend && npm run build
-```
-Ручная: открыть файл `.tsx`/`.ts` в workspace — код подсвечен.
-
-**Dependencies:** —
-
----
-
-## Commit 13: Backend — DiffViewer данные (diff между версиями)
-
-**Sprint:** E
-**Fixes/Implements:** DiffViewer wired (backend)
-**Files changed:**
-- `src/studio/views/files.py`
-- `src/studio/urls.py`
-
-**What to do:**
-`DiffViewer.tsx` — мёртвый код, нет данных. Дать ему API: diff содержимого файла между текущим состоянием и git_sha версии (через Gitea). Добавить `FileDiffView`:
-
-```python
-# views/files.py
-class FileDiffView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get(self, request, id, file_id):
-        from .. import gitea_client
-        f = StudioFile.objects.get(pk=file_id, project_id=id, project__user=request.user)
-        project = f.project
-        ref = request.query_params.get('ref')  # git_sha версии
-        old = ''
-        if ref and project.repo_url and project.user.gitea_username:
-            owner = project.user.gitea_username
-            repo = project.repo_url.rstrip('/').split('/')[-1]
-            old = gitea_client.get_file_content(owner, repo, f.path, ref=ref)
-        return Response({'path': f.path, 'old': old, 'new': f.content})
-```
-URL:
-```python
-    path('projects/<uuid:id>/files/<int:file_id>/diff/', FileDiffView.as_view(), name='file_diff'),
-```
-
-**Test:**
-```bash
-cd src && python manage.py test studio
-```
-Юнит-тест: замокать `gitea_client.get_file_content` → вернуть «старое содержимое»; GET diff с `?ref=abc`; проверить `{'old': 'старое...', 'new': <current>}`.
-
-**Dependencies:** —
-
----
-
-## Commit 14: Ручные правки файлов идут в sandbox и Gitea
-
-**Sprint:** E
-**Fixes/Implements:** BUG-10, Manual edits to sandbox
-**Files changed:**
-- `src/studio/views/files.py`
-- `src/studio/tasks.py`
-
-**What to do:**
-`FileDetailView.perform_update` сохраняет только в БД. Нужно: после ручной правки протолкнуть файл в работающий sandbox и (если есть repo) в Gitea. Делать это асинхронно через Celery, чтобы PATCH отвечал быстро.
-
-1. Новая задача в `tasks.py`:
-```python
-@shared_task(queue=QUEUE)
-def sync_manual_edit(project_id, file_id):
-    from . import gitea_client
-    project = StudioProject.objects.get(id=project_id)
-    f = StudioFile.objects.get(pk=file_id, project=project)
     if project.sandbox_container_id:
         try:
-            sandbox.write_files(project.sandbox_container_id, {f.path: f.content})
-        except Exception as exc:
-            publish_event(project_id, {'agent': 'system', 'level': 'warning',
-                                       'text': f'Не удалось записать {f.path} в sandbox: {exc}'})
-    owner = project.user.gitea_username
-    repo = project.repo_url.rstrip('/').split('/')[-1] if project.repo_url else None
-    if owner and repo:
-        try:
-            gitea_client.put_file(owner, repo, f.path, f.content,
-                                  message=f'Manual edit: {f.path}')
-        except Exception as exc:
-            publish_event(project_id, {'agent': 'system', 'level': 'warning',
-                                       'text': f'Git push failed for {f.path}: {exc}'})
-    publish_event(project_id, {'agent': 'system', 'level': 'info',
-                               'text': f'Файл обновлён: {f.path}'})
-```
-
-2. `FileDetailView.perform_update`:
-```python
-    def perform_update(self, serializer):
-        instance = serializer.save(last_modified_by='user')
-        from ..tasks import sync_manual_edit
-        sync_manual_edit.delay(str(self.kwargs['id']), instance.pk)
-```
-
-**Test:**
-```bash
-cd src && python manage.py test studio
-```
-Юнит-тест: замокать `sandbox.write_files` и `gitea_client.put_file`; PATCH файла; проверить, что `sync_manual_edit` поставлена в очередь (мок `sync_manual_edit.delay`) с правильными аргументами. Отдельный тест прямого вызова `sync_manual_edit` проверяет, что `write_files` получил `{path: content}`.
-
-**Dependencies:** —
-
----
-
-## Commit 15: Backend — subdomain/path preview proxy
-
-**Sprint:** E
-**Fixes/Implements:** Subdomain preview
-**Files changed:**
-- `src/studio/views/pipeline.py` (PreviewProxyView)
-- `src/studio/urls.py`
-- `nginx.conf` (комментарий-инструкция)
-
-**What to do:**
-Preview сейчас в iframe указывает напрямую на порт sandbox, который изолирован в `sandbox_net` и недоступен браузеру. Нужен прокси через Django/Nginx. Простой вариант: Django-вью, которое проксирует HTTP к контейнеру по DNS-имени `sandbox_<id8>:3000` внутри docker-сети.
-
-`web` контейнер должен быть подключён к `STUDIO_SANDBOX_NET`, чтобы резолвить имя sandbox. Проверить/добавить в `docker-compose.yml` сеть для сервиса `web` (см. Commit 16 — там же лимиты; здесь — сеть).
-
-```python
-# views/pipeline.py
-import requests as _rq
-from django.http import HttpResponse
-
-class PreviewProxyView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get(self, request, id, path=''):
-        project = StudioProject.objects.get(id=id, user=request.user)
-        if not project.sandbox_container_id:
-            return HttpResponse('Sandbox не запущен', status=503)
-        host = project.sandbox_container_id  # имя контейнера = DNS-имя в sandbox_net
-        try:
-            upstream = _rq.get(f'http://{host}:3000/{path}', timeout=10,
-                               headers={'Accept': request.headers.get('Accept', '*/*')})
+            kill_sandbox(project.sandbox_container_id)
         except Exception:
-            return HttpResponse('Preview недоступен', status=502)
-        resp = HttpResponse(upstream.content, status=upstream.status_code)
-        ct = upstream.headers.get('Content-Type')
-        if ct:
-            resp['Content-Type'] = ct
-        return resp
-```
-URL:
-```python
-    re_path(r'projects/(?P<id>[0-9a-f-]+)/preview/(?P<path>.*)$', PreviewProxyView.as_view(), name='preview_proxy'),
-```
-(`from django.urls import re_path` в urls.py.)
-
-В `nginx.conf` добавить комментарий: preview обслуживается через `/api/v1/studio/projects/<id>/preview/` (буферизация off для dev-сервера HMR — на этом этапе достаточно базового проксирования; WebSocket HMR — отдельная доработка).
-
-> Ограничение: dev-сервер Next.js/Vite использует WebSocket для HMR — базовый прокси отдаёт статическую страницу без live-reload. Для MVP preview этого достаточно; полноценный WS-прокси — backlog.
-
-**Test:**
-```bash
-cd src && python manage.py test studio
-```
-Юнит-тест: замокать `requests.get` → вернуть `<html>ok</html>` со статусом 200 и `Content-Type: text/html`; GET preview; проверить тело и content-type. Ручная: поднять пайплайн, открыть PreviewPanel — рендерится страница из sandbox.
-
-**Dependencies:** Commit 4 (sandbox стабильно поднимается).
-
----
-
-## Commit 16: Frontend — PreviewPanel через прокси-URL
-
-**Sprint:** E
-**Fixes/Implements:** Subdomain preview (frontend)
-**Files changed:**
-- `frontend/components/studio/PreviewPanel.tsx`
-
-**What to do:**
-Указать iframe `src` на прокси-эндпоинт вместо прямого порта:
-```tsx
-const base = process.env.NEXT_PUBLIC_API_URL ?? '';
-const src = `${base}/studio/projects/${projectId}/preview/`;
-```
-Добавить кнопку «Обновить» (Lucide `RotateCw`) — пересоздаёт iframe (через ключ-стейт `reloadKey`), и индикатор загрузки. Если sandbox не запущен (502/503) — показать «Preview появится после запуска кодинга».
-
-**Test:**
-```bash
-cd frontend && npm run build
-```
-Ручная: iframe грузит страницу через `/studio/projects/<id>/preview/`.
-
-**Dependencies:** Commit 15.
-
----
-
-# Sprint F — Полнота функционала
-
-## Commit 17: ContextChat — LLM-ответ на паузе (backend)
-
-**Sprint:** F
-**Fixes/Implements:** ContextChat LLM (backend)
-**Files changed:**
-- `src/studio/views/pipeline.py` (ContextChatView)
-- `src/studio/urls.py`
-- `src/studio/agents/` (новый `assistant.py`)
-
-**What to do:**
-`ContextChat.tsx` — пока статичная панель-подсказка. Дать ей реальный LLM-диалог в контексте проекта (PROJECT.md, текущий шаг, last_error/pause_reason). Новый лёгкий агент:
-
-```python
-# agents/assistant.py
-from .base import BaseAgent, MODEL_FAST
-
-ASSISTANT_SYSTEM = (
-    "Ты ассистент студии генерации приложений. Пользователь на паузе пайплайна. "
-    "Кратко отвечай на вопросы по проекту и предлагай, как продолжить (hint/skip). "
-    "Контекст проекта дан ниже. Отвечай по-русски, по делу."
-)
-
-class AssistantAgent(BaseAgent):
-    name = 'assistant'
-    model = MODEL_FAST
-
-    def answer(self, message: str, history: list) -> str:
-        state = self.project.pipeline
-        ctx = (
-            f"PROJECT.md:\n{self.project.project_md_content[:3000]}\n\n"
-            f"Текущий шаг: {state.step_index}\n"
-            f"Причина паузы: {state.pause_reason}\n"
-            f"Последняя ошибка: {state.last_error[:1000]}\n"
-        )
-        hist = '\n'.join(f"{h['role']}: {h['text']}" for h in history[-6:])
-        user = f"{ctx}\nДиалог:\n{hist}\n\nВопрос: {message}"
-        return self.run_prompt(ASSISTANT_SYSTEM, user, model=MODEL_FAST, max_tokens=1500, temperature=0.5)
-```
-
-View (синхронно — короткий ответ, или через Celery+SSE; для MVP синхронно):
-```python
-class ContextChatView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def post(self, request, id):
-        project = StudioProject.objects.get(id=id, user=request.user)
-        from ..agents.assistant import AssistantAgent
-        from ..billing import can_afford, charge
-        cost = 1
-        if not can_afford(request.user, cost):
-            return Response({'error': 'Недостаточно звёзд'}, status=402)
-        msg = request.data.get('message', '')
-        history = project.interview_data.get('assistant_history', [])
-        answer = AssistantAgent(project).answer(msg, history)
-        charge(request.user, cost, project)
-        history += [{'role': 'user', 'text': msg}, {'role': 'assistant', 'text': answer}]
-        project.interview_data['assistant_history'] = history[-20:]
-        project.save(update_fields=['interview_data'])
-        return Response({'answer': answer})
-```
-URL: `path('projects/<uuid:id>/chat/', ContextChatView.as_view(), name='context_chat')`.
-
-**Test:**
-```bash
-cd src && python manage.py test studio
-```
-Юнит-тест: замокать `AssistantAgent.answer` → «ответ»; POST `/chat/` с `message`; проверить, что ответ возвращён, `charge` вызван, `assistant_history` пополнилась двумя записями.
-
-**Dependencies:** Commit 1, Commit 3 (билинг/паузы устаканены).
-
----
-
-## Commit 18: ContextChat — frontend-диалог
-
-**Sprint:** F
-**Fixes/Implements:** ContextChat LLM (frontend)
-**Files changed:**
-- `frontend/components/studio/ContextChat.tsx`
-- `frontend/lib/api/studio.ts`
-
-**What to do:**
-В `studio.ts`:
-```ts
-  contextChat: (id: string, message: string) =>
-    request<{ answer: string }>(`/studio/projects/${id}/chat/`, {
-      method: 'POST', body: JSON.stringify({ message }),
-    }),
-```
-В `ContextChat.tsx` — поле ввода + список сообщений (локальный стейт), отправка через `useMutation`, индикатор загрузки (Lucide `Loader2`), кнопки быстрых действий: «Продолжить», «Пропустить шаг», «Дать подсказку» — последние вызывают существующий `studioApi.resume(...)`.
-
-**Test:**
-```bash
-cd frontend && npm run build
-```
-Ручная: на паузе ввести вопрос — приходит ответ ассистента.
-
-**Dependencies:** Commit 17.
-
----
-
-## Commit 19: SPA-краулинг через Playwright (clone-mode)
-
-**Sprint:** F
-**Fixes/Implements:** SPA crawling Playwright
-**Files changed:**
-- `src/studio/tasks.py`
-- `src/studio/crawler.py` (уже есть `crawl_spa`)
-
-**What to do:**
-`crawl_spa` готов, но `crawl_and_analyze` зовёт статический `crawl`. SPA (React/Vue) отдаёт пустой `<div id="root">`. Маршрутизировать: если статический текст слишком короткий → перекинуть на Playwright-воркер (`celery_studio_playwright`, prefork — НЕ gevent).
-
-1. Отдельная задача в очереди playwright. В `docker-compose.yml` `celery_studio_playwright` слушает свою очередь (например `studio_playwright`). Объявить:
-```python
-@shared_task(bind=True, max_retries=1, queue='studio_playwright')
-def crawl_spa_task(self, project_id):
-    from .crawler import crawl_spa
-    project = StudioProject.objects.get(id=project_id)
+            pass
+        project.sandbox_container_id = ''
+        project.save(update_fields=['sandbox_container_id'])
     try:
-        data = crawl_spa(project.target_url)
-        project.interview_data['crawled'] = {'title': data['title'], 'text': data['text'][:8000]}
-        project.status = 'planning'
-        project.save(update_fields=['interview_data', 'status'])
-        agent_analyze.delay(project_id)
-    except Exception as e:
-        raise self.retry(exc=e, countdown=60)
+        release_reserve(project)
+    except Exception:
+        pass
+    publish_event(str(project.id), 'failed', {'reason': reason})
 ```
-2. В `crawl_and_analyze` после статического crawl проверять достаточность контента:
+
+Примечание: поле тайминга последнего изменения шага — `StudioPipelineState.last_changed` (auto_now). Если в проекте используется `updated_at` — заменить на него. Не вводить новое поле.
+
+В `src/studio/tasks.py`, в начале `run_pipeline`:
+
 ```python
-        data = crawl(project.target_url)
-        if len((data.get('text') or '').strip()) < 200:
-            publish_event(project_id, {'agent': 'system', 'level': 'info', 'text': 'SPA — рендерю через браузер...'})
-            crawl_spa_task.delay(project_id)
-            return
-        project.interview_data['crawled'] = {'title': data['title'], 'text': data['text'][:8000]}
-        ...
+from django.utils import timezone
+state.started_at = timezone.now()
+state.save(update_fields=['started_at'])
 ```
 
-Проверить, что `celery_studio_playwright` подписан на очередь `studio_playwright` (флаг `-Q` в команде сервиса в `docker-compose.yml`).
+В `src/config/settings.py`:
 
-**Test:**
-```bash
-cd src && python manage.py test studio
-```
-Юнит-тест: замокать `crawl` → вернуть `{'text': '', 'title': ''}`; вызвать `crawl_and_analyze`; проверить, что `crawl_spa_task.delay` вызвана (мок). Второй тест: `crawl` возвращает длинный текст → `crawl_spa_task` НЕ вызывается.
-
-**Dependencies:** —
-
----
-
-## Commit 20: Режимы approval — semi и manual (backend gate)
-
-**Sprint:** F
-**Fixes/Implements:** Semi/Manual approval mode
-**Files changed:**
-- `src/studio/tasks.py`
-- `src/studio/views/pipeline.py` (ApproveStepView)
-- `src/studio/urls.py`
-
-**What to do:**
-`StudioProject.mode` (`auto`/`semi`/`manual`) уже есть, но пайплайн всегда идёт авто. Поведение:
-- `auto`: после успешного шага сразу `next_step` (как сейчас).
-- `semi`: после успешного шага — пауза «ждёт подтверждения», пользователь жмёт «Подтвердить» → следующий шаг.
-- `manual`: пауза перед КАЖДЫМ шагом (и до первого).
-
-В `merge_reports`, в ветке «шаг пройден», вместо безусловного `commit_to_gitea.delay`:
 ```python
-    if review.get('passed') and test.get('passed'):
-        publish_event(...)  # как есть
-        commit_to_gitea.delay(project_id, step_index)
+STUDIO_STEP_STALL_SEC = int(os.getenv('STUDIO_STEP_STALL_SEC', '240'))
+STUDIO_PIPELINE_MAX_SEC = int(os.getenv('STUDIO_PIPELINE_MAX_SEC', '2700'))
 ```
-оставить commit, но в `commit_to_gitea` после `StudioVersion.objects.create(...)` перед `next_step.delay` учесть режим:
+
+В `src/config/celery.py`, в `beat_schedule`:
+
 ```python
-    if project.mode in ('semi', 'manual'):
-        state = project.pipeline
-        state.status = 'paused_manual'
-        state.pause_reason = f'Шаг {step_index} готов — подтвердите продолжение'
-        state.save(update_fields=['status', 'pause_reason'])
-        project.status = 'paused'
-        project.save(update_fields=['status'])
-        publish_event(project_id, {'agent': 'system', 'level': 'info',
-                                   'text': state.pause_reason, 'type': 'awaiting_approval'})
-        return
-    next_step.delay(project_id, step_index)
+'studio-watchdog': {
+    'task': 'studio.watchdog_pipelines',
+    'schedule': 120.0,  # каждые 2 минуты
+},
 ```
-Эндпоинт подтверждения:
+
+**Проверка**: при искусственном зависании шага watchdog через ~2-4 мин отзывает задачу и переводит пайплайн в `failed`, sandbox убран, резерв возвращён.
+
+### Коммит 9: PipelineSkipView — пропуск шага
+
+**Файлы**
+- Изменить: `src/studio/views/pipeline.py`
+- Изменить: `src/studio/urls.py`
+- Изменить: `src/studio/serializers.py`
+
+**Что делать**
+
+Добавить view, которое сбрасывает состояние анти-цикла и запускает следующий шаг. Расширить сериализатор состояния пайплайна полями для UI восстановления.
+
+**Код**
+
+В `src/studio/views/pipeline.py`:
+
 ```python
-class ApproveStepView(APIView):
+class PipelineSkipView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+
     def post(self, request, id):
         project = StudioProject.objects.get(id=id, user=request.user)
         state = project.pipeline
         state.status = 'running'
         state.pause_requested = False
-        state.save(update_fields=['status', 'pause_requested'])
+        state.same_diff_count = 0
+        state.last_files_hash = ''
+        state.last_error_signature = ''
+        state.error_repeat_count = 0
+        state.save(update_fields=[
+            'status', 'pause_requested', 'same_diff_count',
+            'last_files_hash', 'last_error_signature', 'error_repeat_count',
+        ])
         project.status = 'coding'
         project.save(update_fields=['status'])
         from ..tasks import next_step
         next_step.delay(str(project.id), state.step_index)
-        return Response({'status': 'running'})
+        publish_event(str(project.id), 'resumed', {'action': 'skip_step'})
+        return Response({'status': 'running', 'skipped_step': state.step_index})
 ```
-URL: `path('projects/<uuid:id>/approve/', ApproveStepView.as_view(), name='approve_step')`.
 
-**Test:**
-```bash
-cd src && python manage.py test studio
+В `src/studio/urls.py` (добавить путь и импорт `PipelineSkipView`):
+
+```python
+path('projects/<uuid:id>/pipeline/skip/', PipelineSkipView.as_view()),
 ```
-Юнит-тест: проект `mode='semi'`, прогнать `commit_to_gitea` (замокав gitea) → проверить `status='paused'`, `next_step` НЕ вызван. Затем `ApproveStepView` → `next_step.delay` вызван.
 
-**Dependencies:** Commit 5 (`pause_requested`), Commit 1.
+В `src/studio/serializers.py` расширить `PipelineStateSerializer`:
+
+```python
+from django.conf import settings
+
+
+class PipelineStateSerializer(serializers.ModelSerializer):
+    max_iterations = serializers.SerializerMethodField()
+
+    class Meta:
+        model = StudioPipelineState
+        fields = [
+            'status', 'step_index', 'iteration_count', 'max_iterations',
+            'pause_reason', 'same_diff_count', 'current_task_id',
+            # ... существующие поля
+        ]
+
+    def get_max_iterations(self, obj):
+        return getattr(settings, 'STUDIO_MAX_ITERATIONS', 5)
+```
+
+(Если константа `STUDIO_MAX_ITERATIONS` отсутствует — добавить её в `settings.py`: `STUDIO_MAX_ITERATIONS = int(os.getenv('STUDIO_MAX_ITERATIONS', '5'))`.)
+
+**Проверка**: `POST /api/v1/studio/projects/<id>/pipeline/skip/` сбрасывает счётчики и запускает следующий шаг; сериализатор отдаёт `max_iterations`.
 
 ---
 
-## Commit 21: Frontend — UI подтверждения шага (semi/manual)
+## Сессия 4: Фиксы превью — блокеры
 
-**Sprint:** F
-**Fixes/Implements:** Semi/Manual approval mode (frontend)
-**Files changed:**
-- `frontend/components/studio/ContextChat.tsx` или новый `ApprovalBar.tsx`
-- `frontend/lib/api/studio.ts`
+Цель: устранить главные причины неработающего превью — рассинхрон файлов БД и контейнера, неправильный запуск dev-сервера для Next.js, ломаные относительные пути в fallback-превью, отсутствие обратной связи во время долгой установки зависимостей.
 
-**What to do:**
-В `studio.ts`:
-```ts
-  approve: (id: string) =>
-    request<{ status: string }>(`/studio/projects/${id}/approve/`, { method: 'POST' }),
-```
-Когда `pipeline.status === 'paused_manual'` и событие `type === 'awaiting_approval'`, показать панель с кнопкой «Подтвердить и продолжить» (Lucide `Check`) → `studioApi.approve(id)`. Для `manual`-режима — та же панель перед стартом каждого шага.
+Коммиты: 10, 11, 12.
 
-**Test:**
-```bash
-cd frontend && npm run build
-```
-Ручная: создать проект с `mode=semi`, после первого шага появляется кнопка подтверждения.
+### Коммит 10: sandbox.sync_all + dev-server для Next.js
 
-**Dependencies:** Commit 20.
+**Файлы**
+- Изменить: `src/studio/sandbox.py`
+- Изменить: `src/studio/tasks.py`
 
----
+**Что делать**
 
-## Commit 22: Роутинг сложных шагов на Opus (smart Coder)
+1. Добавить `sync_all(project)` — записывает все `StudioFile` проекта в контейнер.
+2. Переписать `start_dev_server` так, чтобы он определял Next.js по dev-скрипту и запускал его с `-H 0.0.0.0`, для Vite — с `--host 0.0.0.0`, иначе fallback на `http.server`.
+3. Доработать `wait_for_ready` (warmup-запрос для триггера компиляции Next.js, увеличенный timeout).
+4. В `restart_preview` и при первичном поднятии sandbox вызывать `sandbox.sync_all(project)` после записи файлов.
 
-**Sprint:** F
-**Fixes/Implements:** Complex step → Opus routing
-**Files changed:**
-- `src/studio/agents/coder.py`
-- `src/studio/tasks.py`
-- `src/studio/billing.py`
+**Код**
 
-**What to do:**
-`CoderAgent` всегда использует `MODEL_FAST` (deepseek-v3). Сложные шаги (много файлов, ключевые слова) лучше отдавать `MODEL_SMART` (claude-opus-4-8). Простая эвристика по тексту шага.
+В `src/studio/sandbox.py`:
 
-В `coder.py`:
 ```python
-from .base import BaseAgent, MODEL_FAST, MODEL_SMART
-
-COMPLEX_HINTS = ('auth', 'оплат', 'payment', 'websocket', 'realtime', 'state machine',
-                 'миграц', 'schema', 'api', 'интеграц')
-
-class CoderAgent(BaseAgent):
-    name = 'coder'
-    model = MODEL_FAST
-
-    def _pick_model(self, step_text: str, existing_files: dict) -> str:
-        text = step_text.lower()
-        file_mentions = step_text.count('`') // 2  # грубая оценка кол-ва файлов в шаге
-        if file_mentions >= 5 or any(h in text for h in COMPLEX_HINTS):
-            return MODEL_SMART
-        return MODEL_FAST
-
-    def run(self, step_index, step_text, existing_files):
-        model = self._pick_model(step_text, existing_files)
-        ...
-        data = self.run_json(CODER_SYSTEM, user, model=model, max_tokens=8192)
-        # вернуть и использованную модель, чтобы tasks.py знал тариф
-        self.last_model = model
-        return data.get('files', {})
-```
-В `billing.py` различать тариф coder по модели — добавить функцию:
-```python
-def coder_tier_for_model(model: str) -> str:
-    from .agents.base import MODEL_SMART
-    return 'smart' if model == MODEL_SMART else 'fast'
-```
-В `tasks.coder_iteration` после `CoderAgent(project).run(...)` использовать `agent.last_model` для расчёта стоимости (заменить фиксированный `_billing_charge(project, 'coder', ...)` на динамический tier). Минимально — если `last_model == MODEL_SMART`, зарядить как 'smart' budget. Реализовать через расширение `_billing_charge`, принимающий явный tier override:
-```python
-def _billing_charge(project, agent_name, step_index, tier_override=None):
-    base_tier, budget = AGENT_BUDGET.get(agent_name, ('fast', 2000))
-    tier = tier_override or base_tier
-    cost = max(1, int((budget / 1000.0) * STAR_RATE[tier]))
-    ...
-```
-И в coder-ветке: `_billing_charge(project, 'coder', step_index, tier_override=coder_tier_for_model(agent.last_model))`.
-
-**Test:**
-```bash
-cd src && python manage.py test studio
-```
-Юнит-тест: `_pick_model('Реализуй auth и payment', {})` → `MODEL_SMART`; `_pick_model('Добавь кнопку', {})` → `MODEL_FAST`. Тест billing: charge для smart-coder больше, чем для fast.
-
-**Dependencies:** Commit 2, Commit 3 (сигнатура `_billing_charge` — менять согласованно).
-
----
-
-## Commit 23: Атомарные commit-ы в Gitea (один commit на шаг)
-
-**Sprint:** F
-**Fixes/Implements:** Atomic Gitea commits
-**Files changed:**
-- `src/studio/gitea_client.py`
-- `src/studio/tasks.py`
-
-**What to do:**
-Сейчас `commit_to_gitea` делает по одному `put_file` на каждый файл → N commit-ов на шаг, шумная история и неатомарность. Использовать Gitea Contents Batch API (`POST /repos/{owner}/{repo}/contents` с массивом `files`), один commit на шаг.
-
-В `gitea_client.py`:
-```python
-def put_files_batch(owner, repo, files: dict, message, branch='main') -> dict:
-    """Один commit на множество файлов через /contents batch API."""
-    ops = []
-    for path, content in files.items():
-        url = _api(f'/repos/{owner}/{repo}/contents/{path}')
-        get = requests.get(url, headers=_headers(), params={'ref': branch})
-        op = {
-            'operation': 'update' if get.status_code == 200 else 'create',
-            'path': path,
-            'content': base64.b64encode(content.encode()).decode(),
-        }
-        if get.status_code == 200:
-            op['sha'] = get.json().get('sha')
-        ops.append(op)
-    r = requests.post(
-        _api(f'/repos/{owner}/{repo}/contents'),
-        headers=_headers(),
-        json={'files': ops, 'message': message, 'branch': branch},
-    )
-    return r.json()
-```
-В `commit_to_gitea` заменить цикл `put_file` на единый `put_files_batch`:
-```python
-    if owner and repo:
-        files = {f.path: f.content for f in project.files.all()}
-        try:
-            res = gitea_client.put_files_batch(owner, repo, files, message=f'Step {step_index}')
-            git_sha = (res.get('commit') or {}).get('sha', '')
-        except Exception as exc:
-            publish_event(project_id, {'agent': 'system', 'level': 'warning', 'text': f'Git push failed: {exc}'})
-```
-
-> Проверить версию Gitea в `docker-compose.yml` — batch Contents API доступен с Gitea 1.18+. Если версия старее — оставить `put_file` в цикле, но это backlog.
-
-**Test:**
-```bash
-cd src && python manage.py test studio
-```
-Юнит-тест: замокать `requests.get` (sha lookup) и `requests.post`; вызвать `put_files_batch` с 3 файлами; проверить, что `requests.post` вызван ОДИН раз с массивом из 3 `files`.
-
-**Dependencies:** —
-
----
-
-## Commit 24: Лимит sandbox на пользователя
-
-**Sprint:** F
-**Fixes/Implements:** Per-user sandbox limit
-**Files changed:**
-- `src/config/settings.py`
-- `src/studio/sandbox.py`
-- `src/studio/tasks.py`
-
-**What to do:**
-Нет ограничения на число одновременных sandbox-контейнеров у пользователя — риск исчерпания ресурсов хоста. Ввести лимит.
-
-1. Настройка: `STUDIO_MAX_SANDBOXES_PER_USER = int(os.getenv('STUDIO_MAX_SANDBOXES_PER_USER', '2'))`.
-2. Helper в `sandbox.py` — посчитать активные контейнеры пользователя по метке. Добавить в `spawn_sandbox` метку с user_id:
-```python
-        labels={'studio_project': project_id, 'studio_user': str(user_id)},
-```
-(прокинуть `user_id` параметром в `spawn_sandbox`).
-```python
-def count_user_sandboxes(user_id) -> int:
-    client = get_docker()
-    return len(client.containers.list(filters={'label': f'studio_user={user_id}'}))
-```
-3. В `run_pipeline` перед `spawn_sandbox`:
-```python
-    from django.conf import settings as _s
-    if sandbox.count_user_sandboxes(project.user_id) >= _s.STUDIO_MAX_SANDBOXES_PER_USER:
-        publish_event(project_id, {'agent': 'system', 'level': 'error',
-            'text': 'Достигнут лимит одновременных проектов. Завершите другой проект.'})
-        project.status = 'paused'; project.save(update_fields=['status'])
-        state.status = 'paused_manual'; state.pause_reason = 'Лимит sandbox'; state.save()
+def sync_all(project) -> None:
+    """Записывает все StudioFile проекта в sandbox-контейнер."""
+    cid = project.sandbox_container_id
+    if not cid:
         return
-    cid = sandbox.spawn_sandbox(project_id, project.user_id)
-```
+    files = {f.path: f.content for f in project.files.all()}
+    if files:
+        write_files(cid, files)
 
-**Test:**
-```bash
-cd src && python manage.py test studio
-```
-Юнит-тест: замокать `sandbox.count_user_sandboxes` → вернуть значение >= лимита; вызвать `run_pipeline`; проверить, что `spawn_sandbox` НЕ вызван и проект ушёл в паузу.
 
-**Dependencies:** Commit 4 (try/except sandbox), Commit 3 (паузы).
+def start_dev_server(container_id: str) -> int:
+    import json as _json
+    client = get_docker()
 
----
+    _, pkg_raw = exec_command(container_id, 'cat /workspace/package.json 2>/dev/null || echo {}')
+    try:
+        pkg = _json.loads(pkg_raw)
+        scripts = pkg.get('scripts', {})
+        has_dev = 'dev' in scripts
+        dev_script = scripts.get('dev', '')
+        is_next = 'next' in dev_script
+    except Exception:
+        has_dev = False
+        is_next = False
 
-## Commit 25: Резервирование звёзд при старте пайплайна
+    if has_dev:
+        if is_next:
+            cmd = ['sh', '-c', 'pnpm dev -- -p 3000 -H 0.0.0.0 > /tmp/dev.log 2>&1']
+        else:
+            cmd = ['sh', '-c', 'pnpm dev --port 3000 --host 0.0.0.0 > /tmp/dev.log 2>&1']
+    else:
+        cmd = ['sh', '-c', 'python3 -m http.server 3000 --bind 0.0.0.0 > /tmp/dev.log 2>&1']
 
-**Sprint:** F
-**Fixes/Implements:** Star reservation
-**Files changed:**
-- `src/studio/models.py` (уже есть `stars_reserved`)
-- `src/studio/billing.py`
-- `src/studio/tasks.py`
-- `src/studio/views/pipeline.py`
+    exec_id = client.api.exec_create(container_id, cmd, workdir='/workspace')
+    client.api.exec_start(exec_id, detach=True)
+    return 3000
 
-**What to do:**
-Поле `stars_reserved` есть, но не используется. Идея: при старте пайплайна зарезервировать оценку (`estimate_stars`) с баланса, чтобы пользователь не потратил их в другом месте; по факту списывать из резерва, остаток вернуть в конце.
 
-1. `billing.py`:
-```python
-def reserve(user, amount, project):
-    if user.pages_count < amount:
-        return False
-    user.spend_pages(amount)
-    project.stars_reserved += amount
-    project.save(update_fields=['stars_reserved'])
-    return True
-
-def charge_from_reserve(amount, project):
-    """Списывает из резерва. Если резерв мал — добирает из баланса пользователя."""
-    take = min(amount, project.stars_reserved)
-    project.stars_reserved -= take
-    project.stars_spent += take
-    rest = amount - take
-    if rest > 0:
-        if project.user.pages_count < rest:
-            return False
-        project.user.spend_pages(rest)
-        project.stars_spent += rest
-    project.save(update_fields=['stars_reserved', 'stars_spent'])
-    return True
-
-def release_reserve(project):
-    if project.stars_reserved > 0:
-        project.user.add_pages(project.stars_reserved)
-        project.stars_reserved = 0
-        project.save(update_fields=['stars_reserved'])
-```
-2. В `run_pipeline` (после affordability-проверки, до старта шага) вызвать `reserve(project.user, estimate_stars(project, planned), project)`. Если `False` → пауза «недостаточно звёзд».
-3. `_billing_charge` использует `charge_from_reserve` вместо `charge`; при `False` → `InsufficientStars`.
-4. В `next_step` при завершении проекта и в `_pause_no_funds`/refund-ветке `merge_reports` вызывать `release_reserve(project)`.
-
-> Это полноценное закрытие идемпотентности из примечания к Commit 2/3.
-
-**Test:**
-```bash
-cd src && python manage.py test studio
-```
-Юнит-тест: `reserve` уменьшает `pages_count`, увеличивает `stars_reserved`; `charge_from_reserve` тратит из резерва; `release_reserve` возвращает остаток на баланс. Интеграционно: запустить и завершить мини-пайплайн (всё замокано), проверить, что `stars_reserved == 0` в конце и сумма списаний сходится.
-
-**Dependencies:** Commit 3, Commit 8 (`estimate_stars` через API/планирование), Commit 22 (общая сигнатура `_billing_charge`).
-
----
-
-# Sprint G — Качество генерации
-
-## Commit 26: Coder получает полный контент релевантных файлов
-
-**Sprint:** G
-**Fixes/Implements:** Multi-file context for Coder
-**Files changed:**
-- `src/studio/agents/coder.py`
-
-**What to do:**
-Сейчас Coder видит только первые 10 файлов, обрезанных до 2000 символов (`c[:2000]`) — он переписывает файлы вслепую. Улучшить отбор контекста: выбирать файлы, упомянутые в тексте шага, целиком; остальные — список путей.
-
-```python
-    def run(self, step_index, step_text, existing_files):
-        import re
-        mentioned = [p for p in existing_files if p in step_text]
-        # плюс по расширению/именам из бэктиков
-        ticked = re.findall(r'`([^`]+)`', step_text)
-        for t in ticked:
-            if t in existing_files and t not in mentioned:
-                mentioned.append(t)
-        full = {p: existing_files[p] for p in mentioned[:8]}
-        listing = '\n'.join(f'- {p}' for p in existing_files) or '(пусто)'
-        body = '\n'.join(f'### {p}\n```\n{c[:6000]}\n```' for p, c in full.items())
-        user = (
-            f"PROJECT.md:\n{self.project.project_md_content}\n\n"
-            f"Шаг #{step_index}:\n{step_text}\n\n"
-            f"Все файлы проекта:\n{listing}\n\n"
-            f"Содержимое релевантных файлов:\n{body}"
-        )
-        ...
-```
-Поднять лимит per-file с 2000 до 6000, число полных файлов — до 8, остальные дать списком путей.
-
-**Test:**
-```bash
-cd src && python manage.py test studio
-```
-Юнит-тест: проверить, что в `user`-промпте, переданном в `run_json` (замокать `run_json`, перехватить аргумент), присутствует полное содержимое файла, упомянутого в `step_text`, и список всех путей.
-
-**Dependencies:** Commit 22 (тот же файл `coder.py` — делать после).
-
----
-
-## Commit 27: Реальный прогон тестов/сборки в sandbox
-
-**Sprint:** G
-**Fixes/Implements:** Real test execution
-**Files changed:**
-- `src/studio/sandbox.py`
-- `src/studio/tasks.py`
-- `src/studio/agents/tester.py`
-
-**What to do:**
-`TesterAgent` сейчас лишь анализирует логи dev-сервера через LLM. Добавить реальный запуск проверок (build/typecheck) в контейнере и отдавать реальный exit code Tester-у.
-
-1. `sandbox.py`:
-```python
-def run_build_check(container_id: str) -> tuple:
-    """Запускает быстрый typecheck/build. Возвращает (exit_code, output)."""
-    # Next.js/React: попытка type-check, иначе build
-    return exec_command(container_id, 'pnpm -s exec tsc --noEmit 2>&1 | tail -n 100 || pnpm -s build 2>&1 | tail -n 120')
-```
-2. В `agent_test` собирать реальный результат:
-```python
-@shared_task(queue=QUEUE)
-def agent_test(project_id, step_index):
-    project = StudioProject.objects.get(id=project_id)
-    from .agents.tester import TesterAgent
-    logs, exit_code = '', None
-    if project.sandbox_container_id:
-        try:
-            exit_code, build_out = sandbox.run_build_check(project.sandbox_container_id)
-            logs = build_out
-        except Exception as exc:
-            logs = f'build check error: {exc}'; exit_code = 1
-    report = TesterAgent(project).run(logs, exit_code=exit_code)
-    publish_event(project_id, {'agent': 'tester', 'level': 'info', 'text': report.get('summary', '')})
-    return {'kind': 'test', 'report': report}
-```
-3. `TesterAgent.run` принимает `exit_code` и трактует ненулевой как fail независимо от LLM:
-```python
-    def run(self, build_logs: str, exit_code=None) -> dict:
-        user = f"exit_code={exit_code}\nЛоги сборки:\n{build_logs[-6000:]}"
-        report = self.run_json(TESTER_SYSTEM, user, model=MODEL_FAST, max_tokens=4000)
-        if exit_code is not None and exit_code != 0:
-            report['build_ok'] = False
-            report['passed'] = False
-        report.setdefault('passed', report.get('build_ok', False) and not report.get('errors'))
-        return report
-```
-
-**Test:**
-```bash
-cd src && python manage.py test studio
-```
-Юнит-тест: `TesterAgent.run(logs='', exit_code=1)` (замокав `run_json` → `{'passed': True}`) → итог `passed == False` (exit_code побеждает). Ручная: шаг с битым TS не проходит ревью-цикл.
-
-**Dependencies:** Commit 4 (sandbox), Commit 15.
-
----
-
-## Commit 28: Ожидание компиляции перед тестом (wait-for-compile)
-
-**Sprint:** G
-**Fixes/Implements:** Wait-for-compile
-**Files changed:**
-- `src/studio/sandbox.py`
-- `src/studio/tasks.py`
-
-**What to do:**
-После записи файлов dev-сервер компилирует не мгновенно — Tester может прочитать логи до завершения сборки и дать ложный «passed». Добавить активное ожидание готовности dev-сервера.
-
-```python
-# sandbox.py
-def wait_for_ready(container_id: str, timeout=60) -> bool:
-    """Опрашивает локальный dev-сервер внутри контейнера до HTTP 200 или таймаута."""
+def wait_for_ready(container_id: str, timeout: int = 150, warmup: bool = False) -> bool:
     import time
+    if warmup:
+        # Триггерим компиляцию Next.js первым запросом
+        exec_command(container_id, 'curl -s http://localhost:3000/ > /dev/null 2>&1 || true')
     for _ in range(timeout // 3):
-        code, out = exec_command(
-            container_id,
-            'curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/ || echo 000')
-        if out.strip().endswith('200'):
+        if is_http_alive(container_id):
             return True
         time.sleep(3)
     return False
 ```
-В `coder_iteration` после `sandbox.write_files(...)` и до `chord(...)`:
+
+Примечание: `is_http_alive(container_id)` — существующая функция проверки порта 3000. Если её сигнатура отличается — сохранить существующий способ проверки внутри цикла, изменив только timeout и добавив warmup.
+
+В `src/studio/tasks.py`, в `restart_preview` и в функции поднятия sandbox (`_ensure_sandbox`/аналог), после `write_files`/первичной записи файлов:
+
 ```python
-        if project.sandbox_container_id:
-            sandbox.write_files(project.sandbox_container_id, files)
-            sandbox.wait_for_ready(project.sandbox_container_id, timeout=60)
+sandbox.sync_all(project)
 ```
-> Внимание про gevent: `time.sleep` под gevent кооперативно уступает loop — это безопасно в `celery_studio` (gevent-пул). Если задача в prefork-пуле — тоже ок.
 
-**Test:**
-```bash
-cd src && python manage.py test studio
+И при ожидании Next.js вызывать `sandbox.wait_for_ready(cid, timeout=150, warmup=True)` для стека `nextjs`.
+
+**Проверка**: для Next.js-проекта превью поднимается на 0.0.0.0:3000 и отвечает 200 после warmup; для Vite — `--host` присутствует; файлы из БД синхронизированы в контейнер.
+
+### Коммит 11: Инжект `<base href>` в PreviewProxyView
+
+**Файлы**
+- Изменить: `src/studio/views/pipeline.py`
+
+**Что делать**
+
+В fallback-ветке `PreviewProxyView.get()` (когда нет sandbox и отдаём файл напрямую из БД) для HTML-ответов инжектировать `<base href>`, чтобы относительные пути (css/js/img) резолвились через прокси-префикс.
+
+**Код**
+
+В `PreviewProxyView.get()`, при отдаче файла из БД:
+
+```python
+if content_type.startswith('text/html'):
+    base_href = f'/api/v1/studio/projects/{id}/preview/'
+    base_tag = f'<base href="{base_href}">'
+    content = file_obj.content
+    if '<head>' in content:
+        content = content.replace('<head>', f'<head>{base_tag}', 1)
+    elif '<html>' in content:
+        content = content.replace('<html>', f'<html><head>{base_tag}</head>', 1)
+    else:
+        content = base_tag + content
+    resp = HttpResponse(content, content_type=content_type)
+else:
+    resp = HttpResponse(file_obj.content, content_type=content_type)
+resp['X-Frame-Options'] = 'SAMEORIGIN'
+return resp
 ```
-Юнит-тест: замокать `exec_command` так, чтобы первые 2 вызова вернули `'000'`, третий — `'...200'`; `wait_for_ready` → `True`, и вызвался 3 раза. Таймаут-кейс: всегда `'000'` → `False`.
 
-**Dependencies:** Commit 27.
+**Проверка**: статический HTML-проект в превью корректно подгружает относительные css/js.
+
+### Коммит 12: SSE-события установки зависимостей
+
+**Файлы**
+- Изменить: `src/studio/tasks.py`
+
+**Что делать**
+
+Обернуть вызов `sandbox.install_deps(cid)` в события `progress` (старт и завершение), чтобы фронт показывал пользователю, что идёт установка (1-3 минуты).
+
+**Код**
+
+```python
+publish_event(str(project.id), 'progress', {
+    'agent': 'sandbox',
+    'message': 'Устанавливаю зависимости (может занять 1-3 минуты)...',
+    'step': 'install_deps',
+})
+exit_code, output = sandbox.install_deps(cid)
+publish_event(str(project.id), 'progress', {
+    'agent': 'sandbox',
+    'message': 'Зависимости установлены' if exit_code == 0 else f'Ошибка установки: {output[-200:]}',
+    'step': 'install_deps_done',
+})
+```
+
+**Проверка**: в SSE-потоке появляются события `progress` со `step: install_deps` и `install_deps_done`.
 
 ---
 
-## Commit 29: Diff-ориентированный Review
+## Сессия 5: Превью UI + модели
 
-**Sprint:** G
-**Fixes/Implements:** Diff-based Review
-**Files changed:**
-- `src/studio/agents/reviewer.py`
-- `src/studio/tasks.py`
+Цель: дать пользователю видимый прогресс пайплайна, средства восстановления при паузе и осознанный выбор модели с оценкой стоимости.
 
-**What to do:**
-`ReviewerAgent` сейчас получает ВСЕ файлы целиком (`_existing_files(project)`) — дорого и размывает фокус. Передавать только файлы, изменённые на этом шаге (их Coder вернул), а контекст остального — списком.
+Коммиты: 13, 14, 15.
 
-1. `coder_iteration` уже знает `files` (результат Coder). Передать их паттерны в reports. Проще: в `coder_iteration` сохранить набор изменённых путей в state:
+### Коммит 13: Компонент PipelineTimeline
+
+**Файлы**
+- Создать: `frontend/components/studio/PipelineTimeline.tsx`
+- Изменить: `frontend/components/studio/StudioLayout.tsx`
+
+**Что делать**
+
+Создать компонент таймлайна шагов с индикаторами статуса, текущим агентом (человекочитаемая подпись) и счётчиком попыток. Подключить в `StudioLayout`, передав данные из polling/SSE pipeline-статуса.
+
+**Код**
+
+```tsx
+// frontend/components/studio/PipelineTimeline.tsx
+"use client";
+import { Check, Loader2, Circle, AlertCircle } from "lucide-react";
+
+interface Step {
+  title: string;
+  status: "done" | "active" | "waiting" | "error";
+}
+
+interface PipelineTimelineProps {
+  steps: Step[];
+  currentAgent: string;
+  iterationCount: number;
+  maxIterations: number;
+  elapsedSeconds: number;
+}
+
+const AGENT_LABELS: Record<string, string> = {
+  analyst: "Разбираю, что нужно построить",
+  planner: "Составляю план по шагам",
+  coder: "Пишу код",
+  reviewer: "Проверяю код на ошибки",
+  tester: "Запускаю сборку",
+  fixer: "Готовлю исправления",
+  sandbox: "Запускаю среду разработки",
+  interviewer: "Уточняю детали проекта",
+};
+
+export function PipelineTimeline({ steps, currentAgent, iterationCount, maxIterations, elapsedSeconds }: PipelineTimelineProps) {
+  return (
+    <div className="space-y-1">
+      {currentAgent && (
+        <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)] mb-3 px-1">
+          <Loader2 size={14} className="animate-spin shrink-0" />
+          <span>{AGENT_LABELS[currentAgent] ?? currentAgent}</span>
+          {iterationCount > 0 && (
+            <span className="text-xs text-[var(--muted)] ml-auto shrink-0">
+              Попытка {iterationCount + 1} из {maxIterations}
+            </span>
+          )}
+        </div>
+      )}
+      {steps.map((step, i) => (
+        <div key={i} className="flex items-start gap-2 py-1 px-1 rounded text-sm">
+          <div className="mt-0.5 shrink-0">
+            {step.status === "done" && <Check size={14} className="text-[var(--success)]" />}
+            {step.status === "active" && <Loader2 size={14} className="animate-spin text-[var(--text-secondary)]" />}
+            {step.status === "waiting" && <Circle size={14} className="text-[var(--muted)] opacity-40" />}
+            {step.status === "error" && <AlertCircle size={14} className="text-[var(--danger)]" />}
+          </div>
+          <span className={step.status === "waiting" ? "text-[var(--text-secondary)] opacity-50" : "text-[var(--text)]"}>
+            {step.title}
+          </span>
+          {step.status === "active" && elapsedSeconds > 5 && (
+            <span className="ml-auto text-xs text-[var(--muted)] shrink-0">{elapsedSeconds}с</span>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+В `StudioLayout.tsx`: импортировать `PipelineTimeline`, разместить в боковой/нижней панели, передать `steps` (из плана + текущего step_index), `currentAgent`, `iterationCount`, `maxIterations` (из pipeline-статуса), `elapsedSeconds` (локальный таймер с момента старта шага).
+
+**Проверка**: при работе пайплайна виден список шагов с активным индикатором и подписью текущего агента.
+
+### Коммит 14: Компонент PipelineRecovery
+
+**Файлы**
+- Создать: `frontend/components/studio/PipelineRecovery.tsx`
+- Изменить: `frontend/lib/api/studio.ts`
+
+**Что делать**
+
+Создать панель восстановления при паузе пайплайна: показывает причину, при типе `same_diff` — textarea с подсказкой, кнопки «Попробовать снова», «Пропустить шаг». Добавить методы `skipStep` и `resumePipeline` в API-клиент.
+
+**Код**
+
+```tsx
+// frontend/components/studio/PipelineRecovery.tsx
+"use client";
+import { useState } from "react";
+import { AlertCircle, RefreshCw, SkipForward } from "lucide-react";
+import { studioApi } from "@/lib/api/studio";
+
+interface PipelineRecoveryProps {
+  projectId: string;
+  reason: string;
+  recoveryType: "loop" | "same_diff" | "failed" | "no_funds" | "manual";
+  onResume: () => void;
+}
+
+export function PipelineRecovery({ projectId, reason, recoveryType, onResume }: PipelineRecoveryProps) {
+  const [hint, setHint] = useState("");
+  const [loading, setLoading] = useState<string | null>(null);
+
+  const handleResume = async (action: "continue" | "skip_step" | "with_hint") => {
+    setLoading(action);
+    try {
+      if (action === "skip_step") {
+        await studioApi.skipStep(projectId);
+      } else {
+        await studioApi.resumePipeline(projectId, { action, hint: action === "with_hint" ? hint : undefined });
+      }
+      onResume();
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  return (
+    <div className="rounded-lg border border-[var(--danger)] bg-[var(--card-bg)] p-4 space-y-3">
+      <div className="flex items-start gap-2">
+        <AlertCircle size={16} className="text-[var(--danger)] mt-0.5 shrink-0" />
+        <div>
+          <p className="text-sm font-medium">Генерация приостановлена</p>
+          <p className="text-xs text-[var(--text-secondary)] mt-0.5">{reason}</p>
+        </div>
+      </div>
+
+      {recoveryType === "same_diff" && (
+        <textarea
+          value={hint}
+          onChange={e => setHint(e.target.value)}
+          placeholder="Опишите, что именно должно измениться..."
+          rows={3}
+          className="w-full text-sm rounded border border-[var(--border)] bg-[var(--bg)] p-2 resize-none"
+        />
+      )}
+
+      <div className="flex gap-2">
+        <button
+          onClick={() => handleResume(recoveryType === "same_diff" && hint ? "with_hint" : "continue")}
+          disabled={!!loading}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+        >
+          <RefreshCw size={14} className={loading === "continue" ? "animate-spin" : ""} />
+          Попробовать снова
+        </button>
+        <button
+          onClick={() => handleResume("skip_step")}
+          disabled={!!loading}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm border border-[var(--border)] hover:bg-[var(--hover)] disabled:opacity-50"
+        >
+          <SkipForward size={14} />
+          Пропустить шаг
+        </button>
+      </div>
+    </div>
+  );
+}
+```
+
+В `frontend/lib/api/studio.ts`:
+
+```ts
+skipStep: async (projectId: string) => {
+  const res = await fetch(`${API_URL}/studio/projects/${projectId}/pipeline/skip/`, {
+    method: "POST",
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error("skip failed");
+  return res.json();
+},
+
+resumePipeline: async (projectId: string, opts: { action: string; hint?: string }) => {
+  const res = await fetch(`${API_URL}/studio/projects/${projectId}/pipeline/resume/`, {
+    method: "POST",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify(opts),
+  });
+  if (!res.ok) throw new Error("resume failed");
+  return res.json();
+},
+```
+
+Примечание: `authHeaders()` — существующий хелпер авторизации в `studio.ts`. Эндпоинт resume (`pipeline/resume/`) уже существует (`PipelineResumeView`); если он не принимает `action`/`hint` — расширить его обработку этих полей.
+
+**Проверка**: при паузе `same_diff` показывается textarea; кнопки вызывают соответствующие API и возобновляют пайплайн.
+
+### Коммит 15: UI выбора модели + оценка стоимости
+
+**Файлы**
+- Изменить: `frontend/app/studio/page.tsx`
+- Изменить: `frontend/lib/api/studio.ts`
+- Изменить: `src/studio/views/projects.py`
+- Изменить: `src/studio/urls.py`
+
+**Что делать**
+
+1. Backend: view `ModelsCatalogView`, отдающий `STUDIO_MODELS`; роут `models/`.
+2. Frontend: метод `getModels`, тип `StudioModel`; в форме создания — `<select>` с `<optgroup>` по category и строка оценки `≈ N звёзд за шаг` (tier→STAR_RATE×12).
+
+**Код**
+
+В `src/studio/views/projects.py`:
+
 ```python
-        state = project.pipeline
-        state.fix_plan = state.fix_plan  # без изменений
-        project.interview_data.setdefault('last_changed', {})[str(step_index)] = list(files.keys())
-        project.save(update_fields=['interview_data'])
+class ModelsCatalogView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from ..models_catalog import STUDIO_MODELS
+        return Response(STUDIO_MODELS)
 ```
-2. `agent_review` берёт только изменённые файлы:
+
+В `src/studio/urls.py` (импортировать `ModelsCatalogView`):
+
 ```python
-@shared_task(queue=QUEUE)
-def agent_review(project_id, step_index):
-    project = StudioProject.objects.get(id=project_id)
-    from .agents.reviewer import ReviewerAgent
-    changed = project.interview_data.get('last_changed', {}).get(str(step_index), [])
-    all_files = _existing_files(project)
-    review_files = {p: all_files[p] for p in changed if p in all_files} or all_files
-    report = ReviewerAgent(project).run(_get_step_text(project, step_index), review_files)
-    ...
+path('models/', ModelsCatalogView.as_view()),
 ```
-3. В `ReviewerAgent.run` добавить в промпт список остальных файлов (контекст), но проверять только переданные.
 
-**Test:**
-```bash
-cd src && python manage.py test studio
+В `frontend/lib/api/studio.ts`:
+
+```ts
+export interface StudioModel {
+  id: string;
+  label: string;
+  category: "smart" | "fast" | "coder" | "reasoning";
+  tier: "smart" | "fast" | "coder";
+  description: string;
+}
+
+// внутри studioApi:
+getModels: async (): Promise<StudioModel[]> => {
+  const res = await fetch(`${API_URL}/studio/models/`, { headers: authHeaders() });
+  return res.json();
+},
 ```
-Юнит-тест: записать `last_changed = {'0': ['a.tsx']}`, файлы `a.tsx`,`b.tsx`; замокать `ReviewerAgent.run`, перехватить аргумент `files` → должен содержать только `a.tsx`.
 
-**Dependencies:** Commit 26.
+В `frontend/app/studio/page.tsx`:
+
+```tsx
+const STAR_RATE: Record<string, number> = { fast: 1, coder: 1.7, smart: 3 };
+const CATEGORY_LABELS: Record<string, string> = {
+  smart: "Smart — максимальное качество",
+  fast: "Fast — быстро и дёшево",
+  coder: "Coder — заточены под код",
+  reasoning: "Reasoning — глубокие рассуждения",
+};
+
+const [aiModel, setAiModel] = useState("claude-sonnet-4-6");
+const { data: models = [] } = useQuery({ queryKey: ["studio-models"], queryFn: studioApi.getModels });
+
+const selected = models.find(m => m.id === aiModel);
+const starsPerStep = selected ? Math.round(STAR_RATE[selected.tier] * 12) : 12;
+
+const grouped = ["smart", "fast", "coder", "reasoning"].map(cat => ({
+  cat,
+  items: models.filter(m => m.category === cat),
+})).filter(g => g.items.length > 0);
+```
+
+JSX:
+
+```tsx
+<div>
+  <label className="text-sm font-medium mb-1.5 block">Модель</label>
+  <select
+    value={aiModel}
+    onChange={e => setAiModel(e.target.value)}
+    className="w-full text-sm rounded border border-[var(--border)] bg-[var(--bg)] p-2"
+  >
+    {grouped.map(g => (
+      <optgroup key={g.cat} label={CATEGORY_LABELS[g.cat] ?? g.cat}>
+        {g.items.map(m => (
+          <option key={m.id} value={m.id}>{m.label} — {m.description}</option>
+        ))}
+      </optgroup>
+    ))}
+  </select>
+  <p className="text-xs text-[var(--muted)] mt-1">≈ {starsPerStep} звёзд за шаг</p>
+</div>
+```
+
+Прокинуть `ai_model: aiModel` в payload `createMutation`.
+
+**Проверка**: список моделей сгруппирован по category; смена модели обновляет оценку звёзд; проект создаётся с выбранной `ai_model`.
 
 ---
 
-## Commit 30: FixPlan ограничивает Coder списком target_files
+## Сессия 6: Studio Landing — онбординг
 
-**Sprint:** G
-**Fixes/Implements:** FixPlan target_files scope
-**Files changed:**
-- `src/studio/tasks.py`
-- `src/studio/agents/coder.py`
+Цель: превратить пустую страницу Studio в понятный онбординг — hero с тремя шагами, карточки стеков с реалистичными ожиданиями по превью, карточки режимов.
 
-**What to do:**
-`FixerAgent` уже возвращает `target_files`, но `coder_iteration` подмешивает только `instructions`, игнорируя `target_files`. В режиме фикса Coder должен трогать ТОЛЬКО эти файлы, чтобы не ломать прошедшие шаги.
+Коммиты: 16, 17, 18.
 
-В `coder_iteration`, ветка фикса:
-```python
-        if project.pipeline.iteration_count > 0 and project.pipeline.fix_plan:
-            fp = project.pipeline.fix_plan
-            targets = fp.get('target_files') or []
-            step_text += f"\n\nИСПРАВЬ согласно FixPlan:\n{fp.get('instructions', '')}"
-            if targets:
-                step_text += f"\n\nИЗМЕНЯЙ ТОЛЬКО эти файлы: {', '.join(targets)}. Остальные не трогай."
+### Коммит 16: Компонент StudioHero
+
+**Файлы**
+- Создать: `frontend/components/studio/StudioHero.tsx`
+- Изменить: `frontend/app/studio/page.tsx`
+
+**Что делать**
+
+Создать hero-блок с заголовком, подзаголовком, тремя шагами-карточками и CTA. Показывать его, когда форма скрыта и у пользователя нет проектов.
+
+**Код**
+
+```tsx
+// frontend/components/studio/StudioHero.tsx
+"use client";
+import { MessageSquare, Cpu, Eye, ChevronRight } from "lucide-react";
+
+interface StudioHeroProps {
+  onStart: () => void;
+}
+
+const STEPS = [
+  { icon: MessageSquare, title: "Опишите идею", desc: "Расскажите, что хотите создать, словами на русском" },
+  { icon: Cpu, title: "Агенты пишут код", desc: "7 AI-агентов планируют, кодят и проверяют за вас" },
+  { icon: Eye, title: "Смотрите и публикуйте", desc: "Живое превью, правки по запросу, публикация в один клик" },
+];
+
+export function StudioHero({ onStart }: StudioHeroProps) {
+  return (
+    <div className="mb-10">
+      <h2 className="text-3xl font-semibold tracking-tight mb-3">
+        Создайте сайт или приложение,<br />просто описав идею
+      </h2>
+      <p className="text-[var(--text-secondary)] text-base mb-8 max-w-xl">
+        Studio — команда AI-агентов, которая проектирует, пишет и проверяет код за вас.
+        Без знания программирования. Без VPN. Оплата в рублях.
+      </p>
+      <div className="grid grid-cols-3 gap-4 mb-8">
+        {STEPS.map((step, i) => (
+          <div key={i} className="flex flex-col gap-2 p-4 rounded-lg border border-[var(--border)] bg-[var(--card-bg)]">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-[var(--muted)] font-mono">{i + 1}</span>
+              <step.icon size={16} className="text-[var(--text-secondary)]" />
+            </div>
+            <p className="font-medium text-sm">{step.title}</p>
+            <p className="text-xs text-[var(--text-secondary)]">{step.desc}</p>
+          </div>
+        ))}
+      </div>
+      <button
+        onClick={onStart}
+        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
+      >
+        Создать проект
+        <ChevronRight size={16} />
+      </button>
+    </div>
+  );
+}
 ```
-В `CoderAgent.run` добавить параметр `allowed_files` (optional); после получения `files` из LLM в режиме фикса отфильтровать результат:
-```python
-    def run(self, step_index, step_text, existing_files, allowed_files=None):
-        ...
-        files = data.get('files', {})
-        if allowed_files:
-            files = {p: c for p, c in files.items() if p in allowed_files}
-        return files
-```
-И передавать `allowed_files=targets` из `coder_iteration` при фиксе.
 
-**Test:**
-```bash
-cd src && python manage.py test studio
-```
-Юнит-тест: `CoderAgent.run(..., allowed_files=['a.tsx'])` с замоканным `run_json`, вернувшим `{'files': {'a.tsx': '...', 'b.tsx': '...'}}` → результат содержит только `a.tsx`.
+В `frontend/app/studio/page.tsx`: импортировать и отрендерить `<StudioHero onStart={() => setShowForm(true)} />` при условии `!showForm && projects.length === 0`.
 
-**Dependencies:** Commit 26, Commit 22 (тот же `coder.py`).
+**Проверка**: новый пользователь видит hero; клик по CTA открывает форму.
+
+### Коммит 17: Компонент StackCards
+
+**Файлы**
+- Создать: `frontend/components/studio/StackCards.tsx`
+- Изменить: `frontend/app/studio/page.tsx`
+
+**Что делать**
+
+Заменить `<select>` стека на карточки с описанием, плюсами и реалистичной заметкой о времени первого превью.
+
+**Код**
+
+```tsx
+// frontend/components/studio/StackCards.tsx
+"use client";
+import { FileCode, Atom, Layers, Boxes } from "lucide-react";
+
+interface StackCardProps {
+  selected: string;
+  onSelect: (stack: string) => void;
+}
+
+const STACKS = [
+  {
+    value: "html",
+    icon: FileCode,
+    label: "HTML",
+    subtitle: "Лендинги, промо, визитки",
+    pros: ["Мгновенное превью", "Не нужен Node.js", "Max совместимость"],
+    previewNote: "Превью открывается сразу из файлов",
+  },
+  {
+    value: "react",
+    icon: Atom,
+    label: "React",
+    subtitle: "SPA, дашборды, формы",
+    pros: ["Богатые UI-компоненты", "Hooks", "Огромная экосистема"],
+    previewNote: "Первый запуск ~2-3 мин (установка зависимостей)",
+  },
+  {
+    value: "vue",
+    icon: Layers,
+    label: "Vue",
+    subtitle: "Средние SPA",
+    pros: ["Проще синтаксис", "Плавный старт"],
+    previewNote: "Первый запуск ~2-3 мин (установка зависимостей)",
+  },
+  {
+    value: "nextjs",
+    icon: Boxes,
+    label: "Next.js",
+    subtitle: "Полноценные приложения",
+    pros: ["SEO из коробки", "API routes", "Деплой на Vercel"],
+    previewNote: "Первый запуск ~3-5 мин",
+  },
+];
+
+export function StackCards({ selected, onSelect }: StackCardProps) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {STACKS.map((s) => (
+        <button
+          key={s.value}
+          type="button"
+          onClick={() => onSelect(s.value)}
+          className={`text-left p-3 rounded-lg border transition-colors ${
+            selected === s.value
+              ? "border-blue-500 bg-blue-600/10"
+              : "border-[var(--border)] hover:border-[var(--text-secondary)]"
+          }`}
+        >
+          <div className="flex items-center gap-2 mb-1.5">
+            <s.icon size={14} className={selected === s.value ? "text-blue-400" : "text-[var(--text-secondary)]"} />
+            <span className="font-medium text-sm">{s.label}</span>
+          </div>
+          <p className="text-xs text-[var(--text-secondary)] mb-1.5">{s.subtitle}</p>
+          <ul className="space-y-0.5 mb-1.5">
+            {s.pros.map((p) => (
+              <li key={p} className="text-xs text-[var(--text-secondary)] flex items-center gap-1">
+                <span className="text-[var(--success)]">+</span> {p}
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-[var(--muted)]">{s.previewNote}</p>
+        </button>
+      ))}
+    </div>
+  );
+}
+```
+
+В `frontend/app/studio/page.tsx`: заменить `<select>` стека на `<StackCards selected={stack} onSelect={setStack} />`.
+
+**Проверка**: стек выбирается карточкой, значение `stack` обновляется, форма отправляет корректное значение.
+
+### Коммит 18: Карточки режимов + интеграция
+
+**Файлы**
+- Изменить: `frontend/app/studio/page.tsx`
+
+**Что делать**
+
+Обновить `MODE_OPTIONS` (добавить описания и иконки), заменить кнопки режимов на карточки. Убедиться, что Hero и StackCards интегрированы (из коммитов 16-17).
+
+**Код**
+
+```tsx
+import { Zap, StepForward, Hand } from "lucide-react";
+
+const MODE_OPTIONS = [
+  { value: "auto",   label: "Авто",       icon: Zap,         desc: "Агенты делают всё сами — вы только описываете. Самый быстрый путь." },
+  { value: "semi",   label: "Полу-авто",  icon: StepForward, desc: "Подтверждаете каждый шаг — видите прогресс, останавливаетесь когда нужно." },
+  { value: "manual", label: "Ручной",     icon: Hand,        desc: "Полный контроль: одобряете каждый файл. Для тех, кто хочет вникать." },
+];
+```
+
+JSX (замена кнопок режимов):
+
+```tsx
+<div className="grid grid-cols-3 gap-2">
+  {MODE_OPTIONS.map((opt) => (
+    <button key={opt.value} type="button" onClick={() => setMode(opt.value)}
+      className={`p-3 rounded-lg border text-left transition-colors ${
+        mode === opt.value ? "border-blue-500 bg-blue-600/10" : "border-[var(--border)] hover:border-[var(--text-secondary)]"
+      }`}>
+      <div className="flex items-center gap-1.5 mb-1">
+        <opt.icon size={13} className={mode === opt.value ? "text-blue-400" : "text-[var(--text-secondary)]"} />
+        <span className="text-sm font-medium">{opt.label}</span>
+      </div>
+      <p className="text-xs text-[var(--text-secondary)]">{opt.desc}</p>
+    </button>
+  ))}
+</div>
+```
+
+**Проверка**: режим выбирается карточкой; значения `auto`/`semi`/`manual` корректно сохраняются и уходят в API.
 
 ---
 
-## Commit 31: Стабилизировать назначение модели по сложности шага (метрики)
+## Сессия 7: Выбор фич вместо шаблонов
 
-**Sprint:** G
-**Fixes/Implements:** Planner step count fix (продолжение) + надёжность роутинга
-**Files changed:**
-- `src/studio/agents/planner.py`
+Цель: заменить жёсткие шаблоны на гибкий выбор функций (chips по категориям). Выбранные фичи сохраняются в `interview_data` и учитываются Analyst и Planner как обязательные требования.
 
-**What to do:**
-Усилить Commit 6 и Commit 22: planner должен помечать каждый шаг тегом сложности, чтобы роутинг на Opus был детерминированным, а не эвристическим по бэктикам. Добавить в `PLANNER_SYSTEM` требование помечать сложные шаги маркером `[COMPLEX]` в заголовке. Тогда `CoderAgent._pick_model` проверяет наличие `[COMPLEX]` в `step_text` в первую очередь:
-```python
-        if '[COMPLEX]' in step_text:
-            return MODEL_SMART
+Коммиты: 19, 20, 21.
+
+### Коммит 19: features.ts + FeatureSelector
+
+**Файлы**
+- Создать: `frontend/lib/studio/features.ts`
+- Создать: `frontend/components/studio/FeatureSelector.tsx`
+
+**Что делать**
+
+Описать каталог фич с категориями и компонент-селектор chips с группировкой, кнопкой сброса и счётчиком.
+
+**Код**
+
+```ts
+// frontend/lib/studio/features.ts
+export interface Feature {
+  id: string;
+  label: string;
+  category: string;
+}
+
+export const FEATURE_CATEGORIES = [
+  { key: "nav", label: "Навигация" },
+  { key: "content", label: "Контент" },
+  { key: "forms", label: "Формы" },
+  { key: "ecom", label: "E-commerce" },
+  { key: "auth", label: "Авторизация" },
+  { key: "extra", label: "Дополнительно" },
+  { key: "integrations", label: "Интеграции" },
+];
+
+export const ALL_FEATURES: Feature[] = [
+  { id: "header_menu", label: "Header с меню", category: "nav" },
+  { id: "footer", label: "Footer", category: "nav" },
+  { id: "breadcrumbs", label: "Breadcrumbs", category: "nav" },
+  { id: "sidebar", label: "Sidebar", category: "nav" },
+  { id: "hero", label: "Hero-секция", category: "content" },
+  { id: "gallery", label: "Галерея / карточки", category: "content" },
+  { id: "blog", label: "Блог / статьи", category: "content" },
+  { id: "faq", label: "FAQ-раздел", category: "content" },
+  { id: "reviews", label: "Отзывы", category: "content" },
+  { id: "contact_form", label: "Форма обратной связи", category: "forms" },
+  { id: "booking_form", label: "Форма записи / бронирования", category: "forms" },
+  { id: "order_form", label: "Форма заказа", category: "forms" },
+  { id: "quiz", label: "Квиз", category: "forms" },
+  { id: "cart", label: "Корзина", category: "ecom" },
+  { id: "catalog", label: "Каталог товаров", category: "ecom" },
+  { id: "product_card", label: "Карточка товара", category: "ecom" },
+  { id: "checkout", label: "Чекаут", category: "ecom" },
+  { id: "auth", label: "Регистрация / вход", category: "auth" },
+  { id: "account", label: "Личный кабинет", category: "auth" },
+  { id: "profile", label: "Профиль пользователя", category: "auth" },
+  { id: "dark_mode", label: "Тёмная тема", category: "extra" },
+  { id: "animations", label: "Анимации", category: "extra" },
+  { id: "responsive", label: "Адаптив мобильный", category: "extra" },
+  { id: "i18n", label: "Мультиязычность", category: "extra" },
+  { id: "search", label: "Поиск по странице", category: "extra" },
+  { id: "yandex_maps", label: "Яндекс.Карты", category: "integrations" },
+  { id: "telegram_btn", label: "Telegram-кнопка", category: "integrations" },
+  { id: "whatsapp_btn", label: "WhatsApp-кнопка", category: "integrations" },
+  { id: "instagram", label: "Instagram-ссылки", category: "integrations" },
+];
 ```
-Обновить `PLANNER_SYSTEM`:
+
+```tsx
+// frontend/components/studio/FeatureSelector.tsx
+"use client";
+import { ALL_FEATURES, FEATURE_CATEGORIES } from "@/lib/studio/features";
+
+interface FeatureSelectorProps {
+  selected: string[];
+  onChange: (ids: string[]) => void;
+}
+
+export function FeatureSelector({ selected, onChange }: FeatureSelectorProps) {
+  const toggle = (id: string) => {
+    onChange(selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id]);
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <label className="text-sm font-medium">Выберите нужные функции</label>
+        {selected.length > 0 && (
+          <button type="button" onClick={() => onChange([])} className="text-xs text-[var(--text-secondary)] hover:text-[var(--text)]">
+            Сбросить ({selected.length})
+          </button>
+        )}
+      </div>
+      {FEATURE_CATEGORIES.map(cat => {
+        const items = ALL_FEATURES.filter(f => f.category === cat.key);
+        return (
+          <div key={cat.key}>
+            <p className="text-xs text-[var(--text-secondary)] uppercase tracking-wide mb-1.5">{cat.label}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {items.map(f => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => toggle(f.id)}
+                  className={`px-2.5 py-1 rounded text-xs border transition-colors ${
+                    selected.includes(f.id)
+                      ? "border-blue-500 bg-blue-600/15 text-blue-300"
+                      : "border-[var(--border)] hover:border-[var(--text-secondary)] text-[var(--text-secondary)]"
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+```
+
+**Проверка**: chips переключаются, сброс работает, счётчик корректен.
+
+### Коммит 20: API принимает selected_features
+
+**Файлы**
+- Изменить: `src/studio/serializers.py`
+- Изменить: `src/studio/views/projects.py`
+- Изменить: `frontend/lib/api/studio.ts`
+
+**Что делать**
+
+Сериализатор создания проекта принимает `selected_features` (write-only список строк). View извлекает их из validated_data и сохраняет в `interview_data['features']`. Тип payload на фронте расширяется.
+
+**Код**
+
+В `src/studio/serializers.py` (сериализатор создания проекта):
+
 ```python
-PLANNER_SYSTEM = (
-    "... Помечай заголовок шага тегом [COMPLEX], если шаг включает auth, оплату, "
-    "интеграции, realtime, миграции БД или затрагивает 5+ файлов. ..."
+selected_features = serializers.ListField(
+    child=serializers.CharField(), required=False, default=list, write_only=True
 )
 ```
 
-**Test:**
-```bash
-cd src && python manage.py test studio
-```
-Юнит-тест: `_pick_model('## [COMPLEX] Auth', {})` → `MODEL_SMART`; `_pick_model('## Простой шаг', {})` → `MODEL_FAST`.
+Добавить `selected_features` в `Meta.fields`.
 
-**Dependencies:** Commit 22 (`_pick_model`), Commit 6 (planner).
+В `src/studio/views/projects.py` (метод создания, после валидации):
 
----
-
-# Sprint H — Продукт и рост
-
-## Commit 32: Деплой проекта на Vercel (backend)
-
-**Sprint:** H
-**Fixes/Implements:** Vercel deploy
-**Files changed:**
-- `src/studio/models.py` (миграция: `vercel_deployment_url`)
-- `src/studio/tasks.py` (deploy_to_vercel)
-- `src/studio/views/pipeline.py` (DeployView)
-- `src/studio/urls.py`
-- `src/config/settings.py` (`STUDIO_VERCEL_TOKEN`)
-
-**What to do:**
-Дать кнопку «Опубликовать». Через Vercel API создать deployment из файлов проекта.
-
-1. Модель: `vercel_deployment_url = models.URLField(blank=True)`. `makemigrations`/`migrate`.
-2. Настройка: `STUDIO_VERCEL_TOKEN = os.getenv('STUDIO_VERCEL_TOKEN', '')`.
-3. Задача:
 ```python
-@shared_task(bind=True, max_retries=2, queue=QUEUE)
-def deploy_to_vercel(self, project_id):
-    import requests
-    project = StudioProject.objects.get(id=project_id)
-    if not settings.STUDIO_VERCEL_TOKEN:
-        publish_event(project_id, {'agent': 'system', 'level': 'error', 'text': 'Vercel не настроен'})
-        return
-    files = [{'file': f.path, 'data': f.content} for f in project.files.all()]
-    try:
-        r = requests.post('https://api.vercel.com/v13/deployments',
-            headers={'Authorization': f'Bearer {settings.STUDIO_VERCEL_TOKEN}'},
-            json={'name': f'aineron-{str(project.id)[:8]}', 'files': files,
-                  'projectSettings': {'framework': 'nextjs'}}, timeout=60)
-        data = r.json()
-        url = 'https://' + data.get('url', '') if data.get('url') else ''
-        project.vercel_deployment_url = url
-        project.save(update_fields=['vercel_deployment_url'])
-        publish_event(project_id, {'agent': 'system', 'level': 'success', 'text': f'Опубликовано: {url}'})
-    except Exception as e:
-        raise self.retry(exc=e, countdown=30)
+selected_features = serializer.validated_data.pop('selected_features', [])
+project = StudioProject.objects.create(**serializer.validated_data, user=request.user)
+if selected_features:
+    project.interview_data = project.interview_data or {}
+    project.interview_data['features'] = selected_features
+    project.save(update_fields=['interview_data'])
 ```
-4. View `DeployView.post` → `deploy_to_vercel.delay(...)`; URL `path('projects/<uuid:id>/deploy/', ...)`.
 
-**Test:**
-```bash
-cd src && python manage.py test studio
-```
-Юнит-тест: замокать `requests.post` → `{'url': 'app.vercel.app'}`; вызвать `deploy_to_vercel`; проверить `project.vercel_deployment_url == 'https://app.vercel.app'`.
+(Если создание идёт через `serializer.save(user=...)` — переопределить `create()` в сериализаторе, изъяв `selected_features` перед `StudioProject.objects.create`, и записав фичи в `interview_data` объекта.)
 
-**Dependencies:** Commit 23 (стабильный набор файлов).
+В `frontend/lib/api/studio.ts`, тип `CreateProjectPayload`:
 
----
-
-## Commit 33: Frontend — кнопка публикации + ссылка на деплой
-
-**Sprint:** H
-**Fixes/Implements:** Vercel deploy (frontend)
-**Files changed:**
-- `frontend/lib/api/studio.ts`
-- `frontend/components/studio/BillingEstimate.tsx` (блок «завершён»)
-
-**What to do:**
-`studio.ts`:
 ```ts
-  deploy: (id: string) =>
-    request<{ status: string }>(`/studio/projects/${id}/deploy/`, { method: 'POST' }),
+selected_features?: string[];
 ```
-В блоке «Проект завершён» `BillingEstimate` добавить кнопку «Опубликовать на Vercel» (Lucide `Rocket`/`Globe`); если в проекте уже есть `vercel_deployment_url` — показать ссылку. Передать `deploymentUrl` пропом и вызывать `studioApi.deploy(id)`.
 
-**Test:**
-```bash
-cd frontend && npm run build
-```
-Ручная: завершённый проект показывает кнопку публикации, после клика — ссылку.
+**Проверка**: POST с `selected_features` создаёт проект с `interview_data.features`.
 
-**Dependencies:** Commit 32.
+### Коммит 21: Analyst/Planner учитывают features + UI
 
----
+**Файлы**
+- Изменить: `src/studio/agents/analyst.py`
+- Изменить: `src/studio/agents/planner.py`
+- Изменить: `frontend/app/studio/page.tsx`
 
-## Commit 34: Совместная работа — приглашение соавтора (read/collab)
+**Что делать**
 
-**Sprint:** H
-**Fixes/Implements:** Collaboration
-**Files changed:**
-- `src/studio/models.py` (новая модель `StudioCollaborator` + миграция)
-- `src/studio/views/projects.py` (CollaboratorView)
-- `src/studio/urls.py`
-- права доступа в существующих views
+Analyst и Planner подмешивают выбранные фичи в user-сообщение как обязательные требования. На фронте — подключить `FeatureSelector` в форму «С нуля» и прокинуть `selected_features` в мутацию создания.
 
-**What to do:**
-Сейчас доступ к проекту строго по `user=request.user`. Ввести соавторов.
+**Код**
 
-1. Модель:
-```python
-class StudioCollaborator(models.Model):
-    ROLE_CHOICES = [('viewer', 'Просмотр'), ('editor', 'Редактирование')]
-    project = models.ForeignKey(StudioProject, on_delete=models.CASCADE, related_name='collaborators')
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='studio_collabs')
-    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='viewer')
-    class Meta:
-        unique_together = [('project', 'user')]
-```
-`makemigrations`/`migrate`.
-2. Helper доступа (заменить точечно `filter(user=request.user)` на «владелец ИЛИ соавтор»):
-```python
-from django.db.models import Q
-def accessible_projects(user):
-    return StudioProject.objects.filter(Q(user=user) | Q(collaborators__user=user)).distinct()
-```
-Применить в `StudioProjectListCreateView.get_queryset`, `StudioProjectDetailView`, `FileTreeView`, и т.д. Запись (PATCH файлов, run) разрешать только владельцу и `editor`.
-3. `CollaboratorView`: POST приглашает по email (`add`/`remove`), доступно только владельцу. URL `path('projects/<uuid:id>/collaborators/', ...)`.
-
-**Test:**
-```bash
-cd src && python manage.py test studio
-```
-Юнит-тест: добавить collaborator-viewer; от его имени GET проекта → 200; PATCH файла → 403. Владелец видит проект в списке, соавтор тоже.
-
-**Dependencies:** Commit 1 (стабильные статусы); затрагивает много views — делать после Sprint E/F стабилизации доступа.
-
----
-
-## Commit 35: Маркетплейс шаблонов — публикация проекта как шаблона
-
-**Sprint:** H
-**Fixes/Implements:** Template marketplace
-**Files changed:**
-- `src/studio/models.py` (поля у `StudioTemplate`: `author`, `is_public`, `usage_count` + миграция)
-- `src/studio/views/projects.py` (PublishTemplateView)
-- `src/studio/urls.py`
-- `frontend/app/studio/page.tsx` (выбор шаблона при создании)
-
-**What to do:**
-`StudioTemplate` существует, но только сидируется. Дать пользователям публиковать свои проекты как шаблоны и создавать новые из шаблона.
-
-1. Поля:
-```python
-    author = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='studio_templates')
-    is_public = models.BooleanField(default=False)
-    usage_count = models.IntegerField(default=0)
-```
-`makemigrations`/`migrate`. `TemplateListView.queryset` → `filter(is_public=True)`.
-2. `PublishTemplateView.post(id)`: создаёт `StudioTemplate` из проекта (slug из имени, `seed_prompt` = `description` + `project_md_content[:2000]`, `stack=target_stack`, `author=user`, `is_public=True`).
-3. При создании проекта из шаблона: в `StudioProjectCreateSerializer`/view принять `template_slug`, скопировать `seed_prompt` в `description`, `stack`, инкрементить `template.usage_count`.
-4. Frontend `studio/page.tsx`: при создании — список публичных шаблонов (`studioApi.templates()`), клик подставляет данные.
-
-**Test:**
-```bash
-cd src && python manage.py test studio
-```
-Юнит-тест: опубликовать проект как шаблон → `StudioTemplate.objects.filter(is_public=True, author=user)` не пуст; создать проект из шаблона → `description` подтянут, `usage_count == 1`.
-
-**Dependencies:** Commit 1.
-
----
-
-## Commit 36: Экспорт проекта (zip-архив)
-
-**Sprint:** H
-**Fixes/Implements:** Project export
-**Files changed:**
-- `src/studio/views/files.py` (ExportView)
-- `src/studio/urls.py`
-- `frontend/lib/api/studio.ts` + кнопка в UI
-
-**What to do:**
-Дать скачать весь проект zip-ом из `StudioFile`.
+В `src/studio/agents/analyst.py`, при формировании `user_msg`:
 
 ```python
-# views/files.py
-import io, zipfile
-from django.http import HttpResponse
-
-class ExportView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-    def get(self, request, id):
-        project = StudioProject.objects.get(id=id, user=request.user)  # или accessible_projects
-        buf = io.BytesIO()
-        with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
-            for f in project.files.all():
-                zf.writestr(f.path.lstrip('/'), f.content)
-        buf.seek(0)
-        resp = HttpResponse(buf.read(), content_type='application/zip')
-        resp['Content-Disposition'] = f'attachment; filename="{project.name}.zip"'
-        return resp
+features = (project.interview_data or {}).get('features', [])
+if features:
+    features_text = '\n'.join(f'- {f}' for f in features)
+    user_msg += (
+        f'\n\nОБЯЗАТЕЛЬНЫЕ ФУНКЦИИ (выбраны пользователем):\n{features_text}\n'
+        f'Включи все эти функции в функциональные требования PROJECT.md.'
+    )
 ```
-URL `path('projects/<uuid:id>/export/', ExportView.as_view(), name='export')`.
-Frontend: кнопка «Скачать ZIP» (Lucide `Download`) — открывает `${API}/studio/projects/${id}/export/` с credentials (через `window.location` или fetch→blob).
 
-**Test:**
+В `src/studio/agents/planner.py`:
+
+```python
+features = (project.interview_data or {}).get('features', [])
+if features:
+    features_text = '\n'.join(f'- {f}' for f in features)
+    user_msg += (
+        f'\n\nMUST-HAVE компоненты (выбраны пользователем, обязательны):\n{features_text}\n'
+        f'Каждая функция должна быть покрыта хотя бы одним шагом COMMITS.md.'
+    )
+```
+
+В `frontend/app/studio/page.tsx`:
+
+```tsx
+import { FeatureSelector } from "@/components/studio/FeatureSelector";
+
+const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
+
+// В форме "С нуля":
+<FeatureSelector selected={selectedFeatures} onChange={setSelectedFeatures} />
+
+// В payload createMutation:
+selected_features: selectedFeatures,
+```
+
+**Проверка**: выбранные фичи доходят до Analyst/Planner и появляются в требованиях/шагах плана.
+
+---
+
+## Сессия 8: Финальные фиксы превью
+
+Цель: устранить остаточные проблемы превью (HMR-конфликты, отсутствие авто-перезагрузки iframe), не допускать деплой неработающей сборки, провести итоговый аудит и зафиксировать env.
+
+Коммиты: 22, 23, 24.
+
+### Коммит 22: Отключить HMR + перезагрузка iframe
+
+**Файлы**
+- Изменить: `src/studio/agents/coder.py`
+- Изменить: `frontend/components/studio/PreviewPanel.tsx`
+
+**Что делать**
+
+1. В `SYSTEM_EN` CoderAgent добавить правило про конфиг dev-сервера (HMR off для Vite, корректный dev-скрипт для Next.js).
+2. В `PreviewPanel` перезагружать iframe (через смену `key`) по SSE-событию завершения шага.
+
+**Код**
+
+Дополнить `SYSTEM_EN` в `src/studio/agents/coder.py` блоком:
+
+```
+For Vite/React/Vue projects, always include in vite.config.ts:
+server: { host: true, port: 3000, hmr: false }
+For Next.js projects: ALWAYS set package.json scripts.dev to "next dev -p 3000 -H 0.0.0.0".
+```
+
+В `frontend/components/studio/PreviewPanel.tsx`:
+
+```tsx
+const [iframeKey, setIframeKey] = useState(0);
+
+// В обработчике SSE (EventSource):
+if (event.type === "step_completed" || event.type === "coder_done") {
+  setIframeKey(k => k + 1);
+}
+
+// В JSX:
+<iframe key={iframeKey} src={previewUrl} className="w-full h-full border-0" />
+```
+
+**Проверка**: после завершения шага превью автоматически перезагружается; HMR-ошибки в логах dev-сервера отсутствуют.
+
+### Коммит 23: Build-gate перед деплоем
+
+**Файлы**
+- Изменить: `src/studio/sandbox.py`
+- Изменить: `src/studio/tasks.py`
+
+**Что делать**
+
+1. Расширить `run_build_check` для Next.js (полный `pnpm build`) и прочих стеков (`tsc --noEmit` с fallback на build).
+2. В `deploy_to_vercel` перед деплоем выполнить build-проверку; при ненулевом exit — опубликовать `deploy_failed` и прервать деплой.
+
+**Код**
+
+В `src/studio/sandbox.py`:
+
+```python
+def run_build_check(container_id: str, is_nextjs: bool = False) -> tuple:
+    if is_nextjs:
+        return exec_command(container_id, 'pnpm build 2>&1 | tail -n 150')
+    return exec_command(
+        container_id,
+        'pnpm -s exec tsc --noEmit 2>&1 | tail -n 100 || pnpm -s build 2>&1 | tail -n 120',
+    )
+```
+
+В `src/studio/tasks.py`, в `deploy_to_vercel` перед самим деплоем:
+
+```python
+project = StudioProject.objects.get(id=project_id)
+is_next = project.target_stack == 'nextjs'
+if project.sandbox_container_id:
+    exit_code, output = sandbox.run_build_check(project.sandbox_container_id, is_nextjs=is_next)
+    if exit_code != 0:
+        publish_event(project_id, 'deploy_failed', {
+            'reason': 'Сборка не прошла перед деплоем. Исправьте ошибки.',
+            'details': output[-500:],
+        })
+        return
+```
+
+Примечание: поле стека проекта — `target_stack`. Значение для Next.js — `'nextjs'` (согласовать со значениями `StackCards`).
+
+**Проверка**: проект с ошибкой сборки не деплоится, приходит событие `deploy_failed` с деталями; корректный проект деплоится.
+
+### Коммит 24: Итоговый аудит + .env.example
+
+**Файлы**
+- Изменить: `.env.example`
+- Аудит: `src/studio/tasks.py`, `src/config/celery.py`, миграции
+
+**Что делать**
+
+1. Добавить новые переменные в `.env.example`.
+2. Проверить все импорты в `tasks.py` (`hashlib`, `timezone`, `ESCALATION_MAP`, `release_reserve`, `kill_sandbox`).
+3. Убедиться, что `studio.watchdog_pipelines` зарегистрирован в beat.
+4. Проверить, что миграции созданы и применяются без конфликтов; `coder_model` полностью удалён, `ai_model` и поля анти-цикла на месте.
+
+**Код**
+
+Добавить в `.env.example`:
+
+```
+STUDIO_PROMPT_LANG=en
+STUDIO_STEP_STALL_SEC=240
+STUDIO_PIPELINE_MAX_SEC=2700
+STUDIO_MAX_ITERATIONS=5
+STUDIO_TOKEN_ENCRYPTION_KEY=  # Fernet key: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+Аудит-команды:
+
 ```bash
-cd src && python manage.py test studio
+cd src
+python manage.py makemigrations studio --check --dry-run   # не должно быть незакоммиченных изменений моделей
+python manage.py migrate                                   # все миграции применяются
+python -c "import ast,sys; ast.parse(open('studio/tasks.py').read())"  # синтаксис
 ```
-Юнит-тест: создать проект с 2 файлами; GET export; распаковать ответ через `zipfile.ZipFile(io.BytesIO(resp.content))` → namelist содержит оба пути, содержимое совпадает.
 
-**Dependencies:** —
-
----
-
-# Приложение — Сводная таблица зависимостей
-
-| Commit | Спринт | Зависит от |
-|--------|--------|-----------|
-| 1 | Fix | — |
-| 2 | Fix | — |
-| 3 | Fix | 2 |
-| 4 | Fix | — |
-| 5 | Fix | 1, 3 |
-| 6 | Fix | — |
-| 7 | Fix | — |
-| 8 | E | 6 |
-| 9 | E | 8 |
-| 10 | E | 9 |
-| 11 | E | — |
-| 12 | E | — |
-| 13 | E | — |
-| 14 | E | — |
-| 15 | E | 4 |
-| 16 | E | 15 |
-| 17 | F | 1, 3 |
-| 18 | F | 17 |
-| 19 | F | — |
-| 20 | F | 5, 1 |
-| 21 | F | 20 |
-| 22 | F | 2, 3 |
-| 23 | F | — |
-| 24 | F | 4, 3 |
-| 25 | F | 3, 8, 22 |
-| 26 | G | 22 |
-| 27 | G | 4, 15 |
-| 28 | G | 27 |
-| 29 | G | 26 |
-| 30 | G | 26, 22 |
-| 31 | G | 22, 6 |
-| 32 | H | 23 |
-| 33 | H | 32 |
-| 34 | H | 1 |
-| 35 | H | 1 |
-| 36 | H | — |
+**Проверка**: пайплайн проходит полный цикл на тестовом проекте каждого стека (HTML/React/Vue/Next.js), превью открывается, деплой блокируется при ошибке сборки, watchdog корректно завершает зависшие пайплайны.
 
 ---
 
-## Порядок реализации (рекомендованный)
-
-1. **Sprint Fix целиком** (1→7) — закрывает все критические баги. Обязательно перед остальным.
-2. **Sprint E** (8→16) — стабильность и UX. Можно параллелить независимые ветки (11, 12, 13 не зависят ни от чего).
-3. **Sprint F** (17→25) — функционал. 22 и 25 трогают billing — делать аккуратно, после Fix.
-4. **Sprint G** (26→31) — качество. Все зависят от F-роутинга/контекста.
-5. **Sprint H** (32→36) — продукт. Делать последним.
-
-После каждого коммита: `cd src && python manage.py test studio` (backend) и `cd frontend && npm run build` (если затронут фронт). По правилу проекта — `git push origin main` после каждого коммита.
-
----
-
-## Оптимальный план сессий
-
-> Каждая сессия — **один новый чат**. Открываешь STUDIO_COMMITS.md и говоришь: *"Реализуй сессию X по плану из STUDIO_COMMITS.md"*.
-> Деплой после каждой сессии — обязателен для проверки на живом сервере.
-
-### Правила сессий
-
-| Правило | Почему |
-|---------|--------|
-| Максимум 4-5 коммитов за сессию | Больше — контекст чата переполняется, ошибки растут |
-| Только один слой за раз (бэкенд ИЛИ фронт) | Легче дебажить, меньше конфликтов |
-| Коммиты с миграциями — отдельная сессия или первые в сессии | Миграция должна пройти до запуска других кодов |
-| Деплой после каждой сессии | Ловить баги пока контекст свежий |
-| Если сессия сломала что-то → откатить и исправить до следующей | Не копить технический долг |
-
----
-
-### Сессия 1 — Критические баги бэкенда (коммиты 1, 2, 4)
-
-**Что делать:** коммиты 1, 2, 4
-**Слой:** только бэкенд (`src/studio/`)
-**Миграций нет**
-**Время:** ~45 мин
-
-| # | Коммит | Что меняется |
-|---|--------|-------------|
-| 1 | Commit 1 | `views/projects.py` — статус `'interviewing'` → `'interview'` |
-| 2 | Commit 2 | `tasks.py` — идемпотентность billing, charge-after-save |
-| 3 | Commit 4 | `tasks.py` — try/except вокруг Docker в `run_pipeline` |
-
-**Деплой:** `docker-compose build web celery_studio && docker-compose up -d --force-recreate web celery_studio`
-**Проверка:** Создать новый проект → интервью должно запускаться, статус в БД = `'interview'`
-
----
-
-### Сессия 2 — Биллинг и пауза (коммиты 3, 5)
-
-**Что делать:** коммиты 3, 5
-**Слой:** только бэкенд (`src/studio/`)
-**Миграций нет**
-**Зависит от:** Сессии 1 (нужен исправленный billing из Commit 2)
-**Время:** ~30 мин
-
-| # | Коммит | Что меняется |
-|---|--------|-------------|
-| 1 | Commit 3 | `tasks.py` — пауза при нулевом балансе вместо бесплатного прогона |
-| 2 | Commit 5 | `models.py` + `views/pipeline.py` + `tasks.py` — пауза реально останавливает Celery через revoke |
-
-**Миграции:** Commit 5 добавляет `current_task_id` в `StudioPipelineState` → `makemigrations studio` + `migrate`
-**Деплой:** `docker-compose build web celery_studio && docker-compose up -d --force-recreate web celery_studio`
-**Проверка:** Нажать "Пауза" во время кодинга → задачи должны прекратиться
-
----
-
-### Сессия 3 — Мелкие критические фиксы (коммиты 6, 7)
-
-**Что делать:** коммиты 6, 7
-**Слой:** только бэкенд
-**Миграций нет**
-**Время:** ~20 мин
-
-| # | Коммит | Что меняется |
-|---|--------|-------------|
-| 1 | Commit 6 | `agents/planner.py` — `planned_steps` из реального числа секций |
-| 2 | Commit 7 | `config/settings.py` — `reap_stale_sandboxes` в `CELERY_BEAT_SCHEDULE` |
-
-**Деплой:** `docker-compose up -d --force-recreate web celery_studio celery_beat`
-**Проверка:** Проверить в Django Admin → Periodic Tasks → должна появиться задача
-
----
-
-### Сессия 4 — Биллинг-эстимейт и UX ревью-страницы (коммиты 8, 9, 10)
-
-**Что делать:** коммиты 8, 9, 10
-**Слой:** бэкенд (новый endpoint) + фронт (review page + BillingEstimate)
-**Миграций нет**
-**Зависит от:** Сессии 3 (commit 6 исправляет planned_steps для estimate)
-**Время:** ~60 мин
-
-| # | Коммит | Что меняется |
-|---|--------|-------------|
-| 1 | Commit 8 | `views/pipeline.py` — новый `EstimateView GET /estimate/` → `{estimated_stars, breakdown}` |
-| 2 | Commit 9 | `lib/api/studio.ts` + `BillingEstimate.tsx` — fetch реального estimate вместо 50 |
-| 3 | Commit 10 | `app/studio/[id]/review/page.tsx` — показ реального estimate, убрать хардкод |
-
-**Деплой:** `docker-compose build web frontend && docker-compose up -d --force-recreate web frontend`
-**Проверка:** Открыть review-страницу → сумма звёзд должна зависеть от числа шагов
-
----
-
-### Сессия 5 — SSE reconnect + подсветка кода (коммиты 11, 12)
-
-**Что делать:** коммиты 11, 12
-**Слой:** только фронт (`frontend/components/studio/`)
-**Миграций нет**
-**Время:** ~45 мин
-
-| # | Коммит | Что меняется |
-|---|--------|-------------|
-| 1 | Commit 11 | `AgentLog.tsx` — reconnect с exponential backoff, singleton через Context |
-| 2 | Commit 12 | `CodeViewer.tsx` + `StudioFile.language` — синтаксическая подсветка через highlight.js |
-
-**Деплой:** `docker-compose build frontend && docker-compose up -d --force-recreate frontend`
-**Проверка:** Отключить интернет на 5с и снова включить → лог должен восстановиться
-
----
-
-### Сессия 6 — DiffViewer + ручные правки (коммиты 13, 14)
-
-**Что делать:** коммиты 13, 14
-**Слой:** фронт + бэкенд (FileDetailView)
-**Миграций нет**
-**Время:** ~60 мин
-
-| # | Коммит | Что меняется |
-|---|--------|-------------|
-| 1 | Commit 13 | `StudioLayout.tsx` + `DiffViewer.tsx` — подключить DiffViewer, табы Code/Diff |
-| 2 | Commit 14 | `views/files.py` — FileDetailView.patch() пишет в sandbox + Gitea |
-
-**Деплой:** полный rebuild
-**Проверка:** Отредактировать файл в CodeViewer → изменение должно появиться в preview iframe
-
----
-
-### Сессия 7 — Sandbox subdomain preview (коммит 15, 16)
-
-**Что делать:** коммиты 15, 16
-**Слой:** инфраструктура (nginx.conf, docker-compose.yml) + фронт
-**Сложность:** ВЫСОКАЯ — требует wildcard SSL или ручной настройки nginx
-**Время:** ~90 мин
-
-| # | Коммит | Что меняется |
-|---|--------|-------------|
-| 1 | Commit 15 | `nginx.conf` — wildcard `sandbox-*.aineron.ru` → sandbox container |
-| 2 | Commit 16 | `PreviewPanel.tsx` — URL строить как `https://sandbox-{cid}.aineron.ru` |
-
-**Деплой:** nginx + certbot wildcard SSL (`certbot certonly --manual -d "*.aineron.ru"`)
-**Проверка:** Preview должен показывать рабочий Next.js сайт с правильными /_next/ ассетами
-
----
-
-### Сессия 8 — ContextChat с LLM (коммиты 17, 18)
-
-**Что делать:** коммиты 17, 18
-**Слой:** новый агент (бэкенд) + фронт
-**Зависит от:** Сессий 1-2 (статус + billing исправлены)
-**Время:** ~75 мин
-
-| # | Коммит | Что меняется |
-|---|--------|-------------|
-| 1 | Commit 17 | `agents/context_chat.py` (новый) + `views/chat.py` (новый) + `urls.py` — LLM-чат с контекстом |
-| 2 | Commit 18 | `ContextChat.tsx` — полноценный чат-интерфейс, polling ответов агента |
-
-**Деплой:** `docker-compose build web celery_studio frontend && docker-compose up -d --force-recreate web celery_studio frontend`
-**Проверка:** На экране паузы — написать вопрос, получить ответ от Opus с контекстом проекта
-
----
-
-### Сессия 9 — SPA-клонирование через Playwright (коммит 19)
-
-**Что делать:** коммит 19
-**Слой:** только бэкенд (tasks.py, crawler.py)
-**Миграций нет**
-**Время:** ~45 мин
-
-| # | Коммит | Что меняется |
-|---|--------|-------------|
-| 1 | Commit 19 | `tasks.py` — роутинг SPA → `celery_studio_playwright`, `crawler.py` — Playwright crawl + palette |
-
-**Деплой:** `docker-compose build celery_studio_playwright && docker-compose up -d --force-recreate celery_studio_playwright`
-**Проверка:** Клонировать React SPA (например vercel.com) → должен получить контент, а не пустой HTML
-
----
-
-### Сессия 10 — Semi/Manual режим + Opus для сложных шагов (коммиты 20, 21, 22)
-
-**Что делать:** коммиты 20, 21, 22
-**Слой:** бэкенд + фронт
-**Миграций нет**
-**Время:** ~75 мин
-
-| # | Коммит | Что меняется |
-|---|--------|-------------|
-| 1 | Commit 20 | `tasks.py` — `paused_approval` после каждого шага в semi-режиме |
-| 2 | Commit 21 | `StudioLayout.tsx` — кнопка "Одобрить" в semi-режиме |
-| 3 | Commit 22 | `agents/coder.py` — detect `[complex]` тег → MODEL_SMART (Opus) |
-
-**Деплой:** полный rebuild
-**Проверка:** Создать проект в Semi режиме → после каждого шага должна появляться кнопка "Одобрить"
-
----
-
-### Сессия 11 — Атомарные Gitea-коммиты + лимиты sandbox (коммиты 23, 24, 25)
-
-**Что делать:** коммиты 23, 24, 25
-**Слой:** бэкенд
-**Миграций нет**
-**Время:** ~60 мин
-
-| # | Коммит | Что меняется |
-|---|--------|-------------|
-| 1 | Commit 23 | `gitea_client.py` — batch Tree API, один коммит на шаг |
-| 2 | Commit 24 | `sandbox.py` + `billing.py` — `can_spawn()`, лимит 2 sandbox на пользователя |
-| 3 | Commit 25 | `billing.py` + `tasks.py` + `models.py` — резервация звёзд при старте |
-
-**Деплой:** `docker-compose build web celery_studio && docker-compose up -d --force-recreate web celery_studio`
-**Проверка:** Запустить два проекта → третий должен получить 429, история Gitea — чистая (один коммит/шаг)
-
----
-
-### Сессия 12 — Качество генерации: multi-file context + тесты (коммиты 26, 27, 28)
-
-**Что делать:** коммиты 26, 27, 28
-**Слой:** бэкенд (агенты)
-**Время:** ~60 мин
-
-| # | Коммит | Что меняется |
-|---|--------|-------------|
-| 1 | Commit 26 | `agents/coder.py` — убрать [:10]/[:2000], smart context по импортам |
-| 2 | Commit 27 | `sandbox.py` — `wait_for_ready()` polling `/tmp/dev.log` |
-| 3 | Commit 28 | `tasks.py` — реальный `pnpm test --run` перед TesterAgent |
-
-**Деплой:** `docker-compose build celery_studio && docker-compose up -d --force-recreate celery_studio`
-**Проверка:** Создать проект с 5+ файлами → кодер должен видеть все, не только первые 10
-
----
-
-### Сессия 13 — Качество: diff-ревью + исправления (коммиты 29, 30, 31)
-
-**Что делать:** коммиты 29, 30, 31
-**Слой:** бэкенд (агенты)
-**Время:** ~45 мин
-
-| # | Коммит | Что меняется |
-|---|--------|-------------|
-| 1 | Commit 29 | `agents/reviewer.py` — ревьювать только `changed_files` текущего шага |
-| 2 | Commit 30 | `agents/fixer.py` — `target_files` передаётся Кодеру для скоупинга |
-| 3 | Commit 31 | `agents/planner.py` — валидация числа шагов, предупреждение > 15 |
-
-**Деплой:** `docker-compose build celery_studio && docker-compose up -d --force-recreate celery_studio`
-
----
-
-### Сессия 14 — Продукт: деплой на Vercel + экспорт (коммиты 32, 33, 35)
-
-**Что делать:** коммиты 32, 33, 35
-**Слой:** бэкенд (новые views) + фронт
-**Время:** ~90 мин
-
-| # | Коммит | Что меняется |
-|---|--------|-------------|
-| 1 | Commit 32 | `views/deploy.py` (новый) — интеграция с Vercel API |
-| 2 | Commit 33 | `BillingEstimate.tsx` — кнопка "Опубликовать на Vercel" |
-| 3 | Commit 35 | `views/export.py` (новый) — ZIP всех файлов + экспорт в GitHub |
-
-**Деплой:** полный rebuild
-**Проверка:** Завершить проект → нажать "Опубликовать" → должен появиться URL на vercel.app
-
----
-
-### Сессия 15 — Продукт: marketplace шаблонов + аналитика (коммиты 34, 36)
-
-**Что делать:** коммиты 34, 36
-**Слой:** бэкенд + фронт
-**Миграции:** Commit 34 добавляет поля в StudioTemplate
-**Время:** ~60 мин
-
-| # | Коммит | Что меняется |
-|---|--------|-------------|
-| 1 | Commit 34 | `models.py` + `views/templates.py` — публикация проекта как шаблона, рейтинг |
-| 2 | Commit 36 | `app/account/studio/page.tsx` (новый) — аналитика Studio в кабинете |
-
-**Деплой:** полный rebuild
-**Проверка:** Завершить проект → опубликовать как шаблон → шаблон виден в галерее
-
----
-
-## Сводная таблица сессий
-
-| Сессия | Коммиты | Слой | Deploy? | Время | Приоритет |
-|--------|---------|------|---------|-------|-----------|
-| 1 | 1, 2, 4 | Backend | Да | 45 мин | КРИТИЧНО |
-| 2 | 3, 5 | Backend + Migration | Да | 30 мин | КРИТИЧНО |
-| 3 | 6, 7 | Backend | Да | 20 мин | КРИТИЧНО |
-| 4 | 8, 9, 10 | Backend + Frontend | Да | 60 мин | Важно |
-| 5 | 11, 12 | Frontend | Да | 45 мин | Важно |
-| 6 | 13, 14 | Frontend + Backend | Да | 60 мин | Важно |
-| 7 | 15, 16 | Infra + Frontend | Да | 90 мин | Важно |
-| 8 | 17, 18 | Backend + Frontend | Да | 75 мин | Важно |
-| 9 | 19 | Backend | Да | 45 мин | Средний |
-| 10 | 20, 21, 22 | Backend + Frontend | Да | 75 мин | Средний |
-| 11 | 23, 24, 25 | Backend | Да | 60 мин | Средний |
-| 12 | 26, 27, 28 | Backend | Да | 60 мин | Средний |
-| 13 | 29, 30, 31 | Backend | Да | 45 мин | Средний |
-| 14 | 32, 33, 35 | Backend + Frontend | Да | 90 мин | Низкий |
-| 15 | 34, 36 | Backend + Frontend + Migration | Да | 60 мин | Низкий |
-
-**Итого:** 15 сессий, ~14 часов работы, 36 коммитов
-
----
-
-## Стартовая фраза для нового чата
-
-Скопируй в начало каждого нового чата:
-
-```
-Открой файл STUDIO_COMMITS.md в корне проекта.
-Реализуй сессию N (коммиты X, Y, Z) по инструкции из документа.
-После каждого коммита — git push origin main.
-Деплоить не нужно / задеплой на сервере после завершения сессии.
-```
+## Чеклист финальной проверки
+
+Backend:
+- [ ] `src/studio/models_catalog.py` создан, 15 моделей, `MODEL_TIER`, `ESCALATION_MAP`.
+- [ ] `StudioProject.ai_model` существует; `coder_model` удалён data-миграцией.
+- [ ] `StudioPipelineState`: `last_files_hash`, `same_diff_count`, `last_error_signature`, `error_repeat_count`, `started_at`.
+- [ ] `billing.STAR_RATE` содержит `coder: 1.7`; `coder_tier_for_model` и `estimate_stars` используют `MODEL_TIER`.
+- [ ] `BaseAgent.resolve_model()`; хардкод `MODEL_FAST/SMART` удалён.
+- [ ] `CoderAgent._pick_model()` эскалирует на `[COMPLEX]`.
+- [ ] `STUDIO_PROMPT_LANG` и `pick_prompt`; все 7 агентов имеют `SYSTEM_RU`/`SYSTEM_EN`.
+- [ ] Детектор одинакового diff (`paused_on_loop`) и повторной ошибки (эскалация) в `tasks.py`.
+- [ ] `watchdog_pipelines` зарегистрирован в beat (каждые 120 с); `started_at` ставится в `run_pipeline`.
+- [ ] `PipelineSkipView` + роут `pipeline/skip/`; сериализатор отдаёт `max_iterations`.
+- [ ] `sandbox.sync_all`; `start_dev_server` различает Next.js/Vite; `wait_for_ready` с warmup и timeout 150.
+- [ ] `<base href>` инжектится в fallback HTML `PreviewProxyView`.
+- [ ] SSE `progress` вокруг `install_deps`.
+- [ ] `ModelsCatalogView` + роут `models/`.
+- [ ] Сериализатор принимает `selected_features`; сохраняются в `interview_data`.
+- [ ] Analyst/Planner учитывают features.
+- [ ] `run_build_check` расширён; build-gate в `deploy_to_vercel`.
+- [ ] `.env.example` обновлён; миграции чисты (`makemigrations --check` без изменений).
+
+Frontend:
+- [ ] `PipelineTimeline.tsx` подключён в `StudioLayout`.
+- [ ] `PipelineRecovery.tsx`; `skipStep`/`resumePipeline` в `studio.ts`.
+- [ ] UI выбора модели с `<optgroup>` и оценкой звёзд; `getModels`/`StudioModel`.
+- [ ] `StudioHero.tsx` показывается при пустом списке проектов.
+- [ ] `StackCards.tsx` заменил `<select>` стека.
+- [ ] Карточки режимов вместо кнопок.
+- [ ] `features.ts` + `FeatureSelector.tsx` в форме «С нуля»; `selected_features` в payload.
+- [ ] `PreviewPanel` перезагружает iframe по SSE завершения шага.
+
+Дизайн-система:
+- [ ] Только иконки Lucide React, без эмодзи.
+- [ ] Все цвета через CSS-переменные.
+- [ ] `python scripts/check_no_emoji.py` проходит.
+
+Сквозная проверка:
+- [ ] Полный цикл пайплайна на проекте каждого стека (HTML/React/Vue/Next.js).
+- [ ] Превью открывается и авто-перезагружается.
+- [ ] Деплой блокируется при ошибке сборки.
+- [ ] Watchdog завершает зависший пайплайн и возвращает резерв звёзд.
