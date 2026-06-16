@@ -200,6 +200,25 @@ class SandboxStatusView(APIView):
         return Response({'alive': alive, 'port': project.preview_port, 'uptime_s': uptime_s})
 
 
+class ExplainView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, id):
+        project = StudioProject.objects.get(id=id, user=request.user)
+        from ..billing import can_afford, charge
+        cost = 1
+        if not can_afford(request.user, cost):
+            return Response({'error': 'Недостаточно звёзд'}, status=402)
+        code = request.data.get('code', '')
+        path = request.data.get('path', '')
+        if not code.strip():
+            return Response({'error': 'Пустой фрагмент'}, status=400)
+        from ..agents.explainer import ExplainerAgent
+        answer = ExplainerAgent(project).explain(code, path)
+        charge(request.user, cost, project)
+        return Response({'explanation': answer})
+
+
 class PreviewProxyView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
