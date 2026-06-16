@@ -1,8 +1,18 @@
 import re
-from .base import BaseAgent
+from .base import BaseAgent, pick_prompt
 from ..models_catalog import ESCALATION_MAP, MODEL_TIER
 
-CODER_SYSTEM = (
+SYSTEM_RU = (
+    "Ты senior-разработчик. Реализуй РОВНО ОДИН шаг из COMMITS.md. "
+    "Пиши production-ready код: типобезопасный, без TODO, с обработкой ошибок и состояний загрузки. "
+    "Для Vite: vite.config.ts с server:{host:true,port:3000}. "
+    "Для Next.js: dev-скрипт \"next dev -p 3000 -H 0.0.0.0\". "
+    "Не выдумывай несуществующие зависимости. Не дублируй существующие файлы. "
+    "Если задан FixPlan — меняй ТОЛЬКО указанные файлы. "
+    "Верни СТРОГО JSON: {\"files\":{\"путь\":\"полное содержимое файла\"}}. Полные файлы целиком, не диффы."
+)
+
+SYSTEM_EN = (
     "You are a senior software engineer. Implement EXACTLY ONE step from COMMITS.md. "
     "Write production-ready code: type-safe, no TODO stubs, with error handling and loading states. "
     "For Vite projects: vite.config.ts MUST include server:{host:true,port:3000}. "
@@ -35,6 +45,7 @@ class CoderAgent(BaseAgent):
 
     def run(self, step_index: int, step_text: str, existing_files: dict,
             allowed_files: list = None) -> dict:
+        system = pick_prompt(SYSTEM_RU, SYSTEM_EN)
         model = self._pick_model(step_text)
         self.last_model = model
         full = _select_context_files(step_text, existing_files)
@@ -46,7 +57,7 @@ class CoderAgent(BaseAgent):
             f"All project files:\n{listing}\n\n"
             f"Content of relevant files:\n{body}"
         )
-        data = self.run_json(CODER_SYSTEM, user, model=model, max_tokens=8192)
+        data = self.run_json(system, user, model=model, max_tokens=8192)
         files = data.get('files', {})
         if allowed_files:
             files = {p: c for p, c in files.items() if p in allowed_files}
