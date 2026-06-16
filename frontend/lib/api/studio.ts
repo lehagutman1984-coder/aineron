@@ -77,6 +77,12 @@ export interface StudioEstimate {
   affordable: boolean;
 }
 
+export interface SandboxStatus {
+  alive: boolean;
+  port: number | null;
+  uptime_s: number;
+}
+
 export const studioApi = {
   list: () =>
     request<StudioProject[]>('/studio/projects/'),
@@ -146,6 +152,9 @@ export const studioApi = {
 
   estimate: (id: string) =>
     request<StudioEstimate>(`/studio/projects/${id}/estimate/`),
+
+  sandbox: (id: string) =>
+    request<SandboxStatus>(`/studio/projects/${id}/sandbox/`),
 
   contextChat: (id: string, message: string) =>
     request<{ answer: string }>(`/studio/projects/${id}/chat/`, {

@@ -10,6 +10,7 @@ import { AgentLog } from './AgentLog';
 import { PipelineStatus } from './PipelineStatus';
 import { ContextChat } from './ContextChat';
 import { GitHistory } from './GitHistory';
+import { SandboxStatusBadge } from './SandboxStatusBadge';
 import type { StudioProject, StudioFileNode, StudioFileDetail, PipelineState } from '@/lib/api/studio';
 import { studioApi } from '@/lib/api/studio';
 
@@ -97,6 +98,8 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
         >
           <ArrowLeft size={16} /> Проекты
         </Link>
+        <div className="w-px h-4 bg-[var(--border)]" />
+        <SandboxStatusBadge projectId={project.id} projectStatus={project.status} />
         <div className="w-px h-4 bg-[var(--border)]" />
         <PipelineStatus projectStatus={project.status} pipelineStatus={pipeline.status} />
         <div className="ml-auto flex items-center gap-2">
