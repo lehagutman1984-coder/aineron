@@ -307,6 +307,49 @@ class SmartCoderTest(APITestCase):
         self.assertEqual(coder_tier_for_model(MODEL_FAST), 'fast')
 
 
+class AtomicGiteaCommitTest(APITestCase):
+    """Commit 23 — commit_to_gitea uses put_files_batch for a single atomic commit per step."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(email='gitea@t.ru', password='x', pages_count=100)
+        self.client.force_authenticate(self.user)
+
+    @patch('studio.tasks.gitea_client')
+    @patch('studio.tasks.publish_event')
+    def test_uses_put_files_batch_not_put_file(self, mock_pub, mock_gitea):
+        from studio.tasks import commit_to_gitea
+        project = StudioProject.objects.create(user=self.user, name='G', status='coding', mode='auto')
+        state = StudioPipelineState.objects.create(project=project, status='running', step_index=1)
+        mock_gitea.put_files_batch.return_value = {'commit': {'sha': 'abc123'}}
+
+        commit_to_gitea(str(project.id), 1)
+
+        mock_gitea.put_file.assert_not_called()
+        mock_gitea.put_files_batch.assert_called_once()
+
+    @patch('studio.tasks.next_step')
+    @patch('studio.tasks.gitea_client')
+    @patch('studio.tasks.publish_event')
+    def test_git_sha_stored_in_version(self, mock_pub, mock_gitea, mock_next):
+        from studio.tasks import commit_to_gitea
+        from studio.models import StudioVersion
+        project = StudioProject.objects.create(
+            user=self.user, name='G2', status='coding', mode='auto',
+            repo_url='https://git.example.com/user/repo',
+        )
+        self.user.gitea_username = 'user'
+        self.user.save(update_fields=['gitea_username'])
+        project.refresh_from_db()
+        StudioPipelineState.objects.create(project=project, status='running', step_index=0)
+        mock_gitea.put_files_batch.return_value = {'commit': {'sha': 'deadbeef'}}
+
+        commit_to_gitea(str(project.id), 0)
+
+        version = StudioVersion.objects.filter(project=project, step_index=0).first()
+        self.assertIsNotNone(version)
+        self.assertEqual(version.git_sha, 'deadbeef')
+
+
 class SpaCrawlingTest(APITestCase):
     """Commit 19 — crawl_and_analyze falls back to crawl_spa_task when static text is short."""
 

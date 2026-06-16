@@ -359,22 +359,21 @@ def commit_to_gitea(project_id, step_index):
     repo = project.repo_url.rstrip('/').split('/')[-1] if project.repo_url else None
     git_sha = ''
     if owner and repo:
-        for f in project.files.all():
-            try:
-                res = gitea_client.put_file(
-                    owner, repo, f.path, f.content,
-                    message=f'Step {step_index}: {f.path}',
-                )
-                git_sha = (res.get('commit') or {}).get('sha', git_sha)
-            except Exception as exc:
-                publish_event(project_id, {
-                    'agent': 'system', 'level': 'warning',
-                    'text': f'Git push failed for {f.path}: {exc}',
-                })
-        publish_event(project_id, {
-            'agent': 'system', 'level': 'info',
-            'text': f'Закоммичено в git (шаг {step_index})',
-        })
+        files = {f.path: f.content for f in project.files.all()}
+        try:
+            res = gitea_client.put_files_batch(
+                owner, repo, files, message=f'Step {step_index}',
+            )
+            git_sha = (res.get('commit') or {}).get('sha', '')
+            publish_event(project_id, {
+                'agent': 'system', 'level': 'info',
+                'text': f'Закоммичено в git (шаг {step_index})',
+            })
+        except Exception as exc:
+            publish_event(project_id, {
+                'agent': 'system', 'level': 'warning',
+                'text': f'Git push failed: {exc}',
+            })
     StudioVersion.objects.create(
         project=project,
         step_index=step_index,

@@ -58,6 +58,28 @@ def get_commits(owner, repo, limit=20) -> list:
     return r.json() if r.status_code == 200 else []
 
 
+def put_files_batch(owner, repo, files: dict, message: str, branch: str = 'main') -> dict:
+    """Commit multiple files atomically in a single Gitea commit."""
+    ops = []
+    for path, content in files.items():
+        url = _api(f'/repos/{owner}/{repo}/contents/{path}')
+        get = requests.get(url, headers=_headers(), params={'ref': branch})
+        op = {
+            'operation': 'update' if get.status_code == 200 else 'create',
+            'path': path,
+            'content': base64.b64encode(content.encode()).decode(),
+        }
+        if get.status_code == 200:
+            op['sha'] = get.json().get('sha')
+        ops.append(op)
+    r = requests.post(
+        _api(f'/repos/{owner}/{repo}/contents'),
+        headers=_headers(),
+        json={'files': ops, 'message': message, 'branch': branch},
+    )
+    return r.json()
+
+
 def get_file_content(owner, repo, path, ref='main') -> str:
     r = requests.get(
         _api(f'/repos/{owner}/{repo}/contents/{path}'),
