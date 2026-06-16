@@ -1,5 +1,6 @@
 import tiktoken
 from .models import StudioProject
+from .agents.base import MODEL_SMART
 
 STAR_RATE = {'smart': 3, 'fast': 1}
 
@@ -30,6 +31,11 @@ def estimate_stars(project: StudioProject, planned_steps: int = 5) -> int:
         toks = budget + (desc_tokens if agent in ('analyst', 'planner') else 0)
         total += (toks / 1000.0) * STAR_RATE[tier] * loops
     return int(total) + 1
+
+
+def coder_tier_for_model(model: str) -> str:
+    """Return billing tier based on model name used by CoderAgent."""
+    return 'smart' if model == MODEL_SMART else 'fast'
 
 
 def can_afford(user, amount: int) -> bool:

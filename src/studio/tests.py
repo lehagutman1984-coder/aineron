@@ -274,6 +274,39 @@ class SemiManualModeTest(APITestCase):
         mock_next.delay.assert_called_once_with(str(project.id), 2)
 
 
+class SmartCoderTest(APITestCase):
+    """Commit 22 — CoderAgent picks MODEL_SMART for complex steps, bills at smart rate."""
+
+    def test_pick_model_simple_step(self):
+        from studio.agents.coder import _pick_model
+        from studio.agents.base import MODEL_FAST
+        self.assertEqual(_pick_model('Add a button'), MODEL_FAST)
+
+    def test_pick_model_complex_keyword(self):
+        from studio.agents.coder import _pick_model
+        from studio.agents.base import MODEL_SMART
+        self.assertEqual(_pick_model('Implement authentication middleware'), MODEL_SMART)
+
+    def test_pick_model_long_step(self):
+        from studio.agents.coder import _pick_model
+        from studio.agents.base import MODEL_SMART
+        self.assertEqual(_pick_model('x' * 700), MODEL_SMART)
+
+    def test_billing_tier_override_smart(self):
+        from studio.billing import STAR_RATE, AGENT_BUDGET
+        tier_smart = 'smart'
+        _, budget = AGENT_BUDGET['coder']
+        cost_smart = max(1, int((budget / 1000.0) * STAR_RATE[tier_smart]))
+        cost_fast = max(1, int((budget / 1000.0) * STAR_RATE['fast']))
+        self.assertGreater(cost_smart, cost_fast)
+
+    def test_coder_tier_for_model(self):
+        from studio.billing import coder_tier_for_model
+        from studio.agents.base import MODEL_SMART, MODEL_FAST
+        self.assertEqual(coder_tier_for_model(MODEL_SMART), 'smart')
+        self.assertEqual(coder_tier_for_model(MODEL_FAST), 'fast')
+
+
 class SpaCrawlingTest(APITestCase):
     """Commit 19 — crawl_and_analyze falls back to crawl_spa_task when static text is short."""
 

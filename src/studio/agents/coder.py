@@ -1,4 +1,4 @@
-from .base import BaseAgent, MODEL_FAST
+from .base import BaseAgent, MODEL_FAST, MODEL_SMART
 
 CODER_SYSTEM = (
     "Ты senior-разработчик. Реализуй ОДИН шаг из COMMITS.md. "
@@ -6,12 +6,28 @@ CODER_SYSTEM = (
     "Пиши полные файлы целиком, не диффы. Учитывай существующие файлы (даны в контексте)."
 )
 
+_COMPLEX_KEYWORDS = (
+    'архитектур', 'рефакт', 'оптимиз', 'auth', 'авторизац',
+    'security', 'безопасн', 'deploy', 'инфраструктур',
+    'database', 'schema', 'мигра', 'middleware',
+)
+
+
+def _pick_model(step_text: str) -> str:
+    lower = step_text.lower()
+    if len(step_text) > 600 or any(kw in lower for kw in _COMPLEX_KEYWORDS):
+        return MODEL_SMART
+    return MODEL_FAST
+
 
 class CoderAgent(BaseAgent):
     name = 'coder'
     model = MODEL_FAST
+    last_model: str = MODEL_FAST
 
     def run(self, step_index: int, step_text: str, existing_files: dict) -> dict:
+        model = _pick_model(step_text)
+        self.last_model = model
         ctx = '\n'.join(f'- {p}' for p in existing_files.keys()) or '(пусто)'
         user = (
             f"PROJECT.md:\n{self.project.project_md_content}\n\n"
@@ -20,5 +36,5 @@ class CoderAgent(BaseAgent):
             f"Содержимое ключевых файлов:\n"
             + '\n'.join(f'### {p}\n{c[:2000]}' for p, c in list(existing_files.items())[:10])
         )
-        data = self.run_json(CODER_SYSTEM, user, model=MODEL_FAST, max_tokens=8192)
+        data = self.run_json(CODER_SYSTEM, user, model=model, max_tokens=8192)
         return data.get('files', {})

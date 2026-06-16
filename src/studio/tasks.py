@@ -4,7 +4,7 @@ from django.conf import settings
 from .models import StudioProject, StudioFile, StudioVersion
 from .events import publish_event
 from . import sandbox
-from .billing import STAR_RATE, AGENT_BUDGET, can_afford, charge, refund
+from .billing import STAR_RATE, AGENT_BUDGET, can_afford, charge, refund, coder_tier_for_model
 
 QUEUE = 'studio_queue'
 
@@ -21,9 +21,13 @@ def _agent_cost(agent_name: str) -> int:
     return max(1, int((budget / 1000.0) * STAR_RATE[tier]))
 
 
-def _billing_charge(project, agent_name: str, step_index: int):
+def _billing_charge(project, agent_name: str, step_index: int, tier_override: str = None):
     """Charge stars for one agent run, emit SSE billing event, update billing_log."""
-    cost = _agent_cost(agent_name)
+    if tier_override:
+        tier, budget = AGENT_BUDGET.get(agent_name, ('fast', 2000))
+        cost = max(1, int((budget / 1000.0) * STAR_RATE[tier_override]))
+    else:
+        cost = _agent_cost(agent_name)
     user = project.user
     user.refresh_from_db(fields=['pages_count'])
     if not can_afford(user, cost):
@@ -232,7 +236,9 @@ def coder_iteration(self, project_id, step_index):
             'agent': 'coder', 'level': 'info',
             'text': f'Шаг {step_index}, итерация {project.pipeline.iteration_count}',
         })
-        files = CoderAgent(project).run(step_index, step_text, existing)
+        agent = CoderAgent(project)
+        files = agent.run(step_index, step_text, existing)
+        coder_tier = coder_tier_for_model(agent.last_model)
         for path, content in files.items():
             StudioFile.objects.update_or_create(
                 project=project, path=path,
@@ -244,7 +250,7 @@ def coder_iteration(self, project_id, step_index):
             [agent_review.s(project_id, step_index), agent_test.s(project_id, step_index)],
             merge_reports.s(project_id, step_index),
         ).apply_async()
-        _billing_charge(project, 'coder', step_index)
+        _billing_charge(project, 'coder', step_index, tier_override=coder_tier)
     except InsufficientStars as e:
         _pause_no_funds(project, e.needed)
         return
