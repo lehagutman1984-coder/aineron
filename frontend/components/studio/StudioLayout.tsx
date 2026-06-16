@@ -20,6 +20,7 @@ import { StepTimeline } from './StepTimeline';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import type { StudioProject, StudioFileNode, StudioFileDetail, PipelineState } from '@/lib/api/studio';
 import { studioApi } from '@/lib/api/studio';
+import { layout, btn, banner, form, drawer } from './styles';
 
 type MobileTab = 'files' | 'code' | 'preview';
 
@@ -195,22 +196,22 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
   return (
     <div className="flex flex-col overflow-hidden" style={{ height: 'calc(100vh - 3.5rem)' }}>
       {/* Top bar */}
-      <div className="flex items-center gap-4 px-4 py-2 border-b border-[var(--border)] shrink-0">
+      <div className={layout.topbar}>
         <Link
           href="/studio"
           className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)] hover:text-[var(--text)] transition-colors shrink-0"
         >
           <ArrowLeft size={16} /> Проекты
         </Link>
-        <div className="w-px h-4 bg-[var(--border)]" />
+        <div className={layout.divider} />
         <SandboxStatusBadge projectId={project.id} projectStatus={project.status} />
-        <div className="w-px h-4 bg-[var(--border)]" />
+        <div className={layout.divider} />
         <PipelineStatus
           projectStatus={project.status}
           pipelineStatus={pipeline.status}
           onStepClick={(key) => setDrawerAgent(key)}
         />
-        <div className="ml-auto flex items-center gap-2">
+        <div className={layout.rightGroup}>
           <button onClick={() => setSettingsOpen(true)} title="Настройки проекта" className="text-[var(--text-secondary)] hover:text-[var(--text)] p-1.5">
             <Settings size={16} />
           </button>
@@ -221,7 +222,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
             <button
               onClick={handleRun}
               disabled={running}
-              className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+              className={btn.primaryXs}
             >
               <Play size={14} />
               Запустить
@@ -230,7 +231,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
           {isRunning && (
             <button
               onClick={handlePause}
-              className="flex items-center gap-1.5 border border-[var(--border)] hover:bg-[var(--hover)] px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+              className={btn.ghostXs}
             >
               <Pause size={14} />
               Пауза
@@ -240,7 +241,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
             <a
               href={studioApi.exportUrl(project.id)}
               download
-              className="flex items-center gap-1.5 border border-[var(--border)] hover:bg-[var(--hover)] px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+              className={btn.ghostXs}
             >
               <Download size={14} />
               Скачать ZIP
@@ -250,7 +251,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
             <button
               onClick={handleDeploy}
               disabled={deploying}
-              className="flex items-center gap-1.5 border border-[var(--border)] hover:bg-[var(--hover)] disabled:opacity-50 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+              className={btn.ghostXsDisabled}
             >
               <Rocket size={14} />
               {deploying ? 'Публикуем...' : 'Развернуть на Vercel'}
@@ -259,7 +260,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
           <button
             onClick={handleShare}
             title="Скопировать ссылку"
-            className="flex items-center gap-1.5 border border-[var(--border)] hover:bg-[var(--hover)] px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+            className={btn.ghostXs}
           >
             <Share2 size={14} />
             Поделиться
@@ -269,13 +270,13 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
 
       {/* Approval banner for semi/manual mode */}
       {isAwaitingApproval && (
-        <div className="flex items-center gap-3 px-4 py-2.5 bg-amber-950/40 border-b border-amber-800/50 shrink-0">
+        <div className={banner.amber}>
           <CheckCircle size={16} className="text-amber-400 shrink-0" />
           <p className="text-xs text-amber-300 flex-1">{pipeline.pause_reason || 'Шаг завершён — подтвердите продолжение'}</p>
           <button
             onClick={handleApprove}
             disabled={approving}
-            className="flex items-center gap-1.5 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors shrink-0"
+            className={btn.amberXs}
           >
             <Play size={12} />
             {approving ? 'Запускаем...' : 'Подтвердить'}
@@ -303,15 +304,15 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
 
       {/* Inline pause banner for paused_on_loop */}
       {pipeline.status === 'paused_on_loop' && (
-        <div className="flex flex-col gap-2 px-4 py-2.5 bg-amber-950/40 border-b border-amber-800/50 shrink-0">
+        <div className={banner.amberCol}>
           <div className="flex items-center gap-3">
             <CheckCircle size={16} className="text-amber-400 shrink-0" />
             <p className="text-xs text-amber-300 flex-1">{pipeline.pause_reason || 'Пайплайн на паузе'}</p>
             <div className="flex items-center gap-2 shrink-0 flex-wrap">
-              <button onClick={() => doResume('continue')} disabled={resuming} className="bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg text-xs font-medium">Продолжить</button>
-              <button onClick={() => setHintOpen((v) => !v)} className="border border-amber-700 hover:bg-amber-900/40 text-amber-200 px-3 py-1.5 rounded-lg text-xs font-medium">Подсказать</button>
-              <button onClick={() => doResume('skip_step')} disabled={resuming} className="border border-amber-700 hover:bg-amber-900/40 text-amber-200 px-3 py-1.5 rounded-lg text-xs font-medium">Пропустить шаг</button>
-              <button onClick={() => setChatOpen((v) => !v)} className="border border-amber-700 hover:bg-amber-900/40 text-amber-200 px-3 py-1.5 rounded-lg text-xs font-medium">Чат с агентом</button>
+              <button onClick={() => doResume('continue')} disabled={resuming} className={btn.amberXsCompact}>Продолжить</button>
+              <button onClick={() => setHintOpen((v) => !v)} className={btn.amberOutlineXs}>Подсказать</button>
+              <button onClick={() => doResume('skip_step')} disabled={resuming} className={btn.amberOutlineXs}>Пропустить шаг</button>
+              <button onClick={() => setChatOpen((v) => !v)} className={btn.amberOutlineXs}>Чат с агентом</button>
             </div>
           </div>
           {hintOpen && (
@@ -320,9 +321,9 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
                 value={hintText}
                 onChange={(e) => setHintText(e.target.value)}
                 placeholder="Подсказка агенту..."
-                className="flex-1 text-xs bg-[var(--bg)] border border-amber-800/50 rounded p-2 resize-none h-16"
+                className={form.textareaXs}
               />
-              <button onClick={() => doResume('with_hint', hintText)} disabled={resuming || !hintText.trim()} className="bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white px-3 rounded-lg text-xs font-medium self-stretch">Отправить</button>
+              <button onClick={() => doResume('with_hint', hintText)} disabled={resuming || !hintText.trim()} className={btn.amberSendXs}>Отправить</button>
             </div>
           )}
         </div>
@@ -342,11 +343,11 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
                   onDelete={handleDeleteFile}
                 />
               </div>
-              <div className="border-t border-[var(--border)] overflow-auto max-h-48">
+              <div className={`${layout.borderTop} overflow-auto max-h-48`}>
                 <GitHistory projectId={project.id} />
               </div>
             </Panel>
-            <PanelResizeHandle className="w-1 bg-[var(--border)] hover:bg-blue-500 transition-colors cursor-col-resize" />
+            <PanelResizeHandle className={layout.resizeHandle} />
             <Panel defaultSize={41} minSize={20} className="overflow-hidden flex flex-col">
               <div className="flex border-b border-[var(--border)] shrink-0 text-xs">
                 <button
@@ -377,7 +378,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
                 </div>
               )}
             </Panel>
-            <PanelResizeHandle className="w-1 bg-[var(--border)] hover:bg-blue-500 transition-colors cursor-col-resize" />
+            <PanelResizeHandle className={layout.resizeHandle} />
             <Panel defaultSize={41} minSize={20} className="overflow-hidden flex flex-col">
               <PreviewPanel projectId={project.id} hasSandbox={!!project.sandbox_container_id} status={project.status} githubUrl={project.github_repo_url || undefined} />
             </Panel>
@@ -443,7 +444,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
         </div>
 
       {chatOpen && (
-        <div className="fixed inset-y-0 right-0 w-full max-w-sm bg-[var(--bg)] border-l border-[var(--border)] shadow-xl z-40 flex flex-col">
+        <div className={drawer.rootSm}>
           <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--border)]">
             <span className="text-sm font-medium">Чат с агентом</span>
             <button onClick={() => setChatOpen(false)} className="text-[var(--text-secondary)] hover:text-[var(--text)] text-xs">Закрыть</button>

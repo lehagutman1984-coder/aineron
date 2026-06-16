@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { pipeline } from './styles';
 
 interface LogLine {
   agent: string;
@@ -60,7 +61,7 @@ export function AgentLog({ projectId }: AgentLogProps) {
   return (
     <div
       ref={ref}
-      className="font-mono text-xs overflow-auto p-3 h-full bg-[var(--card-bg)]"
+      className={pipeline.log}
     >
       {lines.length === 0 && (
         <span className="opacity-40">Ожидание событий агентов...</span>
@@ -70,12 +71,12 @@ export function AgentLog({ projectId }: AgentLogProps) {
           key={i}
           className={
             line.level === 'error'
-              ? 'text-red-400'
+              ? pipeline.logLine.error
               : line.level === 'warning'
-              ? 'text-yellow-400'
+              ? pipeline.logLine.warning
               : line.level === 'success'
-              ? 'text-green-400'
-              : 'text-[var(--text)]'
+              ? pipeline.logLine.success
+              : pipeline.logLine.default
           }
         >
           <span className="opacity-50">[{line.agent}]</span>{' '}

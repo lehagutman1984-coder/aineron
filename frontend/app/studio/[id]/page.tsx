@@ -6,6 +6,7 @@ import { Loader2 } from 'lucide-react';
 import { studioApi } from '@/lib/api/studio';
 import { StudioLayout } from '@/components/studio/StudioLayout';
 import { BillingEstimate } from '@/components/studio/BillingEstimate';
+import { empty } from '@/components/studio/styles';
 
 export default function StudioProjectPage() {
   const { id } = useParams<{ id: string }>();
@@ -37,7 +38,7 @@ export default function StudioProjectPage() {
 
   if (projectLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className={empty.screen}>
         <Loader2 size={24} className="animate-spin text-[var(--text-secondary)]" />
       </div>
     );
@@ -45,7 +46,7 @@ export default function StudioProjectPage() {
 
   if (!project) {
     return (
-      <div className="flex items-center justify-center h-screen text-sm text-[var(--text-secondary)]">
+      <div className={empty.screenSm}>
         Проект не найден
       </div>
     );
@@ -63,7 +64,7 @@ export default function StudioProjectPage() {
 
   if (!pipeline) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className={empty.screen}>
         <Loader2 size={24} className="animate-spin text-[var(--text-secondary)]" />
       </div>
     );

@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { studioApi } from '@/lib/api/studio';
 import { InterviewCards } from '@/components/studio/InterviewCards';
+import { empty } from '@/components/studio/styles';
 
 export default function InterviewPage() {
   const { id } = useParams<{ id: string }>();
@@ -34,7 +35,7 @@ export default function InterviewPage() {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-3">
-        <Loader2 size={24} className="animate-spin text-blue-500" />
+        <Loader2 size={24} className={empty.spinnerBlue} />
         <p className="text-sm text-[var(--text-secondary)]">
           Агент готовит вопросы...
         </p>
@@ -64,7 +65,7 @@ export default function InterviewPage() {
   if (questions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-3">
-        <Loader2 size={24} className="animate-spin text-blue-500" />
+        <Loader2 size={24} className={empty.spinnerBlue} />
         <p className="text-sm text-[var(--text-secondary)]">
           Агент готовит вопросы...
         </p>

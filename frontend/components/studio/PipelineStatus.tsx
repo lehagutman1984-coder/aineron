@@ -1,6 +1,7 @@
 'use client';
 
 import { Circle, CheckCircle2, Loader2 } from 'lucide-react';
+import { pipeline } from './styles';
 
 const AGENTS = [
   { key: 'interviewer', label: 'Интервью' },
@@ -33,14 +34,14 @@ export function PipelineStatus({ projectStatus, pipelineStatus, onStepClick }: P
   const isRunning = pipelineStatus === 'running';
 
   return (
-    <div className="flex items-center gap-1 overflow-x-auto">
+    <div className={pipeline.root}>
       {AGENTS.map((agent, i) => {
         const isActive = agent.key === activeAgent;
         const agentIndex = AGENTS.findIndex((a) => a.key === activeAgent);
         const isDone = agentIndex > i || projectStatus === 'completed';
 
         return (
-          <div key={agent.key} className="flex items-center gap-1 shrink-0">
+          <div key={agent.key} className={pipeline.agentItem}>
             <button
               type="button"
               onClick={() => onStepClick?.(agent.key)}
@@ -63,7 +64,7 @@ export function PipelineStatus({ projectStatus, pipelineStatus, onStepClick }: P
               <span>{agent.label}</span>
             </button>
             {i < AGENTS.length - 1 && (
-              <div className={`w-3 h-px ${isDone ? 'bg-green-500' : 'bg-[var(--border)]'}`} />
+              <div className={`${pipeline.connector} ${isDone ? 'bg-green-500' : 'bg-[var(--border)]'}`} />
             )}
           </div>
         );

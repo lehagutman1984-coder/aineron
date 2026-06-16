@@ -17,6 +17,7 @@ import {
 import { studioApi } from "@/lib/api/studio";
 import type { StudioProject, StudioMode, StudioStack } from "@/lib/api/studio";
 import { TemplateGallery } from "@/components/studio/TemplateGallery";
+import { card, badge, form, btn } from "@/components/studio/styles";
 
 const STACK_OPTIONS: { value: StudioStack; label: string }[] = [
   { value: "nextjs", label: "Next.js" },
@@ -186,7 +187,7 @@ export default function StudioPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Мой стартап"
-                  className="w-full border border-[var(--border)] bg-[var(--input-bg)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={form.input}
                   required
                 />
               </div>
@@ -211,10 +212,10 @@ export default function StudioPage() {
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Опишите что хотите создать..."
                   rows={3}
-                  className="w-full border border-[var(--border)] bg-[var(--input-bg)] rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={form.textarea}
                 />
                 {screenshotDesc && (
-                  <p className="text-xs text-[var(--text-secondary)] mt-1">Макет распознан и добавлен в описание</p>
+                  <p className={form.helper}>Макет распознан и добавлен в описание</p>
                 )}
               </div>
 
@@ -244,7 +245,7 @@ export default function StudioPage() {
                 <select
                   value={stack}
                   onChange={(e) => setStack(e.target.value as StudioStack)}
-                  className="w-full border border-[var(--border)] bg-[var(--input-bg)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={form.select}
                 >
                   {STACK_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -258,7 +259,7 @@ export default function StudioPage() {
                 <button
                   type="submit"
                   disabled={createMutation.isPending || !name.trim()}
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors"
+                  className={btn.primaryMd}
                 >
                   {createMutation.isPending ? (
                     <Loader2 size={16} className="animate-spin" />
@@ -270,7 +271,7 @@ export default function StudioPage() {
                 <button
                   type="button"
                   onClick={() => setShowForm(false)}
-                  className="px-5 py-2 rounded-lg text-sm border border-[var(--border)] hover:bg-[var(--hover)] transition-colors"
+                  className={btn.ghostLg}
                 >
                   Отмена
                 </button>
@@ -291,15 +292,15 @@ export default function StudioPage() {
                   value={cloneUrl}
                   onChange={(e) => { setCloneUrl(e.target.value); setCloneUrlError(''); }}
                   placeholder="https://example.com"
-                  className={`w-full border rounded-lg px-3 py-2 text-sm bg-[var(--input-bg)] focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  className={`${form.inputDynamic} ${
                     cloneUrlError ? 'border-red-500' : 'border-[var(--border)]'
                   }`}
                   required
                 />
                 {cloneUrlError && (
-                  <p className="text-red-500 text-xs mt-1">{cloneUrlError}</p>
+                  <p className={form.errorXs}>{cloneUrlError}</p>
                 )}
-                <p className="text-xs text-[var(--text-secondary)] mt-1">
+                <p className={form.helper}>
                   AI проанализирует сайт и создаст похожий проект
                 </p>
               </div>
@@ -311,7 +312,7 @@ export default function StudioPage() {
                   value={cloneName}
                   onChange={(e) => setCloneName(e.target.value)}
                   placeholder="Клон сайта"
-                  className="w-full border border-[var(--border)] bg-[var(--input-bg)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={form.input}
                 />
               </div>
 
@@ -319,7 +320,7 @@ export default function StudioPage() {
                 <button
                   type="submit"
                   disabled={cloneMutation.isPending || !cloneUrl.trim()}
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors"
+                  className={btn.primaryMd}
                 >
                   {cloneMutation.isPending ? (
                     <Loader2 size={16} className="animate-spin" />
@@ -331,7 +332,7 @@ export default function StudioPage() {
                 <button
                   type="button"
                   onClick={() => setShowForm(false)}
-                  className="px-5 py-2 rounded-lg text-sm border border-[var(--border)] hover:bg-[var(--hover)] transition-colors"
+                  className={btn.ghostLg}
                 >
                   Отмена
                 </button>
@@ -362,16 +363,16 @@ export default function StudioPage() {
             <li key={project.id}>
               <a
                 href={`/studio/${project.id}`}
-                className="flex items-center gap-4 p-4 rounded-xl border border-[var(--border)] bg-[var(--card-bg)] hover:border-blue-400 transition-colors group"
+                className={card.row}
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="font-medium truncate">{project.name}</span>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--hover)] text-[var(--text-secondary)]">
+                    <span className={badge.default}>
                       {STATUS_LABEL[project.status] ?? project.status}
                     </span>
                     {project.entry_mode === 'clone_url' && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 flex items-center gap-1">
+                      <span className={badge.blue}>
                         <Link size={10} />
                         Клон
                       </span>

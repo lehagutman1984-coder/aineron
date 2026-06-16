@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Search, X } from 'lucide-react';
 import { studioApi, type FileSearchResult } from '@/lib/api/studio';
+import { modal } from './styles';
 
 interface Props {
   projectId: string;
@@ -21,9 +22,9 @@ export function SearchFilesModal({ projectId, onClose, onPick }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-start justify-center pt-24" onClick={onClose}>
+    <div className={modal.overlayTop} onClick={onClose}>
       <div
-        className="bg-[var(--bg)] border border-[var(--border)] rounded-xl w-full max-w-lg overflow-hidden"
+        className={modal.boxLg}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--border)]">

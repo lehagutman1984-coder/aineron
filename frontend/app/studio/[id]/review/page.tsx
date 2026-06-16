@@ -6,6 +6,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { Loader2, Play, Edit3, Check, AlertTriangle } from 'lucide-react';
 import { studioApi } from '@/lib/api/studio';
 import { BillingEstimate } from '@/components/studio/BillingEstimate';
+import { btn, empty } from '@/components/studio/styles';
 
 function MarkdownBlock({ title, content, onSave }: { title: string; content: string; onSave: (v: string) => void }) {
   const [editing, setEditing] = useState(false);
@@ -84,7 +85,7 @@ export default function ReviewPage() {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-3">
-        <Loader2 size={24} className="animate-spin text-blue-500" />
+        <Loader2 size={24} className={empty.spinnerBlue} />
       </div>
     );
   }
@@ -144,7 +145,7 @@ export default function ReviewPage() {
         <button
           onClick={() => runMutation.mutate()}
           disabled={!isReady || runMutation.isPending}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-6 py-3 rounded-xl text-sm font-medium transition-colors"
+          className={btn.primaryLg}
         >
           {runMutation.isPending ? (
             <Loader2 size={16} className="animate-spin" />

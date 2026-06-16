@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
 import { studioApi, type StudioProject } from '@/lib/api/studio';
+import { modal, form } from './styles';
 
 interface Props {
   project: StudioProject;
@@ -34,13 +35,13 @@ export function ProjectSettingsModal({ project, onClose, onSaved }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={onClose}>
+    <div className={modal.overlay} onClick={onClose}>
       <div
         className="bg-[var(--bg)] border border-[var(--border)] rounded-xl p-5 w-full max-w-sm space-y-4"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-medium">Настройки проекта</h2>
+          <h2 className={modal.title}>Настройки проекта</h2>
           <button onClick={onClose}>
             <X size={18} className="text-[var(--text-secondary)]" />
           </button>
@@ -50,7 +51,7 @@ export function ProjectSettingsModal({ project, onClose, onSaved }: Props) {
           <select
             value={model}
             onChange={(e) => setModel(e.target.value as 'fast' | 'smart')}
-            className="w-full bg-[var(--hover)] border border-[var(--border)] rounded p-2 text-xs"
+            className={form.inputXs}
           >
             <option value="fast">DeepSeek V3 (быстро)</option>
             <option value="smart">Opus 4.8 (качество)</option>
@@ -61,7 +62,7 @@ export function ProjectSettingsModal({ project, onClose, onSaved }: Props) {
           <select
             value={mode}
             onChange={(e) => setMode(e.target.value as StudioProject['mode'])}
-            className="w-full bg-[var(--hover)] border border-[var(--border)] rounded p-2 text-xs"
+            className={form.inputXs}
           >
             <option value="auto">Авто</option>
             <option value="semi">Полу-авто</option>
@@ -75,7 +76,7 @@ export function ProjectSettingsModal({ project, onClose, onSaved }: Props) {
             min={0}
             value={iterations}
             onChange={(e) => setIterations(Number(e.target.value))}
-            className="w-full bg-[var(--hover)] border border-[var(--border)] rounded p-2 text-xs"
+            className={form.inputXs}
           />
         </label>
         <label className="block text-xs space-y-1">
@@ -85,7 +86,7 @@ export function ProjectSettingsModal({ project, onClose, onSaved }: Props) {
             min={0}
             value={budget}
             onChange={(e) => setBudget(Number(e.target.value))}
-            className="w-full bg-[var(--hover)] border border-[var(--border)] rounded p-2 text-xs"
+            className={form.inputXs}
           />
         </label>
         <button

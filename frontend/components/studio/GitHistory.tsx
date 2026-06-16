@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { History, RotateCcw, GitBranch, Loader2 } from 'lucide-react';
 import { studioApi, StudioVersion } from '@/lib/api/studio';
+import { card, btn } from './styles';
 
 interface GitHistoryProps {
   projectId: string;
@@ -54,7 +55,7 @@ export function GitHistory({ projectId }: GitHistoryProps) {
       {versions.map((v) => (
         <div
           key={v.id}
-          className="flex items-center justify-between p-2 rounded-lg bg-[var(--card-bg)] border border-[var(--border)] text-xs"
+          className={card.historyItem}
         >
           <div className="min-w-0">
             <div className="font-medium truncate">{v.step_name}</div>
@@ -72,7 +73,7 @@ export function GitHistory({ projectId }: GitHistoryProps) {
               <button
                 onClick={() => rollbackMutation.mutate(v.id)}
                 disabled={rollbackMutation.isPending}
-                className="px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors"
+                className={btn.redSm}
               >
                 {rollbackMutation.isPending ? <Loader2 size={10} className="animate-spin" /> : 'Да'}
               </button>

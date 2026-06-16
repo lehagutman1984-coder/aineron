@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CheckCircle, AlertTriangle, Loader2 } from 'lucide-react';
 import { studioApi } from '@/lib/api/studio';
+import { reviewer, btn, text } from './styles';
 
 interface ReviewerModeProps {
   projectId: string;
@@ -12,9 +13,9 @@ interface ReviewerModeProps {
 }
 
 const SEVERITY_STYLE = {
-  high: 'border-red-500/40 bg-red-500/5 text-red-400',
-  medium: 'border-amber-500/40 bg-amber-500/5 text-amber-400',
-  low: 'border-[var(--border)] text-[var(--text-secondary)]',
+  high: reviewer.severityHigh,
+  medium: reviewer.severityMedium,
+  low: reviewer.severityLow,
 };
 
 export function ReviewerMode({ projectId, stepIndex, plannedText }: ReviewerModeProps) {
@@ -34,7 +35,7 @@ export function ReviewerMode({ projectId, stepIndex, plannedText }: ReviewerMode
         {!enabled && (
           <button
             onClick={() => setEnabled(true)}
-            className="text-xs text-blue-500 hover:underline"
+            className={btn.textBlue}
           >
             Проверить отклонения
           </button>
@@ -44,7 +45,7 @@ export function ReviewerMode({ projectId, stepIndex, plannedText }: ReviewerMode
       <div className="grid grid-cols-2 gap-3">
         {/* Left: planned */}
         <div>
-          <div className="text-[11px] text-[var(--text-secondary)] font-medium mb-1">Плановый шаг</div>
+          <div className={text.mutedLabelMd}>Плановый шаг</div>
           <pre className="whitespace-pre-wrap font-mono text-[11px] bg-[var(--hover)] rounded p-2 max-h-48 overflow-auto">
             {plannedText || '—'}
           </pre>
@@ -52,7 +53,7 @@ export function ReviewerMode({ projectId, stepIndex, plannedText }: ReviewerMode
 
         {/* Right: deviations */}
         <div>
-          <div className="text-[11px] text-[var(--text-secondary)] font-medium mb-1">Отклонения</div>
+          <div className={text.mutedLabelMd}>Отклонения</div>
           {!enabled && (
             <div className="flex items-center justify-center h-20 text-[11px] text-[var(--text-secondary)] opacity-60">
               Нажмите «Проверить отклонения»
@@ -69,12 +70,12 @@ export function ReviewerMode({ projectId, stepIndex, plannedText }: ReviewerMode
           {data && (
             <div className="space-y-1.5 max-h-48 overflow-auto">
               {data.matched.length > 0 && (
-                <div className="flex items-center gap-1 text-[11px] text-green-500 py-1">
+                <div className={`flex items-center gap-1 ${text.successXs} py-1`}>
                   <CheckCircle size={11} /> {data.matched.length} пунктов выполнено
                 </div>
               )}
               {data.deviations.length === 0 && (
-                <div className="text-[11px] text-green-500">Отклонений не найдено</div>
+                <div className={text.successXs}>Отклонений не найдено</div>
               )}
               {data.deviations.map((d, i) => (
                 <div

@@ -5,6 +5,7 @@ import { useMutation } from '@tanstack/react-query';
 import { AlertTriangle, Play, SkipForward, ArrowRight, Loader2, Send } from 'lucide-react';
 import { AgentLog } from './AgentLog';
 import { studioApi } from '@/lib/api/studio';
+import { banner, chat, form } from './styles';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -56,7 +57,7 @@ export function ContextChat({ projectId, pauseReason, resumeHint, onResume }: Co
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-start gap-3 p-4 border-b border-[var(--border)] bg-red-950/30 shrink-0">
+      <div className={banner.red}>
         <AlertTriangle size={18} className="text-red-400 shrink-0 mt-0.5" />
         <div>
           <p className="text-sm font-medium text-red-400">Пайплайн остановлен</p>
@@ -70,10 +71,10 @@ export function ContextChat({ projectId, pauseReason, resumeHint, onResume }: Co
           {chatMessages.map((m, i) => (
             <div key={i} className={m.role === 'user' ? 'text-right' : 'text-left'}>
               <span
-                className={`inline-block px-3 py-1.5 rounded-lg text-xs max-w-[85%] ${
+                className={`${chat.bubbleBase} ${
                   m.role === 'user'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-[var(--card-bg)] border border-[var(--border)] text-[var(--text)]'
+                    ? chat.bubbleUser
+                    : chat.bubbleAssistant
                 }`}
               >
                 {m.text}
@@ -84,18 +85,18 @@ export function ContextChat({ projectId, pauseReason, resumeHint, onResume }: Co
         </div>
       )}
 
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--border)] shrink-0">
+      <div className={chat.inputRow}>
         <input
           value={chatInput}
           onChange={(e) => setChatInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendChat()}
           placeholder="Спросите ассистента... (1 звезда)"
-          className="flex-1 bg-[var(--input-bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className={chat.input}
         />
         <button
           onClick={sendChat}
           disabled={chatMutation.isPending || !chatInput.trim()}
-          className="p-1.5 text-blue-500 hover:text-blue-400 disabled:opacity-40 transition-colors"
+          className={chat.sendBtn}
         >
           {chatMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
         </button>
@@ -111,7 +112,7 @@ export function ContextChat({ projectId, pauseReason, resumeHint, onResume }: Co
           onChange={(e) => setHint(e.target.value)}
           placeholder="Подсказка для кодера (необязательно)..."
           rows={2}
-          className="w-full border border-[var(--border)] bg-[var(--input-bg)] rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className={form.textarea}
         />
         <div className="flex gap-2 flex-wrap">
           <button
