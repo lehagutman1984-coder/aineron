@@ -230,6 +230,36 @@ class SandboxFailureTest(APITestCase):
         self.assertEqual(project.pipeline.status, 'failed')
 
 
+class PreviewProxyViewTest(APITestCase):
+    """Commit 15 — PreviewProxyView proxies content from sandbox container."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(email='preview@t.ru', password='x')
+        self.client.force_authenticate(self.user)
+
+    @patch('studio.views.pipeline._rq.get')
+    def test_proxy_returns_upstream_content(self, mock_get):
+        mock_resp = MagicMock()
+        mock_resp.content = b'<html>ok</html>'
+        mock_resp.status_code = 200
+        mock_resp.headers = {'Content-Type': 'text/html'}
+        mock_get.return_value = mock_resp
+
+        project = StudioProject.objects.create(
+            user=self.user, name='P', sandbox_container_id='sandbox-cid',
+        )
+        StudioPipelineState.objects.create(project=project)
+        r = self.client.get(f'/api/v1/studio/projects/{project.id}/preview/')
+        self.assertEqual(r.status_code, 200)
+        self.assertIn(b'ok', r.content)
+
+    def test_proxy_no_sandbox_returns_503(self):
+        project = StudioProject.objects.create(user=self.user, name='P2')
+        StudioPipelineState.objects.create(project=project)
+        r = self.client.get(f'/api/v1/studio/projects/{project.id}/preview/')
+        self.assertEqual(r.status_code, 503)
+
+
 class ManualEditSyncTest(APITestCase):
     """Commit 14 — PATCH file enqueues sync_manual_edit; sync pushes to sandbox."""
 

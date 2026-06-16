@@ -1,4 +1,5 @@
-from django.http import StreamingHttpResponse
+import requests as _rq
+from django.http import StreamingHttpResponse, HttpResponse
 from rest_framework import permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -116,3 +117,26 @@ class PipelineResumeView(APIView):
             estimate_stars(project, planned_steps=remaining_steps),
         )
         return Response({'status': 'running', 'low_balance': low_balance})
+
+
+class PreviewProxyView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, id, path=''):
+        project = StudioProject.objects.get(id=id, user=request.user)
+        if not project.sandbox_container_id:
+            return HttpResponse('Sandbox не запущен', status=503)
+        host = project.sandbox_container_id
+        try:
+            upstream = _rq.get(
+                f'http://{host}:3000/{path}',
+                timeout=10,
+                headers={'Accept': request.headers.get('Accept', '*/*')},
+            )
+        except Exception:
+            return HttpResponse('Preview недоступен', status=502)
+        resp = HttpResponse(upstream.content, status=upstream.status_code)
+        ct = upstream.headers.get('Content-Type')
+        if ct:
+            resp['Content-Type'] = ct
+        return resp

@@ -1,8 +1,8 @@
-from django.urls import path
+from django.urls import path, re_path
 from .views.projects import StudioProjectListCreateView, StudioProjectDetailView, InterviewView, CloneView, TemplateListView
 from .views.pipeline import (
     EstimateView, PipelineStateView, PipelineRunView, PipelineEventsView,
-    PipelinePauseView, PipelineResumeView,
+    PipelinePauseView, PipelineResumeView, PreviewProxyView,
 )
 from .views.files import FileTreeView, FileDetailView, FileDiffView, CommitHistoryView, RollbackView
 
@@ -25,4 +25,6 @@ urlpatterns = [
     path('projects/<uuid:id>/rollback/<int:version_id>/', RollbackView.as_view(), name='rollback'),
     path('clone/', CloneView.as_view(), name='clone'),
     path('templates/', TemplateListView.as_view(), name='template_list'),
+    # Preview proxy: proxies HTTP to sandbox container; ?path= is the sub-path
+    re_path(r'^projects/(?P<id>[0-9a-f-]{36})/preview/(?P<path>.*)$', PreviewProxyView.as_view(), name='preview_proxy'),
 ]
