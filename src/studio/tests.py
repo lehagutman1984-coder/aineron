@@ -274,6 +274,49 @@ class SemiManualModeTest(APITestCase):
         mock_next.delay.assert_called_once_with(str(project.id), 2)
 
 
+class TemplateMarketplaceTest(APITestCase):
+    """Commit 35 — publish project as template, create from template slug."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(email='tmpl@t.ru', password='x', pages_count=10)
+        self.client.force_authenticate(self.user)
+
+    def test_publish_template_creates_public_template(self):
+        project = StudioProject.objects.create(
+            user=self.user, name='My App', description='A cool app',
+            status='completed', mode='auto', target_stack='nextjs',
+        )
+        r = self.client.post(f'/api/v1/studio/projects/{project.id}/publish-template/')
+        self.assertEqual(r.status_code, 201)
+        self.assertTrue(StudioTemplate.objects.filter(author=self.user, is_public=True).exists())
+
+    def test_template_list_returns_only_public(self):
+        StudioTemplate.objects.create(
+            slug='pub', name='Public', description='d', seed_prompt='p', is_public=True,
+        )
+        StudioTemplate.objects.create(
+            slug='priv', name='Private', description='d', seed_prompt='p', is_public=False,
+        )
+        r = self.client.get('/api/v1/studio/templates/')
+        names = [t['name'] for t in r.data]
+        self.assertIn('Public', names)
+        self.assertNotIn('Private', names)
+
+    def test_create_from_template_increments_usage(self):
+        tmpl = StudioTemplate.objects.create(
+            slug='starter', name='Starter', description='d',
+            seed_prompt='Build a todo app', is_public=True,
+        )
+        r = self.client.post(
+            '/api/v1/studio/projects/',
+            {'name': 'New', 'mode': 'auto', 'template_slug': 'starter'},
+            format='json',
+        )
+        self.assertEqual(r.status_code, 201)
+        tmpl.refresh_from_db()
+        self.assertEqual(tmpl.usage_count, 1)
+
+
 class VercelDeployTest(APITestCase):
     """Commit 32 — deploy_to_vercel stores deployment URL; DeployView dispatches task."""
 

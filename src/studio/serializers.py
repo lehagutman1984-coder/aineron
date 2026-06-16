@@ -14,11 +14,29 @@ class StudioProjectSerializer(serializers.ModelSerializer):
 
 
 class StudioProjectCreateSerializer(serializers.ModelSerializer):
+    template_slug = serializers.CharField(write_only=True, required=False, allow_blank=True)
+
     class Meta:
         model = StudioProject
         fields = ('id', 'name', 'description', 'mode', 'entry_mode', 'target_url', 'target_stack',
-                  'status', 'created_at')
+                  'status', 'created_at', 'template_slug')
         read_only_fields = ('id', 'status', 'created_at')
+
+    def create(self, validated_data):
+        template_slug = validated_data.pop('template_slug', None)
+        project = super().create(validated_data)
+        if template_slug:
+            from .models import StudioTemplate
+            try:
+                tmpl = StudioTemplate.objects.get(slug=template_slug, is_public=True)
+                if not project.description:
+                    project.description = tmpl.seed_prompt[:500]
+                    project.save(update_fields=['description'])
+                tmpl.usage_count += 1
+                tmpl.save(update_fields=['usage_count'])
+            except StudioTemplate.DoesNotExist:
+                pass
+        return project
 
 
 class StudioFileSerializer(serializers.ModelSerializer):

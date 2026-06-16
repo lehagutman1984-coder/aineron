@@ -71,7 +71,33 @@ class InterviewView(APIView):
 class TemplateListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = StudioTemplateSerializer
-    queryset = StudioTemplate.objects.all()
+
+    def get_queryset(self):
+        return StudioTemplate.objects.filter(is_public=True)
+
+
+class PublishTemplateView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, id):
+        import re
+        project = StudioProject.objects.get(id=id, user=request.user)
+        slug_base = re.sub(r'[^a-z0-9]+', '-', project.name.lower()).strip('-') or 'template'
+        slug = slug_base
+        counter = 1
+        while StudioTemplate.objects.filter(slug=slug).exists():
+            slug = f'{slug_base}-{counter}'
+            counter += 1
+        template = StudioTemplate.objects.create(
+            slug=slug,
+            name=project.name,
+            description=project.description or project.name,
+            stack=project.target_stack,
+            seed_prompt=(project.description + '\n\n' + project.project_md_content)[:2000],
+            author=request.user,
+            is_public=True,
+        )
+        return Response({'id': template.id, 'slug': template.slug}, status=201)
 
 
 class CloneView(APIView):
