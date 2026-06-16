@@ -1,4 +1,5 @@
 import re
+import hashlib
 from celery import shared_task, chord
 from django.conf import settings
 from .models import StudioProject, StudioFile, StudioVersion
@@ -297,6 +298,33 @@ def coder_iteration(self, project_id, step_index):
         agent = CoderAgent(project)
         files = agent.run(step_index, step_text, existing, allowed_files=allowed_files)
         coder_tier = coder_tier_for_model(agent.last_model)
+
+        # Same-diff detection: pause if agent produces identical output twice in a row
+        files_hash = hashlib.sha256(
+            ''.join(f'{k}:{v}' for k, v in sorted(files.items())).encode()
+        ).hexdigest()[:16]
+        state.refresh_from_db()
+        if files_hash and files_hash == state.last_files_hash:
+            state.same_diff_count = (state.same_diff_count or 0) + 1
+            if state.same_diff_count >= 2:
+                state.status = 'paused_on_loop'
+                state.pause_reason = (
+                    f'Агент не может изменить код на шаге {state.step_index + 1}. '
+                    'Опишите, что именно должно измениться.'
+                )
+                state.save(update_fields=['status', 'pause_reason', 'same_diff_count', 'last_files_hash'])
+                project.status = 'paused'
+                project.save(update_fields=['status'])
+                publish_event(str(project.id), {
+                    'agent': 'system', 'level': 'warning', 'type': 'paused',
+                    'reason': state.pause_reason,
+                })
+                return
+        else:
+            state.same_diff_count = 0
+        state.last_files_hash = files_hash
+        state.save(update_fields=['last_files_hash', 'same_diff_count'])
+
         for path, content in files.items():
             StudioFile.objects.update_or_create(
                 project=project, path=path,
@@ -375,6 +403,29 @@ def merge_reports(results, project_id, step_index):
     except InsufficientStars as e:
         _pause_no_funds(project, e.needed)
         return
+
+    # Error-repeat detection: escalate model on repeated identical test error
+    test_errors = test.get('errors', [])
+    first_error = test_errors[0]['message'][:100] if test_errors else ''
+    if first_error and first_error == state.last_error_signature:
+        state.error_repeat_count = (state.error_repeat_count or 0) + 1
+        if state.error_repeat_count >= 2:
+            from .models_catalog import ESCALATION_MAP
+            escalated = ESCALATION_MAP.get(project.ai_model)
+            if escalated:
+                project.ai_model = escalated
+                project.save(update_fields=['ai_model'])
+                publish_event(str(project.id), {
+                    'agent': 'system', 'level': 'info',
+                    'text': f'Эскалация: переключаю на модель {escalated}',
+                    'type': 'escalated', 'model': escalated,
+                })
+                state.error_repeat_count = 0
+    else:
+        state.error_repeat_count = 0
+    state.last_error_signature = first_error
+    state.save(update_fields=['last_error_signature', 'error_repeat_count'])
+
     if state.pause_requested:
         publish_event(project_id, {'agent': 'system', 'level': 'warning', 'text': 'Пайплайн на паузе — шаг завершён, продолжение остановлено'})
         return
