@@ -69,6 +69,13 @@ export interface StudioVersion {
   created_at: string;
 }
 
+export interface StudioEstimate {
+  estimated_stars: number;
+  planned_steps: number;
+  balance: number;
+  affordable: boolean;
+}
+
 export const studioApi = {
   list: () =>
     request<StudioProject[]>('/studio/projects/'),
@@ -135,6 +142,9 @@ export const studioApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  estimate: (id: string) =>
+    request<StudioEstimate>(`/studio/projects/${id}/estimate/`),
 
   templates: () =>
     request<StudioTemplate[]>('/studio/templates/'),
