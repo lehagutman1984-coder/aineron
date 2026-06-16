@@ -1,5 +1,7 @@
 import requests as _rq
 from django.http import StreamingHttpResponse, HttpResponse
+from django.utils.decorators import method_decorator
+from django.views.decorators.clickjacking import xframe_options_exempt
 from rest_framework import permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -249,6 +251,7 @@ class ExplainView(APIView):
         return Response({'explanation': answer})
 
 
+@method_decorator(xframe_options_exempt, name='dispatch')
 class PreviewProxyView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -262,6 +265,7 @@ class PreviewProxyView(APIView):
                 f'http://{host}:3000/{path}',
                 timeout=10,
                 headers={'Accept': request.headers.get('Accept', '*/*')},
+                allow_redirects=True,
             )
         except Exception:
             return HttpResponse('Preview недоступен', status=502)
@@ -269,4 +273,6 @@ class PreviewProxyView(APIView):
         ct = upstream.headers.get('Content-Type')
         if ct:
             resp['Content-Type'] = ct
+        # Разрешаем embedding в iframe (снято xframe_options_exempt выше)
+        resp['X-Frame-Options'] = 'SAMEORIGIN'
         return resp

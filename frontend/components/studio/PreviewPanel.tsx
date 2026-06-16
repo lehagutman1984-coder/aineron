@@ -28,6 +28,7 @@ export function PreviewPanel({ projectId, hasSandbox, status, githubUrl, onRefre
   const [exporting, setExporting] = useState(false);
   const [deploying, setDeploying] = useState(false);
   const [restarting, setRestarting] = useState(false);
+  const [restartSeconds, setRestartSeconds] = useState(0);
   // После перезапуска — показываем iframe даже если status=completed
   const [previewForced, setPreviewForced] = useState(false);
 
@@ -72,17 +73,32 @@ export function PreviewPanel({ projectId, hasSandbox, status, githubUrl, onRefre
 
   const handleRestartPreview = async () => {
     setRestarting(true);
+    setRestartSeconds(0);
     try {
       await studioApi.restartPreview(projectId);
-      // Даём серверу ~3 сек запустить контейнер, потом обновляем данные
-      await new Promise((r) => setTimeout(r, 3000));
-      onRefresh?.();
-      setPreviewForced(true);
-      setKey((k) => k + 1);
+      // Поллим /sandbox/ пока alive не станет true (Docker + npm install ~30-60 сек)
+      const MAX_ATTEMPTS = 40; // 40 × 3 сек = 2 мин
+      for (let i = 0; i < MAX_ATTEMPTS; i++) {
+        await new Promise((r) => setTimeout(r, 3000));
+        setRestartSeconds((i + 1) * 3);
+        try {
+          const status = await studioApi.sandbox(projectId);
+          if (status.alive) {
+            onRefresh?.();
+            setPreviewForced(true);
+            setKey((k) => k + 1);
+            return;
+          }
+        } catch {
+          // sandbox endpoint временно недоступен — продолжаем ждать
+        }
+      }
+      alert('Превью не удалось запустить за 2 минуты. Проверьте логи.');
     } catch {
       alert('Не удалось перезапустить превью.');
     } finally {
       setRestarting(false);
+      setRestartSeconds(0);
     }
   };
 
@@ -132,7 +148,9 @@ export function PreviewPanel({ projectId, hasSandbox, status, githubUrl, onRefre
             className={btn.ghostXsDisabled}
           >
             {restarting ? <Loader2 size={14} className="animate-spin" /> : <RotateCw size={14} />}
-            {restarting ? 'Запускаем…' : 'Перезапустить превью'}
+            {restarting
+              ? `Запускаем… ${restartSeconds > 0 ? `${restartSeconds}с` : ''}`
+              : 'Перезапустить превью'}
           </button>
           {githubUrl ? (
             <a
