@@ -1,3 +1,4 @@
+import re
 from .base import BaseAgent, MODEL_FAST, MODEL_SMART
 
 CODER_SYSTEM = (
@@ -20,6 +21,15 @@ def _pick_model(step_text: str) -> str:
     return MODEL_FAST
 
 
+def _select_context_files(step_text: str, existing_files: dict) -> dict:
+    """Return up to 8 files explicitly mentioned in the step text (by path or backtick)."""
+    mentioned = [p for p in existing_files if p in step_text]
+    for token in re.findall(r'`([^`]+)`', step_text):
+        if token in existing_files and token not in mentioned:
+            mentioned.append(token)
+    return {p: existing_files[p] for p in mentioned[:8]}
+
+
 class CoderAgent(BaseAgent):
     name = 'coder'
     model = MODEL_FAST
@@ -28,13 +38,14 @@ class CoderAgent(BaseAgent):
     def run(self, step_index: int, step_text: str, existing_files: dict) -> dict:
         model = _pick_model(step_text)
         self.last_model = model
-        ctx = '\n'.join(f'- {p}' for p in existing_files.keys()) or '(пусто)'
+        full = _select_context_files(step_text, existing_files)
+        listing = '\n'.join(f'- {p}' for p in existing_files) or '(пусто)'
+        body = '\n'.join(f'### {p}\n```\n{c[:6000]}\n```' for p, c in full.items())
         user = (
             f"PROJECT.md:\n{self.project.project_md_content}\n\n"
-            f"Текущий шаг #{step_index}:\n{step_text}\n\n"
-            f"Существующие файлы:\n{ctx}\n\n"
-            f"Содержимое ключевых файлов:\n"
-            + '\n'.join(f'### {p}\n{c[:2000]}' for p, c in list(existing_files.items())[:10])
+            f"Шаг #{step_index}:\n{step_text}\n\n"
+            f"Все файлы проекта:\n{listing}\n\n"
+            f"Содержимое релевантных файлов:\n{body}"
         )
         data = self.run_json(CODER_SYSTEM, user, model=model, max_tokens=8192)
         return data.get('files', {})

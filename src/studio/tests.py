@@ -274,6 +274,49 @@ class SemiManualModeTest(APITestCase):
         mock_next.delay.assert_called_once_with(str(project.id), 2)
 
 
+class CoderContextTest(APITestCase):
+    """Commit 26 — CoderAgent selects full content of mentioned files, lists all paths."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(email='ctx@t.ru', password='x')
+
+    def test_mentioned_file_content_in_prompt(self):
+        from studio.agents.coder import CoderAgent
+        project = StudioProject.objects.create(user=self.user, name='C', status='coding', mode='auto')
+        agent = CoderAgent(project)
+        existing = {
+            'src/app.ts': 'export const app = 1',
+            'src/utils.ts': 'export const util = 2',
+            'README.md': '# readme',
+        }
+        step_text = 'Update src/app.ts to add error handling'
+        captured = {}
+        original_run_json = agent.run_json
+
+        def mock_run_json(system, user, **kwargs):
+            captured['user'] = user
+            return {'files': {}}
+
+        agent.run_json = mock_run_json
+        agent.run(0, step_text, existing)
+        self.assertIn('export const app = 1', captured['user'])
+        self.assertIn('src/utils.ts', captured['user'])
+        self.assertIn('README.md', captured['user'])
+        # Non-mentioned files appear only in listing, not full content
+        self.assertNotIn('export const util = 2', captured['user'])
+
+    def test_backtick_file_included_in_context(self):
+        from studio.agents.coder import CoderAgent
+        project = StudioProject.objects.create(user=self.user, name='C2', status='coding', mode='auto')
+        agent = CoderAgent(project)
+        existing = {'config.json': '{}', 'index.ts': 'const x = 1'}
+        step_text = 'Modify `config.json` to add new settings'
+        captured = {}
+        agent.run_json = lambda s, u, **kw: captured.update({'user': u}) or {'files': {}}
+        agent.run(0, step_text, existing)
+        self.assertIn('{}', captured['user'])
+
+
 class SmartCoderTest(APITestCase):
     """Commit 22 — CoderAgent picks MODEL_SMART for complex steps, bills at smart rate."""
 
