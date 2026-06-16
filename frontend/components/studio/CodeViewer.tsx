@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Copy, Check } from 'lucide-react';
+import hljs from 'highlight.js';
+import 'highlight.js/styles/github-dark.css';
 
 interface CodeViewerProps {
   content: string;
@@ -11,6 +13,14 @@ interface CodeViewerProps {
 
 export function CodeViewer({ content, language, path }: CodeViewerProps) {
   const [copied, setCopied] = useState(false);
+  const codeRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (codeRef.current && content) {
+      codeRef.current.removeAttribute('data-highlighted');
+      hljs.highlightElement(codeRef.current);
+    }
+  }, [content, language]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(content).then(() => {
@@ -42,8 +52,10 @@ export function CodeViewer({ content, language, path }: CodeViewerProps) {
         </div>
       )}
       <div className="flex-1 overflow-auto">
-        <pre className="p-4 text-xs leading-relaxed min-h-full">
-          <code className={`language-${language}`}>{content}</code>
+        <pre className="text-xs overflow-auto h-full m-0">
+          <code ref={codeRef} className={language ? `language-${language}` : ''}>
+            {content}
+          </code>
         </pre>
       </div>
     </div>
