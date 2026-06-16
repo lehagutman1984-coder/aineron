@@ -17,10 +17,11 @@ const STACK_LABEL: Record<string, string> = {
 };
 
 export function TemplateGallery({ onSelect }: TemplateGalleryProps) {
-  const { data: templates, isLoading } = useQuery({
+  const { data: templates, isLoading, error } = useQuery({
     queryKey: ['studio-templates'],
-    queryFn: studioApi.templates,
+    queryFn: () => studioApi.templates(),
     staleTime: 60 * 1000,
+    retry: 1,
   });
 
   if (isLoading) {
@@ -28,6 +29,14 @@ export function TemplateGallery({ onSelect }: TemplateGalleryProps) {
       <div className="flex items-center gap-2 py-4 text-sm text-[var(--text-secondary)]">
         <Loader2 size={14} className="animate-spin" />
         Загрузка шаблонов...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="py-2 text-xs text-red-400">
+        Ошибка загрузки шаблонов: {(error as Error).message}
       </div>
     );
   }
