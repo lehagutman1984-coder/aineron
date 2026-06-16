@@ -127,12 +127,33 @@ def run_pipeline(project_id):
     state.iteration_count = 0
     state.save()
     publish_event(project_id, {'agent': 'system', 'level': 'info', 'text': 'Запускаю sandbox...'})
-    cid = sandbox.spawn_sandbox(project_id)
-    initial_files = _existing_files(project) or {'package.json': '{"name":"app","private":true}'}
-    sandbox.write_files(cid, initial_files)
-    sandbox.install_deps(cid)
-    sandbox.isolate(cid)
-    sandbox.start_dev_server(cid)
+    try:
+        cid = sandbox.spawn_sandbox(project_id)
+        initial_files = _existing_files(project) or {'package.json': '{"name":"app","private":true}'}
+        sandbox.write_files(cid, initial_files)
+        sandbox.install_deps(cid)
+        sandbox.isolate(cid)
+        sandbox.start_dev_server(cid)
+    except Exception as exc:
+        import logging
+        logging.getLogger('studio.tasks').error(
+            'run_pipeline sandbox setup FAILED project=%s: %s', project_id, repr(exc), exc_info=True)
+        try:
+            if 'cid' in dir() and cid:
+                sandbox.kill_sandbox(cid)
+        except Exception:
+            pass
+        state.status = 'failed'
+        state.last_error = repr(exc)
+        state.save(update_fields=['status', 'last_error'])
+        project.status = 'failed'
+        project.save(update_fields=['status'])
+        publish_event(project_id, {
+            'agent': 'system', 'level': 'error',
+            'text': 'Не удалось поднять sandbox. Попробуйте перезапустить.',
+            'type': 'failed',
+        })
+        return
     project.sandbox_container_id = cid
     project.preview_port = 3000
     project.save(update_fields=['sandbox_container_id', 'preview_port'])
