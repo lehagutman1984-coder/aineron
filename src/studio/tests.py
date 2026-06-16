@@ -274,6 +274,45 @@ class SemiManualModeTest(APITestCase):
         mock_next.delay.assert_called_once_with(str(project.id), 2)
 
 
+class RealBuildCheckTest(APITestCase):
+    """Commit 27 — agent_test uses run_build_check; TesterAgent exit_code overrides LLM passed."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(email='build@t.ru', password='x')
+
+    def test_tester_exit_code_overrides_llm_passed(self):
+        from studio.agents.tester import TesterAgent
+        project = StudioProject.objects.create(user=self.user, name='T', status='coding', mode='auto')
+        agent = TesterAgent(project)
+        agent.run_json = MagicMock(return_value={'passed': True, 'build_ok': True, 'errors': [], 'summary': 'ok'})
+        report = agent.run('', exit_code=1)
+        self.assertFalse(report['passed'])
+        self.assertFalse(report['build_ok'])
+
+    def test_tester_exit_code_zero_respects_llm(self):
+        from studio.agents.tester import TesterAgent
+        project = StudioProject.objects.create(user=self.user, name='T2', status='coding', mode='auto')
+        agent = TesterAgent(project)
+        agent.run_json = MagicMock(return_value={'passed': True, 'build_ok': True, 'errors': [], 'summary': 'ok'})
+        report = agent.run('', exit_code=0)
+        self.assertTrue(report['passed'])
+
+    @patch('studio.tasks.sandbox')
+    @patch('studio.tasks.publish_event')
+    def test_agent_test_calls_run_build_check(self, mock_pub, mock_sandbox):
+        from studio.tasks import agent_test
+        project = StudioProject.objects.create(
+            user=self.user, name='T3', status='coding', mode='auto',
+            sandbox_container_id='container_abc',
+        )
+        StudioPipelineState.objects.create(project=project, status='running', step_index=0)
+        mock_sandbox.run_build_check.return_value = (0, 'Build ok')
+        with patch('studio.agents.tester.TesterAgent.run_json', return_value={'passed': True, 'build_ok': True, 'errors': [], 'summary': 'ok'}):
+            result = agent_test(str(project.id), 0)
+        mock_sandbox.run_build_check.assert_called_once_with('container_abc')
+        self.assertTrue(result['report']['passed'])
+
+
 class CoderContextTest(APITestCase):
     """Commit 26 — CoderAgent selects full content of mentioned files, lists all paths."""
 

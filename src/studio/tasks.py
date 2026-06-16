@@ -298,10 +298,14 @@ def agent_review(project_id, step_index):
 def agent_test(project_id, step_index):
     project = StudioProject.objects.get(id=project_id)
     from .agents.tester import TesterAgent
-    logs = ''
+    logs, exit_code = '', None
     if project.sandbox_container_id:
-        logs = '\n'.join(sandbox.get_logs_stream(project.sandbox_container_id))
-    report = TesterAgent(project).run(logs)
+        try:
+            exit_code, logs = sandbox.run_build_check(project.sandbox_container_id)
+        except Exception as exc:
+            logs = f'build check error: {exc}'
+            exit_code = 1
+    report = TesterAgent(project).run(logs, exit_code=exit_code)
     publish_event(project_id, {
         'agent': 'tester', 'level': 'info',
         'text': report.get('summary', ''),

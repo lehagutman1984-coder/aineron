@@ -94,6 +94,14 @@ def start_dev_server(container_id: str) -> int:
     return 3000
 
 
+def run_build_check(container_id: str) -> tuple:
+    """Run typecheck/build in container. Returns (exit_code, output)."""
+    return exec_command(
+        container_id,
+        'pnpm -s exec tsc --noEmit 2>&1 | tail -n 100 || pnpm -s build 2>&1 | tail -n 120',
+    )
+
+
 def get_logs_stream(container_id: str):
     code, out = exec_command(container_id, 'cat /tmp/dev.log || true')
     for line in out.splitlines():
