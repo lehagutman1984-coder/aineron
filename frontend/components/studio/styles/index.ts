@@ -31,6 +31,9 @@ export const layout = {
   // Горизонтальный border
   borderTop: 'border-t border-[var(--border)]',
   borderBottom: 'border-b border-[var(--border)]',
+  // Статус-бар (футер workspace)
+  statusBar: 'shrink-0 h-6 flex items-center gap-4 px-3 border-t border-[var(--border)] bg-[var(--hover)] text-xs text-[var(--text-secondary)] select-none',
+  statusBarItem: 'flex items-center gap-1',
 };
 
 // ─── Overlay & Modals ────────────────────────────────────

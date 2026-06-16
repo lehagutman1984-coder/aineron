@@ -73,7 +73,7 @@ export default function StudioProjectPage() {
   const plannedSteps = project.interview_data?.planned_steps as number | undefined;
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
+    <div className="flex flex-col overflow-hidden" style={{ height: 'calc(100vh - 3.5rem)' }}>
       {project.status === 'completed' && (
         <div className="shrink-0 p-4 border-b border-[var(--border)]">
           <BillingEstimate
@@ -84,7 +84,7 @@ export default function StudioProjectPage() {
           />
         </div>
       )}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-hidden">
         <StudioLayout
           project={project}
           files={files}

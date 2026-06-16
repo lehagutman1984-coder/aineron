@@ -194,7 +194,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
   ];
 
   return (
-    <div className="flex flex-col overflow-hidden" style={{ height: 'calc(100vh - 3.5rem)' }}>
+    <div className="flex flex-col h-full overflow-hidden">
       {/* Top bar */}
       <div className={layout.topbar}>
         <Link
@@ -489,6 +489,28 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
           onSaved={onRefresh}
         />
       )}
+
+      {/* Status bar */}
+      <div className={layout.statusBar}>
+        <span className={layout.statusBarItem}>{project.name}</span>
+        <span className={layout.divider} />
+        <span className={layout.statusBarItem}>
+          Шаг {pipeline.step_index + 1}{' / '}{String(project.interview_data?.planned_steps ?? '?')}
+        </span>
+        <span className={layout.divider} />
+        <span className={layout.statusBarItem}>
+          {pipeline.status === 'running' ? 'Выполняется' :
+           pipeline.status === 'completed' ? 'Завершён' :
+           pipeline.status === 'paused_on_loop' || pipeline.status === 'paused_manual' ? 'Пауза' :
+           pipeline.status === 'failed' ? 'Ошибка' : pipeline.status}
+        </span>
+        {!!project.stars_spent && (
+          <>
+            <span className={layout.divider} />
+            <span className={layout.statusBarItem}>{project.stars_spent} звёзд</span>
+          </>
+        )}
+      </div>
     </div>
   );
 }
