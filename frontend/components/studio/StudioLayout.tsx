@@ -139,6 +139,13 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
     }
   };
 
+  const handleSaveFile = async (newContent: string) => {
+    if (!selectedFileId) return;
+    const updated = await studioApi.updateFile(project.id, selectedFileId, newContent);
+    setFileDetail(updated);
+    onRefresh();
+  };
+
   const loadDiff = async () => {
     if (!selectedFileId) return;
     const versions = await studioApi.commits(project.id);
@@ -330,6 +337,8 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
                   content={fileDetail?.content ?? ''}
                   language={fileDetail?.language ?? 'text'}
                   path={fileDetail?.path}
+                  editable={project.status !== 'completed'}
+                  onSave={handleSaveFile}
                 />
               ) : (
                 <div className="flex-1 overflow-auto">
@@ -360,6 +369,8 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
                 content={fileDetail?.content ?? ''}
                 language={fileDetail?.language ?? 'text'}
                 path={fileDetail?.path}
+                editable={project.status !== 'completed'}
+                onSave={handleSaveFile}
               />
             )}
             {mobileTab === 'preview' && (

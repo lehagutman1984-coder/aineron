@@ -122,6 +122,12 @@ export const studioApi = {
   fileDiff: (id: string, fileId: number, ref: string) =>
     request<StudioFileDiff>(`/studio/projects/${id}/files/${fileId}/diff/?ref=${encodeURIComponent(ref)}`),
 
+  updateFile: (id: string, fileId: number, content: string) =>
+    request<StudioFileDetail>(`/studio/projects/${id}/files/${fileId}/`, {
+      method: 'PATCH',
+      body: JSON.stringify({ content }),
+    }),
+
   pipeline: (id: string) =>
     request<PipelineState>(`/studio/projects/${id}/pipeline/`),
 
