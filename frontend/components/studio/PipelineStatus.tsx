@@ -25,9 +25,10 @@ const STATUS_TO_ACTIVE: Record<string, string> = {
 interface PipelineStatusProps {
   projectStatus: string;
   pipelineStatus: string;
+  onStepClick?: (agentKey: string) => void;
 }
 
-export function PipelineStatus({ projectStatus, pipelineStatus }: PipelineStatusProps) {
+export function PipelineStatus({ projectStatus, pipelineStatus, onStepClick }: PipelineStatusProps) {
   const activeAgent = STATUS_TO_ACTIVE[projectStatus] ?? '';
   const isRunning = pipelineStatus === 'running';
 
@@ -40,8 +41,11 @@ export function PipelineStatus({ projectStatus, pipelineStatus }: PipelineStatus
 
         return (
           <div key={agent.key} className="flex items-center gap-1 shrink-0">
-            <div
-              className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
+            <button
+              type="button"
+              onClick={() => onStepClick?.(agent.key)}
+              title={`Подробнее: ${agent.label}`}
+              className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full hover:ring-1 hover:ring-[var(--border)] transition ${
                 isActive
                   ? 'bg-blue-600 text-white'
                   : isDone
@@ -57,7 +61,7 @@ export function PipelineStatus({ projectStatus, pipelineStatus }: PipelineStatus
                 <Circle size={12} />
               )}
               <span>{agent.label}</span>
-            </div>
+            </button>
             {i < AGENTS.length - 1 && (
               <div className={`w-3 h-px ${isDone ? 'bg-green-500' : 'bg-[var(--border)]'}`} />
             )}

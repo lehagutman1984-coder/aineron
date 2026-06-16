@@ -41,6 +41,10 @@ export interface PipelineState {
   iteration_count: number;
   pause_reason: string;
   resume_hint: string;
+  review_report: Record<string, unknown>;
+  test_report: Record<string, unknown>;
+  fix_plan: Record<string, unknown>;
+  last_error: string;
 }
 
 export interface InterviewQuestion {
@@ -83,6 +87,12 @@ export interface SandboxStatus {
   uptime_s: number;
 }
 
+export interface StudioFileDiff {
+  path: string;
+  old: string;
+  new: string;
+}
+
 export const studioApi = {
   list: () =>
     request<StudioProject[]>('/studio/projects/'),
@@ -108,6 +118,9 @@ export const studioApi = {
 
   fileDetail: (id: string, fileId: number) =>
     request<StudioFileDetail>(`/studio/projects/${id}/files/${fileId}/`),
+
+  fileDiff: (id: string, fileId: number, ref: string) =>
+    request<StudioFileDiff>(`/studio/projects/${id}/files/${fileId}/diff/?ref=${encodeURIComponent(ref)}`),
 
   pipeline: (id: string) =>
     request<PipelineState>(`/studio/projects/${id}/pipeline/`),

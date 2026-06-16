@@ -11,6 +11,8 @@ import { PipelineStatus } from './PipelineStatus';
 import { ContextChat } from './ContextChat';
 import { GitHistory } from './GitHistory';
 import { SandboxStatusBadge } from './SandboxStatusBadge';
+import { StepDetailDrawer } from './StepDetailDrawer';
+import { DiffViewer } from './DiffViewer';
 import type { StudioProject, StudioFileNode, StudioFileDetail, PipelineState } from '@/lib/api/studio';
 import { studioApi } from '@/lib/api/studio';
 
@@ -30,6 +32,20 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
   const [mobileTab, setMobileTab] = useState<MobileTab>('files');
   const [running, setRunning] = useState(false);
   const [approving, setApproving] = useState(false);
+  const [drawerAgent, setDrawerAgent] = useState<string | null>(null);
+  const [centerTab, setCenterTab] = useState<'code' | 'diff'>('code');
+  const [diff, setDiff] = useState<{ old: string; new: string; path: string } | null>(null);
+
+  const AGENT_LABELS: Record<string, string> = {
+    interviewer: 'Интервью', analyst: 'Анализ', planner: 'План',
+    coder: 'Кодинг', reviewer: 'Ревью', tester: 'Тест', fixer: 'Фикс',
+  };
+
+  const stepText = (() => {
+    const md = project.commits_md_content || '';
+    const parts = md.split(/\n(?=#{2,3}\s)/).filter((p) => p.trim());
+    return parts[pipeline.step_index] ?? '';
+  })();
 
   const handleApprove = async () => {
     setApproving(true);
@@ -77,6 +93,18 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
     onRefresh();
   };
 
+  const loadDiff = async () => {
+    if (!selectedFileId) return;
+    const versions = await studioApi.commits(project.id);
+    const ref = (versions[0] as { git_sha?: string })?.git_sha;
+    if (!ref) {
+      setDiff({ old: '', new: fileDetail?.content ?? '', path: fileDetail?.path ?? '' });
+      return;
+    }
+    const d = await studioApi.fileDiff(project.id, selectedFileId, ref);
+    setDiff(d);
+  };
+
   const isPaused = pipeline.status === 'paused_on_loop' || pipeline.status === 'paused_manual';
   const isAwaitingApproval = pipeline.status === 'paused_manual';
   const isRunning = pipeline.status === 'running';
@@ -101,7 +129,11 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
         <div className="w-px h-4 bg-[var(--border)]" />
         <SandboxStatusBadge projectId={project.id} projectStatus={project.status} />
         <div className="w-px h-4 bg-[var(--border)]" />
-        <PipelineStatus projectStatus={project.status} pipelineStatus={pipeline.status} />
+        <PipelineStatus
+          projectStatus={project.status}
+          pipelineStatus={pipeline.status}
+          onStepClick={(key) => setDrawerAgent(key)}
+        />
         <div className="ml-auto flex items-center gap-2">
           {!isCompleted && !isRunning && !isPaused && (
             <button
@@ -202,11 +234,31 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
               </div>
             </div>
             <div className="overflow-hidden flex flex-col">
-              <CodeViewer
-                content={fileDetail?.content ?? ''}
-                language={fileDetail?.language ?? 'text'}
-                path={fileDetail?.path}
-              />
+              <div className="flex border-b border-[var(--border)] shrink-0 text-xs">
+                <button
+                  onClick={() => setCenterTab('code')}
+                  className={`px-3 py-1.5 ${centerTab === 'code' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-[var(--text-secondary)]'}`}
+                >Код</button>
+                <button
+                  onClick={() => { setCenterTab('diff'); loadDiff(); }}
+                  className={`px-3 py-1.5 ${centerTab === 'diff' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-[var(--text-secondary)]'}`}
+                >Diff</button>
+              </div>
+              {centerTab === 'code' ? (
+                <CodeViewer
+                  content={fileDetail?.content ?? ''}
+                  language={fileDetail?.language ?? 'text'}
+                  path={fileDetail?.path}
+                />
+              ) : (
+                <div className="flex-1 overflow-auto">
+                  {diff ? (
+                    <DiffViewer oldContent={diff.old} newContent={diff.new} path={diff.path} />
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-xs text-[var(--text-secondary)]">Нет diff</div>
+                  )}
+                </div>
+              )}
             </div>
             <div className="overflow-hidden flex flex-col">
               <PreviewPanel projectId={project.id} hasSandbox={!!project.sandbox_container_id} status={project.status} />
@@ -250,6 +302,16 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
             )}
           </div>
         </div>
+      )}
+
+      {drawerAgent && (
+        <StepDetailDrawer
+          agentKey={drawerAgent}
+          agentLabel={AGENT_LABELS[drawerAgent] ?? drawerAgent}
+          pipeline={pipeline}
+          stepText={stepText}
+          onClose={() => setDrawerAgent(null)}
+        />
       )}
     </div>
   );
