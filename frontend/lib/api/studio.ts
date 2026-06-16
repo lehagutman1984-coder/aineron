@@ -25,6 +25,7 @@ export interface StudioProject {
   interview_data: Record<string, unknown>;
   repo_url: string;
   vercel_deployment_url: string;
+  github_repo_url: string;
   created_at: string;
 }
 
@@ -227,6 +228,12 @@ export const studioApi = {
 
   deploy: (id: string) =>
     request<{ status: string }>(`/studio/projects/${id}/deploy/`, { method: 'POST' }),
+
+  exportGithub: (id: string, repoName: string, isPrivate: boolean) =>
+    request<{ status: string }>(`/studio/projects/${id}/export/github/`, {
+      method: 'POST',
+      body: JSON.stringify({ repo_name: repoName, private: isPrivate }),
+    }),
 
   uploadScreenshot: (id: string, file: File): Promise<{ description: string }> => {
     const fd = new FormData();

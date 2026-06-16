@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { RefreshCw, ExternalLink, CheckCircle, Download, Smartphone, Tablet, Monitor, Rocket, RotateCw, AlertTriangle, Wrench } from 'lucide-react';
+import { RefreshCw, ExternalLink, CheckCircle, Download, Smartphone, Tablet, Monitor, Rocket, RotateCw, AlertTriangle, Wrench, Github } from 'lucide-react';
 import { studioApi } from '@/lib/api/studio';
 
 interface ConsoleError {
@@ -15,13 +15,15 @@ interface PreviewPanelProps {
   projectId: string;
   hasSandbox: boolean;
   status?: string;
+  githubUrl?: string;
 }
 
-export function PreviewPanel({ projectId, hasSandbox, status }: PreviewPanelProps) {
+export function PreviewPanel({ projectId, hasSandbox, status, githubUrl }: PreviewPanelProps) {
   const [key, setKey] = useState(0);
   const [width, setWidth] = useState<'100%' | '768px' | '375px'>('100%');
   const [errors, setErrors] = useState<ConsoleError[]>([]);
   const [fixing, setFixing] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
@@ -34,6 +36,17 @@ export function PreviewPanel({ projectId, hasSandbox, status }: PreviewPanelProp
     window.addEventListener('message', onMsg);
     return () => window.removeEventListener('message', onMsg);
   }, [projectId]);
+
+  const handleGithubExport = async () => {
+    const repoName = window.prompt('Имя репозитория GitHub', `aineron-${projectId.slice(0, 8)}`);
+    if (!repoName?.trim()) return;
+    setExporting(true);
+    try {
+      await studioApi.exportGithub(projectId, repoName.trim(), true);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const handleAutofix = async () => {
     const last = errors[errors.length - 1];
@@ -76,6 +89,24 @@ export function PreviewPanel({ projectId, hasSandbox, status }: PreviewPanelProp
           >
             <RotateCw size={14} /> Перезапустить превью
           </button>
+          {githubUrl ? (
+            <a
+              href={githubUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 border border-[var(--border)] hover:bg-[var(--hover)] px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+            >
+              <Github size={14} /> Открыть репозиторий
+            </a>
+          ) : (
+            <button
+              onClick={handleGithubExport}
+              disabled={exporting}
+              className="flex items-center gap-1.5 border border-[var(--border)] hover:bg-[var(--hover)] disabled:opacity-50 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+            >
+              <Github size={14} /> {exporting ? 'Экспортируем…' : 'Экспорт в GitHub'}
+            </button>
+          )}
         </div>
       </div>
     );
