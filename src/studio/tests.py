@@ -307,6 +307,47 @@ class SmartCoderTest(APITestCase):
         self.assertEqual(coder_tier_for_model(MODEL_FAST), 'fast')
 
 
+class SandboxLimitTest(APITestCase):
+    """Commit 24 — run_pipeline aborts when per-user sandbox limit is reached."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(email='limit@t.ru', password='x', pages_count=100)
+
+    @patch('studio.tasks.sandbox')
+    @patch('studio.tasks.publish_event')
+    def test_sandbox_limit_blocks_spawn(self, mock_pub, mock_sandbox):
+        from studio.tasks import run_pipeline
+        mock_sandbox.count_user_sandboxes.return_value = 2  # at limit
+        project = StudioProject.objects.create(user=self.user, name='L', status='coding', mode='auto')
+        StudioPipelineState.objects.create(project=project, status='running', step_index=0)
+
+        with self.settings(STUDIO_MAX_SANDBOXES_PER_USER=2):
+            run_pipeline(str(project.id))
+
+        mock_sandbox.spawn_sandbox.assert_not_called()
+        project.refresh_from_db()
+        self.assertEqual(project.status, 'paused')
+
+    @patch('studio.tasks.sandbox')
+    @patch('studio.tasks.publish_event')
+    def test_sandbox_spawns_when_under_limit(self, mock_pub, mock_sandbox):
+        from studio.tasks import run_pipeline
+        mock_sandbox.count_user_sandboxes.return_value = 1
+        mock_sandbox.spawn_sandbox.return_value = 'sandbox_abc'
+        mock_sandbox.write_files.return_value = None
+        mock_sandbox.install_deps.return_value = (0, '')
+        mock_sandbox.isolate.return_value = None
+        mock_sandbox.start_dev_server.return_value = 3000
+        project = StudioProject.objects.create(user=self.user, name='L2', status='coding', mode='auto')
+        StudioPipelineState.objects.create(project=project, status='running', step_index=0)
+
+        with self.settings(STUDIO_MAX_SANDBOXES_PER_USER=2):
+            with patch('studio.tasks.start_step') as mock_start:
+                run_pipeline(str(project.id))
+
+        mock_sandbox.spawn_sandbox.assert_called_once()
+
+
 class AtomicGiteaCommitTest(APITestCase):
     """Commit 23 — commit_to_gitea uses put_files_batch for a single atomic commit per step."""
 

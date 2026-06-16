@@ -163,8 +163,20 @@ def run_pipeline(project_id):
     state.iteration_count = 0
     state.save()
     publish_event(project_id, {'agent': 'system', 'level': 'info', 'text': 'Запускаю sandbox...'})
+    from django.conf import settings as _s
+    if sandbox.count_user_sandboxes(project.user_id) >= _s.STUDIO_MAX_SANDBOXES_PER_USER:
+        publish_event(project_id, {
+            'agent': 'system', 'level': 'error',
+            'text': 'Достигнут лимит одновременных проектов. Завершите другой проект.',
+        })
+        state.status = 'paused_manual'
+        state.pause_reason = 'Лимит sandbox'
+        state.save(update_fields=['status', 'pause_reason'])
+        project.status = 'paused'
+        project.save(update_fields=['status'])
+        return
     try:
-        cid = sandbox.spawn_sandbox(project_id)
+        cid = sandbox.spawn_sandbox(project_id, user_id=project.user_id)
         initial_files = _existing_files(project) or {'package.json': '{"name":"app","private":true}'}
         sandbox.write_files(cid, initial_files)
         sandbox.install_deps(cid)

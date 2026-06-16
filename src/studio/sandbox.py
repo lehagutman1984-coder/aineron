@@ -15,7 +15,13 @@ def get_docker():
     return _docker
 
 
-def spawn_sandbox(project_id: str) -> str:
+def count_user_sandboxes(user_id) -> int:
+    """Count running containers owned by a user (by Docker label)."""
+    client = get_docker()
+    return len(client.containers.list(filters={'label': f'studio_user={user_id}'}))
+
+
+def spawn_sandbox(project_id: str, user_id=None) -> str:
     """Creates container on bridge network (internet available). Returns container name (DNS-resolvable)."""
     client = get_docker()
     name = f'sandbox_{project_id[:8]}'
@@ -23,6 +29,9 @@ def spawn_sandbox(project_id: str) -> str:
         client.containers.get(name).remove(force=True)
     except docker.errors.NotFound:
         pass
+    labels = {'studio_project': project_id}
+    if user_id is not None:
+        labels['studio_user'] = str(user_id)
     container = client.containers.run(
         settings.STUDIO_SANDBOX_IMAGE,
         command='sleep infinity',
@@ -34,7 +43,7 @@ def spawn_sandbox(project_id: str) -> str:
         cap_drop=['ALL'],
         security_opt=['no-new-privileges'],
         network_mode='bridge',
-        labels={'studio_project': project_id},
+        labels=labels,
     )
     return container.name
 
