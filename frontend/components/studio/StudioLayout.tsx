@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Play, Pause, Files, Code2, Monitor } from 'lucide-react';
+import { Play, Pause, Files, Code2, Monitor, CheckCircle } from 'lucide-react';
 import { FileTree } from './FileTree';
 import { CodeViewer } from './CodeViewer';
 import { PreviewPanel } from './PreviewPanel';
@@ -27,6 +27,17 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
   const [logOpen, setLogOpen] = useState(false);
   const [mobileTab, setMobileTab] = useState<MobileTab>('files');
   const [running, setRunning] = useState(false);
+  const [approving, setApproving] = useState(false);
+
+  const handleApprove = async () => {
+    setApproving(true);
+    try {
+      await studioApi.approve(project.id);
+      onRefresh();
+    } finally {
+      setApproving(false);
+    }
+  };
 
   const handleFileSelect = async (fileId: number) => {
     setSelectedFileId(fileId);
@@ -51,6 +62,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
   };
 
   const isPaused = pipeline.status === 'paused_on_loop' || pipeline.status === 'paused_manual';
+  const isAwaitingApproval = pipeline.status === 'paused_manual';
   const isRunning = pipeline.status === 'running';
   const isCompleted = pipeline.status === 'completed';
 
@@ -87,6 +99,22 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
           )}
         </div>
       </div>
+
+      {/* Approval banner for semi/manual mode */}
+      {isAwaitingApproval && (
+        <div className="flex items-center gap-3 px-4 py-2.5 bg-amber-950/40 border-b border-amber-800/50 shrink-0">
+          <CheckCircle size={16} className="text-amber-400 shrink-0" />
+          <p className="text-xs text-amber-300 flex-1">{pipeline.pause_reason || 'Шаг завершён — подтвердите продолжение'}</p>
+          <button
+            onClick={handleApprove}
+            disabled={approving}
+            className="flex items-center gap-1.5 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors shrink-0"
+          >
+            <Play size={12} />
+            {approving ? 'Запускаем...' : 'Подтвердить'}
+          </button>
+        </div>
+      )}
 
       {/* Mobile tabs */}
       <div className="md:hidden flex border-b border-[var(--border)] shrink-0">

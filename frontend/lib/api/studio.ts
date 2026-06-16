@@ -152,6 +152,9 @@ export const studioApi = {
       body: JSON.stringify({ message }),
     }),
 
+  approve: (id: string) =>
+    request<{ status: string }>(`/studio/projects/${id}/approve/`, { method: 'POST' }),
+
   templates: () =>
     request<StudioTemplate[]>('/studio/templates/'),
 };
