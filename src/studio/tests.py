@@ -230,6 +230,28 @@ class SandboxFailureTest(APITestCase):
         self.assertEqual(project.pipeline.status, 'failed')
 
 
+class EstimateViewTest(APITestCase):
+    """Commit 8 — EstimateView returns real star estimate, not hardcoded value."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(email='est@t.ru', password='x', pages_count=200)
+        self.client.force_authenticate(self.user)
+
+    @patch('studio.billing.estimate_stars', return_value=90)
+    def test_estimate_returns_correct_fields(self, mock_est):
+        project = StudioProject.objects.create(
+            user=self.user, name='E',
+            interview_data={'planned_steps': 3},
+        )
+        StudioPipelineState.objects.create(project=project)
+        r = self.client.get(f'/api/v1/studio/projects/{project.id}/estimate/')
+        self.assertEqual(r.status_code, 200)
+        self.assertIn('estimated_stars', r.data)
+        self.assertIn('affordable', r.data)
+        self.assertEqual(r.data['planned_steps'], 3)
+        self.assertEqual(r.data['balance'], 200)
+
+
 class SplitStepsTest(APITestCase):
     """Commit 6 — _split_steps counts sections; planner prefers section count over marker."""
 

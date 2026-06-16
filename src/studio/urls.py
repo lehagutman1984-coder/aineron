@@ -1,7 +1,7 @@
 from django.urls import path
 from .views.projects import StudioProjectListCreateView, StudioProjectDetailView, InterviewView, CloneView, TemplateListView
 from .views.pipeline import (
-    PipelineStateView, PipelineRunView, PipelineEventsView,
+    EstimateView, PipelineStateView, PipelineRunView, PipelineEventsView,
     PipelinePauseView, PipelineResumeView,
 )
 from .views.files import FileTreeView, FileDetailView, CommitHistoryView, RollbackView
@@ -12,6 +12,7 @@ urlpatterns = [
     path('projects/', StudioProjectListCreateView.as_view(), name='project_list_create'),
     path('projects/<uuid:id>/', StudioProjectDetailView.as_view(), name='project_detail'),
     path('projects/<uuid:id>/interview/', InterviewView.as_view(), name='interview'),
+    path('projects/<uuid:id>/estimate/', EstimateView.as_view(), name='pipeline_estimate'),
     path('projects/<uuid:id>/pipeline/', PipelineStateView.as_view(), name='pipeline_state'),
     path('projects/<uuid:id>/run/', PipelineRunView.as_view(), name='pipeline_run'),
     path('projects/<uuid:id>/events/', PipelineEventsView.as_view(), name='pipeline_events'),

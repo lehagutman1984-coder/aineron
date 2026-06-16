@@ -5,6 +5,25 @@ from rest_framework.response import Response
 from ..models import StudioProject
 from ..serializers import PipelineStateSerializer
 from ..events import get_pipeline_events
+from ..billing import estimate_stars
+
+
+class EstimateView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, id):
+        project = StudioProject.objects.get(id=id, user=request.user)
+        planned = project.interview_data.get('planned_steps')
+        if not planned:
+            from ..tasks import _split_steps
+            planned = len(_split_steps(project.commits_md_content)) or 5
+        est = estimate_stars(project, planned_steps=planned)
+        return Response({
+            'estimated_stars': est,
+            'planned_steps': planned,
+            'balance': request.user.pages_count,
+            'affordable': request.user.pages_count >= est,
+        })
 
 
 class PipelineStateView(APIView):
