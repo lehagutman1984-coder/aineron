@@ -4,10 +4,12 @@ import re
 
 from openai import OpenAI
 from django.conf import settings
+from ..models_catalog import ESCALATION_MAP, MODEL_TIER, DEFAULT_STUDIO_MODEL
 
 logger = logging.getLogger('studio.agents')
 
-MODEL_FAST = 'deepseek-v3'
+# Backward-compat aliases; will be removed in commits 5-6 when agents migrate to resolve_model()
+MODEL_FAST = 'deepseek-v3.2'
 MODEL_SMART = 'claude-opus-4-8'
 
 _client = None
@@ -26,11 +28,16 @@ def get_client() -> OpenAI:
 
 class BaseAgent:
     name = 'base'
-    model = MODEL_SMART
+    model = DEFAULT_STUDIO_MODEL
 
     def __init__(self, project):
         self.project = project
         self.client = get_client()
+
+    def resolve_model(self) -> str:
+        """All agents use the model chosen by the user for this project."""
+        model = getattr(self.project, 'ai_model', None)
+        return model if model in MODEL_TIER else DEFAULT_STUDIO_MODEL
 
     def run_prompt(self, system: str, user: str, model: str = None,
                    max_tokens: int = 8192, temperature: float = 0.7) -> str:

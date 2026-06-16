@@ -427,23 +427,32 @@ class VercelDeployTest(APITestCase):
 
 
 class ComplexTagRoutingTest(APITestCase):
-    """Commit 31 — _pick_model checks [COMPLEX] tag first; PlannerAgent warns on >15 steps."""
+    """Commit 31 — CoderAgent._pick_model escalates on [COMPLEX] tag; Planner warns on >15 steps."""
 
-    def test_complex_tag_routes_to_model_smart(self):
-        from studio.agents.coder import _pick_model
-        from studio.agents.base import MODEL_SMART
-        self.assertEqual(_pick_model('## [COMPLEX] Auth setup'), MODEL_SMART)
+    def setUp(self):
+        self.user = User.objects.create_user(email='ctr@t.ru', password='x')
 
-    def test_simple_step_routes_to_model_fast(self):
-        from studio.agents.coder import _pick_model
-        from studio.agents.base import MODEL_FAST
-        self.assertEqual(_pick_model('## Add a button'), MODEL_FAST)
+    def _make_agent(self, ai_model='deepseek-v3.2'):
+        project = StudioProject.objects.create(
+            user=self.user, name='P', status='coding', mode='auto', ai_model=ai_model,
+        )
+        from studio.agents.coder import CoderAgent
+        return CoderAgent(project)
 
-    def test_complex_tag_overrides_length_heuristic(self):
-        from studio.agents.coder import _pick_model
-        from studio.agents.base import MODEL_SMART
-        # Short text with [COMPLEX] tag still routes smart
-        self.assertEqual(_pick_model('[COMPLEX] x'), MODEL_SMART)
+    def test_complex_tag_escalates_fast_model(self):
+        agent = self._make_agent('deepseek-v3.2')
+        from studio.models_catalog import ESCALATION_MAP
+        expected = ESCALATION_MAP.get('deepseek-v3.2', 'deepseek-v3.2')
+        self.assertEqual(agent._pick_model('## [COMPLEX] Auth setup'), expected)
+
+    def test_simple_step_keeps_fast_model(self):
+        agent = self._make_agent('deepseek-v3.2')
+        self.assertEqual(agent._pick_model('## Add a button'), 'deepseek-v3.2')
+
+    def test_complex_tag_no_escalation_for_smart_model(self):
+        agent = self._make_agent('claude-sonnet-4-6')
+        # smart model stays as-is even with [COMPLEX]
+        self.assertEqual(agent._pick_model('[COMPLEX] x'), 'claude-sonnet-4-6')
 
     def test_planner_warns_on_more_than_15_steps(self):
         from studio.agents.planner import PlannerAgent
@@ -638,36 +647,38 @@ class CoderContextTest(APITestCase):
 
 
 class SmartCoderTest(APITestCase):
-    """Commit 22 — CoderAgent picks MODEL_SMART for complex steps, bills at smart rate."""
+    """CoderAgent._pick_model escalates on [COMPLEX] tag, bills by model tier."""
 
-    def test_pick_model_simple_step(self):
-        from studio.agents.coder import _pick_model
-        from studio.agents.base import MODEL_FAST
-        self.assertEqual(_pick_model('Add a button'), MODEL_FAST)
+    def setUp(self):
+        self.user = User.objects.create_user(email='smart@t.ru', password='x')
 
-    def test_pick_model_complex_keyword(self):
-        from studio.agents.coder import _pick_model
-        from studio.agents.base import MODEL_SMART
-        self.assertEqual(_pick_model('Implement authentication middleware'), MODEL_SMART)
+    def _agent(self, ai_model='deepseek-v3.2'):
+        project = StudioProject.objects.create(
+            user=self.user, name='S', status='coding', mode='auto', ai_model=ai_model,
+        )
+        from studio.agents.coder import CoderAgent
+        return CoderAgent(project)
 
-    def test_pick_model_long_step(self):
-        from studio.agents.coder import _pick_model
-        from studio.agents.base import MODEL_SMART
-        self.assertEqual(_pick_model('x' * 700), MODEL_SMART)
+    def test_pick_model_simple_step_stays_fast(self):
+        self.assertEqual(self._agent('deepseek-v3.2')._pick_model('Add a button'), 'deepseek-v3.2')
 
-    def test_billing_tier_override_smart(self):
+    def test_pick_model_complex_tag_escalates(self):
+        from studio.models_catalog import ESCALATION_MAP
+        expected = ESCALATION_MAP.get('deepseek-v3.2', 'deepseek-v3.2')
+        self.assertEqual(self._agent('deepseek-v3.2')._pick_model('[COMPLEX] Auth'), expected)
+
+    def test_billing_tier_smart_costs_more_than_fast(self):
         from studio.billing import STAR_RATE, AGENT_BUDGET
-        tier_smart = 'smart'
         _, budget = AGENT_BUDGET['coder']
-        cost_smart = max(1, int((budget / 1000.0) * STAR_RATE[tier_smart]))
+        cost_smart = max(1, int((budget / 1000.0) * STAR_RATE['smart']))
         cost_fast = max(1, int((budget / 1000.0) * STAR_RATE['fast']))
         self.assertGreater(cost_smart, cost_fast)
 
-    def test_coder_tier_for_model(self):
+    def test_coder_tier_for_model_uses_catalog(self):
         from studio.billing import coder_tier_for_model
-        from studio.agents.base import MODEL_SMART, MODEL_FAST
-        self.assertEqual(coder_tier_for_model(MODEL_SMART), 'smart')
-        self.assertEqual(coder_tier_for_model(MODEL_FAST), 'fast')
+        self.assertEqual(coder_tier_for_model('claude-opus-4-8'), 'smart')
+        self.assertEqual(coder_tier_for_model('deepseek-v3.2'), 'fast')
+        self.assertEqual(coder_tier_for_model('qwen3-coder-plus'), 'coder')
 
 
 class StarReservationTest(APITestCase):

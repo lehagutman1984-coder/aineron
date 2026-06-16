@@ -1,8 +1,8 @@
 import tiktoken
 from .models import StudioProject
-from .agents.base import MODEL_SMART
+from .models_catalog import MODEL_TIER
 
-STAR_RATE = {'smart': 3, 'fast': 1}
+STAR_RATE = {'fast': 1, 'coder': 1.7, 'smart': 3}
 
 AGENT_BUDGET = {
     'interviewer': ('fast', 2000),
@@ -26,16 +26,18 @@ def count_tokens(text: str, model: str = 'gpt-4') -> int:
 def estimate_stars(project: StudioProject, planned_steps: int = 5) -> int:
     total = 0.0
     desc_tokens = count_tokens(project.description) + count_tokens(str(project.interview_data))
+    ai_tier = MODEL_TIER.get(getattr(project, 'ai_model', ''), 'fast')
     for agent, (tier, budget) in AGENT_BUDGET.items():
+        effective_tier = ai_tier if agent in ('coder', 'reviewer', 'fixer') else tier
         loops = planned_steps if agent in ('coder', 'reviewer', 'tester') else 1
         toks = budget + (desc_tokens if agent in ('analyst', 'planner') else 0)
-        total += (toks / 1000.0) * STAR_RATE[tier] * loops
+        total += (toks / 1000.0) * STAR_RATE.get(effective_tier, STAR_RATE['fast']) * loops
     return int(total) + 1
 
 
 def coder_tier_for_model(model: str) -> str:
-    """Return billing tier based on model name used by CoderAgent."""
-    return 'smart' if model == MODEL_SMART else 'fast'
+    """Return billing tier based on model id used by CoderAgent."""
+    return MODEL_TIER.get(model, 'fast')
 
 
 def can_afford(user, amount: int) -> bool:
