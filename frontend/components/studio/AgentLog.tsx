@@ -19,20 +19,38 @@ export function AgentLog({ projectId }: AgentLogProps) {
 
   useEffect(() => {
     const base = process.env.NEXT_PUBLIC_API_URL ?? '';
-    const es = new EventSource(
-      `${base}/studio/projects/${projectId}/events/`,
-      { withCredentials: true },
-    );
-    es.onmessage = (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        if (data.type !== 'connected') {
-          setLines((prev) => [...prev, data]);
+    let es: EventSource | null = null;
+    let closed = false;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const connect = () => {
+      if (closed) return;
+      es = new EventSource(
+        `${base}/studio/projects/${projectId}/events/`,
+        { withCredentials: true },
+      );
+      es.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          if (data.type !== 'connected') {
+            setLines((prev) => [...prev, data]);
+          }
+        } catch {}
+      };
+      es.onerror = () => {
+        es?.close();
+        if (!closed) {
+          retryTimer = setTimeout(connect, 3000);
         }
-      } catch {}
+      };
     };
-    es.onerror = () => es.close();
-    return () => es.close();
+
+    connect();
+    return () => {
+      closed = true;
+      if (retryTimer) clearTimeout(retryTimer);
+      es?.close();
+    };
   }, [projectId]);
 
   useEffect(() => {
