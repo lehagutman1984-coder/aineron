@@ -161,3 +161,26 @@ class CloneView(APIView):
         from ..tasks import crawl_and_analyze
         crawl_and_analyze.delay(str(project.id))
         return Response(StudioProjectSerializer(project).data, status=201)
+
+
+class ProjectSettingsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    ALLOWED = {'coder_model', 'max_iterations', 'max_stars_budget', 'auto_deploy', 'mode'}
+
+    def patch(self, request, id):
+        project = StudioProject.objects.get(id=id, user=request.user)
+        updated = []
+        for key in self.ALLOWED:
+            if key in request.data:
+                setattr(project, key, request.data[key])
+                updated.append(key)
+        if updated:
+            project.save(update_fields=updated)
+        return Response({
+            'coder_model': project.coder_model,
+            'max_iterations': project.max_iterations,
+            'max_stars_budget': project.max_stars_budget,
+            'auto_deploy': project.auto_deploy,
+            'mode': project.mode,
+        })

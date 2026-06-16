@@ -40,6 +40,14 @@ class StudioProject(models.Model):
     stars_reserved = models.IntegerField(default=0)
     stars_spent = models.IntegerField(default=0)
     vercel_deployment_url = models.URLField(blank=True)
+    coder_model = models.CharField(
+        max_length=20,
+        choices=[('fast', 'DeepSeek V3'), ('smart', 'Opus 4.8')],
+        default='fast',
+    )
+    max_iterations = models.IntegerField(default=0)  # 0 = use global STUDIO_MAX_ITERATIONS
+    max_stars_budget = models.IntegerField(default=0)  # 0 = no cap
+    auto_deploy = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
