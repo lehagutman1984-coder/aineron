@@ -267,6 +267,7 @@ def coder_iteration(self, project_id, step_index):
             )
         if project.sandbox_container_id:
             sandbox.write_files(project.sandbox_container_id, files)
+            sandbox.wait_for_ready(project.sandbox_container_id, timeout=60)
         chord(
             [agent_review.s(project_id, step_index), agent_test.s(project_id, step_index)],
             merge_reports.s(project_id, step_index),

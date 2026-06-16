@@ -94,6 +94,20 @@ def start_dev_server(container_id: str) -> int:
     return 3000
 
 
+def wait_for_ready(container_id: str, timeout: int = 60) -> bool:
+    """Poll dev server inside container until HTTP 200 or timeout."""
+    import time
+    for _ in range(timeout // 3):
+        code, out = exec_command(
+            container_id,
+            'curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/ || echo 000',
+        )
+        if out.strip().endswith('200'):
+            return True
+        time.sleep(3)
+    return False
+
+
 def run_build_check(container_id: str) -> tuple:
     """Run typecheck/build in container. Returns (exit_code, output)."""
     return exec_command(

@@ -274,6 +274,47 @@ class SemiManualModeTest(APITestCase):
         mock_next.delay.assert_called_once_with(str(project.id), 2)
 
 
+class WaitForReadyTest(APITestCase):
+    """Commit 28 — wait_for_ready polls container HTTP until 200 or timeout."""
+
+    def test_returns_true_on_200(self):
+        from studio.sandbox import wait_for_ready
+        with patch('studio.sandbox.exec_command', side_effect=[
+            (0, '000'), (0, '000'), (0, '200'),
+        ]) as mock_exec:
+            with patch('time.sleep'):
+                result = wait_for_ready('container_x', timeout=9)
+        self.assertTrue(result)
+        self.assertEqual(mock_exec.call_count, 3)
+
+    def test_returns_false_on_timeout(self):
+        from studio.sandbox import wait_for_ready
+        with patch('studio.sandbox.exec_command', return_value=(0, '000')):
+            with patch('time.sleep'):
+                result = wait_for_ready('container_x', timeout=9)
+        self.assertFalse(result)
+
+    @patch('studio.tasks.sandbox')
+    @patch('studio.tasks.publish_event')
+    def test_coder_iteration_calls_wait_for_ready(self, mock_pub, mock_sandbox):
+        from studio.tasks import coder_iteration
+        user = User.objects.create_user(email='wfr@t.ru', password='x', pages_count=100)
+        project = StudioProject.objects.create(
+            user=user, name='W', status='coding', mode='auto',
+            sandbox_container_id='container_wfr',
+            stars_reserved=50,
+        )
+        state = StudioPipelineState.objects.create(project=project, status='running', step_index=0)
+        mock_sandbox.write_files.return_value = None
+        mock_sandbox.wait_for_ready.return_value = True
+        with patch('studio.agents.coder.CoderAgent.run', return_value={'app.ts': 'code'}):
+            with patch('studio.tasks.chord') as mock_chord:
+                mock_chord.return_value.apply_async.return_value = None
+                with patch('studio.tasks.charge_from_reserve', return_value=True):
+                    coder_iteration(self, str(project.id), 0)
+        mock_sandbox.wait_for_ready.assert_called_once_with('container_wfr', timeout=60)
+
+
 class RealBuildCheckTest(APITestCase):
     """Commit 27 — agent_test uses run_build_check; TesterAgent exit_code overrides LLM passed."""
 
