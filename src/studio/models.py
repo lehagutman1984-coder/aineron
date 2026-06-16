@@ -40,11 +40,7 @@ class StudioProject(models.Model):
     stars_reserved = models.IntegerField(default=0)
     stars_spent = models.IntegerField(default=0)
     vercel_deployment_url = models.URLField(blank=True)
-    coder_model = models.CharField(
-        max_length=20,
-        choices=[('fast', 'DeepSeek V3'), ('smart', 'Opus 4.8')],
-        default='fast',
-    )
+    ai_model = models.CharField(max_length=64, default='claude-sonnet-4-6')
     max_iterations = models.IntegerField(default=0)  # 0 = use global STUDIO_MAX_ITERATIONS
     max_stars_budget = models.IntegerField(default=0)  # 0 = no cap
     auto_deploy = models.BooleanField(default=False)
@@ -102,6 +98,11 @@ class StudioPipelineState(models.Model):
     resume_hint = models.TextField(blank=True)
     pause_requested = models.BooleanField(default=False)
     current_task_id = models.CharField(max_length=64, blank=True)
+    last_files_hash = models.CharField(max_length=64, blank=True, default='')
+    same_diff_count = models.IntegerField(default=0)
+    last_error_signature = models.CharField(max_length=256, blank=True, default='')
+    error_repeat_count = models.IntegerField(default=0)
+    started_at = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
