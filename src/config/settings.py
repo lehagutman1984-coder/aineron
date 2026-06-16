@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.yandex',
     'allauth.socialaccount.providers.vk',
     'allauth.socialaccount.providers.mailru',
+    'allauth.socialaccount.providers.github',
 
     'users.apps.UsersConfig',
     'landing.apps.LandingConfig',

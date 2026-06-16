@@ -495,6 +495,7 @@ def next_step(project_id, step_index):
             'agent': 'system', 'level': 'success',
             'text': 'Проект завершён',
         })
+        notify_project_done.delay(project_id)
     else:
         start_step.delay(project_id, nxt)
 
@@ -700,4 +701,69 @@ def reap_stale_sandboxes():
                     ).update(sandbox_container_id='')
         except Exception:
             pass
+
+
+@shared_task(queue=QUEUE)
+def notify_project_done(project_id):
+    """Send email notification when a project completes generation."""
+    project = StudioProject.objects.get(id=project_id)
+    prefs = (project.interview_data or {}).get('notify', {'email': True})
+    if prefs.get('email'):
+        try:
+            from django.core.mail import send_mail
+            from django.conf import settings
+            send_mail(
+                subject='Проект готов',
+                message=f'Ваш проект «{project.name}» сгенерирован в aineron Studio.',
+                from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@aineron.ru'),
+                recipient_list=[project.user.email],
+                fail_silently=True,
+            )
+        except Exception:
+            pass
+
+
+@shared_task(bind=True, max_retries=2, queue=QUEUE)
+def export_to_github(self, project_id, repo_name, private):
+    """Export all project files to a new GitHub repository via the GitHub API."""
+    import base64
+    import requests as rq
+    project = StudioProject.objects.get(id=project_id)
+    try:
+        from allauth.socialaccount.models import SocialToken
+        token_obj = SocialToken.objects.filter(
+            account__user=project.user, account__provider='github'
+        ).first()
+    except Exception:
+        token_obj = None
+    if not token_obj:
+        publish_event(project_id, {'agent': 'system', 'level': 'error', 'text': 'GitHub не подключён'})
+        return
+    headers = {'Authorization': f'token {token_obj.token}', 'Accept': 'application/vnd.github+json'}
+    try:
+        r = rq.post(
+            'https://api.github.com/user/repos',
+            headers=headers,
+            json={'name': repo_name, 'private': bool(private), 'auto_init': False},
+            timeout=30,
+        )
+        data = r.json()
+        owner = data.get('owner', {}).get('login')
+        if not owner:
+            raise RuntimeError(data)
+        for f in project.files.all():
+            rq.put(
+                f'https://api.github.com/repos/{owner}/{repo_name}/contents/{f.path.lstrip("/")}',
+                headers=headers,
+                json={'message': f'Add {f.path}', 'content': base64.b64encode(f.content.encode()).decode()},
+                timeout=30,
+            )
+        project.github_repo_url = data.get('html_url', '')
+        project.save(update_fields=['github_repo_url'])
+        publish_event(project_id, {
+            'agent': 'system', 'level': 'success',
+            'text': f'Экспортировано: {project.github_repo_url}',
+        })
+    except Exception as exc:
+        raise self.retry(exc=exc, countdown=30)
 
