@@ -12,6 +12,7 @@ import {
   ChevronRight,
   FilePlus,
   Link,
+  ImagePlus,
 } from "lucide-react";
 import { studioApi } from "@/lib/api/studio";
 import type { StudioProject, StudioMode, StudioStack } from "@/lib/api/studio";
@@ -55,6 +56,9 @@ export default function StudioPage() {
   const [mode, setMode] = useState<StudioMode>("auto");
   const [stack, setStack] = useState<StudioStack>("nextjs");
 
+  const [screenshotLoading, setScreenshotLoading] = useState(false);
+  const [screenshotDesc, setScreenshotDesc] = useState('');
+
   // "Клон по URL" form state
   const [cloneUrl, setCloneUrl] = useState("");
   const [cloneName, setCloneName] = useState("");
@@ -67,12 +71,26 @@ export default function StudioPage() {
 
   const createMutation = useMutation({
     mutationFn: () =>
-      studioApi.create({ name, description, mode, target_stack: stack }),
+      studioApi.create({ name, description: screenshotDesc ? `${description}\n\nМакет: ${screenshotDesc}` : description, mode, target_stack: stack }),
     onSuccess: (project: StudioProject) => {
       qc.invalidateQueries({ queryKey: ["studio-projects"] });
       router.push(`/studio/${project.id}/interview`);
     },
   });
+
+  const handleScreenshot = async (file: File) => {
+    setScreenshotLoading(true);
+    try {
+      const tmp = await studioApi.create({ name: name || 'tmp', mode, target_stack: stack });
+      const res = await studioApi.uploadScreenshot(tmp.id, file);
+      setScreenshotDesc(res.description);
+      if (!description) setDescription(res.description.slice(0, 500));
+    } catch {
+      // ignore
+    } finally {
+      setScreenshotLoading(false);
+    }
+  };
 
   const cloneMutation = useMutation({
     mutationFn: () => studioApi.clone({ url: cloneUrl, name: cloneName || undefined }),
@@ -174,7 +192,20 @@ export default function StudioPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Описание</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium">Описание</label>
+                  <label className={`flex items-center gap-1 text-xs cursor-pointer ${screenshotLoading ? 'opacity-50' : 'text-blue-500 hover:text-blue-400'}`}>
+                    {screenshotLoading ? <Loader2 size={12} className="animate-spin" /> : <ImagePlus size={12} />}
+                    Загрузить макет
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={screenshotLoading}
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) handleScreenshot(f); }}
+                    />
+                  </label>
+                </div>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
@@ -182,6 +213,9 @@ export default function StudioPage() {
                   rows={3}
                   className="w-full border border-[var(--border)] bg-[var(--input-bg)] rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+                {screenshotDesc && (
+                  <p className="text-xs text-[var(--text-secondary)] mt-1">Макет распознан и добавлен в описание</p>
+                )}
               </div>
 
               <div>

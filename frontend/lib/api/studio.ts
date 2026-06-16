@@ -228,6 +228,16 @@ export const studioApi = {
   deploy: (id: string) =>
     request<{ status: string }>(`/studio/projects/${id}/deploy/`, { method: 'POST' }),
 
+  uploadScreenshot: (id: string, file: File): Promise<{ description: string }> => {
+    const fd = new FormData();
+    fd.append('image', file);
+    return fetch(`${process.env.NEXT_PUBLIC_API_URL}/studio/projects/${id}/screenshot/`, {
+      method: 'POST',
+      body: fd,
+      credentials: 'include',
+    }).then((r) => r.json() as Promise<{ description: string }>);
+  },
+
   reportConsoleError: (
     id: string,
     data: { message: string; stack?: string; file?: string; line?: number; autofix?: boolean },
