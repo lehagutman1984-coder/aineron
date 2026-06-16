@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Folder, FolderOpen, File, FileCode } from 'lucide-react';
+import { Folder, FolderOpen, File, FileCode, FilePlus, Trash2 } from 'lucide-react';
 import type { StudioFileNode } from '@/lib/api/studio';
 
 interface TreeNode {
@@ -34,10 +34,12 @@ interface NodeProps {
   depth: number;
   selectedId: number | null;
   onSelect: (fileId: number) => void;
+  onDelete?: (fileId: number) => void;
 }
 
-function TreeNodeItem({ node, depth, selectedId, onSelect }: NodeProps) {
+function TreeNodeItem({ node, depth, selectedId, onSelect, onDelete }: NodeProps) {
   const [open, setOpen] = useState(true);
+  const [hovered, setHovered] = useState(false);
   const isFile = node.fileId !== undefined;
   const isSelected = node.fileId === selectedId;
   const hasChildren = Object.keys(node.children).length > 0;
@@ -46,18 +48,33 @@ function TreeNodeItem({ node, depth, selectedId, onSelect }: NodeProps) {
     const ext = node.name.split('.').pop() ?? '';
     const isCode = ['ts', 'tsx', 'js', 'jsx', 'py', 'css', 'json', 'md'].includes(ext);
     return (
-      <button
-        onClick={() => onSelect(node.fileId!)}
-        style={{ paddingLeft: `${depth * 12 + 8}px` }}
-        className={`flex items-center gap-1.5 w-full text-left py-0.5 pr-2 text-xs rounded transition-colors ${
-          isSelected
-            ? 'bg-blue-600 text-white'
-            : 'hover:bg-[var(--hover)] text-[var(--text-secondary)]'
-        }`}
+      <div
+        className="group relative"
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
       >
-        {isCode ? <FileCode size={12} /> : <File size={12} />}
-        <span className="truncate">{node.name}</span>
-      </button>
+        <button
+          onClick={() => onSelect(node.fileId!)}
+          style={{ paddingLeft: `${depth * 12 + 8}px` }}
+          className={`flex items-center gap-1.5 w-full text-left py-0.5 pr-8 text-xs rounded transition-colors ${
+            isSelected
+              ? 'bg-blue-600 text-white'
+              : 'hover:bg-[var(--hover)] text-[var(--text-secondary)]'
+          }`}
+        >
+          {isCode ? <FileCode size={12} /> : <File size={12} />}
+          <span className="truncate">{node.name}</span>
+        </button>
+        {onDelete && hovered && node.fileId !== undefined && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(node.fileId!); }}
+            className="absolute right-1 top-0.5 p-0.5 text-[var(--text-secondary)] hover:text-red-400 transition-colors"
+            title="Удалить файл"
+          >
+            <Trash2 size={11} />
+          </button>
+        )}
+      </div>
     );
   }
 
@@ -80,6 +97,7 @@ function TreeNodeItem({ node, depth, selectedId, onSelect }: NodeProps) {
               depth={depth + 1}
               selectedId={selectedId}
               onSelect={onSelect}
+              onDelete={onDelete}
             />
           ))}
         </div>
@@ -92,30 +110,45 @@ interface FileTreeProps {
   files: StudioFileNode[];
   selectedId: number | null;
   onSelect: (fileId: number) => void;
+  onCreate?: () => void;
+  onDelete?: (fileId: number) => void;
 }
 
-export function FileTree({ files, selectedId, onSelect }: FileTreeProps) {
+export function FileTree({ files, selectedId, onSelect, onCreate, onDelete }: FileTreeProps) {
   const tree = buildTree(files);
 
-  if (files.length === 0) {
-    return (
-      <div className="p-4 text-xs text-[var(--text-secondary)] opacity-60">
-        Файлов пока нет
-      </div>
-    );
-  }
-
   return (
-    <div className="overflow-auto p-1">
-      {Object.values(tree).map((node) => (
-        <TreeNodeItem
-          key={node.path}
-          node={node}
-          depth={0}
-          selectedId={selectedId}
-          onSelect={onSelect}
-        />
-      ))}
+    <div className="flex flex-col h-full overflow-hidden">
+      {onCreate && (
+        <div className="flex items-center justify-between px-3 py-1.5 border-b border-[var(--border)] shrink-0">
+          <span className="text-xs text-[var(--text-secondary)]">Файлы</span>
+          <button
+            onClick={onCreate}
+            title="Новый файл"
+            className="text-[var(--text-secondary)] hover:text-[var(--text)] transition-colors"
+          >
+            <FilePlus size={14} />
+          </button>
+        </div>
+      )}
+      <div className="flex-1 overflow-auto p-1">
+        {files.length === 0 ? (
+          <div className="p-3 text-xs text-[var(--text-secondary)] opacity-60">
+            Файлов пока нет
+          </div>
+        ) : (
+          Object.values(tree).map((node) => (
+            <TreeNodeItem
+              key={node.path}
+              node={node}
+              depth={0}
+              selectedId={selectedId}
+              onSelect={onSelect}
+              onDelete={onDelete}
+            />
+          ))
+        )}
+      </div>
     </div>
   );
 }

@@ -151,6 +151,15 @@ export const studioApi = {
   restartPreview: (id: string) =>
     request<{ status: string }>(`/studio/projects/${id}/preview/restart/`, { method: 'POST' }),
 
+  createFile: (id: string, path: string, content = '') =>
+    request<StudioFileDetail>(`/studio/projects/${id}/files/`, {
+      method: 'POST',
+      body: JSON.stringify({ path, content, language: '' }),
+    }),
+
+  deleteFile: (id: string, fileId: number) =>
+    request<void>(`/studio/projects/${id}/files/${fileId}/`, { method: 'DELETE' }),
+
   pipeline: (id: string) =>
     request<PipelineState>(`/studio/projects/${id}/pipeline/`),
 

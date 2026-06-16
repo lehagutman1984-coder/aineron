@@ -8,9 +8,11 @@ from ..models import StudioProject, StudioFile
 from ..serializers import StudioFileSerializer, StudioFileDetailSerializer, StudioVersionSerializer
 
 
-class FileTreeView(generics.ListAPIView):
+class FileTreeView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
-    serializer_class = StudioFileSerializer
+
+    def get_serializer_class(self):
+        return StudioFileDetailSerializer if self.request.method == 'POST' else StudioFileSerializer
 
     def get_queryset(self):
         return StudioFile.objects.filter(
@@ -18,8 +20,14 @@ class FileTreeView(generics.ListAPIView):
             project__user=self.request.user,
         )
 
+    def perform_create(self, serializer):
+        project = StudioProject.objects.get(id=self.kwargs['id'], user=self.request.user)
+        instance = serializer.save(project=project, last_modified_by='user')
+        from ..tasks import sync_manual_edit
+        sync_manual_edit.delay(str(project.id), instance.pk)
 
-class FileDetailView(generics.RetrieveUpdateAPIView):
+
+class FileDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = StudioFileDetailSerializer
     lookup_field = 'pk'
@@ -35,6 +43,15 @@ class FileDetailView(generics.RetrieveUpdateAPIView):
         instance = serializer.save(last_modified_by='user')
         from ..tasks import sync_manual_edit
         sync_manual_edit.delay(str(self.kwargs['id']), instance.pk)
+
+    def perform_destroy(self, instance):
+        project_id = str(self.kwargs['id'])
+        path = instance.path
+        cid = instance.project.sandbox_container_id
+        instance.delete()
+        if cid:
+            from ..tasks import delete_sandbox_file
+            delete_sandbox_file.delay(project_id, path)
 
 
 class FileDiffView(APIView):

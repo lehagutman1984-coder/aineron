@@ -145,6 +145,21 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
     }
   };
 
+  const handleCreateFile = async () => {
+    const path = window.prompt('Путь нового файла (например: src/components/Button.tsx)');
+    if (!path?.trim()) return;
+    const newFile = await studioApi.createFile(project.id, path.trim());
+    onRefresh();
+    handleFileSelect(newFile.id);
+  };
+
+  const handleDeleteFile = async (fileId: number) => {
+    if (!window.confirm('Удалить файл?')) return;
+    await studioApi.deleteFile(project.id, fileId);
+    if (selectedFileId === fileId) { setSelectedFileId(null); setFileDetail(null); }
+    onRefresh();
+  };
+
   const handleSaveFile = async (newContent: string) => {
     if (!selectedFileId) return;
     const updated = await studioApi.updateFile(project.id, selectedFileId, newContent);
@@ -316,14 +331,13 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
           {/* Desktop: resizable 3 columns */}
           <PanelGroup orientation="horizontal" className="hidden md:flex flex-1 overflow-hidden">
             <Panel defaultSize={18} minSize={12} className="overflow-hidden flex flex-col border-r border-[var(--border)]">
-              <div className="px-3 py-2 text-xs font-medium text-[var(--text-secondary)] border-b border-[var(--border)]">
-                Файлы
-              </div>
-              <div className="flex-1 overflow-auto">
+              <div className="flex-1 overflow-hidden">
                 <FileTree
                   files={files}
                   selectedId={selectedFileId}
                   onSelect={handleFileSelect}
+                  onCreate={handleCreateFile}
+                  onDelete={handleDeleteFile}
                 />
               </div>
               <div className="border-t border-[var(--border)] overflow-auto max-h-48">
@@ -373,6 +387,8 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
                 files={files}
                 selectedId={selectedFileId}
                 onSelect={handleFileSelect}
+                onCreate={handleCreateFile}
+                onDelete={handleDeleteFile}
               />
             )}
             {mobileTab === 'code' && (
