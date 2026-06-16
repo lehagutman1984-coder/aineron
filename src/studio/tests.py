@@ -228,3 +228,43 @@ class SandboxFailureTest(APITestCase):
         run_pipeline(str(project.id))
 
         self.assertEqual(project.pipeline.status, 'failed')
+
+
+class PauseResumeTest(APITestCase):
+    """Commit 5 — pause sets flag and stops further task dispatch."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(email='pause@t.ru', password='x')
+        self.client.force_authenticate(self.user)
+
+    def test_pause_sets_pause_requested_and_project_paused(self):
+        project = StudioProject.objects.create(user=self.user, name='P', status='coding')
+        state = StudioPipelineState.objects.create(project=project, status='running', current_task_id='abc-123')
+
+        with patch('studio.views.pipeline.current_app') as mock_app:
+            r = self.client.post(f'/api/v1/studio/projects/{project.id}/pipeline/pause/')
+
+        self.assertEqual(r.status_code, 200)
+        state.refresh_from_db()
+        project.refresh_from_db()
+        self.assertTrue(state.pause_requested)
+        self.assertEqual(state.status, 'paused_manual')
+        self.assertEqual(project.status, 'paused')
+
+    @patch('studio.tasks.coder_iteration')
+    @patch('studio.tasks.publish_event')
+    @patch('studio.tasks.StudioProject')
+    def test_start_step_respects_pause_requested(self, MockQS, mock_pub, mock_coder):
+        """start_step must NOT dispatch coder_iteration when pause_requested=True."""
+        from studio.tasks import start_step
+        project = MagicMock()
+        project.id = 'test-uuid'
+        state = MagicMock()
+        state.pause_requested = True
+        state.status = 'paused_manual'
+        project.pipeline = state
+        MockQS.objects.get.return_value = project
+
+        start_step(str(project.id), 0)
+
+        mock_coder.delay.assert_not_called()

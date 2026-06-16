@@ -52,11 +52,17 @@ class PipelinePauseView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, id):
+        from celery import current_app
         project = StudioProject.objects.get(id=id, user=request.user)
         state = project.pipeline
         state.status = 'paused_manual'
+        state.pause_requested = True
         state.pause_reason = request.data.get('reason', 'Пауза пользователем')
-        state.save(update_fields=['status', 'pause_reason'])
+        state.save(update_fields=['status', 'pause_requested', 'pause_reason'])
+        if state.current_task_id:
+            current_app.control.revoke(state.current_task_id, terminate=True, signal='SIGTERM')
+        project.status = 'paused'
+        project.save(update_fields=['status'])
         return Response({'status': 'paused_manual'})
 
 
@@ -69,6 +75,7 @@ class PipelineResumeView(APIView):
         state = project.pipeline
         action = request.data.get('action', 'continue')
         from ..tasks import coder_iteration, next_step
+        state.pause_requested = False
         state.iteration_count = 0  # mandatory reset to avoid instant re-pause
         if action == 'with_hint':
             state.resume_hint = request.data.get('hint', '')

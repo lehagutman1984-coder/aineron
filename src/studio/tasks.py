@@ -191,6 +191,9 @@ def run_pipeline(project_id):
 def start_step(project_id, step_index):
     project = StudioProject.objects.get(id=project_id)
     state = project.pipeline
+    if state.pause_requested or state.status in ('paused_manual', 'paused_on_loop'):
+        publish_event(project_id, {'agent': 'system', 'level': 'warning', 'text': 'Пайплайн на паузе — шаг не запущен'})
+        return
     state.step_index = step_index
     state.iteration_count = 0
     state.save(update_fields=['step_index', 'iteration_count'])
@@ -200,6 +203,12 @@ def start_step(project_id, step_index):
 @shared_task(bind=True, max_retries=3, queue=QUEUE)
 def coder_iteration(self, project_id, step_index):
     project = StudioProject.objects.get(id=project_id)
+    state = project.pipeline
+    if state.pause_requested or state.status in ('paused_manual', 'paused_on_loop'):
+        publish_event(project_id, {'agent': 'system', 'level': 'warning', 'text': 'Пайплайн на паузе — шаг не запущен'})
+        return
+    state.current_task_id = self.request.id or ''
+    state.save(update_fields=['current_task_id'])
     from .agents.coder import CoderAgent
     try:
         step_text = _get_step_text(project, step_index)
@@ -281,6 +290,9 @@ def merge_reports(results, project_id, step_index):
     except InsufficientStars as e:
         _pause_no_funds(project, e.needed)
         return
+    if state.pause_requested:
+        publish_event(project_id, {'agent': 'system', 'level': 'warning', 'text': 'Пайплайн на паузе — шаг завершён, продолжение остановлено'})
+        return
     if review.get('passed') and test.get('passed'):
         publish_event(project_id, {
             'agent': 'system', 'level': 'success',
@@ -360,6 +372,10 @@ def commit_to_gitea(project_id, step_index):
 @shared_task(queue=QUEUE)
 def next_step(project_id, step_index):
     project = StudioProject.objects.get(id=project_id)
+    state = project.pipeline
+    if state.pause_requested:
+        publish_event(project_id, {'agent': 'system', 'level': 'warning', 'text': 'Пайплайн на паузе — следующий шаг не запущен'})
+        return
     total = project.interview_data.get('planned_steps', 5)
     nxt = step_index + 1
     if nxt >= total:

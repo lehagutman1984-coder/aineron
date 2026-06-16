@@ -86,6 +86,8 @@ class StudioPipelineState(models.Model):
     last_error = models.TextField(blank=True)
     pause_reason = models.TextField(blank=True)
     resume_hint = models.TextField(blank=True)
+    pause_requested = models.BooleanField(default=False)
+    current_task_id = models.CharField(max_length=64, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
