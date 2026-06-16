@@ -230,6 +230,30 @@ class SandboxFailureTest(APITestCase):
         self.assertEqual(project.pipeline.status, 'failed')
 
 
+class FileDiffViewTest(APITestCase):
+    """Commit 13 — FileDiffView returns old content from Gitea and new from DB."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(email='diff@t.ru', password='x')
+        self.client.force_authenticate(self.user)
+
+    @patch('studio.gitea_client.get_file_content', return_value='old content')
+    def test_diff_returns_old_and_new(self, mock_gc):
+        from studio.models import StudioFile
+        project = StudioProject.objects.create(
+            user=self.user, name='D',
+            repo_url='https://gitea.example.com/user/repo',
+        )
+        self.user.gitea_username = 'user'
+        self.user.save()
+        StudioPipelineState.objects.create(project=project)
+        f = StudioFile.objects.create(project=project, path='src/app.ts', content='new content')
+        r = self.client.get(f'/api/v1/studio/projects/{project.id}/files/{f.id}/diff/?ref=abc123')
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.data['old'], 'old content')
+        self.assertEqual(r.data['new'], 'new content')
+
+
 class EstimateViewTest(APITestCase):
     """Commit 8 — EstimateView returns real star estimate, not hardcoded value."""
 

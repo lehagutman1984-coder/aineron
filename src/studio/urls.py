@@ -4,7 +4,7 @@ from .views.pipeline import (
     EstimateView, PipelineStateView, PipelineRunView, PipelineEventsView,
     PipelinePauseView, PipelineResumeView,
 )
-from .views.files import FileTreeView, FileDetailView, CommitHistoryView, RollbackView
+from .views.files import FileTreeView, FileDetailView, FileDiffView, CommitHistoryView, RollbackView
 
 app_name = 'studio'
 
@@ -20,6 +20,7 @@ urlpatterns = [
     path('projects/<uuid:id>/resume/', PipelineResumeView.as_view(), name='pipeline_resume'),
     path('projects/<uuid:id>/files/', FileTreeView.as_view(), name='file_tree'),
     path('projects/<uuid:id>/files/<int:file_id>/', FileDetailView.as_view(), name='file_detail'),
+    path('projects/<uuid:id>/files/<int:file_id>/diff/', FileDiffView.as_view(), name='file_diff'),
     path('projects/<uuid:id>/commits/', CommitHistoryView.as_view(), name='commit_history'),
     path('projects/<uuid:id>/rollback/<int:version_id>/', RollbackView.as_view(), name='rollback'),
     path('clone/', CloneView.as_view(), name='clone'),

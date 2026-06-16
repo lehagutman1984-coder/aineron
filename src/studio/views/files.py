@@ -32,6 +32,22 @@ class FileDetailView(generics.RetrieveUpdateAPIView):
         serializer.save(last_modified_by='user')
 
 
+class FileDiffView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, id, file_id):
+        from .. import gitea_client
+        f = StudioFile.objects.get(pk=file_id, project_id=id, project__user=request.user)
+        project = f.project
+        ref = request.query_params.get('ref')
+        old = ''
+        if ref and project.repo_url and project.user.gitea_username:
+            owner = project.user.gitea_username
+            repo = project.repo_url.rstrip('/').split('/')[-1]
+            old = gitea_client.get_file_content(owner, repo, f.path, ref=ref) or ''
+        return Response({'path': f.path, 'old': old, 'new': f.content})
+
+
 class CommitHistoryView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
