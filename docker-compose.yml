@@ -60,6 +60,9 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - default
+      - aineron_sandbox_net
 
   celery_worker:
     build: .
