@@ -1,18 +1,26 @@
+from django.db.models import Q
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from ..models import StudioProject, StudioPipelineState, StudioTemplate
+from ..models import StudioProject, StudioPipelineState, StudioTemplate, StudioCollaborator
 from ..serializers import (
     StudioProjectSerializer, StudioProjectCreateSerializer,
     StudioTemplateSerializer,
 )
 
 
+def accessible_projects(user):
+    """Projects owned by user or where user is a collaborator."""
+    return StudioProject.objects.filter(
+        Q(user=user) | Q(collaborators__user=user)
+    ).distinct()
+
+
 class StudioProjectListCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return StudioProject.objects.filter(user=self.request.user)
+        return accessible_projects(self.request.user)
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -30,7 +38,7 @@ class StudioProjectDetailView(generics.RetrieveUpdateDestroyAPIView):
     lookup_field = 'id'
 
     def get_queryset(self):
-        return StudioProject.objects.filter(user=self.request.user)
+        return accessible_projects(self.request.user)
 
 
 class InterviewView(APIView):
@@ -98,6 +106,31 @@ class PublishTemplateView(APIView):
             is_public=True,
         )
         return Response({'id': template.id, 'slug': template.slug}, status=201)
+
+
+class CollaboratorView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, id):
+        project = StudioProject.objects.get(id=id, user=request.user)
+        action = request.data.get('action', 'add')
+        email = request.data.get('email', '').strip()
+        if not email:
+            return Response({'error': 'Email обязателен'}, status=400)
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        try:
+            target = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({'error': 'Пользователь не найден'}, status=404)
+        if action == 'remove':
+            StudioCollaborator.objects.filter(project=project, user=target).delete()
+            return Response({'status': 'removed'})
+        role = request.data.get('role', 'viewer')
+        collab, _ = StudioCollaborator.objects.get_or_create(project=project, user=target)
+        collab.role = role
+        collab.save(update_fields=['role'])
+        return Response({'status': 'added', 'role': role}, status=201)
 
 
 class CloneView(APIView):

@@ -1,5 +1,5 @@
 from django.urls import path, re_path
-from .views.projects import StudioProjectListCreateView, StudioProjectDetailView, InterviewView, CloneView, TemplateListView, PublishTemplateView
+from .views.projects import StudioProjectListCreateView, StudioProjectDetailView, InterviewView, CloneView, TemplateListView, PublishTemplateView, CollaboratorView
 from .views.pipeline import (
     EstimateView, PipelineStateView, PipelineRunView, PipelineEventsView,
     PipelinePauseView, PipelineResumeView, PreviewProxyView, ContextChatView,
@@ -28,6 +28,7 @@ urlpatterns = [
     path('projects/<uuid:id>/commits/', CommitHistoryView.as_view(), name='commit_history'),
     path('projects/<uuid:id>/rollback/<int:version_id>/', RollbackView.as_view(), name='rollback'),
     path('projects/<uuid:id>/publish-template/', PublishTemplateView.as_view(), name='publish_template'),
+    path('projects/<uuid:id>/collaborators/', CollaboratorView.as_view(), name='collaborators'),
     path('clone/', CloneView.as_view(), name='clone'),
     path('templates/', TemplateListView.as_view(), name='template_list'),
     # Preview proxy: proxies HTTP to sandbox container; ?path= is the sub-path

@@ -274,6 +274,45 @@ class SemiManualModeTest(APITestCase):
         mock_next.delay.assert_called_once_with(str(project.id), 2)
 
 
+class CollaboratorTest(APITestCase):
+    """Commit 34 — StudioCollaborator: viewer can read, not write; accessible_projects includes collab projects."""
+
+    def setUp(self):
+        self.owner = User.objects.create_user(email='owner@t.ru', password='x')
+        self.viewer = User.objects.create_user(email='viewer@t.ru', password='x')
+        self.editor = User.objects.create_user(email='editor@t.ru', password='x')
+        self.project = StudioProject.objects.create(user=self.owner, name='Collab', status='coding', mode='auto')
+        StudioPipelineState.objects.create(project=self.project, status='idle')
+
+    def test_collaborator_sees_project_in_list(self):
+        from studio.models import StudioCollaborator
+        StudioCollaborator.objects.create(project=self.project, user=self.viewer, role='viewer')
+        self.client.force_authenticate(self.viewer)
+        r = self.client.get('/api/v1/studio/projects/')
+        ids = [p['id'] for p in r.data]
+        self.assertIn(str(self.project.id), ids)
+
+    def test_add_collaborator_via_view(self):
+        self.client.force_authenticate(self.owner)
+        r = self.client.post(
+            f'/api/v1/studio/projects/{self.project.id}/collaborators/',
+            {'action': 'add', 'email': 'viewer@t.ru', 'role': 'viewer'},
+            format='json',
+        )
+        self.assertEqual(r.status_code, 201)
+        from studio.models import StudioCollaborator
+        self.assertTrue(StudioCollaborator.objects.filter(project=self.project, user=self.viewer).exists())
+
+    def test_non_owner_cannot_add_collaborator(self):
+        self.client.force_authenticate(self.viewer)
+        r = self.client.post(
+            f'/api/v1/studio/projects/{self.project.id}/collaborators/',
+            {'action': 'add', 'email': 'editor@t.ru'},
+            format='json',
+        )
+        self.assertEqual(r.status_code, 404)
+
+
 class TemplateMarketplaceTest(APITestCase):
     """Commit 35 — publish project as template, create from template slug."""
 

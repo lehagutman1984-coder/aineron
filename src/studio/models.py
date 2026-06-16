@@ -112,6 +112,21 @@ class StudioVersion(models.Model):
         return f'v{self.step_index} ({self.git_sha[:7] if self.git_sha else "—"})'
 
 
+class StudioCollaborator(models.Model):
+    ROLE_CHOICES = [('viewer', 'Просмотр'), ('editor', 'Редактирование')]
+    project = models.ForeignKey(StudioProject, on_delete=models.CASCADE, related_name='collaborators')
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='studio_collabs'
+    )
+    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='viewer')
+
+    class Meta:
+        unique_together = [('project', 'user')]
+
+    def __str__(self):
+        return f'{self.user_id}@{self.project_id} ({self.role})'
+
+
 class StudioTemplate(models.Model):
     STACK_CHOICES = [
         ('nextjs', 'Next.js'), ('react', 'React'), ('vue', 'Vue'), ('html', 'HTML'),
