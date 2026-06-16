@@ -647,6 +647,41 @@ def deploy_to_vercel(self, project_id):
 
 
 @shared_task(queue=QUEUE)
+def restart_preview(project_id):
+    """Re-spawn sandbox for a completed project so the user can preview it again."""
+    project = StudioProject.objects.get(id=project_id)
+    if project.sandbox_container_id:
+        try:
+            sandbox.kill_sandbox(project.sandbox_container_id)
+        except Exception:
+            pass
+    try:
+        cid = sandbox.spawn_sandbox(project_id)
+        files = {f.path: f.content for f in project.files.all()} or {'package.json': '{"name":"app","private":true}'}
+        sandbox.write_files(cid, files)
+        sandbox.install_deps(cid)
+        sandbox.isolate(cid)
+        sandbox.start_dev_server(cid)
+        project.sandbox_container_id = cid
+        project.preview_port = 3000
+        project.save(update_fields=['sandbox_container_id', 'preview_port'])
+        publish_event(project_id, {'agent': 'system', 'level': 'info', 'text': 'Превью перезапущено'})
+    except Exception as exc:
+        publish_event(project_id, {'agent': 'system', 'level': 'error', 'text': f'Не удалось перезапустить превью: {exc}'})
+
+
+@shared_task(queue=QUEUE)
+def delete_sandbox_file(project_id, path):
+    """Remove a deleted file from the running sandbox."""
+    project = StudioProject.objects.get(id=project_id)
+    if project.sandbox_container_id:
+        try:
+            sandbox.exec_command(project.sandbox_container_id, f'rm -f {path}')
+        except Exception:
+            pass
+
+
+@shared_task(queue=QUEUE)
 def reap_stale_sandboxes():
     """Beat: removes studio containers older than N hours."""
     import datetime

@@ -3,7 +3,7 @@ from .views.projects import StudioProjectListCreateView, StudioProjectDetailView
 from .views.pipeline import (
     EstimateView, PipelineStateView, PipelineRunView, PipelineEventsView,
     PipelinePauseView, PipelineResumeView, PreviewProxyView, ContextChatView,
-    ApproveStepView, DeployView, SandboxStatusView,
+    ApproveStepView, DeployView, SandboxStatusView, PreviewRestartView,
 )
 from .views.files import FileTreeView, FileDetailView, FileDiffView, CommitHistoryView, RollbackView, ExportView, SearchFilesView
 
@@ -35,6 +35,7 @@ urlpatterns = [
     path('projects/<uuid:id>/collaborators/', CollaboratorView.as_view(), name='collaborators'),
     path('clone/', CloneView.as_view(), name='clone'),
     path('templates/', TemplateListView.as_view(), name='template_list'),
+    path('projects/<uuid:id>/preview/restart/', PreviewRestartView.as_view(), name='preview_restart'),
     # Preview proxy: proxies HTTP to sandbox container; ?path= is the sub-path
     re_path(r'^projects/(?P<id>[0-9a-f-]{36})/preview/(?P<path>.*)$', PreviewProxyView.as_view(), name='preview_proxy'),
 ]

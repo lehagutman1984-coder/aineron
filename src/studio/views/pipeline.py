@@ -165,6 +165,16 @@ class DeployView(APIView):
         return Response({'status': 'deploying'}, status=202)
 
 
+class PreviewRestartView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, id):
+        project = StudioProject.objects.get(id=id, user=request.user)
+        from ..tasks import restart_preview
+        restart_preview.delay(str(project.id))
+        return Response({'status': 'restarting'}, status=202)
+
+
 class SandboxStatusView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
