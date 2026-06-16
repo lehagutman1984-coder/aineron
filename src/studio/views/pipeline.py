@@ -119,6 +119,22 @@ class PipelineResumeView(APIView):
         return Response({'status': 'running', 'low_balance': low_balance})
 
 
+class ApproveStepView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, id):
+        project = StudioProject.objects.get(id=id, user=request.user)
+        state = project.pipeline
+        state.status = 'running'
+        state.pause_requested = False
+        state.save(update_fields=['status', 'pause_requested'])
+        project.status = 'coding'
+        project.save(update_fields=['status'])
+        from ..tasks import next_step
+        next_step.delay(str(project.id), state.step_index)
+        return Response({'status': 'running'})
+
+
 class ContextChatView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 

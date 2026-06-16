@@ -230,6 +230,50 @@ class SandboxFailureTest(APITestCase):
         self.assertEqual(project.pipeline.status, 'failed')
 
 
+class SemiManualModeTest(APITestCase):
+    """Commit 20 — semi/manual mode pauses after each step; ApproveStepView resumes."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(email='semi@t.ru', password='x')
+        self.client.force_authenticate(self.user)
+
+    @patch('studio.tasks.next_step')
+    @patch('studio.tasks.gitea_client')
+    @patch('studio.tasks.StudioVersion')
+    @patch('studio.tasks.publish_event')
+    @patch('studio.tasks.StudioProject')
+    def test_semi_mode_pauses_after_step(self, MockQS, mock_pub, MockVersion, mock_gitea, mock_next):
+        from studio.tasks import commit_to_gitea
+        project = MagicMock()
+        project.id = 'proj-id'
+        project.mode = 'semi'
+        project.repo_url = ''
+        project.user.gitea_username = ''
+        project.files.all.return_value = []
+        state = MagicMock()
+        project.pipeline = state
+        MockQS.objects.get.return_value = project
+
+        commit_to_gitea('proj-id', 0)
+
+        self.assertEqual(project.status, 'paused')
+        self.assertEqual(state.status, 'paused_manual')
+        mock_next.delay.assert_not_called()
+
+    def test_approve_step_dispatches_next_step(self):
+        project = StudioProject.objects.create(user=self.user, name='SM', status='paused', mode='semi')
+        state = StudioPipelineState.objects.create(project=project, status='paused_manual', step_index=2)
+
+        with patch('studio.tasks.next_step') as mock_next:
+            r = self.client.post(f'/api/v1/studio/projects/{project.id}/approve/')
+
+        self.assertEqual(r.status_code, 200)
+        state.refresh_from_db()
+        self.assertFalse(state.pause_requested)
+        self.assertEqual(state.status, 'running')
+        mock_next.delay.assert_called_once_with(str(project.id), 2)
+
+
 class SpaCrawlingTest(APITestCase):
     """Commit 19 — crawl_and_analyze falls back to crawl_spa_task when static text is short."""
 

@@ -376,6 +376,18 @@ def commit_to_gitea(project_id, step_index):
         git_sha=git_sha,
         stars_spent_at_version=project.stars_spent,
     )
+    if project.mode in ('semi', 'manual'):
+        state = project.pipeline
+        state.status = 'paused_manual'
+        state.pause_reason = f'Шаг {step_index} готов — подтвердите продолжение'
+        state.save(update_fields=['status', 'pause_reason'])
+        project.status = 'paused'
+        project.save(update_fields=['status'])
+        publish_event(project_id, {
+            'agent': 'system', 'level': 'info',
+            'text': state.pause_reason, 'type': 'awaiting_approval',
+        })
+        return
     next_step.delay(project_id, step_index)
 
 
