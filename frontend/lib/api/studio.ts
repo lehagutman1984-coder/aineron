@@ -146,6 +146,12 @@ export const studioApi = {
   estimate: (id: string) =>
     request<StudioEstimate>(`/studio/projects/${id}/estimate/`),
 
+  contextChat: (id: string, message: string) =>
+    request<{ answer: string }>(`/studio/projects/${id}/chat/`, {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    }),
+
   templates: () =>
     request<StudioTemplate[]>('/studio/templates/'),
 };
