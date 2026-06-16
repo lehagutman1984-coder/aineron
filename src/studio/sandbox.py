@@ -91,6 +91,8 @@ def isolate(container_id: str):
 
 def start_dev_server(container_id: str) -> int:
     import json as _json
+    client = get_docker()
+
     # Check if package.json has a 'dev' script
     _, pkg_raw = exec_command(container_id, 'cat /workspace/package.json 2>/dev/null || echo {}')
     try:
@@ -100,12 +102,17 @@ def start_dev_server(container_id: str) -> int:
         has_dev = False
 
     if has_dev:
-        cmd = 'nohup pnpm dev --port 3000 --host 0.0.0.0 > /tmp/dev.log 2>&1 &'
+        cmd = ['sh', '-c', 'pnpm dev --port 3000 --host 0.0.0.0 > /tmp/dev.log 2>&1']
     else:
         # Static HTML/CSS project — serve with built-in Python HTTP server
-        cmd = 'nohup python3 -m http.server 3000 --bind 0.0.0.0 > /tmp/dev.log 2>&1 &'
-    exec_command(container_id, cmd)
-    logger.info('sandbox %s: dev server started (has_dev=%s)', container_id, has_dev)
+        cmd = ['sh', '-c', 'python3 -m http.server 3000 --bind 0.0.0.0 > /tmp/dev.log 2>&1']
+
+    # detach=True: process survives after this exec session closes
+    # (nohup + & gets killed when exec session ends — known Docker issue)
+    exec_id = client.api.exec_create(container_id, cmd, workdir='/workspace')
+    client.api.exec_start(exec_id, detach=True)
+
+    logger.info('sandbox %s: dev server started detached (has_dev=%s)', container_id, has_dev)
     return 3000
 
 
