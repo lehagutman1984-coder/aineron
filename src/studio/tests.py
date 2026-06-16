@@ -230,6 +230,45 @@ class SandboxFailureTest(APITestCase):
         self.assertEqual(project.pipeline.status, 'failed')
 
 
+class ContextChatViewTest(APITestCase):
+    """Commit 17 — ContextChatView answers via LLM, charges 1 star, saves history."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(email='chat@t.ru', password='x', pages_count=10)
+        self.client.force_authenticate(self.user)
+
+    @patch('studio.agents.assistant.AssistantAgent.answer', return_value='Вот ответ ассистента')
+    @patch('studio.billing.charge')
+    def test_chat_returns_answer_and_charges(self, mock_charge, mock_answer):
+        project = StudioProject.objects.create(user=self.user, name='C')
+        StudioPipelineState.objects.create(project=project)
+        r = self.client.post(
+            f'/api/v1/studio/projects/{project.id}/chat/',
+            {'message': 'Что делать дальше?'},
+            format='json',
+        )
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.data['answer'], 'Вот ответ ассистента')
+        mock_charge.assert_called_once()
+        project.refresh_from_db()
+        history = project.interview_data.get('assistant_history', [])
+        self.assertEqual(len(history), 2)
+        self.assertEqual(history[0]['role'], 'user')
+        self.assertEqual(history[1]['role'], 'assistant')
+
+    def test_chat_no_stars_returns_402(self):
+        self.user.pages_count = 0
+        self.user.save()
+        project = StudioProject.objects.create(user=self.user, name='C2')
+        StudioPipelineState.objects.create(project=project)
+        r = self.client.post(
+            f'/api/v1/studio/projects/{project.id}/chat/',
+            {'message': 'test'},
+            format='json',
+        )
+        self.assertEqual(r.status_code, 402)
+
+
 class PreviewProxyViewTest(APITestCase):
     """Commit 15 — PreviewProxyView proxies content from sandbox container."""
 

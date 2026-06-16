@@ -119,6 +119,26 @@ class PipelineResumeView(APIView):
         return Response({'status': 'running', 'low_balance': low_balance})
 
 
+class ContextChatView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, id):
+        project = StudioProject.objects.get(id=id, user=request.user)
+        from ..agents.assistant import AssistantAgent
+        from ..billing import can_afford, charge
+        cost = 1
+        if not can_afford(request.user, cost):
+            return Response({'error': 'Недостаточно звёзд'}, status=402)
+        msg = request.data.get('message', '')
+        history = project.interview_data.get('assistant_history', [])
+        answer = AssistantAgent(project).answer(msg, history)
+        charge(request.user, cost, project)
+        history += [{'role': 'user', 'text': msg}, {'role': 'assistant', 'text': answer}]
+        project.interview_data['assistant_history'] = history[-20:]
+        project.save(update_fields=['interview_data'])
+        return Response({'answer': answer})
+
+
 class PreviewProxyView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
