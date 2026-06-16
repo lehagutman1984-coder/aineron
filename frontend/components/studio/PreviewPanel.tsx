@@ -44,6 +44,23 @@ export function PreviewPanel({ projectId, hasSandbox, status, githubUrl, onRefre
     return () => window.removeEventListener('message', onMsg);
   }, [projectId]);
 
+  // Reload iframe when a coding step completes
+  useEffect(() => {
+    const src = new EventSource(
+      `${process.env.NEXT_PUBLIC_API_URL}/studio/projects/${projectId}/events/`,
+      { withCredentials: true },
+    );
+    src.onmessage = (e) => {
+      try {
+        const d = JSON.parse(e.data);
+        if (d.type === 'step_completed' || d.type === 'coder_done') {
+          setKey((k) => k + 1);
+        }
+      } catch { /* noop */ }
+    };
+    return () => src.close();
+  }, [projectId]);
+
   const handleGithubExport = async () => {
     const repoName = window.prompt('Имя репозитория GitHub', `aineron-${projectId.slice(0, 8)}`);
     if (!repoName?.trim()) return;

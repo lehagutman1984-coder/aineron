@@ -157,8 +157,10 @@ def is_http_alive(container_id: str) -> bool:
     return code.startswith('2') or code.startswith('3')
 
 
-def run_build_check(container_id: str) -> tuple:
+def run_build_check(container_id: str, is_nextjs: bool = False) -> tuple:
     """Run typecheck/build in container. Returns (exit_code, output)."""
+    if is_nextjs:
+        return exec_command(container_id, 'pnpm build 2>&1 | tail -n 150')
     return exec_command(
         container_id,
         'pnpm -s exec tsc --noEmit 2>&1 | tail -n 100 || pnpm -s build 2>&1 | tail -n 120',

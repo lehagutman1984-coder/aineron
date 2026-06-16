@@ -685,6 +685,17 @@ def deploy_to_vercel(self, project_id):
     if not settings.STUDIO_VERCEL_TOKEN:
         publish_event(project_id, {'agent': 'system', 'level': 'error', 'text': 'Vercel не настроен'})
         return
+    # Build-gate: verify the project builds before deploying
+    if project.sandbox_container_id:
+        is_next = project.target_stack == 'nextjs'
+        publish_event(project_id, {'agent': 'system', 'level': 'info', 'type': 'progress', 'text': 'Проверяю сборку перед деплоем...'})
+        exit_code, output = sandbox.run_build_check(project.sandbox_container_id, is_nextjs=is_next)
+        if exit_code != 0:
+            publish_event(project_id, {
+                'agent': 'system', 'level': 'error', 'type': 'deploy_failed',
+                'text': f'Сборка не прошла перед деплоем. Исправьте ошибки.\n{output[-500:]}',
+            })
+            return
     files = [{'file': f.path, 'data': f.content} for f in project.files.all()]
     try:
         r = _rq.post(
