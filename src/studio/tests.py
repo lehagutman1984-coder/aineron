@@ -307,6 +307,65 @@ class SmartCoderTest(APITestCase):
         self.assertEqual(coder_tier_for_model(MODEL_FAST), 'fast')
 
 
+class StarReservationTest(APITestCase):
+    """Commit 25 — reserve/charge_from_reserve/release_reserve billing helpers."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(email='res@t.ru', password='x', pages_count=50)
+        self.project = StudioProject.objects.create(user=self.user, name='R', status='ready', mode='auto')
+
+    def test_reserve_reduces_balance_and_increases_reserved(self):
+        from studio.billing import reserve
+        result = reserve(self.user, 20, self.project)
+        self.assertTrue(result)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.pages_count, 30)
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.stars_reserved, 20)
+
+    def test_reserve_fails_on_insufficient_balance(self):
+        from studio.billing import reserve
+        result = reserve(self.user, 100, self.project)
+        self.assertFalse(result)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.pages_count, 50)
+
+    def test_charge_from_reserve_uses_reserve_first(self):
+        from studio.billing import reserve, charge_from_reserve
+        reserve(self.user, 20, self.project)
+        result = charge_from_reserve(10, self.project)
+        self.assertTrue(result)
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.stars_reserved, 10)
+        self.assertEqual(self.project.stars_spent, 10)
+
+    def test_release_reserve_returns_unused_to_balance(self):
+        from studio.billing import reserve, release_reserve
+        reserve(self.user, 20, self.project)
+        self.user.refresh_from_db()
+        balance_after_reserve = self.user.pages_count
+        release_reserve(self.project)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.pages_count, balance_after_reserve + 20)
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.stars_reserved, 0)
+
+    def test_next_step_calls_release_reserve_on_completion(self):
+        from studio.tasks import next_step
+        from studio.billing import reserve
+        reserve(self.user, 20, self.project)
+        self.project.interview_data = {'planned_steps': 1}
+        self.project.save(update_fields=['interview_data'])
+        state = StudioPipelineState.objects.create(project=self.project, status='running', step_index=0)
+
+        with patch('studio.tasks.publish_event'):
+            next_step(str(self.project.id), 0)  # nxt=1 >= total=1 → completed
+
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.stars_reserved, 0)
+        self.assertEqual(self.project.status, 'completed')
+
+
 class SandboxLimitTest(APITestCase):
     """Commit 24 — run_pipeline aborts when per-user sandbox limit is reached."""
 

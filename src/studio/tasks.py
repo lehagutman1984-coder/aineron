@@ -4,7 +4,10 @@ from django.conf import settings
 from .models import StudioProject, StudioFile, StudioVersion
 from .events import publish_event
 from . import sandbox
-from .billing import STAR_RATE, AGENT_BUDGET, can_afford, charge, refund, coder_tier_for_model
+from .billing import (
+    STAR_RATE, AGENT_BUDGET, can_afford, charge, refund, coder_tier_for_model,
+    reserve, charge_from_reserve, release_reserve, estimate_stars,
+)
 
 QUEUE = 'studio_queue'
 
@@ -28,11 +31,8 @@ def _billing_charge(project, agent_name: str, step_index: int, tier_override: st
         cost = max(1, int((budget / 1000.0) * STAR_RATE[tier_override]))
     else:
         cost = _agent_cost(agent_name)
-    user = project.user
-    user.refresh_from_db(fields=['pages_count'])
-    if not can_afford(user, cost):
+    if not charge_from_reserve(cost, project):
         raise InsufficientStars(cost)
-    charge(user, cost, project)
     publish_event(str(project.id), {
         'agent': agent_name, 'level': 'billing',
         'text': f'-{cost} зв. (шаг {step_index})',
@@ -44,6 +44,7 @@ def _billing_charge(project, agent_name: str, step_index: int, tier_override: st
 
 
 def _pause_no_funds(project, needed):
+    release_reserve(project)
     state = project.pipeline
     state.status = 'paused_on_loop'
     state.pause_reason = f'Недостаточно звёзд для продолжения (нужно ещё ~{needed})'
@@ -153,6 +154,14 @@ def run_pipeline(project_id):
         publish_event(project_id, {
             'agent': 'system', 'level': 'error',
             'text': 'Недостаточно звёзд для запуска кодинга',
+        })
+        return
+    planned = project.interview_data.get('planned_steps', 5)
+    est = estimate_stars(project, planned_steps=planned)
+    if not reserve(project.user, est, project):
+        publish_event(project_id, {
+            'agent': 'system', 'level': 'error',
+            'text': f'Недостаточно звёзд для резервирования (~{est}). Пополните баланс.',
         })
         return
     project.status = 'coding'
@@ -418,6 +427,7 @@ def next_step(project_id, step_index):
     total = project.interview_data.get('planned_steps', 5)
     nxt = step_index + 1
     if nxt >= total:
+        release_reserve(project)
         project.status = 'completed'
         project.save(update_fields=['status'])
         project.pipeline.status = 'completed'

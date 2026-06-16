@@ -52,3 +52,40 @@ def refund(user, amount: int, project: StudioProject):
     user.add_pages(amount)
     project.stars_spent = max(0, project.stars_spent - amount)
     project.save(update_fields=['stars_spent'])
+
+
+def reserve(user, amount: int, project: StudioProject) -> bool:
+    """Lock estimated stars from user's balance into project.stars_reserved."""
+    user.refresh_from_db(fields=['pages_count'])
+    if user.pages_count < amount:
+        return False
+    user.spend_pages(amount)
+    project.stars_reserved += amount
+    project.save(update_fields=['stars_reserved'])
+    return True
+
+
+def charge_from_reserve(amount: int, project: StudioProject) -> bool:
+    """Spend from reserve first; top up from live balance if reserve is short."""
+    take = min(amount, project.stars_reserved)
+    project.stars_reserved -= take
+    project.stars_spent += take
+    rest = amount - take
+    if rest > 0:
+        user = project.user
+        user.refresh_from_db(fields=['pages_count'])
+        if user.pages_count < rest:
+            project.save(update_fields=['stars_reserved', 'stars_spent'])
+            return False
+        user.spend_pages(rest)
+        project.stars_spent += rest
+    project.save(update_fields=['stars_reserved', 'stars_spent'])
+    return True
+
+
+def release_reserve(project: StudioProject):
+    """Return unused reserved stars to the user's balance."""
+    if project.stars_reserved > 0:
+        project.user.add_pages(project.stars_reserved)
+        project.stars_reserved = 0
+        project.save(update_fields=['stars_reserved'])
