@@ -656,14 +656,42 @@ def restart_preview(project_id):
             sandbox.kill_sandbox(project.sandbox_container_id)
         except Exception:
             pass
+    import json as _json
+    # Check if project needs a dev server (has 'dev' script) or is static HTML
+    pkg_file = project.files.filter(path='package.json').first()
+    has_dev_script = False
+    if pkg_file:
+        try:
+            pkg = _json.loads(pkg_file.content)
+            has_dev_script = 'dev' in pkg.get('scripts', {})
+        except Exception:
+            pass
+
+    if not has_dev_script:
+        # Static project: serve files directly from DB — no Docker needed
+        if project.sandbox_container_id:
+            try:
+                sandbox.kill_sandbox(project.sandbox_container_id)
+            except Exception:
+                pass
+            project.sandbox_container_id = ''
+            project.save(update_fields=['sandbox_container_id'])
+        publish_event(project_id, {'agent': 'system', 'level': 'success', 'text': 'Превью готово (статический сайт — файлы из базы)'})
+        return
+
+    # npm project with dev server — spawn sandbox
+    if project.sandbox_container_id:
+        try:
+            sandbox.kill_sandbox(project.sandbox_container_id)
+        except Exception:
+            pass
     try:
         cid = sandbox.spawn_sandbox(project_id)
-        files = {f.path: f.content for f in project.files.all()} or {'index.html': '<h1>Empty project</h1>'}
+        files = {f.path: f.content for f in project.files.all()}
         sandbox.write_files(cid, files)
         sandbox.install_deps(cid)
         sandbox.isolate(cid)
         sandbox.start_dev_server(cid)
-        # Save early so SandboxStatusView can find the container
         project.sandbox_container_id = cid
         project.preview_port = 3000
         project.save(update_fields=['sandbox_container_id', 'preview_port'])

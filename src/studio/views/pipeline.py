@@ -194,8 +194,12 @@ class SandboxStatusView(APIView):
     def get(self, request, id):
         project = StudioProject.objects.get(id=id, user=request.user)
         cid = project.sandbox_container_id
+
+        # Static mode: no sandbox needed — files served directly from DB
         if not cid:
-            return Response({'alive': False, 'port': project.preview_port, 'uptime_s': 0})
+            has_files = project.files.exists()
+            return Response({'alive': has_files, 'port': 3000, 'uptime_s': 0, 'static': True})
+
         container_running = False
         uptime_s = 0
         try:
@@ -210,7 +214,6 @@ class SandboxStatusView(APIView):
                 uptime_s = int((datetime.datetime.utcnow() - start).total_seconds())
         except Exception:
             container_running = False
-        # alive = контейнер запущен И HTTP-сервер внутри отвечает
         alive = False
         if container_running:
             try:
@@ -218,7 +221,11 @@ class SandboxStatusView(APIView):
                 alive = _sb.is_http_alive(cid)
             except Exception:
                 alive = False
-        return Response({'alive': alive, 'port': project.preview_port, 'uptime_s': uptime_s})
+        # If sandbox check fails, fall back to static serving
+        if not alive:
+            has_files = project.files.exists()
+            return Response({'alive': has_files, 'port': 3000, 'uptime_s': uptime_s, 'static': True})
+        return Response({'alive': alive, 'port': project.preview_port, 'uptime_s': uptime_s, 'static': False})
 
 
 class ConsoleErrorView(APIView):
@@ -270,28 +277,61 @@ class ExplainView(APIView):
         return Response({'explanation': answer})
 
 
+_MIME = {
+    '.html': 'text/html; charset=utf-8',
+    '.htm':  'text/html; charset=utf-8',
+    '.css':  'text/css',
+    '.js':   'application/javascript',
+    '.mjs':  'application/javascript',
+    '.json': 'application/json',
+    '.svg':  'image/svg+xml',
+    '.png':  'image/png',
+    '.jpg':  'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.ico':  'image/x-icon',
+    '.txt':  'text/plain; charset=utf-8',
+    '.md':   'text/plain; charset=utf-8',
+}
+
+
 @method_decorator(xframe_options_exempt, name='dispatch')
 class PreviewProxyView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, id, path=''):
+        import os
         project = StudioProject.objects.get(id=id, user=request.user)
-        if not project.sandbox_container_id:
-            return HttpResponse('Sandbox не запущен', status=503)
-        host = project.sandbox_container_id
-        try:
-            upstream = _rq.get(
-                f'http://{host}:3000/{path}',
-                timeout=10,
-                headers={'Accept': request.headers.get('Accept', '*/*')},
-                allow_redirects=True,
-            )
-        except Exception:
-            return HttpResponse('Preview недоступен', status=502)
-        resp = HttpResponse(upstream.content, status=upstream.status_code)
-        ct = upstream.headers.get('Content-Type')
-        if ct:
-            resp['Content-Type'] = ct
-        # Разрешаем embedding в iframe (снято xframe_options_exempt выше)
+
+        # 1. If sandbox is running, proxy to it
+        if project.sandbox_container_id:
+            host = project.sandbox_container_id
+            try:
+                upstream = _rq.get(
+                    f'http://{host}:3000/{path}',
+                    timeout=5,
+                    headers={'Accept': request.headers.get('Accept', '*/*')},
+                    allow_redirects=True,
+                )
+                resp = HttpResponse(upstream.content, status=upstream.status_code)
+                ct = upstream.headers.get('Content-Type')
+                if ct:
+                    resp['Content-Type'] = ct
+                resp['X-Frame-Options'] = 'SAMEORIGIN'
+                return resp
+            except Exception:
+                pass  # fall through to static serving
+
+        # 2. Fallback: serve project files directly from DB (static HTML/CSS/JS)
+        serve_path = path.strip('/') or 'index.html'
+        file_obj = project.files.filter(path=serve_path).first()
+        if not file_obj:
+            # Try root-level index.html
+            file_obj = project.files.filter(path__in=['index.html', 'public/index.html', 'src/index.html']).first()
+        if not file_obj:
+            return HttpResponse('<h1>Файл не найден</h1>', content_type='text/html; charset=utf-8', status=404)
+
+        ext = os.path.splitext(serve_path)[1].lower()
+        content_type = _MIME.get(ext, 'text/plain; charset=utf-8')
+        resp = HttpResponse(file_obj.content, content_type=content_type)
         resp['X-Frame-Options'] = 'SAMEORIGIN'
         return resp
