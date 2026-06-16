@@ -2,7 +2,7 @@ import re
 import hashlib
 from celery import shared_task, chord
 from django.conf import settings
-from .models import StudioProject, StudioFile, StudioVersion
+from .models import StudioProject, StudioFile, StudioVersion, StudioPipelineState
 from .events import publish_event
 from . import sandbox
 from .billing import (
@@ -171,6 +171,8 @@ def run_pipeline(project_id):
     state.status = 'running'
     state.step_index = 0
     state.iteration_count = 0
+    from django.utils import timezone as _tz
+    state.started_at = _tz.now()
     state.save()
     publish_event(project_id, {'agent': 'system', 'level': 'info', 'text': 'Запускаю sandbox...'})
     from django.conf import settings as _s
@@ -866,3 +868,56 @@ def export_to_github(self, project_id, repo_name, private):
     except Exception as exc:
         raise self.retry(exc=exc, countdown=30)
 
+
+@shared_task(name='studio.watchdog_pipelines', queue=QUEUE)
+def watchdog_pipelines():
+    """Beat every 2 min: detect stalled and timed-out pipelines, kill and mark failed."""
+    from django.utils import timezone
+    from celery import current_app
+
+    stall_sec = getattr(settings, 'STUDIO_STEP_STALL_SEC', 240)
+    max_sec = getattr(settings, 'STUDIO_PIPELINE_MAX_SEC', 2700)
+    now = timezone.now()
+
+    for state in StudioPipelineState.objects.filter(status='running').select_related('project'):
+        age_total = (now - state.started_at).total_seconds() if state.started_at else 0
+        age_step = (now - state.updated_at).total_seconds() if state.updated_at else 0
+
+        if age_total > max_sec:
+            _timeout_pipeline(state, 'Пайплайн превысил максимальное время выполнения')
+        elif age_step > stall_sec:
+            if state.current_task_id:
+                try:
+                    current_app.control.revoke(state.current_task_id, terminate=True, signal='SIGTERM')
+                except Exception:
+                    pass
+            _timeout_pipeline(
+                state,
+                f'Агент завис на шаге {state.step_index + 1} (нет ответа > {stall_sec // 60} мин)',
+            )
+
+
+def _timeout_pipeline(state, reason):
+    from .sandbox import kill_sandbox
+
+    project = state.project
+    state.status = 'failed'
+    state.pause_reason = reason
+    state.save(update_fields=['status', 'pause_reason'])
+    project.status = 'failed'
+    project.save(update_fields=['status'])
+    if project.sandbox_container_id:
+        try:
+            kill_sandbox(project.sandbox_container_id)
+        except Exception:
+            pass
+        project.sandbox_container_id = ''
+        project.save(update_fields=['sandbox_container_id'])
+    try:
+        release_reserve(project)
+    except Exception:
+        pass
+    publish_event(str(project.id), {
+        'agent': 'system', 'level': 'error',
+        'text': reason, 'type': 'failed',
+    })

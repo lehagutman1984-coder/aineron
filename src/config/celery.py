@@ -26,6 +26,12 @@ app.conf.beat_schedule = {
         'task': 'users.tasks.notify_upcoming_expiration',
         'schedule': crontab(minute='*'),  # Каждую минуту!
     },
+    # Studio watchdog: detect stalled/timed-out pipelines every 2 minutes
+    'studio-watchdog': {
+        'task': 'studio.watchdog_pipelines',
+        'schedule': 120.0,
+        'options': {'queue': 'studio_queue'},
+    },
 }
 
 @app.task(bind=True, ignore_result=True)
