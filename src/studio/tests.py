@@ -274,6 +274,30 @@ class SemiManualModeTest(APITestCase):
         mock_next.delay.assert_called_once_with(str(project.id), 2)
 
 
+class FixPlanTargetFilesTest(APITestCase):
+    """Commit 30 — CoderAgent filters output to allowed_files in fix mode."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(email='fix@t.ru', password='x')
+
+    def test_allowed_files_filters_coder_output(self):
+        from studio.agents.coder import CoderAgent
+        project = StudioProject.objects.create(user=self.user, name='F', status='coding', mode='auto')
+        agent = CoderAgent(project)
+        agent.run_json = MagicMock(return_value={'files': {'a.tsx': 'a', 'b.tsx': 'b', 'c.tsx': 'c'}})
+        result = agent.run(0, 'fix a', {'a.tsx': '', 'b.tsx': '', 'c.tsx': ''}, allowed_files=['a.tsx'])
+        self.assertEqual(list(result.keys()), ['a.tsx'])
+
+    def test_no_allowed_files_returns_all(self):
+        from studio.agents.coder import CoderAgent
+        project = StudioProject.objects.create(user=self.user, name='F2', status='coding', mode='auto')
+        agent = CoderAgent(project)
+        agent.run_json = MagicMock(return_value={'files': {'a.tsx': 'a', 'b.tsx': 'b'}})
+        result = agent.run(0, 'step', {'a.tsx': '', 'b.tsx': ''})
+        self.assertIn('a.tsx', result)
+        self.assertIn('b.tsx', result)
+
+
 class DiffReviewTest(APITestCase):
     """Commit 29 — agent_review passes only changed files to ReviewerAgent."""
 

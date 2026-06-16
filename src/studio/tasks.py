@@ -248,17 +248,20 @@ def coder_iteration(self, project_id, step_index):
     try:
         step_text = _get_step_text(project, step_index)
         existing = _existing_files(project)
+        allowed_files = None
         if project.pipeline.iteration_count > 0 and project.pipeline.fix_plan:
-            step_text += (
-                f"\n\nИСПРАВЬ согласно FixPlan:\n"
-                f"{project.pipeline.fix_plan.get('instructions', '')}"
-            )
+            fp = project.pipeline.fix_plan
+            targets = fp.get('target_files') or []
+            step_text += f"\n\nИСПРАВЬ согласно FixPlan:\n{fp.get('instructions', '')}"
+            if targets:
+                step_text += f"\n\nИЗМЕНЯЙ ТОЛЬКО эти файлы: {', '.join(targets)}. Остальные не трогай."
+                allowed_files = targets
         publish_event(project_id, {
             'agent': 'coder', 'level': 'info',
             'text': f'Шаг {step_index}, итерация {project.pipeline.iteration_count}',
         })
         agent = CoderAgent(project)
-        files = agent.run(step_index, step_text, existing)
+        files = agent.run(step_index, step_text, existing, allowed_files=allowed_files)
         coder_tier = coder_tier_for_model(agent.last_model)
         for path, content in files.items():
             StudioFile.objects.update_or_create(

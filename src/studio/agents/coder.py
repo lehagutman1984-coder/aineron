@@ -35,7 +35,8 @@ class CoderAgent(BaseAgent):
     model = MODEL_FAST
     last_model: str = MODEL_FAST
 
-    def run(self, step_index: int, step_text: str, existing_files: dict) -> dict:
+    def run(self, step_index: int, step_text: str, existing_files: dict,
+            allowed_files: list = None) -> dict:
         model = _pick_model(step_text)
         self.last_model = model
         full = _select_context_files(step_text, existing_files)
@@ -48,4 +49,7 @@ class CoderAgent(BaseAgent):
             f"Содержимое релевантных файлов:\n{body}"
         )
         data = self.run_json(CODER_SYSTEM, user, model=model, max_tokens=8192)
-        return data.get('files', {})
+        files = data.get('files', {})
+        if allowed_files:
+            files = {p: c for p, c in files.items() if p in allowed_files}
+        return files
