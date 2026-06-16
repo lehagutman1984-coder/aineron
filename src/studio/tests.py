@@ -230,6 +230,34 @@ class SandboxFailureTest(APITestCase):
         self.assertEqual(project.pipeline.status, 'failed')
 
 
+class SplitStepsTest(APITestCase):
+    """Commit 6 — _split_steps counts sections; planner prefers section count over marker."""
+
+    def test_split_steps_counts_headers(self):
+        from studio.tasks import _split_steps
+        md = '## Step 1\ndo a\n## Step 2\ndo b\n## Step 3\ndo c'
+        self.assertEqual(len(_split_steps(md)), 3)
+
+    def test_split_steps_empty_returns_empty(self):
+        from studio.tasks import _split_steps
+        self.assertEqual(_split_steps(''), [])
+
+    @patch('studio.agents.planner.PlannerAgent.run_prompt')
+    def test_planner_uses_section_count_not_marker(self, mock_prompt):
+        """Planner must return steps=3 (sections) even when marker says 7."""
+        from studio.agents.planner import PlannerAgent
+        md_with_wrong_marker = (
+            '## Step 1\ndo a\n## Step 2\ndo b\n## Step 3\ndo c\n'
+            '<STEPS_COUNT>7</STEPS_COUNT>'
+        )
+        mock_prompt.return_value = md_with_wrong_marker
+        project = MagicMock()
+        project.project_md_content = 'PROJECT.md content'
+        agent = PlannerAgent(project)
+        _, steps = agent.run()
+        self.assertEqual(steps, 3)
+
+
 class PauseResumeTest(APITestCase):
     """Commit 5 — pause sets flag and stops further task dispatch."""
 

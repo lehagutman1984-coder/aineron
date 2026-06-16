@@ -17,10 +17,12 @@ class PlannerAgent(BaseAgent):
     def run(self) -> tuple:
         self.log('Составляю план реализации...')
         user = f"PROJECT.md:\n\n{self.project.project_md_content}"
-        md = self.run_prompt(PLANNER_SYSTEM, user, model=MODEL_SMART, max_tokens=8192)
-        m = re.search(r'<STEPS_COUNT>(\d+)</STEPS_COUNT>', md)
-        steps = int(m.group(1)) if m else 5
-        md = re.sub(r'<STEPS_COUNT>\d+</STEPS_COUNT>', '', md).strip()
+        md_raw = self.run_prompt(PLANNER_SYSTEM, user, model=MODEL_SMART, max_tokens=8192)
+        m = re.search(r'<STEPS_COUNT>(\d+)</STEPS_COUNT>', md_raw)
+        marker = int(m.group(1)) if m else 0
+        md = re.sub(r'<STEPS_COUNT>\d+</STEPS_COUNT>', '', md_raw).strip()
+        from ..tasks import _split_steps
+        steps = len(_split_steps(md)) or marker or 5
         self.project.commits_md_content = md
         self.project.save(update_fields=['commits_md_content'])
         self.log(f'COMMITS.md готов: {steps} шагов')

@@ -57,9 +57,14 @@ def _set_status(project, status):
     project.save(update_fields=['status'])
 
 
+def _split_steps(commits_md: str):
+    """Split COMMITS.md into individual step sections by ## / ### headers."""
+    return [p for p in re.split(r'\n(?=#{2,3}\s)', commits_md or '') if p.strip()]
+
+
 def _get_step_text(project, step_index):
     """Extracts step text from commits_md_content by splitting on ## / ### headers."""
-    parts = [p for p in re.split(r'\n(?=#{2,3}\s)', project.commits_md_content) if p.strip()]
+    parts = _split_steps(project.commits_md_content)
     return parts[step_index] if step_index < len(parts) else project.commits_md_content
 
 
@@ -183,7 +188,12 @@ def run_pipeline(project_id):
         return
     project.sandbox_container_id = cid
     project.preview_port = 3000
-    project.save(update_fields=['sandbox_container_id', 'preview_port'])
+    # Re-sync planned_steps from actual section count so next_step uses real number
+    project.interview_data['planned_steps'] = (
+        len(_split_steps(project.commits_md_content))
+        or project.interview_data.get('planned_steps', 5)
+    )
+    project.save(update_fields=['sandbox_container_id', 'preview_port', 'interview_data'])
     start_step.delay(project_id, 0)
 
 
