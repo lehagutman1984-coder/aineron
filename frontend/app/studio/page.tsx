@@ -13,10 +13,15 @@ import {
   FilePlus,
   Link,
   ImagePlus,
+  Zap,
+  StepForward,
+  Hand,
 } from "lucide-react";
 import { studioApi } from "@/lib/api/studio";
 import type { StudioProject, StudioMode, StudioStack, StudioModel } from "@/lib/api/studio";
 import { TemplateGallery } from "@/components/studio/TemplateGallery";
+import { StudioHero } from "@/components/studio/StudioHero";
+import { StackCards } from "@/components/studio/StackCards";
 import { card, badge, form, btn } from "@/components/studio/styles";
 
 const STACK_OPTIONS: { value: StudioStack; label: string }[] = [
@@ -34,10 +39,10 @@ const CATEGORY_LABELS: Record<string, string> = {
   reasoning: "Reasoning — глубокие рассуждения",
 };
 
-const MODE_OPTIONS: { value: StudioMode; label: string; hint: string }[] = [
-  { value: "auto", label: "Авто", hint: "Агенты работают без остановок" },
-  { value: "semi", label: "Полу-авто", hint: "Подтверждение перед каждым шагом" },
-  { value: "manual", label: "Ручной", hint: "Полный контроль над каждым файлом" },
+const MODE_OPTIONS = [
+  { value: "auto" as StudioMode, label: "Авто", icon: Zap, desc: "Агенты делают всё сами — вы только описываете. Самый быстрый путь." },
+  { value: "semi" as StudioMode, label: "Полу-авто", icon: StepForward, desc: "Подтверждаете каждый шаг — видите прогресс, останавливаетесь когда нужно." },
+  { value: "manual" as StudioMode, label: "Ручной", icon: Hand, desc: "Полный контроль: одобряете каждый файл. Для тех, кто хочет вникать." },
 ];
 
 const STATUS_LABEL: Record<string, string> = {
@@ -167,6 +172,10 @@ export default function StudioPage() {
         </button>
       </div>
 
+      {!showForm && (!projects || projects.length === 0) && !isLoading && (
+        <StudioHero onStart={() => setShowForm(true)} />
+      )}
+
       {showForm && (
         <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-6 mb-8 space-y-5">
           <h2 className="text-lg font-semibold">Новый проект</h2>
@@ -240,38 +249,31 @@ export default function StudioPage() {
 
               <div>
                 <label className="block text-sm font-medium mb-2">Режим</label>
-                <div className="flex gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   {MODE_OPTIONS.map((opt) => (
                     <button
                       key={opt.value}
                       type="button"
                       onClick={() => setMode(opt.value)}
-                      title={opt.hint}
-                      className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                      className={`p-3 rounded-lg border text-left transition-colors ${
                         mode === opt.value
-                          ? 'border-blue-500 bg-blue-600 text-white'
-                          : 'border-[var(--border)] hover:border-blue-400'
+                          ? 'border-blue-500 bg-blue-600/10'
+                          : 'border-[var(--border)] hover:border-[var(--text-secondary)]'
                       }`}
                     >
-                      {opt.label}
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <opt.icon size={13} className={mode === opt.value ? 'text-blue-400' : 'text-[var(--text-secondary)]'} />
+                        <span className="text-sm font-medium">{opt.label}</span>
+                      </div>
+                      <p className="text-xs text-[var(--text-secondary)]">{opt.desc}</p>
                     </button>
                   ))}
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Стек</label>
-                <select
-                  value={stack}
-                  onChange={(e) => setStack(e.target.value as StudioStack)}
-                  className={form.select}
-                >
-                  {STACK_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
+                <label className="block text-sm font-medium mb-2">Стек</label>
+                <StackCards selected={stack} onSelect={(s) => setStack(s as StudioStack)} />
               </div>
 
               {models.length > 0 && (
