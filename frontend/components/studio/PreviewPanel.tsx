@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { RefreshCw, ExternalLink, CheckCircle, Download, Smartphone, Tablet, Monitor } from 'lucide-react';
+import { RefreshCw, ExternalLink, CheckCircle, Download, Smartphone, Tablet, Monitor, Rocket, RotateCw } from 'lucide-react';
 import { studioApi } from '@/lib/api/studio';
 
 interface PreviewPanelProps {
@@ -24,13 +24,27 @@ export function PreviewPanel({ projectId, hasSandbox, status }: PreviewPanelProp
             Превью-сервер песочницы остановлен для экономии ресурсов.
           </p>
         </div>
-        <a
-          href={studioApi.exportUrl(projectId)}
-          download
-          className="flex items-center gap-1.5 border border-[var(--border)] hover:bg-[var(--hover)] px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-        >
-          <Download size={14} /> Скачать ZIP
-        </a>
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <a
+            href={studioApi.exportUrl(projectId)}
+            download
+            className="flex items-center gap-1.5 border border-[var(--border)] hover:bg-[var(--hover)] px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+          >
+            <Download size={14} /> Скачать ZIP
+          </a>
+          <button
+            onClick={() => studioApi.deploy(projectId)}
+            className="flex items-center gap-1.5 border border-[var(--border)] hover:bg-[var(--hover)] px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+          >
+            <Rocket size={14} /> Развернуть на Vercel
+          </button>
+          <button
+            onClick={() => studioApi.restartPreview(projectId)}
+            className="flex items-center gap-1.5 border border-[var(--border)] hover:bg-[var(--hover)] px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+          >
+            <RotateCw size={14} /> Перезапустить превью
+          </button>
+        </div>
       </div>
     );
   }

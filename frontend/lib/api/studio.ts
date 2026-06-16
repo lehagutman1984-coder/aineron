@@ -148,6 +148,9 @@ export const studioApi = {
       body: JSON.stringify(data),
     }),
 
+  restartPreview: (id: string) =>
+    request<{ status: string }>(`/studio/projects/${id}/preview/restart/`, { method: 'POST' }),
+
   pipeline: (id: string) =>
     request<PipelineState>(`/studio/projects/${id}/pipeline/`),
 
