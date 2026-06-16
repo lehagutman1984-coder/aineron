@@ -15,6 +15,8 @@ _COMPLEX_KEYWORDS = (
 
 
 def _pick_model(step_text: str) -> str:
+    if '[COMPLEX]' in step_text:
+        return MODEL_SMART
     lower = step_text.lower()
     if len(step_text) > 600 or any(kw in lower for kw in _COMPLEX_KEYWORDS):
         return MODEL_SMART

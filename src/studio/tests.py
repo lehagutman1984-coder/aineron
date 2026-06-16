@@ -274,6 +274,41 @@ class SemiManualModeTest(APITestCase):
         mock_next.delay.assert_called_once_with(str(project.id), 2)
 
 
+class ComplexTagRoutingTest(APITestCase):
+    """Commit 31 — _pick_model checks [COMPLEX] tag first; PlannerAgent warns on >15 steps."""
+
+    def test_complex_tag_routes_to_model_smart(self):
+        from studio.agents.coder import _pick_model
+        from studio.agents.base import MODEL_SMART
+        self.assertEqual(_pick_model('## [COMPLEX] Auth setup'), MODEL_SMART)
+
+    def test_simple_step_routes_to_model_fast(self):
+        from studio.agents.coder import _pick_model
+        from studio.agents.base import MODEL_FAST
+        self.assertEqual(_pick_model('## Add a button'), MODEL_FAST)
+
+    def test_complex_tag_overrides_length_heuristic(self):
+        from studio.agents.coder import _pick_model
+        from studio.agents.base import MODEL_SMART
+        # Short text with [COMPLEX] tag still routes smart
+        self.assertEqual(_pick_model('[COMPLEX] x'), MODEL_SMART)
+
+    def test_planner_warns_on_more_than_15_steps(self):
+        from studio.agents.planner import PlannerAgent
+        user = User.objects.create_user(email='plan@t.ru', password='x')
+        project = StudioProject.objects.create(user=self.user if hasattr(self, 'user') else user,
+                                               name='P', status='planning', mode='auto')
+        agent = PlannerAgent(project)
+        md = '\n'.join(f'## Шаг {i}' for i in range(20))
+        agent.run_prompt = MagicMock(return_value=md + '\n<STEPS_COUNT>20</STEPS_COUNT>')
+        with patch('studio.events.publish_event') as mock_pub:
+            _, steps = agent.run()
+        self.assertEqual(steps, 20)
+        warning_calls = [c for c in mock_pub.call_args_list
+                         if 'warning' in str(c) or 'Предупреждение' in str(c)]
+        self.assertTrue(len(warning_calls) > 0)
+
+
 class FixPlanTargetFilesTest(APITestCase):
     """Commit 30 — CoderAgent filters output to allowed_files in fix mode."""
 
