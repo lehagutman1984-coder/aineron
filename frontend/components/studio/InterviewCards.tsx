@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { MessageCircleQuestion, ArrowRight, Check } from 'lucide-react';
 import type { InterviewQuestion } from '@/lib/api/studio';
+import { interview, card, form, btn } from './styles';
 
 interface InterviewCardsProps {
   questions: InterviewQuestion[];
@@ -43,15 +44,15 @@ export function InterviewCards({ questions, onSubmit, loading }: InterviewCardsP
         <span>
           Вопрос {current + 1} из {questions.length}
         </span>
-        <div className="flex-1 h-1 bg-[var(--border)] rounded-full overflow-hidden ml-2">
+        <div className={interview.progressTrack}>
           <div
-            className="h-full bg-blue-500 transition-all"
+            className={interview.progressFill}
             style={{ width: `${((current + 1) / questions.length) * 100}%` }}
           />
         </div>
       </div>
 
-      <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-6 mb-4">
+      <div className={`${card.lg} mb-4`}>
         <p className="text-base font-medium mb-4">{question.question}</p>
 
         {question.type === 'choice' && question.options ? (
@@ -77,7 +78,7 @@ export function InterviewCards({ questions, onSubmit, loading }: InterviewCardsP
             onChange={(e) => setAnswers((a) => ({ ...a, [question.id]: e.target.value }))}
             placeholder="Ваш ответ..."
             rows={3}
-            className="w-full border border-[var(--border)] bg-[var(--input-bg)] rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className={form.textarea}
           />
         )}
       </div>
@@ -86,7 +87,7 @@ export function InterviewCards({ questions, onSubmit, loading }: InterviewCardsP
         {current > 0 && (
           <button
             onClick={handleBack}
-            className="px-4 py-2 rounded-lg text-sm border border-[var(--border)] hover:bg-[var(--hover)] transition-colors"
+            className={btn.ghostMd}
           >
             Назад
           </button>
@@ -95,7 +96,7 @@ export function InterviewCards({ questions, onSubmit, loading }: InterviewCardsP
           <button
             onClick={handleNext}
             disabled={!answer.trim()}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            className={btn.primarySm}
           >
             Далее
             <ArrowRight size={14} />
@@ -104,7 +105,7 @@ export function InterviewCards({ questions, onSubmit, loading }: InterviewCardsP
           <button
             onClick={handleSubmit}
             disabled={!allAnswered || loading}
-            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            className={btn.greenSm}
           >
             <Check size={14} />
             Готово

@@ -9,6 +9,7 @@ import { css } from '@codemirror/lang-css';
 import { oneDark } from '@codemirror/theme-one-dark';
 import ReactMarkdown from 'react-markdown';
 import { studioApi } from '@/lib/api/studio';
+import { code, empty } from './styles';
 
 interface CodeViewerProps {
   content: string;
@@ -68,16 +69,16 @@ export function CodeViewer({ content, language: _language, path, editable, onSav
 
   if (!content && !editable) {
     return (
-      <div className="flex items-center justify-center h-full text-sm text-[var(--text-secondary)] opacity-60">
+      <div className={empty.center}>
         Выберите файл
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full relative">
+    <div className={code.root}>
       {path && (
-        <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--border)] text-xs text-[var(--text-secondary)] shrink-0">
+        <div className={code.pathBar}>
           <span className="font-mono">{path}{dirty ? ' •' : ''}</span>
           <div className="flex items-center gap-3">
             {editable && (
@@ -92,7 +93,7 @@ export function CodeViewer({ content, language: _language, path, editable, onSav
           </div>
         </div>
       )}
-      <div className="flex-1 overflow-auto" onMouseUp={onMouseUp}>
+      <div className={code.editor} onMouseUp={onMouseUp}>
         <CodeMirror
           value={value}
           theme={oneDark}
@@ -112,7 +113,7 @@ export function CodeViewer({ content, language: _language, path, editable, onSav
           <button
             onClick={runExplain}
             disabled={explaining}
-            className="flex items-center gap-1.5 bg-[var(--bg)] border border-[var(--border)] shadow-lg hover:bg-[var(--hover)] disabled:opacity-60 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+            className={code.explainBtn}
           >
             <Sparkles size={13} />
             {explaining ? 'Анализирую…' : 'Объясни'}
@@ -122,7 +123,7 @@ export function CodeViewer({ content, language: _language, path, editable, onSav
 
       {/* Explanation popover */}
       {explanation && (
-        <div className="absolute bottom-4 right-4 z-20 w-80 max-h-64 overflow-auto bg-[var(--bg)] border border-[var(--border)] rounded-lg shadow-xl p-3 text-xs">
+        <div className={code.popover}>
           <div className="flex items-center justify-between mb-2">
             <span className="font-medium flex items-center gap-1"><Sparkles size={12} /> Объяснение</span>
             <button

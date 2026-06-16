@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import type { PipelineState } from '@/lib/api/studio';
 import { ReviewerMode } from './ReviewerMode';
+import { drawer, modal, text } from './styles';
 
 interface Props {
   agentKey: string;
@@ -21,9 +22,9 @@ export function StepDetailDrawer({ agentLabel, pipeline, stepText, onClose, proj
   const [tab, setTab] = useState<DrawerTab>('info');
 
   return (
-    <div className="fixed inset-y-0 right-0 w-full max-w-md bg-[var(--bg)] border-l border-[var(--border)] shadow-xl z-50 flex flex-col">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)] shrink-0">
-        <h2 className="text-sm font-medium">{agentLabel}</h2>
+    <div className={drawer.rootMd}>
+      <div className={drawer.header}>
+        <h2 className={modal.title}>{agentLabel}</h2>
         <div className="flex items-center gap-2">
           {projectId && stepIndex !== undefined && (
             <div className="flex gap-1 text-xs">
@@ -46,13 +47,13 @@ export function StepDetailDrawer({ agentLabel, pipeline, stepText, onClose, proj
           </button>
         </div>
       </div>
-      <div className="flex-1 overflow-auto p-4 space-y-4 text-xs">
+      <div className={drawer.body}>
         {tab === 'info' ? (
           <>
             {stepText && (
               <section>
                 <h3 className="font-medium mb-1 text-[var(--text-secondary)]">Планировалось (COMMITS.md)</h3>
-                <pre className="whitespace-pre-wrap font-mono text-[11px] bg-[var(--hover)] rounded p-2">{stepText}</pre>
+                <pre className={text.codeBlock}>{stepText}</pre>
               </section>
             )}
             <Report title="Review report" data={pipeline.review_report} />
@@ -61,7 +62,7 @@ export function StepDetailDrawer({ agentLabel, pipeline, stepText, onClose, proj
             {pipeline.last_error && (
               <section>
                 <h3 className="font-medium mb-1 text-red-500">Ошибка</h3>
-                <pre className="whitespace-pre-wrap font-mono text-[11px] bg-red-950/30 text-red-300 rounded p-2">{pipeline.last_error}</pre>
+                <pre className={text.codeBlockError}>{pipeline.last_error}</pre>
               </section>
             )}
           </>
@@ -84,7 +85,7 @@ function Report({ title, data }: { title: string; data: Record<string, unknown> 
   return (
     <section>
       <h3 className="font-medium mb-1 text-[var(--text-secondary)]">{title}</h3>
-      <pre className="whitespace-pre-wrap font-mono text-[11px] bg-[var(--hover)] rounded p-2">
+      <pre className={text.codeBlock}>
         {JSON.stringify(data, null, 2)}
       </pre>
     </section>

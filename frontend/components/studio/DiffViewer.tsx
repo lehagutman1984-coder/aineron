@@ -1,6 +1,7 @@
 'use client';
 
 import { GitCompare } from 'lucide-react';
+import { code } from './styles';
 
 interface DiffLine {
   type: 'added' | 'removed' | 'unchanged';
@@ -52,13 +53,13 @@ export function DiffViewer({ oldContent, newContent, path }: DiffViewerProps) {
         {lines.map((line, i) => (
           <div
             key={i}
-            className={`flex px-4 py-0.5 ${
+            className={
               line.type === 'added'
-                ? 'bg-green-950 text-green-300'
+                ? code.diffLine.added
                 : line.type === 'removed'
-                ? 'bg-red-950 text-red-300 line-through opacity-70'
-                : ''
-            }`}
+                ? code.diffLine.removed
+                : code.diffLine.normal
+            }
           >
             <span className="select-none opacity-30 w-10 shrink-0 text-right mr-4">
               {line.lineNum}

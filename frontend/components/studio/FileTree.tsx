@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Folder, FolderOpen, File, FileCode, FilePlus, Trash2 } from 'lucide-react';
 import type { StudioFileNode } from '@/lib/api/studio';
+import { tree, btn } from './styles';
 
 interface TreeNode {
   name: string;
@@ -68,7 +69,7 @@ function TreeNodeItem({ node, depth, selectedId, onSelect, onDelete }: NodeProps
         {onDelete && hovered && node.fileId !== undefined && (
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(node.fileId!); }}
-            className="absolute right-1 top-0.5 p-0.5 text-[var(--text-secondary)] hover:text-red-400 transition-colors"
+            className={tree.deleteBtn}
             title="Удалить файл"
           >
             <Trash2 size={11} />
@@ -83,7 +84,7 @@ function TreeNodeItem({ node, depth, selectedId, onSelect, onDelete }: NodeProps
       <button
         onClick={() => setOpen(!open)}
         style={{ paddingLeft: `${depth * 12 + 8}px` }}
-        className="flex items-center gap-1.5 w-full text-left py-0.5 pr-2 text-xs hover:bg-[var(--hover)] rounded transition-colors"
+        className={tree.folderBtn}
       >
         {open ? <FolderOpen size={12} /> : <Folder size={12} />}
         <span className="font-medium">{node.name}</span>
@@ -115,29 +116,29 @@ interface FileTreeProps {
 }
 
 export function FileTree({ files, selectedId, onSelect, onCreate, onDelete }: FileTreeProps) {
-  const tree = buildTree(files);
+  const fileTree = buildTree(files);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className={tree.root}>
       {onCreate && (
-        <div className="flex items-center justify-between px-3 py-1.5 border-b border-[var(--border)] shrink-0">
+        <div className={tree.header}>
           <span className="text-xs text-[var(--text-secondary)]">Файлы</span>
           <button
             onClick={onCreate}
             title="Новый файл"
-            className="text-[var(--text-secondary)] hover:text-[var(--text)] transition-colors"
+            className={btn.icon}
           >
             <FilePlus size={14} />
           </button>
         </div>
       )}
-      <div className="flex-1 overflow-auto p-1">
+      <div className={tree.scrollArea}>
         {files.length === 0 ? (
-          <div className="p-3 text-xs text-[var(--text-secondary)] opacity-60">
+          <div className={tree.emptyState}>
             Файлов пока нет
           </div>
         ) : (
-          Object.values(tree).map((node) => (
+          Object.values(fileTree).map((node) => (
             <TreeNodeItem
               key={node.path}
               node={node}

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { RefreshCw, ExternalLink, CheckCircle, Download, Smartphone, Tablet, Monitor, Rocket, RotateCw, AlertTriangle, Wrench, Github } from 'lucide-react';
 import { studioApi } from '@/lib/api/studio';
+import { btn, empty, text } from './styles';
 
 interface ConsoleError {
   message: string;
@@ -73,19 +74,19 @@ export function PreviewPanel({ projectId, hasSandbox, status, githubUrl }: Previ
           <a
             href={studioApi.exportUrl(projectId)}
             download
-            className="flex items-center gap-1.5 border border-[var(--border)] hover:bg-[var(--hover)] px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+            className={btn.ghostXs}
           >
             <Download size={14} /> Скачать ZIP
           </a>
           <button
             onClick={() => studioApi.deploy(projectId)}
-            className="flex items-center gap-1.5 border border-[var(--border)] hover:bg-[var(--hover)] px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+            className={btn.ghostXs}
           >
             <Rocket size={14} /> Развернуть на Vercel
           </button>
           <button
             onClick={() => studioApi.restartPreview(projectId)}
-            className="flex items-center gap-1.5 border border-[var(--border)] hover:bg-[var(--hover)] px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+            className={btn.ghostXs}
           >
             <RotateCw size={14} /> Перезапустить превью
           </button>
@@ -94,7 +95,7 @@ export function PreviewPanel({ projectId, hasSandbox, status, githubUrl }: Previ
               href={githubUrl}
               target="_blank"
               rel="noreferrer"
-              className="flex items-center gap-1.5 border border-[var(--border)] hover:bg-[var(--hover)] px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+              className={btn.ghostXs}
             >
               <Github size={14} /> Открыть репозиторий
             </a>
@@ -102,7 +103,7 @@ export function PreviewPanel({ projectId, hasSandbox, status, githubUrl }: Previ
             <button
               onClick={handleGithubExport}
               disabled={exporting}
-              className="flex items-center gap-1.5 border border-[var(--border)] hover:bg-[var(--hover)] disabled:opacity-50 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+              className={btn.ghostXsDisabled}
             >
               <Github size={14} /> {exporting ? 'Экспортируем…' : 'Экспорт в GitHub'}
             </button>
@@ -114,7 +115,7 @@ export function PreviewPanel({ projectId, hasSandbox, status, githubUrl }: Previ
 
   if (!hasSandbox) {
     return (
-      <div className="flex items-center justify-center h-full text-sm text-[var(--text-secondary)] opacity-60 p-6 text-center">
+      <div className={empty.centerP}>
         Preview появится после запуска кодинга
       </div>
     );
@@ -163,21 +164,21 @@ export function PreviewPanel({ projectId, hasSandbox, status, githubUrl }: Previ
           <button
             onClick={() => setWidth('375px')}
             title="375px"
-            className={width === '375px' ? 'text-blue-500' : 'text-[var(--text-secondary)]'}
+            className={width === '375px' ? text.blue : text.muted}
           >
             <Smartphone size={16} />
           </button>
           <button
             onClick={() => setWidth('768px')}
             title="768px"
-            className={width === '768px' ? 'text-blue-500' : 'text-[var(--text-secondary)]'}
+            className={width === '768px' ? text.blue : text.muted}
           >
             <Tablet size={16} />
           </button>
           <button
             onClick={() => setWidth('100%')}
             title="100%"
-            className={width === '100%' ? 'text-blue-500' : 'text-[var(--text-secondary)]'}
+            className={width === '100%' ? text.blue : text.muted}
           >
             <Monitor size={16} />
           </button>

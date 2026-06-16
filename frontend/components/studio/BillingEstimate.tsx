@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Coins, CheckCircle2, GitBranch, Globe, Loader2, ExternalLink } from 'lucide-react';
 import { studioApi } from '@/lib/api/studio';
+import { card, btn } from './styles';
 
 interface BillingEstimateProps {
   estimatedStars?: number;
@@ -38,7 +39,7 @@ export function BillingEstimate({
 
   if (completed) {
     return (
-      <div className="p-6 bg-[var(--card-bg)] border border-[var(--border)] rounded-xl">
+      <div className={card.lg}>
         <div className="flex items-center gap-3 mb-4">
           <CheckCircle2 size={20} className="text-green-500 shrink-0" />
           <h3 className="text-base font-semibold">Проект завершён</h3>
@@ -83,7 +84,7 @@ export function BillingEstimate({
             <button
               onClick={handleDeploy}
               disabled={deploying}
-              className="mt-3 flex items-center gap-2 bg-black hover:bg-gray-900 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-xs font-medium transition-colors"
+              className={btn.blackDeploy}
             >
               {deploying ? (
                 <Loader2 size={14} className="animate-spin" />

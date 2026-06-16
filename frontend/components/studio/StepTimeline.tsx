@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { GitBranch, CheckCircle, Clock } from 'lucide-react';
 import { studioApi } from '@/lib/api/studio';
+import { text } from './styles';
 
 export function StepTimeline({ projectId }: { projectId: string }) {
   const router = useRouter();
@@ -47,7 +48,7 @@ export function StepTimeline({ projectId }: { projectId: string }) {
             </div>
             {s.changed_files.length > 0 && (
               <div className="space-y-0.5">
-                <div className="text-[11px] text-[var(--text-secondary)]">
+                <div className={text.mutedLabel}>
                   Файлов: {s.changed_files.length}
                 </div>
                 {s.changed_files.slice(0, 4).map((f) => (
