@@ -16,6 +16,10 @@ export interface StudioProject {
   stars_spent: number;
   sandbox_container_id: string;
   preview_port: number | null;
+  coder_model: 'fast' | 'smart';
+  max_iterations: number;
+  max_stars_budget: number;
+  auto_deploy: boolean;
   project_md_content: string;
   commits_md_content: string;
   interview_data: Record<string, unknown>;
@@ -137,6 +141,12 @@ export const studioApi = {
 
   searchFiles: (id: string, q: string) =>
     request<FileSearchResult[]>(`/studio/projects/${id}/search/?q=${encodeURIComponent(q)}`),
+
+  updateSettings: (id: string, data: Partial<{ coder_model: string; max_iterations: number; max_stars_budget: number; auto_deploy: boolean; mode: string }>) =>
+    request<Record<string, unknown>>(`/studio/projects/${id}/settings/`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
 
   pipeline: (id: string) =>
     request<PipelineState>(`/studio/projects/${id}/pipeline/`),
