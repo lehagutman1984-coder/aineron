@@ -20,6 +20,7 @@ export interface StudioProject {
   commits_md_content: string;
   interview_data: Record<string, unknown>;
   repo_url: string;
+  vercel_deployment_url: string;
   created_at: string;
 }
 
@@ -154,6 +155,9 @@ export const studioApi = {
 
   approve: (id: string) =>
     request<{ status: string }>(`/studio/projects/${id}/approve/`, { method: 'POST' }),
+
+  deploy: (id: string) =>
+    request<{ status: string }>(`/studio/projects/${id}/deploy/`, { method: 'POST' }),
 
   templates: () =>
     request<StudioTemplate[]>('/studio/templates/'),

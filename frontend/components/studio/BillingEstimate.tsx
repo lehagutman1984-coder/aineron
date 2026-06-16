@@ -1,6 +1,8 @@
 'use client';
 
-import { Coins, CheckCircle2, GitBranch } from 'lucide-react';
+import { useState } from 'react';
+import { Coins, CheckCircle2, GitBranch, Globe, Loader2, ExternalLink } from 'lucide-react';
+import { studioApi } from '@/lib/api/studio';
 
 interface BillingEstimateProps {
   estimatedStars?: number;
@@ -8,6 +10,8 @@ interface BillingEstimateProps {
   plannedSteps?: number;
   repoUrl?: string;
   completed?: boolean;
+  projectId?: string;
+  deploymentUrl?: string;
 }
 
 export function BillingEstimate({
@@ -16,7 +20,22 @@ export function BillingEstimate({
   plannedSteps,
   repoUrl,
   completed,
+  projectId,
+  deploymentUrl,
 }: BillingEstimateProps) {
+  const [deploying, setDeploying] = useState(false);
+  const [localDeployUrl, setLocalDeployUrl] = useState(deploymentUrl ?? '');
+
+  const handleDeploy = async () => {
+    if (!projectId) return;
+    setDeploying(true);
+    try {
+      await studioApi.deploy(projectId);
+    } finally {
+      setDeploying(false);
+    }
+  };
+
   if (completed) {
     return (
       <div className="p-6 bg-[var(--card-bg)] border border-[var(--border)] rounded-xl">
@@ -48,6 +67,32 @@ export function BillingEstimate({
               </a>
             </div>
           )}
+          {localDeployUrl ? (
+            <div className="flex items-center gap-2 text-[var(--text-secondary)]">
+              <ExternalLink size={14} className="text-green-400" />
+              <a
+                href={localDeployUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-green-500 hover:underline truncate"
+              >
+                {localDeployUrl}
+              </a>
+            </div>
+          ) : projectId ? (
+            <button
+              onClick={handleDeploy}
+              disabled={deploying}
+              className="mt-3 flex items-center gap-2 bg-black hover:bg-gray-900 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-xs font-medium transition-colors"
+            >
+              {deploying ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Globe size={14} />
+              )}
+              {deploying ? 'Публикуем...' : 'Опубликовать на Vercel'}
+            </button>
+          ) : null}
         </div>
       </div>
     );
