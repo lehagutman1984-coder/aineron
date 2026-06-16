@@ -29,7 +29,9 @@ class FileDetailView(generics.RetrieveUpdateAPIView):
         )
 
     def perform_update(self, serializer):
-        serializer.save(last_modified_by='user')
+        instance = serializer.save(last_modified_by='user')
+        from ..tasks import sync_manual_edit
+        sync_manual_edit.delay(str(self.kwargs['id']), instance.pk)
 
 
 class FileDiffView(APIView):

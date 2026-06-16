@@ -230,6 +230,48 @@ class SandboxFailureTest(APITestCase):
         self.assertEqual(project.pipeline.status, 'failed')
 
 
+class ManualEditSyncTest(APITestCase):
+    """Commit 14 — PATCH file enqueues sync_manual_edit; sync pushes to sandbox."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(email='edit@t.ru', password='x')
+        self.client.force_authenticate(self.user)
+
+    @patch('studio.tasks.sync_manual_edit')
+    def test_patch_file_enqueues_sync(self, mock_task):
+        from studio.models import StudioFile
+        project = StudioProject.objects.create(user=self.user, name='M')
+        StudioPipelineState.objects.create(project=project)
+        f = StudioFile.objects.create(project=project, path='index.ts', content='old')
+        r = self.client.patch(
+            f'/api/v1/studio/projects/{project.id}/files/{f.id}/',
+            {'content': 'new'},
+            format='json',
+        )
+        self.assertEqual(r.status_code, 200)
+        mock_task.delay.assert_called_once_with(str(project.id), f.id)
+
+    @patch('studio.tasks.sandbox')
+    @patch('studio.tasks.publish_event')
+    @patch('studio.tasks.StudioProject')
+    def test_sync_manual_edit_writes_to_sandbox(self, MockQS, mock_pub, mock_sandbox):
+        from studio.tasks import sync_manual_edit
+        from studio.models import StudioFile
+        project = MagicMock()
+        project.id = 'proj-id'
+        project.sandbox_container_id = 'cid-123'
+        project.repo_url = ''
+        project.user.gitea_username = ''
+        f = MagicMock()
+        f.path = 'src/main.ts'
+        f.content = 'const x = 1'
+        MockQS.objects.get.return_value = project
+        with patch('studio.tasks.StudioFile') as MockFile:
+            MockFile.objects.get.return_value = f
+            sync_manual_edit('proj-id', 1)
+        mock_sandbox.write_files.assert_called_once_with('cid-123', {'src/main.ts': 'const x = 1'})
+
+
 class FileDiffViewTest(APITestCase):
     """Commit 13 — FileDiffView returns old content from Gitea and new from DB."""
 

@@ -458,6 +458,38 @@ def crawl_and_analyze(self, project_id):
 
 
 @shared_task(queue=QUEUE)
+def sync_manual_edit(project_id, file_id):
+    """Push a manually-edited file to sandbox and Gitea after a user PATCH."""
+    from . import gitea_client
+    from .models import StudioFile
+    project = StudioProject.objects.get(id=project_id)
+    f = StudioFile.objects.get(pk=file_id, project=project)
+    if project.sandbox_container_id:
+        try:
+            sandbox.write_files(project.sandbox_container_id, {f.path: f.content})
+        except Exception as exc:
+            publish_event(project_id, {
+                'agent': 'system', 'level': 'warning',
+                'text': f'Не удалось записать {f.path} в sandbox: {exc}',
+            })
+    owner = project.user.gitea_username
+    repo = project.repo_url.rstrip('/').split('/')[-1] if project.repo_url else None
+    if owner and repo:
+        try:
+            gitea_client.put_file(owner, repo, f.path, f.content,
+                                  message=f'Manual edit: {f.path}')
+        except Exception as exc:
+            publish_event(project_id, {
+                'agent': 'system', 'level': 'warning',
+                'text': f'Git push failed for {f.path}: {exc}',
+            })
+    publish_event(project_id, {
+        'agent': 'system', 'level': 'info',
+        'text': f'Файл обновлён: {f.path}',
+    })
+
+
+@shared_task(queue=QUEUE)
 def reap_stale_sandboxes():
     """Beat: removes studio containers older than N hours."""
     import datetime
