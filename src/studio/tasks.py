@@ -77,9 +77,9 @@ def agent_analyze(self, project_id):
     try:
         publish_event(project_id, {'agent': 'analyst', 'level': 'info', 'text': 'Анализирую требования...'})
         AnalystAgent(project).run()
-        _billing_charge(project, 'analyst', 0)
         publish_event(project_id, {'agent': 'analyst', 'level': 'info', 'text': 'PROJECT.md готов'})
         agent_plan.delay(project_id)
+        _billing_charge(project, 'analyst', 0)
     except Exception as e:
         raise self.retry(exc=e, countdown=60)
 
@@ -91,7 +91,6 @@ def agent_plan(self, project_id):
     try:
         publish_event(project_id, {'agent': 'planner', 'level': 'info', 'text': 'Составляю план...'})
         md, steps = PlannerAgent(project).run()
-        _billing_charge(project, 'planner', 0)
         state = project.pipeline
         state.review_report = {}
         state.save()
@@ -102,6 +101,7 @@ def agent_plan(self, project_id):
             'agent': 'planner', 'level': 'info',
             'text': f'COMMITS.md готов: {steps} шагов',
         })
+        _billing_charge(project, 'planner', 0)
     except Exception as e:
         raise self.retry(exc=e, countdown=60)
 
@@ -166,7 +166,6 @@ def coder_iteration(self, project_id, step_index):
             'text': f'Шаг {step_index}, итерация {project.pipeline.iteration_count}',
         })
         files = CoderAgent(project).run(step_index, step_text, existing)
-        _billing_charge(project, 'coder', step_index)
         for path, content in files.items():
             StudioFile.objects.update_or_create(
                 project=project, path=path,
@@ -178,6 +177,7 @@ def coder_iteration(self, project_id, step_index):
             [agent_review.s(project_id, step_index), agent_test.s(project_id, step_index)],
             merge_reports.s(project_id, step_index),
         ).apply_async()
+        _billing_charge(project, 'coder', step_index)
     except Exception as e:
         raise self.retry(exc=e, countdown=60)
 

@@ -97,3 +97,100 @@ class SSRFGuardTests(APITestCase):
 
     def test_invalid_scheme_blocked(self):
         self.assertFalse(is_safe_url('ftp://example.com'))
+
+
+class BillingChargeOrderTest(APITestCase):
+    """Commit 2 — charge must be last action; no charge on agent failure (no double-charge on retry)."""
+
+    def _make_project(self, uid='test-uuid'):
+        project = MagicMock()
+        project.id = uid
+        project.interview_data = {}
+        project.sandbox_container_id = None
+        pipeline = MagicMock()
+        pipeline.iteration_count = 0
+        pipeline.fix_plan = None
+        project.pipeline = pipeline
+        return project
+
+    @patch('studio.tasks.agent_plan')
+    @patch('studio.tasks.charge')
+    @patch('studio.tasks.can_afford', return_value=True)
+    @patch('studio.tasks.publish_event')
+    @patch('studio.tasks.StudioProject')
+    def test_agent_analyze_charge_called_once_on_success(self, MockQS, mock_pub, mock_afford, mock_charge, mock_plan):
+        from studio.tasks import agent_analyze
+        project = self._make_project()
+        MockQS.objects.get.return_value = project
+
+        with patch('studio.tasks.AnalystAgent') as MockAgent:
+            MockAgent.return_value.run.return_value = None
+            agent_analyze(str(project.id))
+
+        mock_charge.assert_called_once()
+        mock_plan.delay.assert_called_once()
+
+    @patch('studio.tasks.charge')
+    @patch('studio.tasks.can_afford', return_value=True)
+    @patch('studio.tasks.publish_event')
+    @patch('studio.tasks.StudioProject')
+    def test_agent_analyze_no_charge_when_agent_fails(self, MockQS, mock_pub, mock_afford, mock_charge):
+        """If AnalystAgent.run raises, charge must NOT be called — prevents double-charge on retry."""
+        from studio.tasks import agent_analyze
+        project = self._make_project()
+        MockQS.objects.get.return_value = project
+
+        with patch('studio.tasks.AnalystAgent') as MockAgent:
+            MockAgent.return_value.run.side_effect = RuntimeError('LLM timeout')
+            with self.assertRaises(Exception):
+                agent_analyze(str(project.id))
+
+        mock_charge.assert_not_called()
+
+
+class SandboxFailureTest(APITestCase):
+    """Commit 4 — sandbox setup failure sets project.status='failed', not leaves it as 'coding'."""
+
+    def _make_project(self):
+        project = MagicMock()
+        project.id = 'test-uuid'
+        user = MagicMock()
+        user.pages_count = 9999
+        project.user = user
+        project.status = 'coding'
+        state = MagicMock()
+        state.status = 'running'
+        project.pipeline = state
+        return project
+
+    @patch('studio.tasks.can_afford', return_value=True)
+    @patch('studio.tasks.publish_event')
+    @patch('studio.tasks.StudioProject')
+    @patch('studio.tasks.sandbox')
+    def test_run_pipeline_sandbox_failure_sets_project_failed(
+        self, mock_sandbox, MockQS, mock_pub, mock_afford
+    ):
+        from studio.tasks import run_pipeline
+        project = self._make_project()
+        MockQS.objects.get.return_value = project
+        mock_sandbox.spawn_sandbox.side_effect = RuntimeError('Docker not available')
+
+        run_pipeline(str(project.id))
+
+        self.assertEqual(project.status, 'failed')
+
+    @patch('studio.tasks.can_afford', return_value=True)
+    @patch('studio.tasks.publish_event')
+    @patch('studio.tasks.StudioProject')
+    @patch('studio.tasks.sandbox')
+    def test_run_pipeline_sandbox_failure_sets_state_failed(
+        self, mock_sandbox, MockQS, mock_pub, mock_afford
+    ):
+        from studio.tasks import run_pipeline
+        project = self._make_project()
+        MockQS.objects.get.return_value = project
+        mock_sandbox.spawn_sandbox.side_effect = RuntimeError('Docker not available')
+
+        run_pipeline(str(project.id))
+
+        self.assertEqual(project.pipeline.status, 'failed')
