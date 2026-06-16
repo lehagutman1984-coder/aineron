@@ -15,6 +15,7 @@ import { StepDetailDrawer } from './StepDetailDrawer';
 import { DiffViewer } from './DiffViewer';
 import { ShortcutsModal } from './ShortcutsModal';
 import { SearchFilesModal } from './SearchFilesModal';
+import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import type { StudioProject, StudioFileNode, StudioFileDetail, PipelineState } from '@/lib/api/studio';
 import { studioApi } from '@/lib/api/studio';
 
@@ -307,9 +308,9 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
 
       {/* Three-panel layout (always shown; pause handled by inline banner) */}
       <div className="flex-1 overflow-hidden flex flex-col">
-          {/* Desktop: 3 columns */}
-          <div className="hidden md:grid md:grid-cols-[220px_1fr_1fr] flex-1 overflow-hidden divide-x divide-[var(--border)]">
-            <div className="overflow-hidden flex flex-col">
+          {/* Desktop: resizable 3 columns */}
+          <PanelGroup orientation="horizontal" className="hidden md:flex flex-1 overflow-hidden">
+            <Panel defaultSize={18} minSize={12} className="overflow-hidden flex flex-col border-r border-[var(--border)]">
               <div className="px-3 py-2 text-xs font-medium text-[var(--text-secondary)] border-b border-[var(--border)]">
                 Файлы
               </div>
@@ -323,8 +324,9 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
               <div className="border-t border-[var(--border)] overflow-auto max-h-48">
                 <GitHistory projectId={project.id} />
               </div>
-            </div>
-            <div className="overflow-hidden flex flex-col">
+            </Panel>
+            <PanelResizeHandle className="w-1 bg-[var(--border)] hover:bg-blue-500 transition-colors cursor-col-resize" />
+            <Panel defaultSize={41} minSize={20} className="overflow-hidden flex flex-col">
               <div className="flex border-b border-[var(--border)] shrink-0 text-xs">
                 <button
                   onClick={() => setCenterTab('code')}
@@ -352,11 +354,12 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
                   )}
                 </div>
               )}
-            </div>
-            <div className="overflow-hidden flex flex-col">
+            </Panel>
+            <PanelResizeHandle className="w-1 bg-[var(--border)] hover:bg-blue-500 transition-colors cursor-col-resize" />
+            <Panel defaultSize={41} minSize={20} className="overflow-hidden flex flex-col">
               <PreviewPanel projectId={project.id} hasSandbox={!!project.sandbox_container_id} status={project.status} />
-            </div>
-          </div>
+            </Panel>
+          </PanelGroup>
 
           {/* Mobile: single active tab */}
           <div className="md:hidden flex-1 overflow-hidden">
