@@ -8,9 +8,14 @@ from ..models_catalog import ESCALATION_MAP, MODEL_TIER, DEFAULT_STUDIO_MODEL
 
 logger = logging.getLogger('studio.agents')
 
-# Backward-compat aliases; will be removed in commits 5-6 when agents migrate to resolve_model()
+# Backward-compat aliases; removed in commits 5-6 when agents migrate to resolve_model()
 MODEL_FAST = 'deepseek-v3.2'
 MODEL_SMART = 'claude-opus-4-8'
+
+
+def pick_prompt(ru: str, en: str) -> str:
+    """Return EN prompt by default; switch to RU via STUDIO_PROMPT_LANG=ru env var."""
+    return en if getattr(settings, 'STUDIO_PROMPT_LANG', 'en') == 'en' else ru
 
 _client = None
 
