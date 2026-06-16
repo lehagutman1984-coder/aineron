@@ -1,15 +1,38 @@
 'use client';
 
 import { useState } from 'react';
-import { RefreshCw, ExternalLink } from 'lucide-react';
+import { RefreshCw, ExternalLink, CheckCircle, Download } from 'lucide-react';
+import { studioApi } from '@/lib/api/studio';
 
 interface PreviewPanelProps {
   projectId: string;
   hasSandbox: boolean;
+  status?: string;
 }
 
-export function PreviewPanel({ projectId, hasSandbox }: PreviewPanelProps) {
+export function PreviewPanel({ projectId, hasSandbox, status }: PreviewPanelProps) {
   const [key, setKey] = useState(0);
+
+  if (status === 'completed') {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-4 p-6 text-center">
+        <CheckCircle size={48} className="text-green-500" />
+        <div>
+          <p className="text-sm font-medium text-[var(--text)]">Проект завершён</p>
+          <p className="text-xs text-[var(--text-secondary)] mt-1">
+            Превью-сервер песочницы остановлен для экономии ресурсов.
+          </p>
+        </div>
+        <a
+          href={studioApi.exportUrl(projectId)}
+          download
+          className="flex items-center gap-1.5 border border-[var(--border)] hover:bg-[var(--hover)] px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+        >
+          <Download size={14} /> Скачать ZIP
+        </a>
+      </div>
+    );
+  }
 
   if (!hasSandbox) {
     return (
