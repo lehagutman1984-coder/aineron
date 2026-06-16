@@ -4,13 +4,14 @@ import { useState } from 'react';
 import { RefreshCw, ExternalLink } from 'lucide-react';
 
 interface PreviewPanelProps {
-  containerId: string | null;
+  projectId: string;
+  hasSandbox: boolean;
 }
 
-export function PreviewPanel({ containerId }: PreviewPanelProps) {
+export function PreviewPanel({ projectId, hasSandbox }: PreviewPanelProps) {
   const [key, setKey] = useState(0);
 
-  if (!containerId) {
+  if (!hasSandbox) {
     return (
       <div className="flex items-center justify-center h-full text-sm text-[var(--text-secondary)] opacity-60 p-6 text-center">
         Preview появится после запуска кодинга
@@ -18,7 +19,8 @@ export function PreviewPanel({ containerId }: PreviewPanelProps) {
     );
   }
 
-  const src = `/studio/preview/${containerId}/`;
+  const base = process.env.NEXT_PUBLIC_API_URL ?? '';
+  const src = `${base}/studio/projects/${projectId}/preview/`;
 
   return (
     <div className="flex flex-col h-full">
@@ -39,7 +41,7 @@ export function PreviewPanel({ containerId }: PreviewPanelProps) {
         >
           <ExternalLink size={16} />
         </a>
-        <span className="text-xs text-[var(--text-secondary)] font-mono truncate">{src}</span>
+        <span className="text-xs text-[var(--text-secondary)] font-mono truncate">preview</span>
       </div>
       <iframe
         key={key}

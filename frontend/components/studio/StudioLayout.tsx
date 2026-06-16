@@ -146,7 +146,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
               />
             </div>
             <div className="overflow-hidden flex flex-col">
-              <PreviewPanel containerId={project.sandbox_container_id || null} />
+              <PreviewPanel projectId={project.id} hasSandbox={!!project.sandbox_container_id} />
             </div>
           </div>
 
@@ -167,7 +167,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
               />
             )}
             {mobileTab === 'preview' && (
-              <PreviewPanel containerId={project.sandbox_container_id || null} />
+              <PreviewPanel projectId={project.id} hasSandbox={!!project.sandbox_container_id} />
             )}
           </div>
 
