@@ -95,6 +95,11 @@ export interface TimelineStep {
   git_sha: string;
 }
 
+export interface DeviationReport {
+  matched: string[];
+  deviations: { planned: string; actual: string; severity: 'low' | 'medium' | 'high' }[];
+}
+
 export interface SandboxStatus {
   alive: boolean;
   port: number | null;
@@ -228,6 +233,9 @@ export const studioApi = {
 
   deploy: (id: string) =>
     request<{ status: string }>(`/studio/projects/${id}/deploy/`, { method: 'POST' }),
+
+  deviation: (id: string, n: number) =>
+    request<DeviationReport>(`/studio/projects/${id}/steps/${n}/deviation/`),
 
   exportGithub: (id: string, repoName: string, isPrivate: boolean) =>
     request<{ status: string }>(`/studio/projects/${id}/export/github/`, {

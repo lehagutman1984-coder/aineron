@@ -466,6 +466,8 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
           pipeline={pipeline}
           stepText={stepText}
           onClose={() => setDrawerAgent(null)}
+          projectId={project.id}
+          stepIndex={pipeline.step_index}
         />
       )}
 
