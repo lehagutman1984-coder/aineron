@@ -1,8 +1,15 @@
 'use client';
 
-import { useState } from 'react';
-import { RefreshCw, ExternalLink, CheckCircle, Download, Smartphone, Tablet, Monitor, Rocket, RotateCw } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { RefreshCw, ExternalLink, CheckCircle, Download, Smartphone, Tablet, Monitor, Rocket, RotateCw, AlertTriangle, Wrench } from 'lucide-react';
 import { studioApi } from '@/lib/api/studio';
+
+interface ConsoleError {
+  message: string;
+  file?: string;
+  line?: number;
+  stack?: string;
+}
 
 interface PreviewPanelProps {
   projectId: string;
@@ -13,6 +20,31 @@ interface PreviewPanelProps {
 export function PreviewPanel({ projectId, hasSandbox, status }: PreviewPanelProps) {
   const [key, setKey] = useState(0);
   const [width, setWidth] = useState<'100%' | '768px' | '375px'>('100%');
+  const [errors, setErrors] = useState<ConsoleError[]>([]);
+  const [fixing, setFixing] = useState(false);
+
+  useEffect(() => {
+    const onMsg = (e: MessageEvent) => {
+      if (e.data?.type === 'studio-console-error') {
+        const err: ConsoleError = e.data.error;
+        setErrors((prev) => [...prev, err].slice(-20));
+        studioApi.reportConsoleError(projectId, err);
+      }
+    };
+    window.addEventListener('message', onMsg);
+    return () => window.removeEventListener('message', onMsg);
+  }, [projectId]);
+
+  const handleAutofix = async () => {
+    const last = errors[errors.length - 1];
+    if (!last) return;
+    setFixing(true);
+    try {
+      await studioApi.reportConsoleError(projectId, { ...last, autofix: true });
+    } finally {
+      setFixing(false);
+    }
+  };
 
   if (status === 'completed') {
     return (
@@ -80,6 +112,22 @@ export function PreviewPanel({ projectId, hasSandbox, status }: PreviewPanelProp
           <ExternalLink size={16} />
         </a>
         <span className="text-xs text-[var(--text-secondary)] font-mono truncate">preview</span>
+
+        {/* Error indicator */}
+        {errors.length > 0 && (
+          <button
+            onClick={handleAutofix}
+            disabled={fixing}
+            title="Исправить автоматически"
+            className="flex items-center gap-1 text-xs text-red-400 hover:text-red-300 disabled:opacity-50 transition-colors"
+          >
+            <AlertTriangle size={14} />
+            {errors.length}
+            <Wrench size={13} />
+            {fixing ? 'Исправляю…' : 'Исправить'}
+          </button>
+        )}
+
         <div className="ml-auto flex items-center gap-1">
           <button
             onClick={() => setWidth('375px')}

@@ -228,6 +228,15 @@ export const studioApi = {
   deploy: (id: string) =>
     request<{ status: string }>(`/studio/projects/${id}/deploy/`, { method: 'POST' }),
 
+  reportConsoleError: (
+    id: string,
+    data: { message: string; stack?: string; file?: string; line?: number; autofix?: boolean },
+  ) =>
+    request<{ stored: boolean; count: number }>(`/studio/projects/${id}/console-error/`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
   explain: (id: string, code: string, path?: string) =>
     request<{ explanation: string }>(`/studio/projects/${id}/explain/`, {
       method: 'POST',
