@@ -35,6 +35,10 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
   const [drawerAgent, setDrawerAgent] = useState<string | null>(null);
   const [centerTab, setCenterTab] = useState<'code' | 'diff'>('code');
   const [diff, setDiff] = useState<{ old: string; new: string; path: string } | null>(null);
+  const [hintOpen, setHintOpen] = useState(false);
+  const [hintText, setHintText] = useState('');
+  const [resuming, setResuming] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
 
   const AGENT_LABELS: Record<string, string> = {
     interviewer: 'Интервью', analyst: 'Анализ', planner: 'План',
@@ -91,6 +95,18 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
   const handlePause = async () => {
     await studioApi.pause(project.id);
     onRefresh();
+  };
+
+  const doResume = async (action: 'continue' | 'with_hint' | 'skip_step', hint?: string) => {
+    setResuming(true);
+    try {
+      await studioApi.resume(project.id, { action, hint });
+      setHintOpen(false);
+      setHintText('');
+      onRefresh();
+    } finally {
+      setResuming(false);
+    }
   };
 
   const loadDiff = async () => {
@@ -201,21 +217,35 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
         ))}
       </div>
 
-      {/* ContextChat overlay for paused_on_loop */}
+      {/* Inline pause banner for paused_on_loop */}
       {pipeline.status === 'paused_on_loop' && (
-        <div className="flex-1 overflow-hidden">
-          <ContextChat
-            projectId={project.id}
-            pauseReason={pipeline.pause_reason}
-            resumeHint={pipeline.resume_hint}
-            onResume={onRefresh}
-          />
+        <div className="flex flex-col gap-2 px-4 py-2.5 bg-amber-950/40 border-b border-amber-800/50 shrink-0">
+          <div className="flex items-center gap-3">
+            <CheckCircle size={16} className="text-amber-400 shrink-0" />
+            <p className="text-xs text-amber-300 flex-1">{pipeline.pause_reason || 'Пайплайн на паузе'}</p>
+            <div className="flex items-center gap-2 shrink-0 flex-wrap">
+              <button onClick={() => doResume('continue')} disabled={resuming} className="bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg text-xs font-medium">Продолжить</button>
+              <button onClick={() => setHintOpen((v) => !v)} className="border border-amber-700 hover:bg-amber-900/40 text-amber-200 px-3 py-1.5 rounded-lg text-xs font-medium">Подсказать</button>
+              <button onClick={() => doResume('skip_step')} disabled={resuming} className="border border-amber-700 hover:bg-amber-900/40 text-amber-200 px-3 py-1.5 rounded-lg text-xs font-medium">Пропустить шаг</button>
+              <button onClick={() => setChatOpen((v) => !v)} className="border border-amber-700 hover:bg-amber-900/40 text-amber-200 px-3 py-1.5 rounded-lg text-xs font-medium">Чат с агентом</button>
+            </div>
+          </div>
+          {hintOpen && (
+            <div className="flex gap-2">
+              <textarea
+                value={hintText}
+                onChange={(e) => setHintText(e.target.value)}
+                placeholder="Подсказка агенту..."
+                className="flex-1 text-xs bg-[var(--bg)] border border-amber-800/50 rounded p-2 resize-none h-16"
+              />
+              <button onClick={() => doResume('with_hint', hintText)} disabled={resuming || !hintText.trim()} className="bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white px-3 rounded-lg text-xs font-medium self-stretch">Отправить</button>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Three-panel layout (hidden when paused_on_loop) */}
-      {pipeline.status !== 'paused_on_loop' && (
-        <div className="flex-1 overflow-hidden flex flex-col">
+      {/* Three-panel layout (always shown; pause handled by inline banner) */}
+      <div className="flex-1 overflow-hidden flex flex-col">
           {/* Desktop: 3 columns */}
           <div className="hidden md:grid md:grid-cols-[220px_1fr_1fr] flex-1 overflow-hidden divide-x divide-[var(--border)]">
             <div className="overflow-hidden flex flex-col">
@@ -300,6 +330,22 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
                 <AgentLog projectId={project.id} />
               </div>
             )}
+          </div>
+        </div>
+
+      {chatOpen && (
+        <div className="fixed inset-y-0 right-0 w-full max-w-sm bg-[var(--bg)] border-l border-[var(--border)] shadow-xl z-40 flex flex-col">
+          <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--border)]">
+            <span className="text-sm font-medium">Чат с агентом</span>
+            <button onClick={() => setChatOpen(false)} className="text-[var(--text-secondary)] hover:text-[var(--text)] text-xs">Закрыть</button>
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <ContextChat
+              projectId={project.id}
+              pauseReason={pipeline.pause_reason}
+              resumeHint={pipeline.resume_hint}
+              onResume={onRefresh}
+            />
           </div>
         </div>
       )}
