@@ -22,6 +22,7 @@ import type { StudioProject, StudioMode, StudioStack, StudioModel } from "@/lib/
 import { TemplateGallery } from "@/components/studio/TemplateGallery";
 import { StudioHero } from "@/components/studio/StudioHero";
 import { StackCards } from "@/components/studio/StackCards";
+import { FeatureSelector } from "@/components/studio/FeatureSelector";
 import { card, badge, form, btn } from "@/components/studio/styles";
 
 const STACK_OPTIONS: { value: StudioStack; label: string }[] = [
@@ -71,6 +72,7 @@ export default function StudioPage() {
   const [stack, setStack] = useState<StudioStack>("nextjs");
 
   const [aiModel, setAiModel] = useState("claude-sonnet-4-6");
+  const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
   const [screenshotLoading, setScreenshotLoading] = useState(false);
   const [screenshotDesc, setScreenshotDesc] = useState('');
 
@@ -96,7 +98,7 @@ export default function StudioPage() {
 
   const createMutation = useMutation({
     mutationFn: () =>
-      studioApi.create({ name, description: screenshotDesc ? `${description}\n\nМакет: ${screenshotDesc}` : description, mode, target_stack: stack, ai_model: aiModel } as Parameters<typeof studioApi.create>[0] & { ai_model: string }),
+      studioApi.create({ name, description: screenshotDesc ? `${description}\n\nМакет: ${screenshotDesc}` : description, mode, target_stack: stack, ai_model: aiModel, selected_features: selectedFeatures } as Parameters<typeof studioApi.create>[0] & { ai_model: string; selected_features: string[] }),
     onSuccess: (project: StudioProject) => {
       qc.invalidateQueries({ queryKey: ["studio-projects"] });
       router.push(`/studio/${project.id}/interview`);
@@ -275,6 +277,8 @@ export default function StudioPage() {
                 <label className="block text-sm font-medium mb-2">Стек</label>
                 <StackCards selected={stack} onSelect={(s) => setStack(s as StudioStack)} />
               </div>
+
+              <FeatureSelector selected={selectedFeatures} onChange={setSelectedFeatures} />
 
               {models.length > 0 && (
                 <div>

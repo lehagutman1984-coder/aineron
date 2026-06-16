@@ -30,6 +30,13 @@ class AnalystAgent(BaseAgent):
             f"Stack: {self.project.target_stack}\n"
             f"Interview data: {interview}"
         )
+        features = (self.project.interview_data or {}).get('features', [])
+        if features:
+            features_text = '\n'.join(f'- {f}' for f in features)
+            user += (
+                f'\n\nОБЯЗАТЕЛЬНЫЕ ФУНКЦИИ (выбраны пользователем):\n{features_text}\n'
+                f'Включи все эти функции в функциональные требования PROJECT.md.'
+            )
         md = self.run_prompt(system, user, model=self.resolve_model(), max_tokens=8192)
         self.project.project_md_content = md
         self.project.save(update_fields=['project_md_content'])

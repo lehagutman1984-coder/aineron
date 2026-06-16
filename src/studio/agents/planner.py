@@ -27,6 +27,13 @@ class PlannerAgent(BaseAgent):
         self.log('Составляю план реализации...')
         system = pick_prompt(SYSTEM_RU, SYSTEM_EN)
         user = f"PROJECT.md:\n\n{self.project.project_md_content}"
+        features = (self.project.interview_data or {}).get('features', [])
+        if features:
+            features_text = '\n'.join(f'- {f}' for f in features)
+            user += (
+                f'\n\nMUST-HAVE компоненты (выбраны пользователем, обязательны):\n{features_text}\n'
+                f'Каждая функция должна быть покрыта хотя бы одним шагом COMMITS.md.'
+            )
         md_raw = self.run_prompt(system, user, model=self.resolve_model(), max_tokens=8192)
         m = re.search(r'<STEPS_COUNT>(\d+)</STEPS_COUNT>', md_raw)
         marker = int(m.group(1)) if m else 0

@@ -15,15 +15,19 @@ class StudioProjectSerializer(serializers.ModelSerializer):
 
 class StudioProjectCreateSerializer(serializers.ModelSerializer):
     template_slug = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    selected_features = serializers.ListField(
+        child=serializers.CharField(), required=False, default=list, write_only=True,
+    )
 
     class Meta:
         model = StudioProject
         fields = ('id', 'name', 'description', 'mode', 'entry_mode', 'target_url', 'target_stack',
-                  'status', 'created_at', 'template_slug')
+                  'status', 'created_at', 'template_slug', 'selected_features')
         read_only_fields = ('id', 'status', 'created_at')
 
     def create(self, validated_data):
         template_slug = validated_data.pop('template_slug', None)
+        selected_features = validated_data.pop('selected_features', [])
         project = super().create(validated_data)
         if template_slug:
             from .models import StudioTemplate
@@ -36,6 +40,10 @@ class StudioProjectCreateSerializer(serializers.ModelSerializer):
                 tmpl.save(update_fields=['usage_count'])
             except StudioTemplate.DoesNotExist:
                 pass
+        if selected_features:
+            project.interview_data = project.interview_data or {}
+            project.interview_data['features'] = selected_features
+            project.save(update_fields=['interview_data'])
         return project
 
 
