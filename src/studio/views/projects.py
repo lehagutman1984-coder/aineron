@@ -40,7 +40,7 @@ class InterviewView(APIView):
         # Atomic check-and-set: only the first request with status='draft' triggers the task
         triggered = StudioProject.objects.filter(
             id=id, user=request.user, status='draft'
-        ).update(status='interviewing')
+        ).update(status='interview')
 
         project = StudioProject.objects.get(id=id, user=request.user)
 
