@@ -658,15 +658,25 @@ def restart_preview(project_id):
             pass
     try:
         cid = sandbox.spawn_sandbox(project_id)
-        files = {f.path: f.content for f in project.files.all()} or {'package.json': '{"name":"app","private":true}'}
+        files = {f.path: f.content for f in project.files.all()} or {'index.html': '<h1>Empty project</h1>'}
         sandbox.write_files(cid, files)
         sandbox.install_deps(cid)
         sandbox.isolate(cid)
         sandbox.start_dev_server(cid)
+        # Save early so SandboxStatusView can find the container
         project.sandbox_container_id = cid
         project.preview_port = 3000
         project.save(update_fields=['sandbox_container_id', 'preview_port'])
-        publish_event(project_id, {'agent': 'system', 'level': 'info', 'text': 'Превью перезапущено'})
+        publish_event(project_id, {'agent': 'system', 'level': 'info', 'text': 'Sandbox запущен, ждём HTTP-сервер...'})
+        ready = sandbox.wait_for_ready(cid, timeout=90)
+        if ready:
+            publish_event(project_id, {'agent': 'system', 'level': 'success', 'text': 'Превью готово'})
+        else:
+            _, dev_log = sandbox.exec_command(cid, 'tail -20 /tmp/dev.log 2>/dev/null || true')
+            publish_event(project_id, {
+                'agent': 'system', 'level': 'error',
+                'text': f'Превью не ответило за 90 сек. dev.log:\n{dev_log}',
+            })
     except Exception as exc:
         publish_event(project_id, {'agent': 'system', 'level': 'error', 'text': f'Не удалось перезапустить превью: {exc}'})
 

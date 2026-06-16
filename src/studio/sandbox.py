@@ -90,22 +90,51 @@ def isolate(container_id: str):
 
 
 def start_dev_server(container_id: str) -> int:
-    exec_command(container_id, 'nohup pnpm dev --port 3000 --host 0.0.0.0 > /tmp/dev.log 2>&1 &')
+    import json as _json
+    # Check if package.json has a 'dev' script
+    _, pkg_raw = exec_command(container_id, 'cat /workspace/package.json 2>/dev/null || echo {}')
+    try:
+        pkg = _json.loads(pkg_raw)
+        has_dev = 'dev' in pkg.get('scripts', {})
+    except Exception:
+        has_dev = False
+
+    if has_dev:
+        cmd = 'nohup pnpm dev --port 3000 --host 0.0.0.0 > /tmp/dev.log 2>&1 &'
+    else:
+        # Static HTML/CSS project — serve with built-in Python HTTP server
+        cmd = 'nohup python3 -m http.server 3000 --bind 0.0.0.0 > /tmp/dev.log 2>&1 &'
+    exec_command(container_id, cmd)
+    logger.info('sandbox %s: dev server started (has_dev=%s)', container_id, has_dev)
     return 3000
 
 
-def wait_for_ready(container_id: str, timeout: int = 60) -> bool:
-    """Poll dev server inside container until HTTP 200 or timeout."""
+def wait_for_ready(container_id: str, timeout: int = 90) -> bool:
+    """Poll HTTP server inside container until HTTP 2xx/3xx or timeout."""
     import time
-    for _ in range(timeout // 3):
-        code, out = exec_command(
+    for i in range(timeout // 3):
+        _, out = exec_command(
             container_id,
-            'curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/ || echo 000',
+            'curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/ 2>/dev/null || echo 000',
         )
-        if out.strip().endswith('200'):
+        code = out.strip()[-3:]
+        if code.startswith('2') or code.startswith('3'):
+            logger.info('sandbox %s ready after %ds', container_id, i * 3)
             return True
         time.sleep(3)
+    _, log = exec_command(container_id, 'tail -20 /tmp/dev.log 2>/dev/null || true')
+    logger.error('sandbox %s not ready after %ds. dev.log: %s', container_id, timeout, log)
     return False
+
+
+def is_http_alive(container_id: str) -> bool:
+    """Quick check: returns True if HTTP server in container answers on :3000."""
+    _, out = exec_command(
+        container_id,
+        'curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/ 2>/dev/null || echo 000',
+    )
+    code = out.strip()[-3:]
+    return code.startswith('2') or code.startswith('3')
 
 
 def run_build_check(container_id: str) -> tuple:
