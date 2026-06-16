@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { Play, Pause, Files, Code2, Monitor, CheckCircle, Download } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Play, Pause, Files, Code2, Monitor, CheckCircle, Download, ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 import { FileTree } from './FileTree';
 import { CodeViewer } from './CodeViewer';
 import { PreviewPanel } from './PreviewPanel';
@@ -46,6 +47,20 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
     setMobileTab('code');
   };
 
+  // Auto-select a meaningful file on first load so the editor isn't empty
+  useEffect(() => {
+    if (selectedFileId === null && files.length > 0) {
+      const priority = [
+        'index.html', 'app/page.tsx', 'src/App.tsx', 'src/App.jsx',
+        'README.md', 'COMMITS.md',
+      ];
+      const pick =
+        priority.map((p) => files.find((f) => f.path.endsWith(p))).find(Boolean) ?? files[0];
+      if (pick) handleFileSelect(pick.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [files, selectedFileId]);
+
   const handleRun = async () => {
     setRunning(true);
     try {
@@ -76,6 +91,13 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
     <div className="flex flex-col h-screen overflow-hidden">
       {/* Top bar */}
       <div className="flex items-center gap-4 px-4 py-2 border-b border-[var(--border)] shrink-0">
+        <Link
+          href="/studio"
+          className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)] hover:text-[var(--text)] transition-colors shrink-0"
+        >
+          <ArrowLeft size={16} /> Проекты
+        </Link>
+        <div className="w-px h-4 bg-[var(--border)]" />
         <PipelineStatus projectStatus={project.status} pipelineStatus={pipeline.status} />
         <div className="ml-auto flex items-center gap-2">
           {!isCompleted && !isRunning && !isPaused && (
@@ -184,7 +206,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
               />
             </div>
             <div className="overflow-hidden flex flex-col">
-              <PreviewPanel projectId={project.id} hasSandbox={!!project.sandbox_container_id} />
+              <PreviewPanel projectId={project.id} hasSandbox={!!project.sandbox_container_id} status={project.status} />
             </div>
           </div>
 
@@ -205,7 +227,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
               />
             )}
             {mobileTab === 'preview' && (
-              <PreviewPanel projectId={project.id} hasSandbox={!!project.sandbox_container_id} />
+              <PreviewPanel projectId={project.id} hasSandbox={!!project.sandbox_container_id} status={project.status} />
             )}
           </div>
 
