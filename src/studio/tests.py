@@ -230,6 +230,44 @@ class SandboxFailureTest(APITestCase):
         self.assertEqual(project.pipeline.status, 'failed')
 
 
+class SpaCrawlingTest(APITestCase):
+    """Commit 19 — crawl_and_analyze falls back to crawl_spa_task when static text is short."""
+
+    def _make_project(self):
+        project = MagicMock()
+        project.id = 'test-uuid'
+        project.target_url = 'https://example.com'
+        project.interview_data = {}
+        project.status = 'draft'
+        return project
+
+    @patch('studio.tasks.crawl_spa_task')
+    @patch('studio.tasks.publish_event')
+    @patch('studio.tasks.StudioProject')
+    @patch('studio.tasks.crawl')
+    def test_short_text_triggers_spa_crawl(self, mock_crawl, MockQS, mock_pub, mock_spa_task):
+        from studio.tasks import crawl_and_analyze
+        project = self._make_project()
+        MockQS.objects.get.return_value = project
+        mock_crawl.return_value = {'text': '   ', 'title': ''}
+        crawl_and_analyze(str(project.id))
+        mock_spa_task.delay.assert_called_once_with(str(project.id))
+
+    @patch('studio.tasks.crawl_spa_task')
+    @patch('studio.tasks.agent_analyze')
+    @patch('studio.tasks.publish_event')
+    @patch('studio.tasks.StudioProject')
+    @patch('studio.tasks.crawl')
+    def test_long_text_skips_spa_crawl(self, mock_crawl, MockQS, mock_pub, mock_analyze, mock_spa_task):
+        from studio.tasks import crawl_and_analyze
+        project = self._make_project()
+        MockQS.objects.get.return_value = project
+        mock_crawl.return_value = {'text': 'x' * 500, 'title': 'Test'}
+        crawl_and_analyze(str(project.id))
+        mock_spa_task.delay.assert_not_called()
+        mock_analyze.delay.assert_called_once()
+
+
 class ContextChatViewTest(APITestCase):
     """Commit 17 — ContextChatView answers via LLM, charges 1 star, saves history."""
 
