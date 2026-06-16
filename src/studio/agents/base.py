@@ -54,6 +54,21 @@ class BaseAgent:
             raw = m.group(1).strip()
         return json.loads(raw)
 
+    def run_vision(self, system: str, image_b64: str, model: str = None, max_tokens: int = 1500) -> str:
+        resp = self.client.chat.completions.create(
+            model=model or self.model,
+            messages=[
+                {'role': 'system', 'content': system},
+                {'role': 'user', 'content': [
+                    {'type': 'image_url', 'image_url': {'url': f'data:image/png;base64,{image_b64}'}},
+                ]},
+            ],
+            stream=False,
+            max_tokens=max_tokens,
+            temperature=0.5,
+        )
+        return resp.choices[0].message.content
+
     def log(self, text: str, level: str = 'info'):
         from ..events import publish_event
         publish_event(str(self.project.id), {'agent': self.name, 'level': level, 'text': text})

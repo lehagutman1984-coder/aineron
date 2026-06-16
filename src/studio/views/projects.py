@@ -163,6 +163,26 @@ class CloneView(APIView):
         return Response(StudioProjectSerializer(project).data, status=201)
 
 
+class ScreenshotView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, id):
+        import base64
+        project = StudioProject.objects.get(id=id, user=request.user)
+        img = request.FILES.get('image')
+        if not img:
+            return Response({'error': 'Нет файла'}, status=400)
+        project.screenshot = img
+        project.save(update_fields=['screenshot'])
+        img.seek(0)
+        b64 = base64.b64encode(img.read()).decode()
+        from ..agents.screenshot import ScreenshotAgent
+        desc = ScreenshotAgent(project).describe(b64)
+        project.interview_data['screenshot_description'] = desc
+        project.save(update_fields=['interview_data'])
+        return Response({'description': desc})
+
+
 class TimelineView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -208,6 +228,47 @@ class BranchFromVersionView(APIView):
         for f in project.files.all():
             StudioFile.objects.create(project=fork, path=f.path, content=f.content, language=f.language)
         return Response({'id': str(fork.id)}, status=201)
+
+
+class GithubExportView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, id):
+        project = StudioProject.objects.get(id=id, user=request.user)
+        from ..tasks import export_to_github
+        repo_name = request.data.get('repo_name', f'aineron-{str(project.id)[:8]}')
+        private = bool(request.data.get('private', True))
+        export_to_github.delay(str(project.id), repo_name, private)
+        return Response({'status': 'exporting'}, status=202)
+
+
+class NotificationPrefsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def put(self, request, id):
+        project = StudioProject.objects.get(id=id, user=request.user)
+        project.interview_data['notify'] = {
+            'email': bool(request.data.get('email', True)),
+            'telegram': bool(request.data.get('telegram', False)),
+            'push': bool(request.data.get('push', False)),
+        }
+        project.save(update_fields=['interview_data'])
+        return Response(project.interview_data['notify'])
+
+
+class DeviationView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, id, n):
+        project = StudioProject.objects.get(id=id, user=request.user)
+        from ..tasks import _split_steps
+        steps = _split_steps(project.commits_md_content)
+        planned = steps[n] if n < len(steps) else ''
+        changed_paths = (project.interview_data.get('last_changed', {})).get(str(n), [])
+        files = {f.path: f.content for f in project.files.filter(path__in=changed_paths)}
+        from ..agents.deviation import DeviationReviewerAgent
+        report = DeviationReviewerAgent(project).review(planned, files)
+        return Response(report)
 
 
 class ProjectSettingsView(APIView):

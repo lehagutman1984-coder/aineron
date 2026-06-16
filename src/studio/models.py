@@ -51,6 +51,8 @@ class StudioProject(models.Model):
     forked_from = models.ForeignKey(
         'self', null=True, blank=True, on_delete=models.SET_NULL, related_name='forks'
     )
+    screenshot = models.ImageField(upload_to='studio/screenshots/', null=True, blank=True)
+    github_repo_url = models.CharField(max_length=500, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
