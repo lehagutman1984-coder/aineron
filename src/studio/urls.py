@@ -1,5 +1,5 @@
 from django.urls import path, re_path
-from .views.projects import StudioProjectListCreateView, StudioProjectDetailView, InterviewView, CloneView, TemplateListView, PublishTemplateView, CollaboratorView, ProjectSettingsView
+from .views.projects import StudioProjectListCreateView, StudioProjectDetailView, InterviewView, CloneView, TemplateListView, PublishTemplateView, CollaboratorView, ProjectSettingsView, TimelineView, BranchFromVersionView
 from .views.pipeline import (
     EstimateView, PipelineStateView, PipelineRunView, PipelineEventsView,
     PipelinePauseView, PipelineResumeView, PreviewProxyView, ContextChatView,
@@ -33,6 +33,8 @@ urlpatterns = [
     path('projects/<uuid:id>/settings/', ProjectSettingsView.as_view(), name='project_settings'),
     path('projects/<uuid:id>/publish-template/', PublishTemplateView.as_view(), name='publish_template'),
     path('projects/<uuid:id>/collaborators/', CollaboratorView.as_view(), name='collaborators'),
+    path('projects/<uuid:id>/timeline/', TimelineView.as_view(), name='timeline'),
+    path('projects/<uuid:id>/branch/<int:version_id>/', BranchFromVersionView.as_view(), name='branch_from_version'),
     path('clone/', CloneView.as_view(), name='clone'),
     path('templates/', TemplateListView.as_view(), name='template_list'),
     path('projects/<uuid:id>/preview/restart/', PreviewRestartView.as_view(), name='preview_restart'),

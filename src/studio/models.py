@@ -48,6 +48,9 @@ class StudioProject(models.Model):
     max_iterations = models.IntegerField(default=0)  # 0 = use global STUDIO_MAX_ITERATIONS
     max_stars_budget = models.IntegerField(default=0)  # 0 = no cap
     auto_deploy = models.BooleanField(default=False)
+    forked_from = models.ForeignKey(
+        'self', null=True, blank=True, on_delete=models.SET_NULL, related_name='forks'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

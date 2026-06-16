@@ -163,6 +163,53 @@ class CloneView(APIView):
         return Response(StudioProjectSerializer(project).data, status=201)
 
 
+class TimelineView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, id):
+        project = StudioProject.objects.get(id=id, user=request.user)
+        from ..tasks import _split_steps
+        steps = _split_steps(project.commits_md_content)
+        changed = project.interview_data.get('last_changed', {})
+        versions = {v.step_index: v for v in project.versions.all()}
+        out = []
+        for i, text in enumerate(steps):
+            v = versions.get(i)
+            out.append({
+                'step_index': i,
+                'name': text.strip().splitlines()[0][:120] if text.strip() else f'Шаг {i}',
+                'planned': text[:2000],
+                'changed_files': changed.get(str(i), []),
+                'version_id': v.id if v else None,
+                'git_sha': v.git_sha if v else '',
+            })
+        return Response(out)
+
+
+class BranchFromVersionView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, id, version_id):
+        from ..models import StudioVersion, StudioFile
+        project = StudioProject.objects.get(id=id, user=request.user)
+        version = StudioVersion.objects.get(id=version_id, project=project)
+        fork = StudioProject.objects.create(
+            user=request.user,
+            name=f'{project.name} (ветка от шага {version.step_index})',
+            description=project.description,
+            mode=project.mode, entry_mode=project.entry_mode,
+            target_url=project.target_url, target_stack=project.target_stack,
+            project_md_content=project.project_md_content,
+            commits_md_content=project.commits_md_content,
+            interview_data=project.interview_data,
+            forked_from=project, status='ready',
+        )
+        StudioPipelineState.objects.create(project=fork)
+        for f in project.files.all():
+            StudioFile.objects.create(project=fork, path=f.path, content=f.content, language=f.language)
+        return Response({'id': str(fork.id)}, status=201)
+
+
 class ProjectSettingsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
