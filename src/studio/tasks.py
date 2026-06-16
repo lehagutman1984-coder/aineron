@@ -235,6 +235,37 @@ def start_step(project_id, step_index):
     coder_iteration.delay(project_id, step_index)
 
 
+def _ensure_sandbox(project, project_id):
+    """Spawn sandbox for a project that has none (e.g. resumed after limit hit)."""
+    from django.conf import settings as _s
+    if sandbox.count_user_sandboxes(project.user_id) >= _s.STUDIO_MAX_SANDBOXES_PER_USER:
+        publish_event(project_id, {
+            'agent': 'system', 'level': 'warning',
+            'text': 'Достигнут лимит sandbox — продолжаем без build check',
+        })
+        return
+    try:
+        publish_event(project_id, {'agent': 'system', 'level': 'info', 'text': 'Поднимаю sandbox...'})
+        cid = sandbox.spawn_sandbox(project_id, user_id=project.user_id)
+        existing = _existing_files(project)
+        sandbox.write_files(cid, existing or {'package.json': '{"name":"app","private":true}'})
+        sandbox.install_deps(cid)
+        sandbox.isolate(cid)
+        sandbox.start_dev_server(cid)
+        project.sandbox_container_id = cid
+        project.preview_port = 3000
+        project.save(update_fields=['sandbox_container_id', 'preview_port'])
+        publish_event(project_id, {'agent': 'system', 'level': 'info', 'text': 'Sandbox готов'})
+    except Exception as exc:
+        import logging
+        logging.getLogger('studio.tasks').warning(
+            'resume sandbox spawn FAILED project=%s: %s', project_id, repr(exc))
+        publish_event(project_id, {
+            'agent': 'system', 'level': 'warning',
+            'text': 'Sandbox не поднялся — продолжаем без build check',
+        })
+
+
 @shared_task(bind=True, max_retries=3, queue=QUEUE)
 def coder_iteration(self, project_id, step_index):
     project = StudioProject.objects.get(id=project_id)
@@ -244,6 +275,9 @@ def coder_iteration(self, project_id, step_index):
         return
     state.current_task_id = self.request.id or ''
     state.save(update_fields=['current_task_id'])
+    if not project.sandbox_container_id:
+        _ensure_sandbox(project, project_id)
+        project.refresh_from_db(fields=['sandbox_container_id', 'preview_port'])
     from .agents.coder import CoderAgent
     try:
         step_text = _get_step_text(project, step_index)
