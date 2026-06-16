@@ -269,6 +269,16 @@ CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 CELERY_TASK_ROUTES = {'studio.tasks.*': {'queue': 'studio_queue'}}
 
+from celery.schedules import crontab  # noqa: E402
+CELERY_BEAT_SCHEDULE = {
+    **(globals().get('CELERY_BEAT_SCHEDULE') or {}),
+    'studio-reap-stale-sandboxes': {
+        'task': 'studio.tasks.reap_stale_sandboxes',
+        'schedule': crontab(minute='*/30'),
+        'options': {'queue': 'studio_queue'},
+    },
+}
+
 
 # ========== API КЛЮЧИ ==========
 LAOZHANG_API_KEY = os.environ.get('LAOZHANG_API_KEY', '')
