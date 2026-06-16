@@ -3,12 +3,22 @@ from django.http import StreamingHttpResponse, HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.decorators.clickjacking import xframe_options_exempt
 from rest_framework import permissions
+from rest_framework.renderers import BaseRenderer
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from ..models import StudioProject
 from ..serializers import PipelineStateSerializer
 from ..events import get_pipeline_events
 from ..billing import estimate_stars
+
+
+class EventStreamRenderer(BaseRenderer):
+    """Allow DRF to accept Accept: text/event-stream without returning 406."""
+    media_type = 'text/event-stream'
+    format = 'event-stream'
+
+    def render(self, data, accepted_media_type=None, renderer_context=None):
+        return data
 
 
 class EstimateView(APIView):
@@ -55,6 +65,7 @@ class PipelineRunView(APIView):
 
 class PipelineEventsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    renderer_classes = [EventStreamRenderer]
 
     def get(self, request, id):
         StudioProject.objects.get(id=id, user=request.user)
