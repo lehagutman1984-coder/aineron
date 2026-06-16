@@ -85,3 +85,28 @@ class ExportView(APIView):
         safe_name = project.name.replace(' ', '_')[:50]
         resp['Content-Disposition'] = f'attachment; filename="{safe_name}.zip"'
         return resp
+
+
+class SearchFilesView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, id):
+        q = (request.query_params.get('q') or '').strip()
+        if not q:
+            return Response([])
+        files = StudioFile.objects.filter(
+            project_id=id, project__user=request.user, content__icontains=q,
+        )
+        results = []
+        for f in files[:50]:
+            file_hits = 0
+            for i, line in enumerate(f.content.splitlines(), start=1):
+                if q.lower() in line.lower():
+                    results.append({
+                        'file_id': f.id, 'path': f.path,
+                        'line': i, 'snippet': line.strip()[:200],
+                    })
+                    file_hits += 1
+                    if file_hits >= 5:
+                        break
+        return Response(results[:100])
