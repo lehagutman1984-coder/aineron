@@ -52,9 +52,16 @@ class StudioFileDetailSerializer(serializers.ModelSerializer):
 
 
 class PipelineStateSerializer(serializers.ModelSerializer):
+    max_iterations = serializers.SerializerMethodField()
+
     class Meta:
         model = StudioPipelineState
         fields = '__all__'
+
+    def get_max_iterations(self, obj):
+        from django.conf import settings
+        project_max = obj.project.max_iterations if hasattr(obj, 'project') else 0
+        return project_max or getattr(settings, 'STUDIO_MAX_ITERATIONS', 3)
 
 
 class StudioVersionSerializer(serializers.ModelSerializer):

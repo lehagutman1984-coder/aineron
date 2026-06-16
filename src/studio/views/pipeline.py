@@ -228,6 +228,32 @@ class SandboxStatusView(APIView):
         return Response({'alive': alive, 'port': project.preview_port, 'uptime_s': uptime_s, 'static': False})
 
 
+class PipelineSkipView(APIView):
+    """Skip the current stuck step (resets anti-loop counters) and move to the next."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, id):
+        from ..events import publish_event
+        project = StudioProject.objects.get(id=id, user=request.user)
+        state = project.pipeline
+        state.status = 'running'
+        state.pause_requested = False
+        state.same_diff_count = 0
+        state.last_files_hash = ''
+        state.last_error_signature = ''
+        state.error_repeat_count = 0
+        state.save(update_fields=[
+            'status', 'pause_requested', 'same_diff_count',
+            'last_files_hash', 'last_error_signature', 'error_repeat_count',
+        ])
+        project.status = 'coding'
+        project.save(update_fields=['status'])
+        from ..tasks import next_step
+        next_step.delay(str(project.id), state.step_index)
+        publish_event(str(project.id), {'agent': 'system', 'level': 'info', 'type': 'resumed', 'action': 'skip_step'})
+        return Response({'status': 'running', 'skipped_step': state.step_index})
+
+
 class ConsoleErrorView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 

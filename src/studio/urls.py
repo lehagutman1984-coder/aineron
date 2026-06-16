@@ -9,7 +9,7 @@ from .views.pipeline import (
     EstimateView, PipelineStateView, PipelineRunView, PipelineEventsView,
     PipelinePauseView, PipelineResumeView, PreviewProxyView, ContextChatView,
     ApproveStepView, DeployView, SandboxStatusView, PreviewRestartView, ExplainView,
-    ConsoleErrorView,
+    ConsoleErrorView, PipelineSkipView,
 )
 from .views.files import FileTreeView, FileDetailView, FileDiffView, CommitHistoryView, RollbackView, ExportView, SearchFilesView
 
@@ -49,6 +49,7 @@ urlpatterns = [
     path('templates/', TemplateListView.as_view(), name='template_list'),
     path('projects/<uuid:id>/explain/', ExplainView.as_view(), name='explain'),
     path('projects/<uuid:id>/console-error/', ConsoleErrorView.as_view(), name='console_error'),
+    path('projects/<uuid:id>/pipeline/skip/', PipelineSkipView.as_view(), name='pipeline_skip'),
     path('projects/<uuid:id>/preview/restart/', PreviewRestartView.as_view(), name='preview_restart'),
     # Preview proxy: proxies HTTP to sandbox container; ?path= is the sub-path
     re_path(r'^projects/(?P<id>[0-9a-f-]{36})/preview/(?P<path>.*)$', PreviewProxyView.as_view(), name='preview_proxy'),
