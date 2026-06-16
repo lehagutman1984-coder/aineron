@@ -14,6 +14,7 @@ import { SandboxStatusBadge } from './SandboxStatusBadge';
 import { StepDetailDrawer } from './StepDetailDrawer';
 import { DiffViewer } from './DiffViewer';
 import { ShortcutsModal } from './ShortcutsModal';
+import { SearchFilesModal } from './SearchFilesModal';
 import type { StudioProject, StudioFileNode, StudioFileDetail, PipelineState } from '@/lib/api/studio';
 import { studioApi } from '@/lib/api/studio';
 
@@ -42,6 +43,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
   const [chatOpen, setChatOpen] = useState(false);
   const [deploying, setDeploying] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const AGENT_LABELS: Record<string, string> = {
     interviewer: 'Интервью', analyst: 'Анализ', planner: 'План',
@@ -105,7 +107,8 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
       const mod = e.ctrlKey || e.metaKey;
       if (mod && e.key === '`') { e.preventDefault(); setLogOpen((v) => !v); }
       else if (mod && e.key === 'Enter' && pipeline.status === 'paused_on_loop') { e.preventDefault(); doResume('continue'); }
-      else if (e.key === 'Escape') { setShortcutsOpen(false); setDrawerAgent(null); setChatOpen(false); }
+      else if (mod && (e.key === 'k' || (e.shiftKey && e.key.toLowerCase() === 'f'))) { e.preventDefault(); setSearchOpen(true); }
+      else if (e.key === 'Escape') { setShortcutsOpen(false); setDrawerAgent(null); setChatOpen(false); setSearchOpen(false); }
       else if (e.key === '?' && !mod) { setShortcutsOpen(true); }
     };
     window.addEventListener('keydown', onKey);
@@ -423,6 +426,14 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
       )}
 
       {shortcutsOpen && <ShortcutsModal onClose={() => setShortcutsOpen(false)} />}
+
+      {searchOpen && (
+        <SearchFilesModal
+          projectId={project.id}
+          onClose={() => setSearchOpen(false)}
+          onPick={(fileId) => handleFileSelect(fileId)}
+        />
+      )}
     </div>
   );
 }

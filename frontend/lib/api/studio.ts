@@ -93,6 +93,13 @@ export interface StudioFileDiff {
   new: string;
 }
 
+export interface FileSearchResult {
+  file_id: number;
+  path: string;
+  line: number;
+  snippet: string;
+}
+
 export const studioApi = {
   list: () =>
     request<StudioProject[]>('/studio/projects/'),
@@ -127,6 +134,9 @@ export const studioApi = {
       method: 'PATCH',
       body: JSON.stringify({ content }),
     }),
+
+  searchFiles: (id: string, q: string) =>
+    request<FileSearchResult[]>(`/studio/projects/${id}/search/?q=${encodeURIComponent(q)}`),
 
   pipeline: (id: string) =>
     request<PipelineState>(`/studio/projects/${id}/pipeline/`),
