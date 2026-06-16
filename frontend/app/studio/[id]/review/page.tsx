@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Loader2, Play, Edit3, Check } from 'lucide-react';
+import { Loader2, Play, Edit3, Check, AlertTriangle } from 'lucide-react';
 import { studioApi } from '@/lib/api/studio';
 import { BillingEstimate } from '@/components/studio/BillingEstimate';
 
@@ -52,6 +52,12 @@ export default function ReviewPage() {
     queryKey: ['studio-project-review', id],
     queryFn: () => studioApi.get(id),
     refetchInterval: 3000,
+  });
+
+  const { data: estimate } = useQuery({
+    queryKey: ['studio-estimate', id],
+    queryFn: () => studioApi.estimate(id),
+    enabled: !!project && (project.status === 'ready' || project.status === 'planning'),
   });
 
   const runMutation = useMutation({
@@ -121,9 +127,20 @@ export default function ReviewPage() {
         onSave={(v) => saveMd('commits_md_content', v)}
       />
 
-      <BillingEstimate estimatedStars={50} plannedSteps={plannedSteps} />
+      <BillingEstimate
+        estimatedStars={estimate?.estimated_stars}
+        plannedSteps={estimate?.planned_steps ?? plannedSteps}
+      />
 
       <div className="mt-6">
+        {estimate && !estimate.affordable && (
+          <div className="flex items-center gap-2 mb-3 text-sm text-amber-600 dark:text-amber-400">
+            <AlertTriangle size={16} />
+            <span>
+              Недостаточно звёзд: нужно ~{estimate.estimated_stars}, на балансе {estimate.balance}
+            </span>
+          </div>
+        )}
         <button
           onClick={() => runMutation.mutate()}
           disabled={!isReady || runMutation.isPending}
