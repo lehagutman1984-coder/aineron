@@ -3,7 +3,7 @@ from .views.projects import (
     StudioProjectListCreateView, StudioProjectDetailView, InterviewView, CloneView,
     TemplateListView, PublishTemplateView, CollaboratorView, ProjectSettingsView,
     TimelineView, BranchFromVersionView, ScreenshotView, GithubExportView,
-    NotificationPrefsView, DeviationView,
+    NotificationPrefsView, DeviationView, ModelsCatalogView,
 )
 from .views.pipeline import (
     EstimateView, PipelineStateView, PipelineRunView, PipelineEventsView,
@@ -47,6 +47,7 @@ urlpatterns = [
     path('projects/<uuid:id>/steps/<int:n>/deviation/', DeviationView.as_view(), name='deviation'),
     path('clone/', CloneView.as_view(), name='clone'),
     path('templates/', TemplateListView.as_view(), name='template_list'),
+    path('models/', ModelsCatalogView.as_view(), name='models_catalog'),
     path('projects/<uuid:id>/explain/', ExplainView.as_view(), name='explain'),
     path('projects/<uuid:id>/console-error/', ConsoleErrorView.as_view(), name='console_error'),
     path('projects/<uuid:id>/pipeline/skip/', PipelineSkipView.as_view(), name='pipeline_skip'),

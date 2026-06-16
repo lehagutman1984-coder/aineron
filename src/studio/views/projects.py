@@ -292,3 +292,11 @@ class ProjectSettingsView(APIView):
             'auto_deploy': project.auto_deploy,
             'mode': project.mode,
         })
+
+
+class ModelsCatalogView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from ..models_catalog import STUDIO_MODELS
+        return Response(STUDIO_MODELS)

@@ -17,6 +17,7 @@ import { ShortcutsModal } from './ShortcutsModal';
 import { SearchFilesModal } from './SearchFilesModal';
 import { ProjectSettingsModal } from './ProjectSettingsModal';
 import { StepTimeline } from './StepTimeline';
+import { PipelineTimeline } from './PipelineTimeline';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import type { StudioProject, StudioFileNode, StudioFileDetail, PipelineState } from '@/lib/api/studio';
 import { studioApi } from '@/lib/api/studio';
@@ -50,6 +51,8 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
   const [searchOpen, setSearchOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [timelineOpen, setTimelineOpen] = useState(false);
+  const [currentAgent, setCurrentAgent] = useState('');
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   const AGENT_LABELS: Record<string, string> = {
     interviewer: 'Интервью', analyst: 'Анализ', planner: 'План',
@@ -181,6 +184,28 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
     const d = await studioApi.fileDiff(project.id, selectedFileId, ref);
     setDiff(d);
   };
+
+  // Track current agent from SSE stream for PipelineTimeline
+  useEffect(() => {
+    const src = new EventSource(
+      `${process.env.NEXT_PUBLIC_API_URL}/studio/projects/${project.id}/events/`,
+      { withCredentials: true },
+    );
+    src.onmessage = (e) => {
+      try {
+        const d = JSON.parse(e.data);
+        if (d.agent && d.agent !== 'system') setCurrentAgent(d.agent);
+      } catch { /* noop */ }
+    };
+    return () => src.close();
+  }, [project.id]);
+
+  // Elapsed seconds counter while pipeline is running
+  useEffect(() => {
+    if (pipeline.status !== 'running') { setElapsedSeconds(0); return; }
+    const t = setInterval(() => setElapsedSeconds((s) => s + 1), 1000);
+    return () => clearInterval(t);
+  }, [pipeline.status]);
 
   const isPaused = pipeline.status === 'paused_on_loop' || pipeline.status === 'paused_manual';
   const isAwaitingApproval = pipeline.status === 'paused_manual';
@@ -410,18 +435,43 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
             )}
           </div>
 
-          {/* Timeline drawer */}
+          {/* Pipeline timeline drawer */}
           <div className="border-t border-[var(--border)] shrink-0">
             <button
               onClick={() => setTimelineOpen(!timelineOpen)}
               className="w-full flex items-center justify-between px-4 py-2 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--hover)] transition-colors"
             >
-              <span className="flex items-center gap-1.5"><GitBranch size={12} /> Таймлайн шагов</span>
+              <span className="flex items-center gap-1.5"><GitBranch size={12} /> Прогресс</span>
               <span>{timelineOpen ? '▼' : '▲'}</span>
             </button>
             {timelineOpen && (
-              <div className="border-t border-[var(--border)] max-h-40 overflow-auto">
-                <StepTimeline projectId={project.id} />
+              <div className="border-t border-[var(--border)] max-h-52 overflow-auto p-3">
+                {(() => {
+                  const md = project.commits_md_content || '';
+                  const parts = md.split(/\n(?=#{2,3}\s)/).filter((p) => p.trim());
+                  const steps = parts.map((p, i) => {
+                    const title = p.split('\n')[0].replace(/^#{2,3}\s+/, '').trim();
+                    let status: 'done' | 'active' | 'waiting' | 'error' = 'waiting';
+                    if (i < pipeline.step_index) status = 'done';
+                    else if (i === pipeline.step_index) {
+                      if (pipeline.status === 'running') status = 'active';
+                      else if (pipeline.status === 'failed') status = 'error';
+                    }
+                    return { title, status };
+                  });
+                  const maxIter = (pipeline as { max_iterations?: number }).max_iterations ?? 3;
+                  return parts.length > 0 ? (
+                    <PipelineTimeline
+                      steps={steps}
+                      currentAgent={pipeline.status === 'running' ? currentAgent : ''}
+                      iterationCount={pipeline.iteration_count}
+                      maxIterations={maxIter}
+                      elapsedSeconds={elapsedSeconds}
+                    />
+                  ) : (
+                    <StepTimeline projectId={project.id} />
+                  );
+                })()}
               </div>
             )}
           </div>

@@ -15,7 +15,7 @@ import {
   ImagePlus,
 } from "lucide-react";
 import { studioApi } from "@/lib/api/studio";
-import type { StudioProject, StudioMode, StudioStack } from "@/lib/api/studio";
+import type { StudioProject, StudioMode, StudioStack, StudioModel } from "@/lib/api/studio";
 import { TemplateGallery } from "@/components/studio/TemplateGallery";
 import { card, badge, form, btn } from "@/components/studio/styles";
 
@@ -25,6 +25,14 @@ const STACK_OPTIONS: { value: StudioStack; label: string }[] = [
   { value: "vue", label: "Vue" },
   { value: "html", label: "HTML" },
 ];
+
+const STAR_RATE: Record<string, number> = { fast: 1, coder: 1.7, smart: 3 };
+const CATEGORY_LABELS: Record<string, string> = {
+  smart: "Smart — максимальное качество",
+  fast: "Fast — быстро и дёшево",
+  coder: "Coder — заточены под код",
+  reasoning: "Reasoning — глубокие рассуждения",
+};
 
 const MODE_OPTIONS: { value: StudioMode; label: string; hint: string }[] = [
   { value: "auto", label: "Авто", hint: "Агенты работают без остановок" },
@@ -57,8 +65,19 @@ export default function StudioPage() {
   const [mode, setMode] = useState<StudioMode>("auto");
   const [stack, setStack] = useState<StudioStack>("nextjs");
 
+  const [aiModel, setAiModel] = useState("claude-sonnet-4-6");
   const [screenshotLoading, setScreenshotLoading] = useState(false);
   const [screenshotDesc, setScreenshotDesc] = useState('');
+
+  const { data: models = [] } = useQuery<StudioModel[]>({
+    queryKey: ["studio-models"],
+    queryFn: studioApi.getModels,
+  });
+  const selectedModel = models.find((m) => m.id === aiModel);
+  const starsPerStep = selectedModel ? Math.round(STAR_RATE[selectedModel.tier] * 12) : 12;
+  const grouped = (["smart", "fast", "coder", "reasoning"] as const)
+    .map((cat) => ({ cat, items: models.filter((m) => m.category === cat) }))
+    .filter((g) => g.items.length > 0);
 
   // "Клон по URL" form state
   const [cloneUrl, setCloneUrl] = useState("");
@@ -72,7 +91,7 @@ export default function StudioPage() {
 
   const createMutation = useMutation({
     mutationFn: () =>
-      studioApi.create({ name, description: screenshotDesc ? `${description}\n\nМакет: ${screenshotDesc}` : description, mode, target_stack: stack }),
+      studioApi.create({ name, description: screenshotDesc ? `${description}\n\nМакет: ${screenshotDesc}` : description, mode, target_stack: stack, ai_model: aiModel } as Parameters<typeof studioApi.create>[0] & { ai_model: string }),
     onSuccess: (project: StudioProject) => {
       qc.invalidateQueries({ queryKey: ["studio-projects"] });
       router.push(`/studio/${project.id}/interview`);
@@ -254,6 +273,30 @@ export default function StudioPage() {
                   ))}
                 </select>
               </div>
+
+              {models.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium mb-1">Модель</label>
+                  <select
+                    value={aiModel}
+                    onChange={(e) => setAiModel(e.target.value)}
+                    className={form.select}
+                  >
+                    {grouped.map((g) => (
+                      <optgroup key={g.cat} label={CATEGORY_LABELS[g.cat] ?? g.cat}>
+                        {g.items.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.label} — {m.description}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                  <p className="text-xs text-[var(--muted)] mt-1">
+                    ≈ {starsPerStep} звёзд за шаг
+                  </p>
+                </div>
+              )}
 
               <div className="flex gap-3 pt-1">
                 <button

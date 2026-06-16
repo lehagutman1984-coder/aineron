@@ -17,6 +17,7 @@ export interface StudioProject {
   sandbox_container_id: string;
   preview_port: number | null;
   coder_model: 'fast' | 'smart';
+  ai_model: string;
   max_iterations: number;
   max_stars_budget: number;
   auto_deploy: boolean;
@@ -117,6 +118,14 @@ export interface FileSearchResult {
   path: string;
   line: number;
   snippet: string;
+}
+
+export interface StudioModel {
+  id: string;
+  label: string;
+  category: 'smart' | 'fast' | 'coder' | 'reasoning';
+  tier: 'smart' | 'fast' | 'coder';
+  description: string;
 }
 
 export const studioApi = {
@@ -279,4 +288,22 @@ export const studioApi = {
 
   templates: () =>
     request<StudioTemplate[]>('/studio/templates/'),
+
+  skipStep: (projectId: string) =>
+    request<{ status: string; skipped_step: number }>(
+      `/studio/projects/${projectId}/pipeline/skip/`,
+      { method: 'POST' },
+    ),
+
+  resumePipeline: (
+    projectId: string,
+    opts: { action: string; hint?: string },
+  ) =>
+    request<{ status: string }>(
+      `/studio/projects/${projectId}/resume/`,
+      { method: 'POST', body: JSON.stringify(opts) },
+    ),
+
+  getModels: () =>
+    request<StudioModel[]>('/studio/models/'),
 };
