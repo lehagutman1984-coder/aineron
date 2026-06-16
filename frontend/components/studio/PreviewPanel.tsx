@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { RefreshCw, ExternalLink, CheckCircle, Download, Smartphone, Tablet, Monitor, Rocket, RotateCw, AlertTriangle, Wrench, Github } from 'lucide-react';
+import { RefreshCw, ExternalLink, CheckCircle, Download, Smartphone, Tablet, Monitor, Rocket, RotateCw, AlertTriangle, Wrench, Github, Loader2 } from 'lucide-react';
 import { studioApi } from '@/lib/api/studio';
 import { btn, empty, text } from './styles';
 
@@ -17,14 +17,19 @@ interface PreviewPanelProps {
   hasSandbox: boolean;
   status?: string;
   githubUrl?: string;
+  onRefresh?: () => void;
 }
 
-export function PreviewPanel({ projectId, hasSandbox, status, githubUrl }: PreviewPanelProps) {
+export function PreviewPanel({ projectId, hasSandbox, status, githubUrl, onRefresh }: PreviewPanelProps) {
   const [key, setKey] = useState(0);
   const [width, setWidth] = useState<'100%' | '768px' | '375px'>('100%');
   const [errors, setErrors] = useState<ConsoleError[]>([]);
   const [fixing, setFixing] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [deploying, setDeploying] = useState(false);
+  const [restarting, setRestarting] = useState(false);
+  // После перезапуска — показываем iframe даже если status=completed
+  const [previewForced, setPreviewForced] = useState(false);
 
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
@@ -44,8 +49,40 @@ export function PreviewPanel({ projectId, hasSandbox, status, githubUrl }: Previ
     setExporting(true);
     try {
       await studioApi.exportGithub(projectId, repoName.trim(), true);
+      alert('Экспорт запущен. Репозиторий появится на GitHub через несколько секунд.');
+      onRefresh?.();
+    } catch {
+      alert('Ошибка экспорта. Проверьте GITHUB_TOKEN в .env или войдите через GitHub.');
     } finally {
       setExporting(false);
+    }
+  };
+
+  const handleDeploy = async () => {
+    setDeploying(true);
+    try {
+      await studioApi.deploy(projectId);
+      alert('Деплой запущен. URL появится в логе агентов через ~30 сек.');
+    } catch {
+      alert('Ошибка деплоя. Проверьте STUDIO_VERCEL_TOKEN в .env.');
+    } finally {
+      setDeploying(false);
+    }
+  };
+
+  const handleRestartPreview = async () => {
+    setRestarting(true);
+    try {
+      await studioApi.restartPreview(projectId);
+      // Даём серверу ~3 сек запустить контейнер, потом обновляем данные
+      await new Promise((r) => setTimeout(r, 3000));
+      onRefresh?.();
+      setPreviewForced(true);
+      setKey((k) => k + 1);
+    } catch {
+      alert('Не удалось перезапустить превью.');
+    } finally {
+      setRestarting(false);
     }
   };
 
@@ -60,7 +97,10 @@ export function PreviewPanel({ projectId, hasSandbox, status, githubUrl }: Previ
     }
   };
 
-  if (status === 'completed') {
+  // Завершён и sandbox поднят (после перезапуска) — показываем iframe
+  const showIframe = (status !== 'completed') || previewForced || (status === 'completed' && hasSandbox && previewForced);
+
+  if (status === 'completed' && !previewForced) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-4 p-6 text-center">
         <CheckCircle size={48} className="text-green-500" />
@@ -79,16 +119,20 @@ export function PreviewPanel({ projectId, hasSandbox, status, githubUrl }: Previ
             <Download size={14} /> Скачать ZIP
           </a>
           <button
-            onClick={() => studioApi.deploy(projectId)}
-            className={btn.ghostXs}
+            onClick={handleDeploy}
+            disabled={deploying}
+            className={btn.ghostXsDisabled}
           >
-            <Rocket size={14} /> Развернуть на Vercel
+            {deploying ? <Loader2 size={14} className="animate-spin" /> : <Rocket size={14} />}
+            {deploying ? 'Публикуем…' : 'Развернуть на Vercel'}
           </button>
           <button
-            onClick={() => studioApi.restartPreview(projectId)}
-            className={btn.ghostXs}
+            onClick={handleRestartPreview}
+            disabled={restarting}
+            className={btn.ghostXsDisabled}
           >
-            <RotateCw size={14} /> Перезапустить превью
+            {restarting ? <Loader2 size={14} className="animate-spin" /> : <RotateCw size={14} />}
+            {restarting ? 'Запускаем…' : 'Перезапустить превью'}
           </button>
           {githubUrl ? (
             <a
@@ -105,7 +149,8 @@ export function PreviewPanel({ projectId, hasSandbox, status, githubUrl }: Previ
               disabled={exporting}
               className={btn.ghostXsDisabled}
             >
-              <Github size={14} /> {exporting ? 'Экспортируем…' : 'Экспорт в GitHub'}
+              {exporting ? <Loader2 size={14} className="animate-spin" /> : <Github size={14} />}
+              {exporting ? 'Экспортируем…' : 'Экспорт в GitHub'}
             </button>
           )}
         </div>
@@ -113,7 +158,7 @@ export function PreviewPanel({ projectId, hasSandbox, status, githubUrl }: Previ
     );
   }
 
-  if (!hasSandbox) {
+  if (!hasSandbox && !previewForced) {
     return (
       <div className={empty.centerP}>
         Preview появится после запуска кодинга
@@ -144,6 +189,17 @@ export function PreviewPanel({ projectId, hasSandbox, status, githubUrl }: Previ
           <ExternalLink size={16} />
         </a>
         <span className="text-xs text-[var(--text-secondary)] font-mono truncate">preview</span>
+
+        {/* Вернуться в completion card */}
+        {previewForced && (
+          <button
+            onClick={() => setPreviewForced(false)}
+            title="Вернуться"
+            className="text-xs text-[var(--text-secondary)] hover:text-[var(--text)] ml-1"
+          >
+            ← Завершён
+          </button>
+        )}
 
         {/* Error indicator */}
         {errors.length > 0 && (

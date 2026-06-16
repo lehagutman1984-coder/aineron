@@ -729,17 +729,27 @@ def export_to_github(self, project_id, repo_name, private):
     import base64
     import requests as rq
     project = StudioProject.objects.get(id=project_id)
+    # 1. OAuth token via allauth (GitHub social login)
+    gh_token = None
     try:
         from allauth.socialaccount.models import SocialToken
         token_obj = SocialToken.objects.filter(
             account__user=project.user, account__provider='github'
         ).first()
+        if token_obj:
+            gh_token = token_obj.token
     except Exception:
-        token_obj = None
-    if not token_obj:
-        publish_event(project_id, {'agent': 'system', 'level': 'error', 'text': 'GitHub не подключён'})
+        pass
+    # 2. Fallback: personal access token from env
+    if not gh_token:
+        gh_token = getattr(settings, 'GITHUB_TOKEN', '') or ''
+    if not gh_token:
+        publish_event(project_id, {
+            'agent': 'system', 'level': 'error',
+            'text': 'GitHub не подключён. Добавьте GITHUB_TOKEN в .env или войдите через GitHub.',
+        })
         return
-    headers = {'Authorization': f'token {token_obj.token}', 'Accept': 'application/vnd.github+json'}
+    headers = {'Authorization': f'token {gh_token}', 'Accept': 'application/vnd.github+json'}
     try:
         r = rq.post(
             'https://api.github.com/user/repos',

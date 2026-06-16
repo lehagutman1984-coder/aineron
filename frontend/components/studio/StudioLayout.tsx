@@ -380,7 +380,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
             </Panel>
             <PanelResizeHandle className={layout.resizeHandle} />
             <Panel defaultSize={41} minSize={20} className="overflow-hidden flex flex-col">
-              <PreviewPanel projectId={project.id} hasSandbox={!!project.sandbox_container_id} status={project.status} githubUrl={project.github_repo_url || undefined} />
+              <PreviewPanel projectId={project.id} hasSandbox={!!project.sandbox_container_id} status={project.status} githubUrl={project.github_repo_url || undefined} onRefresh={onRefresh} />
             </Panel>
           </PanelGroup>
 
@@ -406,7 +406,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
               />
             )}
             {mobileTab === 'preview' && (
-              <PreviewPanel projectId={project.id} hasSandbox={!!project.sandbox_container_id} status={project.status} githubUrl={project.github_repo_url || undefined} />
+              <PreviewPanel projectId={project.id} hasSandbox={!!project.sandbox_container_id} status={project.status} githubUrl={project.github_repo_url || undefined} onRefresh={onRefresh} />
             )}
           </div>
 
