@@ -42,8 +42,11 @@ class StudioProjectDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def perform_destroy(self, instance):
         if instance.sandbox_container_id:
-            from .. import sandbox
-            sandbox.kill_sandbox(instance.sandbox_container_id)
+            try:
+                from .. import sandbox
+                sandbox.kill_sandbox(instance.sandbox_container_id)
+            except Exception:
+                pass
         instance.delete()
 
 
