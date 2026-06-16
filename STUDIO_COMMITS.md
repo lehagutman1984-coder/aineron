@@ -1827,3 +1827,317 @@ cd src && python manage.py test studio
 5. **Sprint H** (32→36) — продукт. Делать последним.
 
 После каждого коммита: `cd src && python manage.py test studio` (backend) и `cd frontend && npm run build` (если затронут фронт). По правилу проекта — `git push origin main` после каждого коммита.
+
+---
+
+## Оптимальный план сессий
+
+> Каждая сессия — **один новый чат**. Открываешь STUDIO_COMMITS.md и говоришь: *"Реализуй сессию X по плану из STUDIO_COMMITS.md"*.
+> Деплой после каждой сессии — обязателен для проверки на живом сервере.
+
+### Правила сессий
+
+| Правило | Почему |
+|---------|--------|
+| Максимум 4-5 коммитов за сессию | Больше — контекст чата переполняется, ошибки растут |
+| Только один слой за раз (бэкенд ИЛИ фронт) | Легче дебажить, меньше конфликтов |
+| Коммиты с миграциями — отдельная сессия или первые в сессии | Миграция должна пройти до запуска других кодов |
+| Деплой после каждой сессии | Ловить баги пока контекст свежий |
+| Если сессия сломала что-то → откатить и исправить до следующей | Не копить технический долг |
+
+---
+
+### Сессия 1 — Критические баги бэкенда (коммиты 1, 2, 4)
+
+**Что делать:** коммиты 1, 2, 4
+**Слой:** только бэкенд (`src/studio/`)
+**Миграций нет**
+**Время:** ~45 мин
+
+| # | Коммит | Что меняется |
+|---|--------|-------------|
+| 1 | Commit 1 | `views/projects.py` — статус `'interviewing'` → `'interview'` |
+| 2 | Commit 2 | `tasks.py` — идемпотентность billing, charge-after-save |
+| 3 | Commit 4 | `tasks.py` — try/except вокруг Docker в `run_pipeline` |
+
+**Деплой:** `docker-compose build web celery_studio && docker-compose up -d --force-recreate web celery_studio`
+**Проверка:** Создать новый проект → интервью должно запускаться, статус в БД = `'interview'`
+
+---
+
+### Сессия 2 — Биллинг и пауза (коммиты 3, 5)
+
+**Что делать:** коммиты 3, 5
+**Слой:** только бэкенд (`src/studio/`)
+**Миграций нет**
+**Зависит от:** Сессии 1 (нужен исправленный billing из Commit 2)
+**Время:** ~30 мин
+
+| # | Коммит | Что меняется |
+|---|--------|-------------|
+| 1 | Commit 3 | `tasks.py` — пауза при нулевом балансе вместо бесплатного прогона |
+| 2 | Commit 5 | `models.py` + `views/pipeline.py` + `tasks.py` — пауза реально останавливает Celery через revoke |
+
+**Миграции:** Commit 5 добавляет `current_task_id` в `StudioPipelineState` → `makemigrations studio` + `migrate`
+**Деплой:** `docker-compose build web celery_studio && docker-compose up -d --force-recreate web celery_studio`
+**Проверка:** Нажать "Пауза" во время кодинга → задачи должны прекратиться
+
+---
+
+### Сессия 3 — Мелкие критические фиксы (коммиты 6, 7)
+
+**Что делать:** коммиты 6, 7
+**Слой:** только бэкенд
+**Миграций нет**
+**Время:** ~20 мин
+
+| # | Коммит | Что меняется |
+|---|--------|-------------|
+| 1 | Commit 6 | `agents/planner.py` — `planned_steps` из реального числа секций |
+| 2 | Commit 7 | `config/settings.py` — `reap_stale_sandboxes` в `CELERY_BEAT_SCHEDULE` |
+
+**Деплой:** `docker-compose up -d --force-recreate web celery_studio celery_beat`
+**Проверка:** Проверить в Django Admin → Periodic Tasks → должна появиться задача
+
+---
+
+### Сессия 4 — Биллинг-эстимейт и UX ревью-страницы (коммиты 8, 9, 10)
+
+**Что делать:** коммиты 8, 9, 10
+**Слой:** бэкенд (новый endpoint) + фронт (review page + BillingEstimate)
+**Миграций нет**
+**Зависит от:** Сессии 3 (commit 6 исправляет planned_steps для estimate)
+**Время:** ~60 мин
+
+| # | Коммит | Что меняется |
+|---|--------|-------------|
+| 1 | Commit 8 | `views/pipeline.py` — новый `EstimateView GET /estimate/` → `{estimated_stars, breakdown}` |
+| 2 | Commit 9 | `lib/api/studio.ts` + `BillingEstimate.tsx` — fetch реального estimate вместо 50 |
+| 3 | Commit 10 | `app/studio/[id]/review/page.tsx` — показ реального estimate, убрать хардкод |
+
+**Деплой:** `docker-compose build web frontend && docker-compose up -d --force-recreate web frontend`
+**Проверка:** Открыть review-страницу → сумма звёзд должна зависеть от числа шагов
+
+---
+
+### Сессия 5 — SSE reconnect + подсветка кода (коммиты 11, 12)
+
+**Что делать:** коммиты 11, 12
+**Слой:** только фронт (`frontend/components/studio/`)
+**Миграций нет**
+**Время:** ~45 мин
+
+| # | Коммит | Что меняется |
+|---|--------|-------------|
+| 1 | Commit 11 | `AgentLog.tsx` — reconnect с exponential backoff, singleton через Context |
+| 2 | Commit 12 | `CodeViewer.tsx` + `StudioFile.language` — синтаксическая подсветка через highlight.js |
+
+**Деплой:** `docker-compose build frontend && docker-compose up -d --force-recreate frontend`
+**Проверка:** Отключить интернет на 5с и снова включить → лог должен восстановиться
+
+---
+
+### Сессия 6 — DiffViewer + ручные правки (коммиты 13, 14)
+
+**Что делать:** коммиты 13, 14
+**Слой:** фронт + бэкенд (FileDetailView)
+**Миграций нет**
+**Время:** ~60 мин
+
+| # | Коммит | Что меняется |
+|---|--------|-------------|
+| 1 | Commit 13 | `StudioLayout.tsx` + `DiffViewer.tsx` — подключить DiffViewer, табы Code/Diff |
+| 2 | Commit 14 | `views/files.py` — FileDetailView.patch() пишет в sandbox + Gitea |
+
+**Деплой:** полный rebuild
+**Проверка:** Отредактировать файл в CodeViewer → изменение должно появиться в preview iframe
+
+---
+
+### Сессия 7 — Sandbox subdomain preview (коммит 15, 16)
+
+**Что делать:** коммиты 15, 16
+**Слой:** инфраструктура (nginx.conf, docker-compose.yml) + фронт
+**Сложность:** ВЫСОКАЯ — требует wildcard SSL или ручной настройки nginx
+**Время:** ~90 мин
+
+| # | Коммит | Что меняется |
+|---|--------|-------------|
+| 1 | Commit 15 | `nginx.conf` — wildcard `sandbox-*.aineron.ru` → sandbox container |
+| 2 | Commit 16 | `PreviewPanel.tsx` — URL строить как `https://sandbox-{cid}.aineron.ru` |
+
+**Деплой:** nginx + certbot wildcard SSL (`certbot certonly --manual -d "*.aineron.ru"`)
+**Проверка:** Preview должен показывать рабочий Next.js сайт с правильными /_next/ ассетами
+
+---
+
+### Сессия 8 — ContextChat с LLM (коммиты 17, 18)
+
+**Что делать:** коммиты 17, 18
+**Слой:** новый агент (бэкенд) + фронт
+**Зависит от:** Сессий 1-2 (статус + billing исправлены)
+**Время:** ~75 мин
+
+| # | Коммит | Что меняется |
+|---|--------|-------------|
+| 1 | Commit 17 | `agents/context_chat.py` (новый) + `views/chat.py` (новый) + `urls.py` — LLM-чат с контекстом |
+| 2 | Commit 18 | `ContextChat.tsx` — полноценный чат-интерфейс, polling ответов агента |
+
+**Деплой:** `docker-compose build web celery_studio frontend && docker-compose up -d --force-recreate web celery_studio frontend`
+**Проверка:** На экране паузы — написать вопрос, получить ответ от Opus с контекстом проекта
+
+---
+
+### Сессия 9 — SPA-клонирование через Playwright (коммит 19)
+
+**Что делать:** коммит 19
+**Слой:** только бэкенд (tasks.py, crawler.py)
+**Миграций нет**
+**Время:** ~45 мин
+
+| # | Коммит | Что меняется |
+|---|--------|-------------|
+| 1 | Commit 19 | `tasks.py` — роутинг SPA → `celery_studio_playwright`, `crawler.py` — Playwright crawl + palette |
+
+**Деплой:** `docker-compose build celery_studio_playwright && docker-compose up -d --force-recreate celery_studio_playwright`
+**Проверка:** Клонировать React SPA (например vercel.com) → должен получить контент, а не пустой HTML
+
+---
+
+### Сессия 10 — Semi/Manual режим + Opus для сложных шагов (коммиты 20, 21, 22)
+
+**Что делать:** коммиты 20, 21, 22
+**Слой:** бэкенд + фронт
+**Миграций нет**
+**Время:** ~75 мин
+
+| # | Коммит | Что меняется |
+|---|--------|-------------|
+| 1 | Commit 20 | `tasks.py` — `paused_approval` после каждого шага в semi-режиме |
+| 2 | Commit 21 | `StudioLayout.tsx` — кнопка "Одобрить" в semi-режиме |
+| 3 | Commit 22 | `agents/coder.py` — detect `[complex]` тег → MODEL_SMART (Opus) |
+
+**Деплой:** полный rebuild
+**Проверка:** Создать проект в Semi режиме → после каждого шага должна появляться кнопка "Одобрить"
+
+---
+
+### Сессия 11 — Атомарные Gitea-коммиты + лимиты sandbox (коммиты 23, 24, 25)
+
+**Что делать:** коммиты 23, 24, 25
+**Слой:** бэкенд
+**Миграций нет**
+**Время:** ~60 мин
+
+| # | Коммит | Что меняется |
+|---|--------|-------------|
+| 1 | Commit 23 | `gitea_client.py` — batch Tree API, один коммит на шаг |
+| 2 | Commit 24 | `sandbox.py` + `billing.py` — `can_spawn()`, лимит 2 sandbox на пользователя |
+| 3 | Commit 25 | `billing.py` + `tasks.py` + `models.py` — резервация звёзд при старте |
+
+**Деплой:** `docker-compose build web celery_studio && docker-compose up -d --force-recreate web celery_studio`
+**Проверка:** Запустить два проекта → третий должен получить 429, история Gitea — чистая (один коммит/шаг)
+
+---
+
+### Сессия 12 — Качество генерации: multi-file context + тесты (коммиты 26, 27, 28)
+
+**Что делать:** коммиты 26, 27, 28
+**Слой:** бэкенд (агенты)
+**Время:** ~60 мин
+
+| # | Коммит | Что меняется |
+|---|--------|-------------|
+| 1 | Commit 26 | `agents/coder.py` — убрать [:10]/[:2000], smart context по импортам |
+| 2 | Commit 27 | `sandbox.py` — `wait_for_ready()` polling `/tmp/dev.log` |
+| 3 | Commit 28 | `tasks.py` — реальный `pnpm test --run` перед TesterAgent |
+
+**Деплой:** `docker-compose build celery_studio && docker-compose up -d --force-recreate celery_studio`
+**Проверка:** Создать проект с 5+ файлами → кодер должен видеть все, не только первые 10
+
+---
+
+### Сессия 13 — Качество: diff-ревью + исправления (коммиты 29, 30, 31)
+
+**Что делать:** коммиты 29, 30, 31
+**Слой:** бэкенд (агенты)
+**Время:** ~45 мин
+
+| # | Коммит | Что меняется |
+|---|--------|-------------|
+| 1 | Commit 29 | `agents/reviewer.py` — ревьювать только `changed_files` текущего шага |
+| 2 | Commit 30 | `agents/fixer.py` — `target_files` передаётся Кодеру для скоупинга |
+| 3 | Commit 31 | `agents/planner.py` — валидация числа шагов, предупреждение > 15 |
+
+**Деплой:** `docker-compose build celery_studio && docker-compose up -d --force-recreate celery_studio`
+
+---
+
+### Сессия 14 — Продукт: деплой на Vercel + экспорт (коммиты 32, 33, 35)
+
+**Что делать:** коммиты 32, 33, 35
+**Слой:** бэкенд (новые views) + фронт
+**Время:** ~90 мин
+
+| # | Коммит | Что меняется |
+|---|--------|-------------|
+| 1 | Commit 32 | `views/deploy.py` (новый) — интеграция с Vercel API |
+| 2 | Commit 33 | `BillingEstimate.tsx` — кнопка "Опубликовать на Vercel" |
+| 3 | Commit 35 | `views/export.py` (новый) — ZIP всех файлов + экспорт в GitHub |
+
+**Деплой:** полный rebuild
+**Проверка:** Завершить проект → нажать "Опубликовать" → должен появиться URL на vercel.app
+
+---
+
+### Сессия 15 — Продукт: marketplace шаблонов + аналитика (коммиты 34, 36)
+
+**Что делать:** коммиты 34, 36
+**Слой:** бэкенд + фронт
+**Миграции:** Commit 34 добавляет поля в StudioTemplate
+**Время:** ~60 мин
+
+| # | Коммит | Что меняется |
+|---|--------|-------------|
+| 1 | Commit 34 | `models.py` + `views/templates.py` — публикация проекта как шаблона, рейтинг |
+| 2 | Commit 36 | `app/account/studio/page.tsx` (новый) — аналитика Studio в кабинете |
+
+**Деплой:** полный rebuild
+**Проверка:** Завершить проект → опубликовать как шаблон → шаблон виден в галерее
+
+---
+
+## Сводная таблица сессий
+
+| Сессия | Коммиты | Слой | Deploy? | Время | Приоритет |
+|--------|---------|------|---------|-------|-----------|
+| 1 | 1, 2, 4 | Backend | Да | 45 мин | КРИТИЧНО |
+| 2 | 3, 5 | Backend + Migration | Да | 30 мин | КРИТИЧНО |
+| 3 | 6, 7 | Backend | Да | 20 мин | КРИТИЧНО |
+| 4 | 8, 9, 10 | Backend + Frontend | Да | 60 мин | Важно |
+| 5 | 11, 12 | Frontend | Да | 45 мин | Важно |
+| 6 | 13, 14 | Frontend + Backend | Да | 60 мин | Важно |
+| 7 | 15, 16 | Infra + Frontend | Да | 90 мин | Важно |
+| 8 | 17, 18 | Backend + Frontend | Да | 75 мин | Важно |
+| 9 | 19 | Backend | Да | 45 мин | Средний |
+| 10 | 20, 21, 22 | Backend + Frontend | Да | 75 мин | Средний |
+| 11 | 23, 24, 25 | Backend | Да | 60 мин | Средний |
+| 12 | 26, 27, 28 | Backend | Да | 60 мин | Средний |
+| 13 | 29, 30, 31 | Backend | Да | 45 мин | Средний |
+| 14 | 32, 33, 35 | Backend + Frontend | Да | 90 мин | Низкий |
+| 15 | 34, 36 | Backend + Frontend + Migration | Да | 60 мин | Низкий |
+
+**Итого:** 15 сессий, ~14 часов работы, 36 коммитов
+
+---
+
+## Стартовая фраза для нового чата
+
+Скопируй в начало каждого нового чата:
+
+```
+Открой файл STUDIO_COMMITS.md в корне проекта.
+Реализуй сессию N (коммиты X, Y, Z) по инструкции из документа.
+После каждого коммита — git push origin main.
+Деплоить не нужно / задеплой на сервере после завершения сессии.
+```
