@@ -265,6 +265,8 @@ def coder_iteration(self, project_id, step_index):
                 project=project, path=path,
                 defaults={'content': content, 'last_modified_by': 'agent'},
             )
+        project.interview_data.setdefault('last_changed', {})[str(step_index)] = list(files.keys())
+        project.save(update_fields=['interview_data'])
         if project.sandbox_container_id:
             sandbox.write_files(project.sandbox_container_id, files)
             sandbox.wait_for_ready(project.sandbox_container_id, timeout=60)
@@ -284,9 +286,13 @@ def coder_iteration(self, project_id, step_index):
 def agent_review(project_id, step_index):
     project = StudioProject.objects.get(id=project_id)
     from .agents.reviewer import ReviewerAgent
+    changed_paths = project.interview_data.get('last_changed', {}).get(str(step_index), [])
+    all_files = _existing_files(project)
+    review_files = {p: all_files[p] for p in changed_paths if p in all_files} or all_files
     report = ReviewerAgent(project).run(
         _get_step_text(project, step_index),
-        _existing_files(project),
+        review_files,
+        all_files=all_files,
     )
     publish_event(project_id, {
         'agent': 'reviewer', 'level': 'info',

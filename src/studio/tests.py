@@ -274,6 +274,35 @@ class SemiManualModeTest(APITestCase):
         mock_next.delay.assert_called_once_with(str(project.id), 2)
 
 
+class DiffReviewTest(APITestCase):
+    """Commit 29 — agent_review passes only changed files to ReviewerAgent."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(email='rev@t.ru', password='x')
+
+    @patch('studio.tasks.publish_event')
+    @patch('studio.agents.reviewer.ReviewerAgent.run_json')
+    def test_reviewer_receives_only_changed_files(self, mock_rj, mock_pub):
+        from studio.tasks import agent_review
+        from studio.models import StudioFile
+        mock_rj.return_value = {'passed': True, 'issues': [], 'summary': 'ok'}
+        project = StudioProject.objects.create(
+            user=self.user, name='Rev', status='coding', mode='auto',
+            interview_data={'last_changed': {'0': ['a.tsx']}, 'planned_steps': 5},
+        )
+        StudioPipelineState.objects.create(project=project, status='running', step_index=0)
+        StudioFile.objects.create(project=project, path='a.tsx', content='const a = 1')
+        StudioFile.objects.create(project=project, path='b.tsx', content='const b = 2')
+
+        result = agent_review(str(project.id), 0)
+
+        call_args = mock_rj.call_args
+        user_prompt = call_args[0][1]
+        self.assertIn('const a = 1', user_prompt)
+        self.assertNotIn('const b = 2', user_prompt)
+        self.assertIn('b.tsx', user_prompt)  # listed in context
+
+
 class WaitForReadyTest(APITestCase):
     """Commit 28 — wait_for_ready polls container HTTP until 200 or timeout."""
 
