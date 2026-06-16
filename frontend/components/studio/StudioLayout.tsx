@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Play, Pause, Files, Code2, Monitor, CheckCircle, Download, ArrowLeft, Rocket, Share2, HelpCircle, Settings } from 'lucide-react';
+import { Play, Pause, Files, Code2, Monitor, CheckCircle, Download, ArrowLeft, Rocket, Share2, HelpCircle, Settings, GitBranch } from 'lucide-react';
 import Link from 'next/link';
 import { FileTree } from './FileTree';
 import { CodeViewer } from './CodeViewer';
@@ -16,6 +16,7 @@ import { DiffViewer } from './DiffViewer';
 import { ShortcutsModal } from './ShortcutsModal';
 import { SearchFilesModal } from './SearchFilesModal';
 import { ProjectSettingsModal } from './ProjectSettingsModal';
+import { StepTimeline } from './StepTimeline';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import type { StudioProject, StudioFileNode, StudioFileDetail, PipelineState } from '@/lib/api/studio';
 import { studioApi } from '@/lib/api/studio';
@@ -47,6 +48,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [timelineOpen, setTimelineOpen] = useState(false);
 
   const AGENT_LABELS: Record<string, string> = {
     interviewer: 'Интервью', analyst: 'Анализ', planner: 'План',
@@ -402,6 +404,22 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
             )}
             {mobileTab === 'preview' && (
               <PreviewPanel projectId={project.id} hasSandbox={!!project.sandbox_container_id} status={project.status} />
+            )}
+          </div>
+
+          {/* Timeline drawer */}
+          <div className="border-t border-[var(--border)] shrink-0">
+            <button
+              onClick={() => setTimelineOpen(!timelineOpen)}
+              className="w-full flex items-center justify-between px-4 py-2 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--hover)] transition-colors"
+            >
+              <span className="flex items-center gap-1.5"><GitBranch size={12} /> Таймлайн шагов</span>
+              <span>{timelineOpen ? '▼' : '▲'}</span>
+            </button>
+            {timelineOpen && (
+              <div className="border-t border-[var(--border)] max-h-40 overflow-auto">
+                <StepTimeline projectId={project.id} />
+              </div>
             )}
           </div>
 

@@ -85,6 +85,15 @@ export interface StudioEstimate {
   affordable: boolean;
 }
 
+export interface TimelineStep {
+  step_index: number;
+  name: string;
+  planned: string;
+  changed_files: string[];
+  version_id: number | null;
+  git_sha: string;
+}
+
 export interface SandboxStatus {
   alive: boolean;
   port: number | null;
@@ -218,6 +227,12 @@ export const studioApi = {
 
   deploy: (id: string) =>
     request<{ status: string }>(`/studio/projects/${id}/deploy/`, { method: 'POST' }),
+
+  timeline: (id: string) =>
+    request<TimelineStep[]>(`/studio/projects/${id}/timeline/`),
+
+  branchFrom: (id: string, versionId: number) =>
+    request<{ id: string }>(`/studio/projects/${id}/branch/${versionId}/`, { method: 'POST' }),
 
   exportUrl: (id: string) =>
     `${process.env.NEXT_PUBLIC_API_URL}/studio/projects/${id}/export/`,
