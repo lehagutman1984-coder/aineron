@@ -570,6 +570,37 @@ def sync_manual_edit(project_id, file_id):
     })
 
 
+@shared_task(bind=True, max_retries=2, queue=QUEUE)
+def deploy_to_vercel(self, project_id):
+    import requests as _rq
+    project = StudioProject.objects.get(id=project_id)
+    if not settings.STUDIO_VERCEL_TOKEN:
+        publish_event(project_id, {'agent': 'system', 'level': 'error', 'text': 'Vercel не настроен'})
+        return
+    files = [{'file': f.path, 'data': f.content} for f in project.files.all()]
+    try:
+        r = _rq.post(
+            'https://api.vercel.com/v13/deployments',
+            headers={'Authorization': f'Bearer {settings.STUDIO_VERCEL_TOKEN}'},
+            json={
+                'name': f'aineron-{str(project.id)[:8]}',
+                'files': files,
+                'projectSettings': {'framework': 'nextjs'},
+            },
+            timeout=60,
+        )
+        data = r.json()
+        url = 'https://' + data.get('url', '') if data.get('url') else ''
+        project.vercel_deployment_url = url
+        project.save(update_fields=['vercel_deployment_url'])
+        publish_event(project_id, {
+            'agent': 'system', 'level': 'success',
+            'text': f'Опубликовано: {url}' if url else 'Деплой запущен (url не получен)',
+        })
+    except Exception as exc:
+        raise self.retry(exc=exc, countdown=30)
+
+
 @shared_task(queue=QUEUE)
 def reap_stale_sandboxes():
     """Beat: removes studio containers older than N hours."""
@@ -584,3 +615,4 @@ def reap_stale_sandboxes():
                 container.remove(force=True)
         except Exception:
             pass
+

@@ -39,6 +39,7 @@ class StudioProject(models.Model):
     repo_url = models.URLField(blank=True)
     stars_reserved = models.IntegerField(default=0)
     stars_spent = models.IntegerField(default=0)
+    vercel_deployment_url = models.URLField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -123,6 +124,12 @@ class StudioTemplate(models.Model):
     preview_image = models.CharField(max_length=300, blank=True)
     seed_prompt = models.TextField()
     order = models.IntegerField(default=0)
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='studio_templates',
+    )
+    is_public = models.BooleanField(default=False)
+    usage_count = models.IntegerField(default=0)
 
     class Meta:
         ordering = ['order']

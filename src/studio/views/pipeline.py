@@ -155,6 +155,16 @@ class ContextChatView(APIView):
         return Response({'answer': answer})
 
 
+class DeployView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, id):
+        project = StudioProject.objects.get(id=id, user=request.user)
+        from ..tasks import deploy_to_vercel
+        deploy_to_vercel.delay(str(project.id))
+        return Response({'status': 'deploying'}, status=202)
+
+
 class PreviewProxyView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 

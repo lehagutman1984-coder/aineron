@@ -274,6 +274,44 @@ class SemiManualModeTest(APITestCase):
         mock_next.delay.assert_called_once_with(str(project.id), 2)
 
 
+class VercelDeployTest(APITestCase):
+    """Commit 32 — deploy_to_vercel stores deployment URL; DeployView dispatches task."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(email='vercel@t.ru', password='x')
+        self.client.force_authenticate(self.user)
+
+    @patch('studio.tasks.publish_event')
+    def test_deploy_to_vercel_stores_url(self, mock_pub):
+        import requests as _rq
+        from studio.tasks import deploy_to_vercel
+        project = StudioProject.objects.create(user=self.user, name='V', status='completed', mode='auto')
+
+        with self.settings(STUDIO_VERCEL_TOKEN='test-token'):
+            with patch('studio.tasks._rq.post') as mock_post:
+                mock_post.return_value.json.return_value = {'url': 'app-abc.vercel.app'}
+                deploy_to_vercel(str(project.id))
+
+        project.refresh_from_db()
+        self.assertEqual(project.vercel_deployment_url, 'https://app-abc.vercel.app')
+
+    def test_deploy_view_dispatches_task(self):
+        project = StudioProject.objects.create(user=self.user, name='V2', status='completed', mode='auto')
+        with patch('studio.tasks.deploy_to_vercel') as mock_task:
+            r = self.client.post(f'/api/v1/studio/projects/{project.id}/deploy/')
+        self.assertEqual(r.status_code, 202)
+        mock_task.delay.assert_called_once_with(str(project.id))
+
+    @patch('studio.tasks.publish_event')
+    def test_deploy_skips_without_token(self, mock_pub):
+        from studio.tasks import deploy_to_vercel
+        project = StudioProject.objects.create(user=self.user, name='V3', status='completed', mode='auto')
+        with self.settings(STUDIO_VERCEL_TOKEN=''):
+            deploy_to_vercel(str(project.id))
+        project.refresh_from_db()
+        self.assertEqual(project.vercel_deployment_url, '')
+
+
 class ComplexTagRoutingTest(APITestCase):
     """Commit 31 — _pick_model checks [COMPLEX] tag first; PlannerAgent warns on >15 steps."""
 
