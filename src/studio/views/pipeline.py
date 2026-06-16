@@ -165,6 +165,31 @@ class DeployView(APIView):
         return Response({'status': 'deploying'}, status=202)
 
 
+class SandboxStatusView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, id):
+        project = StudioProject.objects.get(id=id, user=request.user)
+        cid = project.sandbox_container_id
+        if not cid:
+            return Response({'alive': False, 'port': project.preview_port, 'uptime_s': 0})
+        alive = False
+        uptime_s = 0
+        try:
+            from .. import sandbox as _sb
+            client = _sb.get_docker()
+            container = client.containers.get(cid)
+            alive = container.status == 'running'
+            started = container.attrs.get('State', {}).get('StartedAt', '')
+            if alive and started:
+                import datetime
+                start = datetime.datetime.fromisoformat(started[:19])
+                uptime_s = int((datetime.datetime.utcnow() - start).total_seconds())
+        except Exception:
+            alive = False
+        return Response({'alive': alive, 'port': project.preview_port, 'uptime_s': uptime_s})
+
+
 class PreviewProxyView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 

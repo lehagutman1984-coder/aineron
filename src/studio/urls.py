@@ -3,7 +3,7 @@ from .views.projects import StudioProjectListCreateView, StudioProjectDetailView
 from .views.pipeline import (
     EstimateView, PipelineStateView, PipelineRunView, PipelineEventsView,
     PipelinePauseView, PipelineResumeView, PreviewProxyView, ContextChatView,
-    ApproveStepView, DeployView,
+    ApproveStepView, DeployView, SandboxStatusView,
 )
 from .views.files import FileTreeView, FileDetailView, FileDiffView, CommitHistoryView, RollbackView, ExportView
 
@@ -22,6 +22,7 @@ urlpatterns = [
     path('projects/<uuid:id>/chat/', ContextChatView.as_view(), name='context_chat'),
     path('projects/<uuid:id>/approve/', ApproveStepView.as_view(), name='approve_step'),
     path('projects/<uuid:id>/deploy/', DeployView.as_view(), name='deploy'),
+    path('projects/<uuid:id>/sandbox/', SandboxStatusView.as_view(), name='sandbox_status'),
     path('projects/<uuid:id>/files/', FileTreeView.as_view(), name='file_tree'),
     path('projects/<uuid:id>/files/<int:file_id>/', FileDetailView.as_view(), name='file_detail'),
     path('projects/<uuid:id>/files/<int:file_id>/diff/', FileDiffView.as_view(), name='file_diff'),
