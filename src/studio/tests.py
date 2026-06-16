@@ -274,6 +274,38 @@ class SemiManualModeTest(APITestCase):
         mock_next.delay.assert_called_once_with(str(project.id), 2)
 
 
+class ExportZipTest(APITestCase):
+    """Commit 36 — ExportView returns ZIP with all project files."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(email='export@t.ru', password='x')
+        self.client.force_authenticate(self.user)
+
+    def test_export_returns_zip_with_all_files(self):
+        import io
+        import zipfile
+        from studio.models import StudioFile
+        project = StudioProject.objects.create(user=self.user, name='Export Me', status='completed', mode='auto')
+        StudioFile.objects.create(project=project, path='index.ts', content='const x = 1')
+        StudioFile.objects.create(project=project, path='app/page.tsx', content='export default () => null')
+
+        r = self.client.get(f'/api/v1/studio/projects/{project.id}/export/')
+
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r['Content-Type'], 'application/zip')
+        zf = zipfile.ZipFile(io.BytesIO(r.content))
+        names = zf.namelist()
+        self.assertIn('index.ts', names)
+        self.assertIn('app/page.tsx', names)
+        self.assertEqual(zf.read('index.ts').decode(), 'const x = 1')
+
+    def test_export_returns_404_for_other_user(self):
+        other = User.objects.create_user(email='other@t.ru', password='x')
+        project = StudioProject.objects.create(user=other, name='Private', status='completed', mode='auto')
+        r = self.client.get(f'/api/v1/studio/projects/{project.id}/export/')
+        self.assertEqual(r.status_code, 404)
+
+
 class CollaboratorTest(APITestCase):
     """Commit 34 — StudioCollaborator: viewer can read, not write; accessible_projects includes collab projects."""
 

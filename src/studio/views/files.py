@@ -1,3 +1,6 @@
+import io
+import zipfile
+from django.http import HttpResponse
 from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -66,3 +69,19 @@ class RollbackView(APIView):
         from ..tasks import rollback_to_version
         rollback_to_version.delay(str(project.id), version_id)
         return Response({'status': 'rolling_back'})
+
+
+class ExportView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, id):
+        project = StudioProject.objects.get(id=id, user=request.user)
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+            for f in project.files.all():
+                zf.writestr(f.path.lstrip('/'), f.content)
+        buf.seek(0)
+        resp = HttpResponse(buf.read(), content_type='application/zip')
+        safe_name = project.name.replace(' ', '_')[:50]
+        resp['Content-Disposition'] = f'attachment; filename="{safe_name}.zip"'
+        return resp

@@ -159,6 +159,9 @@ export const studioApi = {
   deploy: (id: string) =>
     request<{ status: string }>(`/studio/projects/${id}/deploy/`, { method: 'POST' }),
 
+  exportUrl: (id: string) =>
+    `${process.env.NEXT_PUBLIC_API_URL}/studio/projects/${id}/export/`,
+
   templates: () =>
     request<StudioTemplate[]>('/studio/templates/'),
 };

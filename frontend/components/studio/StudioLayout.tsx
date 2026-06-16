@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Play, Pause, Files, Code2, Monitor, CheckCircle } from 'lucide-react';
+import { Play, Pause, Files, Code2, Monitor, CheckCircle, Download } from 'lucide-react';
 import { FileTree } from './FileTree';
 import { CodeViewer } from './CodeViewer';
 import { PreviewPanel } from './PreviewPanel';
@@ -96,6 +96,16 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
               <Pause size={14} />
               Пауза
             </button>
+          )}
+          {isCompleted && (
+            <a
+              href={studioApi.exportUrl(project.id)}
+              download
+              className="flex items-center gap-1.5 border border-[var(--border)] hover:bg-[var(--hover)] px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+            >
+              <Download size={14} />
+              Скачать ZIP
+            </a>
           )}
         </div>
       </div>
