@@ -358,6 +358,16 @@ class PreviewProxyView(APIView):
 
         ext = os.path.splitext(serve_path)[1].lower()
         content_type = _MIME.get(ext, 'text/plain; charset=utf-8')
-        resp = HttpResponse(file_obj.content, content_type=content_type)
+        body = file_obj.content
+        if ext in ('.html', '.htm'):
+            base_href = f'/api/v1/studio/projects/{id}/preview/'
+            tag = f'<base href="{base_href}">'
+            if '<head>' in body:
+                body = body.replace('<head>', f'<head>{tag}', 1)
+            elif '<html>' in body:
+                body = body.replace('<html>', f'<html><head>{tag}</head>', 1)
+            else:
+                body = tag + body
+        resp = HttpResponse(body, content_type=content_type)
         resp['X-Frame-Options'] = 'SAMEORIGIN'
         return resp

@@ -89,43 +89,56 @@ def isolate(container_id: str):
     client.networks.get(settings.STUDIO_SANDBOX_NET).connect(container)
 
 
+def sync_all(project) -> None:
+    """Write all StudioFile objects for a project into the sandbox container."""
+    cid = project.sandbox_container_id
+    if not cid:
+        return
+    files = {f.path: f.content for f in project.files.all()}
+    if files:
+        write_files(cid, files)
+
+
 def start_dev_server(container_id: str) -> int:
     import json as _json
     client = get_docker()
 
-    # Check if package.json has a 'dev' script
     _, pkg_raw = exec_command(container_id, 'cat /workspace/package.json 2>/dev/null || echo {}')
     try:
         pkg = _json.loads(pkg_raw)
-        has_dev = 'dev' in pkg.get('scripts', {})
+        scripts = pkg.get('scripts', {})
+        has_dev = 'dev' in scripts
+        dev_script = scripts.get('dev', '')
+        is_next = 'next' in dev_script
     except Exception:
         has_dev = False
+        is_next = False
 
     if has_dev:
-        cmd = ['sh', '-c', 'pnpm dev --port 3000 --host 0.0.0.0 > /tmp/dev.log 2>&1']
+        if is_next:
+            cmd = ['sh', '-c', 'pnpm dev -- -p 3000 -H 0.0.0.0 > /tmp/dev.log 2>&1']
+        else:
+            cmd = ['sh', '-c', 'pnpm dev --port 3000 --host 0.0.0.0 > /tmp/dev.log 2>&1']
     else:
-        # Static HTML/CSS project — serve with built-in Python HTTP server
         cmd = ['sh', '-c', 'python3 -m http.server 3000 --bind 0.0.0.0 > /tmp/dev.log 2>&1']
 
-    # detach=True: process survives after this exec session closes
-    # (nohup + & gets killed when exec session ends — known Docker issue)
     exec_id = client.api.exec_create(container_id, cmd, workdir='/workspace')
     client.api.exec_start(exec_id, detach=True)
 
-    logger.info('sandbox %s: dev server started detached (has_dev=%s)', container_id, has_dev)
+    logger.info('sandbox %s: dev server started (has_dev=%s, is_next=%s)', container_id, has_dev, is_next)
     return 3000
 
 
-def wait_for_ready(container_id: str, timeout: int = 90) -> bool:
-    """Poll HTTP server inside container until HTTP 2xx/3xx or timeout."""
+def wait_for_ready(container_id: str, timeout: int = 150, warmup: bool = False) -> bool:
+    """Poll HTTP server inside container until HTTP 2xx/3xx or timeout.
+
+    warmup=True sends a fire-and-forget request first to trigger Next.js initial compilation.
+    """
     import time
+    if warmup:
+        exec_command(container_id, 'curl -s http://localhost:3000/ > /dev/null 2>&1 || true')
     for i in range(timeout // 3):
-        _, out = exec_command(
-            container_id,
-            'curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/ 2>/dev/null || echo 000',
-        )
-        code = out.strip()[-3:]
-        if code.startswith('2') or code.startswith('3'):
+        if is_http_alive(container_id):
             logger.info('sandbox %s ready after %ds', container_id, i * 3)
             return True
         time.sleep(3)
