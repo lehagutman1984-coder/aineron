@@ -365,6 +365,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
                   path={fileDetail?.path}
                   editable={project.status !== 'completed'}
                   onSave={handleSaveFile}
+                  projectId={project.id}
                 />
               ) : (
                 <div className="flex-1 overflow-auto">
@@ -400,6 +401,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
                 path={fileDetail?.path}
                 editable={project.status !== 'completed'}
                 onSave={handleSaveFile}
+                projectId={project.id}
               />
             )}
             {mobileTab === 'preview' && (

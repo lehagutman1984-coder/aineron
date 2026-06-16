@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Copy, Check, Save } from 'lucide-react';
+import { Copy, Check, Save, Sparkles, X } from 'lucide-react';
 import CodeMirror from '@uiw/react-codemirror';
 import { javascript } from '@codemirror/lang-javascript';
 import { html } from '@codemirror/lang-html';
 import { css } from '@codemirror/lang-css';
 import { oneDark } from '@codemirror/theme-one-dark';
+import ReactMarkdown from 'react-markdown';
+import { studioApi } from '@/lib/api/studio';
 
 interface CodeViewerProps {
   content: string;
@@ -14,6 +16,7 @@ interface CodeViewerProps {
   path?: string;
   editable?: boolean;
   onSave?: (content: string) => Promise<void> | void;
+  projectId?: string;
 }
 
 function extToLang(path?: string) {
@@ -23,11 +26,14 @@ function extToLang(path?: string) {
   return javascript({ jsx: true, typescript: true });
 }
 
-export function CodeViewer({ content, language: _language, path, editable, onSave }: CodeViewerProps) {
+export function CodeViewer({ content, language: _language, path, editable, onSave, projectId }: CodeViewerProps) {
   const [copied, setCopied] = useState(false);
   const [value, setValue] = useState(content);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [selection, setSelection] = useState('');
+  const [explanation, setExplanation] = useState<string | null>(null);
+  const [explaining, setExplaining] = useState(false);
 
   useEffect(() => { setValue(content); setDirty(false); }, [content, path]);
 
@@ -44,6 +50,22 @@ export function CodeViewer({ content, language: _language, path, editable, onSav
     try { await onSave(value); setDirty(false); } finally { setSaving(false); }
   };
 
+  const onMouseUp = () => {
+    const sel = window.getSelection()?.toString() ?? '';
+    setSelection(sel.trim());
+  };
+
+  const runExplain = async () => {
+    if (!projectId || !selection) return;
+    setExplaining(true);
+    try {
+      const res = await studioApi.explain(projectId, selection, path);
+      setExplanation(res.explanation);
+    } finally {
+      setExplaining(false);
+    }
+  };
+
   if (!content && !editable) {
     return (
       <div className="flex items-center justify-center h-full text-sm text-[var(--text-secondary)] opacity-60">
@@ -53,7 +75,7 @@ export function CodeViewer({ content, language: _language, path, editable, onSav
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full relative">
       {path && (
         <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--border)] text-xs text-[var(--text-secondary)] shrink-0">
           <span className="font-mono">{path}{dirty ? ' •' : ''}</span>
@@ -70,7 +92,7 @@ export function CodeViewer({ content, language: _language, path, editable, onSav
           </div>
         </div>
       )}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto" onMouseUp={onMouseUp}>
         <CodeMirror
           value={value}
           theme={oneDark}
@@ -83,6 +105,38 @@ export function CodeViewer({ content, language: _language, path, editable, onSav
           style={{ height: '100%', fontSize: '12px' }}
         />
       </div>
+
+      {/* Floating explain button when text is selected */}
+      {projectId && selection && !explanation && (
+        <div className="absolute bottom-4 right-4 z-10">
+          <button
+            onClick={runExplain}
+            disabled={explaining}
+            className="flex items-center gap-1.5 bg-[var(--bg)] border border-[var(--border)] shadow-lg hover:bg-[var(--hover)] disabled:opacity-60 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+          >
+            <Sparkles size={13} />
+            {explaining ? 'Анализирую…' : 'Объясни'}
+          </button>
+        </div>
+      )}
+
+      {/* Explanation popover */}
+      {explanation && (
+        <div className="absolute bottom-4 right-4 z-20 w-80 max-h-64 overflow-auto bg-[var(--bg)] border border-[var(--border)] rounded-lg shadow-xl p-3 text-xs">
+          <div className="flex items-center justify-between mb-2">
+            <span className="font-medium flex items-center gap-1"><Sparkles size={12} /> Объяснение</span>
+            <button
+              onClick={() => { setExplanation(null); setSelection(''); }}
+              className="text-[var(--text-secondary)] hover:text-[var(--text)]"
+            >
+              <X size={14} />
+            </button>
+          </div>
+          <div className="prose prose-xs dark:prose-invert max-w-none text-[var(--text)]">
+            <ReactMarkdown>{explanation}</ReactMarkdown>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

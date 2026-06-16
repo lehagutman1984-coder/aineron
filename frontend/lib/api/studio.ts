@@ -228,6 +228,12 @@ export const studioApi = {
   deploy: (id: string) =>
     request<{ status: string }>(`/studio/projects/${id}/deploy/`, { method: 'POST' }),
 
+  explain: (id: string, code: string, path?: string) =>
+    request<{ explanation: string }>(`/studio/projects/${id}/explain/`, {
+      method: 'POST',
+      body: JSON.stringify({ code, path }),
+    }),
+
   timeline: (id: string) =>
     request<TimelineStep[]>(`/studio/projects/${id}/timeline/`),
 
