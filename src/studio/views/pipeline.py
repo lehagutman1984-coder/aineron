@@ -200,6 +200,36 @@ class SandboxStatusView(APIView):
         return Response({'alive': alive, 'port': project.preview_port, 'uptime_s': uptime_s})
 
 
+class ConsoleErrorView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, id):
+        project = StudioProject.objects.get(id=id, user=request.user)
+        err = {
+            'message': request.data.get('message', '')[:1000],
+            'stack': request.data.get('stack', '')[:2000],
+            'file': request.data.get('file', ''),
+            'line': request.data.get('line'),
+        }
+        errors = project.interview_data.setdefault('console_errors', [])
+        errors.append(err)
+        project.interview_data['console_errors'] = errors[-20:]
+        project.save(update_fields=['interview_data'])
+        if request.data.get('autofix'):
+            state = project.pipeline
+            hint = f"Ошибка в превью: {err['message']} ({err['file']}:{err['line']})\n{err['stack']}"
+            state.fix_plan = {
+                'instructions': hint,
+                'target_files': [err['file']] if err['file'] else [],
+            }
+            state.status = 'running'
+            state.pause_requested = False
+            state.save(update_fields=['fix_plan', 'status', 'pause_requested'])
+            from ..tasks import coder_iteration
+            coder_iteration.delay(str(project.id), state.step_index)
+        return Response({'stored': True, 'count': len(project.interview_data['console_errors'])})
+
+
 class ExplainView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
