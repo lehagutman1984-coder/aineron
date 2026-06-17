@@ -77,9 +77,18 @@ class BaseAgent:
         m = re.search(r'```(?:json)?\s*([\s\S]*?)```', raw, re.DOTALL)
         if m:
             raw = m.group(1).strip()
-        # Extract the first complete JSON object; raw_decode stops at the end of
-        # the first valid JSON value and ignores any trailing text or extra braces.
-        start = raw.find('{')
+        # Find the first JSON value — object '{' or array '[', whichever comes first.
+        # raw_decode stops at the end of that value and ignores any trailing text.
+        brace = raw.find('{')
+        bracket = raw.find('[')
+        if brace == -1 and bracket == -1:
+            start = -1
+        elif brace == -1:
+            start = bracket
+        elif bracket == -1:
+            start = brace
+        else:
+            start = min(brace, bracket)
         if start != -1:
             try:
                 obj, _ = json.JSONDecoder().raw_decode(raw, start)
