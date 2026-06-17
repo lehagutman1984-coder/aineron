@@ -1,37 +1,91 @@
+import re
 from .base import BaseAgent, pick_prompt
 
 SYSTEM_EN = (
-    "You are a senior code reviewer and QA engineer. Review the implemented code for a pipeline step.\n\n"
+    "You are a senior code reviewer. Review the implemented code for a pipeline step.\n\n"
     "Check:\n"
-    "1. Does it actually implement what the step planned?\n"
-    "2. Missing imports, obvious syntax errors, undefined variables?\n"
-    "3. Correct tech stack setup (Vite config with host:true port:3000, Next.js dev script 0.0.0.0:3000)?\n"
-    "4. Production-ready: no TODO stubs, has error handling, no broken references?\n\n"
+    "1. Does it implement what the step planned?\n"
+    "2. Missing imports, syntax errors, undefined variables, missing dependencies in package.json?\n"
+    "3. Correct stack setup (Vite: host:true port:3000; Next.js: dev script 0.0.0.0:3000)?\n"
+    "4. No TODO stubs, has error handling, no broken references?\n"
     "If build logs are provided: check for compilation errors.\n\n"
-    "Be pragmatic: only flag REAL problems that would break the app. Style issues = pass.\n"
-    "If this is a fix attempt, verify that previously flagged issues are now resolved.\n\n"
-    "Return STRICTLY JSON:\n"
-    '{"verdict": "pass" or "fix", '
-    '"issues": ["list of real problems found, empty if pass"], '
-    '"instructions": "specific actionable fix instructions in Russian (empty string if verdict=pass)", '
-    '"target_files": ["path/to/file.ext (empty array if verdict=pass)"]}'
+    "Be pragmatic: only flag REAL problems that would break the app. Style issues = PASS.\n"
+    "If this is a fix attempt, verify previous issues are now resolved.\n\n"
+    "Respond in EXACTLY this format (no extra text):\n"
+    "VERDICT: pass\n"
+    "or\n"
+    "VERDICT: fix\n"
+    "ISSUES:\n"
+    "- problem 1\n"
+    "- problem 2\n"
+    "INSTRUCTIONS:\n"
+    "Specific actionable fix instructions in Russian.\n"
+    "FILES:\n"
+    "- path/to/file.ts"
 )
 
 SYSTEM_RU = (
-    "Ты старший ревьюер и QA-инженер. Проверь реализацию шага пайплайна.\n\n"
+    "Ты старший ревьюер. Проверь реализацию шага пайплайна.\n\n"
     "Проверь:\n"
     "1. Шаг реализован согласно плану?\n"
-    "2. Нет пропущенных импортов, синтаксических ошибок, неопределённых переменных?\n"
-    "3. Правильный стек (vite.config.ts host:true port:3000, Next.js dev 0.0.0.0:3000)?\n"
-    "4. Production-ready: нет TODO, есть обработка ошибок?\n\n"
-    "Если есть логи сборки: проверь на ошибки компиляции.\n\n"
-    "Будь прагматичен: только реальные проблемы. Стиль = pass.\n\n"
-    "Верни СТРОГО JSON:\n"
-    '{"verdict": "pass" или "fix", '
-    '"issues": ["список реальных проблем, пусто если pass"], '
-    '"instructions": "конкретные инструкции по исправлению на русском (пустая строка если pass)", '
-    '"target_files": ["путь/к/файлу (пустой массив если pass)"]}'
+    "2. Нет пропущенных импортов, ошибок, отсутствующих зависимостей в package.json?\n"
+    "3. Правильный стек (vite.config.ts host:true port:3000; Next.js dev 0.0.0.0:3000)?\n"
+    "4. Нет TODO, есть обработка ошибок?\n"
+    "Если есть логи сборки: проверь ошибки компиляции.\n\n"
+    "Только реальные проблемы. Стиль = PASS.\n\n"
+    "Ответь СТРОГО в этом формате (без лишнего текста):\n"
+    "VERDICT: pass\n"
+    "или\n"
+    "VERDICT: fix\n"
+    "ISSUES:\n"
+    "- проблема 1\n"
+    "INSTRUCTIONS:\n"
+    "Конкретные инструкции по исправлению.\n"
+    "FILES:\n"
+    "- путь/к/файлу.ts"
 )
+
+
+def _parse_guardian_response(text: str) -> dict:
+    """Parse plain-text guardian response into a structured dict."""
+    text = text.strip()
+
+    # Extract VERDICT
+    m = re.search(r'VERDICT\s*:\s*(pass|fix)', text, re.IGNORECASE)
+    verdict = m.group(1).lower() if m else 'pass'
+
+    # Extract ISSUES list
+    issues = []
+    issues_m = re.search(r'ISSUES\s*:\s*\n(.*?)(?=INSTRUCTIONS\s*:|FILES\s*:|$)',
+                         text, re.DOTALL | re.IGNORECASE)
+    if issues_m:
+        for line in issues_m.group(1).splitlines():
+            line = re.sub(r'^[\s\-\*]+', '', line).strip()
+            if line:
+                issues.append(line)
+
+    # Extract INSTRUCTIONS
+    instructions = ''
+    instr_m = re.search(r'INSTRUCTIONS\s*:\s*\n(.*?)(?=FILES\s*:|$)',
+                        text, re.DOTALL | re.IGNORECASE)
+    if instr_m:
+        instructions = instr_m.group(1).strip()
+
+    # Extract FILES
+    target_files = []
+    files_m = re.search(r'FILES\s*:\s*\n(.*?)$', text, re.DOTALL | re.IGNORECASE)
+    if files_m:
+        for line in files_m.group(1).splitlines():
+            line = re.sub(r'^[\s\-\*]+', '', line).strip()
+            if line:
+                target_files.append(line)
+
+    return {
+        'verdict': verdict,
+        'issues': issues,
+        'instructions': instructions,
+        'target_files': target_files,
+    }
 
 
 class GuardianAgent(BaseAgent):
@@ -48,7 +102,7 @@ class GuardianAgent(BaseAgent):
             if build_logs else ''
         )
         attempt_note = (
-            f'\n\n(This is fix attempt #{attempt}. Verify previous issues are resolved.)'
+            f'\n\n(Fix attempt #{attempt}. Verify previous issues are resolved.)'
             if attempt > 0 else ''
         )
         user = (
@@ -56,4 +110,5 @@ class GuardianAgent(BaseAgent):
             f'Implemented files:{attempt_note}\n{files_content}'
             f'{build_section}'
         )
-        return self.run_json(system, user, model=self.resolve_model(), max_tokens=4096)
+        raw = self.run_prompt(system, user, model=self.resolve_model(), max_tokens=2048)
+        return _parse_guardian_response(raw)
