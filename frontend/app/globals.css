@@ -58,6 +58,16 @@
   --border-tertiary:       rgba(13, 13, 13, 0.06);
   --btn-primary:           #0a7cff;
   --font-primary:          "Inter", sans-serif;
+
+  /* Studio shorthand variables */
+  --bg:          #ffffff;
+  --bg-secondary: rgba(13, 13, 13, 0.06);
+  --bg-tertiary:  rgba(13, 13, 13, 0.03);
+  --card-bg:     #f7f7f7;
+  --border:      rgba(13, 13, 13, 0.12);
+  --hover:       rgba(13, 13, 13, 0.06);
+  --text:        #0d0d0d;
+  --input-bg:    #ffffff;
 }
 
 /* ===== Dark theme variables ===== */
@@ -77,6 +87,16 @@ html[data-theme="dark"] {
   --border-tertiary:       rgba(255, 255, 255, 0.04);
   --btn-primary:           #0a7cff;
   color-scheme: dark;
+
+  /* Studio shorthand variables — dark */
+  --bg:          #111113;
+  --bg-secondary: rgba(255, 255, 255, 0.06);
+  --bg-tertiary:  rgba(255, 255, 255, 0.03);
+  --card-bg:     #1a1a1d;
+  --border:      rgba(255, 255, 255, 0.10);
+  --hover:       rgba(255, 255, 255, 0.06);
+  --text:        #ececec;
+  --input-bg:    #1e1e22;
 }
 
 *,
