@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Play, Pause, Files, Code2, Monitor, CheckCircle, Download, ArrowLeft, Rocket, Share2, HelpCircle, Settings, GitBranch } from 'lucide-react';
+import { Play, Pause, Files, Code2, Monitor, CheckCircle, Download, ArrowLeft, Rocket, Share2, HelpCircle, Settings, GitBranch, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { FileTree } from './FileTree';
 import { CodeViewer } from './CodeViewer';
@@ -35,7 +35,7 @@ interface StudioLayoutProps {
 export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayoutProps) {
   const [selectedFileId, setSelectedFileId] = useState<number | null>(null);
   const [fileDetail, setFileDetail] = useState<StudioFileDetail | null>(null);
-  const [logOpen, setLogOpen] = useState(false);
+  const [logOpen, setLogOpen] = useState(pipeline.status === 'running' || pipeline.status === 'paused_on_loop');
   const [mobileTab, setMobileTab] = useState<MobileTab>('files');
   const [running, setRunning] = useState(false);
   const [approving, setApproving] = useState(false);
@@ -50,7 +50,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [timelineOpen, setTimelineOpen] = useState(false);
+  const [timelineOpen, setTimelineOpen] = useState(pipeline.status === 'running');
   const [currentAgent, setCurrentAgent] = useState('');
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
@@ -236,6 +236,13 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
           pipelineStatus={pipeline.status}
           onStepClick={(key) => setDrawerAgent(key)}
         />
+        {isRunning && currentAgent && (
+          <span className="hidden sm:flex items-center gap-1.5 text-xs text-blue-400 shrink-0">
+            <Loader2 size={11} className="animate-spin" />
+            {AGENT_LABELS[currentAgent] ?? currentAgent}
+            {elapsedSeconds > 0 && <span className="opacity-60">{Math.floor(elapsedSeconds / 60)}:{String(elapsedSeconds % 60).padStart(2, '0')}</span>}
+          </span>
+        )}
         <div className={layout.rightGroup}>
           <button onClick={() => setSettingsOpen(true)} title="Настройки проекта" className="text-[var(--text-secondary)] hover:text-[var(--text)] p-1.5">
             <Settings size={16} />
@@ -385,6 +392,18 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
                 >Diff</button>
               </div>
               {centerTab === 'code' ? (
+                !fileDetail && isRunning ? (
+                  <div className="flex flex-col items-center justify-center h-full gap-3 text-[var(--text-secondary)]">
+                    <Loader2 size={20} className="animate-spin text-blue-500" />
+                    <p className="text-sm font-medium text-[var(--text)]">
+                      {currentAgent ? (AGENT_LABELS[currentAgent] ?? 'Агент') + ' работает...' : 'Агент пишет код...'}
+                    </p>
+                    <p className="text-xs opacity-60 text-center max-w-xs">
+                      Файлы появятся после завершения первого шага.<br/>
+                      Следите за прогрессом в логе ниже.
+                    </p>
+                  </div>
+                ) : (
                 <CodeViewer
                   content={fileDetail?.content ?? ''}
                   language={fileDetail?.language ?? 'text'}
@@ -393,6 +412,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
                   onSave={handleSaveFile}
                   projectId={project.id}
                 />
+                )
               ) : (
                 <div className="flex-1 overflow-auto">
                   {diff ? (
