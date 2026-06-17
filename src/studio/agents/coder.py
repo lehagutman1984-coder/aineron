@@ -9,6 +9,9 @@ SYSTEM_RU = (
     "Для Next.js: dev-скрипт \"next dev -p 3000 -H 0.0.0.0\". "
     "Не выдумывай несуществующие зависимости. Не дублируй существующие файлы. "
     "Если задан FixPlan — меняй ТОЛЬКО указанные файлы. "
+    "КРИТИЧНО: каждый файл должен быть ПОЛНЫМ — все JSX-теги закрыты, все функции закрыты, "
+    "есть export default. Обрезанный файл хуже отсутствующего. "
+    "Если компонент большой — раздели его на несколько файлов, но не обрезай. "
     "Верни СТРОГО JSON: {\"files\":{\"путь\":\"полное содержимое файла\"}}. Полные файлы целиком, не диффы."
 )
 
@@ -20,6 +23,9 @@ SYSTEM_EN = (
     "For Next.js projects: ALWAYS set package.json scripts.dev to \"next dev -p 3000 -H 0.0.0.0\". "
     "Never invent nonexistent dependencies. Respect existing project files (provided in context) — "
     "do not duplicate or break them. If a FixPlan is provided, change ONLY the listed files. "
+    "CRITICAL: Every file MUST be 100% complete — all JSX tags closed, all functions closed, "
+    "export default present. A truncated file is worse than no file. "
+    "If a component is large, split it into smaller files rather than truncating. "
     "Return STRICTLY JSON: {\"files\":{\"relative/path\":\"full file content\"}} — whole files, never diffs. "
     "Code comments may be in Russian."
 )
