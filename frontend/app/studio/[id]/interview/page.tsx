@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { Loader2, RefreshCw, SkipForward } from 'lucide-react';
 import { studioApi } from '@/lib/api/studio';
 import { InterviewCards } from '@/components/studio/InterviewCards';
 import { empty } from '@/components/studio/styles';
@@ -39,6 +39,14 @@ export default function InterviewPage() {
         <p className="text-sm text-[var(--text-secondary)]">
           Агент готовит вопросы...
         </p>
+        <button
+          onClick={() => submitMutation.mutate([])}
+          disabled={submitMutation.isPending}
+          className="mt-2 flex items-center gap-1.5 text-xs text-[var(--text-secondary)] hover:text-[var(--text)] transition-colors"
+        >
+          <SkipForward size={13} />
+          Пропустить интервью
+        </button>
       </div>
     );
   }
@@ -69,6 +77,14 @@ export default function InterviewPage() {
         <p className="text-sm text-[var(--text-secondary)]">
           Агент готовит вопросы...
         </p>
+        <button
+          onClick={() => submitMutation.mutate([])}
+          disabled={submitMutation.isPending}
+          className="mt-2 flex items-center gap-1.5 text-xs text-[var(--text-secondary)] hover:text-[var(--text)] transition-colors"
+        >
+          <SkipForward size={13} />
+          Пропустить интервью
+        </button>
       </div>
     );
   }
@@ -91,6 +107,16 @@ export default function InterviewPage() {
           Ошибка при отправке ответов. Попробуйте ещё раз.
         </p>
       )}
+      <div className="mt-6 pt-4 border-t border-[var(--border)] text-center">
+        <button
+          onClick={() => submitMutation.mutate([])}
+          disabled={submitMutation.isPending}
+          className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)] hover:text-[var(--text)] transition-colors mx-auto"
+        >
+          <SkipForward size={13} />
+          Пропустить все вопросы
+        </button>
+      </div>
     </div>
   );
 }
