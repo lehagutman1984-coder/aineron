@@ -40,7 +40,11 @@ class BaseAgent:
         self.client = get_client()
 
     def resolve_model(self) -> str:
-        """All agents use the model chosen by the user for this project."""
+        """Per-agent override first, then project-level ai_model, then default."""
+        agent_models = getattr(self.project, 'agent_models', {}) or {}
+        override = agent_models.get(self.name)
+        if override and override in MODEL_TIER:
+            return override
         model = getattr(self.project, 'ai_model', None)
         return model if model in MODEL_TIER else DEFAULT_STUDIO_MODEL
 

@@ -274,7 +274,7 @@ class DeviationView(APIView):
 class ProjectSettingsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    ALLOWED = {'ai_model', 'max_iterations', 'max_stars_budget', 'auto_deploy', 'mode'}
+    ALLOWED = {'ai_model', 'agent_models', 'max_iterations', 'max_stars_budget', 'auto_deploy', 'mode'}
 
     def patch(self, request, id):
         project = StudioProject.objects.get(id=id, user=request.user)
@@ -287,6 +287,7 @@ class ProjectSettingsView(APIView):
             project.save(update_fields=updated)
         return Response({
             'ai_model': project.ai_model,
+            'agent_models': project.agent_models or {},
             'max_iterations': project.max_iterations,
             'max_stars_budget': project.max_stars_budget,
             'auto_deploy': project.auto_deploy,
