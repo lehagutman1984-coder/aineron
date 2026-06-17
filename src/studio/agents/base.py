@@ -40,17 +40,22 @@ class BaseAgent:
         self.client = get_client()
 
     def resolve_model(self) -> str:
-        """Per-agent override → project ai_model → per-agent default → global default."""
+        """Per-agent override → per-agent default → project ai_model → global default."""
         agent_models = getattr(self.project, 'agent_models', {}) or {}
+        # 1. Explicit per-agent override set by user in settings
         override = agent_models.get(self.name)
         if override and override in MODEL_TIER:
             return override
+        # 2. Sensible per-agent default (architect→opus, interviewer→deepseek, etc.)
+        from ..models_catalog import DEFAULT_AGENT_MODELS
+        per_agent = DEFAULT_AGENT_MODELS.get(self.name)
+        if per_agent and per_agent in MODEL_TIER:
+            return per_agent
+        # 3. Project-level fallback chosen by user
         model = getattr(self.project, 'ai_model', None)
         if model and model in MODEL_TIER:
             return model
-        # Per-agent sensible defaults (architect→opus, coder→qwen3, guardian→sonnet)
-        from ..models_catalog import DEFAULT_AGENT_MODELS
-        return DEFAULT_AGENT_MODELS.get(self.name, DEFAULT_STUDIO_MODEL)
+        return DEFAULT_STUDIO_MODEL
 
     def run_prompt(self, system: str, user: str, model: str = None,
                    max_tokens: int = 8192, temperature: float = 0.7) -> str:

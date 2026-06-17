@@ -32,11 +32,12 @@ ESCALATION_MAP = {
     'claude-haiku-4-5-20251001': 'claude-sonnet-4-6',
 }
 
-# Default per-agent models for the 3-role pipeline
+# Default per-agent models: per-agent sensible defaults before project.ai_model
 DEFAULT_AGENT_MODELS = {
-    'architect': 'claude-opus-4-8',
-    'coder':     'qwen3-coder-plus',
-    'guardian':  'claude-sonnet-4-6',
+    'interviewer': 'deepseek-v3.2',       # fast: simple JSON questions
+    'architect':   'claude-opus-4-8',     # smart: design quality matters most
+    'coder':       'qwen3-coder-plus',    # coder: specialized for code generation
+    'guardian':    'claude-sonnet-4-6',   # smart: reliable review without over-nitpicking
 }
 
 
