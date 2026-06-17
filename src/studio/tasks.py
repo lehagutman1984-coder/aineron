@@ -487,7 +487,13 @@ def merge_reports(results, project_id, step_index):
         max_iter = project.max_iterations if project.max_iterations and project.max_iterations > 0 else settings.STUDIO_MAX_ITERATIONS
         if state.iteration_count < max_iter:
             from .agents.fixer import FixerAgent
-            state.fix_plan = FixerAgent(project).run(review, test)
+            import logging as _log
+            try:
+                state.fix_plan = FixerAgent(project).run(review, test)
+            except Exception as fixer_err:
+                _log.getLogger('studio.tasks').warning(
+                    'fixer failed (%s) — retrying coder without fix plan', fixer_err)
+                state.fix_plan = {}
             state.save(update_fields=['fix_plan'])
             try:
                 _billing_charge(project, 'fixer', step_index)

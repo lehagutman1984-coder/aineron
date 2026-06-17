@@ -106,14 +106,20 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
     }
   };
 
+  const [pausing, setPausing] = useState(false);
   const handlePause = async () => {
-    await studioApi.pause(project.id);
-    onRefresh();
+    setPausing(true);
+    try {
+      await studioApi.pause(project.id);
+      onRefresh();
+    } finally {
+      setPausing(false);
+    }
   };
 
   const [resetting, setResetting] = useState(false);
   const handleReset = async (restart = false) => {
-    if (!window.confirm(restart ? 'Сбросить пайплайн и вернуть в статус "Готов к запуску"?' : 'Прервать выполнение?')) return;
+    if (restart && !window.confirm('Сбросить пайплайн и вернуть в статус "Готов к запуску"?')) return;
     setResetting(true);
     try {
       await studioApi.reset(project.id, restart);
@@ -276,10 +282,11 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
           {isRunning && (
             <button
               onClick={handlePause}
+              disabled={pausing}
               className={btn.ghostXs}
             >
               <Pause size={14} />
-              Пауза
+              {pausing ? 'Пауза...' : 'Пауза'}
             </button>
           )}
           {isRunning && (

@@ -28,4 +28,4 @@ class FixerAgent(BaseAgent):
             f"ReviewReport:\n{json.dumps(review_report, ensure_ascii=False)}\n\n"
             f"TestReport:\n{json.dumps(test_report, ensure_ascii=False)}"
         )
-        return self.run_json(system, user, model=self.resolve_model(), max_tokens=5000)
+        return self.run_json(system, user, model=self.resolve_model(), max_tokens=8192)
