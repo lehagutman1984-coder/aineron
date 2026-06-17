@@ -4,6 +4,7 @@ from .base import BaseAgent, pick_prompt
 SYSTEM_PROJECT_EN = (
     "You are a lead software architect. Write a PROJECT.md specification document.\n"
     "Include: project goals, tech stack, components, file structure, key dependencies.\n"
+    "IMPORTANT: Write all content in Russian.\n"
     "Output ONLY the markdown content — no extra commentary, no JSON, no code fences."
 )
 
@@ -16,8 +17,8 @@ SYSTEM_PROJECT_RU = (
 SYSTEM_COMMITS_EN = (
     "You are a lead software architect. Write a COMMITS.md implementation plan.\n\n"
     "Format each step as:\n"
-    "## Step N: Title\n"
-    "What to implement in this step...\n\n"
+    "## Шаг N: Название шага\n"
+    "Описание что реализовать на этом шаге...\n\n"
     "Rules:\n"
     "- 5-15 steps total, each independently implementable\n"
     "- Step 1: project setup + package.json with ALL dependencies\n"
@@ -25,6 +26,7 @@ SYSTEM_COMMITS_EN = (
     "- Mark complex steps with [COMPLEX] in the title\n"
     "- For Vite/React/Vue: step 1 must include vite.config.ts with server:{host:true,port:3000,hmr:false}\n"
     "- For Next.js: package.json scripts.dev must be 'next dev -p 3000 -H 0.0.0.0'\n\n"
+    "IMPORTANT: Write ALL step titles and descriptions in Russian.\n"
     "Output ONLY the markdown steps — no extra commentary, no JSON, no code fences."
 )
 
