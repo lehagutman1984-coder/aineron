@@ -58,7 +58,7 @@ class CoderAgent(BaseAgent):
             f"All project files:\n{listing}\n\n"
             f"Content of relevant files:\n{body}"
         )
-        data = self.run_json(system, user, model=model, max_tokens=8192)
+        data = self.run_json(system, user, model=model, max_tokens=16000)
         files = data.get('files', {})
         if allowed_files:
             files = {p: c for p, c in files.items() if p in allowed_files}

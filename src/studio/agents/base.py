@@ -82,20 +82,21 @@ class BaseAgent:
         brace = raw.find('{')
         bracket = raw.find('[')
         if brace == -1 and bracket == -1:
-            start = -1
+            logger.warning('agent %s: no JSON found in response (len=%d): %.200s', self.name, len(raw), raw)
+            raise ValueError(f'No JSON in model response: {raw[:200]}')
         elif brace == -1:
             start = bracket
         elif bracket == -1:
             start = brace
         else:
             start = min(brace, bracket)
-        if start != -1:
-            try:
-                obj, _ = json.JSONDecoder().raw_decode(raw, start)
-                return obj
-            except json.JSONDecodeError:
-                pass
-        return json.loads(raw)
+        try:
+            obj, _ = json.JSONDecoder().raw_decode(raw, start)
+            return obj
+        except json.JSONDecodeError as exc:
+            logger.warning('agent %s: JSON parse failed (%s), raw len=%d: %.300s',
+                           self.name, exc, len(raw), raw[max(0, start - 20):start + 200])
+            raise
 
     def run_vision(self, system: str, image_b64: str, model: str = None, max_tokens: int = 1500) -> str:
         resp = self.client.chat.completions.create(
