@@ -56,14 +56,28 @@ class BaseAgent:
             max_tokens=max_tokens,
             temperature=temperature,
         )
-        return resp.choices[0].message.content
+        content = resp.choices[0].message.content
+        if content is None:
+            logger.warning('agent %s: model %s returned None content (finish_reason=%s)',
+                           self.name, model, resp.choices[0].finish_reason)
+            return ''
+        return content
 
     def run_json(self, system: str, user: str, model: str = None, max_tokens: int = 8192) -> dict:
         raw = self.run_prompt(system, user, model=model, max_tokens=max_tokens, temperature=0.2)
+        if not raw or not raw.strip():
+            logger.warning('agent %s: empty response from model %s', self.name, model)
+            raise ValueError('Empty response from model')
         raw = raw.strip()
-        m = re.search(r'```(?:json)?\s*(.*?)```', raw, re.DOTALL)
+        # Strip markdown code fences
+        m = re.search(r'```(?:json)?\s*([\s\S]*?)```', raw, re.DOTALL)
         if m:
             raw = m.group(1).strip()
+        # Extract outermost JSON object even if there's text around it
+        start = raw.find('{')
+        end = raw.rfind('}')
+        if start != -1 and end != -1 and end > start:
+            raw = raw[start:end + 1]
         return json.loads(raw)
 
     def run_vision(self, system: str, image_b64: str, model: str = None, max_tokens: int = 1500) -> str:
