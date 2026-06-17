@@ -77,11 +77,15 @@ class BaseAgent:
         m = re.search(r'```(?:json)?\s*([\s\S]*?)```', raw, re.DOTALL)
         if m:
             raw = m.group(1).strip()
-        # Extract outermost JSON object even if there's text around it
+        # Extract the first complete JSON object; raw_decode stops at the end of
+        # the first valid JSON value and ignores any trailing text or extra braces.
         start = raw.find('{')
-        end = raw.rfind('}')
-        if start != -1 and end != -1 and end > start:
-            raw = raw[start:end + 1]
+        if start != -1:
+            try:
+                obj, _ = json.JSONDecoder().raw_decode(raw, start)
+                return obj
+            except json.JSONDecodeError:
+                pass
         return json.loads(raw)
 
     def run_vision(self, system: str, image_b64: str, model: str = None, max_tokens: int = 1500) -> str:
