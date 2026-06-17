@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Loader2, Play, Edit3, Check, AlertTriangle } from 'lucide-react';
+import { Loader2, Play, Edit3, Check, AlertTriangle, X } from 'lucide-react';
 import { studioApi } from '@/lib/api/studio';
 import { BillingEstimate } from '@/components/studio/BillingEstimate';
 import { btn, empty } from '@/components/studio/styles';
@@ -66,6 +66,17 @@ export default function ReviewPage() {
     onSuccess: () => router.push(`/studio/${id}`),
   });
 
+  const [aborting, setAborting] = useState(false);
+  const handleAbort = async () => {
+    setAborting(true);
+    try {
+      await studioApi.reset(id, false);
+      router.push('/studio');
+    } catch {
+      setAborting(false);
+    }
+  };
+
   const saveMd = async (field: 'project_md_content' | 'commits_md_content', value: string) => {
     await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/studio/projects/${id}/`,
@@ -110,9 +121,19 @@ export default function ReviewPage() {
       </div>
 
       {isPlanning && (
-        <div className="flex items-center gap-3 p-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-xl mb-6">
-          <Loader2 size={16} className="animate-spin text-blue-500" />
-          <span className="text-sm">Аналитик готовит документы...</span>
+        <div className="flex items-center justify-between gap-3 p-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-xl mb-6">
+          <div className="flex items-center gap-3">
+            <Loader2 size={16} className="animate-spin text-blue-500" />
+            <span className="text-sm">Архитектор готовит документы...</span>
+          </div>
+          <button
+            onClick={handleAbort}
+            disabled={aborting}
+            className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 transition-colors disabled:opacity-40"
+          >
+            {aborting ? <Loader2 size={13} className="animate-spin" /> : <X size={13} />}
+            Отменить
+          </button>
         </div>
       )}
 
@@ -145,7 +166,7 @@ export default function ReviewPage() {
         <button
           onClick={() => runMutation.mutate()}
           disabled={!isReady || runMutation.isPending}
-          className={btn.primaryLg}
+          className={`${btn.primaryLg} disabled:opacity-40 disabled:cursor-not-allowed`}
         >
           {runMutation.isPending ? (
             <Loader2 size={16} className="animate-spin" />
