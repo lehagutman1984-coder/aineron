@@ -21,4 +21,4 @@ class AssistantAgent(BaseAgent):
         )
         hist = '\n'.join(f"{h['role']}: {h['text']}" for h in history[-6:])
         user = f"{ctx}\nДиалог:\n{hist}\n\nВопрос: {message}"
-        return self.run_prompt(ASSISTANT_SYSTEM, user, model=MODEL_FAST, max_tokens=1500, temperature=0.5)
+        return self.run_prompt(ASSISTANT_SYSTEM, user, model=self.resolve_model(), max_tokens=1500, temperature=0.5)

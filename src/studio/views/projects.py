@@ -277,7 +277,26 @@ class ProjectSettingsView(APIView):
     ALLOWED = {'ai_model', 'agent_models', 'max_iterations', 'max_stars_budget', 'auto_deploy', 'mode'}
 
     def patch(self, request, id):
+        from ..models_catalog import MODEL_TIER
         project = StudioProject.objects.get(id=id, user=request.user)
+
+        # Validate before applying
+        if 'ai_model' in request.data:
+            if request.data['ai_model'] not in MODEL_TIER:
+                return Response({'error': f"Неизвестная модель: {request.data['ai_model']}"}, status=400)
+        if 'agent_models' in request.data:
+            am = request.data['agent_models']
+            if not isinstance(am, dict):
+                return Response({'error': 'agent_models должен быть объектом'}, status=400)
+            invalid = [v for v in am.values() if v not in MODEL_TIER]
+            if invalid:
+                return Response({'error': f'Неизвестные модели: {", ".join(invalid)}'}, status=400)
+        for k in ('max_iterations', 'max_stars_budget'):
+            if k in request.data:
+                val = request.data[k]
+                if not isinstance(val, int) or val < 0:
+                    return Response({'error': f'{k} должен быть неотрицательным числом'}, status=400)
+
         updated = []
         for key in self.ALLOWED:
             if key in request.data:

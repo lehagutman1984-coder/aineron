@@ -15,8 +15,9 @@ QUEUE = 'studio_queue'
 
 class InsufficientStars(Exception):
     """Raised when a user can't afford an agent run. Pauses the pipeline."""
-    def __init__(self, needed):
+    def __init__(self, needed, reason=None):
         self.needed = needed
+        self.reason = reason
         super().__init__(f'Недостаточно звёзд: нужно {needed}')
 
 
@@ -32,6 +33,14 @@ def _billing_charge(project, agent_name: str, step_index: int, tier_override: st
         cost = max(1, int((budget / 1000.0) * STAR_RATE[tier_override]))
     else:
         cost = _agent_cost(agent_name)
+    cap = project.max_stars_budget or 0
+    if cap:
+        project.refresh_from_db(fields=['stars_spent'])
+        if project.stars_spent + cost > cap:
+            raise InsufficientStars(
+                cost,
+                reason=f'Бюджет проекта исчерпан (лимит {cap} зв., потрачено {project.stars_spent} зв.)',
+            )
     if not charge_from_reserve(cost, project):
         raise InsufficientStars(cost)
     publish_event(str(project.id), {
@@ -44,11 +53,11 @@ def _billing_charge(project, agent_name: str, step_index: int, tier_override: st
     return cost
 
 
-def _pause_no_funds(project, needed):
+def _pause_no_funds(project, needed, reason=None):
     release_reserve(project)
     state = project.pipeline
     state.status = 'paused_on_loop'
-    state.pause_reason = f'Недостаточно звёзд для продолжения (нужно ещё ~{needed})'
+    state.pause_reason = reason or f'Недостаточно звёзд для продолжения (нужно ещё ~{needed})'
     state.save(update_fields=['status', 'pause_reason'])
     project.status = 'paused'
     project.save(update_fields=['status'])
@@ -113,7 +122,7 @@ def agent_analyze(self, project_id):
         agent_plan.delay(project_id)
         _billing_charge(project, 'analyst', 0)
     except InsufficientStars as e:
-        _pause_no_funds(project, e.needed)
+        _pause_no_funds(project, e.needed, reason=getattr(e, 'reason', None))
         return
     except Exception as e:
         raise self.retry(exc=e, countdown=60)
@@ -138,7 +147,7 @@ def agent_plan(self, project_id):
         })
         _billing_charge(project, 'planner', 0)
     except InsufficientStars as e:
-        _pause_no_funds(project, e.needed)
+        _pause_no_funds(project, e.needed, reason=getattr(e, 'reason', None))
         return
     except Exception as e:
         raise self.retry(exc=e, countdown=60)
@@ -352,7 +361,7 @@ def coder_iteration(self, project_id, step_index):
         ).apply_async()
         _billing_charge(project, 'coder', step_index, tier_override=coder_tier)
     except InsufficientStars as e:
-        _pause_no_funds(project, e.needed)
+        _pause_no_funds(project, e.needed, reason=getattr(e, 'reason', None))
         return
     except Exception as e:
         if self.request.retries >= self.max_retries:
@@ -432,7 +441,7 @@ def merge_reports(results, project_id, step_index):
         _billing_charge(project, 'reviewer', step_index)
         _billing_charge(project, 'tester', step_index)
     except InsufficientStars as e:
-        _pause_no_funds(project, e.needed)
+        _pause_no_funds(project, e.needed, reason=getattr(e, 'reason', None))
         return
 
     # Error-repeat detection: escalate model on repeated identical test error
@@ -442,13 +451,19 @@ def merge_reports(results, project_id, step_index):
         state.error_repeat_count = (state.error_repeat_count or 0) + 1
         if state.error_repeat_count >= 2:
             from .models_catalog import ESCALATION_MAP
-            escalated = ESCALATION_MAP.get(project.ai_model)
+            agent_models = project.agent_models or {}
+            cur_coder = agent_models.get('coder') or project.ai_model
+            escalated = ESCALATION_MAP.get(cur_coder)
             if escalated:
-                project.ai_model = escalated
-                project.save(update_fields=['ai_model'])
+                if agent_models.get('coder'):
+                    project.agent_models = {**agent_models, 'coder': escalated}
+                    project.save(update_fields=['agent_models'])
+                else:
+                    project.ai_model = escalated
+                    project.save(update_fields=['ai_model'])
                 publish_event(str(project.id), {
                     'agent': 'system', 'level': 'info',
-                    'text': f'Эскалация: переключаю на модель {escalated}',
+                    'text': f'Эскалация кодировщика: переключаю на {escalated}',
                     'type': 'escalated', 'model': escalated,
                 })
                 state.error_repeat_count = 0
@@ -469,14 +484,15 @@ def merge_reports(results, project_id, step_index):
     else:
         state.iteration_count += 1
         state.save(update_fields=['iteration_count'])
-        if state.iteration_count < settings.STUDIO_MAX_ITERATIONS:
+        max_iter = project.max_iterations if project.max_iterations and project.max_iterations > 0 else settings.STUDIO_MAX_ITERATIONS
+        if state.iteration_count < max_iter:
             from .agents.fixer import FixerAgent
             state.fix_plan = FixerAgent(project).run(review, test)
             state.save(update_fields=['fix_plan'])
             try:
                 _billing_charge(project, 'fixer', step_index)
             except InsufficientStars as e:
-                _pause_no_funds(project, e.needed)
+                _pause_no_funds(project, e.needed, reason=getattr(e, 'reason', None))
                 return
             publish_event(project_id, {
                 'agent': 'fixer', 'level': 'warning',
@@ -493,7 +509,7 @@ def merge_reports(results, project_id, step_index):
             })
             state.status = 'paused_on_loop'
             state.pause_reason = (
-                f'Шаг {step_index} не сошёлся за {settings.STUDIO_MAX_ITERATIONS} итераций'
+                f'Шаг {step_index} не сошёлся за {max_iter} итераций'
             )
             state.save(update_fields=['status', 'pause_reason'])
             project.status = 'paused'

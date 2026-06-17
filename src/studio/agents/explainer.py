@@ -12,4 +12,4 @@ class ExplainerAgent(BaseAgent):
 
     def explain(self, code: str, path: str = '') -> str:
         user = f"Файл: {path}\n\nКод:\n```\n{code[:4000]}\n```"
-        return self.run_prompt(EXPLAINER_SYSTEM, user, model=MODEL_FAST, max_tokens=1200, temperature=0.3)
+        return self.run_prompt(EXPLAINER_SYSTEM, user, model=self.resolve_model(), max_tokens=1200, temperature=0.3)
