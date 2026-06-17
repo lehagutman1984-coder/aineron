@@ -117,6 +117,9 @@ def agent_analyze(self, project_id):
     import logging
     log = logging.getLogger('studio.tasks')
     project = StudioProject.objects.get(id=project_id)
+    if project.status not in ('planning', 'interview'):
+        log.info('agent_analyze: project %s status=%s — skipping', project_id, project.status)
+        return
     from .agents.architect import ArchitectAgent
     try:
         publish_event(project_id, {'agent': 'architect', 'level': 'info', 'text': 'Проектирую архитектуру...'})
