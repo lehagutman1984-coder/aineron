@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Cpu, Zap, Code2, Search, Wrench, CheckSquare, MessageSquare, ChevronDown } from 'lucide-react';
+import { X, Zap, Code2, Compass, ShieldCheck, ChevronDown } from 'lucide-react';
 import { studioApi, type StudioProject } from '@/lib/api/studio';
 import { useQuery } from '@tanstack/react-query';
 import type { StudioModel } from '@/lib/api/studio';
@@ -15,13 +15,9 @@ interface Props {
 }
 
 const AGENT_ICONS: Record<string, React.ReactNode> = {
-  interviewer: <MessageSquare size={14} />,
-  analyst: <Search size={14} />,
-  planner: <CheckSquare size={14} />,
+  architect: <Compass size={14} />,
   coder: <Code2 size={14} />,
-  reviewer: <Cpu size={14} />,
-  tester: <CheckSquare size={14} />,
-  fixer: <Wrench size={14} />,
+  guardian: <ShieldCheck size={14} />,
 };
 
 const TIER_BADGE: Record<string, string> = {
