@@ -1,6 +1,9 @@
 import re
+import logging
 from .base import BaseAgent, pick_prompt
 from ..models_catalog import ESCALATION_MAP, MODEL_TIER
+
+log = logging.getLogger('studio.agents')
 
 SYSTEM_RU = (
     "Ты senior-разработчик. Реализуй РОВНО ОДИН шаг из COMMITS.md. "
@@ -29,6 +32,21 @@ SYSTEM_EN = (
     "Return STRICTLY JSON: {\"files\":{\"relative/path\":\"full file content\"}} — whole files, never diffs. "
     "Code comments may be in Russian."
 )
+
+
+def _is_truncated(content: str) -> bool:
+    """Return True if file content looks cut off mid-code."""
+    s = content.rstrip()
+    if not s:
+        return True
+    last = s[-1]
+    if last in ('}', ';', '>', "'", '"', ')'):
+        return False
+    # Allow files ending with common keywords
+    tail = s[-30:]
+    if any(tail.endswith(kw) for kw in ('default', 'module.exports')):
+        return False
+    return True
 
 
 def _select_context_files(step_text: str, existing_files: dict) -> dict:
@@ -77,4 +95,22 @@ class CoderAgent(BaseAgent):
                 files[p] = str(c)
         if allowed_files:
             files = {p: c for p, c in files.items() if p in allowed_files}
+
+        # Detect and repair truncated files with a second completion call
+        for path, content in list(files.items()):
+            if _is_truncated(content):
+                log.warning('coder: %s looks truncated — requesting completion', path)
+                tail = content[-600:]
+                completion = self.run_prompt(
+                    "A code file was cut off mid-generation. "
+                    "Output ONLY the missing closing code to make it syntactically complete. "
+                    "No markdown fences, no explanations, no repeating existing code.",
+                    f"File: {path}\n\nEnds abruptly here:\n...{tail}\n\nProvide only the missing part:",
+                    model=model,
+                    max_tokens=2000,
+                    temperature=0.1,
+                )
+                completion = re.sub(r'^```\w*\n?|```\s*$', '', completion.strip(), flags=re.MULTILINE).strip()
+                files[path] = content.rstrip() + '\n' + completion
+
         return files
