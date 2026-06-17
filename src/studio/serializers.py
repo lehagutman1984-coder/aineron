@@ -22,7 +22,7 @@ class StudioProjectCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = StudioProject
         fields = ('id', 'name', 'description', 'mode', 'entry_mode', 'target_url', 'target_stack',
-                  'status', 'created_at', 'template_slug', 'selected_features')
+                  'status', 'created_at', 'template_slug', 'selected_features', 'ai_model', 'agent_models')
         read_only_fields = ('id', 'status', 'created_at')
 
     def create(self, validated_data):

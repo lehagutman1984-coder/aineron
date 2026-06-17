@@ -17,6 +17,7 @@ import {
   StepForward,
   Hand,
   Trash2,
+  ChevronDown,
 } from "lucide-react";
 import { studioApi } from "@/lib/api/studio";
 import type { StudioProject, StudioMode, StudioStack, StudioModel } from "@/lib/api/studio";
@@ -24,6 +25,7 @@ import { TemplateGallery } from "@/components/studio/TemplateGallery";
 import { StudioHero } from "@/components/studio/StudioHero";
 import { StackCards } from "@/components/studio/StackCards";
 import { FeatureSelector } from "@/components/studio/FeatureSelector";
+import { AGENTS, DEFAULT_AGENT_MODELS } from "@/components/studio/agentConfig";
 import { card, badge, form, btn } from "@/components/studio/styles";
 
 const STACK_OPTIONS: { value: StudioStack; label: string }[] = [
@@ -73,6 +75,8 @@ export default function StudioPage() {
   const [stack, setStack] = useState<StudioStack>("nextjs");
 
   const [aiModel, setAiModel] = useState("claude-sonnet-4-6");
+  const [agentModels, setAgentModels] = useState<Record<string, string>>({ ...DEFAULT_AGENT_MODELS });
+  const [agentModelsOpen, setAgentModelsOpen] = useState(false);
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
   const [screenshotLoading, setScreenshotLoading] = useState(false);
   const [screenshotDesc, setScreenshotDesc] = useState('');
@@ -99,7 +103,7 @@ export default function StudioPage() {
 
   const createMutation = useMutation({
     mutationFn: () =>
-      studioApi.create({ name, description: screenshotDesc ? `${description}\n\nМакет: ${screenshotDesc}` : description, mode, target_stack: stack, ai_model: aiModel, selected_features: selectedFeatures } as Parameters<typeof studioApi.create>[0] & { ai_model: string; selected_features: string[] }),
+      studioApi.create({ name, description: screenshotDesc ? `${description}\n\nМакет: ${screenshotDesc}` : description, mode, target_stack: stack, ai_model: aiModel, agent_models: agentModels, selected_features: selectedFeatures }),
     onSuccess: (project: StudioProject) => {
       qc.invalidateQueries({ queryKey: ["studio-projects"] });
       router.push(`/studio/${project.id}/interview`);
@@ -294,26 +298,88 @@ export default function StudioPage() {
               <FeatureSelector selected={selectedFeatures} onChange={setSelectedFeatures} />
 
               {models.length > 0 && (
-                <div>
-                  <label className="block text-sm font-medium mb-1">Модель</label>
-                  <select
-                    value={aiModel}
-                    onChange={(e) => setAiModel(e.target.value)}
-                    className={form.select}
-                  >
-                    {grouped.map((g) => (
-                      <optgroup key={g.cat} label={CATEGORY_LABELS[g.cat] ?? g.cat}>
-                        {g.items.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.label} — {m.description}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
-                  <p className="text-xs text-[var(--muted)] mt-1">
-                    ≈ {starsPerStep} звёзд за шаг
-                  </p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Модель по умолчанию</label>
+                    <select
+                      value={aiModel}
+                      onChange={(e) => setAiModel(e.target.value)}
+                      className={form.select}
+                    >
+                      {grouped.map((g) => (
+                        <optgroup key={g.cat} label={CATEGORY_LABELS[g.cat] ?? g.cat}>
+                          {g.items.map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.label} — {m.description}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                    <p className="text-xs text-[var(--muted)] mt-1">
+                      ≈ {starsPerStep} звёзд за шаг
+                    </p>
+                  </div>
+
+                  {/* Per-agent accordion */}
+                  <div className="border border-[var(--border)] rounded-lg overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setAgentModelsOpen((v) => !v)}
+                      className="w-full flex items-center justify-between px-3 py-2 text-xs hover:bg-[var(--hover)] transition-colors"
+                    >
+                      <span className="text-[var(--text-secondary)] font-medium">Модели агентов</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[var(--text-secondary)] opacity-60 truncate max-w-[200px]">
+                          Кодировщик: {models.find(m => m.id === agentModels['coder'])?.label ?? agentModels['coder']}
+                        </span>
+                        <ChevronDown size={14} className={`text-[var(--text-secondary)] transition-transform ${agentModelsOpen ? 'rotate-180' : ''}`} />
+                      </div>
+                    </button>
+
+                    {agentModelsOpen && (
+                      <div className="border-t border-[var(--border)] divide-y divide-[var(--border)]">
+                        {AGENTS.map((agent) => {
+                          const currentModel = agentModels[agent.key] ?? aiModel;
+                          const isCustom = agentModels[agent.key] !== agent.recommended;
+                          return (
+                            <div key={agent.key} className="px-3 py-2.5 space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <span className="text-xs font-medium">{agent.label}</span>
+                                  <p className="text-[10px] text-[var(--text-secondary)]">{agent.recommendedReason}</p>
+                                </div>
+                                {isCustom && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setAgentModels(prev => ({ ...prev, [agent.key]: agent.recommended }))}
+                                    className="text-[10px] text-[var(--text-secondary)] hover:text-[var(--text)] underline shrink-0 ml-2"
+                                  >
+                                    Сбросить
+                                  </button>
+                                )}
+                              </div>
+                              <select
+                                value={currentModel}
+                                onChange={(e) => setAgentModels(prev => ({ ...prev, [agent.key]: e.target.value }))}
+                                className="w-full text-xs bg-[var(--hover)] border border-[var(--border)] rounded px-2 py-1.5 focus:outline-none focus:border-blue-500"
+                              >
+                                {grouped.map((g) => (
+                                  <optgroup key={g.cat} label={g.cat}>
+                                    {g.items.map((m) => (
+                                      <option key={m.id} value={m.id}>
+                                        {m.label}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                ))}
+                              </select>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 

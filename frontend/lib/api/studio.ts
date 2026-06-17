@@ -139,6 +139,9 @@ export const studioApi = {
     entry_mode?: EntryMode;
     target_url?: string;
     target_stack?: StudioStack;
+    ai_model?: string;
+    agent_models?: Record<string, string>;
+    selected_features?: string[];
   }) =>
     request<StudioProject>('/studio/projects/', {
       method: 'POST',

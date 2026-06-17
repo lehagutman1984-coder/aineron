@@ -6,6 +6,7 @@ import { studioApi, type StudioProject } from '@/lib/api/studio';
 import { useQuery } from '@tanstack/react-query';
 import type { StudioModel } from '@/lib/api/studio';
 import { modal, form } from './styles';
+import { AGENTS } from './agentConfig';
 
 interface Props {
   project: StudioProject;
@@ -13,71 +14,15 @@ interface Props {
   onSaved: () => void;
 }
 
-const AGENTS: {
-  key: string;
-  label: string;
-  icon: React.ReactNode;
-  desc: string;
-  recommended: string;
-  recommendedReason: string;
-}[] = [
-  {
-    key: 'interviewer',
-    label: 'Интервью',
-    icon: <MessageSquare size={14} />,
-    desc: 'Задаёт уточняющие вопросы перед стартом',
-    recommended: 'deepseek-v3.2',
-    recommendedReason: 'Простые Q&A — fast-модель достаточно, экономит бюджет',
-  },
-  {
-    key: 'analyst',
-    label: 'Аналитик',
-    icon: <Search size={14} />,
-    desc: 'Анализирует требования, составляет ТЗ',
-    recommended: 'claude-sonnet-4-6',
-    recommendedReason: 'Нужна глубина понимания — ошибка здесь ломает весь план',
-  },
-  {
-    key: 'planner',
-    label: 'Планировщик',
-    icon: <CheckSquare size={14} />,
-    desc: 'Разбивает проект на шаги и коммиты',
-    recommended: 'claude-sonnet-4-6',
-    recommendedReason: 'Архитектурные решения влияют на все шаги — нужно качество',
-  },
-  {
-    key: 'coder',
-    label: 'Кодировщик',
-    icon: <Code2 size={14} />,
-    desc: 'Пишет код на каждом шаге — самый затратный',
-    recommended: 'qwen3-coder-plus',
-    recommendedReason: 'Специализирован на генерации кода, лучшее качество/цена',
-  },
-  {
-    key: 'reviewer',
-    label: 'Ревьюер',
-    icon: <Cpu size={14} />,
-    desc: 'Проверяет код после каждого шага',
-    recommended: 'claude-sonnet-4-6',
-    recommendedReason: 'Глубокий разбор кода требует умной модели',
-  },
-  {
-    key: 'tester',
-    label: 'Тестировщик',
-    icon: <CheckSquare size={14} />,
-    desc: 'Запускает сборку, анализирует ошибки',
-    recommended: 'deepseek-v3.2',
-    recommendedReason: 'Анализ логов — рутина, fast-модель справляется',
-  },
-  {
-    key: 'fixer',
-    label: 'Фиксер',
-    icon: <Wrench size={14} />,
-    desc: 'Исправляет ошибки из отчёта тестировщика',
-    recommended: 'claude-sonnet-4-6',
-    recommendedReason: 'Дебаггинг требует рассуждений — smart-модель даёт меньше ретраев',
-  },
-];
+const AGENT_ICONS: Record<string, React.ReactNode> = {
+  interviewer: <MessageSquare size={14} />,
+  analyst: <Search size={14} />,
+  planner: <CheckSquare size={14} />,
+  coder: <Code2 size={14} />,
+  reviewer: <Cpu size={14} />,
+  tester: <CheckSquare size={14} />,
+  fixer: <Wrench size={14} />,
+};
 
 const TIER_BADGE: Record<string, string> = {
   fast: 'bg-green-500/15 text-green-400',
@@ -184,7 +129,7 @@ export function ProjectSettingsModal({ project, onClose, onSaved }: Props) {
                       onClick={() => setExpandedAgent(isExpanded ? null : agent.key)}
                       className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-[var(--hover)] transition-colors text-left"
                     >
-                      <span className="text-[var(--text-secondary)]">{agent.icon}</span>
+                      <span className="text-[var(--text-secondary)]">{AGENT_ICONS[agent.key]}</span>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-medium">{agent.label}</span>
