@@ -42,11 +42,16 @@ export default function InterviewPage() {
         <button
           onClick={() => submitMutation.mutate([])}
           disabled={submitMutation.isPending}
-          className="mt-2 flex items-center gap-1.5 text-xs text-[var(--text-secondary)] hover:text-[var(--text)] transition-colors"
+          className="mt-2 flex items-center gap-1.5 text-xs text-blue-500 hover:text-blue-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          <SkipForward size={13} />
-          Пропустить интервью
+          {submitMutation.isPending
+            ? <Loader2 size={13} className="animate-spin" />
+            : <SkipForward size={13} />}
+          {submitMutation.isPending ? 'Переходим к анализу...' : 'Пропустить интервью'}
         </button>
+        {submitMutation.isError && (
+          <p className="text-xs text-red-500">Ошибка. Попробуйте ещё раз.</p>
+        )}
       </div>
     );
   }
@@ -80,11 +85,16 @@ export default function InterviewPage() {
         <button
           onClick={() => submitMutation.mutate([])}
           disabled={submitMutation.isPending}
-          className="mt-2 flex items-center gap-1.5 text-xs text-[var(--text-secondary)] hover:text-[var(--text)] transition-colors"
+          className="mt-2 flex items-center gap-1.5 text-xs text-blue-500 hover:text-blue-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          <SkipForward size={13} />
-          Пропустить интервью
+          {submitMutation.isPending
+            ? <Loader2 size={13} className="animate-spin" />
+            : <SkipForward size={13} />}
+          {submitMutation.isPending ? 'Переходим к анализу...' : 'Пропустить интервью'}
         </button>
+        {submitMutation.isError && (
+          <p className="text-xs text-red-500">Ошибка. Попробуйте ещё раз.</p>
+        )}
       </div>
     );
   }
