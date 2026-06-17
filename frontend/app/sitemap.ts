@@ -7,8 +7,8 @@ export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [networks, posts] = await Promise.all([
-    serverListNetworks(),
-    serverListBlogPosts(),
+    serverListNetworks().catch(() => []),
+    serverListBlogPosts().catch(() => []),
   ]);
 
   const staticRoutes: MetadataRoute.Sitemap = [
