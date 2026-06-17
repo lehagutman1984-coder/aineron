@@ -145,6 +145,22 @@ def agent_analyze(self, project_id):
         return
     except Exception as e:
         log.error('agent_analyze FAILED project=%s: %s', project_id, repr(e), exc_info=True)
+        if self.request.retries >= self.max_retries:
+            try:
+                project.status = 'failed'
+                project.save(update_fields=['status'])
+                state = project.pipeline
+                state.status = 'failed'
+                state.last_error = repr(e)[:500]
+                state.save(update_fields=['status', 'last_error'])
+            except Exception:
+                pass
+            publish_event(project_id, {
+                'agent': 'architect', 'level': 'error',
+                'text': f'Архитектор завершился ошибкой: {str(e)[:300]}',
+                'type': 'failed',
+            })
+            return
         raise self.retry(exc=e, countdown=60)
 
 
