@@ -4,6 +4,8 @@ import { Code2, ExternalLink, Play } from "lucide-react";
 import { CodeTabs, StandaloneCodeBlock } from "@/components/docs/CodeTabs";
 import type { CodeTabItem } from "@/components/docs/CodeTabs";
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: "API для разработчиков",
   description:

@@ -3,6 +3,8 @@ import Link from "next/link";
 import { Terminal, ExternalLink, Info, AlertTriangle } from "lucide-react";
 import { StandaloneCodeBlock } from "@/components/docs/CodeTabs";
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: "Интеграция с IDE — Cursor, Cline, Continue",
   description:

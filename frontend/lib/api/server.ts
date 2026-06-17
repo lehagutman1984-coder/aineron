@@ -10,6 +10,7 @@ async function serverFetch<T>(
     const res = await fetch(`${django}/api/v1${path}`, {
       cache: "no-store",
       headers: { Host: "aineron.ru" },
+      signal: AbortSignal.timeout(4000),
       ...rest,
     });
     if (!res.ok) return null;
