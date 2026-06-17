@@ -18,6 +18,8 @@ import {
   Hand,
   Trash2,
   ChevronDown,
+  AlertTriangle,
+  RotateCcw,
 } from "lucide-react";
 import { studioApi } from "@/lib/api/studio";
 import type { StudioProject, StudioMode, StudioStack, StudioModel } from "@/lib/api/studio";
@@ -96,9 +98,10 @@ export default function StudioPage() {
   const [cloneName, setCloneName] = useState("");
   const [cloneUrlError, setCloneUrlError] = useState("");
 
-  const { data: projects, isLoading } = useQuery({
+  const { data: projects, isLoading, isError, refetch: refetchProjects } = useQuery({
     queryKey: ["studio-projects"],
     queryFn: studioApi.list,
+    retry: 1,
   });
 
   const createMutation = useMutation({
@@ -479,6 +482,15 @@ export default function StudioPage() {
       {isLoading ? (
         <div className="flex items-center justify-center py-16">
           <Loader2 size={24} className="animate-spin text-[var(--text-secondary)]" />
+        </div>
+      ) : isError ? (
+        <div className="flex flex-col items-center justify-center py-16 gap-3 text-[var(--text-secondary)]">
+          <AlertTriangle size={24} className="text-amber-400" />
+          <p className="text-sm">Не удалось загрузить проекты</p>
+          <button onClick={() => refetchProjects()} className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300">
+            <RotateCcw size={12} />
+            Повторить
+          </button>
         </div>
       ) : !projects || projects.length === 0 ? (
         <div className="text-center py-16 text-[var(--text-secondary)]">

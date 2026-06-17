@@ -218,6 +218,11 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
     return () => src.close();
   }, [project.id]);
 
+  // Clear currentAgent when pipeline is no longer running
+  useEffect(() => {
+    if (pipeline.status !== 'running') setCurrentAgent('');
+  }, [pipeline.status]);
+
   // Elapsed seconds counter while pipeline is running
   useEffect(() => {
     if (pipeline.status !== 'running') { setElapsedSeconds(0); return; }

@@ -345,6 +345,9 @@ def coder_iteration(self, project_id, step_index):
             ''.join(f'{k}:{v}' for k, v in sorted(files.items())).encode()
         ).hexdigest()[:16]
         state.refresh_from_db()
+        if state.status == 'failed':
+            log.info('coder_iteration: pipeline cancelled while running — dropping result for step %s', step_index)
+            return
         if files_hash and files_hash == state.last_files_hash:
             state.same_diff_count = (state.same_diff_count or 0) + 1
             if state.same_diff_count >= 2:
@@ -412,8 +415,8 @@ def guardian_review(self, project_id, step_index):
     log = logging.getLogger('studio.tasks')
     project = StudioProject.objects.get(id=project_id)
     state = project.pipeline
-    if state.pause_requested or state.status in ('paused_manual', 'paused_on_loop'):
-        publish_event(project_id, {'agent': 'system', 'level': 'warning', 'text': 'Пайплайн на паузе'})
+    if state.pause_requested or state.status in ('paused_manual', 'paused_on_loop', 'failed'):
+        publish_event(project_id, {'agent': 'system', 'level': 'warning', 'text': 'Пайплайн остановлен'})
         return
     state.current_task_id = self.request.id or ''
     state.save(update_fields=['current_task_id'])
@@ -679,8 +682,8 @@ def commit_to_gitea(project_id, step_index):
 def next_step(project_id, step_index):
     project = StudioProject.objects.get(id=project_id)
     state = project.pipeline
-    if state.pause_requested:
-        publish_event(project_id, {'agent': 'system', 'level': 'warning', 'text': 'Пайплайн на паузе — следующий шаг не запущен'})
+    if state.pause_requested or state.status == 'failed':
+        publish_event(project_id, {'agent': 'system', 'level': 'warning', 'text': 'Пайплайн остановлен — следующий шаг не запущен'})
         return
     total = project.interview_data.get('planned_steps', 5)
     nxt = step_index + 1
