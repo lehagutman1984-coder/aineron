@@ -10,8 +10,8 @@ export const AGENTS = [
     key: 'coder',
     label: 'Кодировщик',
     desc: 'Пишет код на каждом шаге — основной по затратам',
-    recommended: 'qwen3-coder-plus',
-    recommendedReason: 'Специализирован на генерации кода: лучшее качество/цена среди всех моделей',
+    recommended: 'claude-opus-4-8',
+    recommendedReason: 'Максимальное качество и длинный вывод — не обрезает файлы',
   },
   {
     key: 'guardian',
