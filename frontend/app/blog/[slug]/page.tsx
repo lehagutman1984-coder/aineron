@@ -31,7 +31,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export async function generateStaticParams() {
-  const posts = await serverListBlogPosts();
+  const posts = await serverListBlogPosts().catch(() => []);
   return (posts ?? []).map((p) => ({ slug: p.slug }));
 }
 

@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export async function generateStaticParams() {
-  const networks = await serverListNetworks();
+  const networks = await serverListNetworks().catch(() => []);
   return (networks ?? []).map((n) => ({ slug: n.slug }));
 }
 

@@ -12,7 +12,7 @@ import { FaqAccordion } from "@/components/landing/FaqAccordion";
 export const revalidate = 3600;
 
 async function getPopularNetworks(): Promise<NetworkListItem[]> {
-  return (await serverListNetworks({ is_popular: true })) ?? [];
+  return (await serverListNetworks({ is_popular: true }).catch(() => [])) ?? [];
 }
 
 export default async function HomePage() {
