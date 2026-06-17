@@ -34,7 +34,7 @@ ESCALATION_MAP = {
 
 # Default per-agent models: per-agent sensible defaults before project.ai_model
 DEFAULT_AGENT_MODELS = {
-    'interviewer': 'deepseek-v3.2',       # fast: simple JSON questions
+    'interviewer': 'claude-haiku-4-5-20251001',  # fast: reliable JSON questions
     'architect':   'claude-opus-4-8',     # smart: design quality matters most
     'coder':       'qwen3-coder-plus',    # coder: specialized for code generation
     'guardian':    'claude-sonnet-4-6',   # smart: reliable review without over-nitpicking
