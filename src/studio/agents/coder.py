@@ -82,7 +82,7 @@ class CoderAgent(BaseAgent):
             f"All project files:\n{listing}\n\n"
             f"Content of relevant files:\n{body}"
         )
-        data = self.run_json(system, user, model=model, max_tokens=16000)
+        data = self.run_json(system, user, model=model, max_tokens=24000)
         raw = data.get('files', {})
         # Model sometimes returns {"path": {"content": "...", ...}} instead of {"path": "..."}
         files = {}
