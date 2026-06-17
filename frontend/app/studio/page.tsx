@@ -16,6 +16,7 @@ import {
   Zap,
   StepForward,
   Hand,
+  Trash2,
 } from "lucide-react";
 import { studioApi } from "@/lib/api/studio";
 import type { StudioProject, StudioMode, StudioStack, StudioModel } from "@/lib/api/studio";
@@ -126,6 +127,18 @@ export default function StudioPage() {
       router.push(`/studio/${project.id}/review`);
     },
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => studioApi.deleteProject(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["studio-projects"] }),
+  });
+
+  const handleDelete = (e: React.MouseEvent, id: string, name: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!window.confirm(`Удалить проект «${name}»? Это действие нельзя отменить.`)) return;
+    deleteMutation.mutate(id);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -409,7 +422,7 @@ export default function StudioPage() {
       ) : (
         <ul className="space-y-3">
           {projects.map((project) => (
-            <li key={project.id}>
+            <li key={project.id} className="group">
               <a
                 href={`/studio/${project.id}`}
                 className={card.row}
@@ -438,11 +451,19 @@ export default function StudioPage() {
                     </p>
                   )}
                 </div>
-                <div className="flex items-center gap-3 text-xs text-[var(--text-secondary)] shrink-0">
+                <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)] shrink-0">
                   <span className="flex items-center gap-1">
                     <Clock size={12} />
                     {new Date(project.created_at).toLocaleDateString("ru-RU")}
                   </span>
+                  <button
+                    onClick={(e) => handleDelete(e, project.id, project.name)}
+                    disabled={deleteMutation.isPending && deleteMutation.variables === project.id}
+                    title="Удалить проект"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-red-500/10 hover:text-red-400 disabled:opacity-30"
+                  >
+                    <Trash2 size={14} />
+                  </button>
                   <ChevronRight
                     size={16}
                     className="opacity-0 group-hover:opacity-100 transition-opacity"

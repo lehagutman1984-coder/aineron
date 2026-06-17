@@ -184,6 +184,9 @@ export const studioApi = {
   deleteFile: (id: string, fileId: number) =>
     request<void>(`/studio/projects/${id}/files/${fileId}/`, { method: 'DELETE' }),
 
+  deleteProject: (id: string) =>
+    request<void>(`/studio/projects/${id}/`, { method: 'DELETE' }),
+
   pipeline: (id: string) =>
     request<PipelineState>(`/studio/projects/${id}/pipeline/`),
 
