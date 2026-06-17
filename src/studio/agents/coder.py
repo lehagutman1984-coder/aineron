@@ -59,7 +59,16 @@ class CoderAgent(BaseAgent):
             f"Content of relevant files:\n{body}"
         )
         data = self.run_json(system, user, model=model, max_tokens=16000)
-        files = data.get('files', {})
+        raw = data.get('files', {})
+        # Model sometimes returns {"path": {"content": "...", ...}} instead of {"path": "..."}
+        files = {}
+        for p, c in raw.items():
+            if isinstance(c, str):
+                files[p] = c
+            elif isinstance(c, dict):
+                files[p] = c.get('content') or c.get('code') or str(c)
+            else:
+                files[p] = str(c)
         if allowed_files:
             files = {p: c for p, c in files.items() if p in allowed_files}
         return files
