@@ -212,7 +212,7 @@ def run_pipeline(project_id):
             'text': 'Достигнут лимит одновременных проектов. Завершите другой проект.',
         })
         state.status = 'paused_manual'
-        state.pause_reason = 'Лимит sandbox'
+        state.pause_reason = 'Запущено слишком много проектов — удалите другие и нажмите «Продолжить», или нажмите «Подтвердить» чтобы продолжить без sandbox (без preview)'
         state.save(update_fields=['status', 'pause_reason'])
         project.status = 'paused'
         project.save(update_fields=['status'])
