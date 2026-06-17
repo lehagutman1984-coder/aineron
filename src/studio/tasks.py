@@ -488,12 +488,23 @@ def guardian_review(self, project_id, step_index):
             'agent': 'system', 'level': 'billing',
             'text': f'+{step_refund} зв. возврат (шаг не сошёлся)',
         })
-        state.status = 'paused_on_loop'
-        state.pause_reason = f'Шаг {step_index} не сошёлся за {max_iter} итераций'
-        state.save(update_fields=['status', 'pause_reason'])
-        project.status = 'paused'
-        project.save(update_fields=['status'])
-        notify_user_paused.delay(project_id)
+        publish_event(project_id, {
+            'agent': 'system', 'level': 'warning',
+            'text': f'Шаг {step_index} не сошёлся за {max_iter} итераций — пропускаю',
+        })
+        # auto mode: skip to next step without pausing
+        if project.mode == 'auto':
+            state.iteration_count = 0
+            state.fix_plan = {}
+            state.save(update_fields=['iteration_count', 'fix_plan'])
+            commit_to_gitea.delay(project_id, step_index)
+        else:
+            state.status = 'paused_on_loop'
+            state.pause_reason = f'Шаг {step_index} не сошёлся за {max_iter} итераций'
+            state.save(update_fields=['status', 'pause_reason'])
+            project.status = 'paused'
+            project.save(update_fields=['status'])
+            notify_user_paused.delay(project_id)
 
 
 @shared_task(queue=QUEUE)

@@ -36,7 +36,7 @@ ESCALATION_MAP = {
 DEFAULT_AGENT_MODELS = {
     'interviewer': 'claude-haiku-4-5-20251001',  # fast: reliable JSON questions
     'architect':   'claude-opus-4-8',     # smart: design quality matters most
-    'coder':       'qwen3-coder-plus',    # coder: specialized for code generation
+    'coder':       'claude-sonnet-4-6',   # smart: long output, no truncation issues
     'guardian':    'claude-sonnet-4-6',   # smart: reliable review without over-nitpicking
 }
 
