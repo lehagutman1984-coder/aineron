@@ -18,7 +18,7 @@ STUDIO_MODELS = [
     {'id': 'gemini-2.5-pro',             'label': 'Gemini 2.5 Pro',     'category': 'smart',     'tier': 'smart',  'description': 'Длинный контекст, крупные проекты'},
 ]
 
-DEFAULT_STUDIO_MODEL = 'claude-sonnet-4-6'
+DEFAULT_STUDIO_MODEL = 'qwen3-coder-plus'
 
 # id -> tier (для биллинга и эскалации)
 MODEL_TIER = {m['id']: m['tier'] for m in STUDIO_MODELS}
@@ -30,6 +30,13 @@ ESCALATION_MAP = {
     'gpt-5-mini':                'gpt-5',
     'gpt-4o':                    'gpt-4.1',
     'claude-haiku-4-5-20251001': 'claude-sonnet-4-6',
+}
+
+# Default per-agent models for the 3-role pipeline
+DEFAULT_AGENT_MODELS = {
+    'architect': 'claude-opus-4-8',
+    'coder':     'qwen3-coder-plus',
+    'guardian':  'claude-sonnet-4-6',
 }
 
 

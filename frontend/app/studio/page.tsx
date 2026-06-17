@@ -74,7 +74,7 @@ export default function StudioPage() {
   const [mode, setMode] = useState<StudioMode>("auto");
   const [stack, setStack] = useState<StudioStack>("nextjs");
 
-  const [aiModel, setAiModel] = useState("claude-sonnet-4-6");
+  const [aiModel, setAiModel] = useState("qwen3-coder-plus");
   const [agentModels, setAgentModels] = useState<Record<string, string>>({ ...DEFAULT_AGENT_MODELS });
   const [agentModelsOpen, setAgentModelsOpen] = useState(false);
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);

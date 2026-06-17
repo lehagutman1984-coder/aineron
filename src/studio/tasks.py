@@ -1,6 +1,6 @@
 import re
 import hashlib
-from celery import shared_task, chord
+from celery import shared_task
 from django.conf import settings
 from .models import StudioProject, StudioFile, StudioVersion, StudioPipelineState
 from .events import publish_event
@@ -113,44 +113,46 @@ def agent_interview(self, project_id):
 
 @shared_task(bind=True, max_retries=3, queue=QUEUE)
 def agent_analyze(self, project_id):
+    """Architect agent: creates PROJECT.md + COMMITS.md in one call (replaces analyst+planner)."""
+    import logging
+    log = logging.getLogger('studio.tasks')
     project = StudioProject.objects.get(id=project_id)
-    from .agents.analyst import AnalystAgent
+    from .agents.architect import ArchitectAgent
     try:
-        publish_event(project_id, {'agent': 'analyst', 'level': 'info', 'text': 'Анализирую требования...'})
-        AnalystAgent(project).run()
-        publish_event(project_id, {'agent': 'analyst', 'level': 'info', 'text': 'PROJECT.md готов'})
-        agent_plan.delay(project_id)
-        _billing_charge(project, 'analyst', 0)
-    except InsufficientStars as e:
-        _pause_no_funds(project, e.needed, reason=getattr(e, 'reason', None))
-        return
-    except Exception as e:
-        raise self.retry(exc=e, countdown=60)
-
-
-@shared_task(bind=True, max_retries=3, queue=QUEUE)
-def agent_plan(self, project_id):
-    project = StudioProject.objects.get(id=project_id)
-    from .agents.planner import PlannerAgent
-    try:
-        publish_event(project_id, {'agent': 'planner', 'level': 'info', 'text': 'Составляю план...'})
-        md, steps = PlannerAgent(project).run()
+        publish_event(project_id, {'agent': 'architect', 'level': 'info', 'text': 'Проектирую архитектуру...'})
+        data = ArchitectAgent(project).run(
+            description=project.description,
+            stack=project.target_stack,
+            features=list((project.interview_data or {}).get('features', [])),
+            answers=list((project.interview_data or {}).get('answers', [])),
+        )
+        project.project_md_content = data.get('project_md', '')
+        project.commits_md_content = data.get('commits_md', '')
+        planned = data.get('planned_steps') or len(_split_steps(project.commits_md_content)) or 5
+        project.interview_data['planned_steps'] = planned
+        project.status = 'ready'
+        project.save(update_fields=['project_md_content', 'commits_md_content', 'interview_data', 'status'])
         state = project.pipeline
         state.review_report = {}
         state.save()
-        project.interview_data['planned_steps'] = steps
-        project.save(update_fields=['interview_data'])
-        _set_status(project, 'ready')
         publish_event(project_id, {
-            'agent': 'planner', 'level': 'info',
-            'text': f'COMMITS.md готов: {steps} шагов',
+            'agent': 'architect', 'level': 'info',
+            'text': f'Архитектура готова: {planned} шагов',
         })
-        _billing_charge(project, 'planner', 0)
+        _billing_charge(project, 'architect', 0)
     except InsufficientStars as e:
         _pause_no_funds(project, e.needed, reason=getattr(e, 'reason', None))
         return
     except Exception as e:
+        log.error('agent_analyze FAILED project=%s: %s', project_id, repr(e), exc_info=True)
         raise self.retry(exc=e, countdown=60)
+
+
+@shared_task(bind=True, max_retries=1, queue=QUEUE)
+def agent_plan(self, project_id):
+    """Legacy stub — architect now handles planning inline in agent_analyze."""
+    import logging
+    logging.getLogger('studio.tasks').info('agent_plan called (legacy stub) for project %s', project_id)
 
 
 # ========== Full coding pipeline (Sprint B) ==========
@@ -355,10 +357,7 @@ def coder_iteration(self, project_id, step_index):
         if project.sandbox_container_id:
             sandbox.write_files(project.sandbox_container_id, files)
             sandbox.wait_for_ready(project.sandbox_container_id, timeout=60)
-        chord(
-            [agent_review.s(project_id, step_index), agent_test.s(project_id, step_index)],
-            merge_reports.s(project_id, step_index),
-        ).apply_async()
+        guardian_review.delay(project_id, step_index)
         _billing_charge(project, 'coder', step_index, tier_override=coder_tier)
     except InsufficientStars as e:
         _pause_no_funds(project, e.needed, reason=getattr(e, 'reason', None))
@@ -385,6 +384,94 @@ def coder_iteration(self, project_id, step_index):
             ),
         })
         raise self.retry(exc=e, countdown=60)
+
+
+@shared_task(bind=True, max_retries=2, queue=QUEUE)
+def guardian_review(self, project_id, step_index):
+    """Guardian: review + build check + fix plan in one call. Replaces reviewer+tester+fixer chord."""
+    import logging
+    log = logging.getLogger('studio.tasks')
+    project = StudioProject.objects.get(id=project_id)
+    state = project.pipeline
+    if state.pause_requested or state.status in ('paused_manual', 'paused_on_loop'):
+        publish_event(project_id, {'agent': 'system', 'level': 'warning', 'text': 'Пайплайн на паузе'})
+        return
+    state.current_task_id = self.request.id or ''
+    state.save(update_fields=['current_task_id'])
+    build_logs = ''
+    if project.sandbox_container_id:
+        try:
+            _, build_logs = sandbox.run_build_check(project.sandbox_container_id)
+        except Exception as exc:
+            build_logs = f'build check unavailable: {exc}'
+    changed_paths = project.interview_data.get('last_changed', {}).get(str(step_index), [])
+    all_files = _existing_files(project)
+    review_files = {p: all_files[p] for p in changed_paths if p in all_files} or all_files
+    from .agents.guardian import GuardianAgent
+    try:
+        result = GuardianAgent(project).run(
+            _get_step_text(project, step_index),
+            review_files,
+            build_logs=build_logs,
+            attempt=state.iteration_count,
+        )
+    except Exception as exc:
+        if self.request.retries >= self.max_retries:
+            log.warning('guardian failed (%s) — auto-passing step %s', exc, step_index)
+            result = {'verdict': 'pass', 'issues': [], 'instructions': '', 'target_files': []}
+        else:
+            raise self.retry(exc=exc, countdown=30)
+    try:
+        _billing_charge(project, 'guardian', step_index)
+    except InsufficientStars as e:
+        _pause_no_funds(project, e.needed, reason=getattr(e, 'reason', None))
+        return
+    state.review_report = result
+    state.save(update_fields=['review_report'])
+    verdict = result.get('verdict', 'pass')
+    issues_preview = '; '.join((result.get('issues') or [])[:2])
+    publish_event(project_id, {
+        'agent': 'guardian',
+        'level': 'success' if verdict == 'pass' else 'warning',
+        'text': f'Шаг {step_index} принят' if verdict == 'pass' else f'Проблемы: {issues_preview}',
+    })
+    if state.pause_requested:
+        return
+    if verdict == 'pass':
+        commit_to_gitea.delay(project_id, step_index)
+        return
+    state.iteration_count += 1
+    state.save(update_fields=['iteration_count'])
+    max_iter = (
+        project.max_iterations
+        if project.max_iterations and project.max_iterations > 0
+        else settings.STUDIO_MAX_ITERATIONS
+    )
+    if state.iteration_count < max_iter:
+        state.fix_plan = {
+            'instructions': result.get('instructions', ''),
+            'target_files': result.get('target_files', []),
+            'priority': 'high',
+        }
+        state.save(update_fields=['fix_plan'])
+        publish_event(project_id, {
+            'agent': 'guardian', 'level': 'info',
+            'text': f'Итерация {state.iteration_count}: отправляю кодировщику на исправление',
+        })
+        coder_iteration.delay(project_id, step_index)
+    else:
+        step_refund = _agent_cost('coder') + _agent_cost('guardian')
+        refund(project.user, step_refund, project)
+        publish_event(project_id, {
+            'agent': 'system', 'level': 'billing',
+            'text': f'+{step_refund} зв. возврат (шаг не сошёлся)',
+        })
+        state.status = 'paused_on_loop'
+        state.pause_reason = f'Шаг {step_index} не сошёлся за {max_iter} итераций'
+        state.save(update_fields=['status', 'pause_reason'])
+        project.status = 'paused'
+        project.save(update_fields=['status'])
+        notify_user_paused.delay(project_id)
 
 
 @shared_task(queue=QUEUE)

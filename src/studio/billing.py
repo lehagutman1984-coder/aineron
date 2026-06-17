@@ -5,13 +5,17 @@ from .models_catalog import MODEL_TIER
 STAR_RATE = {'fast': 1, 'coder': 1.7, 'smart': 3}
 
 AGENT_BUDGET = {
+    # 3-role pipeline
+    'architect': ('smart', 10000),   # opus, one time — PROJECT.md + COMMITS.md
+    'coder':     ('coder', 12000),   # qwen3-coder-plus, per step
+    'guardian':  ('smart', 6000),    # sonnet, per step — review+test+fixplan
+    # Legacy agents kept for backward compat with old in-flight projects
     'interviewer': ('fast', 2000),
-    'analyst': ('smart', 6000),
-    'planner': ('smart', 8000),
-    'coder': ('fast', 12000),
-    'reviewer': ('smart', 6000),
-    'tester': ('fast', 4000),
-    'fixer': ('smart', 5000),
+    'analyst':     ('smart', 6000),
+    'planner':     ('smart', 8000),
+    'reviewer':    ('smart', 6000),
+    'tester':      ('fast', 4000),
+    'fixer':       ('smart', 5000),
 }
 
 
@@ -24,14 +28,24 @@ def count_tokens(text: str, model: str = 'gpt-4') -> int:
 
 
 def estimate_stars(project: StudioProject, planned_steps: int = 5) -> int:
+    """Estimate total stars for 3-role pipeline: architect(1x) + coder+guardian(N steps)."""
     total = 0.0
-    desc_tokens = count_tokens(project.description) + count_tokens(str(project.interview_data))
     ai_tier = MODEL_TIER.get(getattr(project, 'ai_model', ''), 'fast')
-    for agent, (tier, budget) in AGENT_BUDGET.items():
-        effective_tier = ai_tier if agent in ('coder', 'reviewer', 'fixer') else tier
-        loops = planned_steps if agent in ('coder', 'reviewer', 'tester') else 1
-        toks = budget + (desc_tokens if agent in ('analyst', 'planner') else 0)
-        total += (toks / 1000.0) * STAR_RATE.get(effective_tier, STAR_RATE['fast']) * loops
+    agent_models = getattr(project, 'agent_models', {}) or {}
+
+    def tier_for(name, default_tier):
+        m = agent_models.get(name)
+        return MODEL_TIER.get(m, default_tier) if m else (ai_tier if name == 'coder' else default_tier)
+
+    arch_tier, arch_budget = AGENT_BUDGET['architect']
+    total += (arch_budget / 1000.0) * STAR_RATE.get(tier_for('architect', arch_tier), STAR_RATE['smart'])
+
+    coder_tier, coder_budget = AGENT_BUDGET['coder']
+    total += (coder_budget / 1000.0) * STAR_RATE.get(tier_for('coder', coder_tier), STAR_RATE['fast']) * planned_steps
+
+    guardian_tier, guardian_budget = AGENT_BUDGET['guardian']
+    total += (guardian_budget / 1000.0) * STAR_RATE.get(tier_for('guardian', guardian_tier), STAR_RATE['smart']) * planned_steps
+
     return int(total) + 1
 
 
