@@ -99,6 +99,39 @@ class PipelinePauseView(APIView):
         return Response({'status': 'paused_manual'})
 
 
+class PipelineResetView(APIView):
+    """Kill a stuck pipeline. Pass restart=true to reset to 'ready' for re-run."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, id):
+        from celery import current_app
+        from ..tasks import _timeout_pipeline, release_reserve
+        from .. import sandbox as _sandbox
+        project = StudioProject.objects.get(id=id, user=request.user)
+        state = project.pipeline
+        if state.current_task_id:
+            try:
+                current_app.control.revoke(state.current_task_id, terminate=True, signal='SIGTERM')
+            except Exception:
+                pass
+        restart = bool(request.data.get('restart', False))
+        if restart:
+            # Reset to 'ready' so user can re-run without deleting
+            state.status = 'idle'
+            state.pause_requested = False
+            state.current_task_id = ''
+            state.save(update_fields=['status', 'pause_requested', 'current_task_id'])
+            project.status = 'ready'
+            project.save(update_fields=['status'])
+            try:
+                release_reserve(project)
+            except Exception:
+                pass
+            return Response({'status': 'ready'})
+        _timeout_pipeline(state, 'Отменено пользователем')
+        return Response({'status': 'failed'})
+
+
 class PipelineResumeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 

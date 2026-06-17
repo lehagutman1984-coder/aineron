@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Play, Pause, Files, Code2, Monitor, CheckCircle, Download, ArrowLeft, Rocket, Share2, HelpCircle, Settings, GitBranch, Loader2 } from 'lucide-react';
+import { Play, Pause, X, RotateCcw, Files, Code2, Monitor, CheckCircle, Download, ArrowLeft, Rocket, Share2, HelpCircle, Settings, GitBranch, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { FileTree } from './FileTree';
 import { CodeViewer } from './CodeViewer';
@@ -111,6 +111,18 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
     onRefresh();
   };
 
+  const [resetting, setResetting] = useState(false);
+  const handleReset = async (restart = false) => {
+    if (!window.confirm(restart ? 'Сбросить пайплайн и вернуть в статус "Готов к запуску"?' : 'Прервать выполнение?')) return;
+    setResetting(true);
+    try {
+      await studioApi.reset(project.id, restart);
+      onRefresh();
+    } finally {
+      setResetting(false);
+    }
+  };
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.ctrlKey || e.metaKey;
@@ -211,6 +223,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
   const isAwaitingApproval = pipeline.status === 'paused_manual';
   const isRunning = pipeline.status === 'running';
   const isCompleted = pipeline.status === 'completed';
+  const isFailed = pipeline.status === 'failed';
 
   const MOBILE_TABS: { key: MobileTab; label: string; icon: React.ReactNode }[] = [
     { key: 'files', label: 'Файлы', icon: <Files size={16} /> },
@@ -269,6 +282,27 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
               Пауза
             </button>
           )}
+          {isRunning && (
+            <button
+              onClick={() => handleReset(false)}
+              disabled={resetting}
+              title="Прервать выполнение"
+              className="flex items-center gap-1 px-2 py-1 text-xs rounded text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors"
+            >
+              <X size={14} />
+              Прервать
+            </button>
+          )}
+          {isFailed && (
+            <button
+              onClick={() => handleReset(true)}
+              disabled={resetting}
+              className={btn.ghostXs}
+            >
+              <RotateCcw size={14} />
+              {resetting ? 'Сброс...' : 'Попробовать снова'}
+            </button>
+          )}
           {isCompleted && (
             <a
               href={studioApi.exportUrl(project.id)}
@@ -312,6 +346,22 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
           >
             <Play size={12} />
             {approving ? 'Запускаем...' : 'Подтвердить'}
+          </button>
+        </div>
+      )}
+
+      {/* Failed banner */}
+      {isFailed && (
+        <div className={banner.red}>
+          <X size={16} className="text-red-400 shrink-0 mt-0.5" />
+          <p className="text-xs text-red-300 flex-1">{pipeline.pause_reason || 'Пайплайн завершился с ошибкой'}</p>
+          <button
+            onClick={() => handleReset(true)}
+            disabled={resetting}
+            className="flex items-center gap-1 px-2.5 py-1 text-xs rounded border border-red-700/50 text-red-300 hover:bg-red-800/30 transition-colors shrink-0"
+          >
+            <RotateCcw size={12} />
+            {resetting ? 'Сброс...' : 'Попробовать снова'}
           </button>
         </div>
       )}

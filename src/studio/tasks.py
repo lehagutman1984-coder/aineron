@@ -355,6 +355,26 @@ def coder_iteration(self, project_id, step_index):
         _pause_no_funds(project, e.needed)
         return
     except Exception as e:
+        if self.request.retries >= self.max_retries:
+            reason = (
+                f'Кодировщик завершился ошибкой после {self.max_retries + 1} попыток: '
+                f'{str(e)[:300]}'
+            )
+            try:
+                state.refresh_from_db()
+                _timeout_pipeline(state, reason)
+            except Exception:
+                pass
+            return
+        attempt = self.request.retries + 1
+        total = self.max_retries + 1
+        publish_event(project_id, {
+            'agent': 'coder', 'level': 'warning',
+            'text': (
+                f'Ошибка (попытка {attempt}/{total}): {str(e)[:200]} '
+                f'— повтор через 60 сек'
+            ),
+        })
         raise self.retry(exc=e, countdown=60)
 
 

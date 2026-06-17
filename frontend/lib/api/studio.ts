@@ -211,6 +211,12 @@ export const studioApi = {
       body: JSON.stringify(data),
     }),
 
+  reset: (id: string, restart = false) =>
+    request<{ status: string }>(`/studio/projects/${id}/reset/`, {
+      method: 'POST',
+      body: JSON.stringify({ restart }),
+    }),
+
   commits: (id: string) =>
     request<StudioVersion[]>(`/studio/projects/${id}/commits/`),
 
