@@ -43,6 +43,7 @@ def spawn_sandbox(project_id: str, user_id=None) -> str:
         cap_drop=['ALL'],
         security_opt=['no-new-privileges'],
         network_mode='bridge',
+        dns=['8.8.8.8', '8.8.4.4'],
         labels=labels,
     )
     return container.name
