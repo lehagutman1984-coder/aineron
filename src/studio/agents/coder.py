@@ -151,10 +151,20 @@ class CoderAgent(BaseAgent):
         system = pick_prompt(FILE_SYSTEM_RU, FILE_SYSTEM_EN)
 
         existing_content = existing_files.get(path, '')
-        existing_str = (
-            f"\n\nCurrent content of {path} (modify/replace as needed):\n"
-            f"```\n{existing_content[:6000]}\n```"
-        ) if existing_content else ''
+        if existing_content:
+            if _is_truncated(existing_content):
+                # Truncated file — don't show partial content, force full rewrite
+                existing_str = (
+                    f"\n\nIMPORTANT: {path} currently exists but is TRUNCATED/INCOMPLETE. "
+                    "Write it COMPLETELY from scratch — do NOT continue or patch the existing content."
+                )
+            else:
+                existing_str = (
+                    f"\n\nCurrent content of {path} (modify/replace as needed):\n"
+                    f"```\n{existing_content[:6000]}\n```"
+                )
+        else:
+            existing_str = ''
 
         # Include relevant context files (excluding target file)
         context = _select_context_files(
