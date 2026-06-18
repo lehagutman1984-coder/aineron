@@ -311,6 +311,7 @@ STUDIO_VERCEL_TOKEN = os.getenv('STUDIO_VERCEL_TOKEN', '')
 STUDIO_PROMPT_LANG = os.getenv('STUDIO_PROMPT_LANG', 'en')
 STUDIO_STEP_STALL_SEC = int(os.getenv('STUDIO_STEP_STALL_SEC', '240'))
 STUDIO_PIPELINE_MAX_SEC = int(os.getenv('STUDIO_PIPELINE_MAX_SEC', '2700'))
+STUDIO_V3 = os.getenv('STUDIO_V3', '0') == '1'  # Studio V3 pipeline (FILE_BLOCKS, validators, EDIT blocks)
 
 
 # ========== ROBOKASSA ==========

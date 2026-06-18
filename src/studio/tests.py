@@ -1085,3 +1085,115 @@ class PauseResumeTest(APITestCase):
         start_step(str(project.id), 0)
 
         mock_coder.delay.assert_not_called()
+
+
+# ========== Studio V3 Tests ==========
+
+from django.test import SimpleTestCase
+from studio.agents.blocks import parse_file_blocks
+from studio.validators import is_structurally_complete, validate_dependencies
+
+
+class FileBlocksParserTests(SimpleTestCase):
+    def test_single_complete_block(self):
+        text = (
+            "=== FILE: src/App.tsx ===\n"
+            "export default function App() { return <div/> }\n"
+            "=== END FILE ===\n"
+            "=== END RESPONSE ==="
+        )
+        files, incomplete = parse_file_blocks(text)
+        self.assertIn('src/App.tsx', files)
+        self.assertEqual(incomplete, [])
+        self.assertIn('export default', files['src/App.tsx'])
+
+    def test_truncated_block_goes_to_incomplete(self):
+        text = (
+            "=== FILE: src/App.tsx ===\n"
+            "export default function App() { return (\n"
+            "  <div>\n"
+        )
+        files, incomplete = parse_file_blocks(text)
+        self.assertEqual(incomplete, ['src/App.tsx'])
+        self.assertIn('src/App.tsx', files)
+
+    def test_multiple_blocks(self):
+        text = (
+            "=== FILE: a.ts ===\nexport const a = 1\n=== END FILE ===\n"
+            "=== FILE: b.ts ===\nexport const b = 2\n=== END FILE ===\n"
+            "=== END RESPONSE ==="
+        )
+        files, incomplete = parse_file_blocks(text)
+        self.assertEqual(set(files), {'a.ts', 'b.ts'})
+        self.assertEqual(incomplete, [])
+
+    def test_strips_leading_slash(self):
+        text = "=== FILE: /src/x.ts ===\nexport const x = 1\n=== END FILE ==="
+        files, _ = parse_file_blocks(text)
+        self.assertIn('src/x.ts', files)
+
+
+class StructureValidatorTests(SimpleTestCase):
+    def test_valid_tsx(self):
+        ok, _ = is_structurally_complete(
+            'src/App.tsx', 'export default function A() { return <div>hi</div> }\n')
+        self.assertTrue(ok)
+
+    def test_empty_fails(self):
+        ok, reason = is_structurally_complete('x.ts', '   \n')
+        self.assertFalse(ok)
+        self.assertEqual(reason, 'empty')
+
+    def test_invalid_json_fails(self):
+        ok, reason = is_structurally_complete('package.json', '{"a": 1,')
+        self.assertFalse(ok)
+        self.assertIn('invalid JSON', reason)
+
+    def test_valid_json_ok(self):
+        ok, _ = is_structurally_complete('package.json', '{"name": "app"}')
+        self.assertTrue(ok)
+
+    def test_unbalanced_braces_fails(self):
+        ok, reason = is_structurally_complete('x.ts', 'function f() { return 1;')
+        self.assertFalse(ok)
+
+
+class DependencyValidatorTests(SimpleTestCase):
+    def test_missing_dependency_detected(self):
+        files = {
+            'package.json': '{"dependencies": {"react": "18"}}',
+            'src/App.tsx': "import { Menu } from 'lucide-react'\nimport React from 'react'\n",
+        }
+        result = validate_dependencies(files)
+        self.assertFalse(result['ok'])
+        self.assertIn('lucide-react', result['missing'])
+
+    def test_all_declared_ok(self):
+        files = {
+            'package.json': '{"dependencies": {"react": "18", "lucide-react": "0.4"}}',
+            'src/App.tsx': "import { Menu } from 'lucide-react'\nimport React from 'react'\n",
+        }
+        result = validate_dependencies(files)
+        self.assertTrue(result['ok'])
+
+    def test_relative_imports_ignored(self):
+        files = {
+            'package.json': '{"dependencies": {}}',
+            'src/App.tsx': "import { x } from './utils'\nimport { y } from '../lib/z'\n",
+        }
+        result = validate_dependencies(files)
+        self.assertTrue(result['ok'])
+
+    def test_scoped_package(self):
+        files = {
+            'package.json': '{"dependencies": {}}',
+            'src/App.tsx': "import x from '@tanstack/react-query'\n",
+        }
+        result = validate_dependencies(files)
+        self.assertIn('@tanstack/react-query', result['missing'])
+
+    def test_bad_package_json(self):
+        files = {'package.json': 'not json', 'src/App.tsx': "import x from 'react'"}
+        result = validate_dependencies(files)
+        self.assertFalse(result['ok'])
+        self.assertIn('reason', result)
