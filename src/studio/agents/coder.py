@@ -31,6 +31,8 @@ FILE_SYSTEM_RU = (
     "- Реализуй ВСЕ элементы UI: навигацию, кнопки, иконки, стили — всё как в настоящем продукте\n"
     "- Next.js: 'use client' там где нужно; dev-скрипт: \"next dev -p 3000 -H 0.0.0.0\"\n"
     "- Vite/React: vite.config.ts с server:{host:true,port:3000,hmr:false}\n"
+    "- MOCK-ДАННЫЕ: если проект использует БД или API — создай src/lib/mock-data.ts с 10-20 реалистичными\n"
+    "  записями. В компонентах/роутах используй как fallback: если env-переменная БД не задана — возвращай mock.\n"
     "- Выводи ТОЛЬКО содержимое файла — без markdown-блоков, без объяснений\n"
     "Код-комментарии можно на русском."
 )
@@ -44,6 +46,8 @@ FILE_SYSTEM_EN = (
     "- Implement ALL UI elements: navigation, buttons, icons, styles — everything a real product needs\n"
     "- Next.js: add 'use client' where needed; dev script: \"next dev -p 3000 -H 0.0.0.0\"\n"
     "- Vite/React: vite.config.ts with server:{host:true,port:3000,hmr:false}\n"
+    "- MOCK DATA: if the project uses a database or external API — create src/lib/mock-data.ts with\n"
+    "  10-20 realistic records. Use as fallback in components/routes when DB env var is not set.\n"
     "- Output ONLY the raw file content — no markdown fences, no explanations\n"
     "Code comments may be in Russian."
 )
@@ -88,6 +92,9 @@ CODER_FILE_BLOCKS_RU = (
     "- Обработай состояния: loading, empty, error.\n"
     "- Next.js: 'use client' там где нужно; dev-скрипт: \"next dev -p 3000 -H 0.0.0.0\".\n"
     "- Vite/React: vite.config.ts с server:{host:true,port:3000,hmr:false}.\n"
+    "- MOCK-ДАННЫЕ: если проект использует БД или API — создай src/lib/mock-data.ts с 10-20 реалистичными\n"
+    "  записями. В компонентах/роутах используй их как fallback: если env-переменная БД не задана —\n"
+    "  возвращай mock-данные. Это нужно чтобы превью работало без настройки инфраструктуры.\n"
     "Комментарии в коде можно на русском."
 )
 CODER_FILE_BLOCKS_EN = (
@@ -105,6 +112,9 @@ CODER_FILE_BLOCKS_EN = (
     "- Handle states: loading, empty, error.\n"
     "- Next.js: add 'use client' where needed; dev script \"next dev -p 3000 -H 0.0.0.0\".\n"
     "- Vite/React: vite.config.ts with server:{host:true,port:3000,hmr:false}.\n"
+    "- MOCK DATA: if the project uses a database or external API — create src/lib/mock-data.ts with\n"
+    "  10-20 realistic records. In components/routes use them as fallback: if the DB env variable is\n"
+    "  not set — return mock data. This ensures preview works without any infrastructure setup.\n"
     "Code comments may be in Russian."
 )
 
