@@ -128,7 +128,7 @@ def validate_dependencies(files: dict[str, str]) -> dict:
     # Отбрасываем относительные и node:-встроенные
     missing = {
         m for m in (used - declared)
-        if not m.startswith(('node:', '.', '/'))
+        if not m.startswith(('node:', '.', '/', '@/'))
         and m not in ('fs', 'path', 'os', 'crypto', 'http', 'https', 'url', 'util', 'stream')
     }
     return {'ok': not missing, 'missing': sorted(missing)}
