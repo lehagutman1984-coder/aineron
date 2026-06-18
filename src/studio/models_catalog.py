@@ -16,6 +16,7 @@ STUDIO_MODELS = [
     {'id': 'qwen3-235b-a22b',            'label': 'Qwen3 235B',         'category': 'smart',     'tier': 'smart',  'description': 'Крупная Qwen, сильный генералист'},
     {'id': 'kimi-k2',                    'label': 'Kimi K2',            'category': 'coder',     'tier': 'coder',  'description': 'Длинный контекст, сильна в коде'},
     {'id': 'gemini-2.5-pro',             'label': 'Gemini 2.5 Pro',     'category': 'smart',     'tier': 'smart',  'description': 'Длинный контекст, крупные проекты'},
+    {'id': 'gemini-2.5-flash',           'label': 'Gemini 2.5 Flash',   'category': 'fast',      'tier': 'fast',   'description': 'Быстрый и дешёвый Gemini'},
 ]
 
 DEFAULT_STUDIO_MODEL = 'qwen3-coder-plus'
@@ -35,9 +36,9 @@ ESCALATION_MAP = {
 # Default per-agent models: per-agent sensible defaults before project.ai_model
 DEFAULT_AGENT_MODELS = {
     'interviewer': 'claude-haiku-4-5-20251001',  # fast: reliable JSON questions
-    'architect':   'claude-opus-4-8',     # smart: design quality matters most
-    'coder':       'claude-sonnet-4-6',      # smart: strong code quality, balanced speed
-    'guardian':    'claude-sonnet-4-6',   # smart: reliable review without over-nitpicking
+    'architect':   'claude-opus-4-8',            # smart: design quality matters most
+    'coder':       'qwen3-coder-plus',           # coder: специализирован на коде, дешевле Sonnet
+    'guardian':    'gemini-2.5-flash',           # fast: надёжное ревью кода, дёшево
 }
 
 
