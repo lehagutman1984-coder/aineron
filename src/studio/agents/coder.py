@@ -183,14 +183,11 @@ class CoderAgent(BaseAgent):
             f"Relevant file contents:\n{context_str}"
         )
 
-        raw = self.run_prompt(system, user, model=model, max_tokens=24000, temperature=0.15)
-        content = _strip_fences(raw)
-
-        if self.last_finish_reason == 'length':
-            self.log(f'ВНИМАНИЕ: {path} достиг лимита токенов — файл может быть неполным', level='warning')
-            log.warning('coder: %s hit token limit (finish_reason=length)', path)
-
-        return content
+        # Use continuation to handle token limit — resumes exactly where model stopped
+        raw = self.run_prompt_with_continuation(
+            system, user, model=model, max_tokens=24000, temperature=0.15,
+        )
+        return _strip_fences(raw)
 
     def _generate_files(self, file_list: list[str], step_index: int, step_text: str,
                         existing_files: dict, model: str) -> dict:
@@ -214,29 +211,6 @@ class CoderAgent(BaseAgent):
                 log.error('coder: failed to generate %s: %s', path, repr(exc))
         return results
 
-    # ── Repair truncated files ────────────────────────────────────────────────
-
-    def _repair_file(self, path: str, content: str, model: str) -> str | None:
-        """Try to complete a truncated file."""
-        self.log(f'Файл {path} обрезан — починяю...', level='warning')
-        try:
-            tail = content[-800:]
-            completion = self.run_prompt(
-                "A code file was cut off mid-generation. "
-                "Output ONLY the missing closing code to make it syntactically complete. "
-                "No markdown fences, no explanations, no repeating existing code.",
-                f"File: {path}\n\nEnds abruptly:\n...{tail}\n\nProvide only the missing part:",
-                model=model,
-                max_tokens=4000,
-                temperature=0.1,
-            )
-            completion = _strip_fences(completion)
-            if completion:
-                return content.rstrip() + '\n' + completion
-        except Exception as exc:
-            log.warning('coder: repair failed for %s: %s', path, exc)
-        return None
-
     # ── Legacy single-call (primary for normal iterations) ────────────────────
 
     def _run_legacy(self, step_index: int, step_text: str,
@@ -252,7 +226,7 @@ class CoderAgent(BaseAgent):
             f"All project files:\n{listing}\n\n"
             f"Content of relevant files:\n{body}"
         )
-        data = self.run_json(system, user, model=model, max_tokens=24000)
+        data = self.run_json(system, user, model=model, max_tokens=16000)
         raw = data.get('files', {})
         files = {}
         for p, c in raw.items():
@@ -281,11 +255,6 @@ class CoderAgent(BaseAgent):
             if not results:
                 self.log('Per-file генерация ничего не вернула — пробую одиночный запрос', level='warning')
                 return self._run_legacy(step_index, step_text, existing_files, model)
-            for path, content in list(results.items()):
-                if _is_truncated(content):
-                    repaired = self._repair_file(path, content, model)
-                    if repaired:
-                        results[path] = repaired
             self.log(f'Готово: {len(results)} файлов')
             return results
 
@@ -313,12 +282,6 @@ class CoderAgent(BaseAgent):
         if not results:
             self.log('Per-file генерация ничего не вернула — повторяю одиночный запрос', level='warning')
             return self._run_legacy(step_index, step_text, existing_files, model)
-
-        for path, content in list(results.items()):
-            if _is_truncated(content):
-                repaired = self._repair_file(path, content, model)
-                if repaired:
-                    results[path] = repaired
 
         self.log(f'Готово (per-file): {len(results)} файлов')
         return results

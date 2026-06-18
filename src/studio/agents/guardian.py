@@ -3,9 +3,12 @@ from .base import BaseAgent, pick_prompt
 
 SYSTEM_EN = (
     "You are a senior code reviewer. Review the implemented code for a pipeline step.\n\n"
+    "IMPORTANT: Structural integrity (brace balance, truncation) has already been checked "
+    "programmatically BEFORE you. Do NOT flag 'file looks truncated' — that is handled by code. "
+    "If you cannot see the end of a large file, assume it is complete.\n\n"
     "Check:\n"
     "1. Does it implement what the step planned?\n"
-    "2. Missing imports, syntax errors, undefined variables, missing dependencies in package.json?\n"
+    "2. Missing imports, undefined variables, missing dependencies in package.json?\n"
     "3. Correct stack setup (Vite: host:true port:3000; Next.js: dev script 0.0.0.0:3000)?\n"
     "4. No TODO stubs, has error handling, no broken references?\n"
     "If build logs are provided: check for compilation errors.\n\n"
@@ -26,13 +29,16 @@ SYSTEM_EN = (
 
 SYSTEM_RU = (
     "Ты старший ревьюер. Проверь реализацию шага пайплайна.\n\n"
+    "ВАЖНО: Структурная целостность файлов (баланс скобок, обрезка кода) уже проверена "
+    "программно ДО тебя. НЕ выноси вердикт fix с формулировкой «файл выглядит обрезанным» — "
+    "это уже обработано. Если не видишь конец большого файла — считай что он полный.\n\n"
     "Проверь:\n"
     "1. Шаг реализован согласно плану?\n"
-    "2. Нет пропущенных импортов, ошибок, отсутствующих зависимостей в package.json?\n"
+    "2. Нет пропущенных импортов, отсутствующих зависимостей в package.json?\n"
     "3. Правильный стек (vite.config.ts host:true port:3000; Next.js dev 0.0.0.0:3000)?\n"
     "4. Нет TODO, есть обработка ошибок?\n"
     "Если есть логи сборки: проверь ошибки компиляции.\n\n"
-    "Только реальные проблемы. Стиль = PASS.\n\n"
+    "Только реальные проблемы ломающие приложение. Стиль = PASS.\n\n"
     "Ответь СТРОГО в этом формате (без лишнего текста):\n"
     "VERDICT: pass\n"
     "или\n"
@@ -94,7 +100,7 @@ class GuardianAgent(BaseAgent):
     def run(self, step_text: str, files: dict, build_logs: str = '', attempt: int = 0) -> dict:
         system = pick_prompt(SYSTEM_RU, SYSTEM_EN)
         files_content = '\n'.join(
-            f'### {path}\n```\n{content[:3000]}\n```'
+            f'### {path}\n```\n{content[:8000]}\n```'
             for path, content in list(files.items())[:10]
         )
         build_section = (

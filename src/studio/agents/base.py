@@ -35,6 +35,7 @@ class BaseAgent:
     name = 'base'
     model = DEFAULT_STUDIO_MODEL
     last_finish_reason: str | None = None
+    last_completion_tokens: int = 0
 
     def __init__(self, project):
         self.project = project
@@ -56,27 +57,37 @@ class BaseAgent:
         return DEFAULT_STUDIO_MODEL
 
     def run_prompt(self, system: str, user: str, model: str = None,
-                   max_tokens: int = 8192, temperature: float = 0.7) -> str:
+                   max_tokens: int = 8192, temperature: float = 0.7,
+                   prior: str = '') -> str:
         """
-        Call model using streaming so the HTTP connection never idles out,
-        even for large outputs (16K+ tokens). Accumulates all chunks and returns
-        the full text. Sets self.last_finish_reason for callers to inspect.
+        Call model using streaming. Sets self.last_finish_reason and
+        self.last_completion_tokens for callers to inspect.
+        If `prior` is given it is submitted as a prior assistant turn
+        (used for continuation calls).
         """
         self.last_finish_reason = None
+        self.last_completion_tokens = 0
         model_id = model or self.model
-        chunks = []
 
+        messages = [
+            {'role': 'system', 'content': system},
+            {'role': 'user', 'content': user},
+        ]
+        if prior:
+            messages.append({'role': 'assistant', 'content': prior})
+
+        chunks = []
         stream = self.client.chat.completions.create(
             model=model_id,
-            messages=[
-                {'role': 'system', 'content': system},
-                {'role': 'user', 'content': user},
-            ],
+            messages=messages,
             stream=True,
             max_tokens=max_tokens,
             temperature=temperature,
+            stream_options={'include_usage': True},
         )
         for chunk in stream:
+            if getattr(chunk, 'usage', None):
+                self.last_completion_tokens = chunk.usage.completion_tokens or 0
             if not chunk.choices:
                 continue
             choice = chunk.choices[0]
@@ -94,15 +105,54 @@ class BaseAgent:
             return ''
         if self.last_finish_reason == 'length':
             logger.warning(
-                'agent %s: model %s HIT TOKEN LIMIT max_tokens=%d — output TRUNCATED',
-                self.name, model_id, max_tokens,
+                'agent %s: model %s HIT TOKEN LIMIT max_tokens=%d completion_tokens=%d',
+                self.name, model_id, max_tokens, self.last_completion_tokens,
             )
         else:
             logger.debug(
-                'agent %s: model %s finished OK (finish_reason=%s, tokens=%d)',
-                self.name, model_id, self.last_finish_reason, len(content),
+                'agent %s: model %s OK finish=%s tokens=%d',
+                self.name, model_id, self.last_finish_reason, self.last_completion_tokens,
             )
         return content
+
+    def run_prompt_with_continuation(self, system: str, user: str,
+                                     model: str = None, max_tokens: int = 8192,
+                                     temperature: float = 0.2,
+                                     max_rounds: int = 6,
+                                     stop_marker: str = None) -> str:
+        """
+        Generate with automatic continuation when output hits the token limit.
+        Submits already-generated text as assistant prior so the model resumes
+        exactly where it left off — not 'append closing braces'.
+        """
+        model_id = model or self.model
+        full = ''
+        for attempt in range(max_rounds + 1):
+            part = self.run_prompt(
+                system, user, model=model_id,
+                max_tokens=max_tokens, temperature=temperature,
+                prior=full,
+            )
+            full += part
+            if stop_marker and stop_marker in full:
+                break
+            capped = (
+                self.last_finish_reason == 'length'
+                or (self.last_completion_tokens
+                    and self.last_completion_tokens >= max_tokens - 32)
+            )
+            if not capped:
+                break
+            logger.warning(
+                'agent %s: continuation round %d (tokens=%d) — resuming',
+                self.name, attempt + 1, self.last_completion_tokens,
+            )
+            if hasattr(self, 'log'):
+                self.log(
+                    f'Дозапрос {attempt + 1}: модель достигла лимита, продолжаю генерацию...',
+                    level='warning',
+                )
+        return full
 
     def run_json(self, system: str, user: str, model: str = None, max_tokens: int = 8192) -> dict:
         raw = self.run_prompt(system, user, model=model, max_tokens=max_tokens, temperature=0.2)
