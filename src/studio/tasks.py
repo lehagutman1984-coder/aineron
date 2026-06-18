@@ -83,6 +83,21 @@ def _get_step_text(project, step_index):
     return parts[step_index] if step_index < len(parts) else project.commits_md_content
 
 
+def _record_metric(project, step_index, **kwargs):
+    """Накапливает per-step метрики в interview_data['metrics'][str(step_index)]."""
+    try:
+        metrics = project.interview_data.setdefault('metrics', {})
+        step_m = metrics.setdefault(str(step_index), {})
+        for k, v in kwargs.items():
+            if isinstance(v, (int, float)) and k in step_m and isinstance(step_m[k], (int, float)):
+                step_m[k] += v
+            else:
+                step_m[k] = v
+        project.save(update_fields=['interview_data'])
+    except Exception:
+        pass
+
+
 def _existing_files(project):
     return {f.path: f.content for f in project.files.all()}
 
@@ -102,6 +117,7 @@ def _structure_gate(project, project_id, step_index, step_text, existing, files,
             broken[path] = reason
     if not broken:
         return files
+    _record_metric(project, step_index, structure_fails=len(broken))
     publish_event(project_id, {
         'agent': 'system', 'level': 'warning',
         'text': f'Структурная проверка: {len(broken)} файл(ов) требуют дозапроса',
@@ -158,6 +174,7 @@ def _dependency_gate(project, project_id, step_index, files):
     missing = result.get('missing', [])
     if not missing:
         return files
+    _record_metric(project, step_index, dep_fails=1)
     pkg_content = files.get('package.json') or all_files.get('package.json')
     addable = [m for m in missing if m in DEP_VERSIONS]
     if pkg_content and addable:
@@ -222,6 +239,7 @@ def _try_apply_edits(project, project_id, step_index, edits):
             sandbox.wait_for_ready(project.sandbox_container_id, timeout=60)
         except Exception:
             pass
+    _record_metric(project, step_index, edits_applied=1)
     publish_event(project_id, {
         'agent': 'coder', 'level': 'info',
         'text': f'Применены патчи EDIT к {len(changed)} файлам (без перегенерации)',
@@ -404,6 +422,24 @@ def run_pipeline(project_id):
         or project.interview_data.get('planned_steps', 5)
     )
     project.save(update_fields=['sandbox_container_id', 'preview_port', 'interview_data'])
+    if settings.STUDIO_V3:
+        from .scaffold import scaffold_files
+        sf = scaffold_files(project.target_stack, project.design_md_content)
+        if sf:
+            for path, content in sf.items():
+                StudioFile.objects.get_or_create(
+                    project=project, path=path,
+                    defaults={'content': content, 'last_modified_by': 'scaffold'},
+                )
+            if project.sandbox_container_id:
+                try:
+                    sandbox.write_files(project.sandbox_container_id, sf)
+                except Exception:
+                    pass
+            publish_event(project_id, {
+                'agent': 'system', 'level': 'info',
+                'text': f'Установлены UI-примитивы ({len(sf)} файлов)',
+            })
     start_step.delay(project_id, 0)
 
 
@@ -497,6 +533,7 @@ def coder_iteration(self, project_id, step_index):
         if settings.STUDIO_V3 and files:
             files = _structure_gate(project, project_id, step_index, step_text, existing, files, agent, model_tier=coder_tier)
             files = _dependency_gate(project, project_id, step_index, files)
+            _record_metric(project, step_index, files_generated=len(files))
         # =====================================================
 
         # Same-diff detection: pause if agent produces identical output twice in a row
@@ -611,6 +648,11 @@ def guardian_review(self, project_id, step_index):
     state.save(update_fields=['review_report'])
     verdict = result.get('verdict', 'pass')
     issues_preview = '; '.join((result.get('issues') or [])[:2])
+    if settings.STUDIO_V3:
+        _record_metric(project, step_index,
+                       guardian_iterations=state.iteration_count,
+                       build_pass=1 if (build_logs and 'error' not in build_logs.lower()) else 0,
+                       verdict=verdict)
     publish_event(project_id, {
         'agent': 'guardian',
         'level': 'success' if verdict == 'pass' else 'warning',

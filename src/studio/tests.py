@@ -1234,3 +1234,67 @@ class EditBlocksTests(SimpleTestCase):
         edits = [{'path': 'a.ts', 'search': 'l1\nl2\nl3', 'replace': 'x'}]
         big = edits_too_large(files, edits, threshold=0.4)
         self.assertIn('a.ts', big)
+
+
+class ScaffoldTests(SimpleTestCase):
+    def test_react_returns_four_files(self):
+        from studio.scaffold import scaffold_files
+        files = scaffold_files('react')
+        self.assertEqual(len(files), 4)
+        for path in files:
+            self.assertTrue(path.startswith('src/components/ui/'))
+            self.assertTrue(path.endswith('.tsx'))
+
+    def test_nextjs_returns_four_files(self):
+        from studio.scaffold import scaffold_files
+        files = scaffold_files('nextjs')
+        self.assertEqual(len(files), 4)
+
+    def test_unsupported_stack_returns_empty(self):
+        from studio.scaffold import scaffold_files
+        self.assertEqual(scaffold_files('vue'), {})
+        self.assertEqual(scaffold_files('html'), {})
+        self.assertEqual(scaffold_files(''), {})
+
+    def test_no_emoji_in_content(self):
+        from studio.scaffold import scaffold_files
+        import re
+        emoji_re = re.compile(
+            r'[\U0001F300-\U0001F9FF\U00002600-\U000027BF]'
+        )
+        for content in scaffold_files('react').values():
+            self.assertIsNone(emoji_re.search(content))
+
+
+class RecordMetricTests(SimpleTestCase):
+    def _make_project(self):
+        """Minimal stand-in for StudioProject with interview_data and save()."""
+        class FakeProject:
+            interview_data = {}
+            _saved = []
+
+            def save(self, update_fields=None):
+                self._saved.append(update_fields)
+        return FakeProject()
+
+    def test_accumulates_counters(self):
+        from studio.tasks import _record_metric
+        p = self._make_project()
+        _record_metric(p, 0, structure_fails=1)
+        _record_metric(p, 0, structure_fails=1)
+        self.assertEqual(p.interview_data['metrics']['0']['structure_fails'], 2)
+
+    def test_overrides_non_numeric(self):
+        from studio.tasks import _record_metric
+        p = self._make_project()
+        _record_metric(p, 0, verdict='fix')
+        _record_metric(p, 0, verdict='pass')
+        self.assertEqual(p.interview_data['metrics']['0']['verdict'], 'pass')
+
+    def test_separate_steps_isolated(self):
+        from studio.tasks import _record_metric
+        p = self._make_project()
+        _record_metric(p, 0, files_generated=3)
+        _record_metric(p, 1, files_generated=5)
+        self.assertEqual(p.interview_data['metrics']['0']['files_generated'], 3)
+        self.assertEqual(p.interview_data['metrics']['1']['files_generated'], 5)
