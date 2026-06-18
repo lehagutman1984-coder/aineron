@@ -22,7 +22,7 @@ def count_user_sandboxes(user_id) -> int:
 
 
 def spawn_sandbox(project_id: str, user_id=None) -> str:
-    """Creates container on bridge network (internet available). Returns container name (DNS-resolvable)."""
+    """Creates container on Compose network (working DNS). Returns container name (DNS-resolvable)."""
     client = get_docker()
     name = f'sandbox_{project_id[:8]}'
     try:
@@ -32,6 +32,9 @@ def spawn_sandbox(project_id: str, user_id=None) -> str:
     labels = {'studio_project': project_id}
     if user_id is not None:
         labels['studio_user'] = str(user_id)
+    # Use Compose network for pnpm install (has working DNS via embedded resolver).
+    # isolate() will move container to aineron_sandbox_net after install.
+    install_net = getattr(settings, 'STUDIO_INSTALL_NET', 'ai_default')
     container = client.containers.run(
         settings.STUDIO_SANDBOX_IMAGE,
         command='sleep infinity',
@@ -42,8 +45,7 @@ def spawn_sandbox(project_id: str, user_id=None) -> str:
         pids_limit=256,
         cap_drop=['ALL'],
         security_opt=['no-new-privileges'],
-        network_mode='bridge',
-        dns=['8.8.8.8', '8.8.4.4'],
+        network=install_net,
         labels=labels,
     )
     return container.name
@@ -80,11 +82,12 @@ def install_deps(container_id: str) -> tuple:
 
 
 def isolate(container_id: str):
-    """Disconnects from bridge, connects to internal sandbox_net."""
+    """Disconnects from Compose/install network, connects to internal sandbox_net."""
     client = get_docker()
     container = client.containers.get(container_id)
+    install_net = getattr(settings, 'STUDIO_INSTALL_NET', 'ai_default')
     try:
-        client.networks.get('bridge').disconnect(container)
+        client.networks.get(install_net).disconnect(container)
     except Exception:
         pass
     client.networks.get(settings.STUDIO_SANDBOX_NET).connect(container)
