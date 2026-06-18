@@ -229,8 +229,12 @@ def agent_analyze(self, project_id):
         project.commits_md_content = data.get('commits_md', '')
         planned = data.get('planned_steps') or len(_split_steps(project.commits_md_content)) or 5
         project.interview_data['planned_steps'] = planned
+        if settings.STUDIO_V3:
+            project.design_md_content = data.get('design_md', '')
+            if data.get('plan'):
+                project.interview_data['plan'] = data['plan']
         project.status = 'ready'
-        project.save(update_fields=['project_md_content', 'commits_md_content', 'interview_data', 'status'])
+        project.save(update_fields=['project_md_content', 'commits_md_content', 'design_md_content', 'interview_data', 'status'])
         state = project.pipeline
         state.review_report = {}
         state.save()

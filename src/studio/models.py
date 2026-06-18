@@ -34,6 +34,7 @@ class StudioProject(models.Model):
     interview_data = models.JSONField(default=dict, blank=True)
     project_md_content = models.TextField(blank=True)
     commits_md_content = models.TextField(blank=True)
+    design_md_content = models.TextField(blank=True, default='')  # V3: дизайн-система проекта
     sandbox_container_id = models.CharField(max_length=128, blank=True)
     preview_port = models.IntegerField(null=True, blank=True)
     repo_url = models.URLField(blank=True)
