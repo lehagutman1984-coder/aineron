@@ -515,12 +515,16 @@ def coder_iteration(self, project_id, step_index):
                 applied = _try_apply_edits(project, project_id, step_index, fp['edits'])
                 if applied:
                     return  # патчи применены, шаг отправлен в guardian внутри _try_apply_edits
+                # EDIT blocks не применились (SEARCH не совпал) — регенерируем только
+                # затронутые файлы, не запускаем manifest по всему проекту
+                allowed_files = list({e['path'] for e in fp['edits']})
             # ==========================================================
             targets = fp.get('target_files') or []
             step_text += f"\n\nИСПРАВЬ согласно FixPlan:\n{fp.get('instructions', '')}"
             if targets:
                 step_text += f"\n\nИЗМЕНЯЙ ТОЛЬКО эти файлы: {', '.join(targets)}. Остальные не трогай."
-                allowed_files = targets
+                if not allowed_files:
+                    allowed_files = targets
         publish_event(project_id, {
             'agent': 'coder', 'level': 'info',
             'text': f'Шаг {step_index}, итерация {project.pipeline.iteration_count}',
