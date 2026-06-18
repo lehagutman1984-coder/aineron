@@ -1,4 +1,5 @@
 import re
+from django.conf import settings
 from .base import BaseAgent, pick_prompt
 
 SYSTEM_EN = (
@@ -52,6 +53,52 @@ SYSTEM_RU = (
 )
 
 
+SYSTEM_V3_RU = (
+    "Ты старший ревьюер. Структурная целостность (скобки, обрезка, импорты, сборка)\n"
+    "УЖЕ проверена кодом ДО тебя — НЕ комментируй обрезку и баланс скобок.\n\n"
+    "Проверь ТОЛЬКО:\n"
+    "1. Реализован ли замысел шага (фичи на месте)?\n"
+    "2. Соответствие DESIGN.md: токены вместо хардкод-цветов (#fff), lucide-иконки,\n"
+    "   состояния loading/empty/error, отсутствие эмодзи?\n"
+    "3. Логика: кнопки с обработчиками, формы с сабмитом, нет мёртвых ссылок?\n"
+    "Если есть build-логи с ошибкой — учти их.\n\n"
+    "Только реальные проблемы. Стиль = PASS.\n\n"
+    "Для ЛОКАЛЬНЫХ правок выдавай EDIT blocks (точечные диффы), НЕ перегенерацию:\n"
+    "=== EDIT: <путь> ===\n"
+    "<<<<<<< SEARCH\n<точный текущий кусок>\n=======\n<новый кусок>\n>>>>>>> REPLACE\n"
+    "=== END EDIT ===\n"
+    "SEARCH должен ТОЧНО совпадать с текущим кодом (включая отступы).\n\n"
+    "Ответь СТРОГО:\n"
+    "VERDICT: pass\nили\nVERDICT: fix\n"
+    "ISSUES:\n- проблема\n"
+    "INSTRUCTIONS:\nКонкретные инструкции.\n"
+    "EDITS:\n<edit blocks или пусто>\n"
+    "FILES:\n- путь (только если нужна ПОЛНАЯ перегенерация файла)"
+)
+SYSTEM_V3_EN = (
+    "You are a senior reviewer. Structural integrity (braces, truncation, imports,\n"
+    "build) is ALREADY checked by code BEFORE you — do NOT comment on truncation or braces.\n\n"
+    "Check ONLY:\n"
+    "1. Is the step's intent implemented (features present)?\n"
+    "2. DESIGN.md compliance: design tokens instead of hardcoded colors, lucide icons,\n"
+    "   loading/empty/error states, no emoji?\n"
+    "3. Logic: buttons with handlers, forms with submit, no dead links?\n"
+    "If build logs with errors are provided — account for them.\n\n"
+    "Only real problems. Style = PASS.\n\n"
+    "For LOCAL fixes emit EDIT blocks (search/replace diffs), NOT full regeneration:\n"
+    "=== EDIT: <path> ===\n"
+    "<<<<<<< SEARCH\n<exact current snippet>\n=======\n<new snippet>\n>>>>>>> REPLACE\n"
+    "=== END EDIT ===\n"
+    "SEARCH must EXACTLY match current code (including indentation).\n\n"
+    "Respond STRICTLY:\n"
+    "VERDICT: pass\nor\nVERDICT: fix\n"
+    "ISSUES:\n- problem\n"
+    "INSTRUCTIONS:\nConcrete fix instructions in Russian.\n"
+    "EDITS:\n<edit blocks or empty>\n"
+    "FILES:\n- path (only if FULL regeneration is needed)"
+)
+
+
 def _parse_guardian_response(text: str) -> dict:
     """Parse plain-text guardian response into a structured dict."""
     text = text.strip()
@@ -70,9 +117,9 @@ def _parse_guardian_response(text: str) -> dict:
             if line:
                 issues.append(line)
 
-    # Extract INSTRUCTIONS
+    # Extract INSTRUCTIONS (lookahead includes EDITS: to avoid swallowing EDIT blocks)
     instructions = ''
-    instr_m = re.search(r'INSTRUCTIONS\s*:\s*\n(.*?)(?=FILES\s*:|$)',
+    instr_m = re.search(r'INSTRUCTIONS\s*:\s*\n(.*?)(?=EDITS\s*:|FILES\s*:|$)',
                         text, re.DOTALL | re.IGNORECASE)
     if instr_m:
         instructions = instr_m.group(1).strip()
@@ -86,11 +133,24 @@ def _parse_guardian_response(text: str) -> dict:
             if line:
                 target_files.append(line)
 
+    # Extract EDIT blocks (V3 only)
+    edits = []
+    try:
+        if settings.STUDIO_V3:
+            from .edits import parse_edits
+            edits_m = re.search(r'EDITS\s*:\s*\n(.*?)(?=\nFILES\s*:|$)',
+                                text, re.DOTALL | re.IGNORECASE)
+            edits_text = edits_m.group(1) if edits_m else text
+            edits = parse_edits(edits_text)
+    except Exception:
+        edits = []
+
     return {
         'verdict': verdict,
         'issues': issues,
         'instructions': instructions,
         'target_files': target_files,
+        'edits': edits,
     }
 
 
@@ -98,7 +158,13 @@ class GuardianAgent(BaseAgent):
     name = 'guardian'
 
     def run(self, step_text: str, files: dict, build_logs: str = '', attempt: int = 0) -> dict:
-        system = pick_prompt(SYSTEM_RU, SYSTEM_EN)
+        if settings.STUDIO_V3:
+            system = pick_prompt(SYSTEM_V3_RU, SYSTEM_V3_EN)
+            design = (getattr(self.project, 'design_md_content', '') or '')[:2000]
+            design_section = f'\n\nDESIGN.md (проверь соответствие):\n{design}' if design else ''
+        else:
+            system = pick_prompt(SYSTEM_RU, SYSTEM_EN)
+            design_section = ''
         files_content = '\n'.join(
             f'### {path}\n```\n{content[:8000]}\n```'
             for path, content in list(files.items())[:10]
@@ -112,7 +178,7 @@ class GuardianAgent(BaseAgent):
             if attempt > 0 else ''
         )
         user = (
-            f'Planned step:\n{step_text}\n\n'
+            f'Planned step:\n{step_text}{design_section}\n\n'
             f'Implemented files:{attempt_note}\n{files_content}'
             f'{build_section}'
         )

@@ -183,6 +183,53 @@ def _dependency_gate(project, project_id, step_index, files):
     return files
 
 
+def _try_apply_edits(project, project_id, step_index, edits):
+    """
+    Применяет EDIT blocks к файлам проекта. Возвращает True, если удалось
+    применить хотя бы часть патчей и шаг отправлен в guardian; False — если
+    нужна полная перегенерация (fallback на обычный coder).
+    """
+    from .agents.edits import apply_edits, edits_too_large
+    from .validators import is_structurally_complete
+    files = {f.path: f.content for f in project.files.all()}
+    big = edits_too_large(files, edits, threshold=0.4)
+    edits_small = [e for e in edits if e['path'] not in big]
+    if not edits_small:
+        return False
+    updated, failed = apply_edits(files, edits_small)
+    if failed:
+        publish_event(project_id, {
+            'agent': 'system', 'level': 'warning',
+            'text': f'SEARCH не найден в {len(failed)} файлах — перегенерирую их',
+        })
+        return False
+    # проверяем структуру изменённых файлов
+    changed = {p: updated[p] for p in {e['path'] for e in edits_small}}
+    for path, content in changed.items():
+        ok, _ = is_structurally_complete(path, content)
+        if not ok:
+            return False
+    for path, content in changed.items():
+        StudioFile.objects.update_or_create(
+            project=project, path=path,
+            defaults={'content': content, 'last_modified_by': 'agent'},
+        )
+    project.interview_data.setdefault('last_changed', {})[str(step_index)] = list(changed.keys())
+    project.save(update_fields=['interview_data'])
+    if project.sandbox_container_id:
+        try:
+            sandbox.write_files(project.sandbox_container_id, changed)
+            sandbox.wait_for_ready(project.sandbox_container_id, timeout=60)
+        except Exception:
+            pass
+    publish_event(project_id, {
+        'agent': 'coder', 'level': 'info',
+        'text': f'Применены патчи EDIT к {len(changed)} файлам (без перегенерации)',
+    })
+    guardian_review.delay(project_id, step_index)
+    return True
+
+
 # ========== Agents 0-2 ==========
 
 @shared_task(bind=True, max_retries=3, queue=QUEUE)
@@ -427,6 +474,12 @@ def coder_iteration(self, project_id, step_index):
         allowed_files = None
         if project.pipeline.iteration_count > 0 and project.pipeline.fix_plan:
             fp = project.pipeline.fix_plan
+            # === V3: попытка применить EDIT blocks без перегенерации ===
+            if settings.STUDIO_V3 and fp.get('edits'):
+                applied = _try_apply_edits(project, project_id, step_index, fp['edits'])
+                if applied:
+                    return  # патчи применены, шаг отправлен в guardian внутри _try_apply_edits
+            # ==========================================================
             targets = fp.get('target_files') or []
             step_text += f"\n\nИСПРАВЬ согласно FixPlan:\n{fp.get('instructions', '')}"
             if targets:
@@ -579,6 +632,7 @@ def guardian_review(self, project_id, step_index):
         state.fix_plan = {
             'instructions': result.get('instructions', ''),
             'target_files': result.get('target_files', []),
+            'edits': result.get('edits', []) if settings.STUDIO_V3 else [],
             'priority': 'high',
         }
         state.save(update_fields=['fix_plan'])

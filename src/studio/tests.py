@@ -1197,3 +1197,40 @@ class DependencyValidatorTests(SimpleTestCase):
         result = validate_dependencies(files)
         self.assertFalse(result['ok'])
         self.assertIn('reason', result)
+
+
+class EditBlocksTests(SimpleTestCase):
+    def test_parse_single_edit(self):
+        from studio.agents.edits import parse_edits
+        text = (
+            "=== EDIT: src/App.tsx ===\n"
+            "<<<<<<< SEARCH\n<div>old</div>\n=======\n<div>new</div>\n>>>>>>> REPLACE\n"
+            "=== END EDIT ==="
+        )
+        edits = parse_edits(text)
+        self.assertEqual(len(edits), 1)
+        self.assertEqual(edits[0]['path'], 'src/App.tsx')
+        self.assertEqual(edits[0]['search'], '<div>old</div>')
+        self.assertEqual(edits[0]['replace'], '<div>new</div>')
+
+    def test_apply_edit_success(self):
+        from studio.agents.edits import apply_edits
+        files = {'a.ts': 'const x = 1\nconst y = 2\n'}
+        edits = [{'path': 'a.ts', 'search': 'const x = 1', 'replace': 'const x = 42'}]
+        updated, failed = apply_edits(files, edits)
+        self.assertEqual(failed, [])
+        self.assertIn('const x = 42', updated['a.ts'])
+
+    def test_apply_edit_search_not_found(self):
+        from studio.agents.edits import apply_edits
+        files = {'a.ts': 'const x = 1\n'}
+        edits = [{'path': 'a.ts', 'search': 'NOPE', 'replace': 'X'}]
+        updated, failed = apply_edits(files, edits)
+        self.assertEqual(failed, ['a.ts'])
+
+    def test_edits_too_large(self):
+        from studio.agents.edits import edits_too_large
+        files = {'a.ts': 'l1\nl2\nl3\nl4\nl5\n'}
+        edits = [{'path': 'a.ts', 'search': 'l1\nl2\nl3', 'replace': 'x'}]
+        big = edits_too_large(files, edits, threshold=0.4)
+        self.assertIn('a.ts', big)
