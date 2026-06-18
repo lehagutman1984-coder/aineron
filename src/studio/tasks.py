@@ -87,6 +87,102 @@ def _existing_files(project):
     return {f.path: f.content for f in project.files.all()}
 
 
+# ========== Studio V3: deterministic gates ==========
+
+def _structure_gate(project, project_id, step_index, step_text, existing, files, agent, model_tier=None, max_fixes=2):
+    """
+    Детерминированный structure gate. Жёсткий критерий — обрезка (нет end-маркера),
+    advisory — дисбаланс скобок/JSX. Точечно дозапрашивает сломанные файлы (max_fixes).
+    """
+    from .validators import is_structurally_complete
+    broken = {}
+    for path, content in files.items():
+        ok, reason = is_structurally_complete(path, content)
+        if not ok:
+            broken[path] = reason
+    if not broken:
+        return files
+    publish_event(project_id, {
+        'agent': 'system', 'level': 'warning',
+        'text': f'Структурная проверка: {len(broken)} файл(ов) требуют дозапроса',
+    })
+    fixed = dict(files)
+    for path, reason in list(broken.items())[:8]:
+        for attempt in range(max_fixes):
+            hint = (
+                f"\n\nФАЙЛ {path} структурно неполон (причина: {reason}). "
+                "Сгенерируй его ПОЛНОСТЬЮ заново, со всеми закрытыми скобками и тегами."
+            )
+            try:
+                regen = agent.run(step_index, step_text + hint, existing, allowed_files=[path])
+            except Exception as exc:
+                publish_event(project_id, {'agent': 'system', 'level': 'warning',
+                                           'text': f'Дозапрос {path} упал: {exc}'})
+                break
+            new_content = regen.get(path)
+            if not new_content:
+                break
+            ok, reason = is_structurally_complete(path, new_content)
+            fixed[path] = new_content
+            if ok:
+                break
+    return fixed
+
+
+# Минимальный whitelist версий для авто-добавления недостающих пакетов.
+DEP_VERSIONS = {
+    'lucide-react': '^0.460.0',
+    'clsx': '^2.1.1',
+    'tailwind-merge': '^2.5.4',
+    'recharts': '^2.13.0',
+    'date-fns': '^4.1.0',
+    'zustand': '^5.0.0',
+    '@tanstack/react-query': '^5.59.0',
+    'react-router-dom': '^6.27.0',
+    'framer-motion': '^11.11.0',
+}
+
+
+def _dependency_gate(project, project_id, step_index, files):
+    """
+    Детерминированно сверяет импорты с package.json. Недостающие пакеты с известной
+    версией добавляются автоматически; остальные логируются (Guardian/build их поймает).
+    """
+    import json as _json
+    from .validators import validate_dependencies
+    all_files = {f.path: f.content for f in project.files.all()}
+    all_files.update(files)
+    result = validate_dependencies(all_files)
+    if result.get('ok'):
+        return files
+    missing = result.get('missing', [])
+    if not missing:
+        return files
+    pkg_content = files.get('package.json') or all_files.get('package.json')
+    addable = [m for m in missing if m in DEP_VERSIONS]
+    if pkg_content and addable:
+        try:
+            pkg = _json.loads(pkg_content)
+            deps = pkg.setdefault('dependencies', {})
+            for m in addable:
+                deps[m] = DEP_VERSIONS[m]
+            files = dict(files)
+            files['package.json'] = _json.dumps(pkg, indent=2, ensure_ascii=False) + '\n'
+            publish_event(project_id, {
+                'agent': 'system', 'level': 'info',
+                'text': f'Добавлены зависимости: {", ".join(addable)}',
+            })
+        except Exception:
+            pass
+    unknown = [m for m in missing if m not in DEP_VERSIONS]
+    if unknown:
+        publish_event(project_id, {
+            'agent': 'system', 'level': 'warning',
+            'text': f'Неизвестные зависимости (проверит сборка): {", ".join(unknown)}',
+        })
+    return files
+
+
 # ========== Agents 0-2 ==========
 
 @shared_task(bind=True, max_retries=3, queue=QUEUE)
@@ -339,6 +435,12 @@ def coder_iteration(self, project_id, step_index):
         agent = CoderAgent(project)
         files = agent.run(step_index, step_text, existing, allowed_files=allowed_files)
         coder_tier = coder_tier_for_model(agent.last_model)
+
+        # ===== V3: детерминированные gate перед guardian =====
+        if settings.STUDIO_V3 and files:
+            files = _structure_gate(project, project_id, step_index, step_text, existing, files, agent, model_tier=coder_tier)
+            files = _dependency_gate(project, project_id, step_index, files)
+        # =====================================================
 
         # Same-diff detection: pause if agent produces identical output twice in a row
         files_hash = hashlib.sha256(

@@ -1,8 +1,10 @@
 import re
 import logging
 
+from django.conf import settings
 from .base import BaseAgent, pick_prompt
 from ..models_catalog import ESCALATION_MAP, MODEL_TIER
+from .blocks import parse_file_blocks, FILE_CLOSE
 
 log = logging.getLogger('studio.agents')
 
@@ -65,6 +67,44 @@ SYSTEM_EN = (
     "For Next.js projects: ALWAYS set package.json scripts.dev to \"next dev -p 3000 -H 0.0.0.0\". "
     "Never invent nonexistent dependencies. If a FixPlan is provided, change ONLY the listed files. "
     "Return STRICTLY JSON: {\"files\":{\"relative/path\":\"full file content\"}} — whole files, never diffs. "
+    "Code comments may be in Russian."
+)
+
+
+# ── V3 FILE_BLOCKS prompts ────────────────────────────────────────────────────
+
+CODER_FILE_BLOCKS_RU = (
+    "Ты senior-разработчик. Напиши ОДИН полный файл в формате FILE_BLOCKS.\n\n"
+    "ФОРМАТ ВЫВОДА СТРОГО:\n"
+    "=== FILE: <путь> ===\n"
+    "<полное содержимое файла>\n"
+    "=== END FILE ===\n\n"
+    "Маркер === END FILE === ОБЯЗАТЕЛЕН в конце — это сигнал завершения файла.\n"
+    "НЕ используй JSON. НЕ оборачивай код в markdown-fences (```).\n\n"
+    "ТРЕБОВАНИЯ:\n"
+    "- Файл 100% полный и production-ready: все JSX-теги закрыты, все функции закрыты, export присутствует.\n"
+    "- НЕ обрезай. НЕ пиши TODO, заглушки или placeholder-комментарии.\n"
+    "- Реализуй ВСЕ элементы UI: навигацию, кнопки, иконки, стили.\n"
+    "- Обработай состояния: loading, empty, error.\n"
+    "- Next.js: 'use client' там где нужно; dev-скрипт: \"next dev -p 3000 -H 0.0.0.0\".\n"
+    "- Vite/React: vite.config.ts с server:{host:true,port:3000,hmr:false}.\n"
+    "Комментарии в коде можно на русском."
+)
+CODER_FILE_BLOCKS_EN = (
+    "You are a senior software engineer. Write ONE complete source file in FILE_BLOCKS format.\n\n"
+    "OUTPUT FORMAT STRICTLY:\n"
+    "=== FILE: <path> ===\n"
+    "<full file content>\n"
+    "=== END FILE ===\n\n"
+    "The marker === END FILE === is MANDATORY at the end — it signals completion.\n"
+    "Do NOT use JSON. Do NOT wrap the code in markdown fences (```).\n\n"
+    "REQUIREMENTS:\n"
+    "- 100% complete, production-ready: ALL JSX tags closed, ALL functions closed, export present.\n"
+    "- NEVER truncate. NO TODO comments, stubs or placeholders.\n"
+    "- Implement ALL UI elements: navigation, buttons, icons, styles.\n"
+    "- Handle states: loading, empty, error.\n"
+    "- Next.js: add 'use client' where needed; dev script \"next dev -p 3000 -H 0.0.0.0\".\n"
+    "- Vite/React: vite.config.ts with server:{host:true,port:3000,hmr:false}.\n"
     "Code comments may be in Russian."
 )
 
@@ -148,12 +188,9 @@ class CoderAgent(BaseAgent):
     def _generate_one_file(self, path: str, step_index: int, step_text: str,
                            existing_files: dict, model: str) -> str:
         """Generate a single file with full context. Returns raw file content."""
-        system = pick_prompt(FILE_SYSTEM_RU, FILE_SYSTEM_EN)
-
         existing_content = existing_files.get(path, '')
         if existing_content:
             if _is_truncated(existing_content):
-                # Truncated file — don't show partial content, force full rewrite
                 existing_str = (
                     f"\n\nIMPORTANT: {path} currently exists but is TRUNCATED/INCOMPLETE. "
                     "Write it COMPLETELY from scratch — do NOT continue or patch the existing content."
@@ -166,7 +203,6 @@ class CoderAgent(BaseAgent):
         else:
             existing_str = ''
 
-        # Include relevant context files (excluding target file)
         context = _select_context_files(
             step_text, {k: v for k, v in existing_files.items() if k != path}, max_files=8
         )
@@ -175,6 +211,42 @@ class CoderAgent(BaseAgent):
         )
         listing = '\n'.join(f'- {p}' for p in existing_files) or '(empty)'
 
+        if settings.STUDIO_V3:
+            system = pick_prompt(CODER_FILE_BLOCKS_RU, CODER_FILE_BLOCKS_EN)
+            # V3: добавляем DESIGN.md и лимит строк (если заданы в Коммите 5)
+            max_lines, role = self._file_spec(path)
+            design = self._design_excerpt()
+            design_block = f"\n\nDESIGN.md (соблюдай дизайн-систему):\n{design}" if design else ''
+            limit_block = (
+                f"\n\nЛИМИТ: файл должен быть <= {max_lines} строк. Роль файла: {role}"
+                if role or max_lines else ''
+            )
+            user = (
+                f"PROJECT.md:\n{self.project.project_md_content[:4000]}\n\n"
+                f"Step #{step_index}:\n{step_text}{limit_block}\n\n"
+                f"FILE TO WRITE: {path}{existing_str}{design_block}\n\n"
+                f"All project files (for reference):\n{listing}\n\n"
+                f"Relevant file contents:\n{context_str}\n\n"
+                f"Output the file wrapped in:\n=== FILE: {path} ===\n...\n=== END FILE ==="
+            )
+            raw = self.run_prompt_with_continuation(
+                system, user, model=model, max_tokens=24000, temperature=0.15,
+                stop_marker=FILE_CLOSE,
+            )
+            files, incomplete = parse_file_blocks(raw)
+            # per-file: ожидаем ровно один блок; берём по точному пути или единственный
+            content = files.get(path)
+            if content is None and len(files) == 1:
+                content = next(iter(files.values()))
+            if content is None:
+                self.log(f'FILE_BLOCKS не распарсился для {path}, fallback на сырой текст', level='warning')
+                content = _strip_fences(raw)
+            if path in incomplete or (len(files) == 1 and incomplete):
+                self.log(f'{path}: блок обрезан (нет END-маркера) даже после дозапросов', level='warning')
+            return content
+
+        # --- legacy путь (STUDIO_V3=False): голый текст ---
+        system = pick_prompt(FILE_SYSTEM_RU, FILE_SYSTEM_EN)
         user = (
             f"PROJECT.md:\n{self.project.project_md_content[:4000]}\n\n"
             f"Step #{step_index}:\n{step_text}\n\n"
@@ -182,12 +254,23 @@ class CoderAgent(BaseAgent):
             f"All project files (for reference):\n{listing}\n\n"
             f"Relevant file contents:\n{context_str}"
         )
-
-        # Use continuation to handle token limit — resumes exactly where model stopped
         raw = self.run_prompt_with_continuation(
             system, user, model=model, max_tokens=24000, temperature=0.15,
         )
         return _strip_fences(raw)
+
+    def _file_spec(self, path: str) -> tuple[int, str]:
+        """Из interview_data['plan'] достаёт {max_lines, role} для файла, если есть."""
+        plan = (self.project.interview_data or {}).get('plan', [])
+        for step in plan:
+            for f in step.get('files', []):
+                if f.get('path') == path:
+                    return f.get('max_lines', 200), f.get('role', '')
+        return 200, ''
+
+    def _design_excerpt(self) -> str:
+        d = getattr(self.project, 'design_md_content', '') or ''
+        return d[:2500]
 
     def _generate_files(self, file_list: list[str], step_index: int, step_text: str,
                         existing_files: dict, model: str) -> dict:
@@ -246,19 +329,33 @@ class CoderAgent(BaseAgent):
         self.last_model = model
         self.log(f'Модель: {model}')
 
-        # Fix iteration: guardian specified exact files → per-file with full context
+        # Fix iteration (allowed_files задан) — всегда per-file, в обоих режимах
         if allowed_files:
             self.log(f'Исправляю {len(allowed_files)} файлов: {", ".join(allowed_files)}')
             log.info('coder step %d fix iter: %d files: %s',
                      step_index, len(allowed_files), allowed_files)
             results = self._generate_files(allowed_files, step_index, step_text, existing_files, model)
-            if not results:
+            if not results and not settings.STUDIO_V3:
                 self.log('Per-file генерация ничего не вернула — пробую одиночный запрос', level='warning')
                 return self._run_legacy(step_index, step_text, existing_files, model)
             self.log(f'Готово: {len(results)} файлов')
             return results
 
-        # Normal iteration: single-call with full context (streaming prevents HTTP timeout)
+        if settings.STUDIO_V3:
+            # V3 основной путь: манифест файлов → per-file FILE_BLOCKS
+            self.log('V3: получаю список файлов шага...')
+            file_list = self._get_manifest(step_index, step_text, existing_files, model)
+            if not file_list:
+                self.log('Манифест пустой — fallback на одиночный запрос', level='warning')
+                return self._run_legacy(step_index, step_text, existing_files, model)
+            results = self._generate_files(file_list, step_index, step_text, existing_files, model)
+            if not results:
+                self.log('Per-file ничего не вернула — fallback на одиночный запрос', level='warning')
+                return self._run_legacy(step_index, step_text, existing_files, model)
+            self.log(f'Готово (V3 per-file): {len(results)} файлов')
+            return results
+
+        # --- legacy путь (STUDIO_V3=False): single-call JSON, идентичен прежнему ---
         self.log('Генерирую все файлы одним запросом...')
         log.info('coder step %d: single-call legacy', step_index)
         try:
@@ -271,7 +368,6 @@ class CoderAgent(BaseAgent):
             self.log(f'Одиночный запрос не удался ({exc}) — получаю список файлов', level='warning')
             log.warning('coder step %d: single-call failed (%s) — falling back to per-file', step_index, exc)
 
-        # Fallback: manifest + per-file generation
         file_list = self._get_manifest(step_index, step_text, existing_files, model)
         if not file_list:
             self.log('Манифест пустой — повторяю одиночный запрос', level='warning')
