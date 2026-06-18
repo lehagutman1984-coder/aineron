@@ -36,7 +36,7 @@ ESCALATION_MAP = {
 DEFAULT_AGENT_MODELS = {
     'interviewer': 'claude-haiku-4-5-20251001',  # fast: reliable JSON questions
     'architect':   'claude-opus-4-8',     # smart: design quality matters most
-    'coder':       'deepseek-v3.2',         # fast: 32K output, no laozhang.ai Anthropic limit
+    'coder':       'claude-sonnet-4-6',      # smart: strong code quality, balanced speed
     'guardian':    'claude-sonnet-4-6',   # smart: reliable review without over-nitpicking
 }
 
