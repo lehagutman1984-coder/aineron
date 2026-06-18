@@ -392,8 +392,9 @@ def run_pipeline(project_id):
         publish_event(project_id, {'agent': 'system', 'level': 'info', 'type': 'progress', 'text': 'Устанавливаю зависимости...'})
         sandbox.install_deps(cid)
         publish_event(project_id, {'agent': 'system', 'level': 'info', 'type': 'progress', 'text': 'Зависимости установлены'})
-        sandbox.isolate(cid)
+        # Start dev server BEFORE isolation (pnpm 11 runDepsStatusCheck needs internet).
         sandbox.start_dev_server(cid)
+        sandbox.isolate(cid)
     except Exception as exc:
         import logging
         logging.getLogger('studio.tasks').error(
@@ -476,11 +477,12 @@ def _ensure_sandbox(project, project_id):
         publish_event(project_id, {'agent': 'system', 'level': 'info', 'type': 'progress', 'text': 'Устанавливаю зависимости...'})
         sandbox.install_deps(cid)
         publish_event(project_id, {'agent': 'system', 'level': 'info', 'type': 'progress', 'text': 'Зависимости установлены'})
-        sandbox.isolate(cid)
+        # Start dev server BEFORE isolation (pnpm 11 runDepsStatusCheck needs internet).
         sandbox.start_dev_server(cid)
         project.preview_port = 3000
         project.save(update_fields=['preview_port'])
         publish_event(project_id, {'agent': 'system', 'level': 'info', 'text': 'Sandbox готов'})
+        sandbox.isolate(cid)
     except Exception as exc:
         import logging
         logging.getLogger('studio.tasks').warning(
@@ -1134,14 +1136,23 @@ def restart_preview(project_id):
         if not project.files.exists():
             sandbox.write_files(cid, {'package.json': '{"name":"app","private":true}'})
         publish_event(project_id, {'agent': 'system', 'level': 'info', 'type': 'progress', 'text': 'Устанавливаю зависимости...'})
-        sandbox.install_deps(cid)
+        exit_code, install_out = sandbox.install_deps(cid)
+        if exit_code != 0:
+            import logging as _log
+            _log.getLogger('studio.tasks').warning(
+                'pnpm install non-zero exit=%s project=%s:\n%s', exit_code, project_id, install_out[-500:])
         publish_event(project_id, {'agent': 'system', 'level': 'info', 'type': 'progress', 'text': 'Зависимости установлены'})
-        sandbox.isolate(cid)
+        # Start dev server BEFORE isolation so pnpm 11's runDepsStatusCheck
+        # (which may trigger a second `pnpm install`) runs while internet is available.
+        # install_deps already wrote prefer-offline=true to .npmrc as a belt+suspenders guard.
         sandbox.start_dev_server(cid)
         project.preview_port = 3000
         project.save(update_fields=['preview_port'])
         publish_event(project_id, {'agent': 'system', 'level': 'info', 'text': 'Sandbox запущен, ждём HTTP-сервер...'})
         ready = sandbox.wait_for_ready(cid, timeout=150, warmup=True)
+        # Isolate AFTER dev server is ready (or timed out) so pnpm's deps check
+        # had internet access during the entire startup phase.
+        sandbox.isolate(cid)
         if ready:
             publish_event(project_id, {'agent': 'system', 'level': 'success', 'text': 'Превью готово'})
         else:

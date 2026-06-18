@@ -77,8 +77,20 @@ def exec_command(container_id: str, cmd: str, workdir='/workspace') -> tuple:
 
 
 def install_deps(container_id: str) -> tuple:
-    """pnpm install on bridge network (before isolation)."""
-    return exec_command(container_id, 'pnpm install --prefer-offline=false')
+    """pnpm install on Compose network (before isolation).
+
+    After install, writes prefer-offline=true to .npmrc so that pnpm dev's
+    runDepsStatusCheck (pnpm 11+) does NOT attempt re-downloads after isolation
+    to the internal (no-internet) sandbox network.
+    """
+    result = exec_command(container_id, 'pnpm install --prefer-offline=false')
+    # Lock pnpm into offline mode: subsequent pnpm install attempts (e.g. triggered
+    # by pnpm dev's runDepsStatusCheck) will use the local store and never hit the network.
+    exec_command(
+        container_id,
+        r'printf "prefer-offline=true\n" >> /workspace/.npmrc 2>/dev/null; true',
+    )
+    return result
 
 
 def isolate(container_id: str):
