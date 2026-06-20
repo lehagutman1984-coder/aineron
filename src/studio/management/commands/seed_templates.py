@@ -1,6 +1,65 @@
 from django.core.management.base import BaseCommand
 from studio.models import StudioTemplate
 
+RU_TEMPLATES = [
+    {
+        'slug': 'ru-ecommerce',
+        'name': 'Интернет-магазин (Россия)',
+        'description': 'Магазин с оплатой через Робокассу и авторизацией VK ID',
+        'stack': 'nextjs',
+        'is_public': True,
+        'features': ['robokassa', 'vk_id'],
+        'seed_prompt': (
+            'Создай интернет-магазин на Next.js для российского рынка: каталог товаров с карточками, '
+            'корзина с подсчётом суммы, оформление заказа с оплатой через Робокассу, '
+            'авторизация через VK ID. Стиль современного e-commerce, тёмная тема.'
+        ),
+        'order': 10,
+    },
+    {
+        'slug': 'ru-realty',
+        'name': 'Сервис недвижимости',
+        'description': 'Каталог объектов с Яндекс.Картами и формой заявки',
+        'stack': 'nextjs',
+        'is_public': True,
+        'features': ['yandex_maps'],
+        'seed_prompt': (
+            'Создай сайт агентства недвижимости на Next.js: каталог объектов с фильтрами '
+            '(цена, район, тип), карточки объектов с фото, Яндекс.Карта с метками, '
+            'форма заявки на показ. Профессиональный дизайн.'
+        ),
+        'order': 11,
+    },
+    {
+        'slug': 'ru-telegram-bot-landing',
+        'name': 'Лендинг Telegram-бота',
+        'description': 'Промо-страница бота с кнопкой Telegram Login',
+        'stack': 'nextjs',
+        'is_public': True,
+        'features': ['telegram_login'],
+        'seed_prompt': (
+            'Создай лендинг для Telegram-бота на Next.js: hero с названием и описанием бота, '
+            'секция возможностей (3-4 карточки), виджет Telegram Login для регистрации, '
+            'FAQ и footer. Используй цвета и стиль Telegram.'
+        ),
+        'order': 12,
+    },
+    {
+        'slug': 'ru-b2b-saas',
+        'name': 'B2B SaaS (Россия)',
+        'description': 'Корпоративный SaaS с оплатой через Робокассу и VK ID',
+        'stack': 'nextjs',
+        'is_public': True,
+        'features': ['robokassa', 'vk_id'],
+        'seed_prompt': (
+            'Создай B2B SaaS-приложение для российского рынка на Next.js: дашборд с метриками, '
+            'управление аккаунтом, тарифные планы с оплатой через Робокассу, '
+            'авторизация через VK ID или email. Минималистичный корпоративный дизайн.'
+        ),
+        'order': 13,
+    },
+]
+
 TEMPLATES = [
     {
         'slug': 'landing',
@@ -61,11 +120,12 @@ class Command(BaseCommand):
     help = 'Seed default project templates (idempotent)'
 
     def handle(self, *args, **options):
-        for data in TEMPLATES:
+        all_templates = TEMPLATES + RU_TEMPLATES
+        for data in all_templates:
             obj, created = StudioTemplate.objects.update_or_create(
                 slug=data['slug'],
                 defaults={k: v for k, v in data.items() if k != 'slug'},
             )
             action = 'Created' if created else 'Updated'
             self.stdout.write(f'{action}: {obj.name}')
-        self.stdout.write(self.style.SUCCESS(f'Done: {len(TEMPLATES)} templates seeded'))
+        self.stdout.write(self.style.SUCCESS(f'Done: {len(all_templates)} templates seeded'))

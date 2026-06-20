@@ -156,6 +156,7 @@ class StudioTemplate(models.Model):
     stack = models.CharField(max_length=10, choices=STACK_CHOICES, default='nextjs')
     preview_image = models.CharField(max_length=300, blank=True)
     seed_prompt = models.TextField()
+    features = models.JSONField(default=list, blank=True)  # list of feature keys: ['robokassa','vk_id','yandex_maps','telegram_login']
     order = models.IntegerField(default=0)
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True,
