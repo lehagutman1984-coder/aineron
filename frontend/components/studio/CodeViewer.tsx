@@ -18,6 +18,8 @@ interface CodeViewerProps {
   editable?: boolean;
   onSave?: (content: string) => Promise<void> | void;
   projectId?: string;
+  streaming?: boolean;
+  streamContent?: string;
 }
 
 function extToLang(path?: string) {
@@ -27,7 +29,7 @@ function extToLang(path?: string) {
   return javascript({ jsx: true, typescript: true });
 }
 
-export function CodeViewer({ content, language: _language, path, editable, onSave, projectId }: CodeViewerProps) {
+export function CodeViewer({ content, language: _language, path, editable, onSave, projectId, streaming, streamContent }: CodeViewerProps) {
   const [copied, setCopied] = useState(false);
   const [value, setValue] = useState(content);
   const [saving, setSaving] = useState(false);
@@ -37,6 +39,9 @@ export function CodeViewer({ content, language: _language, path, editable, onSav
   const [explaining, setExplaining] = useState(false);
 
   useEffect(() => { setValue(content); setDirty(false); }, [content, path]);
+
+  // Live streaming: show streamContent while coder is actively writing this file
+  const displayValue = (streaming && streamContent != null) ? streamContent : value;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(value).then(() => {
@@ -95,7 +100,7 @@ export function CodeViewer({ content, language: _language, path, editable, onSav
       )}
       <div className={code.editor} onMouseUp={onMouseUp}>
         <CodeMirror
-          value={value}
+          value={displayValue}
           theme={oneDark}
           editable={!!editable}
           extensions={[extToLang(path)]}

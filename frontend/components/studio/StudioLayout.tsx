@@ -53,6 +53,9 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
   const [timelineOpen, setTimelineOpen] = useState(pipeline.status === 'running');
   const [currentAgent, setCurrentAgent] = useState('');
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  // Live streaming: path → accumulated chunk text while coder is writing
+  const [streamBuffers, setStreamBuffers] = useState<Record<string, string>>({});
+  const [streamingPath, setStreamingPath] = useState<string | null>(null);
 
   const AGENT_LABELS: Record<string, string> = {
     interviewer: 'Интервью', analyst: 'Анализ', planner: 'План',
@@ -213,6 +216,15 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
       try {
         const d = JSON.parse(e.data);
         if (d.agent && d.agent !== 'system') setCurrentAgent(d.agent);
+        // file_delta: accumulate streaming chunks for live code view
+        if (d.type === 'file_delta' && d.path && d.chunk) {
+          setStreamingPath(d.path);
+          setStreamBuffers((prev) => ({ ...prev, [d.path]: (prev[d.path] ?? '') + d.chunk }));
+        }
+        if (d.type === 'file_delta_done' && d.path) {
+          setStreamingPath(null);
+          setStreamBuffers((prev) => { const n = { ...prev }; delete n[d.path]; return n; });
+        }
       } catch { /* noop */ }
     };
     return () => src.close();
@@ -473,6 +485,8 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
                   editable={project.status !== 'completed'}
                   onSave={handleSaveFile}
                   projectId={project.id}
+                  streaming={streamingPath === fileDetail?.path}
+                  streamContent={fileDetail?.path ? streamBuffers[fileDetail.path] : undefined}
                 />
                 )
               ) : (
@@ -510,6 +524,8 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
                 editable={project.status !== 'completed'}
                 onSave={handleSaveFile}
                 projectId={project.id}
+                streaming={streamingPath === fileDetail?.path}
+                streamContent={fileDetail?.path ? streamBuffers[fileDetail.path] : undefined}
               />
             )}
             {mobileTab === 'preview' && (
