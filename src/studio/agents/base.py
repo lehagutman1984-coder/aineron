@@ -76,7 +76,7 @@ class BaseAgent:
 
     def run_prompt(self, system: str, user: str, model: str = None,
                    max_tokens: int = 8192, temperature: float = 0.7,
-                   prior: str = '') -> str:
+                   prior: str = '', on_delta=None) -> str:
         """
         Call model using streaming. Sets self.last_finish_reason and
         self.last_completion_tokens for callers to inspect.
@@ -134,6 +134,11 @@ class BaseAgent:
             choice = chunk.choices[0]
             if choice.delta and choice.delta.content:
                 chunks.append(choice.delta.content)
+                if on_delta is not None:
+                    try:
+                        on_delta(choice.delta.content)
+                    except Exception:
+                        pass
             if choice.finish_reason:
                 self.last_finish_reason = choice.finish_reason
 
@@ -160,7 +165,8 @@ class BaseAgent:
                                      model: str = None, max_tokens: int = 8192,
                                      temperature: float = 0.2,
                                      max_rounds: int = 6,
-                                     stop_marker: str = None) -> str:
+                                     stop_marker: str = None,
+                                     on_delta=None) -> str:
         """
         Generate with automatic continuation when output hits the token limit.
         Submits already-generated text as assistant prior so the model resumes
@@ -175,7 +181,7 @@ class BaseAgent:
             part = self.run_prompt(
                 system, user, model=model_id,
                 max_tokens=max_tokens, temperature=temperature,
-                prior=full,
+                prior=full, on_delta=on_delta,
             )
             full += part
             acc_prompt += self.last_prompt_tokens
