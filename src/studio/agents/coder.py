@@ -241,10 +241,35 @@ class CoderAgent(BaseAgent):
                 f"Relevant file contents:\n{context_str}\n\n"
                 f"Output the file wrapped in:\n=== FILE: {path} ===\n...\n=== END FILE ==="
             )
+            on_delta = None
+            if settings.STUDIO_V4_STREAMING:
+                import time as _time
+                from ..events import publish_event
+                _buf: dict = {'text': '', 'ts': _time.monotonic()}
+                _pid = str(self.project.id)
+                _path = path
+
+                def on_delta(chunk_text, _b=_buf, _pp=_pid, _fp=_path):
+                    _b['text'] += chunk_text
+                    now = _time.monotonic()
+                    if len(_b['text']) >= 80 or (now - _b['ts']) >= 0.2:
+                        publish_event(_pp, {
+                            'type': 'file_delta', 'path': _fp, 'chunk': _b['text'],
+                        })
+                        _b['text'] = ''
+                        _b['ts'] = now
+
             raw = self.run_prompt_with_continuation(
                 system, user, model=model, max_tokens=24000, temperature=0.15,
-                stop_marker=FILE_CLOSE,
+                stop_marker=FILE_CLOSE, on_delta=on_delta,
             )
+            if settings.STUDIO_V4_STREAMING and on_delta is not None:
+                from ..events import publish_event as _pub
+                if _buf['text']:
+                    _pub(str(self.project.id), {
+                        'type': 'file_delta', 'path': path, 'chunk': _buf['text'],
+                    })
+                _pub(str(self.project.id), {'type': 'file_delta_done', 'path': path})
             files, incomplete = parse_file_blocks(raw)
             # per-file: ожидаем ровно один блок; берём по точному пути или единственный
             content = files.get(path)
@@ -266,9 +291,33 @@ class CoderAgent(BaseAgent):
             f"All project files (for reference):\n{listing}\n\n"
             f"Relevant file contents:\n{context_str}"
         )
+        legacy_delta = None
+        if settings.STUDIO_V4_STREAMING:
+            import time as _time2
+            from ..events import publish_event as _pub2
+            _buf2: dict = {'text': '', 'ts': _time2.monotonic()}
+            _pid2 = str(self.project.id)
+            _path2 = path
+
+            def legacy_delta(chunk_text, _b=_buf2, _pp=_pid2, _fp=_path2):
+                _b['text'] += chunk_text
+                now = _time2.monotonic()
+                if len(_b['text']) >= 80 or (now - _b['ts']) >= 0.2:
+                    _pub2(_pp, {'type': 'file_delta', 'path': _fp, 'chunk': _b['text']})
+                    _b['text'] = ''
+                    _b['ts'] = now
+
         raw = self.run_prompt_with_continuation(
             system, user, model=model, max_tokens=24000, temperature=0.15,
+            on_delta=legacy_delta,
         )
+        if settings.STUDIO_V4_STREAMING and legacy_delta is not None:
+            from ..events import publish_event as _pub3
+            if _buf2['text']:
+                _pub3(str(self.project.id), {
+                    'type': 'file_delta', 'path': path, 'chunk': _buf2['text'],
+                })
+            _pub3(str(self.project.id), {'type': 'file_delta_done', 'path': path})
         return _strip_fences(raw)
 
     def _file_spec(self, path: str) -> tuple[int, str]:
