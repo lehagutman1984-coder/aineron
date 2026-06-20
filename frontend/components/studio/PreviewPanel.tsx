@@ -34,11 +34,19 @@ export function PreviewPanel({ projectId, hasSandbox, status, githubUrl, onRefre
 
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
-      if (e.data?.type === 'studio-console-error') {
-        const err: ConsoleError = e.data.error;
-        setErrors((prev) => [...prev, err].slice(-20));
-        studioApi.reportConsoleError(projectId, err);
-      }
+      const data = e.data || {};
+      if (data.type !== 'studio-console-error') return;
+      // Support both legacy flat format and new {payload: {...}} format from injected hook
+      const p = data.payload || data.error || data;
+      const ce: ConsoleError = {
+        message: p.message || '',
+        file: p.file || '',
+        line: p.line ?? undefined,
+        stack: p.stack || '',
+      };
+      setErrors((prev) => [...prev, ce].slice(-20));
+      // Auto-capture: store only (no autofix). User triggers fix via button.
+      studioApi.reportConsoleError(projectId, { ...ce, autofix: false });
     };
     window.addEventListener('message', onMsg);
     return () => window.removeEventListener('message', onMsg);

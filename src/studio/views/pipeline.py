@@ -431,12 +431,26 @@ class PreviewProxyView(APIView):
         if ext in ('.html', '.htm'):
             base_href = f'/api/v1/studio/projects/{id}/preview/'
             tag = f'<base href="{base_href}">'
+            # Error capture hook: relays window.onerror + console.error to parent via postMessage
+            err_hook = (
+                '<script>(function(){'
+                'function send(p){try{parent.postMessage('
+                '{type:"studio-console-error",payload:p},"*");}catch(e){}}'
+                'window.addEventListener("error",function(e){'
+                'send({message:String(e.message||e.error||""),file:e.filename||"",'
+                'line:e.lineno||0,stack:(e.error&&e.error.stack)||""});});'
+                'var _oc=console.error;console.error=function(){'
+                'send({message:Array.prototype.join.call(arguments," "),file:"",line:0,stack:""});'
+                '_oc.apply(console,arguments);};'
+                '})();</script>'
+            )
+            inject = tag + err_hook
             if '<head>' in body:
-                body = body.replace('<head>', f'<head>{tag}', 1)
+                body = body.replace('<head>', f'<head>{inject}', 1)
             elif '<html>' in body:
-                body = body.replace('<html>', f'<html><head>{tag}</head>', 1)
+                body = body.replace('<html>', f'<html><head>{inject}</head>', 1)
             else:
-                body = tag + body
+                body = inject + body
         resp = HttpResponse(body, content_type=content_type)
         resp['X-Frame-Options'] = 'SAMEORIGIN'
         return resp
