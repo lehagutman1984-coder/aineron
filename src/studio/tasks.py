@@ -429,8 +429,36 @@ def run_pipeline(project_id):
     )
     project.save(update_fields=['sandbox_container_id', 'preview_port', 'interview_data'])
     if settings.STUDIO_V3:
-        from .scaffold import scaffold_files
+        from .scaffold import (
+            scaffold_files, scaffold_robokassa, scaffold_vk_id,
+            scaffold_yandex_maps, scaffold_telegram_login,
+        )
         sf = scaffold_files(project.target_stack, project.design_md_content)
+        # V4: inject Russian integration scaffolds based on template features
+        if getattr(settings, 'STUDIO_V4_RU_STACK', False):
+            features = []
+            try:
+                from .models import StudioTemplate
+                tmpl = StudioTemplate.objects.filter(
+                    seed_prompt__in=[project.description]
+                ).first()
+                if tmpl:
+                    features = tmpl.features or []
+            except Exception:
+                pass
+            # Also check interview_data for feature hints
+            if not features:
+                features = (project.interview_data or {}).get('features', [])
+            _FEATURE_SCAFFOLD = {
+                'robokassa': scaffold_robokassa,
+                'vk_id': scaffold_vk_id,
+                'yandex_maps': scaffold_yandex_maps,
+                'telegram_login': scaffold_telegram_login,
+            }
+            for feat in features:
+                fn = _FEATURE_SCAFFOLD.get(feat)
+                if fn:
+                    sf.update(fn())
         if sf:
             for path, content in sf.items():
                 StudioFile.objects.get_or_create(

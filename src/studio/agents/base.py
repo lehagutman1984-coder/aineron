@@ -20,6 +20,7 @@ def pick_prompt(ru: str, en: str) -> str:
 
 _client = None
 _fallback_client = None
+_gigachat_client = None
 
 
 def get_client() -> OpenAI:
@@ -45,6 +46,18 @@ def get_fallback_client():
             timeout=360.0,
         )
     return _fallback_client
+
+
+def get_gigachat_client():
+    """Return OpenAI-compatible client for GigaChat (Sber) when STUDIO_V4_RU_STACK=1."""
+    global _gigachat_client
+    url = getattr(settings, 'GIGACHAT_API_URL', '')
+    key = getattr(settings, 'GIGACHAT_API_KEY', '')
+    if not url or not key:
+        return None
+    if _gigachat_client is None:
+        _gigachat_client = OpenAI(api_key=key, base_url=url, timeout=360.0)
+    return _gigachat_client
 
 
 class BaseAgent:
@@ -73,6 +86,14 @@ class BaseAgent:
         if model and model in MODEL_TIER:
             return model
         return DEFAULT_STUDIO_MODEL
+
+    def _get_client_for_model(self, model_id: str):
+        """Return the appropriate OpenAI client for the given model ID."""
+        if model_id.startswith('gigachat'):
+            gc = get_gigachat_client()
+            if gc is not None:
+                return gc
+        return self.client
 
     def run_prompt(self, system: str, user: str, model: str = None,
                    max_tokens: int = 8192, temperature: float = 0.7,
@@ -108,9 +129,10 @@ class BaseAgent:
                 stream_options={'include_usage': True},
             )
 
+        primary_client = self._get_client_for_model(model_id)
         chunks = []
         try:
-            stream = _open_stream(self.client)
+            stream = _open_stream(primary_client)
         except (openai.APIStatusError, openai.APITimeoutError) as exc:
             fb = None
             if getattr(settings, 'STUDIO_V4_PROVIDER_FALLBACK', False):
@@ -123,7 +145,7 @@ class BaseAgent:
                 'agent %s: provider_failover model=%s err=%s — retrying on fallback',
                 self.name, model_id, exc,
             )
-            stream = _open_stream(fb)
+            stream = _open_stream(fb)  # fallback always uses laozhang fallback URL
         for chunk in stream:
             if getattr(chunk, 'usage', None):
                 self.last_completion_tokens = chunk.usage.completion_tokens or 0

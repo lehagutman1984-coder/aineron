@@ -1,5 +1,23 @@
 """Каталог моделей Studio: единый источник правды для UI, биллинга и эскалации."""
 
+# Russian-stack models added when STUDIO_V4_RU_STACK=1
+_RU_STACK_MODELS = [
+    {
+        'id': 'gigachat-max',
+        'label': 'GigaChat Max',
+        'category': 'smart',
+        'tier': 'smart',
+        'description': 'Российская LLM от Сбера, данные остаются в РФ',
+    },
+    {
+        'id': 'gigachat-plus',
+        'label': 'GigaChat Plus',
+        'category': 'fast',
+        'tier': 'fast',
+        'description': 'Быстрый GigaChat для рутинных задач',
+    },
+]
+
 STUDIO_MODELS = [
     {'id': 'claude-sonnet-4-6',          'label': 'Claude Sonnet 4.6',  'category': 'smart',     'tier': 'smart',  'description': 'Лучший баланс качества и скорости'},
     {'id': 'claude-opus-4-8',            'label': 'Claude Opus 4.8',    'category': 'smart',     'tier': 'smart',  'description': 'Максимальное качество, сложная архитектура'},
@@ -21,8 +39,13 @@ STUDIO_MODELS = [
 
 DEFAULT_STUDIO_MODEL = 'qwen3-coder-plus'
 
+def get_all_models():
+    from django.conf import settings as _s
+    extra = _RU_STACK_MODELS if getattr(_s, 'STUDIO_V4_RU_STACK', False) else []
+    return STUDIO_MODELS + extra
+
 # id -> tier (для биллинга и эскалации)
-MODEL_TIER = {m['id']: m['tier'] for m in STUDIO_MODELS}
+MODEL_TIER = {m['id']: m['tier'] for m in STUDIO_MODELS + _RU_STACK_MODELS}
 
 # Эскалация fast/coder -> smart по вендору для шагов [COMPLEX] и при повторных ошибках.
 ESCALATION_MAP = {
