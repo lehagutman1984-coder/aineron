@@ -18,6 +18,7 @@ class StudioProject(models.Model):
     ENTRY_CHOICES = [('description', 'С нуля'), ('clone_url', 'Клон по URL')]
     STACK_CHOICES = [
         ('nextjs', 'Next.js'), ('react', 'React'), ('vue', 'Vue'), ('html', 'HTML'),
+        ('tma', 'Telegram Mini App'),
     ]
     DEPLOY_TARGET_CHOICES = [
         ('none', 'Не деплоить'), ('vercel', 'Vercel'), ('timeweb', 'Timeweb Cloud'),
