@@ -157,6 +157,24 @@ def _parse_guardian_response(text: str) -> dict:
 class GuardianAgent(BaseAgent):
     name = 'guardian'
 
+    @staticmethod
+    def _build_symbol_map(all_files: dict) -> str:
+        """Extract exported names/functions per file for cross-file reference check."""
+        import re as _re
+        lines = []
+        for path, content in list(all_files.items())[:40]:
+            if not path.endswith(('.js', '.jsx', '.ts', '.tsx', '.py')):
+                continue
+            exports = _re.findall(
+                r'export\s+(?:default\s+)?(?:function|class|const|let|var|type|interface)\s+(\w+)',
+                content,
+            )
+            defs = _re.findall(r'^def\s+(\w+)', content, _re.MULTILINE)
+            names = exports + defs
+            if names:
+                lines.append(f'{path}: {", ".join(names[:15])}')
+        return '\n'.join(lines)
+
     def run(self, step_text: str, files: dict, build_logs: str = '', attempt: int = 0) -> dict:
         if settings.STUDIO_V3:
             system = pick_prompt(SYSTEM_V3_RU, SYSTEM_V3_EN)
@@ -165,6 +183,20 @@ class GuardianAgent(BaseAgent):
         else:
             system = pick_prompt(SYSTEM_RU, SYSTEM_EN)
             design_section = ''
+        # V4: full project symbol map for cross-file reference verification
+        symbol_section = ''
+        if getattr(settings, 'STUDIO_V4_GUARDIAN_CONTEXT', False):
+            try:
+                all_proj_files = {
+                    f.path: f.content
+                    for f in self.project.files.all()
+                }
+            except Exception:
+                all_proj_files = {}
+            if all_proj_files:
+                sym = self._build_symbol_map(all_proj_files)
+                if sym:
+                    symbol_section = f'\n\nProject exports (cross-file check):\n{sym}'
         files_content = '\n'.join(
             f'### {path}\n```\n{content[:8000]}\n```'
             for path, content in list(files.items())[:10]
@@ -178,7 +210,7 @@ class GuardianAgent(BaseAgent):
             if attempt > 0 else ''
         )
         user = (
-            f'Planned step:\n{step_text}{design_section}\n\n'
+            f'Planned step:\n{step_text}{design_section}{symbol_section}\n\n'
             f'Implemented files:{attempt_note}\n{files_content}'
             f'{build_section}'
         )
