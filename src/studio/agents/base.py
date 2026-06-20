@@ -2,6 +2,7 @@ import json
 import logging
 import re
 
+import openai
 from openai import OpenAI
 from django.conf import settings
 from ..models_catalog import ESCALATION_MAP, MODEL_TIER, DEFAULT_STUDIO_MODEL
@@ -18,6 +19,7 @@ def pick_prompt(ru: str, en: str) -> str:
     return en if getattr(settings, 'STUDIO_PROMPT_LANG', 'en') == 'en' else ru
 
 _client = None
+_fallback_client = None
 
 
 def get_client() -> OpenAI:
@@ -29,6 +31,20 @@ def get_client() -> OpenAI:
             timeout=360.0,
         )
     return _client
+
+
+def get_fallback_client():
+    global _fallback_client
+    url = getattr(settings, 'LAOZHANG_API_URL_FALLBACK', '')
+    if not url:
+        return None
+    if _fallback_client is None:
+        _fallback_client = OpenAI(
+            api_key=settings.LAOZHANG_API_KEY,
+            base_url=url,
+            timeout=360.0,
+        )
+    return _fallback_client
 
 
 class BaseAgent:
@@ -82,15 +98,32 @@ class BaseAgent:
         if prior:
             messages.append({'role': 'assistant', 'content': prior})
 
+        def _open_stream(client):
+            return client.chat.completions.create(
+                model=model_id,
+                messages=messages,
+                stream=True,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                stream_options={'include_usage': True},
+            )
+
         chunks = []
-        stream = self.client.chat.completions.create(
-            model=model_id,
-            messages=messages,
-            stream=True,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            stream_options={'include_usage': True},
-        )
+        try:
+            stream = _open_stream(self.client)
+        except (openai.APIStatusError, openai.APITimeoutError) as exc:
+            fb = None
+            if getattr(settings, 'STUDIO_V4_PROVIDER_FALLBACK', False):
+                status = getattr(exc, 'status_code', None)
+                if status is None or status >= 500:
+                    fb = get_fallback_client()
+            if fb is None:
+                raise
+            logger.warning(
+                'agent %s: provider_failover model=%s err=%s — retrying on fallback',
+                self.name, model_id, exc,
+            )
+            stream = _open_stream(fb)
         for chunk in stream:
             if getattr(chunk, 'usage', None):
                 self.last_completion_tokens = chunk.usage.completion_tokens or 0
