@@ -444,7 +444,31 @@ class PreviewProxyView(APIView):
                 '_oc.apply(console,arguments);};'
                 '})();</script>'
             )
-            inject = tag + err_hook
+            # TMA mock-SDK: inject window.Telegram.WebApp stub when STUDIO_V4_TMA is on
+            tma_mock = ''
+            if getattr(settings, 'STUDIO_V4_TMA', False):
+                tma_mock = (
+                    '<script>'
+                    'window.Telegram={WebApp:{'
+                    'ready:function(){},expand:function(){},'
+                    'close:function(){},'
+                    'colorScheme:"light",'
+                    'themeParams:{},'
+                    'initData:"",'
+                    'initDataUnsafe:{user:{id:1,first_name:"Preview",username:"preview"}},'
+                    'showAlert:function(m){alert(m);},'
+                    'showConfirm:function(m,cb){cb(confirm(m));},'
+                    'openInvoice:function(url,cb){alert("TMA payment mock: "+url);if(cb)cb("paid");},'
+                    'MainButton:{setText:function(){},show:function(){},hide:function(){},'
+                    'onClick:function(fn){this._fn=fn;},offClick:function(){}},'
+                    'BackButton:{show:function(){},hide:function(){},'
+                    'onClick:function(fn){this._fn=fn;},offClick:function(){}},'
+                    'onEvent:function(){},offEvent:function(){},'
+                    'sendData:function(d){console.log("TMA sendData:",d);}'
+                    '}};'
+                    '</script>'
+                )
+            inject = tag + err_hook + tma_mock
             if '<head>' in body:
                 body = body.replace('<head>', f'<head>{inject}', 1)
             elif '<html>' in body:
