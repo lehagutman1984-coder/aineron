@@ -24,13 +24,16 @@ DEFAULT_STUDIO_MODEL = 'qwen3-coder-plus'
 # id -> tier (для биллинга и эскалации)
 MODEL_TIER = {m['id']: m['tier'] for m in STUDIO_MODELS}
 
-# Эскалация fast -> smart по вендору для шагов [COMPLEX] и при повторных ошибках.
+# Эскалация fast/coder -> smart по вендору для шагов [COMPLEX] и при повторных ошибках.
 ESCALATION_MAP = {
     'deepseek-v3.2':             'deepseek-v4-pro',
     'gpt-4.1-mini':              'gpt-4.1',
     'gpt-5-mini':                'gpt-5',
     'gpt-4o':                    'gpt-4.1',
     'claude-haiku-4-5-20251001': 'claude-sonnet-4-6',
+    # coder tier -> smart tier for [COMPLEX] steps
+    'qwen3-coder-plus':          'claude-opus-4-8',
+    'kimi-k2':                   'claude-opus-4-8',
 }
 
 # Default per-agent models: per-agent sensible defaults before project.ai_model

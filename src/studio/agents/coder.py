@@ -163,7 +163,7 @@ class CoderAgent(BaseAgent):
 
     def _pick_model(self, step_title: str) -> str:
         base = self.resolve_model()
-        if '[COMPLEX]' in (step_title or '') and MODEL_TIER.get(base) == 'fast':
+        if '[COMPLEX]' in (step_title or '') and MODEL_TIER.get(base) in ('fast', 'coder'):
             return ESCALATION_MAP.get(base, base)
         return base
 
@@ -175,13 +175,15 @@ class CoderAgent(BaseAgent):
         self.log('Определяю список файлов для генерации...')
         system = pick_prompt(MANIFEST_SYSTEM_RU, MANIFEST_SYSTEM_EN)
         listing = '\n'.join(f'- {p}' for p in existing_files) or '(empty)'
+        commits_md = getattr(self.project, 'commits_md_content', '') or ''
+        commits_block = f"\n\nFull implementation plan (COMMITS.md):\n{commits_md}" if commits_md else ''
         user = (
-            f"PROJECT.md:\n{self.project.project_md_content[:3000]}\n\n"
+            f"PROJECT.md:\n{self.project.project_md_content}{commits_block}\n\n"
             f"Step #{step_index}:\n{step_text}\n\n"
             f"Existing project files:\n{listing}"
         )
         try:
-            data = self.run_json(system, user, model=model, max_tokens=1200)
+            data = self.run_json(system, user, model=model, max_tokens=2000)
             raw = data.get('files', [])
             if isinstance(raw, list) and raw:
                 files = [str(f) for f in raw if f]
@@ -208,18 +210,20 @@ class CoderAgent(BaseAgent):
             else:
                 existing_str = (
                     f"\n\nCurrent content of {path} (modify/replace as needed):\n"
-                    f"```\n{existing_content[:6000]}\n```"
+                    f"```\n{existing_content[:10000]}\n```"
                 )
         else:
             existing_str = ''
 
         context = _select_context_files(
-            step_text, {k: v for k, v in existing_files.items() if k != path}, max_files=8
+            step_text, {k: v for k, v in existing_files.items() if k != path}, max_files=10
         )
         context_str = '\n'.join(
-            f'### {p}\n```\n{c[:3000]}\n```' for p, c in context.items()
+            f'### {p}\n```\n{c[:5000]}\n```' for p, c in context.items()
         )
         listing = '\n'.join(f'- {p}' for p in existing_files) or '(empty)'
+        commits_md = getattr(self.project, 'commits_md_content', '') or ''
+        commits_block = f"\n\nFull implementation plan (COMMITS.md):\n{commits_md}" if commits_md else ''
 
         if settings.STUDIO_V3:
             system = pick_prompt(CODER_FILE_BLOCKS_RU, CODER_FILE_BLOCKS_EN)
@@ -232,7 +236,7 @@ class CoderAgent(BaseAgent):
                 if role or max_lines else ''
             )
             user = (
-                f"PROJECT.md:\n{self.project.project_md_content[:4000]}\n\n"
+                f"PROJECT.md:\n{self.project.project_md_content}{commits_block}\n\n"
                 f"Step #{step_index}:\n{step_text}{limit_block}\n\n"
                 f"FILE TO WRITE: {path}{existing_str}{design_block}\n\n"
                 f"All project files (for reference):\n{listing}\n\n"
@@ -258,7 +262,7 @@ class CoderAgent(BaseAgent):
         # --- legacy путь (STUDIO_V3=False): голый текст ---
         system = pick_prompt(FILE_SYSTEM_RU, FILE_SYSTEM_EN)
         user = (
-            f"PROJECT.md:\n{self.project.project_md_content[:4000]}\n\n"
+            f"PROJECT.md:\n{self.project.project_md_content}{commits_block}\n\n"
             f"Step #{step_index}:\n{step_text}\n\n"
             f"FILE TO WRITE: {path}{existing_str}\n\n"
             f"All project files (for reference):\n{listing}\n\n"
@@ -280,7 +284,7 @@ class CoderAgent(BaseAgent):
 
     def _design_excerpt(self) -> str:
         d = getattr(self.project, 'design_md_content', '') or ''
-        return d[:2500]
+        return d[:5000]
 
     def _generate_files(self, file_list: list[str], step_index: int, step_text: str,
                         existing_files: dict, model: str) -> dict:

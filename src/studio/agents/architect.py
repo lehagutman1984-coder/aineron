@@ -130,7 +130,7 @@ class ArchitectAgent(BaseAgent):
             system_project,
             context,
             model=model,
-            max_tokens=4096,
+            max_tokens=8192,
             temperature=0.3,
         )
 
@@ -139,8 +139,8 @@ class ArchitectAgent(BaseAgent):
             system_design = pick_prompt(ARCHITECT_DESIGN_RU, ARCHITECT_DESIGN_EN)
             design_md = self.run_prompt(
                 system_design,
-                context + f"\n\nPROJECT.md:\n{project_md[:2000]}",
-                model=model, max_tokens=3000, temperature=0.4,
+                context + f"\n\nPROJECT.md:\n{project_md}",
+                model=model, max_tokens=5000, temperature=0.4,
             )
 
         if _global_settings.STUDIO_V3:
@@ -149,9 +149,9 @@ class ArchitectAgent(BaseAgent):
             system_commits = pick_prompt(SYSTEM_COMMITS_RU, SYSTEM_COMMITS_EN)
         commits_md = self.run_prompt(
             system_commits,
-            context + f"\n\nPROJECT.md already written:\n{project_md[:2000]}",
+            context + f"\n\nPROJECT.md already written:\n{project_md}",
             model=model,
-            max_tokens=4096,
+            max_tokens=8192,
             temperature=0.3,
         )
 

@@ -617,6 +617,8 @@ raise self.retry(exc=e, countdown=60)  # max_retries=3
 
 ---
 
+Сейчас выполняем задачу обновляем studio используем STUDIO_PLAN.md и к нему план по коммитам
+
 ## Файлы: ключевые пути
 
 ### Backend
