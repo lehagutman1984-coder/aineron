@@ -182,6 +182,138 @@ export function TelegramLogin({ botName, onAuth, buttonSize = 'medium' }: Telegr
 """
 
 
+_TMA_VITE_CONFIG = """\
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+// Telegram Mini App scaffold — Vite + React
+// @twa-dev/sdk provides WebApp methods and initData
+export default defineConfig({
+  plugins: [react()],
+  server: { host: true, port: 3000 },
+  base: './',
+  build: { outDir: 'dist', sourcemap: false },
+});
+"""
+
+_TMA_APP_TSX = """\
+import { useEffect, useState } from 'react';
+import WebApp from '@twa-dev/sdk';
+
+// Main TMA entry point — runs inside Telegram
+// Call WebApp.ready() FIRST so Telegram hides the loading spinner
+export default function App() {
+  const [user, setUser] = useState<{ first_name: string } | null>(null);
+
+  useEffect(() => {
+    WebApp.ready();
+    WebApp.expand();
+    setUser(WebApp.initDataUnsafe?.user ?? null);
+  }, []);
+
+  return (
+    <div style={{ padding: 16, fontFamily: 'sans-serif' }}>
+      <h1>Hello, {user?.first_name ?? 'User'}!</h1>
+    </div>
+  );
+}
+"""
+
+_TMA_VALIDATE_PY = """\
+# validate_tma_init_data.py — server-side HMAC validation (mandatory per Telegram docs)
+# Reference: https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app
+import hashlib
+import hmac
+import urllib.parse
+
+
+def validate_init_data(init_data: str, bot_token: str) -> bool:
+    \"\"\"Validate Telegram Mini App initData string.\"\"\"
+    params = dict(urllib.parse.parse_qsl(init_data, keep_blank_values=True))
+    hash_value = params.pop('hash', '')
+    data_check_string = '\\n'.join(f'{k}={v}' for k, v in sorted(params.items()))
+    secret_key = hmac.new(b'WebAppData', bot_token.encode(), hashlib.sha256).digest()
+    expected = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, hash_value)
+"""
+
+_TMA_PACKAGE_JSON = """\
+{
+  "name": "tma-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 3000",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "@twa-dev/sdk": "^7.10.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5"
+  }
+}
+"""
+
+_TMA_PAYMENTS_TSX = """\
+import WebApp from '@twa-dev/sdk';
+
+// Telegram Stars payment via Telegram's native invoicing
+// Backend must create invoice link: https://core.telegram.org/bots/api#createinvoicelink
+interface PaymentParams {
+  title: string;
+  amount: number;  // in Telegram Stars (XTR)
+  invoiceUrl?: string;  // optional: pre-generated invoice URL from backend
+}
+
+export async function openTelegramPayment({ title, amount, invoiceUrl }: PaymentParams) {
+  if (invoiceUrl) {
+    WebApp.openInvoice(invoiceUrl, (status) => {
+      if (status === 'paid') {
+        WebApp.showAlert(`Оплачено ${amount} Stars!`);
+      } else if (status === 'failed') {
+        WebApp.showAlert('Оплата не прошла. Попробуйте снова.');
+      }
+    });
+    return;
+  }
+  // Fallback: request invoice from backend
+  const res = await fetch('/api/tma/invoice/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json',
+                'X-Telegram-Init-Data': WebApp.initData },
+    body: JSON.stringify({ title, amount }),
+  });
+  const { invoice_url } = await res.json();
+  WebApp.openInvoice(invoice_url, (status) => {
+    if (status === 'paid') WebApp.showAlert(`Оплачено ${amount} Stars!`);
+  });
+}
+"""
+
+
+def scaffold_tma() -> dict:
+    """Scaffold for Telegram Mini App (Vite+React+@twa-dev/sdk)."""
+    return {
+        'vite.config.ts': _TMA_VITE_CONFIG,
+        'package.json': _TMA_PACKAGE_JSON,
+        'src/App.tsx': _TMA_APP_TSX,
+        'src/validate_tma_init_data.py': _TMA_VALIDATE_PY,
+    }
+
+
+def scaffold_tma_payments() -> dict:
+    """Scaffold Telegram Stars payment flow."""
+    return {'src/lib/tmaPayments.ts': _TMA_PAYMENTS_TSX}
+
+
 def scaffold_robokassa() -> dict:
     return {'src/lib/robokassa.ts': _ROBOKASSA_HOOK}
 
