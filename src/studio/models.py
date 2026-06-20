@@ -19,6 +19,10 @@ class StudioProject(models.Model):
     STACK_CHOICES = [
         ('nextjs', 'Next.js'), ('react', 'React'), ('vue', 'Vue'), ('html', 'HTML'),
     ]
+    DEPLOY_TARGET_CHOICES = [
+        ('none', 'Не деплоить'), ('vercel', 'Vercel'), ('timeweb', 'Timeweb Cloud'),
+        ('selectel', 'Selectel'), ('tma', 'Telegram Mini App'),
+    ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(
@@ -46,6 +50,7 @@ class StudioProject(models.Model):
     max_iterations = models.IntegerField(default=0)  # 0 = use global STUDIO_MAX_ITERATIONS
     max_stars_budget = models.IntegerField(default=0)  # 0 = no cap
     auto_deploy = models.BooleanField(default=False)
+    deploy_target = models.CharField(max_length=20, choices=DEPLOY_TARGET_CHOICES, default='none')
     forked_from = models.ForeignKey(
         'self', null=True, blank=True, on_delete=models.SET_NULL, related_name='forks'
     )

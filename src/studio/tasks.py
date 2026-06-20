@@ -1371,3 +1371,83 @@ def _timeout_pipeline(state, reason):
         'agent': 'system', 'level': 'error',
         'text': reason, 'type': 'failed',
     })
+
+
+# ─── V4 Russian cloud deploy tasks ────────────────────────────────────────────
+
+@shared_task(queue=QUEUE)
+def deploy_to_timeweb(project_id):
+    """Deploy project files to Timeweb Cloud (static hosting) via their API."""
+    if not getattr(settings, 'STUDIO_V4_RU_STACK', False):
+        return
+    project = StudioProject.objects.get(id=project_id)
+    token = getattr(settings, 'TIMEWEB_API_TOKEN', '')
+    if not token:
+        publish_event(project_id, {
+            'agent': 'system', 'level': 'warning',
+            'text': 'TIMEWEB_API_TOKEN не настроен — деплой пропущен',
+        })
+        return
+    import urllib.request, json as _json
+    files = {f.path: f.content for f in project.files.all()}
+    payload = _json.dumps({'name': str(project.id)[:20], 'files': {
+        p: c for p, c in files.items() if p.endswith(('.html', '.css', '.js'))
+    }}).encode()
+    req = urllib.request.Request(
+        'https://api.timeweb.cloud/api/v1/static-sites',
+        data=payload,
+        headers={'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'},
+        method='POST',
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = _json.loads(resp.read())
+        url = data.get('response', {}).get('url', '')
+        if url:
+            project.vercel_deployment_url = url
+            project.save(update_fields=['vercel_deployment_url'])
+        publish_event(project_id, {
+            'agent': 'system', 'level': 'success',
+            'text': f'Опубликовано на Timeweb: {url or "—"}',
+        })
+    except Exception as exc:
+        publish_event(project_id, {
+            'agent': 'system', 'level': 'warning',
+            'text': f'Timeweb deploy error: {exc}',
+        })
+
+
+@shared_task(queue=QUEUE)
+def deploy_to_selectel(project_id):
+    """Deploy project files to Selectel Object Storage (static hosting)."""
+    if not getattr(settings, 'STUDIO_V4_RU_STACK', False):
+        return
+    project = StudioProject.objects.get(id=project_id)
+    account_id = getattr(settings, 'SELECTEL_ACCOUNT_ID', '')
+    api_key = getattr(settings, 'SELECTEL_API_KEY', '')
+    if not account_id or not api_key:
+        publish_event(project_id, {
+            'agent': 'system', 'level': 'warning',
+            'text': 'SELECTEL_ACCOUNT_ID / SELECTEL_API_KEY не настроены — деплой пропущен',
+        })
+        return
+    import urllib.request as _req
+    bucket = f'studio-{str(project.id)[:16]}'
+    base_url = f'https://s3.selectel.ru/{account_id}/{bucket}'
+    upload_ok, upload_fail = 0, 0
+    for studio_file in project.files.all():
+        if not studio_file.path.endswith(('.html', '.css', '.js', '.json', '.png', '.svg')):
+            continue
+        body = studio_file.content.encode('utf-8')
+        url = f'{base_url}/{studio_file.path}'
+        put = _req.Request(url, data=body, method='PUT',
+                           headers={'X-Auth-Token': api_key, 'Content-Length': str(len(body))})
+        try:
+            _req.urlopen(put, timeout=30)
+            upload_ok += 1
+        except Exception:
+            upload_fail += 1
+    publish_event(project_id, {
+        'agent': 'system', 'level': 'success' if not upload_fail else 'warning',
+        'text': f'Selectel: {upload_ok} файлов загружено, {upload_fail} ошибок. URL: {base_url}',
+    })

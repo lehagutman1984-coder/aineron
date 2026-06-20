@@ -137,6 +137,17 @@ class ArchitectAgent(BaseAgent):
         design_md = ''
         if _global_settings.STUDIO_V3:
             system_design = pick_prompt(ARCHITECT_DESIGN_RU, ARCHITECT_DESIGN_EN)
+            # V4: append Russian locale / regulatory requirements to DESIGN.md prompt
+            if getattr(_global_settings, 'STUDIO_V4_RU_STACK', False):
+                ru_append = (
+                    "\n\nДополнительные требования для российского рынка:\n"
+                    "- Все тексты интерфейса на русском языке\n"
+                    "- Поддержка кириллицы: шрифт Inter или Roboto\n"
+                    "- Форматы: даты DD.MM.YYYY, суммы в рублях (₽), телефоны +7\n"
+                    "- Соответствие 152-ФЗ: согласие на обработку персональных данных в формах\n"
+                    "- Платёжная форма через Робокассу (не Stripe, не Braintree)"
+                )
+                system_design = system_design + ru_append
             design_md = self.run_prompt(
                 system_design,
                 context + f"\n\nPROJECT.md:\n{project_md}",
