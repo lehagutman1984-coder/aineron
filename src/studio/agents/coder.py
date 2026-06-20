@@ -175,8 +175,7 @@ class CoderAgent(BaseAgent):
         self.log('Определяю список файлов для генерации...')
         system = pick_prompt(MANIFEST_SYSTEM_RU, MANIFEST_SYSTEM_EN)
         listing = '\n'.join(f'- {p}' for p in existing_files) or '(empty)'
-        commits_md = getattr(self.project, 'commits_md_content', '') or ''
-        commits_block = f"\n\nFull implementation plan (COMMITS.md):\n{commits_md}" if commits_md else ''
+        commits_block = self._commits_block()
         user = (
             f"PROJECT.md:\n{self.project.project_md_content}{commits_block}\n\n"
             f"Step #{step_index}:\n{step_text}\n\n"
@@ -222,8 +221,7 @@ class CoderAgent(BaseAgent):
             f'### {p}\n```\n{c[:5000]}\n```' for p, c in context.items()
         )
         listing = '\n'.join(f'- {p}' for p in existing_files) or '(empty)'
-        commits_md = getattr(self.project, 'commits_md_content', '') or ''
-        commits_block = f"\n\nFull implementation plan (COMMITS.md):\n{commits_md}" if commits_md else ''
+        commits_block = self._commits_block()
 
         if settings.STUDIO_V3:
             system = pick_prompt(CODER_FILE_BLOCKS_RU, CODER_FILE_BLOCKS_EN)
@@ -285,6 +283,21 @@ class CoderAgent(BaseAgent):
     def _design_excerpt(self) -> str:
         d = getattr(self.project, 'design_md_content', '') or ''
         return d[:5000]
+
+    def _commits_summary(self) -> str:
+        """Только заголовки шагов плана — вместо полного COMMITS.md при STUDIO_V4_COMMITS_CACHE."""
+        import re as _re
+        md = getattr(self.project, 'commits_md_content', '') or ''
+        titles = _re.findall(r'^##\s+(?:Step|Шаг)\s+\d+[^\n]*', md, _re.MULTILINE)
+        return '\n'.join(titles)
+
+    def _commits_block(self) -> str:
+        """Возвращает блок контекста COMMITS.md: полный или краткий (по флагу)."""
+        if settings.STUDIO_V4_COMMITS_CACHE:
+            summary = self._commits_summary()
+            return f"\n\nПлан (заголовки шагов):\n{summary}" if summary else ''
+        commits_md = getattr(self.project, 'commits_md_content', '') or ''
+        return f"\n\nFull implementation plan (COMMITS.md):\n{commits_md}" if commits_md else ''
 
     def _generate_files(self, file_list: list[str], step_index: int, step_text: str,
                         existing_files: dict, model: str) -> dict:
