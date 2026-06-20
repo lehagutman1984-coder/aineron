@@ -154,6 +154,7 @@ class StudioCollaborator(models.Model):
 class StudioTemplate(models.Model):
     STACK_CHOICES = [
         ('nextjs', 'Next.js'), ('react', 'React'), ('vue', 'Vue'), ('html', 'HTML'),
+        ('tma', 'Telegram Mini App'),
     ]
 
     slug = models.SlugField(unique=True)

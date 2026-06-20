@@ -429,45 +429,26 @@ def run_pipeline(project_id):
     )
     project.save(update_fields=['sandbox_container_id', 'preview_port', 'interview_data'])
     if settings.STUDIO_V3:
-        from .scaffold import (
-            scaffold_files, scaffold_robokassa, scaffold_vk_id,
-            scaffold_yandex_maps, scaffold_telegram_login,
-            scaffold_tma, scaffold_tma_payments,
-        )
+        from .scaffold import scaffold_files, scaffold_tma, scaffold_for_features
         # TMA: use dedicated scaffold instead of standard UI primitives
         if (getattr(settings, 'STUDIO_V4_TMA', False)
                 and project.target_stack == 'tma'):
             sf = scaffold_tma()
-            features = (project.interview_data or {}).get('features', [])
-            if 'tma_payments' in features:
-                sf.update(scaffold_tma_payments())
         else:
             sf = scaffold_files(project.target_stack, project.design_md_content)
-        # V4: inject Russian integration scaffolds based on template features
+        # V4 RU_STACK: inject Russian integration scaffolds based on template.features
         if getattr(settings, 'STUDIO_V4_RU_STACK', False):
-            features = []
-            try:
-                from .models import StudioTemplate
-                tmpl = StudioTemplate.objects.filter(
-                    seed_prompt__in=[project.description]
-                ).first()
-                if tmpl:
-                    features = tmpl.features or []
-            except Exception:
-                pass
-            # Also check interview_data for feature hints
+            features = (project.interview_data or {}).get('features', [])
             if not features:
-                features = (project.interview_data or {}).get('features', [])
-            _FEATURE_SCAFFOLD = {
-                'robokassa': scaffold_robokassa,
-                'vk_id': scaffold_vk_id,
-                'yandex_maps': scaffold_yandex_maps,
-                'telegram_login': scaffold_telegram_login,
-            }
-            for feat in features:
-                fn = _FEATURE_SCAFFOLD.get(feat)
-                if fn:
-                    sf.update(fn())
+                try:
+                    from .models import StudioTemplate as _T
+                    tmpl = _T.objects.filter(seed_prompt=project.description).first()
+                    if tmpl:
+                        features = tmpl.features or []
+                except Exception:
+                    pass
+            if features:
+                sf.update(scaffold_for_features(project.target_stack, features))
         if sf:
             for path, content in sf.items():
                 StudioFile.objects.get_or_create(

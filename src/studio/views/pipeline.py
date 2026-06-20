@@ -208,9 +208,15 @@ class DeployView(APIView):
 
     def post(self, request, id):
         project = StudioProject.objects.get(id=id, user=request.user)
-        from ..tasks import deploy_to_vercel
-        deploy_to_vercel.delay(str(project.id))
-        return Response({'status': 'deploying'}, status=202)
+        from ..tasks import deploy_to_vercel, deploy_to_timeweb, deploy_to_selectel
+        target = request.data.get('target', getattr(project, 'deploy_target', 'vercel') or 'vercel')
+        task = {
+            'vercel': deploy_to_vercel,
+            'timeweb': deploy_to_timeweb,
+            'selectel': deploy_to_selectel,
+        }.get(target, deploy_to_vercel)
+        task.delay(str(project.id))
+        return Response({'status': 'deploying', 'target': target}, status=202)
 
 
 class PreviewRestartView(APIView):

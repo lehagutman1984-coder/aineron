@@ -314,6 +314,23 @@ def scaffold_tma_payments() -> dict:
     return {'src/lib/tmaPayments.ts': _TMA_PAYMENTS_TSX}
 
 
+def scaffold_for_features(stack: str, features: list) -> dict:
+    """Dispatch Russian integration scaffolds based on feature key list."""
+    _FMAP = {
+        'robokassa': lambda: scaffold_robokassa(),
+        'vk_id': lambda: scaffold_vk_id(),
+        'yandex_maps': lambda: scaffold_yandex_maps(),
+        'telegram_login': lambda: scaffold_telegram_login(),
+        'tma_payments': lambda: scaffold_tma_payments(),
+    }
+    out: dict = {}
+    for feat in (features or []):
+        fn = _FMAP.get(feat)
+        if fn:
+            out.update(fn())
+    return out
+
+
 def scaffold_robokassa() -> dict:
     return {'src/lib/robokassa.ts': _ROBOKASSA_HOOK}
 
