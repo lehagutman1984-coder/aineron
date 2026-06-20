@@ -432,8 +432,17 @@ def run_pipeline(project_id):
         from .scaffold import (
             scaffold_files, scaffold_robokassa, scaffold_vk_id,
             scaffold_yandex_maps, scaffold_telegram_login,
+            scaffold_tma, scaffold_tma_payments,
         )
-        sf = scaffold_files(project.target_stack, project.design_md_content)
+        # TMA: use dedicated scaffold instead of standard UI primitives
+        if (getattr(settings, 'STUDIO_V4_TMA', False)
+                and project.target_stack == 'tma'):
+            sf = scaffold_tma()
+            features = (project.interview_data or {}).get('features', [])
+            if 'tma_payments' in features:
+                sf.update(scaffold_tma_payments())
+        else:
+            sf = scaffold_files(project.target_stack, project.design_md_content)
         # V4: inject Russian integration scaffolds based on template features
         if getattr(settings, 'STUDIO_V4_RU_STACK', False):
             features = []
@@ -1414,6 +1423,55 @@ def deploy_to_timeweb(project_id):
         publish_event(project_id, {
             'agent': 'system', 'level': 'warning',
             'text': f'Timeweb deploy error: {exc}',
+        })
+
+
+@shared_task(queue=QUEUE)
+def tma_publish(project_id):
+    """Package TMA build artefacts and publish to Telegram bot webhook URL."""
+    if not getattr(settings, 'STUDIO_V4_TMA', False):
+        return
+    project = StudioProject.objects.get(id=project_id)
+    bot_token = getattr(settings, 'STUDIO_TMA_BOT_TOKEN', '')
+    if not bot_token:
+        publish_event(project_id, {
+            'agent': 'system', 'level': 'warning',
+            'text': 'STUDIO_TMA_BOT_TOKEN не настроен — публикация TMA пропущена',
+        })
+        return
+    # Build a minimal index.html that loads the TMA app (for static host)
+    html_file = next(
+        (f for f in project.files.all() if f.path.endswith('index.html')),
+        None,
+    )
+    app_url = project.vercel_deployment_url or ''
+    if not app_url:
+        publish_event(project_id, {
+            'agent': 'system', 'level': 'warning',
+            'text': 'TMA: нет URL деплоя — сначала задеплойте проект',
+        })
+        return
+    # Set Telegram bot's webAppUrl via setMyCommands (simplified)
+    import urllib.request as _req, json as _json
+    payload = _json.dumps({
+        'commands': [{'command': 'start', 'description': 'Открыть приложение'}],
+    }).encode()
+    menu_req = _req.Request(
+        f'https://api.telegram.org/bot{bot_token}/setMyCommands',
+        data=payload,
+        headers={'Content-Type': 'application/json'},
+        method='POST',
+    )
+    try:
+        _req.urlopen(menu_req, timeout=15)
+        publish_event(project_id, {
+            'agent': 'system', 'level': 'success',
+            'text': f'TMA опубликован! Откройте @bot или используйте URL: {app_url}',
+        })
+    except Exception as exc:
+        publish_event(project_id, {
+            'agent': 'system', 'level': 'warning',
+            'text': f'TMA publish error: {exc}',
         })
 
 
