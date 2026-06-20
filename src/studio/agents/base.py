@@ -69,6 +69,8 @@ class BaseAgent:
         self.last_completion_tokens = 0
         model_id = model or self.model
 
+        logger.info('agent %s: calling model %s', self.name, model_id)
+
         messages = [
             {'role': 'system', 'content': system},
             {'role': 'user', 'content': user},
@@ -109,7 +111,7 @@ class BaseAgent:
                 self.name, model_id, max_tokens, self.last_completion_tokens,
             )
         else:
-            logger.debug(
+            logger.info(
                 'agent %s: model %s OK finish=%s tokens=%d',
                 self.name, model_id, self.last_finish_reason, self.last_completion_tokens,
             )
@@ -208,8 +210,10 @@ class BaseAgent:
         return by_size[0][1]
 
     def run_vision(self, system: str, image_b64: str, model: str = None, max_tokens: int = 1500) -> str:
+        _vision_model = model or self.model
+        logger.info('agent %s: calling model %s (vision)', self.name, _vision_model)
         resp = self.client.chat.completions.create(
-            model=model or self.model,
+            model=_vision_model,
             messages=[
                 {'role': 'system', 'content': system},
                 {'role': 'user', 'content': [

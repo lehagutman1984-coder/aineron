@@ -382,3 +382,34 @@ SPECTACULAR_SETTINGS = {
         'displayRequestDuration': True,
     },
 }
+
+
+# ========== LOGGING ==========
+LOGGING = {
+    'version': 1,
+    'disable_existing_handlers': False,
+    'formatters': {
+        'studio': {
+            'format': '[%(asctime)s] %(levelname)s %(name)s: %(message)s',
+            'datefmt': '%H:%M:%S',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'studio',
+        },
+    },
+    'loggers': {
+        'studio.agents': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'studio.tasks': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
