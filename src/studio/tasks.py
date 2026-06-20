@@ -676,6 +676,10 @@ def guardian_review(self, project_id, step_index):
     if state.pause_requested:
         return
     if verdict == 'pass':
+        if settings.STUDIO_V4_AUTOFIX and (state.autofix_count or 0) > 0:
+            state.autofix_count = 0
+            state.seen_error_hashes = []
+            state.save(update_fields=['autofix_count', 'seen_error_hashes'])
         commit_to_gitea.delay(project_id, step_index)
         return
     state.iteration_count += 1

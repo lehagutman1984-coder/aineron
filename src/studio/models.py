@@ -104,6 +104,8 @@ class StudioPipelineState(models.Model):
     same_diff_count = models.IntegerField(default=0)
     last_error_signature = models.CharField(max_length=256, blank=True, default='')
     error_repeat_count = models.IntegerField(default=0)
+    seen_error_hashes = models.JSONField(default=list, blank=True)
+    autofix_count = models.IntegerField(default=0)
     started_at = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 

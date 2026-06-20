@@ -143,6 +143,8 @@ class PipelineResumeView(APIView):
         from ..tasks import coder_iteration, next_step
         state.pause_requested = False
         state.iteration_count = 0  # mandatory reset to avoid instant re-pause
+        state.autofix_count = 0
+        state.seen_error_hashes = []
         if action == 'with_hint':
             state.resume_hint = request.data.get('hint', '')
             state.fix_plan = {'instructions': state.resume_hint, 'target_files': []}
@@ -275,9 +277,12 @@ class PipelineSkipView(APIView):
         state.last_files_hash = ''
         state.last_error_signature = ''
         state.error_repeat_count = 0
+        state.autofix_count = 0
+        state.seen_error_hashes = []
         state.save(update_fields=[
             'status', 'pause_requested', 'same_diff_count',
             'last_files_hash', 'last_error_signature', 'error_repeat_count',
+            'autofix_count', 'seen_error_hashes',
         ])
         project.status = 'coding'
         project.save(update_fields=['status'])
@@ -303,7 +308,35 @@ class ConsoleErrorView(APIView):
         project.interview_data['console_errors'] = errors[-20:]
         project.save(update_fields=['interview_data'])
         if request.data.get('autofix'):
+            import hashlib
+            from django.conf import settings as _s
+            from ..events import publish_event as _pub
             state = project.pipeline
+            if _s.STUDIO_V4_AUTOFIX:
+                sig = hashlib.sha256(
+                    f"{err['message']}|{err['file']}".encode()
+                ).hexdigest()[:16]
+                seen = state.seen_error_hashes or []
+                if sig in seen:
+                    return Response({'error': 'duplicate_error', 'stored': True}, status=409)
+                if (state.autofix_count or 0) >= _s.STUDIO_MAX_AUTOFIX:
+                    state.status = 'paused_on_loop'
+                    state.pause_reason = (
+                        f'Достигнут лимит автоисправлений ({_s.STUDIO_MAX_AUTOFIX}). '
+                        'Опишите проблему вручную.'
+                    )
+                    project.status = 'paused'
+                    project.save(update_fields=['status'])
+                    state.save(update_fields=['status', 'pause_reason'])
+                    _pub(str(project.id), {
+                        'agent': 'system', 'level': 'warning', 'type': 'paused',
+                        'reason': state.pause_reason,
+                    })
+                    return Response({'paused': True, 'reason': 'autofix_limit'}, status=409)
+                seen.append(sig)
+                state.seen_error_hashes = seen[-50:]
+                state.autofix_count = (state.autofix_count or 0) + 1
+
             hint = f"Ошибка в превью: {err['message']} ({err['file']}:{err['line']})\n{err['stack']}"
             state.fix_plan = {
                 'instructions': hint,
@@ -311,7 +344,10 @@ class ConsoleErrorView(APIView):
             }
             state.status = 'running'
             state.pause_requested = False
-            state.save(update_fields=['fix_plan', 'status', 'pause_requested'])
+            save_fields = ['fix_plan', 'status', 'pause_requested']
+            if _s.STUDIO_V4_AUTOFIX:
+                save_fields += ['seen_error_hashes', 'autofix_count']
+            state.save(update_fields=save_fields)
             from ..tasks import coder_iteration
             coder_iteration.delay(str(project.id), state.step_index)
         return Response({'stored': True, 'count': len(project.interview_data['console_errors'])})
