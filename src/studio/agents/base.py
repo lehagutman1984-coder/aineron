@@ -36,6 +36,8 @@ class BaseAgent:
     model = DEFAULT_STUDIO_MODEL
     last_finish_reason: str | None = None
     last_completion_tokens: int = 0
+    last_prompt_tokens: int = 0
+    last_total_tokens: int = 0
 
     def __init__(self, project):
         self.project = project
@@ -67,6 +69,8 @@ class BaseAgent:
         """
         self.last_finish_reason = None
         self.last_completion_tokens = 0
+        self.last_prompt_tokens = 0
+        self.last_total_tokens = 0
         model_id = model or self.model
 
         logger.info('agent %s: calling model %s', self.name, model_id)
@@ -90,6 +94,8 @@ class BaseAgent:
         for chunk in stream:
             if getattr(chunk, 'usage', None):
                 self.last_completion_tokens = chunk.usage.completion_tokens or 0
+                self.last_prompt_tokens = chunk.usage.prompt_tokens or 0
+                self.last_total_tokens = chunk.usage.total_tokens or 0
             if not chunk.choices:
                 continue
             choice = chunk.choices[0]
@@ -129,6 +135,9 @@ class BaseAgent:
         """
         model_id = model or self.model
         full = ''
+        acc_prompt = 0
+        acc_completion = 0
+        acc_total = 0
         for attempt in range(max_rounds + 1):
             part = self.run_prompt(
                 system, user, model=model_id,
@@ -136,6 +145,9 @@ class BaseAgent:
                 prior=full,
             )
             full += part
+            acc_prompt += self.last_prompt_tokens
+            acc_completion += self.last_completion_tokens
+            acc_total += self.last_total_tokens
             if stop_marker and stop_marker in full:
                 break
             capped = (
@@ -154,6 +166,9 @@ class BaseAgent:
                     f'Дозапрос {attempt + 1}: модель достигла лимита, продолжаю генерацию...',
                     level='warning',
                 )
+        self.last_prompt_tokens = acc_prompt
+        self.last_completion_tokens = acc_completion
+        self.last_total_tokens = acc_total
         return full
 
     def run_json(self, system: str, user: str, model: str = None, max_tokens: int = 8192) -> dict:

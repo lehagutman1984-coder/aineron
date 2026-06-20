@@ -29,6 +29,12 @@ def count_tokens(text: str, model: str = 'gpt-4') -> int:
 
 def estimate_stars(project: StudioProject, planned_steps: int = 5) -> int:
     """Estimate total stars for 3-role pipeline: architect(1x) + coder+guardian(N steps)."""
+    idata = getattr(project, 'interview_data', {}) or {}
+    plan = idata.get('plan')
+    if isinstance(plan, list) and plan:
+        planned_steps = len(plan)
+    elif idata.get('planned_steps'):
+        planned_steps = int(idata['planned_steps'])
     total = 0.0
     ai_tier = MODEL_TIER.get(getattr(project, 'ai_model', ''), 'fast')
     agent_models = getattr(project, 'agent_models', {}) or {}
@@ -47,6 +53,13 @@ def estimate_stars(project: StudioProject, planned_steps: int = 5) -> int:
     total += (guardian_budget / 1000.0) * STAR_RATE.get(tier_for('guardian', guardian_tier), STAR_RATE['smart']) * planned_steps
 
     return int(total) + 1
+
+
+def stars_for_tokens(prompt_tokens: int, completion_tokens: int, tier: str) -> int:
+    """Реальная стоимость одного вызова агента по факту токенов (суммарные prompt+completion)."""
+    total = (prompt_tokens or 0) + (completion_tokens or 0)
+    rate = STAR_RATE.get(tier, STAR_RATE['fast'])
+    return max(1, int((total / 1000.0) * rate))
 
 
 def coder_tier_for_model(model: str) -> str:

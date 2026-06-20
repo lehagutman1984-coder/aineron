@@ -313,6 +313,24 @@ STUDIO_STEP_STALL_SEC = int(os.getenv('STUDIO_STEP_STALL_SEC', '240'))
 STUDIO_PIPELINE_MAX_SEC = int(os.getenv('STUDIO_PIPELINE_MAX_SEC', '2700'))
 STUDIO_V3 = os.getenv('STUDIO_V3', '0') == '1'  # Studio V3 pipeline (FILE_BLOCKS, validators, EDIT blocks)
 
+# ========== STUDIO V4 FLAGS (все по умолчанию выключены) ==========
+STUDIO_V4_TOKEN_BILLING     = os.getenv('STUDIO_V4_TOKEN_BILLING',     '0') == '1'
+STUDIO_V4_COMMITS_CACHE     = os.getenv('STUDIO_V4_COMMITS_CACHE',     '0') == '1'
+STUDIO_V4_PROVIDER_FALLBACK = os.getenv('STUDIO_V4_PROVIDER_FALLBACK', '0') == '1'
+STUDIO_V4_AUTOFIX           = os.getenv('STUDIO_V4_AUTOFIX',           '0') == '1'
+STUDIO_V4_STREAMING         = os.getenv('STUDIO_V4_STREAMING',         '0') == '1'
+STUDIO_V4_GUARDIAN_CONTEXT  = os.getenv('STUDIO_V4_GUARDIAN_CONTEXT',  '0') == '1'
+STUDIO_V4_RU_STACK          = os.getenv('STUDIO_V4_RU_STACK',          '0') == '1'
+STUDIO_V4_TMA               = os.getenv('STUDIO_V4_TMA',               '0') == '1'
+STUDIO_MAX_AUTOFIX          = int(os.getenv('STUDIO_MAX_AUTOFIX',       '3'))
+LAOZHANG_API_URL_FALLBACK   = os.getenv('LAOZHANG_API_URL_FALLBACK',   '')
+GIGACHAT_API_URL            = os.getenv('GIGACHAT_API_URL',            '')
+GIGACHAT_API_KEY            = os.getenv('GIGACHAT_API_KEY',            '')
+TIMEWEB_API_TOKEN           = os.getenv('TIMEWEB_API_TOKEN',           '')
+SELECTEL_ACCOUNT_ID         = os.getenv('SELECTEL_ACCOUNT_ID',         '')
+SELECTEL_API_KEY            = os.getenv('SELECTEL_API_KEY',            '')
+STUDIO_TMA_BOT_TOKEN        = os.getenv('STUDIO_TMA_BOT_TOKEN',        '')
+
 
 # ========== ROBOKASSA ==========
 ROBOKASSA_LOGIN = os.environ.get('ROBOKASSA_LOGIN', 'aineron.ru')

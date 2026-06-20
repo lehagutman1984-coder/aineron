@@ -7,7 +7,7 @@ from .events import publish_event
 from . import sandbox
 from .billing import (
     STAR_RATE, AGENT_BUDGET, can_afford, charge, refund, coder_tier_for_model,
-    reserve, charge_from_reserve, release_reserve, estimate_stars,
+    reserve, charge_from_reserve, release_reserve, estimate_stars, stars_for_tokens,
 )
 
 QUEUE = 'studio_queue'
@@ -26,9 +26,14 @@ def _agent_cost(agent_name: str) -> int:
     return max(1, int((budget / 1000.0) * STAR_RATE[tier]))
 
 
-def _billing_charge(project, agent_name: str, step_index: int, tier_override: str = None):
+def _billing_charge(project, agent_name: str, step_index: int, tier_override: str = None,
+                    prompt_tokens: int = None, completion_tokens: int = None):
     """Charge stars for one agent run, emit SSE billing event, update billing_log."""
-    if tier_override:
+    if (settings.STUDIO_V4_TOKEN_BILLING
+            and prompt_tokens is not None and completion_tokens is not None):
+        tier = tier_override or AGENT_BUDGET.get(agent_name, ('fast', 0))[0]
+        cost = stars_for_tokens(prompt_tokens, completion_tokens, tier)
+    elif tier_override:
         tier, budget = AGENT_BUDGET.get(agent_name, ('fast', 2000))
         cost = max(1, int((budget / 1000.0) * STAR_RATE[tier_override]))
     else:
@@ -582,7 +587,11 @@ def coder_iteration(self, project_id, step_index):
             sandbox.write_files(project.sandbox_container_id, files)
             sandbox.wait_for_ready(project.sandbox_container_id, timeout=60)
         guardian_review.delay(project_id, step_index)
-        _billing_charge(project, 'coder', step_index, tier_override=coder_tier)
+        _billing_charge(
+            project, 'coder', step_index, tier_override=coder_tier,
+            prompt_tokens=agent.last_prompt_tokens,
+            completion_tokens=agent.last_completion_tokens,
+        )
     except InsufficientStars as e:
         _pause_no_funds(project, e.needed, reason=getattr(e, 'reason', None))
         return
