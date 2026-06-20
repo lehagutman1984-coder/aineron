@@ -2,6 +2,32 @@ import re
 from django.conf import settings
 from .base import BaseAgent, pick_prompt
 
+SYSTEM_TMA = (
+    "Ты старший ревьюер Telegram Mini App. Проверь реализацию шага TMA-пайплайна.\n\n"
+    "Специфичные TMA-проверки:\n"
+    "1. WebApp.ready() вызывается в useEffect при монтировании (обязательно!)\n"
+    "2. Тема: WebApp.colorScheme используется для dark/light переключения\n"
+    "3. initData: если есть серверная валидация — проверяется через HMAC-SHA256 (WebAppData)\n"
+    "4. Платежи: используется WebApp.openInvoice(), а не сторонние платёжные виджеты\n"
+    "5. Навигация: нет window.location.href вместо WebApp.close()/onEvent\n"
+    "6. Нет import 'react-router-dom' — TMA одноэкранные или используют state-машину\n\n"
+    "Стандартные проверки:\n"
+    "- Нет пропущенных импортов / зависимостей в package.json?\n"
+    "- Vite: host:true port:3000 в vite.config.ts\n"
+    "- Нет TODO-заглушек\n\n"
+    "Только реальные проблемы — стиль = PASS.\n\n"
+    "Ответь строго в формате:\n"
+    "VERDICT: pass\n"
+    "или\n"
+    "VERDICT: fix\n"
+    "ISSUES:\n"
+    "- проблема\n"
+    "INSTRUCTIONS:\n"
+    "Конкретные инструкции исправления.\n"
+    "FILES:\n"
+    "- путь/к/файлу.ts"
+)
+
 SYSTEM_EN = (
     "You are a senior code reviewer. Review the implemented code for a pipeline step.\n\n"
     "IMPORTANT: Structural integrity (brace balance, truncation) has already been checked "
@@ -176,7 +202,14 @@ class GuardianAgent(BaseAgent):
         return '\n'.join(lines)
 
     def run(self, step_text: str, files: dict, build_logs: str = '', attempt: int = 0) -> dict:
-        if settings.STUDIO_V3:
+        is_tma = (
+            getattr(settings, 'STUDIO_V4_TMA', False)
+            and getattr(self.project, 'target_stack', '') == 'tma'
+        )
+        if is_tma:
+            system = SYSTEM_TMA
+            design_section = ''
+        elif settings.STUDIO_V3:
             system = pick_prompt(SYSTEM_V3_RU, SYSTEM_V3_EN)
             design = (getattr(self.project, 'design_md_content', '') or '')[:2000]
             design_section = f'\n\nDESIGN.md (проверь соответствие):\n{design}' if design else ''

@@ -8,6 +8,22 @@ from .blocks import parse_file_blocks, FILE_CLOSE
 
 log = logging.getLogger('studio.agents')
 
+FILE_SYSTEM_TMA = (
+    "Ты senior-разработчик Telegram Mini App (Vite + React + TypeScript + @twa-dev/sdk).\n"
+    "Напиши ОДИН ПОЛНЫЙ исходный файл для TMA.\n"
+    "TMA-правила:\n"
+    "- В App.tsx: первая строка useEffect() — WebApp.ready(); вторая — WebApp.expand()\n"
+    "- Тема: читай WebApp.colorScheme, применяй через CSS-переменные Telegram (--tg-theme-bg-color и т.д.)\n"
+    "- Никогда не используй window.location.href для навигации внутри Mini App\n"
+    "- package.json: @twa-dev/sdk, react ^18, vite ^6, @vitejs/plugin-react\n"
+    "- vite.config.ts: server:{host:true,port:3000,hmr:false}, base:'./'\n"
+    "- validate_tma_init_data.py: HMAC-SHA256 с секретом WebAppData (обязательно на сервере!)\n"
+    "- Если платежи: WebApp.openInvoice(invoiceUrl, callback) — не Stripe, не ЮКасса\n"
+    "Общие требования:\n"
+    "- Файл 100% полный, без TODO, без заглушек\n"
+    "- Выводи ТОЛЬКО содержимое файла — без markdown-блоков, без объяснений\n"
+)
+
 # ── System prompts ────────────────────────────────────────────────────────────
 
 MANIFEST_SYSTEM_RU = (
@@ -223,8 +239,12 @@ class CoderAgent(BaseAgent):
         listing = '\n'.join(f'- {p}' for p in existing_files) or '(empty)'
         commits_block = self._commits_block()
 
+        is_tma = (
+            getattr(settings, 'STUDIO_V4_TMA', False)
+            and getattr(self.project, 'target_stack', '') == 'tma'
+        )
         if settings.STUDIO_V3:
-            system = pick_prompt(CODER_FILE_BLOCKS_RU, CODER_FILE_BLOCKS_EN)
+            system = FILE_SYSTEM_TMA if is_tma else pick_prompt(CODER_FILE_BLOCKS_RU, CODER_FILE_BLOCKS_EN)
             # V3: добавляем DESIGN.md и лимит строк (если заданы в Коммите 5)
             max_lines, role = self._file_spec(path)
             design = self._design_excerpt()
@@ -283,7 +303,7 @@ class CoderAgent(BaseAgent):
             return content
 
         # --- legacy путь (STUDIO_V3=False): голый текст ---
-        system = pick_prompt(FILE_SYSTEM_RU, FILE_SYSTEM_EN)
+        system = FILE_SYSTEM_TMA if is_tma else pick_prompt(FILE_SYSTEM_RU, FILE_SYSTEM_EN)
         user = (
             f"PROJECT.md:\n{self.project.project_md_content}{commits_block}\n\n"
             f"Step #{step_index}:\n{step_text}\n\n"

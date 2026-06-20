@@ -53,6 +53,33 @@ SYSTEM_COMMITS_RU = (
 )
 
 
+SYSTEM_PROJECT_TMA = (
+    "Ты ведущий архитектор Telegram Mini App. Напиши PROJECT.md для TMA-проекта.\n"
+    "Стек: Vite + React + TypeScript + @twa-dev/sdk. Платежи — Telegram Stars (XTR).\n"
+    "Включи: цели приложения, структуру компонентов, ключевые зависимости, особенности TMA UI.\n"
+    "TMA-правила:\n"
+    "- WebApp.ready() вызывается ПЕРВЫМ при запуске\n"
+    "- Тема наследуется из WebApp.colorScheme (dark/light)\n"
+    "- initData проверяется на сервере через HMAC-SHA256\n"
+    "Выводи ТОЛЬКО markdown-контент."
+)
+
+SYSTEM_COMMITS_TMA = (
+    "Ты ведущий архитектор Telegram Mini App. Напиши COMMITS.md — план реализации TMA.\n\n"
+    "Формат каждого шага:\n"
+    "## Шаг N: Название\n"
+    "Что реализовать...\n\n"
+    "Обязательные правила для TMA:\n"
+    "- Шаг 1: vite.config.ts (server:{host:true,port:3000}), package.json с @twa-dev/sdk, src/App.tsx с WebApp.ready()\n"
+    "- Шаг 2: тема из WebApp.colorScheme, CSS-переменные Telegram (--tg-theme-bg-color и т.д.)\n"
+    "- Последний шаг: validate_tma_init_data.py, обработка ошибок, полировка\n"
+    "- 5-12 шагов, каждый атомарен\n"
+    "- НЕ добавлять БД без явного запроса — использовать localStorage\n"
+    "- Для платежей: WebApp.openInvoice() + серверный /api/tma/invoice/\n"
+    "- Пометь сложные шаги [COMPLEX]\n\n"
+    "Выводи ТОЛЬКО markdown-шаги."
+)
+
 ARCHITECT_DESIGN_RU = (
     "Ты ведущий продуктовый дизайнер. Напиши DESIGN.md — дизайн-систему проекта.\n"
     "Ориентир: Linear, Vercel, Stripe — строгий минимализм, профессионально.\n"
@@ -125,7 +152,11 @@ class ArchitectAgent(BaseAgent):
         model = self.resolve_model()
         context = self._build_context(description, stack, features, answers)
 
-        system_project = pick_prompt(SYSTEM_PROJECT_RU, SYSTEM_PROJECT_EN)
+        is_tma = (
+            getattr(_global_settings, 'STUDIO_V4_TMA', False)
+            and getattr(self.project, 'target_stack', '') == 'tma'
+        )
+        system_project = SYSTEM_PROJECT_TMA if is_tma else pick_prompt(SYSTEM_PROJECT_RU, SYSTEM_PROJECT_EN)
         project_md = self.run_prompt(
             system_project,
             context,
@@ -154,7 +185,9 @@ class ArchitectAgent(BaseAgent):
                 model=model, max_tokens=5000, temperature=0.4,
             )
 
-        if _global_settings.STUDIO_V3:
+        if is_tma:
+            system_commits = SYSTEM_COMMITS_TMA
+        elif _global_settings.STUDIO_V3:
             system_commits = pick_prompt(ARCHITECT_COMMITS_V3_RU, ARCHITECT_COMMITS_V3_EN)
         else:
             system_commits = pick_prompt(SYSTEM_COMMITS_RU, SYSTEM_COMMITS_EN)
