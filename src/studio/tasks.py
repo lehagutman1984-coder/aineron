@@ -895,6 +895,12 @@ def commit_to_gitea(project_id, step_index):
         git_sha=git_sha,
         stars_spent_at_version=project.stars_spent,
     )
+    # V4: soft preview restart hint — frontend reloads iframe without full page reload
+    if getattr(settings, 'STUDIO_V4_STREAMING', False):
+        publish_event(project_id, {
+            'type': 'preview_restart', 'step': step_index,
+            'agent': 'system', 'level': 'info',
+        })
     if project.mode in ('semi', 'manual'):
         state = project.pipeline
         state.status = 'paused_manual'

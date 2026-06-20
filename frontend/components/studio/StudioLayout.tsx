@@ -225,6 +225,10 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
           setStreamingPath(null);
           setStreamBuffers((prev) => { const n = { ...prev }; delete n[d.path]; return n; });
         }
+        // preview_restart: soft iframe reload after step completes
+        if (d.type === 'preview_restart') {
+          onRefresh();
+        }
       } catch { /* noop */ }
     };
     return () => src.close();
