@@ -69,10 +69,24 @@ apply_referral = sync_to_async(_apply_referral, thread_sensitive=True)
 
 
 @router.message(CommandStart())
-async def cmd_start(message: Message, state: FSMContext):
+async def cmd_start(message: Message, state: FSMContext, tg_user=None):
     args = ''
     if message.text and ' ' in message.text:
         args = message.text.split(maxsplit=1)[1].strip()
+
+    # Already linked and no special args — show main menu
+    if tg_user and not args:
+        from telegram_bot.keyboards import main_reply_kb
+        get_balance = sync_to_async(lambda: tg_user.user.pages_count, thread_sensitive=True)
+        balance = await get_balance()
+        await message.answer(
+            f"<b>Привет, {message.from_user.first_name}!</b>\n\n"
+            f"Баланс: <b>{balance} звёзд</b>\n\n"
+            f"Выбери действие из меню ниже.",
+            parse_mode='HTML',
+            reply_markup=main_reply_kb(),
+        )
+        return
 
     if args and args.startswith('model_'):
         slug = args[6:]
