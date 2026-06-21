@@ -110,7 +110,7 @@ async def cmd_image(message: Message, tg_user=None):
 
             if image:
                 await status_msg.delete()
-                img_url = f"{settings.SITE_URL}{image.file.url}"
+                img_url = f"{settings.SITE_URL}{image.image.url}"
                 try:
                     await message.answer_photo(
                         URLInputFile(img_url),
