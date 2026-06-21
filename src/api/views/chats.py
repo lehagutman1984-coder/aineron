@@ -1,5 +1,6 @@
 import json
 import logging
+from django.conf import settings
 from django.http import StreamingHttpResponse
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
@@ -382,6 +383,10 @@ class StreamMessageView(APIView):
                 knowledge_ctx = build_project_knowledge_context(proj, message_text)
                 if knowledge_ctx:
                     messages_for_api.append({"role": "system", "content": knowledge_ctx})
+                # AI-коммиты: инструкция о FILE-формате (Sprint 4.3)
+                if getattr(settings, 'PROJECT_AI_COMMITS', False):
+                    from aitext.commit_extract import inject_commit_instruction
+                    inject_commit_instruction(proj, messages_for_api)
             except Project.DoesNotExist:
                 pass
 
@@ -518,11 +523,30 @@ class StreamMessageView(APIView):
                 except Exception:
                     pass  # память не должна ронять стрим
 
+                # AI-коммиты из чата (Sprint 4.3)
+                commit_event = None
+                if getattr(settings, 'PROJECT_AI_COMMITS', False) and chat.project_id and full_text:
+                    try:
+                        from aitext.models import Project as ProjectModel
+                        from aitext.commit_extract import extract_commit_from_response
+                        _proj = ProjectModel.objects.get(id=chat.project_id)
+                        _commit = extract_commit_from_response(_proj, full_text)
+                        if _commit:
+                            commit_event = {
+                                'id': _commit.id,
+                                'commit_message': _commit.commit_message,
+                                'files_count': len(_commit.files),
+                                'project_id': _commit.project_id,
+                            }
+                    except Exception:
+                        pass
+
                 yield _sse({
                     "type": "done",
                     "content": formatted_html,
                     "plain_text": full_text,
                     "search_context": search_context_text,
+                    **({"commit_proposed": commit_event} if commit_event else {}),
                 })
 
             except Exception as e:

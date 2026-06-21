@@ -359,6 +359,10 @@ def generate_ai_response(self, message_id, web_search=False):
                 knowledge_ctx = build_project_knowledge_context(proj, user_msg_text)
                 if knowledge_ctx:
                     messages_for_api.append({"role": "system", "content": knowledge_ctx})
+                # AI-коммиты: инструкция о FILE-формате (Sprint 4.3)
+                if getattr(settings, 'PROJECT_AI_COMMITS', False):
+                    from .commit_extract import inject_commit_instruction
+                    inject_commit_instruction(proj, messages_for_api)
             except Exception:
                 pass
 
@@ -563,6 +567,14 @@ def generate_ai_response(self, message_id, web_search=False):
         message.save()
 
         logger.info(f"AI ответ сгенерирован для сообщения {message_id}, сохранено изображений: {len(saved_images)}")
+
+        # AI-коммиты из чата (Sprint 4.3)
+        if getattr(settings, 'PROJECT_AI_COMMITS', False) and proj and plain_text:
+            try:
+                from .commit_extract import extract_commit_from_response
+                extract_commit_from_response(proj, plain_text)
+            except Exception:
+                pass
 
         # Авто-извлечение фактов (каждые 3 ответа ассистента)
         try:

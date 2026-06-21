@@ -279,8 +279,15 @@ type SSEEvent =
   | { type: "init"; user_message_id: number; assistant_message_id: number; new_balance: number }
   | { type: "search_done"; preview: string }
   | { type: "token"; text: string }
-  | { type: "done"; content: string; plain_text: string; search_context?: string }
+  | { type: "done"; content: string; plain_text: string; search_context?: string; commit_proposed?: { id: number; commit_message: string; files_count: number; project_id: number } | null }
   | { type: "error"; message: string };
+
+export interface CommitProposed {
+  id: number;
+  commit_message: string;
+  files_count: number;
+  project_id: number;
+}
 
 export async function streamMessage(
   chatId: number,
@@ -289,7 +296,7 @@ export async function streamMessage(
     onInit: (data: { user_message_id: number; assistant_message_id: number; new_balance: number }) => void;
     onSearchDone?: (preview: string) => void;
     onToken: (text: string) => void;
-    onDone: (data: { content: string; plain_text: string; search_context?: string }) => void;
+    onDone: (data: { content: string; plain_text: string; search_context?: string; commit_proposed?: CommitProposed | null }) => void;
     onError: (message: string) => void;
   }
 ): Promise<void> {

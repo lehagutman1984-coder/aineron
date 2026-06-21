@@ -306,6 +306,7 @@ STUDIO_SANDBOX_MEM = os.getenv('STUDIO_SANDBOX_MEM', '512m')
 STUDIO_SANDBOX_CPUS = float(os.getenv('STUDIO_SANDBOX_CPUS', '1'))
 # Project Connector: Fernet key for encrypting PAT tokens (generate with Fernet.generate_key())
 PROJECT_CONNECTOR_FERNET_KEY = os.getenv('PROJECT_CONNECTOR_FERNET_KEY', '')
+PROJECT_AI_COMMITS = os.getenv('PROJECT_AI_COMMITS', '0') == '1'
 
 STUDIO_GITEA_URL = os.getenv('STUDIO_GITEA_URL', 'http://gitea:3000')
 STUDIO_GITEA_ADMIN_USER = os.getenv('STUDIO_GITEA_ADMIN_USER', 'studio_admin')

@@ -4,13 +4,13 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw, Paperclip, BookMarked, Globe, Volume2, Square, Loader, ChevronDown, ChevronRight, Settings2, FileText, X } from "lucide-react";
+import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw, Paperclip, BookMarked, Globe, Volume2, Square, Loader, ChevronDown, ChevronRight, Settings2, FileText, X, GitCommit, CheckCircle2, XCircle } from "lucide-react";
 import { MarkdownContent } from "@/components/chat/MarkdownContent";
 import { AttachmentPreview, type AttachmentState } from "@/components/chat/AttachmentPreview";
 import { PromptPicker } from "@/components/chat/PromptPicker";
 import { VoiceButton } from "@/components/chat/VoiceButton";
 import { MediaSettingsPanel } from "@/components/chat/MediaSettingsPanel";
-import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, uploadFile, synthesizeSpeech, APIError } from "@/lib/api/client";
+import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, uploadFile, synthesizeSpeech, confirmCommit, APIError, type CommitProposed } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 import type { WebMessage, ChatDetail, UiSection } from "@/lib/api/types";
 
@@ -51,6 +51,10 @@ export default function ChatPage() {
   // Web search two-step state
   const [searchPhase, setSearchPhase] = useState<"idle" | "searching" | "generating">("idle");
   const [liveSearchPreview, setLiveSearchPreview] = useState("");
+
+  // AI-коммит из чата (Sprint 4.3)
+  const [pendingCommit, setPendingCommit] = useState<CommitProposed | null>(null);
+  const [commitActionLoading, setCommitActionLoading] = useState(false);
 
   const animatedIds = useRef<Set<number>>(new Set());
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -229,7 +233,7 @@ export default function ChatPage() {
             setSearchPhase("idle");
             setStreamText((prev) => prev + token);
           },
-          onDone: ({ content, plain_text, search_context }) => {
+          onDone: ({ content, plain_text, search_context, commit_proposed }) => {
             qc.setQueryData<ChatDetail>(["chat", id], (prev) => {
               if (!prev) return prev;
               return {
@@ -246,6 +250,7 @@ export default function ChatPage() {
             setStreamingAssistId(null);
             setSearchPhase("idle");
             setLiveSearchPreview("");
+            if (commit_proposed) setPendingCommit(commit_proposed);
           },
           onError: (errorMsg) => {
             qc.setQueryData<ChatDetail>(["chat", id], (prev) => {
@@ -604,6 +609,59 @@ export default function ChatPage() {
           <div ref={bottomRef} className="h-4" />
         </div>
       </div>
+
+      {/* AI-proposed commit card (Sprint 4.3) */}
+      {pendingCommit && (
+        <div className="shrink-0 px-4 pb-1 pt-1" style={{ background: "var(--chat-page-bg)" }}>
+          <div className="mx-auto max-w-2xl rounded-[12px] border border-[rgba(10,124,255,0.20)] bg-[rgba(10,124,255,0.05)] px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <GitCommit size={15} className="shrink-0 text-[#0a7cff]" />
+                <div className="min-w-0">
+                  <p className="text-[13px] font-semibold text-[#0d0d0d]">
+                    AI предложил коммит ({pendingCommit.files_count} {pendingCommit.files_count === 1 ? "файл" : pendingCommit.files_count < 5 ? "файла" : "файлов"})
+                  </p>
+                  <p className="truncate text-[11px] text-[rgba(13,13,13,0.50)]">{pendingCommit.commit_message}</p>
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  disabled={commitActionLoading}
+                  onClick={async () => {
+                    setCommitActionLoading(true);
+                    try {
+                      await confirmCommit(pendingCommit.project_id, pendingCommit.id, "push");
+                      setPendingCommit(null);
+                    } finally {
+                      setCommitActionLoading(false);
+                    }
+                  }}
+                  className="flex items-center gap-1 rounded-[7px] bg-[#22a85a] px-2.5 py-1.5 text-[12px] font-medium text-white hover:bg-[#1a8a49] transition-colors disabled:opacity-50"
+                >
+                  <CheckCircle2 size={12} />
+                  Подтвердить
+                </button>
+                <button
+                  disabled={commitActionLoading}
+                  onClick={async () => {
+                    setCommitActionLoading(true);
+                    try {
+                      await confirmCommit(pendingCommit.project_id, pendingCommit.id, "reject");
+                      setPendingCommit(null);
+                    } finally {
+                      setCommitActionLoading(false);
+                    }
+                  }}
+                  className="flex items-center gap-1 rounded-[7px] border border-[rgba(13,13,13,0.15)] px-2.5 py-1.5 text-[12px] font-medium text-[rgba(13,13,13,0.60)] hover:border-[rgba(231,76,60,0.4)] hover:text-[#e74c3c] transition-colors disabled:opacity-50"
+                >
+                  <XCircle size={12} />
+                  Отклонить
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Input */}
       <div className="shrink-0 px-4 pb-5 pt-2" style={{ background: "var(--chat-page-bg)" }}>
