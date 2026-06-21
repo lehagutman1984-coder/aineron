@@ -288,6 +288,7 @@ class ProjectFile(models.Model):
         related_name='synced_files', verbose_name='Коннектор (для repo-файлов)',
     )
     repo_path = models.CharField(max_length=500, blank=True, verbose_name='Путь в репозитории')
+    repo_sha = models.CharField(max_length=64, blank=True, verbose_name='Git blob SHA (для инкрементального синка)')
 
     class Meta:
         verbose_name = 'Файл базы знаний'
@@ -312,6 +313,8 @@ class ProjectConnector(models.Model):
     repo = models.CharField(max_length=100, verbose_name='Репозиторий')
     branch = models.CharField(max_length=100, default='main', verbose_name='Ветка')
     access_token_enc = models.TextField(verbose_name='Токен (зашифрован)')
+    webhook_secret = models.CharField(max_length=64, blank=True, default='', verbose_name='Webhook secret (HMAC)')
+    last_synced_at = models.DateTimeField(null=True, blank=True, verbose_name='Последняя синхронизация')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -321,6 +324,12 @@ class ProjectConnector(models.Model):
 
     def __str__(self):
         return f"{self.project.name} → {self.owner}/{self.repo}"
+
+    def save(self, *args, **kwargs):
+        if not self.webhook_secret:
+            import secrets
+            self.webhook_secret = secrets.token_hex(32)
+        super().save(*args, **kwargs)
 
 
 class ProjectCommit(models.Model):

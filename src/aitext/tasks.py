@@ -1072,8 +1072,20 @@ def embed_project_file(self, file_id: int):
         raise self.retry(exc=e, countdown=60)
 
 
-# Project Connector — Git Push Tasks
+# Project Connector — Git Sync + Push Tasks
 # ──────────────────────────────────────────────────────────────────────────────
+
+@shared_task(bind=True, max_retries=2, default_retry_delay=60, ignore_result=True)
+def sync_connector_task(self, connector_id: int):
+    """Sprint 4.2: синхронизирует файлы из git-репозитория в базу знаний проекта."""
+    try:
+        from .sync import sync_connector
+        result = sync_connector(connector_id)
+        logger.info(f'[sync_connector_task] connector {connector_id}: {result}')
+    except Exception as e:
+        logger.error(f'[sync_connector_task] connector {connector_id} failed: {e}')
+        raise self.retry(exc=e, countdown=60)
+
 
 @shared_task(bind=True, max_retries=2, default_retry_delay=30)
 def push_project_commit(self, commit_id: int):

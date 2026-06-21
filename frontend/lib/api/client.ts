@@ -662,6 +662,14 @@ export const confirmCommit = (
     body: JSON.stringify({ action }),
   });
 
+// ============ Connector Sync (Sprint 4.2) ============
+
+export const syncConnector = (
+  projectId: number,
+  connectorId: number
+): Promise<{ status: string; connector_id: number }> =>
+  request(`/projects/${projectId}/connectors/${connectorId}/sync/`, { method: "POST" });
+
 // ============ Public Spaces ============
 
 export const publishProject = (

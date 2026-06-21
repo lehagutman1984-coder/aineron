@@ -56,7 +56,7 @@ import {
   listConnectors, createConnector, deleteConnector,
   listRepoFiles, getRepoFileContent,
   listCommits, createCommit, confirmCommit,
-  publishProject,
+  publishProject, syncConnector,
 } from "@/lib/api/client";
 import type { ChatListItem, Project, ProjectFile, ProjectConnector, RepoTreeItem, ProjectCommit, CommitFile } from "@/lib/api/types";
 
@@ -813,6 +813,9 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
   const [commitFiles, setCommitFiles] = useState<CommitFile[]>([{ path: "", content: "" }]);
   const [commitLoading, setCommitLoading] = useState(false);
   const [commitErr, setCommitErr] = useState<string | null>(null);
+  // Sprint 4.2 — sync state
+  const [syncingId, setSyncingId] = useState<number | null>(null);
+  const [copiedWebhook, setCopiedWebhook] = useState<number | null>(null);
 
   const { data: connectors = [], isLoading: connLoading } = useQuery({
     queryKey: ["connectors", projectId],
@@ -959,9 +962,35 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                   <p className="text-[14px] font-semibold text-[#0d0d0d]">{conn.owner}/{conn.repo}</p>
                   <p className="text-[11px] text-[rgba(13,13,13,0.45)]">
                     {conn.connector_type === "github" ? "GitHub" : "Gitea"} · ветка {conn.branch}
+                    {conn.last_synced_at && <> · синхронизировано {new Date(conn.last_synced_at).toLocaleString("ru")}</>}
                   </p>
+                  {conn.webhook_url && (
+                    <div className="mt-1.5 flex items-center gap-1.5">
+                      <span className="text-[10px] text-[rgba(13,13,13,0.40)]">Webhook:</span>
+                      <code className="max-w-[260px] truncate rounded-[4px] bg-[rgba(13,13,13,0.05)] px-1.5 py-0.5 text-[10px] text-[rgba(13,13,13,0.55)]">{conn.webhook_url}</code>
+                      <button
+                        onClick={() => { navigator.clipboard.writeText(conn.webhook_url); setCopiedWebhook(conn.id); setTimeout(() => setCopiedWebhook(null), 1800); }}
+                        className="text-[rgba(13,13,13,0.35)] hover:text-[#0a7cff]"
+                        title="Скопировать webhook URL"
+                      >
+                        {copiedWebhook === conn.id ? <CheckCircle2 size={11} /> : <Copy size={11} />}
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    onClick={async () => {
+                      setSyncingId(conn.id);
+                      try { await syncConnector(projectId, conn.id); } finally { setSyncingId(null); }
+                    }}
+                    disabled={syncingId === conn.id}
+                    className="flex items-center gap-1.5 rounded-[7px] border border-[rgba(13,13,13,0.14)] px-3 py-1.5 text-[12px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:border-[#0a7cff] hover:text-[#0a7cff] disabled:opacity-50"
+                    title="Синхронизировать файлы из репозитория в базу знаний"
+                  >
+                    <RefreshCw size={11} className={syncingId === conn.id ? "animate-spin" : ""} />
+                    Синхронизировать
+                  </button>
                   <button
                     onClick={() => { setBrowsingId(conn.id === browsingId ? null : conn.id); setSelectedFile(null); setFileContent(null); setOpenDirs(new Set()); }}
                     className={[

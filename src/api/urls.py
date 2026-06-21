@@ -42,6 +42,7 @@ from api.views.connectors import (
     ConnectorListCreateView, ConnectorDetailView,
     ConnectorReadFilesView, ConnectorFileContentView,
     CommitListCreateView, CommitConfirmView,
+    ConnectorSyncView, ConnectorWebhookView,
 )
 from api.views.telegram_link import TelegramLinkTokenView
 from api.views.telegram_webapp import telegram_webapp_auth
@@ -157,6 +158,8 @@ urlpatterns = [
     path('v1/projects/<int:pk>/connectors/<int:connector_id>/file/', ConnectorFileContentView.as_view(), name='connector_file_content'),
     path('v1/projects/<int:pk>/commits/', CommitListCreateView.as_view(), name='project_commits'),
     path('v1/projects/<int:pk>/commits/<int:commit_id>/confirm/', CommitConfirmView.as_view(), name='commit_confirm'),
+    path('v1/projects/<int:pk>/connectors/<int:connector_id>/sync/', ConnectorSyncView.as_view(), name='connector_sync'),
+    path('v1/projects/<int:pk>/connectors/<int:connector_id>/webhook/', ConnectorWebhookView.as_view(), name='connector_webhook'),
 
     # ========== STUDIO (Vibe-Coding Studio) ==========
     path('v1/studio/', include('studio.urls')),

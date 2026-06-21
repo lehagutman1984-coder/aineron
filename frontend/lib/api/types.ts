@@ -359,6 +359,9 @@ export interface ProjectConnector {
   owner: string;
   repo: string;
   branch: string;
+  webhook_url: string;
+  webhook_secret: string;
+  last_synced_at: string | null;
   created_at: string;
 }
 

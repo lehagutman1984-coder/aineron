@@ -1,10 +1,14 @@
+import hashlib
+import hmac
 import re
 from urllib.parse import urlparse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework import serializers
 
 from aitext.models import Project, ProjectConnector, ProjectCommit
@@ -44,10 +48,23 @@ def _parse_gitea_url(url: str, base_url: str):
 # ── Serializers ───────────────────────────────────────────────────────────────
 
 class ConnectorSerializer(serializers.ModelSerializer):
+    webhook_url = serializers.SerializerMethodField()
+
     class Meta:
         model = ProjectConnector
-        fields = ['id', 'connector_type', 'repo_url', 'owner', 'repo', 'branch', 'created_at']
-        read_only_fields = ['id', 'owner', 'repo', 'created_at']
+        fields = [
+            'id', 'connector_type', 'repo_url', 'owner', 'repo', 'branch',
+            'webhook_url', 'webhook_secret', 'last_synced_at', 'created_at',
+        ]
+        read_only_fields = ['id', 'owner', 'repo', 'webhook_url', 'webhook_secret', 'last_synced_at', 'created_at']
+
+    def get_webhook_url(self, obj) -> str:
+        request = self.context.get('request')
+        if request:
+            from django.conf import settings
+            base = getattr(settings, 'SITE_URL', request.build_absolute_uri('/').rstrip('/'))
+            return f'{base}/api/v1/projects/{obj.project_id}/connectors/{obj.id}/webhook/'
+        return ''
 
 
 class CommitFileSerializer(serializers.Serializer):
@@ -72,7 +89,7 @@ class ConnectorListCreateView(APIView):
     def get(self, request, pk):
         project = get_object_or_404(Project, pk=pk, user=request.user)
         qs = project.connectors.all()
-        return Response(ConnectorSerializer(qs, many=True).data)
+        return Response(ConnectorSerializer(qs, many=True, context={'request': request}).data)
 
     def post(self, request, pk):
         project = get_object_or_404(Project, pk=pk, user=request.user)
@@ -121,7 +138,7 @@ class ConnectorListCreateView(APIView):
             connector.repo_url = repo_url
             connector.save(update_fields=['branch', 'access_token_enc', 'repo_url'])
 
-        return Response(ConnectorSerializer(connector).data, status=201 if created else 200)
+        return Response(ConnectorSerializer(connector, context={'request': request}).data, status=201 if created else 200)
 
 
 class ConnectorDetailView(APIView):
@@ -262,3 +279,66 @@ class CommitConfirmView(APIView):
             return Response({'status': 'queued', 'commit_id': commit.id})
 
         return Response({'error': 'action должен быть push или reject'}, status=400)
+
+
+# ── Inbound Sync (Sprint 4.2) ─────────────────────────────────────────────────
+
+class ConnectorSyncView(APIView):
+    """POST /projects/<pk>/connectors/<connector_id>/sync/ — запустить синхронизацию немедленно."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk, connector_id):
+        project = get_object_or_404(Project, pk=pk, user=request.user)
+        connector = get_object_or_404(ProjectConnector, pk=connector_id, project=project)
+        from aitext.tasks import sync_connector_task
+        sync_connector_task.delay(connector.id)
+        return Response({'status': 'queued', 'connector_id': connector.id})
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class ConnectorWebhookView(APIView):
+    """POST /projects/<pk>/connectors/<connector_id>/webhook/ — GitHub/Gitea push webhook.
+
+    GitHub: X-Hub-Signature-256: sha256=<hmac>
+    Gitea:  X-Gitea-Signature: <hmac>
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = []  # no session / JWT — it's a public webhook
+
+    def _verify_signature(self, request, secret: str) -> bool:
+        body = request.body
+        expected = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+        # Try GitHub header first, then Gitea
+        sig = (
+            request.META.get('HTTP_X_HUB_SIGNATURE_256', '')
+            or request.META.get('HTTP_X_GITEA_SIGNATURE', '')
+        )
+        if sig.startswith('sha256='):
+            sig = sig[7:]
+        if not sig:
+            return False
+        return hmac.compare_digest(sig, expected)
+
+    def post(self, request, pk, connector_id):
+        try:
+            connector = ProjectConnector.objects.select_related('project').get(id=connector_id, project_id=pk)
+        except ProjectConnector.DoesNotExist:
+            return Response(status=404)
+
+        if not connector.webhook_secret:
+            return Response({'error': 'webhook not configured'}, status=400)
+
+        if not self._verify_signature(request, connector.webhook_secret):
+            return Response({'error': 'invalid signature'}, status=401)
+
+        # Only trigger on push events — ignore pings, issues, PRs etc.
+        event = (
+            request.META.get('HTTP_X_GITHUB_EVENT', '')
+            or request.META.get('HTTP_X_GITEA_EVENT', '')
+        )
+        if event not in ('', 'push'):
+            return Response({'status': 'ignored', 'event': event})
+
+        from aitext.tasks import sync_connector_task
+        sync_connector_task.delay(connector.id)
+        return Response({'status': 'queued'})
