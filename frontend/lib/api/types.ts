@@ -287,6 +287,17 @@ export interface ChatListItem {
   updated_at: string;
 }
 
+export interface ProjectFile {
+  id: number;
+  filename: string;
+  file_url: string | null;
+  file_size: number;
+  file_type: "pdf" | "doc" | "text" | "code" | "other";
+  status: "processing" | "ready" | "error";
+  enabled: boolean;
+  created_at: string;
+}
+
 export interface ChatProjectMini {
   id: number;
   name: string;

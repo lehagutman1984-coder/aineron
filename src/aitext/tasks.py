@@ -10,7 +10,7 @@ from openai import OpenAI
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
-from .models import Message, NeuralNetwork, GeneratedImage, Project
+from .models import Message, NeuralNetwork, GeneratedImage, Project, ProjectFile
 from .file_utils import prepare_media_for_ai
 from .fal_utils import generate_with_falai, validate_and_merge_settings
 from users.models import UserSpending
@@ -27,6 +27,50 @@ def _strip_html(text: str) -> str:
     return _HTML_TAG_RE.sub('', text).strip()
 
 _client = None
+
+FULL_INJECT_LIMIT = 50_000  # символов — порог full-inject vs лексический RAG
+
+
+def _retrieve_relevant_chunks(text: str, query: str, chunk_size: int = 500, top_k: int = 6) -> str:
+    """Простой лексический поиск: разбивает текст на чанки, возвращает top_k по пересечению слов с запросом."""
+    if not query:
+        return text[:FULL_INJECT_LIMIT]
+    chunks = [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
+    q_words = set(query.lower().split())
+    scored = []
+    for idx, chunk in enumerate(chunks):
+        c_words = set(chunk.lower().split())
+        score = len(q_words & c_words)
+        scored.append((score, idx, chunk))
+    scored.sort(key=lambda x: (-x[0], x[1]))
+    top = sorted(scored[:top_k], key=lambda x: x[1])
+    return "\n...\n".join(c for _, _, c in top)
+
+
+def build_project_knowledge_context(project, user_message_text: str = '') -> str:
+    """Собирает контекст из файлов базы знаний проекта.
+
+    Файлы ≤ FULL_INJECT_LIMIT символов вставляются целиком,
+    крупные — лексическим отбором релевантных фрагментов.
+    """
+    files = project.knowledge_files.filter(enabled=True, status='ready').exclude(extracted_text='')
+    if not files.exists():
+        return ''
+
+    parts = []
+    for f in files:
+        text = f.extracted_text
+        if len(text) <= FULL_INJECT_LIMIT:
+            parts.append(f"### {f.filename}\n{text}")
+        else:
+            snippet = _retrieve_relevant_chunks(text, user_message_text)
+            parts.append(f"### {f.filename} (фрагменты)\n{snippet}")
+
+    if not parts:
+        return ''
+
+    header = "Материалы базы знаний проекта. Используй их как источник истины при ответах.\n\n"
+    return header + "\n\n---\n\n".join(parts)
 
 
 def get_laozhang_client():
@@ -294,12 +338,18 @@ def generate_ai_response(self, message_id, web_search=False):
 
         messages_for_api = []
 
-        # 1. Project system prompt (если есть)
+        # 1. Project system prompt + knowledge base (если есть)
+        proj = None
         if chat.project_id:
             try:
-                proj = Project.objects.get(id=chat.project_id)
+                proj = Project.objects.select_related().get(id=chat.project_id)
                 if proj.system_prompt:
                     messages_for_api.append({"role": "system", "content": proj.system_prompt})
+                # База знаний проекта
+                user_msg_text = message.plain_text or (message.content if isinstance(message.content, str) else '')
+                knowledge_ctx = build_project_knowledge_context(proj, user_msg_text)
+                if knowledge_ctx:
+                    messages_for_api.append({"role": "system", "content": knowledge_ctx})
             except Exception:
                 pass
 
@@ -934,3 +984,31 @@ def summarize_stale_chats():
 
     if queued:
         logger.info(f'[memory] summarize_stale_chats: queued {queued} chats for summarization')
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Project Knowledge Base Tasks
+# ──────────────────────────────────────────────────────────────────────────────
+
+@shared_task(bind=True, max_retries=2, default_retry_delay=30, ignore_result=True)
+def process_project_file(self, file_id: int):
+    """Извлекает текст из файла базы знаний проекта."""
+    from .file_utils import extract_text_from_file
+
+    try:
+        pf = ProjectFile.objects.get(id=file_id)
+    except ProjectFile.DoesNotExist:
+        return
+
+    try:
+        file_path = pf.file.path
+        text = extract_text_from_file(file_path, pf.filename)
+        pf.extracted_text = text or ''
+        pf.status = 'ready'
+        pf.save(update_fields=['extracted_text', 'status'])
+        logger.info(f'[project_file] extracted {len(pf.extracted_text)} chars from {pf.filename}')
+    except Exception as e:
+        pf.status = 'error'
+        pf.save(update_fields=['status'])
+        logger.warning(f'[project_file] extraction failed for file {file_id}: {e}')
+        raise self.retry(exc=e, countdown=30)

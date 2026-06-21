@@ -24,11 +24,19 @@ import {
   Info,
   Check,
   ChevronDown,
+  Upload,
+  File,
+  FileCode2,
+  FileType2,
+  Loader2,
+  AlertCircle,
+  ToggleLeft,
+  ToggleRight,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { listProjects, listChats, deleteChat, updateProject } from "@/lib/api/client";
-import type { ChatListItem, Project } from "@/lib/api/types";
+import { listProjects, listChats, deleteChat, updateProject, listProjectFiles, uploadProjectFile, deleteProjectFile, toggleProjectFile } from "@/lib/api/client";
+import type { ChatListItem, Project, ProjectFile } from "@/lib/api/types";
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Folder, Code2, BookOpen, Briefcase, Zap, Globe, Palette, MessageSquare,
@@ -481,8 +489,230 @@ function InstructionsTab({ project, onSaved }: { project: Project; onSaved: (p: 
   );
 }
 
+/* ── Вкладка "Файлы" ── */
+function FilesTab({ projectId }: { projectId: number }) {
+  const qc = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const { data: files = [], isLoading } = useQuery({
+    queryKey: ["project-files", projectId],
+    queryFn: () => listProjectFiles(projectId),
+    staleTime: 30_000,
+    refetchInterval: (query) => {
+      // Обновляем пока есть файлы в статусе "processing"
+      const data = query.state.data ?? [];
+      return data.some((f: ProjectFile) => f.status === "processing") ? 3000 : false;
+    },
+  });
+
+  const uploadMutation = useMutation({
+    mutationFn: (file: File) => uploadProjectFile(projectId, file),
+    onSuccess: (newFile) => {
+      qc.setQueryData<ProjectFile[]>(["project-files", projectId], (prev) =>
+        prev ? [...prev, newFile] : [newFile]
+      );
+    },
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: ({ id, enabled }: { id: number; enabled: boolean }) =>
+      toggleProjectFile(projectId, id, enabled),
+    onSuccess: (updated) => {
+      qc.setQueryData<ProjectFile[]>(["project-files", projectId], (prev) =>
+        prev?.map((f) => (f.id === updated.id ? updated : f)) ?? []
+      );
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => deleteProjectFile(projectId, id),
+    onSuccess: (_, id) => {
+      qc.setQueryData<ProjectFile[]>(["project-files", projectId], (prev) =>
+        prev?.filter((f) => f.id !== id) ?? []
+      );
+      setDeletingId(null);
+    },
+  });
+
+  const handleFiles = (fileList: FileList | null) => {
+    if (!fileList) return;
+    Array.from(fileList).forEach((f) => uploadMutation.mutate(f));
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    handleFiles(e.dataTransfer.files);
+  };
+
+  function FileTypeIcon({ type }: { type: ProjectFile["file_type"] }) {
+    if (type === "pdf") return <FileType2 size={16} className="text-[#e74c3c]" />;
+    if (type === "code") return <FileCode2 size={16} className="text-[#0a7cff]" />;
+    if (type === "doc") return <File size={16} className="text-[#0a7cff]" />;
+    if (type === "text") return <FileText size={16} className="text-[rgba(13,13,13,0.45)]" />;
+    return <File size={16} className="text-[rgba(13,13,13,0.35)]" />;
+  }
+
+  function formatBytes(bytes: number): string {
+    if (bytes < 1024) return `${bytes} Б`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} КБ`;
+    return `${(bytes / 1024 / 1024).toFixed(1)} МБ`;
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+      {/* Description */}
+      <div className="flex items-start gap-2.5 rounded-[10px] bg-[rgba(10,124,255,0.06)] px-4 py-3">
+        <Info size={14} className="mt-0.5 shrink-0 text-[#0a7cff]" />
+        <p className="text-[13px] leading-relaxed text-[rgba(13,13,13,0.65)]">
+          Загруженные файлы автоматически читаются AI в каждом чате проекта как база знаний.
+          Поддерживаются PDF, Word, текст, код (до 20 МБ, макс. 20 файлов).
+        </p>
+      </div>
+
+      {/* Drop zone */}
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleDrop}
+        onClick={() => fileInputRef.current?.click()}
+        className={[
+          "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-[12px] border-2 border-dashed py-8 transition-all",
+          dragOver
+            ? "border-[#0a7cff] bg-[rgba(10,124,255,0.06)]"
+            : "border-[rgba(13,13,13,0.14)] bg-[rgba(13,13,13,0.01)] hover:border-[rgba(13,13,13,0.25)] hover:bg-[rgba(13,13,13,0.02)]",
+        ].join(" ")}
+      >
+        <Upload size={22} className={dragOver ? "text-[#0a7cff]" : "text-[rgba(13,13,13,0.30)]"} />
+        <p className="text-[13px] font-medium text-[rgba(13,13,13,0.65)]">
+          {dragOver ? "Отпустите для загрузки" : "Перетащите файлы или нажмите для выбора"}
+        </p>
+        <p className="text-[11px] text-[rgba(13,13,13,0.35)]">
+          PDF, DOCX, TXT, MD, PY, JS, TS, JSON и другие — до 20 МБ
+        </p>
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept=".pdf,.txt,.md,.rst,.py,.js,.ts,.tsx,.jsx,.html,.css,.json,.yaml,.yml,.toml,.ini,.sh,.sql,.doc,.docx,.odt,.rtf,.csv,.xml"
+          className="hidden"
+          onChange={(e) => handleFiles(e.target.files)}
+        />
+      </div>
+
+      {/* Upload error */}
+      {uploadMutation.error && (
+        <div className="flex items-center gap-2 rounded-[8px] bg-[rgba(231,76,60,0.08)] px-3 py-2 text-[13px] text-[#e74c3c]">
+          <AlertCircle size={14} />
+          {(uploadMutation.error as Error).message ?? "Ошибка загрузки"}
+        </div>
+      )}
+
+      {/* File list */}
+      {isLoading ? (
+        <div className="flex flex-col gap-2">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="h-14 animate-pulse rounded-[10px] bg-[rgba(13,13,13,0.05)]" />
+          ))}
+        </div>
+      ) : files.length === 0 ? (
+        <p className="py-4 text-center text-[13px] text-[rgba(13,13,13,0.38)]">
+          Файлы не загружены
+        </p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {files.map((f) => {
+            const isDeleting = deletingId === f.id;
+            return (
+              <div
+                key={f.id}
+                className={[
+                  "group flex items-center gap-3 rounded-[10px] border p-3.5 transition-all",
+                  f.enabled
+                    ? "border-[rgba(13,13,13,0.09)] bg-white"
+                    : "border-[rgba(13,13,13,0.06)] bg-[rgba(13,13,13,0.02)] opacity-60",
+                ].join(" ")}
+              >
+                <div className="shrink-0">
+                  <FileTypeIcon type={f.file_type} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13px] font-medium text-[#0d0d0d]">{f.filename}</p>
+                  <div className="mt-0.5 flex items-center gap-2">
+                    <span className="text-[11px] text-[rgba(13,13,13,0.40)]">{formatBytes(f.file_size)}</span>
+                    {f.status === "processing" && (
+                      <span className="flex items-center gap-1 text-[11px] text-[rgba(13,13,13,0.45)]">
+                        <Loader2 size={10} className="animate-spin" />
+                        Обработка...
+                      </span>
+                    )}
+                    {f.status === "ready" && (
+                      <span className="flex items-center gap-1 text-[11px] text-[#22a85a]">
+                        <Check size={10} />
+                        Готов
+                      </span>
+                    )}
+                    {f.status === "error" && (
+                      <span className="flex items-center gap-1 text-[11px] text-[#e74c3c]">
+                        <AlertCircle size={10} />
+                        Ошибка
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {isDeleting ? (
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button
+                      onClick={() => deleteMutation.mutate(f.id)}
+                      disabled={deleteMutation.isPending}
+                      className="rounded-[6px] bg-[#e74c3c] px-2.5 py-1 text-[11px] font-medium text-white hover:bg-[#c0392b] disabled:opacity-50 transition-colors"
+                    >
+                      Удалить
+                    </button>
+                    <button
+                      onClick={() => setDeletingId(null)}
+                      className="rounded-[6px] px-2 py-1 text-[11px] text-[rgba(13,13,13,0.45)] hover:bg-[rgba(13,13,13,0.06)] transition-colors"
+                    >
+                      Отмена
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                    {/* Toggle enabled */}
+                    <button
+                      onClick={() => toggleMutation.mutate({ id: f.id, enabled: !f.enabled })}
+                      className="rounded-[6px] p-1.5 text-[rgba(13,13,13,0.40)] hover:bg-[rgba(13,13,13,0.06)] hover:text-[#0d0d0d] transition-colors"
+                      title={f.enabled ? "Отключить" : "Включить"}
+                    >
+                      {f.enabled
+                        ? <ToggleRight size={16} className="text-[#0a7cff]" />
+                        : <ToggleLeft size={16} />
+                      }
+                    </button>
+                    {/* Delete */}
+                    <button
+                      onClick={() => setDeletingId(f.id)}
+                      className="rounded-[6px] p-1.5 text-[rgba(13,13,13,0.35)] hover:bg-[rgba(231,76,60,0.09)] hover:text-[#e74c3c] transition-colors"
+                      title="Удалить файл"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Главная страница проекта ── */
-type Tab = "chats" | "instructions";
+type Tab = "chats" | "instructions" | "files";
 
 export default function ProjectDetailPage({ params }: { params: { id: string } }) {
   const projectId = parseInt(params.id, 10);
@@ -578,6 +808,12 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
           onClick={() => setTab("instructions")}
           badge={hasInstructions}
         />
+        <TabButton
+          active={tab === "files"}
+          icon={<Upload size={13} />}
+          label="Файлы"
+          onClick={() => setTab("files")}
+        />
       </div>
 
       {/* Tab actions row */}
@@ -601,6 +837,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
       {tab === "instructions" && !project && (
         <div className="h-32 animate-pulse rounded-[12px] bg-[rgba(13,13,13,0.05)]" />
       )}
+      {tab === "files" && <FilesTab projectId={projectId} />}
 
       {/* Edit modal (name / icon / color) */}
       {showEdit && project && (

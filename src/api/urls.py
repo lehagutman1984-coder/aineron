@@ -37,6 +37,7 @@ from api.views.files import UserFilesView, UserFileDeleteView
 from api.views.compare import CompareView
 from api.views.prompts import PromptListCreateView, PromptDetailView
 from api.views.projects import ProjectListCreateView, ProjectDetailView
+from api.views.project_files import ProjectFileListCreateView, ProjectFileDetailView
 from api.views.telegram_link import TelegramLinkTokenView
 from api.views.telegram_webapp import telegram_webapp_auth
 from api.views.memory import (
@@ -141,6 +142,8 @@ urlpatterns = [
     # ========== Проекты (папки чатов) ==========
     path('v1/projects/', ProjectListCreateView.as_view(), name='projects_list_create'),
     path('v1/projects/<int:pk>/', ProjectDetailView.as_view(), name='project_detail'),
+    path('v1/projects/<int:pk>/files/', ProjectFileListCreateView.as_view(), name='project_files'),
+    path('v1/projects/<int:pk>/files/<int:file_id>/', ProjectFileDetailView.as_view(), name='project_file_detail'),
 
     # ========== STUDIO (Vibe-Coding Studio) ==========
     path('v1/studio/', include('studio.urls')),

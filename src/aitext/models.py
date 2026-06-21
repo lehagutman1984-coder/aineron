@@ -228,6 +228,47 @@ class Project(models.Model):
         return f"{self.user.username} — {self.name}"
 
 
+def project_file_upload_path(instance, filename):
+    return f'project_files/{instance.project_id}/{filename}'
+
+
+class ProjectFile(models.Model):
+    """Файл базы знаний проекта"""
+    FILE_TYPES = [
+        ('pdf', 'PDF'),
+        ('doc', 'Документ'),
+        ('text', 'Текст'),
+        ('code', 'Код'),
+        ('other', 'Другой'),
+    ]
+    STATUS = [
+        ('processing', 'Обработка'),
+        ('ready', 'Готов'),
+        ('error', 'Ошибка'),
+    ]
+
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name='knowledge_files',
+        verbose_name='Проект',
+    )
+    filename = models.CharField(max_length=255, verbose_name='Имя файла')
+    file = models.FileField(upload_to=project_file_upload_path, verbose_name='Файл')
+    file_size = models.PositiveIntegerField(default=0, verbose_name='Размер (байт)')
+    file_type = models.CharField(max_length=10, choices=FILE_TYPES, default='other', verbose_name='Тип файла')
+    extracted_text = models.TextField(blank=True, verbose_name='Извлечённый текст')
+    status = models.CharField(max_length=15, choices=STATUS, default='processing', verbose_name='Статус')
+    enabled = models.BooleanField(default=True, verbose_name='Активен')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Файл базы знаний'
+        verbose_name_plural = 'Файлы базы знаний'
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"{self.project.name} / {self.filename}"
+
+
 class Chat(models.Model):
     """Чат пользователя с нейросетью"""
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='chats')

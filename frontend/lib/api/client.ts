@@ -39,6 +39,7 @@ import type {
   CompareResponse,
   PromptTemplate,
   Project,
+  ProjectFile,
 } from "./types";
 
 const BASE_URL =
@@ -62,8 +63,10 @@ export async function request<T>(
 ): Promise<T> {
   const { apiKey, ...fetchInit } = init;
 
+  // Don't set Content-Type for FormData — browser sets it with correct boundary
+  const isFormData = fetchInit.body instanceof FormData;
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    ...(isFormData ? {} : { "Content-Type": "application/json" }),
     ...(fetchInit.headers as Record<string, string> | undefined),
   };
 
@@ -566,6 +569,30 @@ export const updateProject = (
 
 export const deleteProject = (id: number): Promise<void> =>
   request<void>(`/projects/${id}/`, { method: "DELETE" });
+
+// ============ Project Files (knowledge base) ============
+
+export const listProjectFiles = (projectId: number): Promise<ProjectFile[]> =>
+  request<ProjectFile[]>(`/projects/${projectId}/files/`);
+
+export const uploadProjectFile = (projectId: number, file: File): Promise<ProjectFile> => {
+  const form = new FormData();
+  form.append("file", file);
+  return request<ProjectFile>(`/projects/${projectId}/files/`, { method: "POST", body: form });
+};
+
+export const toggleProjectFile = (
+  projectId: number,
+  fileId: number,
+  enabled: boolean,
+): Promise<ProjectFile> =>
+  request<ProjectFile>(`/projects/${projectId}/files/${fileId}/`, {
+    method: "PATCH",
+    body: JSON.stringify({ enabled }),
+  });
+
+export const deleteProjectFile = (projectId: number, fileId: number): Promise<void> =>
+  request<void>(`/projects/${projectId}/files/${fileId}/`, { method: "DELETE" });
 
 // ============ User (legacy Django session endpoint, kept for compatibility) ============
 
