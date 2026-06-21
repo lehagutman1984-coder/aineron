@@ -38,8 +38,14 @@ class ProjectFileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ProjectFile
-        fields = ['id', 'filename', 'file_url', 'file_size', 'file_type', 'status', 'enabled', 'created_at']
-        read_only_fields = ['id', 'filename', 'file_url', 'file_size', 'file_type', 'status', 'created_at']
+        fields = [
+            'id', 'filename', 'file_url', 'file_size', 'file_type',
+            'status', 'embed_status', 'source', 'enabled', 'created_at',
+        ]
+        read_only_fields = [
+            'id', 'filename', 'file_url', 'file_size', 'file_type',
+            'status', 'embed_status', 'source', 'created_at',
+        ]
 
     def get_file_url(self, obj):
         request = self.context.get('request')

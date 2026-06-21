@@ -307,6 +307,10 @@ STUDIO_SANDBOX_CPUS = float(os.getenv('STUDIO_SANDBOX_CPUS', '1'))
 # Project Connector: Fernet key for encrypting PAT tokens (generate with Fernet.generate_key())
 PROJECT_CONNECTOR_FERNET_KEY = os.getenv('PROJECT_CONNECTOR_FERNET_KEY', '')
 PROJECT_AI_COMMITS = os.getenv('PROJECT_AI_COMMITS', '0') == '1'
+# Sprint 4.1 — Vector RAG (pgvector) — по умолчанию выключен, лексика остаётся
+PROJECT_VECTOR_RAG   = os.getenv('PROJECT_VECTOR_RAG',   '0') == '1'
+PROJECT_EMBED_MODEL  = os.getenv('PROJECT_EMBED_MODEL',  'text-embedding-3-small')
+PROJECT_EMBED_DIMS   = int(os.getenv('PROJECT_EMBED_DIMS', '1536'))
 
 STUDIO_GITEA_URL = os.getenv('STUDIO_GITEA_URL', 'http://gitea:3000')
 STUDIO_GITEA_ADMIN_USER = os.getenv('STUDIO_GITEA_ADMIN_USER', 'studio_admin')

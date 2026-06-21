@@ -256,6 +256,16 @@ class ProjectFile(models.Model):
         ('ready', 'Готов'),
         ('error', 'Ошибка'),
     ]
+    EMBED_STATUS = [
+        ('none', 'Нет'),
+        ('pending', 'В очереди'),
+        ('done', 'Готово'),
+        ('error', 'Ошибка'),
+    ]
+    SOURCE_CHOICES = [
+        ('upload', 'Загружен'),
+        ('repo', 'Из репозитория'),
+    ]
 
     project = models.ForeignKey(
         Project, on_delete=models.CASCADE, related_name='knowledge_files',
@@ -269,6 +279,15 @@ class ProjectFile(models.Model):
     status = models.CharField(max_length=15, choices=STATUS, default='processing', verbose_name='Статус')
     enabled = models.BooleanField(default=True, verbose_name='Активен')
     created_at = models.DateTimeField(auto_now_add=True)
+    # Sprint 4.1: векторный RAG
+    embed_status = models.CharField(max_length=12, choices=EMBED_STATUS, default='none', verbose_name='Статус эмбеддингов')
+    # Sprint 4.2: inbound sync из репозитория
+    source = models.CharField(max_length=10, choices=SOURCE_CHOICES, default='upload', verbose_name='Источник')
+    connector = models.ForeignKey(
+        'ProjectConnector', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='synced_files', verbose_name='Коннектор (для repo-файлов)',
+    )
+    repo_path = models.CharField(max_length=500, blank=True, verbose_name='Путь в репозитории')
 
     class Meta:
         verbose_name = 'Файл базы знаний'
@@ -335,6 +354,30 @@ class ProjectCommit(models.Model):
 
     def __str__(self):
         return f"{self.project.name} — {self.commit_message[:50]}"
+
+
+class ProjectChunk(models.Model):
+    """Чанк текста из файла базы знаний с векторным эмбеддингом (Sprint 4.1 — Vector RAG)."""
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='chunks')
+    file = models.ForeignKey(ProjectFile, on_delete=models.CASCADE, related_name='chunks')
+    chunk_index = models.PositiveIntegerField()
+    content = models.TextField()
+    token_count = models.PositiveIntegerField(default=0)
+    # VectorField добавляется миграцией при включённом pgvector (dimensions=1536)
+    # Хранится как отдельное поле в БД; здесь описывается без Django-декларации
+    # чтобы не ломать SQLite в тестах. Запросы к вектору — через django.db.connection.cursor().
+
+    class Meta:
+        verbose_name = 'Чанк файла'
+        verbose_name_plural = 'Чанки файлов'
+        ordering = ['file', 'chunk_index']
+        indexes = [
+            models.Index(fields=['project'], name='chunk_project_idx'),
+            models.Index(fields=['file'], name='chunk_file_idx'),
+        ]
+
+    def __str__(self):
+        return f"{self.file.filename}[{self.chunk_index}]"
 
 
 class Chat(models.Model):

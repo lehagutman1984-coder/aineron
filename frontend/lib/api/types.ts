@@ -326,6 +326,8 @@ export interface ProjectFile {
   file_size: number;
   file_type: "pdf" | "doc" | "text" | "code" | "other";
   status: "processing" | "ready" | "error";
+  embed_status: "none" | "pending" | "done" | "error";
+  source: "upload" | "repo";
   enabled: boolean;
   created_at: string;
 }

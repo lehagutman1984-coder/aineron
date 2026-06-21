@@ -51,9 +51,21 @@ def _retrieve_relevant_chunks(text: str, query: str, chunk_size: int = 500, top_
 def build_project_knowledge_context(project, user_message_text: str = '') -> str:
     """Собирает контекст из файлов базы знаний проекта.
 
-    Файлы ≤ FULL_INJECT_LIMIT вставляются целиком, крупные — лексическим RAG.
-    Суммарный объём ограничен AGGREGATE_INJECT_LIMIT.
+    При PROJECT_VECTOR_RAG=1 — векторный поиск (pgvector) с лексикой как fallback.
+    При PROJECT_VECTOR_RAG=0 (default) — только лексика (_retrieve_relevant_chunks).
     """
+    # Векторный путь (Sprint 4.1)
+    if getattr(settings, 'PROJECT_VECTOR_RAG', False) and user_message_text:
+        try:
+            from .embeddings import vector_search
+            vec_result = vector_search(project, user_message_text)
+            if vec_result:
+                header = "Материалы базы знаний проекта (семантический поиск). Используй как источник истины.\n\n"
+                return header + vec_result
+        except Exception as e:
+            logger.warning(f"vector_search failed, falling back to lexical: {e}")
+
+    # Лексический путь (Sprint 1, по умолчанию)
     files_qs = project.knowledge_files.filter(enabled=True, status='ready').exclude(extracted_text='')
     files_list = list(files_qs)
     if not files_list:
@@ -1028,11 +1040,36 @@ def process_project_file(self, file_id: int):
         pf.status = 'ready'
         pf.save(update_fields=['extracted_text', 'status'])
         logger.info(f'[project_file] extracted {len(pf.extracted_text)} chars from {pf.filename}')
+        # Sprint 4.1: запускаем эмбеддинг файла если флаг включён
+        if getattr(settings, 'PROJECT_VECTOR_RAG', False):
+            embed_project_file.delay(pf.id)
     except Exception as e:
         pf.status = 'error'
         pf.save(update_fields=['status'])
         logger.warning(f'[project_file] extraction failed for file {file_id}: {e}')
         raise self.retry(exc=e, countdown=30)
+
+
+@shared_task(bind=True, max_retries=2, default_retry_delay=60, ignore_result=True)
+def embed_project_file(self, file_id: int):
+    """Sprint 4.1: создаёт/обновляет векторные чанки для файла базы знаний."""
+    try:
+        pf = ProjectFile.objects.get(id=file_id)
+    except ProjectFile.DoesNotExist:
+        return
+
+    pf.embed_status = 'pending'
+    pf.save(update_fields=['embed_status'])
+
+    try:
+        from .embeddings import embed_chunks
+        saved = embed_chunks(pf)
+        logger.info(f'[embed_project_file] file {file_id}: {saved} chunks embedded')
+    except Exception as e:
+        pf.embed_status = 'error'
+        pf.save(update_fields=['embed_status'])
+        logger.error(f'[embed_project_file] failed for file {file_id}: {e}')
+        raise self.retry(exc=e, countdown=60)
 
 
 # Project Connector — Git Push Tasks
