@@ -7,6 +7,7 @@ import { ChatStartForm } from "./ChatStartForm";
 
 interface Props {
   params: { slug: string };
+  searchParams?: { project_id?: string };
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -34,7 +35,7 @@ export async function generateStaticParams() {
 
 export const dynamic = "force-dynamic";
 
-export default async function ModelDetailPage({ params }: Props) {
+export default async function ModelDetailPage({ params, searchParams }: Props) {
   const [network, allNetworks] = await Promise.all([
     serverGetNetwork(params.slug),
     serverListNetworks(),
@@ -189,6 +190,7 @@ export default async function ModelDetailPage({ params }: Props) {
             networkSlug={network.slug}
             isMedia={isMedia}
             configJson={network.config_json as import("@/lib/api/types").ModelConfigJson | null}
+            projectId={searchParams?.project_id ? parseInt(searchParams.project_id, 10) : undefined}
           />
         </div>
 

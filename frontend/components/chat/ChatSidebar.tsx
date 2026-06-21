@@ -20,9 +20,298 @@ import {
   MessageSquare,
   Folder,
   Plus,
+  MoreHorizontal,
+  BookOpen,
+  Briefcase,
+  Zap,
+  Globe,
+  Palette,
 } from "lucide-react";
-import { listChats, deleteChat, renameChat, listProjects } from "@/lib/api/client";
+import { listChats, deleteChat, renameChat, listProjects, createProject, updateProject, deleteProject } from "@/lib/api/client";
 import type { ChatListItem, Project } from "@/lib/api/types";
+
+// ── Project constants ────────────────────────────────────────
+
+const PROJECT_ICON_MAP: Record<string, React.ElementType> = {
+  Folder, Code2, BookOpen, Briefcase, Zap, Globe, Palette, MessageSquare,
+};
+const PROJECT_ICONS = Object.keys(PROJECT_ICON_MAP);
+const PROJECT_COLORS = ["#0a7cff", "#22a85a", "#e67e22", "#9b59b6", "#e74c3c", "#1dd6c1", "#0d0d0d", "#6366f1"];
+
+function ProjectIcon({ name, size = 12 }: { name: string; size?: number }) {
+  const Icon = PROJECT_ICON_MAP[name] ?? Folder;
+  return <Icon size={size} />;
+}
+
+// ── Project modal (create / edit) ────────────────────────────
+
+function ProjectModal({
+  mode,
+  initial,
+  onClose,
+  onSave,
+}: {
+  mode: "create" | "edit";
+  initial?: Project;
+  onClose: () => void;
+  onSave: (data: { name: string; system_prompt: string; color: string; icon: string }) => Promise<void>;
+}) {
+  const [name, setName] = useState(initial?.name ?? "");
+  const [systemPrompt, setSystemPrompt] = useState(initial?.system_prompt ?? "");
+  const [color, setColor] = useState(initial?.color ?? PROJECT_COLORS[0]);
+  const [icon, setIcon] = useState(initial?.icon ?? "Folder");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setLoading(true);
+    setError(null);
+    try {
+      await onSave({ name: name.trim(), system_prompt: systemPrompt.trim(), color, icon });
+    } catch {
+      setError(mode === "create" ? "Не удалось создать проект" : "Не удалось сохранить");
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40" onClick={onClose}>
+      <div
+        className="w-full max-w-[420px] rounded-[18px] border border-[rgba(13,13,13,0.10)] bg-white p-6 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-[15px] font-semibold text-[#0d0d0d]">
+            {mode === "create" ? "Новый проект" : "Настройки проекта"}
+          </h2>
+          <button onClick={onClose} className="rounded-[7px] p-1 text-[rgba(13,13,13,0.4)] hover:bg-[rgba(13,13,13,0.06)] hover:text-[#0d0d0d] transition-colors">
+            <X size={15} />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div>
+            <label className="mb-1.5 block text-[11px] font-medium text-[rgba(13,13,13,0.55)]">Название</label>
+            <input
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Мой проект"
+              maxLength={100}
+              className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] text-[#0d0d0d] outline-none focus:border-[#0a7cff] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1.5 block text-[11px] font-medium text-[rgba(13,13,13,0.55)]">Иконка</label>
+              <div className="flex flex-wrap gap-1.5">
+                {PROJECT_ICONS.map((ic) => {
+                  const Icon = PROJECT_ICON_MAP[ic];
+                  return (
+                    <button key={ic} type="button" onClick={() => setIcon(ic)}
+                      className={["flex h-7 w-7 items-center justify-center rounded-[6px] transition-colors", icon === ic ? "ring-2 ring-[#0a7cff] ring-offset-1" : "border border-[rgba(13,13,13,0.12)] hover:bg-[rgba(13,13,13,0.05)]"].join(" ")}
+                      style={{ color: icon === ic ? color : "rgba(13,13,13,0.45)" }}
+                    >
+                      <Icon size={13} />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[11px] font-medium text-[rgba(13,13,13,0.55)]">Цвет</label>
+              <div className="flex flex-wrap gap-1.5">
+                {PROJECT_COLORS.map((c) => (
+                  <button key={c} type="button" onClick={() => setColor(c)}
+                    className={["h-6 w-6 rounded-full transition-transform", color === c ? "scale-110 ring-2 ring-offset-1 ring-[rgba(13,13,13,0.25)]" : "hover:scale-105"].join(" ")}
+                    style={{ background: c }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-[11px] font-medium text-[rgba(13,13,13,0.55)]">
+              Системный промт <span className="text-[rgba(13,13,13,0.35)]">(необязательно)</span>
+            </label>
+            <textarea
+              value={systemPrompt}
+              onChange={(e) => setSystemPrompt(e.target.value)}
+              placeholder="Ты — помощник-программист..."
+              rows={3}
+              className="w-full resize-none rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[12px] text-[#0d0d0d] outline-none focus:border-[#0a7cff] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all"
+            />
+          </div>
+          {error && (
+            <div className="rounded-[8px] bg-[rgba(231,76,60,0.08)] px-3 py-2 text-[12px] text-[#e74c3c]">{error}</div>
+          )}
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={onClose}
+              className="rounded-[8px] px-3 py-1.5 text-[12px] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.06)] transition-colors">
+              Отмена
+            </button>
+            <button type="submit" disabled={!name.trim() || loading}
+              className="rounded-[8px] bg-[#0a7cff] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 transition-colors">
+              {loading ? (mode === "create" ? "Создание..." : "Сохранение...") : (mode === "create" ? "Создать" : "Сохранить")}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── Project accordion row ────────────────────────────────────
+
+function ProjectSidebarRow({
+  project,
+  isExpanded,
+  onToggle,
+  onEdit,
+  onDelete,
+  currentPath,
+}: {
+  project: Project;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  currentPath: string;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const { data: projectChats = [], isLoading } = useQuery({
+    queryKey: ["chats", "project", project.id],
+    queryFn: () => listChats({ project_id: project.id }),
+    staleTime: 30_000,
+    enabled: isExpanded,
+  });
+
+  return (
+    <div>
+      <div className="group mx-1 flex items-center gap-0.5 rounded-[7px] hover:bg-[rgba(13,13,13,0.04)] transition-colors">
+        <button
+          onClick={onToggle}
+          className="flex flex-1 min-w-0 items-center gap-2 px-2 py-1.5"
+        >
+          <span
+            className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[3px]"
+            style={{ background: `${project.color}20`, color: project.color }}
+          >
+            <ProjectIcon name={project.icon} size={10} />
+          </span>
+          <span className="truncate text-[12px] text-[rgba(13,13,13,0.65)] group-hover:text-[#0d0d0d]">
+            {project.name}
+          </span>
+          <span className="ml-auto shrink-0 text-[10px] text-[rgba(13,13,13,0.28)]">
+            {project.chat_count}
+          </span>
+          <ChevronDown
+            size={10}
+            className="shrink-0 text-[rgba(13,13,13,0.25)] transition-transform duration-150"
+            style={{ transform: isExpanded ? "none" : "rotate(-90deg)" }}
+          />
+        </button>
+
+        {/* "..." menu */}
+        <div className="relative mr-1 shrink-0">
+          <button
+            onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v); setConfirmDelete(false); }}
+            className="hidden h-5 w-5 items-center justify-center rounded-[4px] text-[rgba(13,13,13,0.30)] hover:bg-[rgba(13,13,13,0.08)] hover:text-[#0d0d0d] group-hover:flex transition-colors"
+          >
+            <MoreHorizontal size={11} />
+          </button>
+          {menuOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+              <div className="absolute right-0 top-6 z-50 w-36 overflow-hidden rounded-[8px] border border-[rgba(13,13,13,0.10)] bg-white shadow-lg">
+                <button
+                  onClick={() => { setMenuOpen(false); onEdit(); }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-[rgba(13,13,13,0.70)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
+                >
+                  <Edit3 size={12} />
+                  Переименовать
+                </button>
+                {!confirmDelete ? (
+                  <button
+                    onClick={() => setConfirmDelete(true)}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-[#e74c3c] hover:bg-[rgba(231,76,60,0.05)] transition-colors"
+                  >
+                    <Trash2 size={12} />
+                    Удалить
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-1 px-2 py-1.5">
+                    <span className="flex-1 text-[11px] text-[rgba(13,13,13,0.55)]">Удалить?</span>
+                    <button
+                      onClick={() => { setMenuOpen(false); onDelete(); }}
+                      className="rounded-[4px] bg-[#e74c3c] px-2 py-0.5 text-[11px] font-medium text-white hover:bg-[#c0392b] transition-colors"
+                    >
+                      Да
+                    </button>
+                    <button
+                      onClick={() => setConfirmDelete(false)}
+                      className="rounded-[4px] px-1.5 py-0.5 text-[11px] text-[rgba(13,13,13,0.45)] hover:bg-[rgba(13,13,13,0.07)] transition-colors"
+                    >
+                      Нет
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Accordion content */}
+      {isExpanded && (
+        <div className="ml-6 pb-0.5 pt-0.5">
+          {isLoading ? (
+            <div className="px-2 py-1.5 text-[11px] text-[rgba(13,13,13,0.35)]">Загрузка...</div>
+          ) : projectChats.length === 0 ? (
+            <p className="px-2 py-1 text-[11px] text-[rgba(13,13,13,0.35)]">Нет чатов</p>
+          ) : (
+            projectChats.slice(0, 6).map((chat) => {
+              const active = currentPath === `/chat/${chat.id}/` || currentPath === `/chat/${chat.id}`;
+              return (
+                <Link
+                  key={chat.id}
+                  href={`/chat/${chat.id}/`}
+                  className={[
+                    "flex items-center rounded-[6px] px-2 py-1 text-[12px] transition-colors",
+                    active
+                      ? "bg-[rgba(10,124,255,0.08)] text-[#0a7cff]"
+                      : "text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#0d0d0d]",
+                  ].join(" ")}
+                >
+                  <span className="truncate">{chat.title || chat.network.name}</span>
+                </Link>
+              );
+            })
+          )}
+          {projectChats.length > 6 && (
+            <Link
+              href={`/projects/${project.id}/`}
+              className="flex items-center gap-1 rounded-[6px] px-2 py-1 text-[11px] text-[rgba(13,13,13,0.40)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#0a7cff] transition-colors"
+            >
+              Все {projectChats.length} чатов
+              <ChevronRight size={10} />
+            </Link>
+          )}
+          <Link
+            href={`/models/?project_id=${project.id}`}
+            className="flex items-center gap-1.5 rounded-[6px] px-2 py-1.5 text-[11px] text-[rgba(13,13,13,0.38)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#0a7cff] transition-colors"
+          >
+            <Plus size={10} />
+            Новый чат
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ── Date grouping ────────────────────────────────────────────
 
@@ -200,6 +489,38 @@ export function ChatSidebar() {
   });
 
   const [projectsOpen, setProjectsOpen] = useState(true);
+  const [expandedProject, setExpandedProject] = useState<number | null>(null);
+  const [showProjectModal, setShowProjectModal] = useState<"create" | null>(null);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+
+  const createProjectMutation = useMutation({
+    mutationFn: (data: { name: string; system_prompt: string; color: string; icon: string }) =>
+      createProject(data),
+    onSuccess: (project) => {
+      qc.setQueryData<Project[]>(["projects"], (prev) => [project, ...(prev ?? [])]);
+      setShowProjectModal(null);
+      setExpandedProject(project.id);
+    },
+  });
+
+  const updateProjectMutation = useMutation({
+    mutationFn: ({ id, ...data }: { id: number; name: string; system_prompt: string; color: string; icon: string }) =>
+      updateProject(id, data),
+    onSuccess: (project) => {
+      qc.setQueryData<Project[]>(["projects"], (prev) =>
+        prev?.map((p) => (p.id === project.id ? project : p)) ?? []
+      );
+      setEditingProject(null);
+    },
+  });
+
+  const deleteProjectMutation = useMutation({
+    mutationFn: deleteProject,
+    onSuccess: (_, id) => {
+      qc.setQueryData<Project[]>(["projects"], (prev) => prev?.filter((p) => p.id !== id) ?? []);
+      if (expandedProject === id) setExpandedProject(null);
+    },
+  });
 
   const deleteMutation = useMutation({
     mutationFn: deleteChat,
@@ -419,53 +740,54 @@ export function ChatSidebar() {
           </div>
         </div>
 
-        {/* Projects section */}
-        {projects.length > 0 && (
-          <div className="border-b border-[rgba(13,13,13,0.06)] pb-1">
+        {/* Projects section — always visible */}
+        <div className="border-b border-[rgba(13,13,13,0.06)] pb-1">
+          <div className="flex items-center justify-between px-3 pb-1 pt-2.5">
             <button
               onClick={() => setProjectsOpen((v) => !v)}
-              className="flex w-full items-center justify-between px-3 pb-1 pt-2.5"
+              className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[rgba(13,13,13,0.28)] hover:text-[rgba(13,13,13,0.5)] transition-colors"
             >
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-[rgba(13,13,13,0.28)]">
-                Проекты
-              </span>
+              Проекты
               <ChevronDown
-                size={11}
-                className="text-[rgba(13,13,13,0.28)] transition-transform duration-150"
+                size={10}
+                className="transition-transform duration-150"
                 style={{ transform: projectsOpen ? "none" : "rotate(-90deg)" }}
               />
             </button>
-            {projectsOpen && (
-              <div className="pb-1">
-                {projects.map((project: Project) => (
-                  <Link
-                    key={project.id}
-                    href={`/projects/${project.id}/`}
-                    className="mx-1 flex items-center gap-2 rounded-[7px] px-2.5 py-1.5 text-[12px] text-[rgba(13,13,13,0.65)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#0d0d0d] transition-colors"
-                  >
-                    <span
-                      className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[3px]"
-                      style={{ background: `${project.color}20`, color: project.color }}
-                    >
-                      <Folder size={10} />
-                    </span>
-                    <span className="truncate">{project.name}</span>
-                    <span className="ml-auto shrink-0 text-[10px] text-[rgba(13,13,13,0.28)]">
-                      {project.chat_count}
-                    </span>
-                  </Link>
-                ))}
-                <Link
-                  href="/projects/"
-                  className="mx-1 flex items-center gap-2 rounded-[7px] px-2.5 py-1.5 text-[11px] text-[rgba(13,13,13,0.40)] hover:text-[#0a7cff] transition-colors"
+            <button
+              onClick={() => setShowProjectModal("create")}
+              title="Новый проект"
+              className="flex h-5 w-5 items-center justify-center rounded-[4px] text-[rgba(13,13,13,0.30)] hover:bg-[rgba(13,13,13,0.07)] hover:text-[#0a7cff] transition-colors"
+            >
+              <Plus size={12} />
+            </button>
+          </div>
+          {projectsOpen && (
+            <div className="pb-0.5">
+              {projects.length === 0 ? (
+                <button
+                  onClick={() => setShowProjectModal("create")}
+                  className="mx-1 flex w-[calc(100%-8px)] items-center gap-2 rounded-[7px] px-2.5 py-1.5 text-[11px] text-[rgba(13,13,13,0.38)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#0a7cff] transition-colors"
                 >
                   <Plus size={11} />
-                  Новый проект
-                </Link>
-              </div>
-            )}
-          </div>
-        )}
+                  Создать проект
+                </button>
+              ) : (
+                projects.map((project: Project) => (
+                  <ProjectSidebarRow
+                    key={project.id}
+                    project={project}
+                    isExpanded={expandedProject === project.id}
+                    onToggle={() => setExpandedProject(expandedProject === project.id ? null : project.id)}
+                    onEdit={() => setEditingProject(project)}
+                    onDelete={() => deleteProjectMutation.mutate(project.id)}
+                    currentPath={pathname}
+                  />
+                ))
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Chat list */}
         <div className="flex-1 overflow-y-auto">
@@ -662,6 +984,23 @@ export function ChatSidebar() {
           y={preview.y}
           onMouseEnter={cancelClear}
           onMouseLeave={() => setPreview(null)}
+        />
+      )}
+
+      {/* Project modals */}
+      {showProjectModal === "create" && (
+        <ProjectModal
+          mode="create"
+          onClose={() => setShowProjectModal(null)}
+          onSave={(data) => createProjectMutation.mutateAsync(data)}
+        />
+      )}
+      {editingProject && (
+        <ProjectModal
+          mode="edit"
+          initial={editingProject}
+          onClose={() => setEditingProject(null)}
+          onSave={(data) => updateProjectMutation.mutateAsync({ id: editingProject.id, ...data })}
         />
       )}
 

@@ -14,9 +14,10 @@ interface Props {
   networkSlug: string;
   isMedia: boolean;
   configJson?: ModelConfigJson | null;
+  projectId?: number;
 }
 
-export function ChatStartForm({ networkSlug, isMedia, configJson }: Props) {
+export function ChatStartForm({ networkSlug, isMedia, configJson, projectId }: Props) {
   const router = useRouter();
   const qc = useQueryClient();
   const { user, setStars } = useAuthStore();
@@ -52,6 +53,7 @@ export function ChatStartForm({ networkSlug, isMedia, configJson }: Props) {
         network_slug: networkSlug,
         message: text.trim(),
         settings: hasSettings ? mediaSettings : undefined,
+        project_id: projectId,
       });
       setStars(res.new_balance);
       qc.invalidateQueries({ queryKey: ["chats"] });
