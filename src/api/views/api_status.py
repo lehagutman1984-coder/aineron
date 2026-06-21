@@ -21,7 +21,7 @@ class APIStatusView(APIView):
     @extend_schema(
         summary='Статус API',
         tags=['Status'],
-        description='Возвращает состояние сервисов: БД, Redis, upstream (laozhang.ai).',
+        description='Возвращает состояние сервисов: БД, Redis, AI-сервис.',
     )
     def get(self, request):
         checks = {}

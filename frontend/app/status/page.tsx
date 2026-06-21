@@ -23,7 +23,7 @@ interface StatusData {
 const SERVICES: { key: keyof StatusData["checks"]; label: string }[] = [
   { key: "database", label: "База данных" },
   { key: "cache", label: "Кэш / очередь (Redis)" },
-  { key: "upstream", label: "AI-провайдер (laozhang.ai)" },
+  { key: "upstream", label: "AI-сервис" },
 ];
 
 function StatusIcon({ status }: { status: string }) {
