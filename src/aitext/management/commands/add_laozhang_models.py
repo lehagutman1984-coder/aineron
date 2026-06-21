@@ -49,7 +49,7 @@ IMAGE_CONFIG = {
     },
     'gpt_image': {
         "name": "GPT Image",
-        "api_defaults": {"size": "1024x1024", "quality": "standard", "n": 1},
+        "api_defaults": {"size": "1024x1024", "quality": "auto", "n": 1},
         "ui_settings": {
             "sections": [{
                 "title": "Настройки изображения",
@@ -71,8 +71,10 @@ IMAGE_CONFIG = {
                         "label": "Качество",
                         "extra_cost": 0,
                         "options": [
-                            {"value": "standard", "label": "Стандартное", "extra_cost": 0},
-                            {"value": "hd", "label": "HD", "extra_cost": 10},
+                            {"value": "auto", "label": "Авто", "extra_cost": 0},
+                            {"value": "low", "label": "Низкое", "extra_cost": 0},
+                            {"value": "medium", "label": "Среднее", "extra_cost": 0},
+                            {"value": "high", "label": "Высокое", "extra_cost": 10},
                         ]
                     },
                 ]
