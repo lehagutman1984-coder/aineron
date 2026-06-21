@@ -6,6 +6,8 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from asgiref.sync import sync_to_async
 
+from telegram_bot.analytics import async_log_event
+
 logger = logging.getLogger(__name__)
 router = Router()
 
@@ -61,6 +63,7 @@ async def start_onboarding(message: Message, state: FSMContext, tg_user):
     )
     if state:
         await state.set_state(OnboardingFSM.choosing_model)
+    await async_log_event(tg_user, 'onboarding', step='start')
 
 
 @router.callback_query(F.data.startswith('onboard_model:'))
@@ -82,6 +85,7 @@ async def cb_onboard_model(query: CallbackQuery, state: FSMContext, tg_user=None
     )
     if state:
         await state.clear()
+    await async_log_event(tg_user, 'onboarding', step='model_chosen', model=net.name)
 
 
 @router.callback_query(F.data == 'onboard_skip')

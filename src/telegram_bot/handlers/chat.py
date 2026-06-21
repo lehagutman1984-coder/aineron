@@ -7,13 +7,15 @@ from aiogram.types import Message, CallbackQuery
 
 from telegram_bot.keyboards import after_answer_kb, main_reply_kb
 from telegram_bot.utils import telegram_format, split_message
+from telegram_bot.analytics import async_log_event
 
 logger = logging.getLogger(__name__)
 router = Router()
 
-POLL_INTERVAL = 2      # секунд между проверками
-POLL_MAX_TRIES = 75    # 150 секунд максимум
-STREAM_UPDATE_EVERY = 3  # обновлять превью каждые N итераций
+POLL_INTERVAL = 2       # секунд между проверками
+POLL_MAX_TRIES = 75     # 150 секунд максимум
+STREAM_UPDATE_EVERY = 3 # обновлять превью каждые N итераций
+EDIT_MIN_INTERVAL = 3.5 # минимум секунд между edit_text (Telegram rate limit)
 
 
 def _get_default_network(tg_user):
@@ -29,12 +31,16 @@ def _get_default_network(tg_user):
 def _ensure_chat(tg_user, network):
     from aitext.models import Chat
     from telegram_bot.models import TelegramChat
-    tg_chat, created = TelegramChat.objects.get_or_create(tg_user=tg_user)
-    if not tg_chat.chat_id:
+    tc = TelegramChat.objects.filter(tg_user=tg_user, is_active=True).select_related('chat').first()
+    if not tc:
         chat = Chat.objects.create(user=tg_user.user, network=network, title='Telegram')
-        tg_chat.chat = chat
-        tg_chat.save(update_fields=['chat'])
-    return tg_chat.chat
+        TelegramChat.objects.create(tg_user=tg_user, chat=chat, is_active=True)
+        return chat
+    if not tc.chat_id:
+        chat = Chat.objects.create(user=tg_user.user, network=network, title='Telegram')
+        tc.chat = chat
+        tc.save(update_fields=['chat'])
+    return tc.chat
 
 
 def _create_messages(chat, user_text, network, system_prompt=''):
@@ -80,18 +86,19 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None)
             f"Нужно: {network.cost_per_message}, у вас: {tg_user.user.pages_count}\n\n"
             f"Пополните баланс: /balance"
         )
+        await async_log_event(tg_user, 'error', network=network, reason='no_balance')
         return
 
     chat = await ensure_chat(tg_user, network)
     user_msg, assistant_msg = await create_messages(chat, text, network, tg_user.system_prompt)
 
-    # Запускаем генерацию
     generate_ai_response.delay(assistant_msg.id, web_search=tg_user.web_search)
 
     sent = await tg_message.answer("Генерирую ответ...")
 
-    # Polling с промежуточным streaming-эффектом
     last_content = ''
+    last_edit_time = 0.0
+
     for i in range(POLL_MAX_TRIES):
         await asyncio.sleep(POLL_INTERVAL)
         try:
@@ -113,17 +120,23 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None)
                 else:
                     await tg_message.answer(part, parse_mode='HTML',
                                             reply_markup=after_answer_kb(msg.id))
+            await async_log_event(tg_user, 'message', network=network,
+                                  cost=network.cost_per_message)
             return
 
         elif msg.status == 'failed':
             await sent.edit_text("Ошибка генерации. Попробуй ещё раз.")
+            await async_log_event(tg_user, 'error', network=network, reason='generation_failed')
             return
 
-        # Промежуточный streaming-эффект (если включён)
+        # Стриминг-эффект с троттлингом (не чаще EDIT_MIN_INTERVAL)
         if tg_user.streaming and i % STREAM_UPDATE_EVERY == 0:
             partial = (msg.plain_text or msg.content or '').strip()
-            if partial and partial != last_content and len(partial) > 20:
+            now = asyncio.get_event_loop().time()
+            if (partial and partial != last_content and len(partial) > 20
+                    and now - last_edit_time >= EDIT_MIN_INTERVAL):
                 last_content = partial
+                last_edit_time = now
                 try:
                     preview = telegram_format(partial[:3000]) + ' ...'
                     await sent.edit_text(preview, parse_mode='HTML')
@@ -131,6 +144,7 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None)
                     pass
 
     await sent.edit_text("Превышено время ожидания. Попробуй ещё раз.")
+    await async_log_event(tg_user, 'error', network=network, reason='timeout')
 
 
 @router.message(F.text.startswith('/newchat') | (F.text == 'Новый чат'))
@@ -139,7 +153,7 @@ async def cmd_newchat(message: Message, tg_user=None):
         return
     def _reset(u):
         from telegram_bot.models import TelegramChat
-        TelegramChat.objects.filter(tg_user=u).update(chat=None)
+        TelegramChat.objects.filter(tg_user=u, is_active=True).update(is_active=False)
     await sync_to_async(_reset, thread_sensitive=True)(tg_user)
     await message.answer("Начинаю новый чат. Напиши первый вопрос.", reply_markup=main_reply_kb())
 
@@ -150,7 +164,7 @@ async def cb_newchat(query: CallbackQuery, tg_user=None):
         return
     def _reset(u):
         from telegram_bot.models import TelegramChat
-        TelegramChat.objects.filter(tg_user=u).update(chat=None)
+        TelegramChat.objects.filter(tg_user=u, is_active=True).update(is_active=False)
     await sync_to_async(_reset, thread_sensitive=True)(tg_user)
     await query.message.answer("Начинаю новый чат. Напиши первый вопрос.")
     await query.answer()

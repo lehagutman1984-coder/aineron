@@ -4,6 +4,8 @@ from aiogram.filters import Command
 from aiogram.types import Message
 from asgiref.sync import sync_to_async
 
+from telegram_bot.analytics import async_log_event
+
 logger = logging.getLogger(__name__)
 router = Router()
 
@@ -82,3 +84,5 @@ async def cmd_video(message: Message, tg_user=None):
         f'Пришлю когда готово (обычно 5-15 мин).',
         parse_mode='HTML',
     )
+    await async_log_event(tg_user, 'video', network=network,
+                          cost=network.cost_per_message)

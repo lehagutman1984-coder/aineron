@@ -27,15 +27,17 @@ def _activate_chat(tg_user, chat_id):
     from aitext.models import Chat
     from telegram_bot.models import TelegramChat
     chat = Chat.objects.get(id=chat_id, user=tg_user.user)
-    tc, _ = TelegramChat.objects.get_or_create(tg_user=tg_user)
-    tc.chat = chat
-    tc.save(update_fields=['chat'])
+    TelegramChat.objects.filter(tg_user=tg_user, is_active=True).update(is_active=False)
+    tc, _ = TelegramChat.objects.get_or_create(tg_user=tg_user, chat=chat)
+    if not tc.is_active:
+        tc.is_active = True
+        tc.save(update_fields=['is_active'])
     return chat
 
 
 def _clear_chat(tg_user):
     from telegram_bot.models import TelegramChat
-    TelegramChat.objects.filter(tg_user=tg_user).update(chat=None)
+    TelegramChat.objects.filter(tg_user=tg_user, is_active=True).update(is_active=False)
 
 
 get_chat_page = sync_to_async(_get_chat_page, thread_sensitive=True)

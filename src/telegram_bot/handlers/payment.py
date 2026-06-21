@@ -8,6 +8,8 @@ from aiogram.types import (
 )
 from asgiref.sync import sync_to_async
 
+from telegram_bot.analytics import async_log_event
+
 logger = logging.getLogger(__name__)
 router = Router()
 
@@ -69,6 +71,7 @@ async def on_successful_payment(message: Message, tg_user=None):
     new_balance = await add_stars(tg_user.user, stars_count)
 
     logger.info(f'Telegram Stars payment: user={tg_user.user.email} pack={payload} stars={stars_count}')
+    await async_log_event(tg_user, 'payment', cost=stars_count, payload=payload)
 
     await message.answer(
         f"<b>Оплата прошла успешно!</b>\n\n"

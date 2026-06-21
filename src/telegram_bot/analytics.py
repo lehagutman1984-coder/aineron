@@ -1,4 +1,5 @@
 import logging
+from asgiref.sync import sync_to_async
 
 logger = logging.getLogger(__name__)
 
@@ -16,3 +17,6 @@ def log_event(tg_user, event_type: str, network=None, cost: int = 0, **meta):
         )
     except Exception as e:
         logger.debug(f'log_event failed ({event_type}): {e}')
+
+
+async_log_event = sync_to_async(log_event, thread_sensitive=True)

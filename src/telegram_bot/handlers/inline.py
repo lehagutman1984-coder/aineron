@@ -7,6 +7,8 @@ from aiogram.types import (
 )
 from asgiref.sync import sync_to_async
 
+from telegram_bot.analytics import async_log_event
+
 logger = logging.getLogger(__name__)
 router = Router()
 
@@ -103,3 +105,4 @@ async def handle_chosen_inline(result: ChosenInlineResult):
     if assistant_msg:
         from aitext.tasks import generate_ai_response
         generate_ai_response.delay(assistant_msg.id)
+        await async_log_event(tg_user, 'inline', query=text[:100])

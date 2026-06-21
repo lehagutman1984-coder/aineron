@@ -55,10 +55,10 @@ class TelegramUser(models.Model):
 
 
 class TelegramChat(models.Model):
-    tg_user = models.OneToOneField(
+    tg_user = models.ForeignKey(
         TelegramUser,
         on_delete=models.CASCADE,
-        related_name='active_chat',
+        related_name='telegram_chats',
         verbose_name='TG пользователь',
     )
     chat = models.ForeignKey(
@@ -67,11 +67,15 @@ class TelegramChat(models.Model):
         on_delete=models.SET_NULL,
         verbose_name='Чат',
     )
+    is_active = models.BooleanField(default=True, verbose_name='Активный')
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = 'Активный чат бота'
-        verbose_name_plural = 'Активные чаты бота'
+        verbose_name = 'Чат бота'
+        verbose_name_plural = 'Чаты бота'
+        indexes = [
+            models.Index(fields=['tg_user', 'is_active'], name='tg_chat_active_idx'),
+        ]
 
     def __str__(self):
         return f"{self.tg_user} — чат #{self.chat_id}"

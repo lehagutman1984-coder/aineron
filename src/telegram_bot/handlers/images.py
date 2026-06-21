@@ -6,6 +6,8 @@ from aiogram.types import Message, URLInputFile
 from asgiref.sync import sync_to_async
 from django.conf import settings
 
+from telegram_bot.analytics import async_log_event
+
 logger = logging.getLogger(__name__)
 router = Router()
 
@@ -120,12 +122,15 @@ async def cmd_image(message: Message, tg_user=None):
                     await message.answer(f"Изображение готово: {img_url}")
             else:
                 await status_msg.edit_text("Изображение сгенерировано, но не найдено. Проверь /account/files/")
+            await async_log_event(tg_user, 'image', network=network,
+                                  cost=network.cost_per_message)
             return
 
         elif msg.status == 'failed':
             await status_msg.edit_text(
                 "Ошибка генерации. Попробуй позже — звёзды возвращены."
             )
+            await async_log_event(tg_user, 'error', network=network, reason='image_failed')
             return
 
         # Анимация ожидания
