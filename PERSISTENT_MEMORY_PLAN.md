@@ -1,11 +1,11 @@
 # PERSISTENT MEMORY — Технический аудит (post-fix) и план развития
 
-> **Статус документа:** аудит **уже реализованной и дважды пропатченной** системы Persistent Memory.
-> Прошли два раунда фиксов (Round 1: B1, B2, B6, B8, B9, B10, B12; Round 2: B3, B4, B5, B10+, B11, B13, B14).
-> Этот документ фиксирует **текущее** состояние кода, подтверждает закрытые баги и честно перечисляет
-> то, что **осталось** после фиксов — включая несколько регрессий, внесённых самими фиксами.
+> **Статус документа:** аудит **уже реализованной и трижды пропатченной** системы Persistent Memory.
+> Round 1: B1, B2, B6, B8, B9, B10, B12. Round 2: B3, B4, B5, B10+, B11, B13, B14.
+> Round 3 (2026-06-21, коммит `d841d55`): R1, R1b, R2, R4, R5.
+> R3 снят автоматически (summaries не кэшируются после R2-fix).
 >
-> Дата аудита: 2026-06-21. Ветка: `studio-v3`.
+> Дата последнего обновления: 2026-06-21. Ветка: `main`.
 
 ---
 
@@ -29,11 +29,11 @@
 | Гонки записи summary | Снято `select_for_update` (B4 закрыт) |
 | Горячий путь без sync-LLM | Работает (B5 закрыт, async `compress_chat_history`) |
 | Cross-session summary (любая модель + beat) | Работает (B6/B14 закрыты) |
-| Redis-кэш контекста | **Реализован, но с 2 дефектами** (см. R2, R3) |
-| Триггер компрессии | **Срабатывает почти каждое сообщение** (см. R1) |
-| Производительность чтения истории | **O(N) на сообщение, без верхнего кэпа** (см. R4) |
-| Тесты | **Частично сломаны после фиксов** (см. R5) |
-| Единая модель summary (B7) | **Не сделано** (mitigated, не resolved) |
+| Redis-кэш контекста | Исправлен: факты — per-user (`memfacts:{user_id}`), summaries — всегда свежо (R2 закрыт) |
+| Триггер компрессии | Исправлен: TOTAL msg_count + Redis-лок (R1/R1b закрыты) |
+| Производительность чтения истории | Частично: HARD_MSG_CAP=80 добавлен (R4 закрыт), инкр. токен-кэш — Sprint B2 |
+| Тесты | Исправлены: сломанный патч удалён, R1-регрессия и normalize_fact покрыты (R5 закрыт) |
+| Единая модель summary (B7) | **Не сделано** (mitigated, Sprint C) |
 | DRF API `/memory/` + UI `/account/memory/` | Реализовано полностью |
 
 ---
@@ -254,21 +254,22 @@
 
 > Ветка: `fix/persistent-memory-r3` от `studio-v3`. Каждый коммит атомарен, проект собирается.
 
-### Спринт A — остаточные баги стоимости/корректности (приоритет)
+### Спринт A — остаточные баги стоимости/корректности `[DONE — d841d55]`
 
-| # | Коммит | Файлы | Закрывает |
-|---|--------|-------|-----------|
-| A1 | `fix(memory): correct should_compress counter semantics (store total msg_count)` | `aitext/tasks.py:806`, `aitext/tasks.py:764`, `aitext/memory.py:174` | R1 высокий |
-| A2 | `fix(memory): cache facts per-user, fetch past-summaries uncached per-chat` | `aitext/memory.py:116–155` | R2 высокий |
-| A3 | `fix(memory): invalidate memory cache after summary write` | `aitext/tasks.py` (compress/summary) | R3 средний |
-| A4 | `test(memory): regression tests for R1/R2 + fix broken get_laozhang_client patch` | `aitext/test_memory.py` | R5 |
+| # | Статус | Закрывает |
+|---|--------|-----------|
+| A1 | DONE: `tasks.py:806` → `msg_count=msg_count`; гард `>= msg_count` | R1 |
+| A1b | DONE: Redis-лок `memcompress:{chat_id}` + `finally: cache.delete` в compress | R1b |
+| A2 | DONE: `_facts_cache_key` → `memfacts:{user_id}`; summaries свежо каждый раз | R2 |
+| A3 | DISSOLVED: summaries больше не кэшируются после R2 | R3 |
+| A4 | DONE: тесты переписаны — R1-регрессия, normalize_fact, исправлен сломанный патч | R5 |
 
 ### Спринт B — производительность горячего пути
 
-| # | Коммит | Файлы | Закрывает |
-|---|--------|-------|-----------|
-| B1 | `perf(memory): hard message cap on history (60–80) above token threshold` | `aitext/memory.py:218–241` | R4 |
-| B2 | `perf(memory): incremental history token counting (cache in ChatSummary/Redis)` | `aitext/memory.py`, `aitext/models.py` + миграция | R4 |
+| # | Статус | Коммит | Файлы | Закрывает |
+|---|--------|--------|-------|-----------|
+| B1 | **DONE** (d841d55) | HARD_MSG_CAP=80 в `get_history_with_compression` | `aitext/memory.py` | R4 частично |
+| B2 | TODO | `perf(memory): incremental history token counting (cache in ChatSummary/Redis)` | `aitext/memory.py`, `aitext/models.py` + миграция | R4 полностью |
 
 ### Спринт C — единая модель summary
 
@@ -306,11 +307,11 @@
 
 | Компонент | Файл:строки | Состояние |
 |-----------|-------------|-----------|
-| Ядро памяти | `src/aitext/memory.py` | реализовано; R2/R3/R4 |
-| Модели | `src/aitext/models.py:509–592` | реализовано; R6 (два поля summary) |
-| `extract_memory_facts` | `src/aitext/tasks.py:534–654` | реализовано, B3/B13 закрыты |
-| `generate_chat_summary` | `src/aitext/tasks.py:657–723` | реализовано; R7 (не инкрементально) |
-| `compress_chat_history` | `src/aitext/tasks.py:726–810` | реализовано; R1 (счётчик) |
+| Ядро памяти | `src/aitext/memory.py` | реализовано; R1/R2/R4 закрыты; Sprint B2/C pending |
+| Модели | `src/aitext/models.py:509–592` | реализовано; R6 (два поля summary) — Sprint C |
+| `extract_memory_facts` | `src/aitext/tasks.py:534–654` | реализовано, B3/B13/R3 закрыты |
+| `generate_chat_summary` | `src/aitext/tasks.py:657–723` | реализовано; R7 (не инкрементально) — Sprint C |
+| `compress_chat_history` | `src/aitext/tasks.py:726–810` | реализовано; R1/R1b закрыты |
 | `summarize_stale_chats` (beat) | `src/aitext/tasks.py:813–858` | реализовано (B14) |
 | Триггер extract (Celery) | `src/aitext/tasks.py:508–514` | есть |
 | Триггер extract (SSE) | `src/api/views/chats.py:506–515` | есть (B1 закрыт) |
@@ -323,4 +324,4 @@
 | Frontend `/account/memory/` | `frontend/app/account/memory/page.tsx` | реализовано |
 | API-клиент | `frontend/lib/api/memory.ts` | реализовано |
 | `memory_enabled` | `src/users/models.py:488` | есть |
-| Тесты | `src/aitext/test_memory.py` | **частично сломаны (R5)** |
+| Тесты | `src/aitext/test_memory.py` | R5 закрыт — R1-регрессия, normalize_fact, fix patch |
