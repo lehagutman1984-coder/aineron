@@ -10,16 +10,22 @@ router = Router()
 
 
 def _get_referral_stats(user):
-    from users.models import CustomUser, ReferralEarning
+    from django.db.models import Sum
+    from users.models import CustomUser
     referred_count = CustomUser.objects.filter(referrer=user).count()
-    paid_count = CustomUser.objects.filter(referrer=user, paymenthistory__status='success').distinct().count()
+    paid_count = (
+        CustomUser.objects
+        .filter(referrer=user, paymenthistory__status='success')
+        .distinct()
+        .count()
+    )
+    stars_earned = 0
     try:
         from users.models import ReferralEarning
-        stars_earned = ReferralEarning.objects.filter(referrer=user).aggregate(
-            total=__import__('django.db.models', fromlist=['Sum']).Sum('stars_amount')
-        )['total'] or 0
+        result = ReferralEarning.objects.filter(referrer=user).aggregate(total=Sum('stars_amount'))
+        stars_earned = result['total'] or 0
     except Exception:
-        stars_earned = 0
+        pass
     return referred_count, paid_count, stars_earned
 
 
@@ -32,7 +38,7 @@ async def cmd_referral(message: Message, tg_user=None):
         return
 
     user = tg_user.user
-    bot_username = settings.TELEGRAM_BOT_USERNAME
+    bot_username = getattr(settings, 'TELEGRAM_BOT_USERNAME', 'aineron_bot')
     referral_link_bot = f'https://t.me/{bot_username}?start=ref_{user.referral_code}'
     referral_link_web = f'https://aineron.ru/?ref={user.referral_code}'
 
@@ -51,10 +57,11 @@ async def cmd_referral(message: Message, tg_user=None):
         f"За каждого оплатившего реферала вы получаете бонус звёзд!"
     )
 
+    share_text = "Попробуй%20AI%20на%20aineron.ru!"
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(
             text='Поделиться ссылкой',
-            url=f'https://t.me/share/url?url={referral_link_bot}&text=Попробуй%20AI%20на%20aineron.ru%21'
+            url=f'https://t.me/share/url?url={referral_link_bot}&text={share_text}',
         )],
         [InlineKeyboardButton(text='Подробнее о программе', url='https://aineron.ru/account/referral/')],
     ])

@@ -11,6 +11,7 @@ import {
   LogOut,
   Star,
   BarChart2,
+  MessageCircle,
 } from "lucide-react";
 import { useAuthStore } from "@/lib/stores/auth";
 import { authLogout } from "@/lib/api/client";
@@ -23,6 +24,7 @@ const NAV = [
   { href: "/account/keys/", label: "API-ключи", icon: Key },
   { href: "/account/referral/", label: "Партнёрская программа", icon: Users },
   { href: "/account/files/", label: "Мои файлы", icon: FolderOpen },
+  { href: "/account/telegram/", label: "Telegram", icon: MessageCircle },
 ];
 
 export default function AccountLayout({ children }: { children: React.ReactNode }) {
