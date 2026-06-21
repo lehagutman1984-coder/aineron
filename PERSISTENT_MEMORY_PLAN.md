@@ -1,578 +1,326 @@
-# PERSISTENT MEMORY — Технический аудит и production-grade план исправлений
+# PERSISTENT MEMORY — Технический аудит (post-fix) и план развития
 
-> **Статус документа:** это аудит **уже реализованной** системы Persistent Memory (не greenfield-спецификация).
-> Код существует и работает в проде: `src/aitext/memory.py`, задачи `extract_memory_facts` / `generate_chat_summary`
-> в `src/aitext/tasks.py`, две точки интеграции (`tasks.py` — Celery, `api/views/chats.py` — SSE),
-> модели `UserMemory` / `ChatSummary` в `src/aitext/models.py`.
+> **Статус документа:** аудит **уже реализованной и дважды пропатченной** системы Persistent Memory.
+> Прошли два раунда фиксов (Round 1: B1, B2, B6, B8, B9, B10, B12; Round 2: B3, B4, B5, B10+, B11, B13, B14).
+> Этот документ фиксирует **текущее** состояние кода, подтверждает закрытые баги и честно перечисляет
+> то, что **осталось** после фиксов — включая несколько регрессий, внесённых самими фиксами.
 >
-> Документ содержит: (0) TL;DR со статусом, (1) все найденные баги с severity и фиксами,
-> (2) что работает правильно, (3) архитектурные улучшения, (4) пошаговые коммиты, (5) Phase 2.
+> Дата аудита: 2026-06-21. Ветка: `studio-v3`.
 
 ---
 
-## 0. TL;DR / статус
+## 1. Executive Summary
 
-**Вердикт:** система формально работает, но **ключевая функция (автоизвлечение фактов) фактически мертва для основного канала** (веб-чат через SSE), а механизм сжатия истории **почти никогда не запускается** на моделях с большим контекстом и при этом **молча теряет старые сообщения**. Плюс два бага класса «потеря данных» в дедупликации.
+Система долговременной памяти **реализована полностью по контуру**: модели, ядро, фоновые задачи, DRF API, UI личного кабинета, beat-расписание. Оба критических бага исходного аудита (B1 — мёртвое извлечение фактов в SSE; B2 — потеря сообщений «в окне») **закрыты**. Память работает в двух каналах через единый `CustomUser`: веб (SSE + Celery) и Telegram-бот (через `generate_ai_response`).
 
-### Светофор найденного
+> **Studio вне периметра памяти (проверено grep'ом):** Vibe-Coding Studio использует собственный многоагентный пайплайн (`studio/tasks.py`, architect/coder/guardian), работает с `StudioProject`, а не с `aitext.Chat`, и **не вызывает** `build_memory_context` / `generate_ai_response` / `UserMemory`. Долговременная память на Studio не распространяется — это отдельный продукт со своим контекстом.
 
-| # | Проблема | Severity | Файл:строка |
-|---|----------|----------|-------------|
-| B1 | SSE-путь не вызывает `extract_memory_facts` — факты не извлекаются при обычном веб-использовании | **критический** | `api/views/chats.py:496` |
-| B2 | Compression silent-drop: под порогом возвращаем `all_msgs[-RECENT_WINDOW:]`, теряя 1..N−20 сообщений без сжатия | **критический** | `aitext/memory.py:164–166` |
-| B3 | `content_key` коллизии → молчаливая потеря НОВЫХ фактов (`continue`); пробелы вырезаются | **высокий** | `tasks.py:611–613`, `models.py:566` |
-| B4 | `update_rolling_summary` — lost update при конкурентных сообщениях (read-modify-write не атомарен) | **высокий** | `memory.py:217–229`, `chats.py:391–397` |
-| B5 | Синхронное сжатие через DeepSeek прямо в SSE-запросе — блокирует TTFB на несколько секунд | **высокий** | `chats.py:391`, `memory.py:197–208` |
-| B6 | `generate_chat_summary` триггерится только при новом чате с **той же** нейросетью | **высокий** | `chats.py:142–149` |
-| B7 | Два несогласованных суммаризатора пишут один `ChatSummary` (`rolling_summary` vs `summary_text`), читаются в разных местах, не сводятся | **высокий** | `memory.py:101`/`143`, `tasks.py:638–689` |
-| B8 | `generate_chat_summary` режет `dialogue[:5000]` после сборки oldest-first → суммируется начало, свежак теряется | **средний** | `tasks.py:662–666,680` |
-| B9 | HTML в `content` попадает в compression/summary input при пустом `plain_text` | **средний** | `memory.py:160,182`, `tasks.py:552,664` |
-| B10 | `_CHARS_PER_TOKEN = 0.35` неточен для кириллицы (рус. токенизируется ~2–3 симв./токен) | **средний** | `memory.py:19,46–50` |
-| B11 | `build_memory_context` бьёт в БД на КАЖДОМ сообщении (2 запроса), без кэша | **средний** | `memory.py:82–99` |
-| B12 | `%-d` в `strftime` падает на Windows → теряются все past-summaries в dev/test | **низкий** | `memory.py:101` |
-| B13 | Гонка дедупа в `extract_memory_facts` (existing_keys до LLM) — но `UniqueConstraint` спасает, только лишний LLM-вызов | **низкий** | `tasks.py:557–560,612` |
-| B14 | rolling_summary растёт бесконечно, если пользователь не открывает новый чат (summary_text не триггерится) | **средний** | следствие B6+B7 |
+**Вердикт:** система production-ready по функционалу, но содержит **несколько остаточных дефектов класса «производительность/корректность»**, которые не ломают фичу визуально, но дорого стоят на потоке и портят качество cross-session памяти. Главные из них — **избыточные перезапуски компрессии практически на каждом сообщении** (off-by-`RECENT_WINDOW` в `should_compress`), **некорректный ключ Redis-кэша** (per-user, хотя контент зависит от чата) и **отсутствие инвалидации кэша при обновлении summary**. Плюс набор тестов частично сломан после фиксов.
 
-### Что нужно сделать в первую очередь (минимальный набор для прод-стабильности)
-1. **B1** — добавить `extract_memory_facts.delay()` в конец SSE-стрима.
-2. **B2** — вернуть `all_msgs` вместо `all_msgs[-RECENT_WINDOW:]` в ветке «всё помещается».
-3. **B3** — централизовать `normalize_fact()` (сохранять пробелы) и заменить `continue` на `update_or_create` либо суффикс-дизамбигуацию.
-4. **B5 + B4** — вынести сжатие в Celery-задачу, убрать синхронный DeepSeek из запроса.
+Архитектурный долг из исходного плана (B7 — слияние `rolling_summary`/`summary_text` в единую модель `content + last_message_id`) **не выполнен**: Round 2 добавил только read-fallback'и, два поля по-прежнему живут раздельно.
+
+### Светофор текущего состояния
+
+| Область | Статус |
+|--------|--------|
+| Извлечение фактов (auto) — все каналы | Работает (B1 закрыт) |
+| Сохранение истории «в окне» без потерь | Работает (B2 закрыт) |
+| Дедупликация фактов | Работает (B3 закрыт, `update_or_create`) |
+| Гонки записи summary | Снято `select_for_update` (B4 закрыт) |
+| Горячий путь без sync-LLM | Работает (B5 закрыт, async `compress_chat_history`) |
+| Cross-session summary (любая модель + beat) | Работает (B6/B14 закрыты) |
+| Redis-кэш контекста | **Реализован, но с 2 дефектами** (см. R2, R3) |
+| Триггер компрессии | **Срабатывает почти каждое сообщение** (см. R1) |
+| Производительность чтения истории | **O(N) на сообщение, без верхнего кэпа** (см. R4) |
+| Тесты | **Частично сломаны после фиксов** (см. R5) |
+| Единая модель summary (B7) | **Не сделано** (mitigated, не resolved) |
+| DRF API `/memory/` + UI `/account/memory/` | Реализовано полностью |
 
 ---
 
-## 1. Найденные баги и проблемы
+## 2. Архитектура (что есть сейчас)
 
-> Severity: **критический** (ломает функцию/теряет данные в дефолтном сценарии) → **высокий** → **средний** → **низкий**.
-> Для критических/высоких приведён точный фикс-код. Для средних/низких — однострочное решение.
+### 2.1. Модель данных — `src/aitext/models.py:509–592`
 
----
+- **`UserMemory`** (`models.py:509`) — факт о пользователе, общий для всех каналов. Поля: `user` (FK), `category` (profile/preference/project/fact/skill), `content`, `content_key` (ключ дедупа, `db_index`), `source` (auto/user), `source_chat` (FK, SET_NULL), `is_active`, `is_pinned`, timestamps.
+  - `UniqueConstraint(user, content_key)` c `condition=Q(content_key__gt='')` (`models.py:552`) — дедуп только непустых ключей.
+  - `save()` (`models.py:563`) — генерирует `content_key` через единый `normalize_fact()`.
+- **`ChatSummary`** (`models.py:570`) — `OneToOne(Chat)`, поля `summary_text` (финальное резюме), `rolling_summary` (сжатое начало текущей сессии), `message_count`, timestamps. **Два независимых текстовых поля** (см. R6).
+- **`CustomUser.memory_enabled`** (`users/models.py:488`) — глобальный тоггл, `default=True`.
 
-### B1 — SSE-путь НИКОГДА не извлекает факты `[критический]`
+### 2.2. Ядро — `src/aitext/memory.py`
 
-**Где:** `src/api/views/chats.py`, генератор `generate()` финализируется на строке **496**:
+| Функция | Назначение | Строки |
+|---------|-----------|--------|
+| `normalize_fact()` | Нормализация ключа дедупа: lowercase, без пунктуации, пробелы **схлопнуты** (не вырезаны) | `52–61` |
+| `estimate_tokens()` | Language-aware оценка токенов (кириллица ~2.5, латиница ~4.0 симв/токен) | `64–74` |
+| `_get_context_window()` | Контекстное окно по `model_name` (таблица `_CONTEXT_WINDOWS`) | `77–84` |
+| `build_memory_context()` | Блок памяти для system-prompt, Redis-кэш `memctx:{user_id}` TTL 300с | `100–156` |
+| `should_compress()` | Дешёвая проверка «пора сжать» (только счётчики БД) | `159–177` |
+| `get_history_with_compression()` | Read-only: история + готовый summary, без LLM | `180–241` |
+| `update_rolling_summary()` | Атомарный upsert с `select_for_update` | `244–269` |
+| `invalidate_memory_cache()` | Сброс Redis-кэша | `91–97` |
 
-```python
-                assistant_message.status = Message.Status.COMPLETED
-                assistant_message.save()              # ← строка 496
+Константы: `RECENT_WINDOW=20`, `COMPRESS_TRIGGER=30`, `COMPRESS_THRESHOLD=0.70`, `MAX_MEMORY_FACTS=40`, `EXTRACT_EVERY_N=3`, `MEMORY_CACHE_TTL=300`.
 
-                yield _sse({ "type": "done", ... })   # ← и всё, никакого .delay()
-```
+### 2.3. Фоновые задачи — `src/aitext/tasks.py`
 
-**Проблема.** Триггер `extract_memory_facts.delay(chat.id)` есть **только** в Celery-пути (`tasks.py:497–501`, по `completed_count % 3 == 0`). Но обычный веб-чат идёт через **SSE-стрим** (`StreamMessageView` в `chats.py`), который генерирует ответ сам, в потоке, и Celery `generate_ai_response` для текста **не вызывает**. Значит при нормальном веб-использовании факты **не извлекаются вообще никогда**. `UserMemory` наполняется только в каналах, идущих через Celery (Telegram-бот, Studio, фолбэки) — то есть ядро фичи мертво для главного канала.
+- **`extract_memory_facts(chat_id)`** (`tasks.py:534–654`) — DeepSeek V3, анализ последних 10 сообщений, `update_or_create` по `content_key`, инвалидация кэша. HTML стрипается через `_strip_html` (`tasks.py:23`).
+- **`generate_chat_summary(chat_id)`** (`tasks.py:657–723`) — финальное `summary_text`, DeepSeek V3, последние 40 сообщений → последние 5000 символов.
+- **`compress_chat_history(chat_id)`** (`tasks.py:726–810`) — async-компрессия в `rolling_summary`, сжимает `msgs[:-RECENT_WINDOW]`, идемпотентный гард по `message_count` (`tasks.py:764`).
+- **`summarize_stale_chats()`** (`tasks.py:813–858`) — beat, раз в 2 часа, до 30 «брошенных» (>24ч) чатов без актуального summary.
 
-**Фикс.** После успешного завершения стрима (после `assistant_message.save()` на 496) запустить фоновую задачу. Триггерить так же, как в Celery — каждые 3 ответа ассистента, чтобы не дёргать LLM на каждое сообщение:
+### 2.4. Точки интеграции
 
-```python
-                assistant_message.status = Message.Status.COMPLETED
-                assistant_message.save()
+- **Celery-путь** (`tasks.py:289–323`) — текст и Telegram-бот (`telegram_bot/handlers/chat.py:95` → `generate_ai_response.delay`). Триггер extract: `tasks.py:508–514` (каждые 3 ответа).
+- **SSE-путь** (`api/views/chats.py:366–412`) — основной веб-чат. Триггер extract: `chats.py:506–515` (каждые 3 ответа) — **B1 закрыт**.
+- **Триггер summary** при новом сообщении: `chats.py:139–151` — любой предыдущий чат (B6 закрыт).
+- **Beat:** `config/celery.py:36–39` — `summarize_stale_chats` каждые 2 часа.
 
-                # ── Persistent Memory: извлечение фактов (фон, каждые 3 ответа) ──
-                try:
-                    from aitext.tasks import extract_memory_facts
-                    completed_count = chat.messages.filter(
-                        role='assistant', status=Message.Status.COMPLETED
-                    ).count()
-                    if completed_count % 3 == 0:
-                        extract_memory_facts.delay(chat.id)
-                except Exception:
-                    pass  # память не должна ронять стрим
+### 2.5. API и UI
 
-                yield _sse({ "type": "done", ... })
-```
-
-> Примечание: `chat`, `request.user` доступны в замыкании? `chat` — да (захвачен выше). Если в замыкании виден только `chat` через closure — он есть (`chat.id` используется на 435). Если нет — захватить `chat_id = chat.id` рядом с `user_msg_id = user_message.id` (строка 449) и фильтровать по `chat_id`.
-
----
-
-### B2 — Compression silent-drop: теряем 1..N−20 сообщений без сжатия `[критический]`
-
-**Где:** `src/aitext/memory.py`, строки **164–166**:
-
-```python
-    if overhead + history_tokens <= token_threshold:
-        # Всё помещается — берём последние RECENT_WINDOW
-        return all_msgs[-RECENT_WINDOW:], rolling      # ← БАГ
-```
-
-**Проблема — посчитаем математику, это не edge-case, а дефолт.**
-`token_threshold = context_window * 0.70`. Для `gpt-4o` / `claude` / `gemini`:
-- gpt-4o: `0.70 × 128_000 = 89_600` токенов бюджета.
-- claude: `0.70 × 200_000 = 140_000`.
-- gemini: `0.70 × 1_000_000 = 700_000`.
-
-Чат из 30–50 сообщений — это ~5–15k токенов. То есть `overhead + history_tokens <= token_threshold` истинно **практически для любого чата** на большой модели вплоть до сотен сообщений. В этой ветке мы возвращаем **только последние 20 сообщений** (`all_msgs[-RECENT_WINDOW:]`), а `rolling` при этом **пустой** (сжатие не запускалось). Сообщения `1 .. N−20` просто **выкидываются из контекста и нигде не сохранены**. Пользователь, написавший 25 сообщений, теряет первые 5 — хотя они спокойно влезали в окно.
-
-Двойной вред: (а) теряем то, что влезало; (б) на gpt-4o/claude/gemini ветка сжатия (строки 168+) **практически никогда не выполняется**, потому что порог не достигается.
-
-**Фикс.** Если всё помещается — отдаём **всю** историю, она по определению влезает:
-
-```python
-    if overhead + history_tokens <= token_threshold:
-        # Всё помещается в окно — отдаём ВСЮ историю, ничего не теряем.
-        return all_msgs, rolling
-```
-
-> Это устраняет потерю данных немедленно. Полноценное решение «когда история реально не влезает» остаётся в ветке ниже (строки 168+), но теперь оно срабатывает по делу, а не «никогда». См. также архитектурный фикс в Section 3 (вынос сжатия в задачу + хранение покрытого диапазона по `last_message_id`).
+- DRF: `api/views/memory.py` + `api/serializers/memory.py`, роуты `api/urls.py:148–153` (`/memory/`, `/<pk>/`, `/clear/`, `/summaries/`, `/settings/`).
+  - Порядок роутов **безопасен**: `<int:pk>` не матчит строки `clear`/`summaries`.
+  - Инвалидация кэша на всех мутациях (create/update/destroy/clear/settings).
+- UI: `frontend/app/account/memory/page.tsx` — глобальный тоггл, CRUD фактов, фильтры (категория/источник), pin/active toggle, история сессий, очистка авто-фактов. API-клиент `frontend/lib/api/memory.ts`.
 
 ---
 
-### B3 — `content_key` коллизии: молчаливая потеря НОВЫХ фактов `[высокий]`
+## 3. Подтверждённые исправления (Round 1 + Round 2)
 
-**Где (дублируется в двух местах):**
-- `src/aitext/models.py:566` (в `UserMemory.save()`):
-  ```python
-  self.content_key = re.sub(r'[^а-яёa-z0-9]', '', self.content.lower())[:255]
-  ```
-- `src/aitext/tasks.py:611–613` (в `extract_memory_facts`):
-  ```python
-  content_key = re.sub(r'[^а-яёa-z0-9]', '', content.lower())[:255]
-  if content_key in existing_keys:
-      continue                       # ← НОВЫЙ факт молча отбрасывается
-  ```
-
-**Проблема — это потеря данных, а не «лишний дедуп».** Регекс вырезает **в том числе пробелы**. Значит «Работает в Python» и «Работаетвpython» дают одинаковый `content_key = 'работаетвpython'`. Хуже — РАЗНЫЕ по смыслу факты схлопываются:
-- «Любит Go» → `любитgo`
-- «Любит Гоа» (отпуск) → `любитгоа` (ок, отличается) — но
-- «Имя Алексей» и «Имя: Алексей.» → `имяалексей` (ок), а вот
-- «Стек: Python, Go» и «Стек Python Go» → `стекpythongo` = одинаковые (это норм),
-- однако «3 кота» и «3 кита» различаются, а «работа в банке» / «работав банке» — нет.
-
-Реальная боль: при коллизии в `extract_memory_facts` срабатывает `continue` (строка 613) — **новый факт просто не сохраняется**, без лога, без альтернативы. А т.к. пробелы вырезаны, частота коллизий искусственно завышена.
-
-**Фикс — централизовать нормализацию и сохранять пробелы (collapse, не strip):**
-
-1. В `src/aitext/memory.py` добавить единую функцию (источник истины):
-```python
-import re
-
-def normalize_fact(text: str) -> str:
-    """Ключ дедупа: lowercase, без пунктуации, пробелы СХЛОПНУТЫ (не вырезаны)."""
-    t = (text or '').lower().strip()
-    t = re.sub(r'[^\w\s]', '', t, flags=re.UNICODE)   # убрать пунктуацию, оставить буквы/цифры/пробелы
-    t = re.sub(r'\s+', ' ', t).strip()                 # схлопнуть пробелы
-    return t[:255]
-```
-
-2. В `src/aitext/models.py` `UserMemory.save()` (строки 563–567) — использовать её:
-```python
-    def save(self, *args, **kwargs):
-        if not self.content_key and self.content:
-            from aitext.memory import normalize_fact
-            self.content_key = normalize_fact(self.content)
-        super().save(*args, **kwargs)
-```
-
-3. В `src/aitext/tasks.py` `extract_memory_facts` (строки 610–631) — заменить `continue` на безопасный upsert, чтобы НОВЫЙ факт не терялся при близком ключе. Если ключ реально занят — обновляем содержимое (свежая формулировка точнее), а не выкидываем:
-```python
-        from aitext.memory import normalize_fact
-        content_key = normalize_fact(content)
-        if not content_key:
-            continue
-
-        valid_categories = {'profile', 'preference', 'project', 'fact', 'skill'}
-        if category not in valid_categories:
-            category = 'fact'
-
-        # update_or_create вместо «continue»: не теряем факт, обновляем формулировку.
-        _, was_created = UserMemory.objects.update_or_create(
-            user=user, content_key=content_key,
-            defaults={'content': content, 'category': category,
-                      'source': 'auto', 'source_chat': chat},
-        )
-        if was_created:
-            existing_keys.add(content_key)
-            added += 1
-```
-
-> `existing_preview` (строки 562–566) по-прежнему отдаём в промпт LLM, чтобы модель сама не плодила почти-дубли — это первая линия дедупа, `content_key` — вторая.
+| # | Баг | Как закрыт | Подтверждение в коде |
+|---|-----|-----------|----------------------|
+| B1 | SSE не извлекал факты | Триггер `extract_memory_facts.delay()` добавлен в конец стрима | `chats.py:506–515` |
+| B2 | Silent-drop сообщений «в окне» | Ветка «всё помещается» возвращает `all_msgs`, не `[-RECENT_WINDOW:]` | `memory.py:234–236` |
+| B3 | Коллизии `content_key`, `continue` терял факты | Единый `normalize_fact` (пробелы схлопнуты) + `update_or_create` | `memory.py:52`, `models.py:563`, `tasks.py:625–648` |
+| B4 | Lost update в summary | `select_for_update()` в `update_rolling_summary` | `memory.py:251–267` |
+| B5 | Sync DeepSeek в SSE-запросе | `get_history_with_compression` read-only; компрессия в Celery | `memory.py:180`, `tasks.py:726` |
+| B6 | Summary только при той же модели | Триггер по любому prev-чату + beat-таск | `chats.py:142–149`, `tasks.py:813` |
+| B8 | Резался не тот конец диалога | `msgs[-40:]` + `dialogue[-5000:]` (свежий хвост) | `tasks.py:683`, `tasks.py:702` |
+| B9 | HTML в LLM-входе | `_strip_html()` во всех входах | `tasks.py:565`, `tasks.py:686`, `memory.py:230` |
+| B10 | Неточный токен-каунт | Language-aware (кириллица/латиница) | `memory.py:64–74` |
+| B11 | БД на каждом сообщении | Redis-кэш `memctx:{user_id}` TTL 300с | `memory.py:116–155` |
+| B12 | `%-d` падал на Windows | `f"{dt.day} {dt.strftime('%b %Y')}"` | `memory.py:147–148` |
+| B13 | Гонка дедупа | Снята `update_or_create` + `UniqueConstraint` | `tasks.py:635` |
+| B14 | rolling_summary рос бесконечно | beat `summarize_stale_chats` | `tasks.py:813`, `celery.py:36` |
 
 ---
 
-### B4 — `update_rolling_summary`: lost update при конкурентных сообщениях `[высокий]`
+## 4. Остаточные проблемы (после фиксов)
 
-**Где:** `src/aitext/memory.py:217–229` + вызов в `chats.py:391–397` / `tasks.py:304–310`.
+> Эти дефекты **пережили** оба раунда фиксов либо были **внесены** ими. Severity: высокий = заметно влияет на стоимость/корректность на потоке; средний = деградация качества/перформанса; низкий = тех. долг.
 
-**Уточнение механизма (важно — НЕ IntegrityError).** `get_or_create` сам по себе **не падает** под конкуренцией: Django оборачивает create в savepoint и при `IntegrityError` повторяет `get`. Так что строка не «теряется из-за проглоченного IntegrityError». Реальный баг — **lost update**:
+### R1 — `should_compress` перезапускает компрессию почти на каждом сообщении `[высокий — стоимость]`
 
-```
-Запрос A: get_history_with_compression → new_rolling_A   ┐
-Запрос B: get_history_with_compression → new_rolling_B   ┘  (читают одинаковое состояние)
-Запрос A: update_rolling_summary(new_rolling_A)  → save
-Запрос B: update_rolling_summary(new_rolling_B)  → save  (перетирает A)
-```
+**Где:** `memory.py:174–175` (чтение) против `tasks.py:806` (запись).
 
-Read-modify-write растянут между `get_history_with_compression` (чтение + LLM-сжатие) и `update_rolling_summary` (запись) и **не атомарен**. При двух одновременных сообщениях в один чат побеждает последний писатель; результат сжатия одного из них теряется. Плюс `except Exception` (строка 228) маскирует любые реальные ошибки записи в `warning`.
+**Механика.** `compress_chat_history` пишет `message_count = msg_count - RECENT_WINDOW` (`tasks.py:806`). А `should_compress` считает `unsummarized = msg_count - cs.message_count` и триггерит при `>= RECENT_WINDOW` (`memory.py:174–175`).
 
-**Фикс (тактический — атомарный upsert с блокировкой):**
-```python
-from django.db import transaction
+Подставим числа. Чат вырос до 30 сообщений, компрессия отработала → `message_count = 30 − 20 = 10`. Следующее сообщение: `msg_count = 31`, `unsummarized = 31 − 10 = 21 ≥ 20` → **True снова**. То есть условие «накопилось `RECENT_WINDOW` новых» удовлетворяется уже сразу после компрессии и **остаётся истинным на каждом последующем сообщении**.
 
-def update_rolling_summary(chat, new_rolling: str) -> None:
-    from aitext.models import ChatSummary
-    if not new_rolling:
-        return
-    try:
-        with transaction.atomic():
-            cs, _ = ChatSummary.objects.select_for_update().get_or_create(
-                chat=chat,
-                defaults={'summary_text': '', 'rolling_summary': new_rolling},
-            )
-            if cs.rolling_summary != new_rolling:
-                cs.rolling_summary = new_rolling
-                cs.save(update_fields=['rolling_summary', 'updated_at'])
-    except Exception as e:
-        logger.warning(f'[memory] update_rolling_summary error for chat {chat.id}: {e}')
-```
+Гард в задаче (`tasks.py:764`: `if cs.message_count >= msg_count - RECENT_WINDOW: return`) ловит **только** случай нулевого прироста. При любом новом сообщении `msg_count - RECENT_WINDOW` растёт на 1 и условие не срабатывает — задача каждый раз **заново сжимает растущий префикс через DeepSeek**.
 
-> `select_for_update()` сериализует конкурентные записи в один и тот же `ChatSummary`. **Стратегический фикс** (предпочтительный): вынести само сжатие в Celery-задачу (см. B5 и Section 3) — тогда сжатие идёт вне горячего пути и идемпотентно по `last_message_id`, гонка исчезает в корне.
+**Последствия:** лишний вызов DeepSeek V3 на каждое сообщение длинного чата (после 30+), рост латентности фоновой очереди, деньги провайдеру. Фича не «ломается», но это off-by-`RECENT_WINDOW` в семантике счётчика.
+
+**Фикс (правильная семантика счётчика):** хранить в `message_count` **общее число сообщений на момент сжатия** (`msg_count`), а не `msg_count - RECENT_WINDOW`. Тогда:
+- запись: `update_rolling_summary(chat, new_rolling, msg_count=msg_count)` (`tasks.py:806`);
+- чтение: `unsummarized = msg_count - cs.message_count`, триггер `>= RECENT_WINDOW` — корректно (после сжатия `unsummarized = 0`, копится до 20).
+- гард в задаче: `if cs.message_count >= msg_count: return`.
+
+Альтернатива (надёжнее) — хранить `last_compressed_message_id` и сжимать только `(last_id .. конец−RECENT_WINDOW]` (см. R6 / Future).
+
+**R1b — конкурентные `compress_chat_history` для одного чата blind-overwrite.** `update_rolling_summary` сериализует **запись** через `select_for_update` (B4), но цепочка чтение→DeepSeek→запись **не атомарна на уровне задачи**. Два одновременных запуска компрессии одного чата (вероятность которых R1 как раз многократно повышает) прочитают одинаковое состояние, оба сожмут через DeepSeek и затем перетрут результат друг друга — побеждает последний писатель. Это не падение, но потеря работы и лишние вызовы. **Корень снимается** идемпотентностью по `last_compressed_message_id` (§5.1) + опциональным Redis-локом `memcompress:{chat_id}` на время задачи.
 
 ---
 
-### B5 — Синхронный DeepSeek-вызов в SSE-запросе блокирует TTFB `[высокий]`
+### R2 — Redis-кэш `build_memory_context` per-user, хотя контент зависит от чата `[высокий — корректность]`
 
-**Где:** `src/api/views/chats.py:391` вызывает `get_history_with_compression(...)` **до** старта стрима; внутри (`memory.py:197–208`) — синхронный `client.chat.completions.create(model='deepseek-v3', ...)`.
+**Где:** ключ `memctx:{user_id}` (`memory.py:88, 116`), но контент содержит `past_summaries` с `.exclude(chat=chat)` (`memory.py:138`).
 
-**Проблема.** Когда история перешагивает порог, сжатие выполняется **синхронно прямо в HTTP-запросе**, до того как пользователь увидит первый токен. Это +несколько секунд к Time-To-First-Token на каждом сообщении длинного чата. Хуже — ветка не гейтится: при каждом сообщении выше порога DeepSeek дёргается **заново** (пересжатие тех же сообщений). На top-1 платформе с потоком запросов это и латентность, и лишние деньги, и нагрузка на провайдера.
+**Механика.** Блок памяти включает «резюме последних 3 чатов, **кроме текущего**». Кэш-ключ зависит только от `user_id`. В пределах TTL (5 мин) пользователь переключается между чатами A и B:
+- открыл A → закэширован блок, исключающий A;
+- открыл B (тот же user, ключ тот же) → вернётся **кэш от A**, в котором summary чата A присутствует как «прошлая сессия», а summary чата B (которое нужно показать в A-исключённом виде) — может отсутствовать.
 
-**Фикс (архитектурный — единственно правильный):**
-1. Из горячего пути убрать LLM-сжатие. `get_history_with_compression` должна быть **чистым чтением**: вернуть последние `RECENT_WINDOW` сообщений + уже сохранённый `rolling_summary`/`summary_text` из `ChatSummary`. Без сетевых вызовов.
-2. Решение «пора сжать» принимать по дешёвому порогу (кол-во несжатых сообщений) и запускать **Celery-задачу** `compress_chat_history.delay(chat.id)` (или переиспользовать `generate_chat_summary`), которая считает токены, зовёт DeepSeek и пишет результат с `last_message_id` покрытия.
-3. В запросе никогда не ждём LLM — показываем то, что уже сжато.
+Итог: чат видит собственное summary как «прошлую сессию» и/или не видит summary параллельного чата. Корректность cross-session-блока нарушена — **регрессия, внесённая фиксом B11**.
 
-Скелет чистой версии (Section 3.2 содержит полный новый `memory.py`):
-```python
-def get_history_with_compression(chat, exclude_msg_id=None):
-    from aitext.models import Message, ChatSummary
-    qs = chat.messages.filter(status=Message.Status.COMPLETED)
-    if exclude_msg_id:
-        qs = qs.exclude(id=exclude_msg_id)
-    recent = list(qs.order_by('-created_at')[:RECENT_WINDOW]); recent.reverse()
-    summary = ''
-    try:
-        cs = ChatSummary.objects.get(chat=chat)
-        summary = cs.rolling_summary or cs.summary_text or ''
-    except ChatSummary.DoesNotExist:
-        pass
-    return recent, summary    # никаких сетевых вызовов
-```
+**Фикс (один из):**
+1. Ключ с учётом чата: `memctx:{user_id}:{chat_id}` — простейший, но снижает hit-rate.
+2. Разделить кэш: факты (per-user, `memctx:{user_id}`) кэшируем, past-summaries (chat-dependent) — либо не кэшируем, либо отдельным ключом `memsum:{user_id}:{chat_id}` с коротким TTL.
+3. Кэшировать только факты (стабильны per-user), а past-summaries собирать без кэша (это 1 лёгкий запрос с `select_related`).
 
-> Побочный бонус: устраняет B4 (гонку) — запись `rolling_summary` теперь только в одной фоновой задаче.
+Рекомендация — вариант 3: основной объём (до 40 фактов) кэшируется, а дешёвый chat-зависимый запрос идёт всегда корректно.
 
 ---
 
-### B6 — `generate_chat_summary` триггерится только при новом чате с ТОЙ ЖЕ нейросетью `[высокий]`
+### R3 — Кэш памяти не инвалидируется при обновлении summary `[средний — корректность]`
 
-**Где:** `src/api/views/chats.py:142–149`:
-```python
-            prev_chat = (
-                Chat.objects.filter(user=request.user, network=network)   # ← фильтр по network
-                .exclude(id=chat.id).order_by('-updated_at').first()
-            )
-            if prev_chat and prev_chat.messages.filter(...COMPLETED).count() >= 4:
-                generate_chat_summary.delay(prev_chat.id)
-```
+**Где:** `compress_chat_history` (`tasks.py:806`) и `generate_chat_summary` (`tasks.py:712–721`) пишут summary, но **не вызывают** `invalidate_memory_cache`.
 
-**Проблема.** Суммаризация прошлого чата запускается **только** когда пользователь создаёт новый чат **с той же нейросетью**. Сценарии, в которых summary не создаётся НИКОГДА:
-- открыл новый чат с **другой** моделью (gpt-4o → claude) — старый gpt-4o-чат не суммаризируется;
-- вообще не создаёт новых чатов, сидит в одном — summary не появляется (а `rolling_summary` пухнет, см. B14);
-- первый чат пользователя — `prev_chat` нет.
+**Механика.** Past-summaries входят в кэшированный блок (R2). При появлении/обновлении summary кэш не сбрасывается → пользователь до 5 минут получает старый блок памяти без свежего резюме. `extract_memory_facts` кэш сбрасывает (`tasks.py:654`), а суммаризаторы — нет.
 
-Итог: `ChatSummary.summary_text` у большинства чатов остаётся пустым, и блок «Прошлая сессия» в `build_memory_context` (memory.py:91–103) почти всегда пуст. Cross-session память не работает.
-
-**Фикс.** Двойной триггер:
-1. Убрать привязку к `network` — суммаризировать предыдущий **любой** активный чат:
-```python
-            prev_chat = (
-                Chat.objects.filter(user=request.user)
-                .exclude(id=chat.id).order_by('-updated_at').first()
-            )
-```
-2. Добавить **периодический Celery-beat** для чатов без свежего summary и для «брошенных» (последнее сообщение > 24ч назад) — см. Section 3.3. Это закрывает сценарии «не создаёт новых чатов» и «сменил модель».
+**Фикс:** вызвать `invalidate_memory_cache(chat.user_id)` в конце `compress_chat_history` и `generate_chat_summary` после успешной записи. (После исправления R2 по варианту 3 этот пункт частично снимается — past-summaries перестанут кэшироваться.)
 
 ---
 
-### B7 — Два несогласованных суммаризатора пишут один `ChatSummary` `[высокий]`
+### R4 — `get_history_with_compression` читает ВСЮ историю и токенизирует каждое сообщение каждый запрос `[средний — производительность]`
 
-**Где:**
-- `rolling_summary` пишет синхронный путь: `chats.py:397` / `tasks.py:310` → `update_rolling_summary` (memory.py:217).
-- `summary_text` пишет фоновая `generate_chat_summary` (tasks.py:638–689, `cs.save()` в районе 689).
-- Читают их **в разных местах и по-разному**: `build_memory_context` берёт `summary_text` прошлых чатов (memory.py:103: `s.summary_text[:500]`), а `get_history_with_compression` берёт `rolling_summary` текущего (memory.py:143–144).
+**Где:** `memory.py:208` (`all_msgs = list(qs.order_by('created_at'))`), `memory.py:229–232` (token-count по всем).
 
-**Проблема.** Это два независимых поля одной строки, никем не сводимых:
-- `rolling_summary` — «сжатое начало текущей сессии», обновляется в горячем пути.
-- `summary_text` — «финальное резюме», обновляется при открытии нового чата.
+**Механика.** После фикса B2 модели с большим окном (gpt-4o 89.6k, claude 140k, gemini 700k бюджет) почти всегда попадают в ветку «всё помещается» и получают **всю** историю. Каждый запрос:
+- грузит из БД **все** completed-сообщения чата;
+- прогоняет `estimate_tokens` + regex-strip HTML по каждому (`memory.py:229–232`).
 
-Они описывают пересекающийся контент, но никогда не согласуются. В `build_memory_context` для **прошлых** чатов читается `summary_text` — который из-за B6 почти всегда пуст. А `rolling_summary` текущего чата для cross-session не используется. Архитектурно это два полу-механизма вместо одного.
+Это O(N) на сообщение и O(N²) на жизнь чата. Плюс **вся** история уходит провайдеру на каждом ходу (нет верхнего кэпа сообщений, только токен-порог в 70% окна) — на gemini это сотни сообщений в каждом запросе. Корректно по смыслу, дорого по ресурсам.
 
-**Фикс (архитектурный, Section 3).** Свести к **одной** модели смысла: одно поле `content` + `last_message_id` (докуда покрыто) + `messages_count`. Одна фоновая задача его поддерживает (инкрементально дописывает по мере роста чата). Горячий путь только читает. `build_memory_context` для прошлых чатов и `get_history_with_compression` для текущего читают одно и то же поле. Это совмещает «rolling» и «final» в один непротиворечивый артефакт.
-
----
-
-### B8 — `generate_chat_summary` режет не тот конец диалога `[средний]`
-
-**Где:** `src/aitext/tasks.py:662–666` собирает `dialogue` oldest-first по **всем** сообщениям, затем 680: `dialogue[:5000]`.
-
-**Проблема.** Сборка идёт от старых к новым (`order_by('created_at')`), потом берётся первые 5000 символов. На длинном чате это означает: суммаризируется **начало** диалога, а свежие (самые важные для контекста) сообщения **отрезаются**. Логика «сжать старое, сохранить свежее» инвертирована.
-
-**Фикс.** Суммаризировать только то, что выпадает за окно (старое), а не весь чат, и не резать хвост: сжимать `completed[:-RECENT_WINDOW]` (как в Section 3.3 `generate_chat_summary`), а лимит применять по началу осознанно (или инкрементально к уже существующему summary). Если резать — резать **старое** начало при наличии прошлого summary, а не свежие сообщения.
+**Фикс (поэтапно):**
+1. Кэшировать `history_tokens` инкрементально (хранить сумму в `ChatSummary` или Redis, добавлять токены нового сообщения, не пересчитывая всё).
+2. Ввести **жёсткий верхний кэп** числа сообщений (например, 60–80) поверх токен-порога — выше него всегда идём в ветку «recent + summary», даже если формально влезает в окно. Защита от «250 сообщений в каждый запрос на gemini».
 
 ---
 
-### B9 — HTML из `content` попадает в LLM-вход `[средний]`
+### R5 — Тесты частично сломаны после фиксов `[средний — качество]`
 
-**Где:** `memory.py:160` (`(m.plain_text or m.content or '')`), `memory.py:182`, `tasks.py:552`, `tasks.py:664`.
+**Где:** `src/aitext/test_memory.py`.
 
-**Проблема.** `msg.content` — это HTML после `CodeFormatter.format_ai_response()`. `msg.plain_text` — сырой текст. У ранних/легаси-сообщений `plain_text` бывает пустым, тогда фолбэк на `content` тащит в compression/summary/extraction вход `<pre>`, `<code class="...">`, `<span>` и пр. Это раздувает токены и сбивает LLM.
+**Установлено статически** (Django в этом окружении не установлен, прогнать suite нельзя; дефекты подтверждены чтением кода):
 
-**Фикс.** Везде, где фолбэк на `content`, прогонять через strip HTML:
-```python
-import re
-def _plain(msg) -> str:
-    if msg.plain_text:
-        return msg.plain_text
-    return re.sub(r'<[^>]+>', ' ', msg.content or '')  # грубый, но достаточный strip
-```
-Применить в `memory.py` (compression input), `tasks.py` (`extract_memory_facts`, `generate_chat_summary`).
+1. `test_large_history_returns_recent_window` (`test_memory.py:169–179`) патчит `aitext.memory.get_laozhang_client` (строка 173). После фикса B5 функция стала read-only и **`get_laozhang_client` в `memory.py` больше не импортируется и не существует** (подтверждено grep). `with patch('aitext.memory.get_laozhang_client')` бросит `AttributeError` → **тест падает на setup патча**.
+2. Тот же тест ассертит `len(result) <= RECENT_WINDOW` (`test_memory.py:179`). Это **противоречит фиксу B2**: 25 сообщений на gpt-4o теперь возвращаются целиком (влезают в 89.6k бюджет) → ассерт ложен даже без ошибки патча.
 
----
+**Не покрыто тестами вообще:**
+- `should_compress` (особенно баг R1 — регрессионный тест на «не триггерить каждое сообщение»).
+- `normalize_fact` (схлопывание пробелов, отсутствие ложных коллизий «Любит Go» vs «Любитgo») — критично для B3.
+- `update_rolling_summary` (upsert/блокировка).
+- Кэш `build_memory_context` (попадание/инвалидация, баг R2 — переключение чатов).
+- Триггеры extract в обоих путях (хотя бы мок `.delay`).
+- `compress_chat_history` / `generate_chat_summary` (явно объявлены untested, `test_memory.py:197–204`).
 
-### B10 — `_CHARS_PER_TOKEN = 0.35` неточен для кириллицы `[средний]`
-
-**Где:** `memory.py:19,46–50`.
-
-**Проблема.** `0.35` означает «токенов = 0.35 × символов», т.е. ~2.86 символа на токен. Для **английского** реально ~4 симв./токен (т.е. коэффициент ~0.25). Для **русского** на токенайзерах OpenAI/DeepSeek кириллица дробится сильнее — часто ~2–3 символа на токен, иногда буква = токен. То есть `0.35` **завышает** оценку для англ. и **занижает** для рус. Это влияет на порог сжатия (B2) — оценка токенов кривая в обе стороны.
-
-**Фикс (без tiktoken, дёшево).** Раздельный коэффициент по доле кириллицы, либо консервативный единый ~3 симв./токен:
-```python
-def estimate_tokens(text: str) -> int:
-    if not text:
-        return 0
-    cyr = sum('а' <= c.lower() <= 'я' or c.lower() == 'ё' for c in text)
-    # кириллица ~2.5 симв/токен, латиница ~4 симв/токен
-    cyr_frac = cyr / max(1, len(text))
-    chars_per_token = 2.5 * cyr_frac + 4.0 * (1 - cyr_frac)
-    return max(1, int(len(text) / chars_per_token))
-```
-> Для top-1 платформы корректнее подключить реальный токенайзер (`tiktoken` для GPT, фолбэк-эвристика для остальных) — см. Section 3.
+**Фикс:** переписать `test_large_history_returns_recent_window` (убрать несуществующий патч, разделить на два кейса: «влезает → all»; «не влезает → recent+summary» через малое окно модели типа `mistral` 32k или мок `_get_context_window`). Добавить юнит-тесты на `should_compress` (регрессия R1), `normalize_fact`, инвалидацию кэша.
 
 ---
 
-### B11 — `build_memory_context` бьёт в БД на каждом сообщении `[средний]`
+### R6 — B7 не выполнен: `rolling_summary` и `summary_text` по-прежнему раздельны `[низкий — тех. долг]`
 
-**Где:** `memory.py:82–99` — два запроса (`UserMemory` + `ChatSummary` past_summaries) **на каждый** запрос пользователя.
+**Где:** `models.py:577–582`; чтение «лучшего из двух» в `memory.py:144`, `memory.py:214`, сериализатор `serializers/memory.py:40`.
 
-**Проблема.** При 40 фактах + 3 past-summaries это 2 запроса на каждое сообщение; контент почти не меняется между сообщениями. На потоке это лишняя нагрузка на Postgres в горячем пути.
+**Механика.** Исходный план предписывал свести два поля в единую модель `content + last_message_id + messages_count`. Round 2 этого **не сделал** — добавил только read-fallback `(summary_text or rolling_summary)` в нескольких местах. Два суммаризатора (`compress_chat_history` → `rolling_summary`, `generate_chat_summary` → `summary_text`) по-прежнему пишут **разные поля одной строки**, описывая пересекающийся контент, никем не сводимый. Это работает (read-fallback маскирует), но остаётся источником рассинхрона: после длинной сессии `rolling_summary` и `summary_text` могут расходиться, а в контекст идёт «что попалось первым».
 
-**Фикс.** Кэш в Redis по пользователю, TTL ~5 мин, инвалидация при изменении фактов (см. Section 3.1):
-```python
-from django.core.cache import cache
-def build_memory_context(user, chat):
-    if not memory_enabled_for(user, chat):
-        return ''
-    cache_key = f'memctx:{user.id}'
-    cached = cache.get(cache_key)
-    if cached is not None:
-        return cached
-    ctx = _build_memory_context_uncached(user)   # текущая логика
-    cache.set(cache_key, ctx, 300)
-    return ctx
-```
-Инвалидация: в `extract_memory_facts` (после `update_or_create`) и в API мутациях `/memory/` — `cache.delete(f'memctx:{user.id}')`.
+**Статус: mitigated, не resolved.** Не критично для работы, но блокирует чистое решение R1 (идемпотентность по `last_message_id`).
 
 ---
 
-### B12 — `%-d` в `strftime` падает на Windows `[низкий]`
+### R7 — `generate_chat_summary` не инкрементален, сжимает заново `[низкий]`
 
-**Где:** `memory.py:101`: `s.updated_at.strftime('%-d %b %Y')`.
+**Где:** `tasks.py:683` — берёт `msgs[-40:]` и пересоздаёт summary целиком каждый раз. Не дописывает к существующему, теряет контекст начала длинного чата (>40 сообщений середина выпадает). Для big-picture cross-session это терпимо, но не идеально.
 
-**Проблема.** `%-d` (без ведущего нуля) — **только Linux/glibc**. На Windows бросает `ValueError`. Прод на Linux/Docker, и вызов внутри `try/except` (92–105), так что в проде это деградация — но на **dev/test под Windows** исключение прерывает цикл и теряет **все** past-summaries, что искажает локальное тестирование.
-
-**Фикс (кроссплатформенно, без strftime для дня):**
-```python
-            dt = s.updated_at
-            date_str = f"{dt.day} {dt.strftime('%b %Y')}" if hasattr(dt, 'day') else ''
-```
+**Фикс:** инкрементальная суммаризация поверх существующего summary (как в `compress_chat_history`), либо явное «summary начала + последние N».
 
 ---
 
-### B13 — Гонка дедупа в `extract_memory_facts` `[низкий]`
+## 5. Будущие улучшения (Phase 2)
 
-**Где:** `tasks.py:557–560` (existing_keys читается ДО LLM), `tasks.py:612`.
+Включается **после** стабилизации Phase 1 (R1–R5 закрыты).
 
-**Проблема.** Две одновременные `extract_memory_facts` (каждые 3 сообщения, Celery concurrency 200) видят одинаковый `existing_keys` и пытаются вставить одинаковые факты. **Но** `UniqueConstraint(user, content_key)` корректно отклоняет дубль — это **штатное** поведение, не баг данных. Единственная потеря — лишний LLM-вызов. После фикса B3 (`update_or_create`) даже исключения не будет.
+### 5.1. Единая модель summary (закрывает R6, разблокирует R1)
+- Свести к одному полю `content` + `last_compressed_message_id` + `messages_count`.
+- Миграция данных: `content := rolling_summary or summary_text`.
+- Одна фоновая задача, идемпотентная по `last_compressed_message_id` — сжимает только новый хвост, дописывает к существующему. Гонка и R1 исчезают в корне.
 
-**Фикс.** Достаточно B3. Опционально — Redis-лок `memextract:{chat_id}` на время задачи, чтобы не гонять LLM дважды. Не критично.
+### 5.2. RAG-память на pgvector (relevance scoring)
+- `pgvector/pgvector:pg15`, `UserMemory.embedding = VectorField(1536)` + HNSW (cosine).
+- Эмбеддинг факта при создании в `extract_memory_facts` (`text-embedding-3-small`).
+- `build_memory_context` в RAG-режиме: top-K **семантически релевантных** текущему сообщению фактов вместо top-40 по recency. Резко снижает шум при сотнях фактов.
+- `POST /api/v1/memory/search/`.
 
----
+### 5.3. Фаззи-дедуп
+- При вставке: косинус > 0.92 к существующему → обновить, не плодить. Дополняет точечный `content_key`.
 
-### B14 — rolling_summary растёт бесконечно `[средний]`
+### 5.4. Точный токен-каунт
+- `tiktoken` для GPT, кэш токенайзера; эвристика-фолбэк для остальных. Делает порог сжатия точным.
 
-**Где:** следствие B6 + B7. Если пользователь не открывает новый чат, `generate_chat_summary` (создающая `summary_text`) не вызывается никогда, а `rolling_summary` накапливается через горячий путь.
+### 5.5. Автоочистка устаревших фактов
+- beat `prune_stale_memories` (ночью): деактивировать `is_active, not is_pinned`, не используемые > 90 дней. Требует поля `last_referenced_at` (миграция).
 
-**Фикс.** Закрывается периодическим beat-таском суммаризации (Section 3.3) + единой моделью summary (B7). После — rolling инкрементально пересжимается в фоне, не растёт неограниченно.
+### 5.6. Приватность / контроль (паритет с ChatGPT Memory)
+- Экспорт памяти (GDPR-like), полная очистка одним действием (частично есть — `/memory/clear/` чистит только auto).
+- Аудит: какой факт использован в каком ответе (`times_referenced` / `last_referenced_at`).
 
----
-
-## 2. Что работает правильно (отдать должное)
-
-1. **Модель данных в целом верная.** `UserMemory.user → CustomUser` (per-user, cross-channel) и `ChatSummary.chat → OneToOne(Chat)` — правильная декомпозиция. Cross-channel память (web/Telegram/Studio через один `CustomUser`) — архитектурно корректна.
-2. **`UniqueConstraint(user, content_key)` с `condition=Q(content_key__gt='')`** — грамотно: уникальность дедупа только для непустых ключей, пустые не конфликтуют. Защищает БД от дублей даже при гонках (B13).
-3. **Двойной тоггл памяти** — глобальный `CustomUser.memory_enabled` + per-chat `Chat.settings['memory_enabled']` (без миграции). Проверяется и в `build_memory_context`, и в `extract_memory_facts`. Чисто и без оверинжиниринга.
-4. **Память бесплатна для пользователя** — фоновые задачи на дешёвом DeepSeek V3, звёзды не списываются. Сильное конкурентное преимущество.
-5. **Грейсфул-деградация в фоновых задачах** — `extract_memory_facts` / `generate_chat_summary` обёрнуты в try/except и не роняют основной поток генерации (`tasks.py:502–503`, `chats.py:150–151`). Правильный приоритет: память не должна ломать ответ.
-6. **Дедуп-промпт с `existing_preview`** (`tasks.py:562–566`) — отдаём LLM уже известные факты, чтобы она сама не плодила почти-дубли. Хорошая первая линия дедупа поверх `content_key`.
-7. **Категоризация фактов** (profile/preference/project/fact/skill) и группировка в контексте — повышает читаемость system-промпта для модели.
-8. **Сортировка `-is_pinned, -created_at`** при выборке фактов — закреплённые пользователем идут первыми. Разумный приоритет.
-9. **`exclude_msg_id`** при сборке истории — корректно исключает текущее генерируемое сообщение из контекста.
-10. **`max_tokens`/`temperature` низкие** в фоновых задачах (0.1–0.3, 400–600 токенов) — дёшево и детерминированно для извлечения/сжатия.
-
----
-
-## 3. Архитектурные улучшения (план)
-
-Цель — превратить «работает на бумаге» в production-grade для top-1 платформы.
-
-### 3.1. Redis-кэш памяти пользователя (фикс B11)
-- Ключ `memctx:{user.id}`, TTL 300с, хранит готовый текстовый блок памяти.
-- Инвалидация при любой мутации `UserMemory` (extract-задача, API CRUD, toggle).
-- Снимает 2 запроса/сообщение в горячем пути.
-
-### 3.2. Чистый `get_history_with_compression` + асинхронное сжатие (фикс B2, B4, B5, B7)
-- Горячий путь — **только чтение** (последние N сообщений + готовый summary). Никаких LLM-вызовов в запросе.
-- Решение «сжать» — по дешёвому счётчику несжатых сообщений (`should_summarize`), запуск Celery-задачи.
-- Единая модель summary: одно поле `content` + `last_message_id` + `messages_count` (свести `rolling_summary`/`summary_text`, B7). Миграция данных: при деплое заполнить `content := rolling_summary or summary_text`.
-- Сжатие идемпотентно по `last_message_id`: задача сжимает только `(last_message_id .. конец−RECENT_WINDOW]`, инкрементально дописывая к существующему `content`. Гонки нет (одна точка записи + `select_for_update`).
-
-### 3.3. Celery-beat периодическая суммаризация (фикс B6, B8, B14)
-Новая задача в `celery.py` beat-расписании, раз в ~1–2 часа:
-```python
-@shared_task(ignore_result=True)
-def summarize_stale_chats():
-    from aitext.models import Chat, Message
-    from django.utils import timezone
-    from datetime import timedelta
-    cutoff = timezone.now() - timedelta(hours=24)
-    # чаты с активностью, где summary отстаёт или чат «брошен»
-    stale = Chat.objects.filter(
-        messages__status=Message.Status.COMPLETED
-    ).distinct()
-    for chat in stale.iterator():
-        if should_summarize(chat) or (chat.updated_at and chat.updated_at < cutoff):
-            generate_chat_summary.delay(chat.id)
-```
-- Закрывает: смену модели (B6), «не создаёт новых чатов» (B14), брошенные чаты (>24ч).
-- `generate_chat_summary` переписать: сжимать `completed[:-RECENT_WINDOW]`, не резать свежак (B8), инкрементально от существующего summary.
-
-### 3.4. `extract_memory_facts` из SSE-пути (фикс B1)
-- Добавить триггер в `chats.py` после стрима (см. B1).
-- Унифицировать порог (каждые 3 ответа) в обоих путях — вынести в константу `EXTRACT_EVERY_N = 3` в `memory.py`.
-
-### 3.5. Умная дедупликация (улучшение B3)
-- **Phase 1:** централизованный `normalize_fact` (collapse пробелов), `update_or_create` вместо `continue`.
-- **Phase 2 (pgvector):** при вставке считать косинусную близость нового факта к существующим; если > 0.92 — это дубль, обновлять, а не плодить. Фаззи-дедуп вместо точного `content_key`.
-
-### 3.6. Relevance scoring памяти (Phase 2)
-- Сейчас в контекст идут top-40 по recency/pin. На большом объёме это шум.
-- Phase 2: эмбеддить текущее сообщение, выбирать top-K **семантически релевантных** фактов (`CosineDistance`). Резко повышает точность персонализации при сотнях фактов.
-
-### 3.7. Точный подсчёт токенов (улучшение B10)
-- Подключить `tiktoken` для GPT-моделей; для остальных — эвристика с раздельным коэффициентом кириллица/латиница. Кэшировать токенайзер.
-
-### 3.8. HTML-strip как единая утилита (фикс B9)
-- `_plain(msg)` в `memory.py`, использовать во всех LLM-входах (compression, extract, summary).
-
-### 3.9. Автоочистка устаревших фактов
-- Beat-таск `prune_stale_memories` (ночью): деактивировать `is_active=True, is_pinned=False`, не использованные > 90 дней. Требует поля `last_referenced_at` (или `times_referenced` + `updated_at`) — добавить миграцией.
-
-### 3.10. Управление памятью пользователем (новый код — отсутствует)
-- В репозитории **нет** DRF API `/api/v1/memory/` и страницы `/account/memory/` (проверено grep'ом — только `memory.py`, задачи и 2 точки интеграции). Это нужно построить: CRUD фактов, тоггл, очистка (спецификация — Section 4, коммиты 7–11 ниже). Без UI пользователь не видит и не контролирует, что о нём «помнят» — для top-1 это обязательно (приватность, доверие, паритет с ChatGPT Memory).
+### 5.7. Telegram: UI управления памятью
+- В боте память **работает** (через `generate_ai_response`), но нет хендлера управления фактами. Mini App `/tg/` может переиспользовать `/account/memory/`-контур.
 
 ---
 
-## 4. Пошаговые коммиты для исправлений
+## 6. Спринт-план
 
-> Ветка: `fix/persistent-memory-audit` от текущей. Каждый коммит атомарен, проект собирается. После каждого — `git push`.
+> Ветка: `fix/persistent-memory-r3` от `studio-v3`. Каждый коммит атомарен, проект собирается.
 
-### Спринт A — критические фиксы (потеря данных и мёртвая фича)
+### Спринт A — остаточные баги стоимости/корректности (приоритет)
 
-| # | Коммит | Файлы | Severity закрывает |
-|---|--------|-------|--------------------|
-| A1 | `fix(memory): trigger extract_memory_facts from SSE stream` | `api/views/chats.py` (после :496) | B1 крит |
-| A2 | `fix(memory): stop dropping in-window messages on under-threshold` | `aitext/memory.py:164–166` | B2 крит |
-| A3 | `fix(memory): centralize normalize_fact, keep spaces, upsert facts` | `aitext/memory.py`, `aitext/models.py:566`, `aitext/tasks.py:611` | B3 высокий |
-| A4 | `test(memory): regression tests for B1/B2/B3` | `aitext/test_memory.py` | — |
+| # | Коммит | Файлы | Закрывает |
+|---|--------|-------|-----------|
+| A1 | `fix(memory): correct should_compress counter semantics (store total msg_count)` | `aitext/tasks.py:806`, `aitext/tasks.py:764`, `aitext/memory.py:174` | R1 высокий |
+| A2 | `fix(memory): cache facts per-user, fetch past-summaries uncached per-chat` | `aitext/memory.py:116–155` | R2 высокий |
+| A3 | `fix(memory): invalidate memory cache after summary write` | `aitext/tasks.py` (compress/summary) | R3 средний |
+| A4 | `test(memory): regression tests for R1/R2 + fix broken get_laozhang_client patch` | `aitext/test_memory.py` | R5 |
 
-### Спринт B — устранение гонок и латентности (архитектура горячего пути)
+### Спринт B — производительность горячего пути
+
+| # | Коммит | Файлы | Закрывает |
+|---|--------|-------|-----------|
+| B1 | `perf(memory): hard message cap on history (60–80) above token threshold` | `aitext/memory.py:218–241` | R4 |
+| B2 | `perf(memory): incremental history token counting (cache in ChatSummary/Redis)` | `aitext/memory.py`, `aitext/models.py` + миграция | R4 |
+
+### Спринт C — единая модель summary
+
+| # | Коммит | Файлы | Закрывает |
+|---|--------|-------|-----------|
+| C1 | `refactor(memory): unify summary into content + last_compressed_message_id` | `aitext/models.py` + миграция + data-migration | R6 |
+| C2 | `refactor(memory): idempotent compress by last_compressed_message_id` | `aitext/tasks.py`, `aitext/memory.py` | R1 (root), R7 |
+| C3 | `fix(memory): incremental generate_chat_summary` | `aitext/tasks.py:657` | R7 |
+
+### Спринт D — Phase 2 (RAG)
 
 | # | Коммит | Файлы |
 |---|--------|-------|
-| B1c | `refactor(memory): make get_history_with_compression read-only (no sync LLM)` | `aitext/memory.py`, `chats.py:391`, `tasks.py:304` |
-| B2c | `feat(memory): async compress_chat_history celery task` | `aitext/tasks.py` |
-| B3c | `fix(memory): select_for_update in summary upsert` | `aitext/memory.py:217` |
-| B4c | `refactor(memory): unify rolling_summary+summary_text into single content+last_message_id` | `aitext/models.py` + миграция `aitext/00XX` + data-migration |
-
-### Спринт C — покрытие суммаризации и качество
-
-| # | Коммит | Файлы |
-|---|--------|-------|
-| C1 | `fix(memory): summarize prev chat of ANY network + beat task summarize_stale_chats` | `chats.py:142`, `aitext/tasks.py`, `config/celery.py` |
-| C2 | `fix(memory): generate_chat_summary compresses old tail, not recent` | `aitext/tasks.py:662` |
-| C3 | `fix(memory): strip HTML from content fallback in LLM inputs` | `aitext/memory.py`, `aitext/tasks.py` |
-| C4 | `fix(memory): cross-platform date format (drop %-d)` | `aitext/memory.py:101` |
-| C5 | `perf(memory): redis cache for build_memory_context + invalidation` | `aitext/memory.py`, `aitext/tasks.py` |
-| C6 | `fix(memory): cyrillic-aware token estimation` | `aitext/memory.py:46` |
-
-### Спринт D — управление памятью (новый функционал)
-
-| # | Коммит | Файлы |
-|---|--------|-------|
-| D1 | `feat(memory): DRF API /api/v1/memory/ CRUD + settings + clear` | `api/views/memory.py` (новый), `api/urls.py` |
-| D2 | `feat(memory): admin for UserMemory + ChatSummary` | `aitext/admin.py` |
-| D3 | `feat(memory): /account/memory page + api client` | `frontend/app/account/memory/page.tsx`, `frontend/lib/api/memory.ts` |
-| D4 | `feat(memory): chat memory indicator + per-chat toggle + nav` | `frontend/components/chat/*`, account nav, chat serializer |
-| D5 | `feat(memory): prune_stale_memories beat task (90d, last_referenced)` | `aitext/models.py` + миграция, `aitext/tasks.py`, `config/celery.py` |
+| D1 | `feat(memory): pgvector infra + UserMemory.embedding + HNSW` | `requirements.txt`, `docker-compose.yml`, миграция |
+| D2 | `feat(memory): embed facts on extract + backfill command` | `aitext/tasks.py`, management-команда |
+| D3 | `feat(memory): relevance-scored build_memory_context + /memory/search/` | `aitext/memory.py`, `api/views/memory.py` |
+| D4 | `feat(memory): prune_stale_memories beat (90d, last_referenced)` | `aitext/models.py` + миграция, `aitext/tasks.py`, `config/celery.py` |
 
 ---
 
-## 5. Улучшения Phase 2 (RAG / pgvector)
+## 7. Что работает правильно (зафиксировать)
 
-Включается **после** стабилизации Phase 1 (Спринты A–D зелёные).
-
-### 5.1. Инфраструктура
-- `pgvector` в `src/requirements.txt`; образ Postgres → `pgvector/pgvector:pg15` в `docker-compose.yml`.
-- Миграция `VectorExtension()` (CREATE EXTENSION vector).
-- Поле `UserMemory.embedding = VectorField(dimensions=1536, null=True)` + `HnswIndex` (cosine).
-
-### 5.2. Заполнение эмбеддингов
-- В `extract_memory_facts` при создании факта — `client.embeddings.create(model='text-embedding-3-small', input=content)` → `embedding`.
-- Management-команда `backfill_memory_embeddings` для существующих.
-
-### 5.3. Семантический поиск + relevance scoring (фикс шума при большом объёме)
-- `POST /api/v1/memory/search/` — эмбеддит query, `order_by(CosineDistance('embedding', q))[:limit]`.
-- `build_memory_context` RAG-режим: вместо top-N по recency — top-K по релевантности **текущему сообщению**. Это и есть Section 3.6.
-
-### 5.4. Фаззи-дедуп (улучшение B3)
-- При вставке: косинусная близость к существующим > 0.92 → дубль, обновлять `content`/`confidence`, не плодить. Дополняет точечный `content_key`.
-
-### 5.5. Приватность и контроль (паритет с ChatGPT Memory)
-- Экспорт памяти пользователем (GDPR-like), полная очистка одним действием.
-- Аудит: какие факты использованы в каком ответе (для прозрачности) — поверх `times_referenced`/`last_referenced_at`.
+1. **Cross-channel память** — единый `CustomUser` для web и Telegram. Telegram-бот получает память автоматически через `generate_ai_response` (`telegram_bot/handlers/chat.py:95`). (Studio — отдельный пайплайн, память не использует, см. Executive Summary.)
+2. **Грейсфул-деградация** — все интеграции в `try/except`, память не роняет генерацию (`chats.py:514`, `tasks.py:515`).
+3. **Память бесплатна** — фоновые задачи на дешёвом DeepSeek V3, звёзды не списываются.
+4. **Двойной тоггл** — глобальный `memory_enabled` + per-chat `Chat.settings['memory_enabled']`, проверяется в `build_memory_context`.
+5. **Дедуп в два эшелона** — `existing_preview` в промпте LLM (первая линия) + `content_key` UniqueConstraint (вторая).
+6. **Полный UI** — `/account/memory/` с CRUD, фильтрами, pin/active, историей сессий, очисткой. Без эмодзи, Lucide-иконки, соответствует дизайн-системе.
+7. **Безопасный порядок DRF-роутов** — `<int:pk>` не перехватывает `clear`/`summaries`.
+8. **Инвалидация кэша на мутациях API** — все CRUD-операции вызывают `invalidate_memory_cache` (`api/views/memory.py`).
 
 ---
 
-## Приложение: карта файлов системы (текущее состояние)
+## Приложение: карта файлов (текущее состояние)
 
 | Компонент | Файл:строки | Состояние |
 |-----------|-------------|-----------|
-| Ядро памяти | `src/aitext/memory.py` | реализовано, содержит B2/B4/B5/B9/B10/B11/B12 |
-| Модели | `src/aitext/models.py:509–592` | реализовано, B3 (save:566) |
-| extract_memory_facts | `src/aitext/tasks.py:521–634` | реализовано, B3/B13 |
-| generate_chat_summary | `src/aitext/tasks.py:637–689` | реализовано, B8 |
-| Триггер extract (Celery) | `src/aitext/tasks.py:495–503` | есть |
-| Интеграция Celery-путь | `src/aitext/tasks.py:280–311` | есть |
-| Интеграция SSE-путь | `src/api/views/chats.py:366–404` | есть, **B1: нет триггера extract** |
-| Триггер summary (новый чат) | `src/api/views/chats.py:139–151` | есть, B6 (фильтр network) |
-| DRF API `/memory/` | — | **не существует** (построить, Спринт D) |
-| Frontend `/account/memory/` | — | **не существует** (построить, Спринт D) |
-| Тесты | `src/aitext/test_memory.py` | существует, дополнить регрессиями |
+| Ядро памяти | `src/aitext/memory.py` | реализовано; R2/R3/R4 |
+| Модели | `src/aitext/models.py:509–592` | реализовано; R6 (два поля summary) |
+| `extract_memory_facts` | `src/aitext/tasks.py:534–654` | реализовано, B3/B13 закрыты |
+| `generate_chat_summary` | `src/aitext/tasks.py:657–723` | реализовано; R7 (не инкрементально) |
+| `compress_chat_history` | `src/aitext/tasks.py:726–810` | реализовано; R1 (счётчик) |
+| `summarize_stale_chats` (beat) | `src/aitext/tasks.py:813–858` | реализовано (B14) |
+| Триггер extract (Celery) | `src/aitext/tasks.py:508–514` | есть |
+| Триггер extract (SSE) | `src/api/views/chats.py:506–515` | есть (B1 закрыт) |
+| Триггер summary (новое сообщение) | `src/api/views/chats.py:139–151` | есть (B6 закрыт) |
+| Интеграция Celery-путь | `src/aitext/tasks.py:289–323` | есть |
+| Интеграция SSE-путь | `src/api/views/chats.py:366–412` | есть |
+| Beat-расписание | `src/config/celery.py:36–39` | есть |
+| DRF API `/memory/` | `src/api/views/memory.py`, `src/api/urls.py:148–153` | реализовано |
+| Сериализаторы | `src/api/serializers/memory.py` | реализовано |
+| Frontend `/account/memory/` | `frontend/app/account/memory/page.tsx` | реализовано |
+| API-клиент | `frontend/lib/api/memory.ts` | реализовано |
+| `memory_enabled` | `src/users/models.py:488` | есть |
+| Тесты | `src/aitext/test_memory.py` | **частично сломаны (R5)** |
