@@ -54,13 +54,14 @@ def build_project_knowledge_context(project, user_message_text: str = '') -> str
     Файлы ≤ FULL_INJECT_LIMIT вставляются целиком, крупные — лексическим RAG.
     Суммарный объём ограничен AGGREGATE_INJECT_LIMIT.
     """
-    files = project.knowledge_files.filter(enabled=True, status='ready').exclude(extracted_text='')
-    if not files.exists():
+    files_qs = project.knowledge_files.filter(enabled=True, status='ready').exclude(extracted_text='')
+    files_list = list(files_qs)
+    if not files_list:
         return ''
 
     parts = []
     total_chars = 0
-    for f in files:
+    for f in files_list:
         if total_chars >= AGGREGATE_INJECT_LIMIT:
             break
         text = f.extracted_text
@@ -1053,6 +1054,7 @@ def push_project_commit(self, commit_id: int):
         return
 
     try:
+        from urllib.parse import urlparse
         if connector.connector_type == 'github':
             from .github_client import push_files
             result = push_files(
@@ -1061,9 +1063,13 @@ def push_project_commit(self, commit_id: int):
             )
         else:
             from studio.gitea_client import push_files_ext
+            # Extract external Gitea base URL from repo_url (e.g. https://gitea.example.com)
+            parsed = urlparse(connector.repo_url)
+            ext_base = f'{parsed.scheme}://{parsed.netloc}' if parsed.netloc else None
             result = push_files_ext(
                 connector.owner, connector.repo, commit.files,
-                commit.commit_message, connector.branch, token=token,
+                commit.commit_message, connector.branch,
+                token=token, base_url=ext_base,
             )
 
         if result.get('errors'):
@@ -1078,7 +1084,9 @@ def push_project_commit(self, commit_id: int):
 
     except Exception as e:
         logger.error(f'[push_commit] commit {commit_id} failed: {e}')
-        commit.status = 'failed'
-        commit.error_message = str(e)[:500]
-        commit.save(update_fields=['status', 'error_message'])
+        # Only mark as permanently failed after all retries exhausted
+        if self.request.retries >= self.max_retries:
+            commit.status = 'failed'
+            commit.error_message = str(e)[:500]
+            commit.save(update_fields=['status', 'error_message'])
         raise self.retry(exc=e, countdown=30)

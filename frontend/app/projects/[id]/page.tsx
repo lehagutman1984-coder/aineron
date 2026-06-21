@@ -729,6 +729,61 @@ function FilesTab({ projectId }: { projectId: number }) {
   );
 }
 
+/* ── Компоненты браузера файлов (вне ConnectorsTab, иначе React ремаунтит при каждом рендере) ── */
+function CommitStatusBadge({ status }: { status: ProjectCommit["status"] }) {
+  if (status === "pending") return <span className="flex items-center gap-1 text-[11px] text-[rgba(13,13,13,0.55)]"><Clock size={10} />Ожидает</span>;
+  if (status === "pushed") return <span className="flex items-center gap-1 text-[11px] text-[#22a85a]"><CheckCircle2 size={10} />Запушен</span>;
+  if (status === "rejected") return <span className="flex items-center gap-1 text-[11px] text-[rgba(13,13,13,0.40)]"><XCircle size={10} />Отклонён</span>;
+  if (status === "failed") return <span className="flex items-center gap-1 text-[11px] text-[#e74c3c]"><XCircle size={10} />Ошибка</span>;
+  return null;
+}
+
+function TreeNode({ item, depth, childrenMap, connId, openDirs, selectedFile, onToggleDir, onSelectFile }: {
+  item: RepoTreeItem;
+  depth: number;
+  childrenMap: Record<string, RepoTreeItem[]>;
+  connId: number;
+  openDirs: Set<string>;
+  selectedFile: string | null;
+  onToggleDir: (path: string) => void;
+  onSelectFile: (path: string, connId: number) => void;
+}) {
+  const isDir = item.type === "dir";
+  const isOpen = openDirs.has(item.path);
+  const children = childrenMap[item.path] ?? [];
+  const isSelected = selectedFile === item.path;
+  return (
+    <div>
+      <button
+        onClick={() => isDir ? onToggleDir(item.path) : onSelectFile(item.path, connId)}
+        className={[
+          "flex w-full items-center gap-1.5 rounded-[5px] px-2 py-1 text-left text-[12px] transition-colors",
+          isSelected ? "bg-[rgba(10,124,255,0.10)] text-[#0a7cff]" : "text-[rgba(13,13,13,0.75)] hover:bg-[rgba(13,13,13,0.05)]",
+        ].join(" ")}
+        style={{ paddingLeft: `${8 + depth * 14}px` }}
+      >
+        {isDir ? (
+          <>
+            {isOpen ? <ChevronDown size={11} className="shrink-0" /> : <ChevronRight size={11} className="shrink-0" />}
+            {isOpen ? <FolderOpen size={12} className="shrink-0 text-[#e67e22]" /> : <Folder size={12} className="shrink-0 text-[#e67e22]" />}
+          </>
+        ) : (
+          <>
+            <span className="w-[11px] shrink-0" />
+            <FileCode size={11} className="shrink-0 text-[rgba(13,13,13,0.40)]" />
+          </>
+        )}
+        <span className="truncate">{item.path.split("/").pop()}</span>
+      </button>
+      {isDir && isOpen && children.map((child) => (
+        <TreeNode key={child.path} item={child} depth={depth + 1} childrenMap={childrenMap}
+          connId={connId} openDirs={openDirs} selectedFile={selectedFile}
+          onToggleDir={onToggleDir} onSelectFile={onSelectFile} />
+      ))}
+    </div>
+  );
+}
+
 /* ── Вкладка "Коннекторы" (Git) ── */
 function ConnectorsTab({ projectId }: { projectId: number }) {
   const qc = useQueryClient();
@@ -871,65 +926,6 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
     return { roots, childrenMap, dirs };
   }
 
-  function TreeNode({ item, depth, childrenMap, connId }: {
-    item: RepoTreeItem; depth: number;
-    childrenMap: Record<string, RepoTreeItem[]>;
-    connId: number;
-  }) {
-    const isDir = item.type === "dir";
-    const isOpen = openDirs.has(item.path);
-    const children = childrenMap[item.path] ?? [];
-    const isSelected = selectedFile === item.path;
-    return (
-      <div>
-        <button
-          onClick={() => {
-            if (isDir) {
-              setOpenDirs((prev) => {
-                const next = new Set(prev);
-                next.has(item.path) ? next.delete(item.path) : next.add(item.path);
-                return next;
-              });
-            } else {
-              handleFileClick(item.path, connId);
-            }
-          }}
-          className={[
-            "flex w-full items-center gap-1.5 rounded-[5px] px-2 py-1 text-left text-[12px] transition-colors",
-            isSelected
-              ? "bg-[rgba(10,124,255,0.10)] text-[#0a7cff]"
-              : "text-[rgba(13,13,13,0.75)] hover:bg-[rgba(13,13,13,0.05)]",
-          ].join(" ")}
-          style={{ paddingLeft: `${8 + depth * 14}px` }}
-        >
-          {isDir ? (
-            <>
-              {isOpen ? <ChevronDown size={11} className="shrink-0" /> : <ChevronRight size={11} className="shrink-0" />}
-              {isOpen ? <FolderOpen size={12} className="shrink-0 text-[#e67e22]" /> : <Folder size={12} className="shrink-0 text-[#e67e22]" />}
-            </>
-          ) : (
-            <>
-              <span className="w-[11px] shrink-0" />
-              <FileCode size={11} className="shrink-0 text-[rgba(13,13,13,0.40)]" />
-            </>
-          )}
-          <span className="truncate">{item.path.split("/").pop()}</span>
-        </button>
-        {isDir && isOpen && children.map((child) => (
-          <TreeNode key={child.path} item={child} depth={depth + 1} childrenMap={childrenMap} connId={connId} />
-        ))}
-      </div>
-    );
-  }
-
-  function CommitStatusBadge({ status }: { status: ProjectCommit["status"] }) {
-    if (status === "pending") return <span className="flex items-center gap-1 text-[11px] text-[rgba(13,13,13,0.55)]"><Clock size={10} />Ожидает</span>;
-    if (status === "pushed") return <span className="flex items-center gap-1 text-[11px] text-[#22a85a]"><CheckCircle2 size={10} />Запушен</span>;
-    if (status === "rejected") return <span className="flex items-center gap-1 text-[11px] text-[rgba(13,13,13,0.40)]"><XCircle size={10} />Отклонён</span>;
-    if (status === "failed") return <span className="flex items-center gap-1 text-[11px] text-[#e74c3c]"><XCircle size={10} />Ошибка</span>;
-    return null;
-  }
-
   const activeConnector = browsingId ? connectors.find((c) => c.id === browsingId) : null;
   const tree = treeData ? buildTree(treeData.items) : null;
 
@@ -1005,7 +1001,10 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                         </div>
                       ) : tree && tree.roots.length > 0 ? (
                         tree.roots.map((item) => (
-                          <TreeNode key={item.path} item={item} depth={0} childrenMap={tree.childrenMap} connId={conn.id} />
+                          <TreeNode key={item.path} item={item} depth={0} childrenMap={tree.childrenMap}
+                            connId={conn.id} openDirs={openDirs} selectedFile={selectedFile}
+                            onToggleDir={(p) => setOpenDirs((prev) => { const n = new Set(prev); n.has(p) ? n.delete(p) : n.add(p); return n; })}
+                            onSelectFile={handleFileClick} />
                         ))
                       ) : (
                         <p className="px-3 py-6 text-center text-[12px] text-[rgba(13,13,13,0.38)]">Репозиторий пуст</p>

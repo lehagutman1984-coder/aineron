@@ -1,4 +1,5 @@
 import re
+from urllib.parse import urlparse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework.views import APIView
@@ -8,6 +9,14 @@ from rest_framework import serializers
 
 from aitext.models import Project, ProjectConnector, ProjectCommit
 from aitext.crypto import encrypt_token, decrypt_token
+
+
+def _gitea_base_url(connector: 'ProjectConnector') -> str | None:
+    """Extract base URL (scheme+host) from Gitea connector repo_url."""
+    parsed = urlparse(connector.repo_url)
+    if parsed.netloc:
+        return f'{parsed.scheme}://{parsed.netloc}'
+    return None
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -147,7 +156,8 @@ class ConnectorReadFilesView(APIView):
                 items = list_tree(connector.owner, connector.repo, token, connector.branch)
             else:
                 from studio.gitea_client import list_tree
-                items = list_tree(connector.owner, connector.repo, connector.branch, token=token)
+                items = list_tree(connector.owner, connector.repo, connector.branch,
+                                  token=token, base_url=_gitea_base_url(connector))
         except Exception as e:
             return Response({'error': f'Ошибка доступа к репозиторию: {e}'}, status=502)
 
@@ -176,7 +186,8 @@ class ConnectorFileContentView(APIView):
                 content = get_file_content(connector.owner, connector.repo, token, path, connector.branch)
             else:
                 from studio.gitea_client import get_file_content_ext
-                content = get_file_content_ext(connector.owner, connector.repo, path, connector.branch, token=token)
+                content = get_file_content_ext(connector.owner, connector.repo, path, connector.branch,
+                                               token=token, base_url=_gitea_base_url(connector))
         except Exception as e:
             return Response({'error': f'Ошибка чтения файла: {e}'}, status=502)
 
