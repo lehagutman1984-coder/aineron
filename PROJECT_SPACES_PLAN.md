@@ -18,6 +18,13 @@ Claude.ai Projects, Perplexity Spaces и ChatGPT Projects.
 | Спринт 2 — UX Инструкций (вкладка + счётчик + превью + бейдж в чате) | **ЗАВЕРШЁН** | (`studio-v3`) |
 | Спринт 3 — Git-коннектор (GitHub/Gitea PAT + браузер файлов + коммиты) | **ЗАВЕРШЁН** | `b9f8296` |
 | **Bug-fix пост-аудит** (6 критических исправлений) | **ЗАВЕРШЁН** | `b9f8296` |
+| **Sprint 4.5** — Публичные Spaces (is_public + slug + /s/[slug]/) | **ЗАВЕРШЁН** | `9bc8a51` |
+| **Sprint 4.3** — AI-коммиты из чата (FILE-блоки → ProjectCommit) | **ЗАВЕРШЁН** | `9bc8a51` |
+| **Sprint 4.1** — Векторный RAG (pgvector + chunks + embeddings) | **ЗАВЕРШЁН** | `6af2601` |
+| **Sprint 4.4** — Project Spaces в Telegram-боте | **ЗАВЕРШЁН** | `860fcd8` |
+| **Sprint 4.2** — Inbound sync (repo → knowledge base, webhook+manual) | **ЗАВЕРШЁН** | `927db84` |
+
+**Phase 4 — ПОЛНОСТЬЮ ЗАВЕРШЕНА** (все 5 спринтов).
 
 ---
 
