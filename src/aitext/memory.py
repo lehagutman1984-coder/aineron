@@ -84,15 +84,15 @@ def _get_context_window(model_name: str | None) -> int:
     return _CONTEXT_WINDOWS['_default']
 
 
-def _memory_cache_key(user_id: int) -> str:
-    return f'memctx:{user_id}'
+def _facts_cache_key(user_id: int) -> str:
+    return f'memfacts:{user_id}'
 
 
 def invalidate_memory_cache(user_id: int) -> None:
-    """Сбрасывает Redis-кэш контекста памяти при изменении фактов."""
+    """Сбрасывает Redis-кэш фактов памяти при изменении фактов пользователя."""
     try:
         from django.core.cache import cache
-        cache.delete(_memory_cache_key(user_id))
+        cache.delete(_facts_cache_key(user_id))
     except Exception:
         pass
 
@@ -100,7 +100,13 @@ def invalidate_memory_cache(user_id: int) -> None:
 def build_memory_context(user, chat: 'Chat') -> str:
     """
     Возвращает строку для инжекции в system-prompt перед историей.
-    Результат кэшируется в Redis на MEMORY_CACHE_TTL секунд.
+
+    Факты пользователя кэшируются в Redis (memfacts:{user_id}, 5 мин) — они
+    не зависят от текущего чата, поэтому общий ключ безопасен.
+
+    Резюме прошлых сессий запрашиваются ВСЕГДА СВЕЖО (chat-dependent: зависят
+    от того, какой чат открыт) — один лёгкий индексированный запрос.
+
     Пустая строка если память отключена или нечего добавить.
     """
     from aitext.models import UserMemory, ChatSummary
@@ -113,25 +119,27 @@ def build_memory_context(user, chat: 'Chat') -> str:
     if not chat_settings.get('memory_enabled', True):
         return ''
 
-    cache_key = _memory_cache_key(user.id)
-    cached = cache.get(cache_key)
-    if cached is not None:
-        return cached
+    # --- Факты: кэшируем per-user (стабильны между чатами) ---
+    facts_key = _facts_cache_key(user.id)
+    facts_block = cache.get(facts_key)
+    if facts_block is None:
+        memories = list(
+            UserMemory.objects
+            .filter(user=user, is_active=True)
+            .order_by('-is_pinned', '-created_at')[:MAX_MEMORY_FACTS]
+        )
+        if memories:
+            lines = '\n'.join(f'- [{m.get_category_display()}] {m.content}' for m in memories)
+            facts_block = f'Долговременная память о пользователе:\n{lines}'
+        else:
+            facts_block = ''
+        cache.set(facts_key, facts_block, MEMORY_CACHE_TTL)
 
+    # --- Резюме прошлых сессий: всегда свежо (один лёгкий запрос) ---
     parts: list[str] = []
+    if facts_block:
+        parts.append(facts_block)
 
-    # 1. Факты о пользователе (до MAX_MEMORY_FACTS активных, закреплённые первыми)
-    memories = list(
-        UserMemory.objects
-        .filter(user=user, is_active=True)
-        .order_by('-is_pinned', '-created_at')[:MAX_MEMORY_FACTS]
-    )
-    if memories:
-        lines = '\n'.join(f'- [{m.get_category_display()}] {m.content}' for m in memories)
-        parts.append(f'Долговременная память о пользователе:\n{lines}')
-
-    # 2. Резюме последних 3 чатов (кроме текущего)
-    # Берём лучшее из двух полей: summary_text (финальное) или rolling_summary (текущее)
     try:
         past_summaries = list(
             ChatSummary.objects
@@ -151,9 +159,7 @@ def build_memory_context(user, chat: 'Chat') -> str:
     except Exception as e:
         logger.warning(f'[memory] build_memory_context past_summaries error: {e}')
 
-    result = '\n\n'.join(parts)
-    cache.set(cache_key, result, MEMORY_CACHE_TTL)
-    return result
+    return '\n\n'.join(parts)
 
 
 def should_compress(chat: 'Chat', exclude_msg_id: int | None = None) -> bool:
@@ -218,6 +224,13 @@ def get_history_with_compression(
     # Быстрый путь: история маленькая
     if len(all_msgs) <= RECENT_WINDOW:
         return all_msgs, existing_summary
+
+    # Жёсткий потолок: даже если токены «помещаются», O(N) queries взрываются на больших чатах.
+    # При >80 сообщений сразу переходим в ветку recent+summary — компрессия должна уже была
+    # отработать раньше (COMPRESS_TRIGGER=30), поэтому existing_summary тут почти всегда есть.
+    HARD_MSG_CAP = 80
+    if len(all_msgs) > HARD_MSG_CAP:
+        return all_msgs[-RECENT_WINDOW:], existing_summary
 
     # Считаем токены
     overhead = (

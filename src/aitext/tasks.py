@@ -736,78 +736,90 @@ def compress_chat_history(self, chat_id: int):
         RECENT_WINDOW, _HTML_RE, _get_context_window,
         estimate_tokens, update_rolling_summary,
     )
+    from django.core.cache import cache
 
-    try:
-        chat = Chat.objects.select_related('user', 'network').get(id=chat_id)
-    except Chat.DoesNotExist:
+    # R1b fix: Redis-блокировка против параллельных запусков для одного чата
+    lock_key = f'memcompress:{chat_id}'
+    acquired = cache.add(lock_key, 1, timeout=300)
+    if not acquired:
+        logger.info(f'[memory] compress_chat_history skip: lock held for chat {chat_id}')
         return
 
-    if not getattr(chat.user, 'memory_enabled', True):
-        return
-
-    msgs = list(
-        Message.objects.filter(chat=chat, status=Message.Status.COMPLETED)
-        .order_by('created_at')
-    )
-    if len(msgs) <= RECENT_WINDOW:
-        return  # нечего сжимать
-
-    to_compress = msgs[:-RECENT_WINDOW]
-    msg_count = len(msgs)
-
-    # Читаем текущее rolling_summary
-    rolling = ''
     try:
-        cs = ChatSummary.objects.get(chat=chat)
-        rolling = cs.rolling_summary or cs.summary_text or ''
-        # Если уже покрыли это кол-во сообщений — нечего делать
-        if cs.message_count >= msg_count - RECENT_WINDOW:
+        try:
+            chat = Chat.objects.select_related('user', 'network').get(id=chat_id)
+        except Chat.DoesNotExist:
             return
-    except ChatSummary.DoesNotExist:
-        pass
 
-    compress_parts: list[str] = []
-    if rolling:
-        compress_parts.append(f'[Предыдущее сжатое резюме]:\n{rolling}\n')
-    compress_parts.append('[Диалог для сжатия]:')
-    for msg in to_compress:
-        role_label = 'Пользователь' if msg.role == 'user' else 'Ассистент'
-        text = _HTML_RE.sub('', msg.plain_text or msg.content or '')[:2000]
-        compress_parts.append(f'{role_label}: {text}')
-    compress_input = '\n'.join(compress_parts)
+        if not getattr(chat.user, 'memory_enabled', True):
+            return
 
-    compression_system = (
-        'Ты система управления контекстом диалога. '
-        'Сожми предоставленный диалог в связное резюме на 150-250 слов. '
-        'Сохрани: все принятые решения и выводы, ключевые факты о пользователе '
-        '(имя, профессия, проект, предпочтения), незакрытые вопросы и задачи, '
-        'технические детали: стек, архитектура, ошибки. '
-        'Не сохраняй: светские фразы, повторяющиеся вопросы, вводные слова. '
-        'Пиши на том же языке что и диалог. '
-        'Выдай только резюме — без заголовков и вступления.'
-    )
-
-    try:
-        client = get_laozhang_client()
-        resp = client.chat.completions.create(
-            model='deepseek-v3',
-            messages=[
-                {'role': 'system', 'content': compression_system},
-                {'role': 'user', 'content': compress_input[-6000:]},
-            ],
-            max_tokens=600,
-            temperature=0.3,
+        msgs = list(
+            Message.objects.filter(chat=chat, status=Message.Status.COMPLETED)
+            .order_by('created_at')
         )
-        new_rolling = resp.choices[0].message.content.strip()
-    except Exception as e:
-        logger.warning(f'[memory] compress_chat_history failed for chat {chat_id}: {e}')
-        raise self.retry(exc=e)
+        if len(msgs) <= RECENT_WINDOW:
+            return  # нечего сжимать
 
-    update_rolling_summary(chat, new_rolling, msg_count=msg_count - RECENT_WINDOW)
-    logger.info(
-        f'[memory] chat={chat_id}: compressed {len(to_compress)} msgs → rolling_summary '
-        f'({len(new_rolling)} chars)'
-    )
+        to_compress = msgs[:-RECENT_WINDOW]
+        msg_count = len(msgs)
+
+        # Читаем текущее rolling_summary
+        rolling = ''
+        try:
+            cs = ChatSummary.objects.get(chat=chat)
+            rolling = cs.rolling_summary or cs.summary_text or ''
+            # R1 fix: храним TOTAL msg_count, не смещённый. Пропускаем если уже покрыли.
+            if cs.message_count >= msg_count:
+                return
+        except ChatSummary.DoesNotExist:
+            pass
+
+        compress_parts: list[str] = []
+        if rolling:
+            compress_parts.append(f'[Предыдущее сжатое резюме]:\n{rolling}\n')
+        compress_parts.append('[Диалог для сжатия]:')
+        for msg in to_compress:
+            role_label = 'Пользователь' if msg.role == 'user' else 'Ассистент'
+            text = _HTML_RE.sub('', msg.plain_text or msg.content or '')[:2000]
+            compress_parts.append(f'{role_label}: {text}')
+        compress_input = '\n'.join(compress_parts)
+
+        compression_system = (
+            'Ты система управления контекстом диалога. '
+            'Сожми предоставленный диалог в связное резюме на 150-250 слов. '
+            'Сохрани: все принятые решения и выводы, ключевые факты о пользователе '
+            '(имя, профессия, проект, предпочтения), незакрытые вопросы и задачи, '
+            'технические детали: стек, архитектура, ошибки. '
+            'Не сохраняй: светские фразы, повторяющиеся вопросы, вводные слова. '
+            'Пиши на том же языке что и диалог. '
+            'Выдай только резюме — без заголовков и вступления.'
+        )
+
+        try:
+            client = get_laozhang_client()
+            resp = client.chat.completions.create(
+                model='deepseek-v3',
+                messages=[
+                    {'role': 'system', 'content': compression_system},
+                    {'role': 'user', 'content': compress_input[-6000:]},
+                ],
+                max_tokens=600,
+                temperature=0.3,
+            )
+            new_rolling = resp.choices[0].message.content.strip()
+        except Exception as e:
+            logger.warning(f'[memory] compress_chat_history failed for chat {chat_id}: {e}')
+            raise self.retry(exc=e)
+
+        # R1 fix: пишем TOTAL msg_count чтобы should_compress не триггерился повторно
+        update_rolling_summary(chat, new_rolling, msg_count=msg_count)
+        logger.info(
+            f'[memory] chat={chat_id}: compressed {len(to_compress)} msgs → rolling_summary '
+            f'({len(new_rolling)} chars)'
+        )
+    finally:
+        cache.delete(lock_key)
 
 
 @shared_task(ignore_result=True)
