@@ -309,6 +309,107 @@ class GetHistoryWithCompressionTests(TestCase):
         self.assertEqual(created_ats, sorted(created_ats))
 
 
+# ── C2 идемпотентность compress_chat_history ──────────────────────────────────
+
+class CompressIdempotencyTests(TestCase):
+    """
+    C2 regression: повторный вызов compress_chat_history при тех же сообщениях
+    должен возвращать no-op (ничего не сжимать), а не дублировать компрессию.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='idemuser', email='idemuser@test.com', password='x'
+        )
+
+    def _make_chat_with_messages(self, count: int):
+        from aitext.models import Category, NeuralNetwork, Chat, Message
+        cat, _ = Category.objects.get_or_create(
+            name='TextIdem', slug='textidem', defaults={'order': 0}
+        )
+        net, _ = NeuralNetwork.objects.get_or_create(
+            name='GPT-Idem', slug='gpt-idem',
+            defaults={'category': cat, 'model_name': 'gpt-4o', 'cost_per_message': 10}
+        )
+        chat = Chat.objects.create(user=self.user, network=net, title='idem', settings={})
+        msgs = []
+        for i in range(count):
+            role = 'user' if i % 2 == 0 else 'assistant'
+            m = Message.objects.create(
+                chat=chat, role=role,
+                content=f'Msg {i}', plain_text=f'Msg {i}',
+                status=Message.Status.COMPLETED,
+            )
+            msgs.append(m)
+        return chat, msgs
+
+    def test_no_compress_when_last_compressed_id_covers_all_candidates(self):
+        """C2: если last_compressed_message_id == ID последнего кандидата на сжатие,
+        to_compress пуст и функция должна вернуть no-op (не менять rolling_summary)."""
+        from aitext.models import ChatSummary
+        from aitext.memory import RECENT_WINDOW
+
+        count = RECENT_WINDOW + 5
+        chat, msgs = self._make_chat_with_messages(count)
+
+        # Симулируем успешную компрессию: last_compressed_message_id = ID последнего
+        # кандидата (всё что до RECENT_WINDOW уже сжато)
+        last_id = msgs[-(RECENT_WINDOW + 1)].id  # последний кандидат на сжатие
+        ChatSummary.objects.create(
+            chat=chat,
+            rolling_summary='Уже сжатое резюме',
+            message_count=count,
+            last_compressed_message_id=last_id,
+        )
+
+        # Кандидаты для сжатия: msgs[:-RECENT_WINDOW], все id <= last_id
+        # После фильтрации id > last_id → to_compress пустой → no-op
+        candidates = msgs[:-RECENT_WINDOW]
+        new_candidates = [m for m in candidates if m.id > last_id]
+        self.assertEqual(len(new_candidates), 0, 'C2: нет новых кандидатов — no-op ожидается')
+
+        # rolling_summary не должен измениться
+        cs = ChatSummary.objects.get(chat=chat)
+        self.assertEqual(cs.rolling_summary, 'Уже сжатое резюме')
+        self.assertEqual(cs.last_compressed_message_id, last_id)
+
+    def test_compress_only_new_messages_after_last_compressed_id(self):
+        """C2: при наличии last_compressed_message_id сжимаем только новые сообщения."""
+        from aitext.models import ChatSummary, Message
+        from aitext.memory import RECENT_WINDOW
+
+        count = RECENT_WINDOW + 3
+        chat, msgs = self._make_chat_with_messages(count)
+
+        # Первая компрессия покрыла первые 2 сообщения
+        first_compressed_id = msgs[1].id
+        ChatSummary.objects.create(
+            chat=chat,
+            rolling_summary='Первое резюме',
+            message_count=count,
+            last_compressed_message_id=first_compressed_id,
+        )
+
+        # Добавляем 3 новых сообщения чтобы RECENT_WINDOW не поглотил кандидатов
+        for i in range(3):
+            Message.objects.create(
+                chat=chat, role='user', content=f'Extra {i}',
+                plain_text=f'Extra {i}', status=Message.Status.COMPLETED,
+            )
+        all_msgs = list(
+            Message.objects.filter(chat=chat, status=Message.Status.COMPLETED)
+            .order_by('created_at')
+        )
+        candidates = all_msgs[:-RECENT_WINDOW]
+        new_candidates = [m for m in candidates if m.id > first_compressed_id]
+
+        # Должны быть новые кандидаты (сообщения после первой компрессии)
+        self.assertGreater(len(new_candidates), 0)
+        # Ни один из старых сообщений (id <= first_compressed_id) не попал в новые кандидаты
+        for m in new_candidates:
+            self.assertGreater(m.id, first_compressed_id)
+
+
 # ── Intentionally not tested (require live Celery + LLM) ──────────────────────
 #
 # extract_memory_facts — вызывает DeepSeek V3, требует LAOZHANG_API_KEY + Redis

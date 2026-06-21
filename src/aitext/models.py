@@ -580,6 +580,10 @@ class ChatSummary(models.Model):
         verbose_name='Сжатое начало текущей сессии',
     )
     message_count = models.PositiveIntegerField(default=0, verbose_name='Кол-во сообщений')
+    last_compressed_message_id = models.BigIntegerField(
+        null=True, blank=True,
+        verbose_name='ID последнего сжатого сообщения',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

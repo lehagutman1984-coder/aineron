@@ -33,7 +33,8 @@ class ChatSummarySerializer(serializers.ModelSerializer):
         fields = [
             'id', 'chat_id', 'chat_title', 'network_name',
             'summary_text', 'rolling_summary', 'best_summary',
-            'message_count', 'created_at', 'updated_at',
+            'message_count', 'last_compressed_message_id',
+            'created_at', 'updated_at',
         ]
         read_only_fields = fields
 

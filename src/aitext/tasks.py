@@ -679,19 +679,63 @@ def generate_chat_summary(self, chat_id: int):
         return  # слишком короткий чат — не стоит
 
     msg_count = len(msgs)
-    # Берём ПОСЛЕДНИЕ сообщения (если много) — свежий контекст важнее начала
-    msgs_for_summary = msgs[-40:] if len(msgs) > 40 else msgs
-    dialogue = '\n'.join(
-        f"{'Пользователь' if m.role == 'user' else 'Ассистент'}: "
-        f"{_strip_html(m.plain_text or m.content or '')[:1500]}"
-        for m in msgs_for_summary
-    )
 
-    summary_prompt = (
-        'Создай краткое резюме этого диалога на 100-150 слов. '
-        'Включи: тему разговора, ключевые решения, важные факты о пользователе, незакрытые вопросы. '
-        'Пиши на том же языке что и диалог. Только резюме, без вступления.'
-    )
+    # C3: инкрементальный режим — если есть rolling_summary с last_compressed_message_id,
+    # берём только новые сообщения и дополняем существующее резюме.
+    existing_rolling = ''
+    last_compressed_id: int | None = None
+    try:
+        cs_existing = ChatSummary.objects.get(chat=chat)
+        existing_rolling = (cs_existing.rolling_summary or '').strip()
+        last_compressed_id = cs_existing.last_compressed_message_id
+    except ChatSummary.DoesNotExist:
+        pass
+
+    if existing_rolling and last_compressed_id is not None:
+        # Инкрементальный путь: обрабатываем только сообщения после последней компрессии
+        new_msgs = [m for m in msgs if m.id > last_compressed_id]
+        if not new_msgs:
+            # rolling_summary уже покрывает весь чат — финализируем его как summary_text
+            msgs_for_summary = []
+        else:
+            msgs_for_summary = new_msgs[-40:]
+        dialogue = '\n'.join(
+            f"{'Пользователь' if m.role == 'user' else 'Ассистент'}: "
+            f"{_strip_html(m.plain_text or m.content or '')[:1500]}"
+            for m in msgs_for_summary
+        )
+        if dialogue:
+            summary_prompt = (
+                'У тебя есть резюме начала диалога и его продолжение. '
+                'Создай финальное резюме сессии на 100-150 слов, объединив обе части. '
+                'Включи: тему разговора, ключевые решения, важные факты о пользователе, незакрытые вопросы. '
+                'Пиши на том же языке что и диалог. Только резюме, без вступления.'
+            )
+            user_content = (
+                f'[Резюме начала диалога]:\n{existing_rolling[:1500]}\n\n'
+                f'[Продолжение диалога]:\n{dialogue[-3000:]}'
+            )
+        else:
+            # Новых сообщений нет — используем rolling_summary напрямую
+            summary_prompt = (
+                'Перефразируй это резюме диалога в финальное резюме сессии на 100-150 слов. '
+                'Пиши на том же языке что и текст. Только резюме, без вступления.'
+            )
+            user_content = existing_rolling[:3000]
+    else:
+        # Стандартный путь: берём последние сообщения и суммаризуем с нуля
+        msgs_for_summary = msgs[-40:] if len(msgs) > 40 else msgs
+        dialogue = '\n'.join(
+            f"{'Пользователь' if m.role == 'user' else 'Ассистент'}: "
+            f"{_strip_html(m.plain_text or m.content or '')[:1500]}"
+            for m in msgs_for_summary
+        )
+        summary_prompt = (
+            'Создай краткое резюме этого диалога на 100-150 слов. '
+            'Включи: тему разговора, ключевые решения, важные факты о пользователе, незакрытые вопросы. '
+            'Пиши на том же языке что и диалог. Только резюме, без вступления.'
+        )
+        user_content = dialogue[-5000:]
 
     try:
         client = get_laozhang_client()
@@ -699,7 +743,7 @@ def generate_chat_summary(self, chat_id: int):
             model='deepseek-v3',
             messages=[
                 {'role': 'system', 'content': summary_prompt},
-                {'role': 'user', 'content': dialogue[-5000:]},  # последние 5000 символов
+                {'role': 'user', 'content': user_content},
             ],
             max_tokens=400,
             temperature=0.3,
@@ -718,7 +762,10 @@ def generate_chat_summary(self, chat_id: int):
             cs.summary_text = summary_text
             cs.message_count = msg_count
             cs.save(update_fields=['summary_text', 'message_count', 'updated_at'])
-        logger.info(f'[memory] chat={chat_id}: summary {"created" if created else "updated"} ({msg_count} msgs)')
+        logger.info(
+            f'[memory] chat={chat_id}: summary {"created" if created else "updated"} '
+            f'({msg_count} msgs, incremental={bool(existing_rolling and last_compressed_id is not None)})'
+        )
     except Exception as e:
         logger.warning(f'[memory] save summary error for chat {chat_id}: {e}')
 
@@ -761,19 +808,33 @@ def compress_chat_history(self, chat_id: int):
         if len(msgs) <= RECENT_WINDOW:
             return  # нечего сжимать
 
-        to_compress = msgs[:-RECENT_WINDOW]
         msg_count = len(msgs)
 
-        # Читаем текущее rolling_summary
+        # Читаем текущее состояние сжатия
         rolling = ''
+        last_compressed_id: int | None = None
         try:
             cs = ChatSummary.objects.get(chat=chat)
             rolling = cs.rolling_summary or cs.summary_text or ''
-            # R1 fix: храним TOTAL msg_count, не смещённый. Пропускаем если уже покрыли.
-            if cs.message_count >= msg_count:
+            last_compressed_id = cs.last_compressed_message_id
+            # R1 fix (legacy fallback): если last_compressed_message_id ещё не заполнен,
+            # используем message_count чтобы не потерять старую защиту
+            if last_compressed_id is None and cs.message_count >= msg_count:
                 return
         except ChatSummary.DoesNotExist:
             pass
+
+        # C2: идемпотентность — сжимаем только новые сообщения после last_compressed_id
+        all_compress_candidates = msgs[:-RECENT_WINDOW]
+        if last_compressed_id is not None:
+            to_compress = [m for m in all_compress_candidates if m.id > last_compressed_id]
+            if not to_compress:
+                return  # нечего нового — истинная идемпотентность
+        else:
+            to_compress = all_compress_candidates
+
+        if not to_compress:
+            return
 
         compress_parts: list[str] = []
         if rolling:
@@ -812,11 +873,16 @@ def compress_chat_history(self, chat_id: int):
             logger.warning(f'[memory] compress_chat_history failed for chat {chat_id}: {e}')
             raise self.retry(exc=e)
 
-        # R1 fix: пишем TOTAL msg_count чтобы should_compress не триггерился повторно
-        update_rolling_summary(chat, new_rolling, msg_count=msg_count)
+        # C2: записываем ID последнего сжатого сообщения — основа идемпотентности
+        new_last_id = to_compress[-1].id
+        update_rolling_summary(
+            chat, new_rolling,
+            msg_count=msg_count,
+            last_compressed_message_id=new_last_id,
+        )
         logger.info(
-            f'[memory] chat={chat_id}: compressed {len(to_compress)} msgs → rolling_summary '
-            f'({len(new_rolling)} chars)'
+            f'[memory] chat={chat_id}: compressed {len(to_compress)} new msgs → rolling_summary '
+            f'({len(new_rolling)} chars), last_compressed_id={new_last_id}'
         )
     finally:
         cache.delete(lock_key)

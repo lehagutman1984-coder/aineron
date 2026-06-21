@@ -254,8 +254,17 @@ def get_history_with_compression(
     return recent_msgs, existing_summary
 
 
-def update_rolling_summary(chat: 'Chat', new_rolling: str, msg_count: int = 0) -> None:
-    """Атомарный upsert rolling_summary с select_for_update против гонок (B4)."""
+def update_rolling_summary(
+    chat: 'Chat',
+    new_rolling: str,
+    msg_count: int = 0,
+    last_compressed_message_id: int | None = None,
+) -> None:
+    """Атомарный upsert rolling_summary с select_for_update против гонок (B4).
+
+    C2: принимает last_compressed_message_id — ID последнего сжатого сообщения;
+    используется в compress_chat_history для истинной идемпотентности.
+    """
     from aitext.models import ChatSummary
     from django.db import transaction
     if not new_rolling:
@@ -268,15 +277,24 @@ def update_rolling_summary(chat: 'Chat', new_rolling: str, msg_count: int = 0) -
                     'summary_text': '',
                     'rolling_summary': new_rolling,
                     'message_count': msg_count,
+                    'last_compressed_message_id': last_compressed_message_id,
                 },
             )
-            changed = cs.rolling_summary != new_rolling
-            if changed:
+            update_fields: list[str] = []
+            if cs.rolling_summary != new_rolling:
                 cs.rolling_summary = new_rolling
+                update_fields.append('rolling_summary')
             if msg_count and cs.message_count != msg_count:
                 cs.message_count = msg_count
-                changed = True
-            if changed:
-                cs.save(update_fields=['rolling_summary', 'message_count', 'updated_at'])
+                update_fields.append('message_count')
+            if (
+                last_compressed_message_id is not None
+                and cs.last_compressed_message_id != last_compressed_message_id
+            ):
+                cs.last_compressed_message_id = last_compressed_message_id
+                update_fields.append('last_compressed_message_id')
+            if update_fields:
+                update_fields.append('updated_at')
+                cs.save(update_fields=update_fields)
     except Exception as e:
         logger.warning(f'[memory] update_rolling_summary error for chat {chat.id}: {e}')
