@@ -490,3 +490,331 @@ PROJECT_AI_COMMITS=0
 4. **4.5** — самостоятельный S, можно вставить в любой момент как «быстрая победа» для маркетинга.
 
 **Главные грабли, заложенные в дизайн заранее:** лимит 2000 dim у ANN-индексов pgvector (решено exact-scan per-project), привилегии `CREATE EXTENSION` (решено deploy-шагом), петля синхронизации AI-коммит↔webhook (решено `last_synced_sha` + фильтр по автору), путаница inbound/outbound HMAC (решено отдельной сущностью `webhook_secret` на коннекторе).
+
+---
+
+# Phase 5 — «Intelligent Workspaces»
+
+*Архитектор: Opus 4.8. Дата плана: 2026-06-22. Цель: вывести Project Spaces из паритета*
+*с Claude.ai Projects / ChatGPT Projects / Perplexity Spaces в режим **превосходства** на двух осях,*
+*где у нас уже есть структурное преимущество: **командная работа** (паритет) и **git/codebase-*
+*интеллект** (моат — ни один потребительский конкурент не пишет в чужой git-репозиторий).*
+
+## Тезис фазы
+
+Phase 4 сделала Space «умной папкой со знаниями». Phase 5 делает её **рабочим пространством команды
+с агентным интеллектом над знаниями и кодом**. Две трети спринтов закрывают 10 ограничений аудита
+(это honesty-долг и прямой сигнал ценности), одна треть — настоящая «интеллектуальность», которую
+обещает название фазы и которой у конкурентов на российском рынке нет.
+
+### Карта: спринт → ограничение аудита
+
+| Ограничение аудита | Закрывается в |
+|--------------------|---------------|
+| #1 Нет совместного доступа (`ProjectCollaborator` не реализован) | **Sprint 5.1** (флагман) |
+| #2 Нет поиска по файлам базы знаний | **Sprint 5.3** |
+| #4 Нет кэша эмбеддингов (каждый запрос = новый embedding-call) | **Sprint 5.3** |
+| #8 Нет метрик использования базы знаний | **Sprint 5.3** + #7 |
+| #3 Нет версионирования файлов (overwrites) | **Sprint 5.4** |
+| #5 Нет уведомлений о результатах sync | **Sprint 5.4** |
+| #6 Нет polling-fallback для синка (был «спроектирован», но НЕ выкачен) | **Sprint 5.4** |
+| #7 Нет audit log per-project | **Sprint 5.5** |
+| #10 Публичные Spaces: нет кэша, rate-limit, аналитики посещений | **Sprint 5.5** |
+| #9 Telegram: нет загрузки файлов в проект из бота | **Sprint 5.6** |
+| — (новая ценность, не из аудита) Агентный research + `@codebase` | **Sprint 5.2** (моат) |
+
+> **Замечание о ground truth.** В тексте Phase 4 утверждалось, что polling-fallback для синка был
+> «заложен в дизайн». Аудит (#6) показывает, что он **не выкачен**. Здесь, как и с `ProjectCollaborator`
+> (упомянут, но не реализован), приоритет у факта аудита, а не у аспирационной прозы плана.
+
+---
+
+## Принципы Phase 5 (что НЕ трогаем)
+
+| НЕ трогаем | Почему |
+|------------|--------|
+| Сигнатура `build_project_knowledge_context(proj, user_msg)` | Это единая точка инжекта для веба, SSE и бота. Меняем только её *внутренности* (кэш, метрики), не контракт. |
+| Flow `ProjectCommit`: propose → `CommitConfirmView` → `push_project_commit` | Sprint 5.2 (PR-предложения) встаёт поверх, не переписывает push. |
+| `embeddings.py`: `vector_search` / `embed_chunks` / `chunk_text` | Кэш и `@codebase` — обёртки, не замена. Exact-scan per-project остаётся (см. баг B3). |
+| `ProjectChunk` как raw-SQL вектор без ANN-индекса | Осознанный компромисс Phase 4. Phase 5 его НЕ форсирует на hnsw (см. баг B3 — оставляем как явный долг, не как скрытую бомбу). |
+| Модель валюты «звёзды» / `charge_for_tokens` | Все новые AI-вызовы (research, кэш-промахи) тарифицируются существующим путём. |
+| Флаги `PROJECT_*` = `0/1`, дефолт `0` | Каждая фича Phase 5 — за флагом, прод не ломается. |
+
+## Переиспользование (по образцу таблицы Phase 4)
+
+| Что переиспользуем | Откуда | Где в Phase 5 |
+|--------------------|--------|---------------|
+| `Webhook` модель + HMAC-подпись (`api/models.py:205`, `:243`) | `src/api/models.py` | Sprint 5.1: уведомления соавторам и о sync — через готовую исходящую webhook-инфру, не новую |
+| `crypto.py` Fernet (`encrypt_token`/`decrypt_token`) | `src/aitext/crypto.py` | Sprint 5.1: share-токены приглашений |
+| `vector_search(project, query, top_k)` | `src/aitext/embeddings.py:128` | Sprint 5.2 `@codebase`, Sprint 5.3 поиск по файлам |
+| `parse_file_blocks` + `extract_commit_from_response` + `ProjectCommit` | `studio/agents/blocks.py`, `aitext/commit_extract.py` | Sprint 5.2: PR-уровневые предложения над тем же commit-flow |
+| `github_client.push_files` (атомарный Git Data API) | `src/aitext/github_client.py` | Sprint 5.2: PR = ветка + push + `create_pull` (новый метод поверх готового push) |
+| `sync_connector` + `repo_sha` инкрементальность | `src/aitext/sync.py` | Sprint 5.4: polling-fallback переиспользует ту же diff-логику |
+| `build_project_knowledge_context` | `src/aitext/tasks.py` | Sprint 5.3: кэш и метрики встраиваются внутрь, контракт не меняется |
+| `active_project` FK + `/projects` хендлер | `src/telegram_bot/models.py:40`, `handlers/projects_cmd.py` | Sprint 5.6: загрузка файлов в активный проект из бота |
+| SSE-инфра событий (`commit_proposed`, polling статуса) | `src/api/views/chats.py` | Sprint 5.1/5.2: live-присутствие соавторов, события research |
+| Конвенция management-команд (`backfill_embeddings`) | `aitext/management/commands/` | Sprint 5.3: `backfill_kb_index` (FTS), Sprint 5.5: ретеншн audit-лога |
+
+---
+
+## Баги/долги для исправления ПЕРЕД Phase 5
+
+Найдены при чтении кода (не выдуманы — со ссылками на строки):
+
+| # | Долг | Где | Действие |
+|---|------|-----|----------|
+| **B1** | `ProjectCollaborator` упомянут в плане и в `frontend/lib/api/client.ts`, но модели нет. Фронт может слать запросы в несуществующий эндпоинт. | `client.ts`, `aitext/models.py` | Либо реализовать (Sprint 5.1), либо явно загейтить клиентский код за `PROJECT_COLLAB`. Не оставлять «висящий» вызов. |
+| **B2** *(minor)* | `Project.save()` не обнуляет `public_slug` при `is_public=False`, поэтому при повторной публикации slug переиспользуется. **Утечки НЕТ**: `ProjectPublicView` фильтрует `is_public=True` (`api/views/projects.py:90`), т.е. снятая с публикации ссылка уже отдаёт 404. Косметика: ротировать slug при каждой публикации, чтобы старая расшаренная ссылка не «оживала» при повторном опубликовании. | `aitext/models.py:234-238` | Низкий приоритет, опционально в Sprint 5.5. НЕ блокирует. |
+| **B3** | `ProjectChunk.embedding` — raw-SQL, без Django-поля и без ANN-индекса. Exact cosine seq-scan per-project. На Space с десятками тысяч чанков (repo-sync крупного монорепо) — линейная деградация. | `aitext/models.py:368`, `embeddings.py:128` | НЕ чинить в Phase 5 форсированно — оставить как **явный документированный долг** с порогом-алертом (Sprint 5.5 метрики ловят рост латентности). Решение `dimensions=1536`+hnsw — отдельная задача, когда метрики покажут необходимость. |
+| **B4** | Публичный эндпоинт Space (`is_public`) уже в проде **без rate-limit и без кэша** (#10). Любой может перебирать/долбить `/s/<slug>`. | `api/views/projects.py` (`ProjectPublicView`), `frontend/app/s/[slug]/` | Закрыть в Sprint 5.5 (throttle + кэш) — это **живая экспозиция**, а не будущая фича. Поднять приоритет внутри 5.5. |
+| **B5** | Эмбеддинг запроса (`vector_search`) считается на **каждый** RAG-вызов — даже на одинаковые вопросы (#4). Лишние токены/звёзды и латентность. | `embeddings.py:128-160` | Кэш query-эмбеддингов (Sprint 5.3). Полу-баг, полу-фича. |
+
+B4 — обязателен до пиара Phase 5 (живая экспозиция публичного эндпоинта без throttle/кэша). B1 решается выбором: реализовать (Sprint 5.1) или загейтить клиентский код. B2 — косметика, низкий приоритет.
+
+---
+
+## Дорожная карта Phase 5 (порядок = ценность × зависимости)
+
+| Sprint | Тема | Сложность | Срок (1 разработчик) | Зависит от | Тип |
+|--------|------|-----------|----------------------|-----------|-----|
+| **5.1** | Совместные Spaces (`ProjectCollaborator` + роли + presence) | **L** | ~2–2.5 нед | B1, B2 | Паритет |
+| **5.2** | Codebase-интеллект: `@codebase` + PR-уровневые предложения | **L** | ~2 нед | Phase 4 RAG + commit-flow | **Моат** |
+| **5.3** | Knowledge intelligence: поиск + кэш эмбеддингов + метрики KB | **M** | ~1–1.5 нед | B5 | Хардненинг+ценность |
+| **5.4** | Sync hardening: версии файлов + polling-fallback + уведомления | **M** | ~1 нед | #6 (не выкачен) | Хардненинг |
+| **5.5** | Observability: per-project audit log + защита публичных Spaces | **M** | ~1 нед | B3, B4 | Хардненинг+безопасность |
+| **5.6** | Telegram: загрузка файлов в Space из бота | **S** | ~2–3 дня | `active_project` | Ценность |
+
+**Честная оценка целиком:** ~7.5–9 недель в одиночку. 5.1 и 5.2 — две трети бюджета (это «intelligence» и «collaboration», ради которых фаза существует). 5.3–5.6 — аддитивные, низкорисковые, параллелизуемы между собой.
+
+---
+
+### Sprint 5.1 — Совместные Spaces (L)
+
+**Что это даёт пользователю:** пригласить коллегу в Space — общая база знаний, инструкции, чаты и git-коннектор; роли viewer/editor; видно, кто онлайн.
+
+**Конкурентный паритет/превосходство:** vs. **Claude Projects** и **Perplexity Spaces** (у обоих коллаборация — наш главный *named* пробел, аудит #1). vs. **ChatGPT Projects** (исторически слабее в шаринге). Превосходство: соавтор получает не только знания, но и **общий git-write-back** (предложить коммит в общий репо проекта) — этого нет ни у кого из потребительских.
+
+**Реализация (файлы):**
+
+| Файл | Действие |
+|------|----------|
+| `src/aitext/models.py` | **новая** `ProjectCollaborator(project, user, role[viewer/editor], invited_by, accepted_at)`; **новая** `ProjectInvite(project, email, token[Fernet], role, expires_at)` |
+| `src/aitext/migrations/00XX_collaborators.py` | новая (аддитивная) |
+| `src/aitext/permissions.py` | **новый**: `project_role(user, project)` → `owner/editor/viewer/None`; хелпер `require_project_access(level)` |
+| `src/api/views/projects.py` | во ВСЕХ project-вью заменить `project.user == request.user` на `project_role(...)`; экшены `invite`, `accept_invite`, `list_collaborators`, `remove_collaborator`, `change_role` |
+| `src/api/views/project_files.py`, `connectors.py`, `chats.py` | проверка доступа через `project_role` (viewer — read-only, editor — пишет файлы/коммиты, только owner — git-PAT и удаление Space) |
+| `src/api/urls.py` | `+ projects/<pk>/collaborators/`, `+ projects/invite/accept/<token>/` |
+| `src/users/tasks.py` | `send_project_invite_email(invite_id)` (переиспользует email-инфру) |
+| `frontend/app/projects/[id]/page.tsx` | вкладка «Команда»: список соавторов, инвайт по email, смена роли, presence-индикатор |
+| `frontend/lib/api/client.ts` + `types.ts` | привести в соответствие с реальными эндпоинтами (закрывает B1) |
+
+**Ключевые решения:**
+1. **Роль вычисляется, не денормализуется.** `project_role()` — единая функция, owner = `project.user`, остальные из `ProjectCollaborator`. Меняем точки авторизации, а не каждую вью копипастом.
+2. **Presence — поверх SSE, без нового веб-сокета.** Лёгкий heartbeat (Redis TTL-ключ `presence:project:<id>:<uid>`), читается тем же SSE-каналом проекта. Не тащим WebSocket-стек.
+3. **Инвайт = Fernet-токен в email**, переиспользуем `crypto.py`. Принятие — по ссылке, привязка к `request.user`.
+
+**Компромиссы:**
+- **Делаем:** viewer/editor, инвайт по email, presence-индикатор, разделение прав на git-PAT (только owner).
+- **НЕ делаем:** real-time co-editing инструкций (как Google Docs) — это OT/CRDT, отдельный месяц. Соавторы редактируют последовательно с optimistic-lock по `updated_at`. Комментарии/треды — отложены.
+- **Биллинг звёзд** — на владельце Space (запросы соавторов тратят звёзды owner'а; флаг на будущее: «соавтор платит сам»).
+
+**Флаги:** `PROJECT_COLLAB=0/1`. При `=0` вкладка «Команда» скрыта, авторизация = только владелец (текущее поведение).
+
+---
+
+### Sprint 5.2 — Codebase-интеллект: `@codebase` + PR-предложения (L) — МОАТ
+
+**Что это даёт пользователю:** в чате проекта спросить «как работает auth?» — AI ищет семантически по **всему подключённому репо** и отвечает с цитатами файлов; на «отрефактори X» — предлагает не просто коммит, а **Pull Request** (ветка + diff + описание) в реальный GitHub/Gitea.
+
+**Конкурентный паритет/превосходство:** vs. **Cursor** (`@codebase`, composer) — мы догоняем семантику по репо, но Cursor — это IDE; мы даём то же из **чата, Telegram и веба без установки**. vs. **Claude/ChatGPT/Perplexity/Yandex 300** — **полное превосходство**: ни один не делает write-back в чужой git, тем более PR-уровневый. Это наш единственный по-настоящему защищённый дифференциатор.
+
+**Реализация (файлы):**
+
+| Файл | Действие |
+|------|----------|
+| `src/aitext/codebase.py` | **новый**: `codebase_search(project, query, top_k)` — `vector_search` с фильтром `file.source='repo'`; `repo_tree_map(project)` (paths-only, ≤3 КБ) для инжекта структуры |
+| `src/aitext/tasks.py` | при `@codebase` в сообщении (или авто, если у проекта есть коннектор) — подмешать `codebase_search` + tree-map в системный контекст через `build_project_knowledge_context` |
+| `src/aitext/github_client.py` | **+** `create_branch`, `create_pull` (поверх готового атомарного `push_files`) |
+| `src/studio/gitea_client.py` | **+** `create_pull_ext(base_url=...)` |
+| `src/aitext/models.py` | `ProjectCommit.kind` choice `commit/pull_request`; `pr_url`, `pr_branch` |
+| `src/aitext/tasks.py` (`push_project_commit`) | ветвление: `kind='pull_request'` → branch + push + create_pull; `commit` → текущий путь |
+| `src/api/views/connectors.py` | в `CommitConfirmView` — выбор «коммит в ветку» vs «открыть PR» |
+| `frontend/app/chat/...` | карточка «AI предложил PR (N файлов)» со ссылкой на открытый PR после подтверждения |
+| `frontend/app/projects/[id]/page.tsx` | мульти-репо: селектор активного коннектора для предложений |
+
+**Ключевые решения:**
+1. **`@codebase` = тот же `vector_search`, фильтр по `source='repo'`.** Никакого нового индекса — Phase 4 уже эмбеддит repo-файлы. Tree-map даёт модели «карту», семантика — содержимое.
+2. **PR — это «коммит в новую ветку + create_pull».** Переиспользуем атомарный `push_files`; PR — тонкая обёртка. Безопасность: AI **никогда не мержит**, только открывает PR — человек ревьюит в GitHub/Gitea.
+3. **Мульти-репо.** Снимаем компромисс Phase 4.3 «только дефолтный коннектор» — в предложении указывается целевой коннектор.
+
+**Компромиссы:**
+- **Делаем:** семантический поиск по репо, tree-map, PR-предложения, мульти-репо выбор.
+- **НЕ делаем:** граф зависимостей кода / AST-aware чанкинг (как у Cursor) — чанкинг остаётся текстовым (`chunk_text`). Это «достаточно хорошо» для ответов и рефакторинга; AST — отдельная R&D-задача.
+- **НЕ делаем:** автоисполнение/тесты PR в песочнице (это Studio-территория, не смешиваем продукты).
+
+**Флаги:** `PROJECT_CODEBASE=0/1` (семантика по репо), `PROJECT_PR_PROPOSALS=0/1` (PR-режим; при `=0` остаётся прямой commit из Phase 4.3).
+
+---
+
+### Sprint 5.3 — Knowledge intelligence: поиск, кэш, метрики (M)
+
+**Что это даёт пользователю:** мгновенный поиск по файлам базы знаний из UI; быстрее и дешевле повторные вопросы; владелец видит, какие файлы реально используются.
+
+**Конкурентный паритет/превосходство:** vs. **ChatGPT/Claude Projects** — поиск по файлам и прозрачность «что использовал AI» закрывают аудит #2/#8. Превосходство: явные **метрики цитирования** (какой файл сколько раз попал в контекст) — продуктовая прозрачность, которой у конкурентов нет.
+
+**Реализация (файлы):**
+
+| Файл | Действие |
+|------|----------|
+| `src/aitext/embeddings.py` | кэш query-эмбеддингов в Redis (ключ = sha256(model+text), TTL 24ч) — закрывает B5/#4 |
+| `src/aitext/search.py` | **новый**: `search_knowledge(project, query)` — гибрид: Postgres FTS (`SearchVector` по `extracted_text`) + `vector_search`, дедуп по файлу |
+| `src/aitext/models.py` | `ProjectFile` — `tsv` (`SearchVectorField`) + GIN-индекс; **новая** `KBUsageStat(file, hits, last_used_at)` (счётчик цитирований) |
+| `src/aitext/tasks.py` | в `build_project_knowledge_context` — инкремент `KBUsageStat` по файлам, попавшим в контекст (метрики #8); чтение query-кэша |
+| `src/api/views/project_files.py` | `ProjectFileSearchView` (GET `?q=`); поле `usage` в сериализаторе файла |
+| `src/aitext/management/commands/backfill_kb_index.py` | **новый**: пересчёт `tsv` для существующих файлов |
+| `frontend/app/projects/[id]/page.tsx` | строка поиска во вкладке «Файлы»; бейдж «использован N раз» у файла |
+
+**Ключевые решения:**
+1. **Гибридный поиск (FTS + вектор), не «или».** FTS — мгновенный, точный по ключевым словам, работает БЕЗ pgvector; вектор — семантика. Дедуп по файлу. FTS-путь работает даже при `PROJECT_VECTOR_RAG=0`.
+2. **Кэш query-эмбеддингов в Redis** (уже в стеке) — не новая инфра. Снимает B5.
+3. **Метрики — инкремент в той же транзакции инжекта**, источник правды один (`build_project_knowledge_context`).
+
+**Компромиссы:**
+- **Делаем:** гибридный поиск, кэш, счётчик цитирований per-file.
+- **НЕ делаем:** полнотекстовый поиск по чанкам с подсветкой (highlight по позиции) — отдаём файл целиком как результат. Подсветка — позже.
+- **НЕ делаем:** дашборд аналитики KB — пока только бейдж «использован N раз». Полноценная аналитика — в Sprint 5.5 (audit).
+
+**Флаги:** `PROJECT_FILE_SEARCH=0/1`, `PROJECT_EMBED_CACHE=0/1`, `PROJECT_KB_METRICS=0/1`.
+
+---
+
+### Sprint 5.4 — Sync hardening: версии, polling-fallback, уведомления (M)
+
+**Что это даёт пользователю:** история версий файла (откат), синк работает даже без webhook, уведомление «синхронизировано N файлов / ошибка».
+
+**Конкурентный паритет/превосходство:** vs. **Cursor/Copilot** — надёжность синка как у инженерных инструментов. Закрывает аудит #3/#5/#6. Превосходство для потребительского сегмента: версионирование загруженных знаний — редкость у чат-конкурентов.
+
+**Реализация (файлы):**
+
+| Файл | Действие |
+|------|----------|
+| `src/aitext/models.py` | **новая** `ProjectFileVersion(file, content_snapshot, repo_sha, created_at)`; на `ProjectConnector` — `auto_sync`, `sync_status`, `last_sync_report` |
+| `src/aitext/sync.py` | при upsert (`source='repo'`) — снапшот старого содержимого в `ProjectFileVersion`; формировать `last_sync_report` (added/updated/removed/errors) |
+| `src/aitext/tasks.py` | **`poll_connectors()`** beat-задача (закрывает #6 — реально выкатываем): по `auto_sync=True` сверять голову ветки с `last_synced_at`/`repo_sha`, при расхождении `sync_connector_task.delay`; по завершении — уведомление |
+| `src/config/celery.py` | расписание `poll_connectors` каждые 10 мин |
+| `src/api/views/project_files.py` | `FileVersionListView`, `FileRestoreView` (откат к версии) |
+| `frontend/app/projects/[id]/page.tsx` | «История версий» у файла; тост/бейдж результата синка; тумблер «Авто-синхронизация» |
+| Уведомления | через готовую `Webhook`-инфру + in-app тост по SSE — не новая система |
+
+**Ключевые решения:**
+1. **Polling — это `sync_connector` по расписанию.** Вся diff-логика (`repo_sha`-инкремент) уже есть. Beat лишь сверяет голову ветки и дёргает существующую задачу. Webhook остаётся primary, polling — гарантия для self-hosted Gitea за NAT.
+2. **Версии — снапшот контента, не полный git.** `ProjectFileVersion` хранит предыдущий `extracted_text`/`content`. Ретеншн: N последних версий на файл (cap, напр. 10).
+3. **Уведомления через существующий `Webhook`**, не новый канал.
+
+**Компромиссы:**
+- **Делаем:** версии загруженных и repo-файлов, polling-fallback, отчёт+уведомление о синке.
+- **НЕ делаем:** diff-вьювер версий в UI — пока список + «откатить». Визуальный diff — позже.
+- **НЕ делаем:** версионирование эмбеддингов (при откате просто переэмбеддиваем) — проще и дешевле.
+
+**Флаги:** `PROJECT_FILE_VERSIONS=0/1`, `PROJECT_SYNC_POLLING=0/1`.
+
+---
+
+### Sprint 5.5 — Observability: per-project audit + защита публичных Spaces (M)
+
+**Что это даёт пользователю (владельцу/команде):** журнал «кто, когда, что спросил, какие файлы использованы»; публичные Spaces защищены от перебора и нагрузки, видна посещаемость.
+
+**Конкурентный паритет/превосходство:** vs. все — **audit log per-project** (особенно с коллаборацией из 5.1) — это enterprise/B2B-функция, которой нет у потребительских конкурентов; усиливает нашу `teams`-историю. Закрывает #7/#10 и **критическую экспозицию B4**.
+
+**Реализация (файлы):**
+
+| Файл | Действие |
+|------|----------|
+| `src/aitext/models.py` | **новая** `ProjectAuditEntry(project, actor, action, target, files_used[JSON], created_at)`; на `Project` — `public_views` счётчик |
+| `src/aitext/tasks.py` | писать audit-запись при генерации ответа в проекте (actor, использованные файлы из `KBUsageStat`-инжекта) |
+| `src/api/views/projects.py` | `ProjectAuditView` (owner/editor); **`ProjectPublicView`** — добавить throttle-класс + кэш ответа (закрывает B4); инкремент `public_views` |
+| `src/api/throttling.py` | `PublicSpaceThrottle` (по IP, напр. 60/мин) |
+| `src/aitext/models.py` (`Project.save`) | **косметика B2** (опц.): ротировать `public_slug` при публикации (не блокирует — утечки нет) |
+| `src/aitext/management/commands/prune_audit.py` | **новый**: ретеншн audit-лога (напр. 90 дней) |
+| `frontend/app/projects/[id]/page.tsx` | вкладка «Журнал» (audit); счётчик просмотров публичного Space |
+| `nginx.conf` / кэш | кэш-заголовки для `/s/<slug>` (CDN-friendly) |
+
+**Ключевые решения:**
+1. **Audit пишется в той же точке, что метрики (5.3)** — `build_project_knowledge_context` уже знает использованные файлы. Один источник правды.
+2. **Защита публичных Spaces — приоритет внутри спринта** (B4 — живая экспозиция): сначала throttle+кэш, потом аналитика. (B2 — косметика slug, опционально.)
+3. **Кэш публичной страницы** — на уровне DRF-ответа + nginx-заголовки; SSR-страница `/s/<slug>` становится дёшево-отдаваемой.
+
+**Компромиссы:**
+- **Делаем:** audit per-project, throttle+кэш публичных Spaces (фикс B4), счётчик просмотров; опц. ротация slug (B2).
+- **НЕ делаем:** экспорт audit в SIEM / CSV — пока только UI-журнал.
+- **НЕ делаем:** гео-аналитику посещений — только агрегат `public_views`.
+
+**Флаги:** `PROJECT_AUDIT_LOG=0/1`, `PROJECT_PUBLIC_HARDENING=1` (включить по умолчанию — это безопасность, а не эксперимент).
+
+---
+
+### Sprint 5.6 — Telegram: загрузка файлов в Space из бота (S)
+
+**Что это даёт пользователю:** переслать боту PDF/документ → он попадает в базу знаний активного Project Space.
+
+**Конкурентный паритет/превосходство:** vs. **Claude/ChatGPT mobile** — у нас Space живёт в мессенджере, который у россиян всегда под рукой; добавить знание «на ходу» — превосходство по доступности. Закрывает #9.
+
+**Реализация (файлы):**
+
+| Файл | Действие |
+|------|----------|
+| `src/telegram_bot/handlers/files.py` | если `tg_user.active_project` и пришёл документ — спросить «В чат или в базу знаний проекта?»; при выборе — создать `ProjectFile(source='upload')` + `process_project_file.delay` |
+| `src/telegram_bot/handlers/projects_cmd.py` | в карточке активного Space — кнопка «Загрузить файл» (инструкция переслать документ) |
+| Переиспользование | `extract_text_from_file`, `process_project_file`, `embed_project_file` — всё готово; бот только создаёт запись |
+
+**Ключевые решения:**
+1. **Ноль нового backend-кода для обработки** — бот создаёт `ProjectFile`, дальше работает существующий Celery-пайплайн (извлечение + эмбеддинг).
+2. **Уважаем лимиты** (20 файлов/проект, размер) — те же проверки, что в вебе.
+
+**Компромиссы:**
+- **Делаем:** загрузка документов в активный Space из бота.
+- **НЕ делаем:** управление файлами (удаление/переименование) из бота — это веб. Бот = «добавить и спросить».
+
+**Флаги:** `PROJECT_TG_UPLOAD=0/1`.
+
+---
+
+## Сводка новых флагов окружения (Phase 5)
+
+```
+# Sprint 5.1 — Совместные Spaces
+PROJECT_COLLAB=0
+
+# Sprint 5.2 — Codebase-интеллект (моат)
+PROJECT_CODEBASE=0          # @codebase: семантика по repo-файлам
+PROJECT_PR_PROPOSALS=0      # PR-режим вместо прямого коммита
+
+# Sprint 5.3 — Knowledge intelligence
+PROJECT_FILE_SEARCH=0       # гибридный FTS+вектор поиск по KB
+PROJECT_EMBED_CACHE=0       # кэш query-эмбеддингов (Redis)
+PROJECT_KB_METRICS=0        # счётчик цитирований файлов
+
+# Sprint 5.4 — Sync hardening
+PROJECT_FILE_VERSIONS=0     # версионирование файлов + откат
+PROJECT_SYNC_POLLING=0      # polling-fallback синка (beat)
+
+# Sprint 5.5 — Observability + безопасность публичных Spaces
+PROJECT_AUDIT_LOG=0
+PROJECT_PUBLIC_HARDENING=1  # throttle+кэш публичных Spaces — ВКЛ по умолчанию (безопасность)
+
+# Sprint 5.6 — Telegram upload
+PROJECT_TG_UPLOAD=0
+```
+
+## Порядок выкатки и риски
+
+1. **Сначала фикс B4 (защита публичных Spaces: throttle+кэш)** — выносим из 5.5 вперёд как hotfix, это живая экспозиция в текущем проде, не ждёт всей фазы. (B2 — косметика slug, не hotfix.)
+2. **5.1 (коллаборация) и 5.2 (codebase/PR) — ядро фазы**, две трети бюджета. Параллельно не делаются (оба L, один разработчик) — 5.1 первым (закрывает B1, разблокирует «командные» сценарии для остальных спринтов: audit команды, presence).
+3. **5.3 → 5.4 → 5.5** — аддитивная цепочка хардненинга, низкий риск, можно перемежать.
+4. **5.6** — S, «быстрая победа», вставляется в любой слот.
+
+**Главные риски, заложенные в дизайн заранее:**
+- **Авторизация-рефактор (5.1).** Переход `project.user == user` → `project_role()` затрагивает много вью. Митигация: единая `permissions.py`, покрыть тестами owner/editor/viewer/None ДО фронта.
+- **PR против чужого прод-репо (5.2).** AI никогда не мержит — только открывает PR; человек ревьюит в GitHub/Gitea. Жёсткое разделение прав на PAT (только owner, из 5.1).
+- **B3 (exact-scan вектора) — не чиним, мониторим.** 5.5-метрики ловят рост латентности; hnsw-апгрейд — по данным, а не превентивно.
+- **Биллинг звёзд в командах (5.1).** По умолчанию платит owner — простая модель, явно задокументирована; «соавтор платит сам» — флаг на будущее.
