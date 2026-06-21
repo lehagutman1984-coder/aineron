@@ -58,6 +58,23 @@ class Command(BaseCommand):
                 url=webhook_url,
                 secret_token=secret,
                 drop_pending_updates=True,
-                allowed_updates=['message', 'callback_query', 'pre_checkout_query', 'successful_payment'],
+                allowed_updates=['message', 'callback_query', 'pre_checkout_query', 'successful_payment', 'inline_query', 'chosen_inline_result'],
             )
             self.stdout.write(self.style.SUCCESS(f'Webhook set: {webhook_url}'))
+
+            # Register Russian command list visible in Telegram menu
+            from aiogram.types import BotCommand
+            commands = [
+                BotCommand(command='start', description='Главное меню'),
+                BotCommand(command='models', description='Выбор модели AI'),
+                BotCommand(command='balance', description='Баланс и пополнение'),
+                BotCommand(command='image', description='Сгенерировать изображение'),
+                BotCommand(command='video', description='Создать видео'),
+                BotCommand(command='newchat', description='Начать новый чат'),
+                BotCommand(command='settings', description='Настройки бота'),
+                BotCommand(command='prompts', description='Библиотека промтов'),
+                BotCommand(command='referral', description='Реферальная программа'),
+                BotCommand(command='help', description='Справка'),
+            ]
+            await bot.set_my_commands(commands)
+            self.stdout.write(self.style.SUCCESS('Bot commands registered.'))

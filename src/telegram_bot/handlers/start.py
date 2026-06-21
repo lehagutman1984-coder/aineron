@@ -2,6 +2,7 @@ import logging
 from asgiref.sync import sync_to_async
 from aiogram import Router
 from aiogram.filters import CommandStart
+from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 from django.utils import timezone
 
@@ -68,7 +69,7 @@ apply_referral = sync_to_async(_apply_referral, thread_sensitive=True)
 
 
 @router.message(CommandStart())
-async def cmd_start(message: Message):
+async def cmd_start(message: Message, state: FSMContext):
     args = ''
     if message.text and ' ' in message.text:
         args = message.text.split(maxsplit=1)[1].strip()
@@ -105,19 +106,16 @@ async def cmd_start(message: Message):
             get_balance = sync_to_async(lambda: link_token.user.pages_count, thread_sensitive=True)
             balance = await get_balance()
 
+            from telegram_bot.keyboards import main_reply_kb
+            from telegram_bot.handlers.onboarding import start_onboarding
             await message.answer(
                 f"<b>Аккаунт привязан!</b>\n\n"
                 f"Привет, {message.from_user.first_name}!\n"
-                f"Баланс: <b>{balance} звёзд</b>\n\n"
-                f"Просто напиши мне любой вопрос — отвечу мгновенно.\n\n"
-                f"<b>Команды:</b>\n"
-                f"/models — выбрать модель\n"
-                f"/balance — баланс и пополнение\n"
-                f"/image &lt;промт&gt; — сгенерировать изображение\n"
-                f"/newchat — начать новый чат\n"
-                f"/settings — настройки\n"
-                f"/help — справка"
+                f"Баланс: <b>{balance} звёзд</b>",
+                parse_mode='HTML',
+                reply_markup=main_reply_kb(),
             )
+            await start_onboarding(message, state, tg_user)
             logger.info(f'Telegram linked: user={link_token.user.email} tg_id={message.from_user.id}')
             return
 

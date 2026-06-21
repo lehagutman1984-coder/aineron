@@ -258,6 +258,7 @@ REDIS_HOST = os.environ.get('REDIS_HOST', 'redis')
 REDIS_PORT = os.environ.get('REDIS_PORT', '6379')
 REDIS_DB = os.environ.get('REDIS_DB', '0')
 REDIS_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}"
+TELEGRAM_FSM_REDIS_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}/2"
 
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
@@ -337,6 +338,7 @@ TELEGRAM_BOT_ENABLED    = os.getenv('TELEGRAM_BOT_ENABLED',    '0') == '1'
 TELEGRAM_BOT_TOKEN      = os.getenv('TELEGRAM_BOT_TOKEN',      '')
 TELEGRAM_WEBHOOK_SECRET = os.getenv('TELEGRAM_WEBHOOK_SECRET', '')
 TELEGRAM_BOT_USERNAME   = os.getenv('TELEGRAM_BOT_USERNAME',   'aineron_bot')
+TELEGRAM_ADMIN_IDS      = [int(x) for x in os.getenv('TELEGRAM_ADMIN_IDS', '').split(',') if x.strip().isdigit()]
 
 
 # ========== ROBOKASSA ==========

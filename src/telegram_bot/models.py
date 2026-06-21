@@ -105,3 +105,46 @@ class TelegramLinkToken(models.Model):
     @property
     def is_valid(self):
         return not self.used and self.expires_at > timezone.now()
+
+
+class TelegramEvent(models.Model):
+    class EventType(models.TextChoices):
+        MESSAGE = 'message', 'Сообщение'
+        IMAGE = 'image', 'Изображение'
+        VIDEO = 'video', 'Видео'
+        PAYMENT = 'payment', 'Оплата'
+        INLINE = 'inline', 'Inline-запрос'
+        ERROR = 'error', 'Ошибка'
+        ONBOARDING = 'onboarding', 'Онбординг'
+
+    telegram_user = models.ForeignKey(
+        TelegramUser,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='events',
+        verbose_name='TG пользователь',
+    )
+    event_type = models.CharField(
+        max_length=20, choices=EventType.choices, verbose_name='Тип события',
+    )
+    network = models.ForeignKey(
+        'aitext.NeuralNetwork',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        verbose_name='Модель',
+    )
+    cost = models.IntegerField(default=0, verbose_name='Стоимость (зв.)')
+    meta = models.JSONField(default=dict, blank=True, verbose_name='Доп. данные')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Время')
+
+    class Meta:
+        verbose_name = 'Событие бота'
+        verbose_name_plural = 'События бота'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['event_type', 'created_at'], name='tg_event_type_idx'),
+            models.Index(fields=['telegram_user', 'created_at'], name='tg_event_user_idx'),
+        ]
+
+    def __str__(self):
+        return f'{self.get_event_type_display()} — {self.telegram_user}'

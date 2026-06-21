@@ -38,6 +38,7 @@ from api.views.compare import CompareView
 from api.views.prompts import PromptListCreateView, PromptDetailView
 from api.views.projects import ProjectListCreateView, ProjectDetailView
 from api.views.telegram_link import TelegramLinkTokenView
+from api.views.telegram_webapp import telegram_webapp_auth
 
 app_name = 'api'
 
@@ -142,6 +143,7 @@ urlpatterns = [
 
     # ========== Telegram Bot ==========
     path('v1/telegram/link-token/', TelegramLinkTokenView.as_view(), name='telegram_link_token'),
+    path('v1/telegram/webapp-auth/', telegram_webapp_auth, name='telegram-webapp-auth'),
 
     # ========== OpenAPI / Swagger ==========
     path('v1/schema/', SpectacularAPIView.as_view(), name='schema'),

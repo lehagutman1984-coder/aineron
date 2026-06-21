@@ -4,11 +4,13 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeybo
 def main_reply_kb() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text='Новый чат'), KeyboardButton(text='Баланс')],
+            [KeyboardButton(text='Чат'), KeyboardButton(text='Изображение')],
+            [KeyboardButton(text='Видео'), KeyboardButton(text='Баланс')],
             [KeyboardButton(text='Модели'), KeyboardButton(text='Настройки')],
+            [KeyboardButton(text='История'), KeyboardButton(text='Помощь')],
         ],
         resize_keyboard=True,
-        input_field_placeholder='Введи вопрос или команду...',
+        input_field_placeholder='Напиши вопрос или выбери раздел',
     )
 
 

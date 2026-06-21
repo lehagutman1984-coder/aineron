@@ -64,7 +64,7 @@ get_message_state = sync_to_async(_get_message_state, thread_sensitive=True)
 check_balance = sync_to_async(_check_balance, thread_sensitive=True)
 
 
-async def process_text(tg_message: Message, tg_user, text: str):
+async def process_text(tg_message: Message, tg_user, text: str, attachment=None):
     """Общий пайплайн: текст → AI → ответ с polling."""
     from aitext.tasks import generate_ai_response
 
@@ -184,18 +184,4 @@ async def cb_regen(query: CallbackQuery, tg_user=None):
 async def handle_text_message(message: Message, tg_user=None):
     if tg_user is None:
         return
-    # Кнопки reply-keyboard
-    if message.text in ('Баланс',):
-        from telegram_bot.handlers.balance import send_balance
-        await send_balance(message, tg_user)
-        return
-    if message.text in ('Модели',):
-        from telegram_bot.handlers.models_cmd import send_models
-        await send_models(message, tg_user)
-        return
-    if message.text in ('Настройки',):
-        from telegram_bot.handlers.settings_cmd import send_settings
-        await send_settings(message, tg_user)
-        return
-
     await process_text(message, tg_user, message.text)
