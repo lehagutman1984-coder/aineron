@@ -27,6 +27,8 @@ export interface ChatSummary {
   chat_title: string;
   network_name: string;
   summary_text: string;
+  rolling_summary: string;
+  best_summary: string; // summary_text || rolling_summary — готовое поле от API
   message_count: number;
   created_at: string;
   updated_at: string;

@@ -467,15 +467,15 @@ export default function MemoryPage() {
               <p className="py-8 text-center text-[14px] text-[rgba(13,13,13,0.45)]">
                 Загрузка истории...
               </p>
-            ) : (summariesQuery.data ?? []).length === 0 ? (
+            ) : (summariesQuery.data ?? []).filter((s) => s.best_summary || s.rolling_summary).length === 0 ? (
               <div className="rounded-[14px] border border-dashed border-[rgba(13,13,13,0.15)] bg-white px-4 py-10 text-center">
                 <p className="text-[14px] text-[rgba(13,13,13,0.55)]">
-                  Пока нет итогов сессий.
+                  Итоги сессий появятся после первого длинного диалога.
                 </p>
               </div>
             ) : (
               <div className="space-y-2">
-                {(summariesQuery.data ?? []).slice(0, 20).map((s) => (
+                {(summariesQuery.data ?? []).filter((s) => s.best_summary || s.rolling_summary).slice(0, 20).map((s) => (
                   <SummaryCard
                     key={s.id}
                     summary={s}
@@ -684,11 +684,12 @@ function SummaryCard({
   expanded: boolean;
   onToggle: () => void;
 }) {
-  const isLong = summary.summary_text.length > SUMMARY_PREVIEW_LIMIT;
+  const displayText = summary.best_summary || summary.summary_text || summary.rolling_summary || '';
+  const isLong = displayText.length > SUMMARY_PREVIEW_LIMIT;
   const text =
     expanded || !isLong
-      ? summary.summary_text
-      : `${summary.summary_text.slice(0, SUMMARY_PREVIEW_LIMIT).trimEnd()}…`;
+      ? displayText
+      : `${displayText.slice(0, SUMMARY_PREVIEW_LIMIT).trimEnd()}…`;
 
   return (
     <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-4">

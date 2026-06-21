@@ -26,11 +26,16 @@ class UserMemorySerializer(serializers.ModelSerializer):
 class ChatSummarySerializer(serializers.ModelSerializer):
     chat_title = serializers.CharField(source='chat.title', read_only=True)
     network_name = serializers.CharField(source='chat.network.name', read_only=True)
+    best_summary = serializers.SerializerMethodField()
 
     class Meta:
         model = ChatSummary
         fields = [
             'id', 'chat_id', 'chat_title', 'network_name',
-            'summary_text', 'message_count', 'created_at', 'updated_at',
+            'summary_text', 'rolling_summary', 'best_summary',
+            'message_count', 'created_at', 'updated_at',
         ]
         read_only_fields = fields
+
+    def get_best_summary(self, obj):
+        return (obj.summary_text or obj.rolling_summary or '').strip()
