@@ -235,6 +235,12 @@ def generate_ai_response(self, message_id, web_search=False):
                 message.save()
                 logger.info(
                     f"Медиа сгенерировано для сообщения {message_id}, сохранено файлов: {len(saved_images)}")
+                # Telegram-уведомление для веб-пользователей с привязанным Telegram
+                try:
+                    from telegram_bot.notify import maybe_notify
+                    maybe_notify(user, f"Генерация завершена: {network.name}\nОткрыть: https://aineron.ru/chat/{network.slug}/")
+                except Exception:
+                    pass
                 return
 
             except Exception as e:
