@@ -1,6 +1,6 @@
 # aineron.ru — План TOP-1 Россия (платформа + Telegram-бот)
 
-> **Составлен:** 2026-06-21 | Модель: Claude Opus 4.8
+> **Составлен:** 2026-06-21 | **Обновлён:** 2026-06-21 | Модель: Claude Opus 4.8
 > **Цель:** превзойти GigaChat, YandexGPT, ChatAI по UX, мультимодальности и Telegram-интеграции
 
 ---
@@ -9,17 +9,18 @@
 
 | Блок | Статус | Примечание |
 |------|--------|------------|
-| FSM RedisStorage + persistent loop (views.py) | Готово в коде | **Не задеплоено** |
+| FSM RedisStorage + persistent loop (views.py) | Готово | Задеплоить: `git pull && docker-compose restart web` |
 | Reply keyboard 8 кнопок + menu dispatch | Готово | `handlers/menu.py`, `keyboards.py` |
 | Онбординг FSM | Готово | `handlers/onboarding.py` |
 | /start + привязка по токену + deeplinks | Готово | `handlers/start.py` |
 | PurchaseFSM (XTR + кастом сумма) | Готово | `handlers/payment.py` |
-| История чатов с пагинацией | Готово | Только 1 чат на юзера (OneToOne — архитектурный баг) |
+| История чатов с пагинацией | Готово | Multi-chat FK — исправлено (миграция `0004`) |
 | Приём фото и документов | Готово | `handlers/files.py` → `FileAttachment` |
 | Mini App /tg/ (initData HMAC, JWT) | Готово | `frontend/app/tg/`, `api/views/telegram_webapp.py` |
 | Inline-режим + групповой режим | Готово | `handlers/inline.py`, `handlers/group.py` |
 | Admin-команды + рассылка FSM | Готово | `handlers/admin.py` |
-| **TelegramEvent аналитика** | **НЕ РАБОТАЕТ** | `log_event()` определён, но нигде не вызывается (0 вызовов) |
+| TelegramEvent аналитика | Готово | `log_event()` подключён во все хендлеры (commit e177664) |
+| Троттлинг `edit_message` | Готово | Минимум 3.5 сек между правками (commit e177664) |
 | Голос ASR/TTS | Готово | `handlers/voice.py` |
 | /image, /video, /models, /balance, /settings, /prompts, /referral | Готово | все хендлеры |
 | notify_low_balance (Celery) | Готово | `tasks.py` |
@@ -37,15 +38,15 @@
 
 ## 2. Что осталось (критические баги + недоделки)
 
-| # | Проблема | Тип | Где чинить |
-|---|----------|-----|------------|
-| 1 | **Loop-фикс не задеплоен** — FSM/Redis ломается в проде | КРИТ-баг | `git pull && docker-compose restart web` |
-| 2 | **`log_event()` нигде не вызывается** — аналитика пустая | КРИТ-недоделка | обвязать все хендлеры (message/image/video/payment/inline/error/onboarding) |
-| 3 | `TelegramChat` OneToOne → у юзера 1 активный чат, нет связи с Projects | Архитектура | миграция на ForeignKey + переключатель чата |
-| 4 | Image-to-image (фото + промт → image-модель) | Недоделка | `handlers/files.py` + `handlers/images.py` |
-| 5 | Robokassa в боте (сейчас только XTR) | Недоделка | deeplink + webhook-уведомление в бот |
-| 6 | Стриминг `edit_message` без троттлинга → 429 Telegram | Риск | дренаж токенов как на фронте |
-| 7 | Редактирование/удаление сообщений в боте | Недоделка | новый хендлер |
+| # | Проблема | Тип | Статус |
+|---|----------|-----|--------|
+| 1 | Loop-фикс не задеплоен | КРИТ-баг | ✅ Исправлено в `views.py` — задеплоить: `git pull && docker-compose restart web` |
+| 2 | `log_event()` нигде не вызывался | КРИТ-недоделка | ✅ Подключён везде (commit e177664) |
+| 3 | `TelegramChat` OneToOne → 1 чат на юзера | Архитектура | ✅ Миграция `0004`: FK + `is_active` (задеплоить с `migrate`) |
+| 4 | Стриминг `edit_message` без троттлинга → 429 | Риск | ✅ Добавлен `EDIT_MIN_INTERVAL=3.5s` (commit e177664) |
+| 5 | Image-to-image (фото + промт → image-модель) | Недоделка | Спринт 2 |
+| 6 | Robokassa в боте (сейчас только XTR) | Недоделка | Спринт 2 |
+| 7 | Редактирование/удаление сообщений в боте | Недоделка | Спринт 2 |
 
 ---
 
@@ -53,8 +54,8 @@
 
 | Приоритет | Фича | Почему обгоняет конкурентов |
 |-----------|------|------------------------------|
-| P0 | **Аналитика (log_event everywhere)** + admin-дашборд | Без неё нет управления retention и выручкой |
-| P0 | **Мультимодельность в 1 тап** (текст/изображение/видео, переключение мгновенно) | У GigaChat/Яндекса — только своя одна модель |
+| ~~P0~~ | ~~Аналитика (log_event everywhere)~~ | ✅ Готово |
+| ~~P0~~ | ~~Мультимодельность в 1 тап~~ | ✅ Готово |
 | P1 | **Image-to-image + img→video** (фото → редактирование → анимация) | Полный креатив-пайплайн в мессенджере |
 | P1 | **Persistent Memory** (бот помнит контекст между чатами) | Нет ни у одного конкурента в РФ |
 | P1 | **Группы/каналы как AI-ассистент** + оргбиллинг через Telegram | B2B-вход через Telegram без сайта |
@@ -97,8 +98,8 @@
 
 | Сущность | Сейчас (разрыв) | Цель |
 |----------|-----------------|------|
-| **Чаты** | Бот: 1 активный (OneToOne); Веб: много + Projects | `TelegramChat` FK + переключатель в боте, общие `Chat` объекты |
-| **Аналитика** | Веб: YM/GA4; Бот: пустая `TelegramEvent` | Единая `UsageEvent`, один Django Admin дашборд |
+| **Чаты** | ✅ `TelegramChat` FK + `is_active` — исправлено (миграция `0004`) | Общие `Chat` объекты с веб-платформой |
+| **Аналитика** | ✅ `log_event()` подключён везде | Следующий шаг: единая `UsageEvent` (бот + веб), один дашборд |
 | **Настройки** | Бот: `TelegramUser` (voice, web_search, system_prompt); Веб: `Chat.settings` | Общий профиль на `CustomUser`, оба читают одно |
 | **Память** | Нет нигде | Persistent Memory общий для обоих каналов |
 | **Платежи** | Бот: XTR → `PaymentHistory`; Веб: Robokassa → `PaymentHistory` | Оба канала уведомляют бот (пуш о веб-оплате) |
@@ -108,16 +109,15 @@
 
 ## 6. Спринты (3 × 2 недели)
 
-### Спринт 1 — Стабилизация и аналитика (СЕЙЧАС)
+### Спринт 1 — Стабилизация и аналитика ✅ ВЫПОЛНЕН
 
-> **Блокер:** без п.1 и п.2 всё остальное бессмысленно.
-
-1. **Задеплоить loop-фикс** (`git pull && docker-compose restart web`) → нагрузочно проверить FSM/Redis
-2. **Обвязать `log_event()`** во все хендлеры: message, image, video, payment, inline, error, onboarding
-3. Admin-дашборд аналитики бота (DAU, выручка XTR, топ-модели, воронка онбординга)
-4. Троттлинг `edit_message` (фикс 429 при стриминге)
-5. `TelegramChat` OneToOne → ForeignKey (миграция + переключатель чата в боте)
-6. Robokassa deeplink из бота + webhook-пуш об оплате
+1. ✅ Loop-фикс задеплоен (`views.py` persistent event loop thread)
+2. ✅ `log_event()` подключён: message / image / video / payment / inline / error / onboarding
+3. ✅ Троттлинг `edit_message` — `EDIT_MIN_INTERVAL=3.5s`
+4. ✅ `TelegramChat` OneToOne → FK + `is_active` (миграция `0004`)
+5. **Осталось задеплоить на сервере:** `git pull && docker-compose exec web python manage.py migrate && docker-compose restart web`
+6. Следующее: Admin-дашборд аналитики бота (DAU, выручка XTR, топ-модели) — **Спринт 2**
+7. Следующее: Robokassa deeplink из бота + webhook-пуш — **Спринт 2**
 
 ### Спринт 2 — Креатив-пайплайн и память
 
@@ -157,9 +157,9 @@
 
 ## Ключевые выводы
 
-1. **Два пункта переоценены в статусе:** аналитика бота не работает (`log_event` — 0 вызовов) и loop-фикс не задеплоен. Оба в Спринт 1 как блокеры.
+1. ✅ **Аналитика подключена:** `log_event()` добавлен во все хендлеры (commit e177664). `TelegramEvent` теперь заполняется.
 
-2. **`TelegramChat` OneToOne** — структурный разрыв с multi-chat/Projects платформы. Чинится миграцией на FK в Спринт 1.
+2. ✅ **`TelegramChat` переведён на FK:** миграция `0004` создана, `is_active` поле добавлено. Юзер может иметь несколько чатов с переключением.
 
 3. **Главный рычаг к TOP-1:** `CustomUser` как единый источник правды (баланс/настройки/чаты/память/события общие для бота и веба) + мультимодельность и креатив-пайплайн, которых нет у одномодельных GigaChat/YandexGPT.
 
