@@ -24,15 +24,21 @@ class AuthMiddleware(BaseMiddleware):
         if not from_user:
             return await handler(event, data)
 
+        # /start обрабатывается без авторизации — это точка входа
+        text = getattr(event, 'text', '') or ''
+        if text.startswith('/start'):
+            return await handler(event, data)
+
         get_tg = sync_to_async(self._get_tg_user, thread_sensitive=True)
         tg_user = await get_tg(from_user.id)
 
         if tg_user is None:
-            if hasattr(event, 'answer'):
-                await event.answer(
-                    "Привяжи аккаунт, чтобы начать работу: /start\n\n"
-                    "Зайди на aineron.ru → Кабинет → Telegram."
-                )
+            await event.answer(
+                "Чтобы начать работу, привяжи аккаунт:\n\n"
+                "1. Зайди на aineron.ru\n"
+                "2. Кабинет → Telegram → Подключить\n\n"
+                "После привязки все функции будут доступны."
+            )
             return
 
         if tg_user.user.shadow_banned:
