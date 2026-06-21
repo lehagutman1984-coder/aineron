@@ -74,6 +74,21 @@ async def cmd_start(message: Message, state: FSMContext):
     if message.text and ' ' in message.text:
         args = message.text.split(maxsplit=1)[1].strip()
 
+    if args and args.startswith('model_'):
+        slug = args[6:]
+        await message.answer(
+            f'Открываю модель: https://aineron.ru/chat/{slug}/',
+            parse_mode='HTML',
+        )
+        return
+
+    if args and args.startswith('prompt_'):
+        await message.answer(
+            'Промт загружается, пиши свой запрос!',
+            parse_mode='HTML',
+        )
+        return
+
     if args and args.startswith('ref_'):
         referral_code = args[4:]  # strip 'ref_'
         await store_referral_code(message.from_user.id, referral_code)

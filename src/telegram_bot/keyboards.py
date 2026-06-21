@@ -1,4 +1,8 @@
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import (
+    InlineKeyboardMarkup, InlineKeyboardButton,
+    ReplyKeyboardMarkup, KeyboardButton,
+    WebAppInfo,
+)
 
 
 def main_reply_kb() -> ReplyKeyboardMarkup:
@@ -76,6 +80,16 @@ def star_packs_kb() -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text='220 звёзд — 100 XTR (+10%)', callback_data='pack:stars_220')],
         [InlineKeyboardButton(text='600 звёзд — 250 XTR (+20%)', callback_data='pack:stars_600')],
     ])
+
+
+def webapp_kb(site_url: str) -> InlineKeyboardMarkup:
+    """Inline button that opens the Telegram Mini App."""
+    return InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(
+            text='Открыть приложение',
+            web_app=WebAppInfo(url=f'{site_url}/tg/'),
+        )
+    ]])
 
 
 def settings_kb(tg_user) -> InlineKeyboardMarkup:
