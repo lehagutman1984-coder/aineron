@@ -5,6 +5,9 @@
 > Round 3 (2026-06-21, коммит `d841d55`): R1, R1b, R2, R4, R5.
 > R3 снят автоматически (summaries не кэшируются после R2-fix).
 >
+> **Решение 2026-06-21:** Sprint B2 ОТЛОЖЕН (HARD_MSG_CAP=80 достаточен, Redis-аккумулятор несёт риск корректности).
+> Sprint C ОТЛОЖЕН (требует миграции живой БД — отдельный релиз). Sprint D = Phase 2.
+>
 > Дата последнего обновления: 2026-06-21. Ветка: `main`.
 
 ---
@@ -31,9 +34,10 @@
 | Cross-session summary (любая модель + beat) | Работает (B6/B14 закрыты) |
 | Redis-кэш контекста | Исправлен: факты — per-user (`memfacts:{user_id}`), summaries — всегда свежо (R2 закрыт) |
 | Триггер компрессии | Исправлен: TOTAL msg_count + Redis-лок (R1/R1b закрыты) |
-| Производительность чтения истории | Частично: HARD_MSG_CAP=80 добавлен (R4 закрыт), инкр. токен-кэш — Sprint B2 |
+| Производительность чтения истории | Закрыт достаточно: HARD_MSG_CAP=80 (R4 закрыт). Инкр. токен-кэш — ОТЛОЖЕН (Sprint B2, риск корректности > выгода) |
 | Тесты | Исправлены: сломанный патч удалён, R1-регрессия и normalize_fact покрыты (R5 закрыт) |
-| Единая модель summary (B7) | **Не сделано** (mitigated, Sprint C) |
+| Единая модель summary (B7/R6) | Mitigated (read-fallback), не resolved. Sprint C — ОТЛОЖЕН (требует миграции живой БД) |
+| generate_chat_summary инкрементальность (R7) | Тех. долг — не критично, Sprint C — ОТЛОЖЕН |
 | DRF API `/memory/` + UI `/account/memory/` | Реализовано полностью |
 
 ---
@@ -110,7 +114,7 @@
 
 > Эти дефекты **пережили** оба раунда фиксов либо были **внесены** ими. Severity: высокий = заметно влияет на стоимость/корректность на потоке; средний = деградация качества/перформанса; низкий = тех. долг.
 
-### R1 — `should_compress` перезапускает компрессию почти на каждом сообщении `[высокий — стоимость]`
+### R1 — `should_compress` перезапускает компрессию почти на каждом сообщении `[ЗАКРЫТ — Round 3, d841d55]`
 
 **Где:** `memory.py:174–175` (чтение) против `tasks.py:806` (запись).
 
@@ -129,11 +133,11 @@
 
 Альтернатива (надёжнее) — хранить `last_compressed_message_id` и сжимать только `(last_id .. конец−RECENT_WINDOW]` (см. R6 / Future).
 
-**R1b — конкурентные `compress_chat_history` для одного чата blind-overwrite.** `update_rolling_summary` сериализует **запись** через `select_for_update` (B4), но цепочка чтение→DeepSeek→запись **не атомарна на уровне задачи**. Два одновременных запуска компрессии одного чата (вероятность которых R1 как раз многократно повышает) прочитают одинаковое состояние, оба сожмут через DeepSeek и затем перетрут результат друг друга — побеждает последний писатель. Это не падение, но потеря работы и лишние вызовы. **Корень снимается** идемпотентностью по `last_compressed_message_id` (§5.1) + опциональным Redis-локом `memcompress:{chat_id}` на время задачи.
+**R1b ЗАКРЫТ (Round 3): конкурентные `compress_chat_history` для одного чата blind-overwrite.** `update_rolling_summary` сериализует **запись** через `select_for_update` (B4), но цепочка чтение→DeepSeek→запись **не атомарна на уровне задачи**. Два одновременных запуска компрессии одного чата (вероятность которых R1 как раз многократно повышает) прочитают одинаковое состояние, оба сожмут через DeepSeek и затем перетрут результат друг друга — побеждает последний писатель. Это не падение, но потеря работы и лишние вызовы. **Корень снимается** идемпотентностью по `last_compressed_message_id` (§5.1) + опциональным Redis-локом `memcompress:{chat_id}` на время задачи.
 
 ---
 
-### R2 — Redis-кэш `build_memory_context` per-user, хотя контент зависит от чата `[высокий — корректность]`
+### R2 — Redis-кэш `build_memory_context` per-user, хотя контент зависит от чата `[ЗАКРЫТ — Round 3, d841d55]`
 
 **Где:** ключ `memctx:{user_id}` (`memory.py:88, 116`), но контент содержит `past_summaries` с `.exclude(chat=chat)` (`memory.py:138`).
 
@@ -152,7 +156,7 @@
 
 ---
 
-### R3 — Кэш памяти не инвалидируется при обновлении summary `[средний — корректность]`
+### R3 — Кэш памяти не инвалидируется при обновлении summary `[СНЯТ автоматически — Round 3]`
 
 **Где:** `compress_chat_history` (`tasks.py:806`) и `generate_chat_summary` (`tasks.py:712–721`) пишут summary, но **не вызывают** `invalidate_memory_cache`.
 
@@ -162,7 +166,7 @@
 
 ---
 
-### R4 — `get_history_with_compression` читает ВСЮ историю и токенизирует каждое сообщение каждый запрос `[средний — производительность]`
+### R4 — `get_history_with_compression` читает ВСЮ историю и токенизирует каждое сообщение каждый запрос `[ЗАКРЫТ достаточно — Round 3, d841d55]`
 
 **Где:** `memory.py:208` (`all_msgs = list(qs.order_by('created_at'))`), `memory.py:229–232` (token-count по всем).
 
@@ -172,13 +176,13 @@
 
 Это O(N) на сообщение и O(N²) на жизнь чата. Плюс **вся** история уходит провайдеру на каждом ходу (нет верхнего кэпа сообщений, только токен-порог в 70% окна) — на gemini это сотни сообщений в каждом запросе. Корректно по смыслу, дорого по ресурсам.
 
-**Фикс (поэтапно):**
-1. Кэшировать `history_tokens` инкрементально (хранить сумму в `ChatSummary` или Redis, добавлять токены нового сообщения, не пересчитывая всё).
-2. Ввести **жёсткий верхний кэп** числа сообщений (например, 60–80) поверх токен-порога — выше него всегда идём в ветку «recent + summary», даже если формально влезает в окно. Защита от «250 сообщений в каждый запрос на gemini».
+**Закрыто (Round 3):** добавлен `HARD_MSG_CAP=80` (`memory.py:231–233`) — чаты >80 сообщений сразу идут в ветку recent+summary без полного перебора.
+
+**Инкрементальный токен-кэш (Sprint B2) — ОТЛОЖЕН:** HARD_MSG_CAP+RECENT_WINDOW сводит token-loop к ≤80 дешёвых итераций. Redis-аккумулятор при дрейфе вверх даст false-truncation (потеря середины диалога). Профилинг не показывает проблемы на текущей нагрузке — вернуться только если появится реальный bottleneck.
 
 ---
 
-### R5 — Тесты частично сломаны после фиксов `[средний — качество]`
+### R5 — Тесты частично сломаны после фиксов `[ЗАКРЫТ — Round 3, d841d55]`
 
 **Где:** `src/aitext/test_memory.py`.
 
@@ -266,27 +270,33 @@
 
 ### Спринт B — производительность горячего пути
 
+| # | Статус | Описание | Файлы | Закрывает |
+|---|--------|----------|-------|-----------|
+| B1 | **DONE** (d841d55) | HARD_MSG_CAP=80 в `get_history_with_compression` | `aitext/memory.py` | R4 достаточно |
+| B2 | **ОТЛОЖЕН** | Инкр. токен-кэш (Redis/ChatSummary). HARD_MSG_CAP уже ограничивает loop ≤80 итераций. Вернуться при реальном bottleneck на profiler. | `aitext/memory.py`, `aitext/models.py` + миграция | R4 полностью |
+
+### Спринт C — единая модель summary `[ОТЛОЖЕН — требует миграции живой БД]`
+
+> Текущее состояние: два поля (`rolling_summary` + `summary_text`) сосуществуют через read-fallback. Система работает корректно. Унификация — архитектурный долг, не критичный баг.
+>
+> Выполнять только как отдельный продуманный релиз: additive migration (новые поля + backfill) → переключить код → удалить старые поля в следующем релизе.
+
 | # | Статус | Коммит | Файлы | Закрывает |
 |---|--------|--------|-------|-----------|
-| B1 | **DONE** (d841d55) | HARD_MSG_CAP=80 в `get_history_with_compression` | `aitext/memory.py` | R4 частично |
-| B2 | TODO | `perf(memory): incremental history token counting (cache in ChatSummary/Redis)` | `aitext/memory.py`, `aitext/models.py` + миграция | R4 полностью |
+| C1 | ОТЛОЖЕН | `refactor(memory): unify summary into content + last_compressed_message_id` | `aitext/models.py` + миграция + data-migration | R6 |
+| C2 | ОТЛОЖЕН (зависит от C1) | `refactor(memory): idempotent compress by last_compressed_message_id` | `aitext/tasks.py`, `aitext/memory.py` | R1 (root), R7 |
+| C3 | ОТЛОЖЕН (зависит от C1) | `fix(memory): incremental generate_chat_summary` | `aitext/tasks.py:657` | R7 |
 
-### Спринт C — единая модель summary
+### Спринт D — Phase 2 (RAG) `[БУДУЩЕЕ — отдельная фаза]`
 
-| # | Коммит | Файлы | Закрывает |
-|---|--------|-------|-----------|
-| C1 | `refactor(memory): unify summary into content + last_compressed_message_id` | `aitext/models.py` + миграция + data-migration | R6 |
-| C2 | `refactor(memory): idempotent compress by last_compressed_message_id` | `aitext/tasks.py`, `aitext/memory.py` | R1 (root), R7 |
-| C3 | `fix(memory): incremental generate_chat_summary` | `aitext/tasks.py:657` | R7 |
+> Требует: pgvector в docker-compose, новый образ postgres, миграция + backfill эмбеддингов. Отдельная задача после стабилизации Phase 1.
 
-### Спринт D — Phase 2 (RAG)
-
-| # | Коммит | Файлы |
-|---|--------|-------|
-| D1 | `feat(memory): pgvector infra + UserMemory.embedding + HNSW` | `requirements.txt`, `docker-compose.yml`, миграция |
-| D2 | `feat(memory): embed facts on extract + backfill command` | `aitext/tasks.py`, management-команда |
-| D3 | `feat(memory): relevance-scored build_memory_context + /memory/search/` | `aitext/memory.py`, `api/views/memory.py` |
-| D4 | `feat(memory): prune_stale_memories beat (90d, last_referenced)` | `aitext/models.py` + миграция, `aitext/tasks.py`, `config/celery.py` |
+| # | Статус | Коммит | Файлы |
+|---|--------|--------|-------|
+| D1 | БУДУЩЕЕ | `feat(memory): pgvector infra + UserMemory.embedding + HNSW` | `requirements.txt`, `docker-compose.yml`, миграция |
+| D2 | БУДУЩЕЕ | `feat(memory): embed facts on extract + backfill command` | `aitext/tasks.py`, management-команда |
+| D3 | БУДУЩЕЕ | `feat(memory): relevance-scored build_memory_context + /memory/search/` | `aitext/memory.py`, `api/views/memory.py` |
+| D4 | БУДУЩЕЕ | `feat(memory): prune_stale_memories beat (90d, last_referenced)` | `aitext/models.py` + миграция, `aitext/tasks.py`, `config/celery.py` |
 
 ---
 
@@ -307,11 +317,11 @@
 
 | Компонент | Файл:строки | Состояние |
 |-----------|-------------|-----------|
-| Ядро памяти | `src/aitext/memory.py` | реализовано; R1/R2/R4 закрыты; Sprint B2/C pending |
-| Модели | `src/aitext/models.py:509–592` | реализовано; R6 (два поля summary) — Sprint C |
+| Ядро памяти | `src/aitext/memory.py` | реализовано; R1/R2/R4/R5 закрыты; Sprint B2 ОТЛОЖЕН; Sprint C ОТЛОЖЕН |
+| Модели | `src/aitext/models.py:509–592` | реализовано; R6 (два поля summary) mitigated — Sprint C ОТЛОЖЕН |
 | `extract_memory_facts` | `src/aitext/tasks.py:534–654` | реализовано, B3/B13/R3 закрыты |
-| `generate_chat_summary` | `src/aitext/tasks.py:657–723` | реализовано; R7 (не инкрементально) — Sprint C |
-| `compress_chat_history` | `src/aitext/tasks.py:726–810` | реализовано; R1/R1b закрыты |
+| `generate_chat_summary` | `src/aitext/tasks.py:657–723` | реализовано; R7 (не инкрементально) — тех. долг, Sprint C ОТЛОЖЕН |
+| `compress_chat_history` | `src/aitext/tasks.py:726–810` | реализовано; R1/R1b ЗАКРЫТЫ (Round 3) |
 | `summarize_stale_chats` (beat) | `src/aitext/tasks.py:813–858` | реализовано (B14) |
 | Триггер extract (Celery) | `src/aitext/tasks.py:508–514` | есть |
 | Триггер extract (SSE) | `src/api/views/chats.py:506–515` | есть (B1 закрыт) |
