@@ -37,6 +37,7 @@ from api.views.files import UserFilesView, UserFileDeleteView
 from api.views.compare import CompareView
 from api.views.prompts import PromptListCreateView, PromptDetailView
 from api.views.projects import ProjectListCreateView, ProjectDetailView
+from api.views.telegram_link import TelegramLinkTokenView
 
 app_name = 'api'
 
@@ -138,6 +139,9 @@ urlpatterns = [
 
     # ========== STUDIO (Vibe-Coding Studio) ==========
     path('v1/studio/', include('studio.urls')),
+
+    # ========== Telegram Bot ==========
+    path('v1/telegram/link-token/', TelegramLinkTokenView.as_view(), name='telegram_link_token'),
 
     # ========== OpenAPI / Swagger ==========
     path('v1/schema/', SpectacularAPIView.as_view(), name='schema'),
