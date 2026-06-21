@@ -1,6 +1,6 @@
 import logging
 from aiogram import Router, F
-from aiogram.filters import Command
+from aiogram.filters import Command, or_f
 from aiogram.types import Message, CallbackQuery
 from asgiref.sync import sync_to_async
 from telegram_bot.keyboards import models_kb
@@ -37,7 +37,7 @@ async def send_models(message: Message, tg_user):
     await message.answer(text, parse_mode='HTML', reply_markup=models_kb(networks, current_id))
 
 
-@router.message(Command('models') | (F.text == 'Модели'))
+@router.message(or_f(Command('models'), F.text == 'Модели'))
 async def cmd_models(message: Message, tg_user=None):
     if tg_user is None:
         return

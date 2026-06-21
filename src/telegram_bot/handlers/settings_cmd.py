@@ -1,6 +1,6 @@
 import logging
 from aiogram import Router, F
-from aiogram.filters import Command
+from aiogram.filters import Command, or_f
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message, CallbackQuery
@@ -40,7 +40,7 @@ async def send_settings(message: Message, tg_user):
     await message.answer(text, parse_mode='HTML', reply_markup=settings_kb(tg_user))
 
 
-@router.message(Command('settings') | (F.text == 'Настройки'))
+@router.message(or_f(Command('settings'), F.text == 'Настройки'))
 async def cmd_settings(message: Message, tg_user=None):
     if tg_user is None:
         return

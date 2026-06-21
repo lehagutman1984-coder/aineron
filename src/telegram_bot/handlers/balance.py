@@ -1,6 +1,6 @@
 import logging
 from aiogram import Router, F
-from aiogram.filters import Command
+from aiogram.filters import Command, or_f
 from aiogram.types import Message, CallbackQuery
 from asgiref.sync import sync_to_async
 from telegram_bot.keyboards import star_packs_kb
@@ -31,7 +31,7 @@ async def send_balance(message: Message, tg_user):
     await message.answer(text, parse_mode='HTML', reply_markup=kb)
 
 
-@router.message(Command('balance') | (F.text == 'Баланс'))
+@router.message(or_f(Command('balance'), F.text == 'Баланс'))
 async def cmd_balance(message: Message, tg_user=None):
     if tg_user is None:
         return
