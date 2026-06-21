@@ -60,3 +60,58 @@ def maybe_notify(user, text: str) -> None:
             notify_user(tg.telegram_id, text)
     except Exception as e:
         logger.warning(f'maybe_notify failed: {e}')
+
+
+def maybe_notify_chat(telegram_chat_id: int, text: str) -> None:
+    """Отправить текст в конкретный Telegram чат."""
+    try:
+        notify_user(telegram_chat_id, text)
+    except Exception as e:
+        logger.warning(f'maybe_notify_chat failed: {e}')
+
+
+def send_media_to_telegram(telegram_chat_id: int, generated_image, network_name: str, cost: int) -> None:
+    """Отправить сгенерированное видео/изображение в Telegram чат."""
+    from django.conf import settings
+    if not getattr(settings, 'TELEGRAM_BOT_ENABLED', False) or not getattr(settings, 'TELEGRAM_BOT_TOKEN', ''):
+        return
+
+    try:
+        media_url = f"{settings.SITE_URL}{generated_image.image.url}"
+    except Exception as e:
+        logger.warning(f'send_media_to_telegram: cannot get URL: {e}')
+        return
+
+    is_video = getattr(generated_image, 'file_type', None) == 'video' or 'video' in (generated_image.image.name or '')
+    caption = f'{network_name} · {cost} зв.'
+
+    async def _send():
+        from aiogram import Bot
+        from aiogram.client.default import DefaultBotProperties
+        from aiogram.enums import ParseMode
+        from aiogram.types import URLInputFile
+        from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest
+        async with Bot(
+            token=settings.TELEGRAM_BOT_TOKEN,
+            default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+        ) as b:
+            try:
+                if is_video:
+                    await b.send_video(
+                        chat_id=telegram_chat_id,
+                        video=URLInputFile(media_url, filename='video.mp4'),
+                        caption=caption,
+                    )
+                else:
+                    await b.send_photo(
+                        chat_id=telegram_chat_id,
+                        photo=URLInputFile(media_url),
+                        caption=caption,
+                    )
+            except (TelegramForbiddenError, TelegramBadRequest) as e:
+                logger.warning(f'send_media_to_telegram failed for {telegram_chat_id}: {e}')
+
+    try:
+        _executor.submit(asyncio.run, _send())
+    except Exception as e:
+        logger.error(f'send_media_to_telegram error: {e}')

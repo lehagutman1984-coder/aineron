@@ -235,10 +235,19 @@ def generate_ai_response(self, message_id, web_search=False):
                 message.save()
                 logger.info(
                     f"Медиа сгенерировано для сообщения {message_id}, сохранено файлов: {len(saved_images)}")
-                # Telegram-уведомление для веб-пользователей с привязанным Telegram
+                # Отправка видео/изображения в Telegram
                 try:
-                    from telegram_bot.notify import maybe_notify
-                    maybe_notify(user, f"Генерация завершена: {network.name}\nОткрыть: https://aineron.ru/chat/{network.slug}/")
+                    chat_settings = message.chat.settings or {}
+                    tg_chat_id = chat_settings.get('telegram_chat_id')
+                    if tg_chat_id and saved_images:
+                        from telegram_bot.notify import send_media_to_telegram
+                        send_media_to_telegram(tg_chat_id, saved_images[0], network.name, network.cost_per_message)
+                    elif tg_chat_id:
+                        from telegram_bot.notify import maybe_notify_chat
+                        maybe_notify_chat(tg_chat_id, f"Видео готово. Смотри в кабинете: https://aineron.ru/account/files/")
+                    else:
+                        from telegram_bot.notify import maybe_notify
+                        maybe_notify(user, f"Генерация завершена: {network.name}\nОткрыть: https://aineron.ru/chat/{message.chat.id}/")
                 except Exception:
                     pass
                 return
