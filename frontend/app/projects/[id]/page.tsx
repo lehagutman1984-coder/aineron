@@ -37,6 +37,9 @@ import {
   Github,
   Link2,
   Link2Off,
+  Share2,
+  Lock,
+  Copy,
   Send,
   Clock,
   CheckCircle2,
@@ -53,6 +56,7 @@ import {
   listConnectors, createConnector, deleteConnector,
   listRepoFiles, getRepoFileContent,
   listCommits, createCommit, confirmCommit,
+  publishProject,
 } from "@/lib/api/client";
 import type { ChatListItem, Project, ProjectFile, ProjectConnector, RepoTreeItem, ProjectCommit, CommitFile } from "@/lib/api/types";
 
@@ -1279,8 +1283,152 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
   );
 }
 
+/* ── Вкладка "Доступ" (публичный Space) ── */
+function AccessTab({ project, onSaved }: { project: Project; onSaved: (p: Project) => void }) {
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://aineron.ru").replace(/\/$/, "");
+  const publicUrl = `${siteUrl}/s/${project.public_slug}`;
+  const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [showFiles, setShowFiles] = useState(project.public_show_files);
+  const [showChats, setShowChats] = useState(project.public_show_chats);
+
+  const handleTogglePublic = async () => {
+    setLoading(true);
+    try {
+      const updated = await publishProject(project.id, {
+        is_public: !project.is_public,
+        public_show_files: showFiles,
+        public_show_chats: showChats,
+      });
+      onSaved(updated);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVisibilityChange = async (field: "public_show_files" | "public_show_chats", val: boolean) => {
+    if (field === "public_show_files") setShowFiles(val);
+    else setShowChats(val);
+    if (project.is_public) {
+      const updated = await publishProject(project.id, {
+        is_public: true,
+        public_show_files: field === "public_show_files" ? val : showFiles,
+        public_show_chats: field === "public_show_chats" ? val : showChats,
+      });
+      onSaved(updated);
+    }
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(publicUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Public toggle */}
+      <div className="rounded-[14px] border border-[rgba(13,13,13,0.09)] bg-white p-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-[rgba(13,13,13,0.05)]">
+              {project.is_public ? <Share2 size={16} className="text-[#0a7cff]" /> : <Lock size={16} className="text-[rgba(13,13,13,0.45)]" />}
+            </div>
+            <div>
+              <p className="text-[14px] font-semibold text-[#0d0d0d]">
+                {project.is_public ? "Space публичный" : "Space приватный"}
+              </p>
+              <p className="text-[12px] text-[rgba(13,13,13,0.50)]">
+                {project.is_public ? "Доступен по публичной ссылке" : "Только вы видите этот Space"}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleTogglePublic}
+            disabled={loading}
+            className={[
+              "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none",
+              project.is_public ? "bg-[#0a7cff]" : "bg-[rgba(13,13,13,0.18)]",
+              loading ? "opacity-60 cursor-not-allowed" : "",
+            ].join(" ")}
+          >
+            <span
+              className={[
+                "inline-block h-4.5 w-4.5 transform rounded-full bg-white shadow-sm transition-transform",
+                project.is_public ? "translate-x-5" : "translate-x-1",
+              ].join(" ")}
+              style={{ height: "18px", width: "18px" }}
+            />
+          </button>
+        </div>
+
+        {/* Public link */}
+        {project.is_public && project.public_slug && (
+          <div className="mt-4 rounded-[10px] border border-[rgba(10,124,255,0.18)] bg-[rgba(10,124,255,0.04)] p-3">
+            <p className="mb-1.5 text-[11px] font-medium text-[rgba(13,13,13,0.50)] uppercase tracking-wide">
+              Публичная ссылка
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 truncate rounded-[6px] bg-white px-3 py-1.5 text-[12px] font-mono text-[#0a7cff] border border-[rgba(10,124,255,0.15)]">
+                {publicUrl}
+              </code>
+              <button
+                onClick={handleCopy}
+                className="flex items-center gap-1.5 rounded-[8px] bg-[#0a7cff] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[#0068e0] transition-colors"
+              >
+                {copied ? <Check size={12} /> : <Copy size={12} />}
+                {copied ? "Скопировано" : "Копировать"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Visibility settings */}
+      <div className="rounded-[14px] border border-[rgba(13,13,13,0.09)] bg-white p-5">
+        <p className="mb-4 text-[13px] font-semibold text-[rgba(13,13,13,0.55)] uppercase tracking-wide">
+          Что показывать в публичном Space
+        </p>
+
+        <div className="flex flex-col gap-3">
+          {[
+            { key: "public_show_files" as const, label: "База знаний", desc: "Список загруженных файлов (без содержимого)", value: showFiles },
+            { key: "public_show_chats" as const, label: "Чаты", desc: "Последние 10 чатов (только названия)", value: showChats },
+          ].map(({ key, label, desc, value }) => (
+            <div key={key} className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[13px] font-medium text-[#0d0d0d]">{label}</p>
+                <p className="text-[12px] text-[rgba(13,13,13,0.45)]">{desc}</p>
+              </div>
+              <button
+                onClick={() => handleVisibilityChange(key, !value)}
+                className={[
+                  "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none",
+                  value ? "bg-[#0a7cff]" : "bg-[rgba(13,13,13,0.18)]",
+                ].join(" ")}
+              >
+                <span
+                  className={["inline-block transform rounded-full bg-white shadow-sm transition-transform", value ? "translate-x-5" : "translate-x-1"].join(" ")}
+                  style={{ height: "18px", width: "18px" }}
+                />
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {!project.is_public && (
+          <p className="mt-3 flex items-center gap-1.5 text-[12px] text-[rgba(13,13,13,0.40)]">
+            <Info size={12} />
+            Настройки применятся после включения публичного доступа
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ── Главная страница проекта ── */
-type Tab = "chats" | "instructions" | "files" | "connectors";
+type Tab = "chats" | "instructions" | "files" | "connectors" | "access";
 
 export default function ProjectDetailPage({ params }: { params: { id: string } }) {
   const projectId = parseInt(params.id, 10);
@@ -1388,6 +1536,13 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
           label="Git"
           onClick={() => setTab("connectors")}
         />
+        <TabButton
+          active={tab === "access"}
+          icon={<Share2 size={13} />}
+          label="Доступ"
+          onClick={() => setTab("access")}
+          badge={project?.is_public}
+        />
       </div>
 
       {/* Tab actions row */}
@@ -1413,6 +1568,12 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
       )}
       {tab === "files" && <FilesTab projectId={projectId} />}
       {tab === "connectors" && <ConnectorsTab projectId={projectId} />}
+      {tab === "access" && project && (
+        <AccessTab project={project} onSaved={handleInstructionsSaved} />
+      )}
+      {tab === "access" && !project && (
+        <div className="h-32 animate-pulse rounded-[12px] bg-[rgba(13,13,13,0.05)]" />
+      )}
 
       {/* Edit modal (name / icon / color) */}
       {showEdit && project && (

@@ -218,6 +218,10 @@ class Project(models.Model):
     color = models.CharField(max_length=7, default='#0a7cff', verbose_name='Цвет (hex)')
     icon = models.CharField(max_length=30, default='Folder', verbose_name='Иконка (Lucide)')
     created_at = models.DateTimeField(auto_now_add=True)
+    is_public = models.BooleanField(default=False, verbose_name='Публичный')
+    public_slug = models.CharField(max_length=22, blank=True, db_index=True, verbose_name='Публичный slug')
+    public_show_files = models.BooleanField(default=True, verbose_name='Показывать файлы базы знаний')
+    public_show_chats = models.BooleanField(default=False, verbose_name='Показывать чаты')
 
     class Meta:
         verbose_name = 'Проект'
@@ -226,6 +230,12 @@ class Project(models.Model):
 
     def __str__(self):
         return f"{self.user.username} — {self.name}"
+
+    def save(self, *args, **kwargs):
+        if self.is_public and not self.public_slug:
+            import secrets
+            self.public_slug = secrets.token_urlsafe(16)
+        super().save(*args, **kwargs)
 
 
 def project_file_upload_path(instance, filename):

@@ -44,6 +44,7 @@ import type {
   RepoTreeItem,
   ProjectCommit,
   CommitFile,
+  PublicSpace,
 } from "./types";
 
 const BASE_URL =
@@ -653,6 +654,17 @@ export const confirmCommit = (
     method: "POST",
     body: JSON.stringify({ action }),
   });
+
+// ============ Public Spaces ============
+
+export const publishProject = (
+  id: number,
+  body: { is_public: boolean; public_show_files?: boolean; public_show_chats?: boolean }
+): Promise<Project> =>
+  request<Project>(`/projects/${id}/publish/`, { method: "POST", body: JSON.stringify(body) });
+
+export const getPublicSpace = (slug: string): Promise<PublicSpace> =>
+  request<PublicSpace>(`/public/spaces/${slug}/`);
 
 // ============ User (legacy Django session endpoint, kept for compatibility) ============
 

@@ -36,7 +36,7 @@ from api.views.referral import ReferralView, ReferralWithdrawView
 from api.views.files import UserFilesView, UserFileDeleteView
 from api.views.compare import CompareView
 from api.views.prompts import PromptListCreateView, PromptDetailView
-from api.views.projects import ProjectListCreateView, ProjectDetailView
+from api.views.projects import ProjectListCreateView, ProjectDetailView, ProjectPublishView, ProjectPublicView
 from api.views.project_files import ProjectFileListCreateView, ProjectFileDetailView
 from api.views.connectors import (
     ConnectorListCreateView, ConnectorDetailView,
@@ -147,6 +147,8 @@ urlpatterns = [
     # ========== Проекты (папки чатов) ==========
     path('v1/projects/', ProjectListCreateView.as_view(), name='projects_list_create'),
     path('v1/projects/<int:pk>/', ProjectDetailView.as_view(), name='project_detail'),
+    path('v1/projects/<int:pk>/publish/', ProjectPublishView.as_view(), name='project_publish'),
+    path('v1/public/spaces/<str:slug>/', ProjectPublicView.as_view(), name='project_public'),
     path('v1/projects/<int:pk>/files/', ProjectFileListCreateView.as_view(), name='project_files'),
     path('v1/projects/<int:pk>/files/<int:file_id>/', ProjectFileDetailView.as_view(), name='project_file_detail'),
     path('v1/projects/<int:pk>/connectors/', ConnectorListCreateView.as_view(), name='project_connectors'),

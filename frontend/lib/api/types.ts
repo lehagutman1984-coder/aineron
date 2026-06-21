@@ -270,7 +270,39 @@ export interface Project {
   color: string;
   icon: string;
   chat_count: number;
+  file_count: number;
   created_at: string;
+  is_public: boolean;
+  public_slug: string;
+  public_show_files: boolean;
+  public_show_chats: boolean;
+}
+
+export interface PublicSpaceFile {
+  id: number;
+  filename: string;
+  file_size: number;
+  file_type: "pdf" | "doc" | "text" | "code" | "other";
+  created_at: string;
+}
+
+export interface PublicSpaceChat {
+  id: number;
+  title: string;
+  updated_at: string;
+}
+
+export interface PublicSpace {
+  id: number;
+  name: string;
+  system_prompt: string;
+  icon: string;
+  color: string;
+  created_at: string;
+  public_show_files: boolean;
+  public_show_chats: boolean;
+  files: PublicSpaceFile[];
+  chats: PublicSpaceChat[];
 }
 
 export interface ChatListItem {
