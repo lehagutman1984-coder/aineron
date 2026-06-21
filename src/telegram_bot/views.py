@@ -1,6 +1,6 @@
+import asyncio
 import json
 import logging
-from asgiref.sync import async_to_sync
 from django.conf import settings
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -8,6 +8,22 @@ from django.views.decorators.http import require_POST
 from aiogram import types
 
 logger = logging.getLogger(__name__)
+
+
+async def _process_update(update_data: dict) -> None:
+    from aiogram import Bot
+    from aiogram.client.default import DefaultBotProperties
+    from aiogram.enums import ParseMode
+    from telegram_bot.bot import dp, register_routers
+    register_routers()
+    async with Bot(
+        token=settings.TELEGRAM_BOT_TOKEN,
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+    ) as bot:
+        update = types.Update.model_validate(update_data)
+        await dp.feed_update(bot, update)
+    # Даём event loop обработать pending callbacks перед закрытием
+    await asyncio.sleep(0)
 
 
 @csrf_exempt
@@ -24,22 +40,7 @@ def telegram_webhook(request):
         return HttpResponse(status=400)
 
     try:
-        from telegram_bot.bot import dp, register_routers
-        register_routers()
-
-        async def _process(update_data):
-            from aiogram import Bot
-            from aiogram.client.default import DefaultBotProperties
-            from aiogram.enums import ParseMode
-            # Создаём Bot внутри async-контекста — избегаем "Session is closed"
-            async with Bot(
-                token=settings.TELEGRAM_BOT_TOKEN,
-                default=DefaultBotProperties(parse_mode=ParseMode.HTML),
-            ) as bot:
-                update = types.Update.model_validate(update_data)
-                await dp.feed_update(bot, update)
-
-        async_to_sync(_process)(data)
+        asyncio.run(_process_update(data))
     except Exception as e:
         logger.exception(f'Telegram webhook error: {e}')
 
