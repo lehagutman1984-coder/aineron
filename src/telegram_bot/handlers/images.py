@@ -20,7 +20,14 @@ def _get_image_network(tg_user):
             return NeuralNetwork.objects.get(id=tg_user.default_image_network_id, is_active=True)
         except NeuralNetwork.DoesNotExist:
             pass
-    return NeuralNetwork.objects.filter(provider='fal-ai', is_active=True).order_by('order').first()
+    # Исключаем видео-модели (они имеют config_json.metadata.output_type = "video")
+    from django.db.models import Q
+    nets = NeuralNetwork.objects.filter(provider='fal-ai', is_active=True).order_by('order')
+    for net in nets:
+        cfg = net.config_json or {}
+        if cfg.get('metadata', {}).get('output_type') != 'video':
+            return net
+    return None
 
 
 def _create_image_request(tg_user, network, prompt):
