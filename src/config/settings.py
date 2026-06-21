@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     'api',
     'teams',
     'studio',
+    'telegram_bot',
 ]
 
 
@@ -330,6 +331,12 @@ TIMEWEB_API_TOKEN           = os.getenv('TIMEWEB_API_TOKEN',           '')
 SELECTEL_ACCOUNT_ID         = os.getenv('SELECTEL_ACCOUNT_ID',         '')
 SELECTEL_API_KEY            = os.getenv('SELECTEL_API_KEY',            '')
 STUDIO_TMA_BOT_TOKEN        = os.getenv('STUDIO_TMA_BOT_TOKEN',        '')
+
+# ========== TELEGRAM BOT ==========
+TELEGRAM_BOT_ENABLED    = os.getenv('TELEGRAM_BOT_ENABLED',    '0') == '1'
+TELEGRAM_BOT_TOKEN      = os.getenv('TELEGRAM_BOT_TOKEN',      '')
+TELEGRAM_WEBHOOK_SECRET = os.getenv('TELEGRAM_WEBHOOK_SECRET', '')
+TELEGRAM_BOT_USERNAME   = os.getenv('TELEGRAM_BOT_USERNAME',   'aineron_bot')
 
 
 # ========== ROBOKASSA ==========
