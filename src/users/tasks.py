@@ -364,6 +364,19 @@ def notify_upcoming_expiration():
         success = send_expiry_email(subscription)
         if success:
             sent_count += 1
+        # Telegram-уведомление если привязан
+        try:
+            from telegram_bot.notify import maybe_notify
+            days_left = (subscription.expires_at.date() - today).days
+            maybe_notify(
+                subscription.user,
+                f"<b>Подписка истекает через {days_left} дн.</b>\n\n"
+                f"Тариф: {subscription.tariff.display_name}\n"
+                f"Дата: {subscription.expires_at.strftime('%d.%m.%Y')}\n\n"
+                f"Пополните баланс: /balance"
+            )
+        except Exception:
+            pass
 
     logger.info(f"[STAT] Отправлено писем об истечении: {sent_count}")
     return f"Sent: {sent_count}"
