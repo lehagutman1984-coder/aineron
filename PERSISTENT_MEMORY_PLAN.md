@@ -1,1070 +1,578 @@
-# PERSISTENT MEMORY — План реализации (production-grade)
+# PERSISTENT MEMORY — Технический аудит и production-grade план исправлений
 
-> **Статус:** НЕ реализовано. Этот документ — полная, самодостаточная спецификация.
-> Разработчик может реализовать всё по порядку коммитов, **не принимая ни одного архитектурного решения** — все решения приняты здесь.
+> **Статус документа:** это аудит **уже реализованной** системы Persistent Memory (не greenfield-спецификация).
+> Код существует и работает в проде: `src/aitext/memory.py`, задачи `extract_memory_facts` / `generate_chat_summary`
+> в `src/aitext/tasks.py`, две точки интеграции (`tasks.py` — Celery, `api/views/chats.py` — SSE),
+> модели `UserMemory` / `ChatSummary` в `src/aitext/models.py`.
 >
-> **Цель:** дать aineron.ru долговременную память пользователя уровня ChatGPT Memory и Claude Projects — но лучше: **единая память, общая для веб-чата, Telegram-бота и Studio**, без списания дополнительных звёзд.
+> Документ содержит: (0) TL;DR со статусом, (1) все найденные баги с severity и фиксами,
+> (2) что работает правильно, (3) архитектурные улучшения, (4) пошаговые коммиты, (5) Phase 2.
 
 ---
 
-## 0. TL;DR для занятого разработчика
+## 0. TL;DR / статус
 
-1. Две новые модели в `aitext`: `UserMemory` (привязана к **пользователю**, общая на все каналы) и `ChatSummary` (привязана к **чату**). Миграция `aitext/0010`.
-2. Один новый флаг `memory_enabled` на `CustomUser`. Отдельная миграция `users/00XX`.
-3. Per-chat тоггл хранится в существующем `Chat.settings` JSON (`settings['memory_enabled']`) — **без миграции**.
-4. Новый модуль `src/aitext/memory.py`: `build_memory_context()`, `get_history_with_compression()`, `estimate_tokens()`.
-5. Две Celery-задачи в `src/aitext/tasks_memory.py`: `extract_memory_facts()` (с дедупликацией) и `generate_chat_summary()`.
-6. **Ровно 2 точки интеграции** в backend:
-   - `src/aitext/tasks.py:281` (Celery `generate_ai_response` — текстовый путь)
-   - `src/api/views/chats.py:355` (SSE `StreamMessageView`)
-7. **Telegram-бот и Studio получают память бесплатно**: бот вызывает ту же задачу `generate_ai_response.delay(...)` (подтверждено: `telegram_bot/handlers/chat.py:95`), поэтому правка `tasks.py:281` автоматически включает память в боте. Отдельного кода в `telegram_bot/` не требуется.
-8. DRF API: новый `src/api/views/memory.py` + роуты `/api/v1/memory/...`.
-9. Frontend: страница `/account/memory/`, индикатор памяти в чате, тоггл в настройках чата.
-10. **Phase 2 (RAG):** pgvector + семантический поиск по фактам, переиспользует существующую инфраструктуру эмбеддингов (`src/api/views/embeddings.py`).
+**Вердикт:** система формально работает, но **ключевая функция (автоизвлечение фактов) фактически мертва для основного канала** (веб-чат через SSE), а механизм сжатия истории **почти никогда не запускается** на моделях с большим контекстом и при этом **молча теряет старые сообщения**. Плюс два бага класса «потеря данных» в дедупликации.
 
-### Что такое «память» (без магии)
+### Светофор найденного
 
-Память — это **три механизма поверх обычного LLM API**:
+| # | Проблема | Severity | Файл:строка |
+|---|----------|----------|-------------|
+| B1 | SSE-путь не вызывает `extract_memory_facts` — факты не извлекаются при обычном веб-использовании | **критический** | `api/views/chats.py:496` |
+| B2 | Compression silent-drop: под порогом возвращаем `all_msgs[-RECENT_WINDOW:]`, теряя 1..N−20 сообщений без сжатия | **критический** | `aitext/memory.py:164–166` |
+| B3 | `content_key` коллизии → молчаливая потеря НОВЫХ фактов (`continue`); пробелы вырезаются | **высокий** | `tasks.py:611–613`, `models.py:566` |
+| B4 | `update_rolling_summary` — lost update при конкурентных сообщениях (read-modify-write не атомарен) | **высокий** | `memory.py:217–229`, `chats.py:391–397` |
+| B5 | Синхронное сжатие через DeepSeek прямо в SSE-запросе — блокирует TTFB на несколько секунд | **высокий** | `chats.py:391`, `memory.py:197–208` |
+| B6 | `generate_chat_summary` триггерится только при новом чате с **той же** нейросетью | **высокий** | `chats.py:142–149` |
+| B7 | Два несогласованных суммаризатора пишут один `ChatSummary` (`rolling_summary` vs `summary_text`), читаются в разных местах, не сводятся | **высокий** | `memory.py:101`/`143`, `tasks.py:638–689` |
+| B8 | `generate_chat_summary` режет `dialogue[:5000]` после сборки oldest-first → суммируется начало, свежак теряется | **средний** | `tasks.py:662–666,680` |
+| B9 | HTML в `content` попадает в compression/summary input при пустом `plain_text` | **средний** | `memory.py:160,182`, `tasks.py:552,664` |
+| B10 | `_CHARS_PER_TOKEN = 0.35` неточен для кириллицы (рус. токенизируется ~2–3 симв./токен) | **средний** | `memory.py:19,46–50` |
+| B11 | `build_memory_context` бьёт в БД на КАЖДОМ сообщении (2 запроса), без кэша | **средний** | `memory.py:82–99` |
+| B12 | `%-d` в `strftime` падает на Windows → теряются все past-summaries в dev/test | **низкий** | `memory.py:101` |
+| B13 | Гонка дедупа в `extract_memory_facts` (existing_keys до LLM) — но `UniqueConstraint` спасает, только лишний LLM-вызов | **низкий** | `tasks.py:557–560,612` |
+| B14 | rolling_summary растёт бесконечно, если пользователь не открывает новый чат (summary_text не триггерится) | **средний** | следствие B6+B7 |
 
-1. **Дискретные факты** (`UserMemory`) — атомарные записи о пользователе, извлечённые автоматически или добавленные вручную. Инжектируются в system-prompt каждого запроса.
-2. **In-session compression** (`ChatSummary`) — когда диалог длинный, старые сообщения сжимаются в текстовое резюме. Именно это создаёт ощущение, что ИИ «помнит» начало длинного разговора. Сейчас стоит жёсткое отсечение `[:20]` в **двух местах** — его и заменяем.
-3. **Cross-channel facts** — факты привязаны к пользователю, а не к чату/каналу, поэтому работают одинаково в web, Telegram и Studio.
-
-DeepSeek V3 через laozhang.ai — единственная модель для всех фоновых задач памяти (дёшево, быстро, достаточно умно).
-
----
-
-## 1. Архитектура
-
-### 1.1. Слои памяти
-
-| Слой | Что хранит | Привязка | Время жизни | Кто пишет |
-|------|-----------|----------|-------------|-----------|
-| **Working memory** | последние N сообщений | чат | до сжатия | существующий код |
-| **Chat summary** (`ChatSummary`) | сжатое резюме старых сообщений чата | **чат** | пока жив чат | `generate_chat_summary` |
-| **User memory** (`UserMemory`) | устойчивые факты о пользователе (имя, проекты, предпочтения, стиль) | **пользователь** | бессрочно (пока не удалит) | `extract_memory_facts` |
-| **Semantic memory** (Phase 2) | эмбеддинги фактов для RAG-поиска | пользователь | бессрочно | `extract_memory_facts` + embeddings |
-
-**Ключевой принцип общей памяти:**
-`UserMemory.user → CustomUser`. Память **не** привязана к чату или каналу. Один и тот же пользователь в веб-чате, в Telegram-боте и в Studio видит одни и те же факты о себе — потому что `TelegramChat.chat → aitext.Chat → Chat.user`, и все каналы в конечном счёте резолвятся в один `CustomUser`.
-
-`ChatSummary.chat → Chat` — резюме всегда про конкретный чат.
-
-### 1.2. Диаграмма потоков данных (ASCII)
-
-```
-                         ┌──────────────────────────────────────────────┐
-   ВХОДНЫЕ КАНАЛЫ        │                                              │
-                         │                                              │
-  ┌─────────────┐        │   ┌────────────────────────────────────┐    │
-  │  WEB CHAT   │───SSE──┼──▶│  api/views/chats.py                 │    │
-  │ (Next.js)   │        │   │  StreamMessageView  (стр. 355)      │    │
-  └─────────────┘        │   └─────────────┬──────────────────────┘    │
-                         │                 │                            │
-  ┌─────────────┐        │   ┌─────────────▼──────────────────────┐    │
-  │ TELEGRAM    │─delay─▶│   │  aitext/tasks.py                    │    │
-  │ BOT(aiogram)│        │   │  generate_ai_response (стр. 281)    │    │
-  └─────────────┘        │   └─────────────┬──────────────────────┘    │
-        │                │                 │                            │
-  ┌─────────────┐        │                 │  обе точки вызывают:       │
-  │   STUDIO    │─delay─▶│                 ▼                            │
-  └─────────────┘        │   ┌────────────────────────────────────┐    │
-                         │   │  aitext/memory.py                   │    │
-                         │   │  build_memory_context(user, chat)   │    │
-                         │   │  get_history_with_compression(chat) │    │
-                         │   └──────┬───────────────────┬─────────┘    │
-                         │          │                   │              │
-                         │   ┌──────▼──────┐     ┌──────▼──────┐       │
-                         │   │ UserMemory  │     │ ChatSummary │       │
-                         │   │ (per USER)  │     │ (per CHAT)  │       │
-                         │   └─────────────┘     └─────────────┘       │
-                         │          ▲                   ▲              │
-                         │          │                   │              │
-                         │   ┌──────┴───────────────────┴─────────┐    │
-   ФОНОВЫЕ ЗАДАЧИ        │   │  aitext/tasks_memory.py             │    │
-   (Celery+DeepSeek V3)  │   │  extract_memory_facts  (после ответа)│   │
-                         │   │  generate_chat_summary (по триггеру) │   │
-                         │   └────────────────────────────────────┘    │
-                         │                                              │
-                         └──────────────────────────────────────────────┘
-
-  Сборка контекста перед вызовом LLM (порядок messages_for_api):
-    [system: network.prompt / project.system_prompt]
-    [system: USER MEMORY block]      ← из UserMemory (build_memory_context)
-    [system: CHAT SUMMARY block]     ← из ChatSummary (get_history_with_compression)
-    [... последние N несжатых сообщений ...]
-    [user: текущее сообщение]
-```
-
-### 1.3. Жизненный цикл
-
-```
-Пользователь пишет сообщение
-        │
-        ▼
-Создаётся Message(assistant, pending) ──▶ generate_ai_response.delay(...)
-        │
-        ▼
-build_memory_context(user, chat)  +  get_history_with_compression(chat)
-  → собирается messages_for_api с блоками памяти
-        │
-        ▼
-LLM генерирует ответ (стриминг)
-        │
-        ▼
-После завершения ответа:
-  ├─ extract_memory_facts.delay(chat_id, user_msg_id, assistant_msg_id)
-  │     → DeepSeek V3 извлекает факты → дедуп → UserMemory.get_or_create
-  └─ generate_chat_summary.delay(chat_id)
-        → внутри проверяет should_summarize(); если порог достигнут — сжимает
-```
+### Что нужно сделать в первую очередь (минимальный набор для прод-стабильности)
+1. **B1** — добавить `extract_memory_facts.delay()` в конец SSE-стрима.
+2. **B2** — вернуть `all_msgs` вместо `all_msgs[-RECENT_WINDOW:]` в ветке «всё помещается».
+3. **B3** — централизовать `normalize_fact()` (сохранять пробелы) и заменить `continue` на `update_or_create` либо суффикс-дизамбигуацию.
+4. **B5 + B4** — вынести сжатие в Celery-задачу, убрать синхронный DeepSeek из запроса.
 
 ---
 
-## 2. Конкурентное сравнение
+## 1. Найденные баги и проблемы
 
-| Возможность | ChatGPT Memory | Claude Projects | **aineron.ru (этот план)** |
-|-------------|----------------|-----------------|----------------------------|
-| Автоизвлечение фактов | да | нет (ручной контекст) | **да (DeepSeek V3, фон)** |
-| Общая память между чатами | да | в рамках проекта | **да (per-user)** |
-| Память в мессенджере | приложение | приложение | **да, в Telegram-боте (уникально)** |
-| Сжатие длинных диалогов | частично | да (context window) | **да (ChatSummary)** |
-| Управление фактами пользователем | да (просмотр/удаление) | — | **да (/account/memory/, категории)** |
-| Per-chat отключение | нет | — | **да (Chat.settings)** |
-| Семантический поиск по памяти | нет (публично) | — | **да (Phase 2, pgvector)** |
-| Доплата за память | входит в подписку | входит | **0 звёзд (фон на дешёвом DeepSeek)** |
+> Severity: **критический** (ломает функцию/теряет данные в дефолтном сценарии) → **высокий** → **средний** → **низкий**.
+> Для критических/высоких приведён точный фикс-код. Для средних/низких — однострочное решение.
 
 ---
 
-## 3. Django-модели
+### B1 — SSE-путь НИКОГДА не извлекает факты `[критический]`
 
-### 3.1. `aitext/models.py` — добавить в конец файла
-
-```python
-from django.db.models import F  # добавить к импортам, если ещё нет
-
-
-class UserMemory(models.Model):
-    """
-    Долговременный факт о пользователе. Общий для всех каналов
-    (веб-чат, Telegram-бот, Studio) — привязан к пользователю, не к чату.
-    """
-    class Category(models.TextChoices):
-        PROFILE = 'profile', 'Профиль'             # имя, профессия, язык
-        PREFERENCE = 'preference', 'Предпочтения'  # стиль ответов, формат
-        PROJECT = 'project', 'Проекты'             # над чем работает
-        FACT = 'fact', 'Факты'                     # прочие устойчивые факты
-        SKILL = 'skill', 'Навыки/уровень'          # экспертиза, стек
-
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='memories',
-        verbose_name='Пользователь',
-    )
-    category = models.CharField(
-        max_length=20, choices=Category.choices,
-        default=Category.FACT, verbose_name='Категория',
-    )
-    content = models.TextField(verbose_name='Факт')
-    # Нормализованный ключ для дедупликации (lowercase, без пунктуации).
-    content_key = models.CharField(
-        max_length=255, db_index=True, blank=True,
-        verbose_name='Ключ дедупликации',
-    )
-    source_chat = models.ForeignKey(
-        'Chat', on_delete=models.SET_NULL, null=True, blank=True,
-        related_name='extracted_memories', verbose_name='Чат-источник',
-    )
-    confidence = models.FloatField(default=1.0, verbose_name='Уверенность')
-    is_active = models.BooleanField(default=True, verbose_name='Активен')
-    # Закреплён пользователем вручную — не удаляется автоочисткой.
-    is_pinned = models.BooleanField(default=False, verbose_name='Закреплён')
-    times_referenced = models.PositiveIntegerField(default=0, verbose_name='Раз использован')
-    # Phase 2: эмбеддинг для семантического поиска (заполняется позже).
-    # embedding = VectorField(dimensions=1536, null=True, blank=True)  # см. Phase 2
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        verbose_name = 'Память пользователя'
-        verbose_name_plural = 'Память пользователей'
-        ordering = ['-is_pinned', '-updated_at']
-        constraints = [
-            models.UniqueConstraint(
-                fields=['user', 'content_key'],
-                name='uniq_user_memory_key',
-            ),
-        ]
-        indexes = [
-            models.Index(fields=['user', 'is_active'], name='um_user_active_idx'),
-            models.Index(fields=['user', 'category'], name='um_user_cat_idx'),
-        ]
-
-    def __str__(self):
-        return f'{self.user_id}: {self.content[:50]}'
-
-
-class ChatSummary(models.Model):
-    """
-    Сжатое резюме старых сообщений конкретного чата.
-    Заменяет «выпавшие» из окна сообщения, экономит токены.
-    """
-    chat = models.OneToOneField(
-        'Chat', on_delete=models.CASCADE,
-        related_name='summary', verbose_name='Чат',
-    )
-    content = models.TextField(verbose_name='Резюме диалога')
-    # До какого сообщения (включительно) учтено в резюме.
-    last_message_id = models.PositiveIntegerField(
-        default=0, verbose_name='ID последнего учтённого сообщения',
-    )
-    messages_count = models.PositiveIntegerField(
-        default=0, verbose_name='Сколько сообщений сжато',
-    )
-    token_estimate = models.PositiveIntegerField(
-        default=0, verbose_name='Оценка токенов резюме',
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        verbose_name = 'Резюме чата'
-        verbose_name_plural = 'Резюме чатов'
-
-    def __str__(self):
-        return f'Резюме чата #{self.chat_id} ({self.messages_count} сообщ.)'
-```
-
-### 3.2. `users/models.py` — добавить поле в `CustomUser`
-
-(вставить рядом с прочими полями `CustomUser`, например после блока «Безопасность»)
+**Где:** `src/api/views/chats.py`, генератор `generate()` финализируется на строке **496**:
 
 ```python
-    # Persistent Memory — глобальный тоггл памяти (по умолчанию включена)
-    memory_enabled = models.BooleanField(
-        default=True,
-        verbose_name='Долговременная память включена',
-    )
+                assistant_message.status = Message.Status.COMPLETED
+                assistant_message.save()              # ← строка 496
+
+                yield _sse({ "type": "done", ... })   # ← и всё, никакого .delay()
 ```
 
-### 3.3. Per-chat тоггл — БЕЗ миграции
+**Проблема.** Триггер `extract_memory_facts.delay(chat.id)` есть **только** в Celery-пути (`tasks.py:497–501`, по `completed_count % 3 == 0`). Но обычный веб-чат идёт через **SSE-стрим** (`StreamMessageView` в `chats.py`), который генерирует ответ сам, в потоке, и Celery `generate_ai_response` для текста **не вызывает**. Значит при нормальном веб-использовании факты **не извлекаются вообще никогда**. `UserMemory` наполняется только в каналах, идущих через Celery (Telegram-бот, Studio, фолбэки) — то есть ядро фичи мертво для главного канала.
 
-Используем существующее поле `Chat.settings` (JSONField). Память для чата включена, если:
+**Фикс.** После успешного завершения стрима (после `assistant_message.save()` на 496) запустить фоновую задачу. Триггерить так же, как в Celery — каждые 3 ответа ассистента, чтобы не дёргать LLM на каждое сообщение:
 
 ```python
-user.memory_enabled and chat.settings.get('memory_enabled', True)
+                assistant_message.status = Message.Status.COMPLETED
+                assistant_message.save()
+
+                # ── Persistent Memory: извлечение фактов (фон, каждые 3 ответа) ──
+                try:
+                    from aitext.tasks import extract_memory_facts
+                    completed_count = chat.messages.filter(
+                        role='assistant', status=Message.Status.COMPLETED
+                    ).count()
+                    if completed_count % 3 == 0:
+                        extract_memory_facts.delay(chat.id)
+                except Exception:
+                    pass  # память не должна ронять стрим
+
+                yield _sse({ "type": "done", ... })
 ```
 
-Пользователь может выключить память глобально либо точечно для конкретного чата.
-
-### 3.4. Миграции
-
-**Миграция `aitext/migrations/0010_user_memory_chat_summary.py`** (после `0009_message_search_context`).
-Сгенерировать: `python manage.py makemigrations aitext`. Проверить, что номер = `0010` и зависимость = `0009_message_search_context`.
-
-**Миграция `users/migrations/00XX_customuser_memory_enabled.py`** (отдельная, в приложении `users`):
-
-```python
-class Migration(migrations.Migration):
-    dependencies = [('users', '<последняя миграция users>')]
-    operations = [
-        migrations.AddField(
-            model_name='customuser',
-            name='memory_enabled',
-            field=models.BooleanField(default=True, verbose_name='Долговременная память включена'),
-        ),
-    ]
-```
-
-Сгенерировать: `python manage.py makemigrations users`.
-
-> Итого ровно 2 новые миграции. Это намеренно: модели памяти живут в `aitext`, флаг пользователя — в `users`.
+> Примечание: `chat`, `request.user` доступны в замыкании? `chat` — да (захвачен выше). Если в замыкании виден только `chat` через closure — он есть (`chat.id` используется на 435). Если нет — захватить `chat_id = chat.id` рядом с `user_msg_id = user_message.id` (строка 449) и фильтровать по `chat_id`.
 
 ---
 
-## 4. `src/aitext/memory.py` (новый файл)
+### B2 — Compression silent-drop: теряем 1..N−20 сообщений без сжатия `[критический]`
+
+**Где:** `src/aitext/memory.py`, строки **164–166**:
 
 ```python
-"""
-Persistent Memory — сборка контекста памяти и сжатие истории.
+    if overhead + history_tokens <= token_threshold:
+        # Всё помещается — берём последние RECENT_WINDOW
+        return all_msgs[-RECENT_WINDOW:], rolling      # ← БАГ
+```
 
-Используется из двух точек интеграции:
-  - aitext/tasks.py (Celery generate_ai_response)
-  - api/views/chats.py (SSE StreamMessageView)
-"""
-import logging
+**Проблема — посчитаем математику, это не edge-case, а дефолт.**
+`token_threshold = context_window * 0.70`. Для `gpt-4o` / `claude` / `gemini`:
+- gpt-4o: `0.70 × 128_000 = 89_600` токенов бюджета.
+- claude: `0.70 × 200_000 = 140_000`.
+- gemini: `0.70 × 1_000_000 = 700_000`.
+
+Чат из 30–50 сообщений — это ~5–15k токенов. То есть `overhead + history_tokens <= token_threshold` истинно **практически для любого чата** на большой модели вплоть до сотен сообщений. В этой ветке мы возвращаем **только последние 20 сообщений** (`all_msgs[-RECENT_WINDOW:]`), а `rolling` при этом **пустой** (сжатие не запускалось). Сообщения `1 .. N−20` просто **выкидываются из контекста и нигде не сохранены**. Пользователь, написавший 25 сообщений, теряет первые 5 — хотя они спокойно влезали в окно.
+
+Двойной вред: (а) теряем то, что влезало; (б) на gpt-4o/claude/gemini ветка сжатия (строки 168+) **практически никогда не выполняется**, потому что порог не достигается.
+
+**Фикс.** Если всё помещается — отдаём **всю** историю, она по определению влезает:
+
+```python
+    if overhead + history_tokens <= token_threshold:
+        # Всё помещается в окно — отдаём ВСЮ историю, ничего не теряем.
+        return all_msgs, rolling
+```
+
+> Это устраняет потерю данных немедленно. Полноценное решение «когда история реально не влезает» остаётся в ветке ниже (строки 168+), но теперь оно срабатывает по делу, а не «никогда». См. также архитектурный фикс в Section 3 (вынос сжатия в задачу + хранение покрытого диапазона по `last_message_id`).
+
+---
+
+### B3 — `content_key` коллизии: молчаливая потеря НОВЫХ фактов `[высокий]`
+
+**Где (дублируется в двух местах):**
+- `src/aitext/models.py:566` (в `UserMemory.save()`):
+  ```python
+  self.content_key = re.sub(r'[^а-яёa-z0-9]', '', self.content.lower())[:255]
+  ```
+- `src/aitext/tasks.py:611–613` (в `extract_memory_facts`):
+  ```python
+  content_key = re.sub(r'[^а-яёa-z0-9]', '', content.lower())[:255]
+  if content_key in existing_keys:
+      continue                       # ← НОВЫЙ факт молча отбрасывается
+  ```
+
+**Проблема — это потеря данных, а не «лишний дедуп».** Регекс вырезает **в том числе пробелы**. Значит «Работает в Python» и «Работаетвpython» дают одинаковый `content_key = 'работаетвpython'`. Хуже — РАЗНЫЕ по смыслу факты схлопываются:
+- «Любит Go» → `любитgo`
+- «Любит Гоа» (отпуск) → `любитгоа` (ок, отличается) — но
+- «Имя Алексей» и «Имя: Алексей.» → `имяалексей` (ок), а вот
+- «Стек: Python, Go» и «Стек Python Go» → `стекpythongo` = одинаковые (это норм),
+- однако «3 кота» и «3 кита» различаются, а «работа в банке» / «работав банке» — нет.
+
+Реальная боль: при коллизии в `extract_memory_facts` срабатывает `continue` (строка 613) — **новый факт просто не сохраняется**, без лога, без альтернативы. А т.к. пробелы вырезаны, частота коллизий искусственно завышена.
+
+**Фикс — централизовать нормализацию и сохранять пробелы (collapse, не strip):**
+
+1. В `src/aitext/memory.py` добавить единую функцию (источник истины):
+```python
 import re
 
-from django.db.models import F
-
-from .models import Message, UserMemory, ChatSummary
-
-logger = logging.getLogger(__name__)
-
-# Сколько последних сообщений держим «как есть» (несжатыми).
-RECENT_WINDOW = 20
-# Если несжатых сообщений больше этого порога — запускаем суммаризацию.
-SUMMARY_TRIGGER = 30
-# Сколько фактов максимум вставляем в контекст.
-MAX_MEMORY_FACTS = 40
-# Грубая оценка: ~4 символа на токен (англ./рус. смешанный).
-CHARS_PER_TOKEN = 4
-
-
-def estimate_tokens(text: str) -> int:
-    """Грубая оценка количества токенов по длине строки."""
-    if not text:
-        return 0
-    return max(1, len(text) // CHARS_PER_TOKEN)
-
-
 def normalize_fact(text: str) -> str:
-    """Нормализация факта для дедупликации: lowercase, без пунктуации, схлоп пробелов."""
-    t = text.lower().strip()
-    t = re.sub(r'[^\w\s]', '', t, flags=re.UNICODE)
-    t = re.sub(r'\s+', ' ', t)
+    """Ключ дедупа: lowercase, без пунктуации, пробелы СХЛОПНУТЫ (не вырезаны)."""
+    t = (text or '').lower().strip()
+    t = re.sub(r'[^\w\s]', '', t, flags=re.UNICODE)   # убрать пунктуацию, оставить буквы/цифры/пробелы
+    t = re.sub(r'\s+', ' ', t).strip()                 # схлопнуть пробелы
     return t[:255]
-
-
-def memory_enabled_for(user, chat) -> bool:
-    """Память включена, если включена и глобально, и для этого чата."""
-    if not getattr(user, 'memory_enabled', True):
-        return False
-    try:
-        return bool(chat.settings.get('memory_enabled', True))
-    except Exception:
-        return True
-
-
-def build_memory_context(user, chat, max_facts: int = MAX_MEMORY_FACTS):
-    """
-    Возвращает system-сообщение с фактами о пользователе, либо None.
-    Формат: {"role": "system", "content": "..."}.
-    """
-    if not memory_enabled_for(user, chat):
-        return None
-
-    facts = list(
-        UserMemory.objects
-        .filter(user=user, is_active=True)
-        .order_by('-is_pinned', '-times_referenced', '-updated_at')[:max_facts]
-    )
-    if not facts:
-        return None
-
-    # Группируем по категориям для читаемости.
-    by_cat = {}
-    for f in facts:
-        by_cat.setdefault(f.get_category_display(), []).append(f.content)
-
-    lines = ["Ниже — то, что ты знаешь о пользователе из прошлых диалогов. "
-             "Используй это, чтобы отвечать персонализированно. "
-             "Не упоминай явно, что у тебя есть «память», если пользователь не спрашивает."]
-    for cat, items in by_cat.items():
-        lines.append(f"\n[{cat}]")
-        for it in items:
-            lines.append(f"- {it}")
-
-    # Отметим, что факты использованы (для приоритезации).
-    UserMemory.objects.filter(id__in=[f.id for f in facts]).update(
-        times_referenced=F('times_referenced') + 1
-    )
-
-    return {"role": "system", "content": "\n".join(lines)}
-
-
-def get_history_with_compression(chat, exclude_message_id=None):
-    """
-    Возвращает (summary_system_message_or_None, recent_messages_list).
-
-    recent_messages — последние RECENT_WINDOW завершённых сообщений (хронологически).
-    summary — system-сообщение из ChatSummary, если оно покрывает более старые сообщения.
-    """
-    qs = chat.messages.filter(status=Message.Status.COMPLETED)
-    if exclude_message_id:
-        qs = qs.exclude(id=exclude_message_id)
-
-    recent = list(qs.order_by('-created_at')[:RECENT_WINDOW])
-    recent.reverse()
-
-    summary_msg = None
-    summary = getattr(chat, 'summary', None)
-    if summary and summary.content:
-        oldest_recent_id = recent[0].id if recent else None
-        # Резюме показываем только если есть сообщения старше окна.
-        if oldest_recent_id and summary.last_message_id < oldest_recent_id:
-            summary_msg = {
-                "role": "system",
-                "content": f"Краткое содержание более ранней части диалога:\n{summary.content}",
-            }
-
-    return summary_msg, recent
-
-
-def should_summarize(chat) -> bool:
-    """Нужно ли запускать суммаризацию для чата."""
-    completed = chat.messages.filter(status=Message.Status.COMPLETED).count()
-    summary = getattr(chat, 'summary', None)
-    covered = summary.messages_count if summary else 0
-    return (completed - covered) > SUMMARY_TRIGGER
 ```
 
----
-
-## 5. Celery-задачи: `src/aitext/tasks_memory.py` (новый файл)
-
+2. В `src/aitext/models.py` `UserMemory.save()` (строки 563–567) — использовать её:
 ```python
-"""
-Фоновые задачи Persistent Memory. Все вызовы LLM — DeepSeek V3 через laozhang.ai
-(дёшево, быстро). Пользователю звёзды НЕ списываются.
-"""
-import json
-import logging
+    def save(self, *args, **kwargs):
+        if not self.content_key and self.content:
+            from aitext.memory import normalize_fact
+            self.content_key = normalize_fact(self.content)
+        super().save(*args, **kwargs)
+```
 
-from celery import shared_task
-
-from .models import Message, UserMemory, ChatSummary, Chat
-from .memory import normalize_fact, estimate_tokens, should_summarize, RECENT_WINDOW
-from .tasks import get_laozhang_client
-
-logger = logging.getLogger(__name__)
-
-MEMORY_MODEL = 'deepseek-v3'
-
-EXTRACT_SYSTEM_PROMPT = """Ты — система извлечения долговременных фактов о пользователе.
-Из диалога извлеки УСТОЙЧИВЫЕ факты, полезные в будущих беседах: имя, профессия, язык,
-проекты, предпочтения по стилю ответов, уровень экспертизы, инструменты/стек.
-НЕ извлекай: разовые вопросы, эфемерный контекст, чувствительные данные
-(пароли, номера карт, паспорта).
-Верни СТРОГО JSON-массив объектов вида:
-[{"category": "profile|preference|project|fact|skill", "content": "<краткий факт на русском>"}]
-Если устойчивых фактов нет — верни []."""
-
-
-def _parse_facts(raw: str):
-    """Безопасный парсинг JSON-массива фактов из ответа LLM."""
-    try:
-        start = raw.find('[')
-        end = raw.rfind(']')
-        if start == -1 or end == -1:
-            return []
-        return json.loads(raw[start:end + 1])
-    except Exception:
-        return []
-
-
-@shared_task(bind=True, max_retries=2)
-def extract_memory_facts(self, chat_id, user_message_id, assistant_message_id):
-    """Извлекает факты из последней пары сообщений и сохраняет в UserMemory (с дедупом)."""
-    try:
-        chat = Chat.objects.select_related('user').get(id=chat_id)
-    except Chat.DoesNotExist:
-        return
-    user = chat.user
-    if not getattr(user, 'memory_enabled', True):
-        return
-    if not chat.settings.get('memory_enabled', True):
-        return
-
-    try:
-        user_msg = Message.objects.get(id=user_message_id)
-        assistant_msg = Message.objects.get(id=assistant_message_id)
-    except Message.DoesNotExist:
-        return
-
-    dialogue = (
-        f"Пользователь: {user_msg.content}\n"
-        f"Ассистент: {assistant_msg.plain_text or assistant_msg.content}"
-    )
-
-    client = get_laozhang_client()
-    try:
-        resp = client.chat.completions.create(
-            model=MEMORY_MODEL,
-            messages=[
-                {"role": "system", "content": EXTRACT_SYSTEM_PROMPT},
-                {"role": "user", "content": dialogue[:6000]},
-            ],
-            temperature=0.1,
-            max_tokens=600,
-        )
-        raw = resp.choices[0].message.content.strip()
-    except Exception as e:
-        logger.error(f'[memory] extract LLM error chat={chat_id}: {e}')
-        raise self.retry(exc=e, countdown=30)
-
-    facts = _parse_facts(raw)
-    if not facts:
-        return
-
-    created = 0
-    for fact in facts:
-        content = (fact.get('content') or '').strip()
-        category = fact.get('category', 'fact')
-        if not content or len(content) < 3:
+3. В `src/aitext/tasks.py` `extract_memory_facts` (строки 610–631) — заменить `continue` на безопасный upsert, чтобы НОВЫЙ факт не терялся при близком ключе. Если ключ реально занят — обновляем содержимое (свежая формулировка точнее), а не выкидываем:
+```python
+        from aitext.memory import normalize_fact
+        content_key = normalize_fact(content)
+        if not content_key:
             continue
-        if category not in dict(UserMemory.Category.choices):
+
+        valid_categories = {'profile', 'preference', 'project', 'fact', 'skill'}
+        if category not in valid_categories:
             category = 'fact'
-        key = normalize_fact(content)
-        if not key:
-            continue
-        # Дедуп Phase 1: уникальность по (user, content_key) на уровне БД.
-        _, was_created = UserMemory.objects.get_or_create(
-            user=user, content_key=key,
-            defaults={'content': content, 'category': category, 'source_chat': chat},
+
+        # update_or_create вместо «continue»: не теряем факт, обновляем формулировку.
+        _, was_created = UserMemory.objects.update_or_create(
+            user=user, content_key=content_key,
+            defaults={'content': content, 'category': category,
+                      'source': 'auto', 'source_chat': chat},
         )
         if was_created:
-            created += 1
-    logger.info(f'[memory] chat={chat_id}: +{created} фактов (из {len(facts)})')
+            existing_keys.add(content_key)
+            added += 1
+```
 
+> `existing_preview` (строки 562–566) по-прежнему отдаём в промпт LLM, чтобы модель сама не плодила почти-дубли — это первая линия дедупа, `content_key` — вторая.
 
-SUMMARY_SYSTEM_PROMPT = """Ты сжимаешь диалог в краткое содержание для дальнейшего контекста.
-Сохрани: ключевые темы, решения, факты, незавершённые задачи, договорённости.
-Пиши на русском, до 250 слов, без воды. Не выдумывай."""
+---
 
+### B4 — `update_rolling_summary`: lost update при конкурентных сообщениях `[высокий]`
 
-@shared_task(bind=True, max_retries=2)
-def generate_chat_summary(self, chat_id):
-    """Сжимает старые сообщения чата в ChatSummary, если достигнут порог."""
+**Где:** `src/aitext/memory.py:217–229` + вызов в `chats.py:391–397` / `tasks.py:304–310`.
+
+**Уточнение механизма (важно — НЕ IntegrityError).** `get_or_create` сам по себе **не падает** под конкуренцией: Django оборачивает create в savepoint и при `IntegrityError` повторяет `get`. Так что строка не «теряется из-за проглоченного IntegrityError». Реальный баг — **lost update**:
+
+```
+Запрос A: get_history_with_compression → new_rolling_A   ┐
+Запрос B: get_history_with_compression → new_rolling_B   ┘  (читают одинаковое состояние)
+Запрос A: update_rolling_summary(new_rolling_A)  → save
+Запрос B: update_rolling_summary(new_rolling_B)  → save  (перетирает A)
+```
+
+Read-modify-write растянут между `get_history_with_compression` (чтение + LLM-сжатие) и `update_rolling_summary` (запись) и **не атомарен**. При двух одновременных сообщениях в один чат побеждает последний писатель; результат сжатия одного из них теряется. Плюс `except Exception` (строка 228) маскирует любые реальные ошибки записи в `warning`.
+
+**Фикс (тактический — атомарный upsert с блокировкой):**
+```python
+from django.db import transaction
+
+def update_rolling_summary(chat, new_rolling: str) -> None:
+    from aitext.models import ChatSummary
+    if not new_rolling:
+        return
     try:
-        chat = Chat.objects.get(id=chat_id)
-    except Chat.DoesNotExist:
-        return
-    if not should_summarize(chat):
-        return
-
-    completed = list(
-        chat.messages.filter(status=Message.Status.COMPLETED).order_by('created_at')
-    )
-    if len(completed) <= RECENT_WINDOW:
-        return
-
-    to_compress = completed[:-RECENT_WINDOW]  # всё, кроме окна последних
-    last_id = to_compress[-1].id
-    existing = getattr(chat, 'summary', None)
-
-    parts = []
-    if existing and existing.content:
-        parts.append(f"Предыдущее резюме:\n{existing.content}\n")
-    for m in to_compress:
-        text = m.plain_text or m.content
-        if text:
-            role = 'Пользователь' if m.role == 'user' else 'Ассистент'
-            parts.append(f"{role}: {text}")
-    dialogue = "\n".join(parts)[:20000]
-
-    client = get_laozhang_client()
-    try:
-        resp = client.chat.completions.create(
-            model=MEMORY_MODEL,
-            messages=[
-                {"role": "system", "content": SUMMARY_SYSTEM_PROMPT},
-                {"role": "user", "content": dialogue},
-            ],
-            temperature=0.2,
-            max_tokens=500,
-        )
-        summary_text = resp.choices[0].message.content.strip()
+        with transaction.atomic():
+            cs, _ = ChatSummary.objects.select_for_update().get_or_create(
+                chat=chat,
+                defaults={'summary_text': '', 'rolling_summary': new_rolling},
+            )
+            if cs.rolling_summary != new_rolling:
+                cs.rolling_summary = new_rolling
+                cs.save(update_fields=['rolling_summary', 'updated_at'])
     except Exception as e:
-        logger.error(f'[memory] summary LLM error chat={chat_id}: {e}')
-        raise self.retry(exc=e, countdown=60)
-
-    ChatSummary.objects.update_or_create(
-        chat=chat,
-        defaults={
-            'content': summary_text,
-            'last_message_id': last_id,
-            'messages_count': len(to_compress),
-            'token_estimate': estimate_tokens(summary_text),
-        },
-    )
-    logger.info(f'[memory] chat={chat_id}: резюме обновлено ({len(to_compress)} сообщ.)')
+        logger.warning(f'[memory] update_rolling_summary error for chat {chat.id}: {e}')
 ```
 
-### 5.1. Расписание / триггеры
-
-- `extract_memory_facts` — **по событию** (не cron): `.delay(...)` сразу после успешной генерации ответа в обеих точках интеграции.
-- `generate_chat_summary` — **по событию + проверка порога**: `.delay(chat_id)` после ответа; внутри проверяет `should_summarize()` и тихо выходит, если порог не достигнут.
-- (Phase 1.5, опционально) `prune_stale_memories` — ночной cron beat: удаляет `is_active=True, is_pinned=False, times_referenced=0`, старше 180 дней.
+> `select_for_update()` сериализует конкурентные записи в один и тот же `ChatSummary`. **Стратегический фикс** (предпочтительный): вынести само сжатие в Celery-задачу (см. B5 и Section 3) — тогда сжатие идёт вне горячего пути и идемпотентно по `last_message_id`, гонка исчезает в корне.
 
 ---
 
-## 6. Точки интеграции (ТОЧНЫЕ номера строк)
+### B5 — Синхронный DeepSeek-вызов в SSE-запросе блокирует TTFB `[высокий]`
 
-> **Важно:** Telegram-бот и Studio вызывают `aitext.tasks.generate_ai_response.delay(...)`
-> (подтверждено: `telegram_bot/handlers/chat.py:95`, `images.py:97`, `video_cmd.py:78`, `inline.py:107`).
-> Правка точки №1 (`tasks.py`) автоматически даёт память **во всех трёх каналах** для текстового пути.
-> Отдельного кода в `telegram_bot/` или `studio/` НЕ требуется.
+**Где:** `src/api/views/chats.py:391` вызывает `get_history_with_compression(...)` **до** старта стрима; внутри (`memory.py:197–208`) — синхронный `client.chat.completions.create(model='deepseek-v3', ...)`.
 
-### 6.1. Точка №1 — `src/aitext/tasks.py`, строка 281
+**Проблема.** Когда история перешагивает порог, сжатие выполняется **синхронно прямо в HTTP-запросе**, до того как пользователь увидит первый токен. Это +несколько секунд к Time-To-First-Token на каждом сообщении длинного чата. Хуже — ветка не гейтится: при каждом сообщении выше порога DeepSeek дёргается **заново** (пересжатие тех же сообщений). На top-1 платформе с потоком запросов это и латентность, и лишние деньги, и нагрузка на провайдера.
 
-**Было** (строки 280-282):
+**Фикс (архитектурный — единственно правильный):**
+1. Из горячего пути убрать LLM-сжатие. `get_history_with_compression` должна быть **чистым чтением**: вернуть последние `RECENT_WINDOW` сообщений + уже сохранённый `rolling_summary`/`summary_text` из `ChatSummary`. Без сетевых вызовов.
+2. Решение «пора сжать» принимать по дешёвому порогу (кол-во несжатых сообщений) и запускать **Celery-задачу** `compress_chat_history.delay(chat.id)` (или переиспользовать `generate_chat_summary`), которая считает токены, зовёт DeepSeek и пишет результат с `last_message_id` покрытия.
+3. В запросе никогда не ждём LLM — показываем то, что уже сжато.
+
+Скелет чистой версии (Section 3.2 содержит полный новый `memory.py`):
 ```python
-        # Получаем последние 20 сообщений из истории
-        history_qs = chat.messages.filter(status=Message.Status.COMPLETED).order_by('-created_at')[:20]
-        history = list(reversed(history_qs))
+def get_history_with_compression(chat, exclude_msg_id=None):
+    from aitext.models import Message, ChatSummary
+    qs = chat.messages.filter(status=Message.Status.COMPLETED)
+    if exclude_msg_id:
+        qs = qs.exclude(id=exclude_msg_id)
+    recent = list(qs.order_by('-created_at')[:RECENT_WINDOW]); recent.reverse()
+    summary = ''
+    try:
+        cs = ChatSummary.objects.get(chat=chat)
+        summary = cs.rolling_summary or cs.summary_text or ''
+    except ChatSummary.DoesNotExist:
+        pass
+    return recent, summary    # никаких сетевых вызовов
 ```
 
-**Стало:**
-```python
-        from .memory import build_memory_context, get_history_with_compression
-
-        user = chat.user
-        summary_msg, history = get_history_with_compression(chat, exclude_message_id=message.id)
-```
-
-Затем, **после** блока, где добавляются system-промты проекта/сети (после строки ~295, сразу за `network.prompt`-блоком) — вставить:
-```python
-        # ── Persistent Memory ──────────────────────────────────────────
-        mem_msg = build_memory_context(user, chat)
-        if mem_msg:
-            messages_for_api.append(mem_msg)
-        if summary_msg:
-            messages_for_api.append(summary_msg)
-        # ───────────────────────────────────────────────────────────────
-```
-
-Существующий цикл `for msg in history:` (строки 298+) остаётся без изменений — `history` теперь уже без сжатых сообщений.
-
-**После завершения генерации** (где `message.status = Message.Status.COMPLETED` и `message.save()` в конце текстового пути) добавить:
-```python
-        from .tasks_memory import extract_memory_facts, generate_chat_summary
-        if user_msg:
-            extract_memory_facts.delay(chat.id, user_msg.id, message.id)
-        generate_chat_summary.delay(chat.id)
-```
-
-### 6.2. Точка №2 — `src/api/views/chats.py`, строка 355
-
-**Было** (строки 350-357):
-```python
-        max_input_tokens = network.max_input_tokens
-        history_qs = (
-            chat.messages
-            .filter(status=Message.Status.COMPLETED)
-            .exclude(id=user_message.id)
-            .order_by('-created_at')[:20]
-        )
-        history = list(reversed(history_qs))
-```
-
-**Стало:**
-```python
-        from aitext.memory import build_memory_context, get_history_with_compression
-
-        max_input_tokens = network.max_input_tokens
-        summary_msg, history = get_history_with_compression(
-            chat, exclude_message_id=user_message.id
-        )
-```
-
-Затем, **после** блока system-промтов (после строки ~369, за `network.prompt`-блоком) — вставить:
-```python
-        # ── Persistent Memory ──────────────────────────────────────────
-        mem_msg = build_memory_context(request.user, chat)
-        if mem_msg:
-            messages_for_api.append(mem_msg)
-        if summary_msg:
-            messages_for_api.append(summary_msg)
-        # ───────────────────────────────────────────────────────────────
-```
-
-**После завершения SSE-стрима** (где `assistant_message` финализируется как COMPLETED) добавить:
-```python
-        from aitext.tasks_memory import extract_memory_facts, generate_chat_summary
-        extract_memory_facts.delay(chat.id, user_message.id, assistant_message.id)
-        generate_chat_summary.delay(chat.id)
-```
-
-> Обе точки переходят от хардкода `[:20]` к `get_history_with_compression`, где окно = `RECENT_WINDOW` (тоже 20, но теперь конфигурируемо и дополнено резюме).
+> Побочный бонус: устраняет B4 (гонку) — запись `rolling_summary` теперь только в одной фоновой задаче.
 
 ---
 
-## 7. Telegram-бот: интеграция (нулевой код)
+### B6 — `generate_chat_summary` триггерится только при новом чате с ТОЙ ЖЕ нейросетью `[высокий]`
 
-Telegram-бот **не требует отдельной реализации памяти**:
+**Где:** `src/api/views/chats.py:142–149`:
+```python
+            prev_chat = (
+                Chat.objects.filter(user=request.user, network=network)   # ← фильтр по network
+                .exclude(id=chat.id).order_by('-updated_at').first()
+            )
+            if prev_chat and prev_chat.messages.filter(...COMPLETED).count() >= 4:
+                generate_chat_summary.delay(prev_chat.id)
+```
 
-1. `telegram_bot/handlers/chat.py:95` вызывает `generate_ai_response.delay(assistant_msg.id, ...)` — ту же Celery-задачу, что и веб.
-2. `TelegramChat.chat` → `aitext.Chat` → `Chat.user` → `CustomUser`. Память (`UserMemory.user`) уже привязана к тому же `CustomUser`.
-3. Факты из веб-чата автоматически видны в боте, и наоборот — **единая память между web и Telegram из коробки**.
+**Проблема.** Суммаризация прошлого чата запускается **только** когда пользователь создаёт новый чат **с той же нейросетью**. Сценарии, в которых summary не создаётся НИКОГДА:
+- открыл новый чат с **другой** моделью (gpt-4o → claude) — старый gpt-4o-чат не суммаризируется;
+- вообще не создаёт новых чатов, сидит в одном — summary не появляется (а `rolling_summary` пухнет, см. B14);
+- первый чат пользователя — `prev_chat` нет.
 
-Опциональные улучшения бота (Phase 1.5, не обязательны для MVP):
-- Команда `/memory` — показать список фактов (тот же сервис, что и API).
-- В `/settings` бота — тоггл памяти (пишет в `user.memory_enabled`).
+Итог: `ChatSummary.summary_text` у большинства чатов остаётся пустым, и блок «Прошлая сессия» в `build_memory_context` (memory.py:91–103) почти всегда пуст. Cross-session память не работает.
 
-Studio (`src/studio/`) — аналогично: текстовая генерация через `generate_ai_response` получает память без изменений.
+**Фикс.** Двойной триггер:
+1. Убрать привязку к `network` — суммаризировать предыдущий **любой** активный чат:
+```python
+            prev_chat = (
+                Chat.objects.filter(user=request.user)
+                .exclude(id=chat.id).order_by('-updated_at').first()
+            )
+```
+2. Добавить **периодический Celery-beat** для чатов без свежего summary и для «брошенных» (последнее сообщение > 24ч назад) — см. Section 3.3. Это закрывает сценарии «не создаёт новых чатов» и «сменил модель».
 
 ---
 
-## 8. DRF API: `src/api/views/memory.py` (новый файл) + роуты
+### B7 — Два несогласованных суммаризатора пишут один `ChatSummary` `[высокий]`
 
-### 8.1. Эндпоинты
+**Где:**
+- `rolling_summary` пишет синхронный путь: `chats.py:397` / `tasks.py:310` → `update_rolling_summary` (memory.py:217).
+- `summary_text` пишет фоновая `generate_chat_summary` (tasks.py:638–689, `cs.save()` в районе 689).
+- Читают их **в разных местах и по-разному**: `build_memory_context` берёт `summary_text` прошлых чатов (memory.py:103: `s.summary_text[:500]`), а `get_history_with_compression` берёт `rolling_summary` текущего (memory.py:143–144).
 
-| Метод | Путь | Назначение |
-|-------|------|-----------|
-| `GET` | `/api/v1/memory/` | список фактов пользователя (фильтр `?category=`) |
-| `POST` | `/api/v1/memory/` | создать факт вручную |
-| `PATCH` | `/api/v1/memory/<id>/` | редактировать факт / pin / активность |
-| `DELETE` | `/api/v1/memory/<id>/` | удалить факт |
-| `DELETE` | `/api/v1/memory/clear/` | очистить всю память пользователя |
-| `GET` | `/api/v1/memory/settings/` | `{memory_enabled: bool}` (глобальный) |
-| `PATCH` | `/api/v1/memory/settings/` | `{memory_enabled: bool}` |
-| `POST` | `/api/v1/memory/search/` | **Phase 2:** семантический поиск `{query}` |
+**Проблема.** Это два независимых поля одной строки, никем не сводимых:
+- `rolling_summary` — «сжатое начало текущей сессии», обновляется в горячем пути.
+- `summary_text` — «финальное резюме», обновляется при открытии нового чата.
 
-### 8.2. Схемы запросов/ответов
+Они описывают пересекающийся контент, но никогда не согласуются. В `build_memory_context` для **прошлых** чатов читается `summary_text` — который из-за B6 почти всегда пуст. А `rolling_summary` текущего чата для cross-session не используется. Архитектурно это два полу-механизма вместо одного.
 
-**`GET /api/v1/memory/`**
-```json
-{
-  "memory_enabled": true,
-  "count": 12,
-  "items": [
-    {
-      "id": 5, "category": "profile", "category_display": "Профиль",
-      "content": "Зовут Алексей, frontend-разработчик",
-      "is_pinned": true, "is_active": true, "times_referenced": 7,
-      "source_chat": 41,
-      "created_at": "2026-06-21T10:00:00Z", "updated_at": "2026-06-21T12:00:00Z"
-    }
-  ]
-}
-```
+**Фикс (архитектурный, Section 3).** Свести к **одной** модели смысла: одно поле `content` + `last_message_id` (докуда покрыто) + `messages_count`. Одна фоновая задача его поддерживает (инкрементально дописывает по мере роста чата). Горячий путь только читает. `build_memory_context` для прошлых чатов и `get_history_with_compression` для текущего читают одно и то же поле. Это совмещает «rolling» и «final» в один непротиворечивый артефакт.
 
-**`POST /api/v1/memory/`**
-```json
-// request
-{ "category": "preference", "content": "Предпочитает краткие ответы с примерами кода" }
-// 201 → объект факта
-```
+---
 
-**`PATCH /api/v1/memory/<id>/`**
-```json
-// request (любое подмножество)
-{ "content": "...", "category": "fact", "is_pinned": true, "is_active": false }
-// 200 → обновлённый объект
-```
+### B8 — `generate_chat_summary` режет не тот конец диалога `[средний]`
 
-**`PATCH /api/v1/memory/settings/`**
-```json
-{ "memory_enabled": false }   // → { "memory_enabled": false }
-```
+**Где:** `src/aitext/tasks.py:662–666` собирает `dialogue` oldest-first по **всем** сообщениям, затем 680: `dialogue[:5000]`.
 
-**`POST /api/v1/memory/search/` (Phase 2)**
-```json
-// request
-{ "query": "какой у меня стек", "limit": 5 }
-// 200
-{ "items": [ { "id": 5, "content": "...", "score": 0.83 } ] }
-```
+**Проблема.** Сборка идёт от старых к новым (`order_by('created_at')`), потом берётся первые 5000 символов. На длинном чате это означает: суммаризируется **начало** диалога, а свежие (самые важные для контекста) сообщения **отрезаются**. Логика «сжать старое, сохранить свежее» инвертирована.
 
-### 8.3. Реализация view (Phase 1)
+**Фикс.** Суммаризировать только то, что выпадает за окно (старое), а не весь чат, и не резать хвост: сжимать `completed[:-RECENT_WINDOW]` (как в Section 3.3 `generate_chat_summary`), а лимит применять по началу осознанно (или инкрементально к уже существующему summary). Если резать — резать **старое** начало при наличии прошлого summary, а не свежие сообщения.
 
+---
+
+### B9 — HTML из `content` попадает в LLM-вход `[средний]`
+
+**Где:** `memory.py:160` (`(m.plain_text or m.content or '')`), `memory.py:182`, `tasks.py:552`, `tasks.py:664`.
+
+**Проблема.** `msg.content` — это HTML после `CodeFormatter.format_ai_response()`. `msg.plain_text` — сырой текст. У ранних/легаси-сообщений `plain_text` бывает пустым, тогда фолбэк на `content` тащит в compression/summary/extraction вход `<pre>`, `<code class="...">`, `<span>` и пр. Это раздувает токены и сбивает LLM.
+
+**Фикс.** Везде, где фолбэк на `content`, прогонять через strip HTML:
 ```python
-"""Persistent Memory API."""
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
-
-from aitext.models import UserMemory
-
-
-def _serialize(m):
-    return {
-        'id': m.id, 'category': m.category,
-        'category_display': m.get_category_display(),
-        'content': m.content, 'is_pinned': m.is_pinned,
-        'is_active': m.is_active, 'times_referenced': m.times_referenced,
-        'source_chat': m.source_chat_id,
-        'created_at': m.created_at, 'updated_at': m.updated_at,
-    }
-
-
-class MemoryListCreateView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        qs = UserMemory.objects.filter(user=request.user)
-        cat = request.query_params.get('category')
-        if cat:
-            qs = qs.filter(category=cat)
-        items = [_serialize(m) for m in qs]
-        return Response({
-            'memory_enabled': request.user.memory_enabled,
-            'count': len(items), 'items': items,
-        })
-
-    def post(self, request):
-        from aitext.memory import normalize_fact
-        content = (request.data.get('content') or '').strip()
-        if not content:
-            return Response({'error': 'content required'}, status=400)
-        category = request.data.get('category', 'fact')
-        if category not in dict(UserMemory.Category.choices):
-            category = 'fact'
-        m, _ = UserMemory.objects.update_or_create(
-            user=request.user, content_key=normalize_fact(content),
-            defaults={'content': content, 'category': category, 'is_pinned': True},
-        )
-        return Response(_serialize(m), status=status.HTTP_201_CREATED)
-
-
-class MemoryDetailView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def _get(self, request, pk):
-        return UserMemory.objects.filter(user=request.user, id=pk).first()
-
-    def patch(self, request, pk):
-        m = self._get(request, pk)
-        if not m:
-            return Response(status=404)
-        for f in ('content', 'category', 'is_pinned', 'is_active'):
-            if f in request.data:
-                setattr(m, f, request.data[f])
-        m.save()
-        return Response(_serialize(m))
-
-    def delete(self, request, pk):
-        m = self._get(request, pk)
-        if not m:
-            return Response(status=404)
-        m.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-class MemoryClearView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def delete(self, request):
-        n, _ = UserMemory.objects.filter(user=request.user).delete()
-        return Response({'deleted': n})
-
-
-class MemorySettingsView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        return Response({'memory_enabled': request.user.memory_enabled})
-
-    def patch(self, request):
-        val = bool(request.data.get('memory_enabled', request.user.memory_enabled))
-        request.user.memory_enabled = val
-        request.user.save(update_fields=['memory_enabled'])
-        return Response({'memory_enabled': val})
+import re
+def _plain(msg) -> str:
+    if msg.plain_text:
+        return msg.plain_text
+    return re.sub(r'<[^>]+>', ' ', msg.content or '')  # грубый, но достаточный strip
 ```
+Применить в `memory.py` (compression input), `tasks.py` (`extract_memory_facts`, `generate_chat_summary`).
 
-### 8.4. Роуты — добавить в `src/api/urls.py`
+---
 
+### B10 — `_CHARS_PER_TOKEN = 0.35` неточен для кириллицы `[средний]`
+
+**Где:** `memory.py:19,46–50`.
+
+**Проблема.** `0.35` означает «токенов = 0.35 × символов», т.е. ~2.86 символа на токен. Для **английского** реально ~4 симв./токен (т.е. коэффициент ~0.25). Для **русского** на токенайзерах OpenAI/DeepSeek кириллица дробится сильнее — часто ~2–3 символа на токен, иногда буква = токен. То есть `0.35` **завышает** оценку для англ. и **занижает** для рус. Это влияет на порог сжатия (B2) — оценка токенов кривая в обе стороны.
+
+**Фикс (без tiktoken, дёшево).** Раздельный коэффициент по доле кириллицы, либо консервативный единый ~3 симв./токен:
 ```python
-from api.views.memory import (
-    MemoryListCreateView, MemoryDetailView, MemoryClearView, MemorySettingsView,
-)
+def estimate_tokens(text: str) -> int:
+    if not text:
+        return 0
+    cyr = sum('а' <= c.lower() <= 'я' or c.lower() == 'ё' for c in text)
+    # кириллица ~2.5 симв/токен, латиница ~4 симв/токен
+    cyr_frac = cyr / max(1, len(text))
+    chars_per_token = 2.5 * cyr_frac + 4.0 * (1 - cyr_frac)
+    return max(1, int(len(text) / chars_per_token))
+```
+> Для top-1 платформы корректнее подключить реальный токенайзер (`tiktoken` для GPT, фолбэк-эвристика для остальных) — см. Section 3.
 
-# в urlpatterns, рядом с прочими /v1/ (clear/ и settings/ — ДО <int:pk>/):
-    path('v1/memory/', MemoryListCreateView.as_view(), name='memory_list_create'),
-    path('v1/memory/clear/', MemoryClearView.as_view(), name='memory_clear'),
-    path('v1/memory/settings/', MemorySettingsView.as_view(), name='memory_settings'),
-    path('v1/memory/<int:pk>/', MemoryDetailView.as_view(), name='memory_detail'),
+---
+
+### B11 — `build_memory_context` бьёт в БД на каждом сообщении `[средний]`
+
+**Где:** `memory.py:82–99` — два запроса (`UserMemory` + `ChatSummary` past_summaries) **на каждый** запрос пользователя.
+
+**Проблема.** При 40 фактах + 3 past-summaries это 2 запроса на каждое сообщение; контент почти не меняется между сообщениями. На потоке это лишняя нагрузка на Postgres в горячем пути.
+
+**Фикс.** Кэш в Redis по пользователю, TTL ~5 мин, инвалидация при изменении фактов (см. Section 3.1):
+```python
+from django.core.cache import cache
+def build_memory_context(user, chat):
+    if not memory_enabled_for(user, chat):
+        return ''
+    cache_key = f'memctx:{user.id}'
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+    ctx = _build_memory_context_uncached(user)   # текущая логика
+    cache.set(cache_key, ctx, 300)
+    return ctx
+```
+Инвалидация: в `extract_memory_facts` (после `update_or_create`) и в API мутациях `/memory/` — `cache.delete(f'memctx:{user.id}')`.
+
+---
+
+### B12 — `%-d` в `strftime` падает на Windows `[низкий]`
+
+**Где:** `memory.py:101`: `s.updated_at.strftime('%-d %b %Y')`.
+
+**Проблема.** `%-d` (без ведущего нуля) — **только Linux/glibc**. На Windows бросает `ValueError`. Прод на Linux/Docker, и вызов внутри `try/except` (92–105), так что в проде это деградация — но на **dev/test под Windows** исключение прерывает цикл и теряет **все** past-summaries, что искажает локальное тестирование.
+
+**Фикс (кроссплатформенно, без strftime для дня):**
+```python
+            dt = s.updated_at
+            date_str = f"{dt.day} {dt.strftime('%b %Y')}" if hasattr(dt, 'day') else ''
 ```
 
 ---
 
-## 9. Frontend (Next.js)
+### B13 — Гонка дедупа в `extract_memory_facts` `[низкий]`
 
-### 9.1. Страница `/account/memory/` — `frontend/app/account/memory/page.tsx`
+**Где:** `tasks.py:557–560` (existing_keys читается ДО LLM), `tasks.py:612`.
 
-Client component, React Query. Спецификация:
-- **Заголовок:** «Память» + toggle «Долговременная память» → `PATCH /memory/settings/`. Иконка `Brain` (Lucide).
-- **Описание:** «ИИ запоминает важные факты о вас и использует их во всех чатах и в Telegram-боте.»
-- **Фильтр по категориям:** chips (Профиль / Предпочтения / Проекты / Факты / Навыки) → `GET /memory/?category=`.
-- **Список фактов:** карточки. У каждой: текст, бейдж категории, кнопки `Pin` (`Pin`), `Edit` (`Pencil`), `Delete` (`Trash2`).
-- **Добавить факт вручную:** поле ввода + select категории + кнопка «Добавить» → `POST /memory/`.
-- **Очистить всё:** кнопка «Очистить память» с подтверждением → `DELETE /memory/clear/`.
-- **Empty state:** «Память пока пуста. Факты появятся автоматически по мере общения.»
-- Только Lucide-иконки, без эмодзи, строгий стиль (Linear/Vercel). Dark mode через CSS-переменные.
+**Проблема.** Две одновременные `extract_memory_facts` (каждые 3 сообщения, Celery concurrency 200) видят одинаковый `existing_keys` и пытаются вставить одинаковые факты. **Но** `UniqueConstraint(user, content_key)` корректно отклоняет дубль — это **штатное** поведение, не баг данных. Единственная потеря — лишний LLM-вызов. После фикса B3 (`update_or_create`) даже исключения не будет.
 
-### 9.2. API-клиент — `frontend/lib/api/memory.ts` (новый)
-
-Функции: `getMemory(category?)`, `createMemory(data)`, `updateMemory(id, data)`, `deleteMemory(id)`, `clearMemory()`, `getMemorySettings()`, `updateMemorySettings(enabled)`. Реиспользовать существующий клиент из `frontend/lib/api/`.
-
-### 9.3. Индикатор памяти в чате
-
-- В `frontend/components/chat/` (шапка чата или возле поля ввода) — индикатор: иконка `Brain` + tooltip «Память активна — ИИ помнит вас». Кликабелен → `/account/memory/`.
-- Скрыт, если `memory_enabled=false`.
-
-### 9.4. Per-chat тоггл
-
-- В меню настроек чата — переключатель «Память в этом чате». Пишет в `Chat.settings.memory_enabled` через `PATCH /chats/<id>/`. Если сериализатор чата не пропускает `settings.memory_enabled` — добавить поддержку (мелкая правка сериализатора).
-
-### 9.5. Навигация
-
-- Пункт «Память» в навигации аккаунта (`frontend/app/account/` layout/sidebar), рядом с keys/analytics/billing/referral/files. Иконка `Brain`.
+**Фикс.** Достаточно B3. Опционально — Redis-лок `memextract:{chat_id}` на время задачи, чтобы не гонять LLM дважды. Не критично.
 
 ---
 
-## 10. Phase 2 — RAG с pgvector (Advanced)
+### B14 — rolling_summary растёт бесконечно `[средний]`
 
-Включается **после** стабильной работы Phase 1. Переиспользует инфраструктуру эмбеддингов (`src/api/views/embeddings.py`, `text-embedding-3-small` через laozhang.ai).
+**Где:** следствие B6 + B7. Если пользователь не открывает новый чат, `generate_chat_summary` (создающая `summary_text`) не вызывается никогда, а `rolling_summary` накапливается через горячий путь.
 
-### 10.1. Инфраструктура
+**Фикс.** Закрывается периодическим beat-таском суммаризации (Section 3.3) + единой моделью summary (B7). После — rolling инкрементально пересжимается в фоне, не растёт неограниченно.
 
-1. **Расширение pgvector** — миграция `aitext/0011_pgvector.py`:
+---
+
+## 2. Что работает правильно (отдать должное)
+
+1. **Модель данных в целом верная.** `UserMemory.user → CustomUser` (per-user, cross-channel) и `ChatSummary.chat → OneToOne(Chat)` — правильная декомпозиция. Cross-channel память (web/Telegram/Studio через один `CustomUser`) — архитектурно корректна.
+2. **`UniqueConstraint(user, content_key)` с `condition=Q(content_key__gt='')`** — грамотно: уникальность дедупа только для непустых ключей, пустые не конфликтуют. Защищает БД от дублей даже при гонках (B13).
+3. **Двойной тоггл памяти** — глобальный `CustomUser.memory_enabled` + per-chat `Chat.settings['memory_enabled']` (без миграции). Проверяется и в `build_memory_context`, и в `extract_memory_facts`. Чисто и без оверинжиниринга.
+4. **Память бесплатна для пользователя** — фоновые задачи на дешёвом DeepSeek V3, звёзды не списываются. Сильное конкурентное преимущество.
+5. **Грейсфул-деградация в фоновых задачах** — `extract_memory_facts` / `generate_chat_summary` обёрнуты в try/except и не роняют основной поток генерации (`tasks.py:502–503`, `chats.py:150–151`). Правильный приоритет: память не должна ломать ответ.
+6. **Дедуп-промпт с `existing_preview`** (`tasks.py:562–566`) — отдаём LLM уже известные факты, чтобы она сама не плодила почти-дубли. Хорошая первая линия дедупа поверх `content_key`.
+7. **Категоризация фактов** (profile/preference/project/fact/skill) и группировка в контексте — повышает читаемость system-промпта для модели.
+8. **Сортировка `-is_pinned, -created_at`** при выборке фактов — закреплённые пользователем идут первыми. Разумный приоритет.
+9. **`exclude_msg_id`** при сборке истории — корректно исключает текущее генерируемое сообщение из контекста.
+10. **`max_tokens`/`temperature` низкие** в фоновых задачах (0.1–0.3, 400–600 токенов) — дёшево и детерминированно для извлечения/сжатия.
+
+---
+
+## 3. Архитектурные улучшения (план)
+
+Цель — превратить «работает на бумаге» в production-grade для top-1 платформы.
+
+### 3.1. Redis-кэш памяти пользователя (фикс B11)
+- Ключ `memctx:{user.id}`, TTL 300с, хранит готовый текстовый блок памяти.
+- Инвалидация при любой мутации `UserMemory` (extract-задача, API CRUD, toggle).
+- Снимает 2 запроса/сообщение в горячем пути.
+
+### 3.2. Чистый `get_history_with_compression` + асинхронное сжатие (фикс B2, B4, B5, B7)
+- Горячий путь — **только чтение** (последние N сообщений + готовый summary). Никаких LLM-вызовов в запросе.
+- Решение «сжать» — по дешёвому счётчику несжатых сообщений (`should_summarize`), запуск Celery-задачи.
+- Единая модель summary: одно поле `content` + `last_message_id` + `messages_count` (свести `rolling_summary`/`summary_text`, B7). Миграция данных: при деплое заполнить `content := rolling_summary or summary_text`.
+- Сжатие идемпотентно по `last_message_id`: задача сжимает только `(last_message_id .. конец−RECENT_WINDOW]`, инкрементально дописывая к существующему `content`. Гонки нет (одна точка записи + `select_for_update`).
+
+### 3.3. Celery-beat периодическая суммаризация (фикс B6, B8, B14)
+Новая задача в `celery.py` beat-расписании, раз в ~1–2 часа:
 ```python
-from pgvector.django import VectorExtension
-class Migration(migrations.Migration):
-    dependencies = [('aitext', '0010_user_memory_chat_summary')]
-    operations = [VectorExtension()]  # CREATE EXTENSION IF NOT EXISTS vector
+@shared_task(ignore_result=True)
+def summarize_stale_chats():
+    from aitext.models import Chat, Message
+    from django.utils import timezone
+    from datetime import timedelta
+    cutoff = timezone.now() - timedelta(hours=24)
+    # чаты с активностью, где summary отстаёт или чат «брошен»
+    stale = Chat.objects.filter(
+        messages__status=Message.Status.COMPLETED
+    ).distinct()
+    for chat in stale.iterator():
+        if should_summarize(chat) or (chat.updated_at and chat.updated_at < cutoff):
+            generate_chat_summary.delay(chat.id)
 ```
-   - Добавить `pgvector` в `src/requirements.txt`.
-   - Образ Postgres должен поддерживать pgvector: заменить `postgres:15-alpine` на `pgvector/pgvector:pg15` в `docker-compose.yml`.
+- Закрывает: смену модели (B6), «не создаёт новых чатов» (B14), брошенные чаты (>24ч).
+- `generate_chat_summary` переписать: сжимать `completed[:-RECENT_WINDOW]`, не резать свежак (B8), инкрементально от существующего summary.
 
-2. **Поле эмбеддинга** — миграция `aitext/0012_usermemory_embedding.py`:
-```python
-from pgvector.django import VectorField, HnswIndex
-migrations.AddField(
-    model_name='usermemory',
-    name='embedding',
-    field=VectorField(dimensions=1536, null=True, blank=True),
-)
-migrations.AddIndex(
-    model_name='usermemory',
-    index=HnswIndex(name='um_embedding_hnsw', fields=['embedding'],
-                    m=16, ef_construction=64, opclasses=['vector_cosine_ops']),
-)
-```
-   Раскомментировать поле `embedding` в `UserMemory` (см. 3.1).
+### 3.4. `extract_memory_facts` из SSE-пути (фикс B1)
+- Добавить триггер в `chats.py` после стрима (см. B1).
+- Унифицировать порог (каждые 3 ответа) в обоих путях — вынести в константу `EXTRACT_EVERY_N = 3` в `memory.py`.
 
-### 10.2. Заполнение эмбеддингов
+### 3.5. Умная дедупликация (улучшение B3)
+- **Phase 1:** централизованный `normalize_fact` (collapse пробелов), `update_or_create` вместо `continue`.
+- **Phase 2 (pgvector):** при вставке считать косинусную близость нового факта к существующим; если > 0.92 — это дубль, обновлять, а не плодить. Фаззи-дедуп вместо точного `content_key`.
 
-- В `extract_memory_facts` при создании нового факта дополнительно: `client.embeddings.create(model='text-embedding-3-small', input=content)` → сохранить в `UserMemory.embedding`.
-- Бэкофилл существующих — management-команда `backfill_memory_embeddings`.
+### 3.6. Relevance scoring памяти (Phase 2)
+- Сейчас в контекст идут top-40 по recency/pin. На большом объёме это шум.
+- Phase 2: эмбеддить текущее сообщение, выбирать top-K **семантически релевантных** фактов (`CosineDistance`). Резко повышает точность персонализации при сотнях фактов.
 
-### 10.3. Семантический поиск
+### 3.7. Точный подсчёт токенов (улучшение B10)
+- Подключить `tiktoken` для GPT-моделей; для остальных — эвристика с раздельным коэффициентом кириллица/латиница. Кэшировать токенайзер.
 
-- `POST /api/v1/memory/search/`: эмбеддит `query`, `UserMemory.objects.filter(user=...).order_by(CosineDistance('embedding', q))[:limit]`.
-- `build_memory_context` (RAG-режим): вместо «топ-N по recency» — top-K фактов, **семантически релевантных текущему сообщению**. Радикально повышает точность при большом объёме памяти.
+### 3.8. HTML-strip как единая утилита (фикс B9)
+- `_plain(msg)` в `memory.py`, использовать во всех LLM-входах (compression, extract, summary).
 
-### 10.4. Дедупликация Phase 2
+### 3.9. Автоочистка устаревших фактов
+- Beat-таск `prune_stale_memories` (ночью): деактивировать `is_active=True, is_pinned=False`, не использованные > 90 дней. Требует поля `last_referenced_at` (или `times_referenced` + `updated_at`) — добавить миграцией.
 
-- При вставке: если косинусная близость к существующему факту > 0.92 — дубликат, не вставлять (или обновлять `confidence`). Дополняет точечный дедуп Phase 1 (`content_key`).
-
-### 10.5. Категории UI (Phase 2)
-
-- На `/account/memory/` — группировка по категориям со сворачиванием, счётчики, поиск по фактам (`/memory/search/`).
+### 3.10. Управление памятью пользователем (новый код — отсутствует)
+- В репозитории **нет** DRF API `/api/v1/memory/` и страницы `/account/memory/` (проверено grep'ом — только `memory.py`, задачи и 2 точки интеграции). Это нужно построить: CRUD фактов, тоггл, очистка (спецификация — Section 4, коммиты 7–11 ниже). Без UI пользователь не видит и не контролирует, что о нём «помнят» — для top-1 это обязательно (приватность, доверие, паритет с ChatGPT Memory).
 
 ---
 
-## 11. Разбивка по коммитам
+## 4. Пошаговые коммиты для исправлений
 
-> Ветка: `feature/persistent-memory` от `main`. Каждый коммит атомарен, проект собирается. После каждого коммита — `git push`.
+> Ветка: `fix/persistent-memory-audit` от текущей. Каждый коммит атомарен, проект собирается. После каждого — `git push`.
 
-### Phase 1 — MVP
+### Спринт A — критические фиксы (потеря данных и мёртвая фича)
 
-| # | Коммит | Файлы | Часы |
-|---|--------|-------|------|
-| 1 | `feat(memory): models UserMemory + ChatSummary` | `aitext/models.py`, миграция `aitext/0010` | 2 |
-| 2 | `feat(memory): memory_enabled flag on CustomUser` | `users/models.py`, миграция `users/00XX` | 1 |
-| 3 | `feat(memory): memory.py — context build + history compression` | `aitext/memory.py` (новый) | 4 |
-| 4 | `feat(memory): celery tasks extract + summary` | `aitext/tasks_memory.py` (новый) | 5 |
-| 5 | `feat(memory): wire into generate_ai_response` | `aitext/tasks.py` (стр. 281 + хвост) | 3 |
-| 6 | `feat(memory): wire into SSE StreamMessageView` | `api/views/chats.py` (стр. 355 + хвост) | 3 |
-| 7 | `feat(memory): DRF API endpoints` | `api/views/memory.py` (новый), `api/urls.py` | 4 |
-| 8 | `feat(memory): admin for UserMemory + ChatSummary` | `aitext/admin.py` | 1 |
-| 9 | `feat(memory): frontend /account/memory page` | `frontend/app/account/memory/page.tsx`, `frontend/lib/api/memory.ts` | 6 |
-| 10 | `feat(memory): chat memory indicator + nav link` | `frontend/components/chat/*`, account nav | 3 |
-| 11 | `feat(memory): per-chat toggle (Chat.settings)` | chat serializer, chat settings UI | 2 |
-| 12 | `test(memory): unit tests for memory.py + dedup` | `aitext/tests/test_memory.py` | 4 |
-| 13 | `docs(memory): update CLAUDE.md` | `CLAUDE.md` | 1 |
+| # | Коммит | Файлы | Severity закрывает |
+|---|--------|-------|--------------------|
+| A1 | `fix(memory): trigger extract_memory_facts from SSE stream` | `api/views/chats.py` (после :496) | B1 крит |
+| A2 | `fix(memory): stop dropping in-window messages on under-threshold` | `aitext/memory.py:164–166` | B2 крит |
+| A3 | `fix(memory): centralize normalize_fact, keep spaces, upsert facts` | `aitext/memory.py`, `aitext/models.py:566`, `aitext/tasks.py:611` | B3 высокий |
+| A4 | `test(memory): regression tests for B1/B2/B3` | `aitext/test_memory.py` | — |
 
-**Итого Phase 1: ~39 часов.**
+### Спринт B — устранение гонок и латентности (архитектура горячего пути)
 
-### Phase 1.5 — опционально
+| # | Коммит | Файлы |
+|---|--------|-------|
+| B1c | `refactor(memory): make get_history_with_compression read-only (no sync LLM)` | `aitext/memory.py`, `chats.py:391`, `tasks.py:304` |
+| B2c | `feat(memory): async compress_chat_history celery task` | `aitext/tasks.py` |
+| B3c | `fix(memory): select_for_update in summary upsert` | `aitext/memory.py:217` |
+| B4c | `refactor(memory): unify rolling_summary+summary_text into single content+last_message_id` | `aitext/models.py` + миграция `aitext/00XX` + data-migration |
 
-| # | Коммит | Файлы | Часы |
-|---|--------|-------|------|
-| 14 | `feat(memory): /memory command in telegram bot` | `telegram_bot/handlers/` | 3 |
-| 15 | `feat(memory): prune_stale_memories beat task` | `tasks_memory.py`, celery beat | 2 |
+### Спринт C — покрытие суммаризации и качество
 
-### Phase 2 — RAG
+| # | Коммит | Файлы |
+|---|--------|-------|
+| C1 | `fix(memory): summarize prev chat of ANY network + beat task summarize_stale_chats` | `chats.py:142`, `aitext/tasks.py`, `config/celery.py` |
+| C2 | `fix(memory): generate_chat_summary compresses old tail, not recent` | `aitext/tasks.py:662` |
+| C3 | `fix(memory): strip HTML from content fallback in LLM inputs` | `aitext/memory.py`, `aitext/tasks.py` |
+| C4 | `fix(memory): cross-platform date format (drop %-d)` | `aitext/memory.py:101` |
+| C5 | `perf(memory): redis cache for build_memory_context + invalidation` | `aitext/memory.py`, `aitext/tasks.py` |
+| C6 | `fix(memory): cyrillic-aware token estimation` | `aitext/memory.py:46` |
 
-| # | Коммит | Файлы | Часы |
-|---|--------|-------|------|
-| 16 | `chore(memory): add pgvector (req + docker + extension migration)` | `requirements.txt`, `docker-compose.yml`, `aitext/0011` | 3 |
-| 17 | `feat(memory): embedding field + HNSW index` | `aitext/models.py`, `aitext/0012` | 2 |
-| 18 | `feat(memory): embed facts on extraction + backfill cmd` | `tasks_memory.py`, management command | 4 |
-| 19 | `feat(memory): semantic search endpoint + RAG context` | `api/views/memory.py`, `memory.py`, `api/urls.py` | 5 |
-| 20 | `feat(memory): semantic dedup (cosine > 0.92)` | `tasks_memory.py` | 2 |
-| 21 | `feat(memory): categories UI + fact search` | `frontend/app/account/memory/` | 4 |
+### Спринт D — управление памятью (новый функционал)
 
-**Итого Phase 2: ~20 часов.**
-
----
-
-## 12. Анализ стоимости
-
-### 12.1. Накладные расходы на токены (на сообщение, входной контекст)
-
-| Компонент | Доп. входные токены (оценка) |
-|-----------|------------------------------|
-| Блок UserMemory (до 40 фактов × ~15 ток. + заголовок) | ~600–650 |
-| Блок ChatSummary (≤ 250 слов) | ~350–400 |
-| **Итого добавочный вход** | **~1000 входных токенов / сообщение** |
-
-При этом **ChatSummary экономит** входные токены на длинных диалогах: вместо 30+ старых сообщений (легко 5000–15000 токенов) отправляется одно резюме (~400 токенов). На длинных чатах память **снижает** суммарный расход.
-
-### 12.2. Фоновые задачи (DeepSeek V3, laozhang.ai)
-
-- `extract_memory_facts`: вход ~1.5k токенов, выход ~0.3k. Один вызов на сообщение пользователя.
-- `generate_chat_summary`: вход до ~20k токенов, выход ~0.5k. Запускается **редко** — только при превышении `SUMMARY_TRIGGER` (≈ раз в 30 сообщений).
-
-### 12.3. Денежная оценка
-
-> **Цены laozhang.ai/DeepSeek V3 в репозитории не зафиксированы** — `settings.py` содержит только `LAOZHANG_API_KEY` и `LAOZHANG_API_URL`, без тарифов. Ниже — **формула**; подставить реальные ставки из биллинг-кабинета laozhang.ai.
->
-> `P_in` = цена за 1M входных токенов, `P_out` = за 1M выходных (для DeepSeek V3 — обычно очень низкая).
-
-```
-Стоимость памяти на 1 сообщение ≈
-    (1500/1e6)*P_in + (300/1e6)*P_out
-    + (1/30)*((20000/1e6)*P_in + (500/1e6)*P_out)
-```
-
-При типичных ставках DeepSeek V3 это **доли копейки на сообщение** — пренебрежимо мало относительно стоимости ответа основной модели.
-
-### 12.4. Влияние на баланс звёзд пользователя
-
-**Нулевое.** Принципиальное решение: **за память звёзды НЕ списываются**.
-- Фоновые задачи не вызывают `user.spend_pages()`.
-- Добавочные входные токены основного запроса не увеличивают `cost_per_message` — стоимость сообщения остаётся фиксированной (`network.cost_per_message`). Расход токенов — операционная стоимость платформы, не пользователя.
-- Конкурентное преимущество: память «бесплатна» для пользователя (как в ChatGPT/Claude по подписке), но у нас работает ещё и в Telegram.
+| # | Коммит | Файлы |
+|---|--------|-------|
+| D1 | `feat(memory): DRF API /api/v1/memory/ CRUD + settings + clear` | `api/views/memory.py` (новый), `api/urls.py` |
+| D2 | `feat(memory): admin for UserMemory + ChatSummary` | `aitext/admin.py` |
+| D3 | `feat(memory): /account/memory page + api client` | `frontend/app/account/memory/page.tsx`, `frontend/lib/api/memory.ts` |
+| D4 | `feat(memory): chat memory indicator + per-chat toggle + nav` | `frontend/components/chat/*`, account nav, chat serializer |
+| D5 | `feat(memory): prune_stale_memories beat task (90d, last_referenced)` | `aitext/models.py` + миграция, `aitext/tasks.py`, `config/celery.py` |
 
 ---
 
-## 13. Чеклист готовности (Definition of Done, Phase 1)
+## 5. Улучшения Phase 2 (RAG / pgvector)
 
-- [ ] `makemigrations` создаёт ровно 2 миграции (`aitext/0010`, `users/00XX`), `migrate` проходит.
-- [ ] Факты извлекаются после ответа (лог `[memory] chat=...: +N фактов`).
-- [ ] Один и тот же факт не дублируется (uniqueness по `content_key`).
-- [ ] Память видна в веб-чате И в Telegram-боте для одного пользователя.
-- [ ] Длинный чат (>30 сообщений) получает ChatSummary, старые сообщения не шлются целиком.
-- [ ] `/account/memory/` показывает, добавляет, редактирует, пинит, удаляет факты.
-- [ ] Глобальный и per-chat тогглы отключают память.
-- [ ] За память не списываются звёзды (проверить `pages_count` до/после).
-- [ ] Нет эмодзи в UI, только Lucide-иконки (`scripts/check_no_emoji.py`).
-- [ ] Тесты `aitext/tests/test_memory.py` зелёные.
+Включается **после** стабилизации Phase 1 (Спринты A–D зелёные).
+
+### 5.1. Инфраструктура
+- `pgvector` в `src/requirements.txt`; образ Postgres → `pgvector/pgvector:pg15` в `docker-compose.yml`.
+- Миграция `VectorExtension()` (CREATE EXTENSION vector).
+- Поле `UserMemory.embedding = VectorField(dimensions=1536, null=True)` + `HnswIndex` (cosine).
+
+### 5.2. Заполнение эмбеддингов
+- В `extract_memory_facts` при создании факта — `client.embeddings.create(model='text-embedding-3-small', input=content)` → `embedding`.
+- Management-команда `backfill_memory_embeddings` для существующих.
+
+### 5.3. Семантический поиск + relevance scoring (фикс шума при большом объёме)
+- `POST /api/v1/memory/search/` — эмбеддит query, `order_by(CosineDistance('embedding', q))[:limit]`.
+- `build_memory_context` RAG-режим: вместо top-N по recency — top-K по релевантности **текущему сообщению**. Это и есть Section 3.6.
+
+### 5.4. Фаззи-дедуп (улучшение B3)
+- При вставке: косинусная близость к существующим > 0.92 → дубль, обновлять `content`/`confidence`, не плодить. Дополняет точечный `content_key`.
+
+### 5.5. Приватность и контроль (паритет с ChatGPT Memory)
+- Экспорт памяти пользователем (GDPR-like), полная очистка одним действием.
+- Аудит: какие факты использованы в каком ответе (для прозрачности) — поверх `times_referenced`/`last_referenced_at`.
 
 ---
 
-## 14. Решения, зафиксированные в этом плане
+## Приложение: карта файлов системы (текущее состояние)
 
-1. `UserMemory` → FK на **пользователя** (общая память). `ChatSummary` → OneToOne на **чат**.
-2. Глобальный тоггл — поле `memory_enabled` на `CustomUser` (миграция `users`). Per-chat — `Chat.settings['memory_enabled']` (без миграции).
-3. Дедуп Phase 1 — нормализованный `content_key` + `UniqueConstraint(user, content_key)`. Phase 2 — косинусная близость > 0.92.
-4. Фоновые LLM-вызовы — `deepseek-v3` через `get_laozhang_client()`.
-5. Триггеры событийные (`.delay` после ответа), порог суммаризации проверяется внутри задачи.
-6. Telegram/Studio — нулевой код, наследуют через `generate_ai_response`.
-7. `RECENT_WINDOW = 20`, `SUMMARY_TRIGGER = 30`, `MAX_MEMORY_FACTS = 40`.
-8. За память звёзды не списываются.
-9. RAG (pgvector) — отдельная Phase 2, образ Postgres → `pgvector/pgvector:pg15`.
+| Компонент | Файл:строки | Состояние |
+|-----------|-------------|-----------|
+| Ядро памяти | `src/aitext/memory.py` | реализовано, содержит B2/B4/B5/B9/B10/B11/B12 |
+| Модели | `src/aitext/models.py:509–592` | реализовано, B3 (save:566) |
+| extract_memory_facts | `src/aitext/tasks.py:521–634` | реализовано, B3/B13 |
+| generate_chat_summary | `src/aitext/tasks.py:637–689` | реализовано, B8 |
+| Триггер extract (Celery) | `src/aitext/tasks.py:495–503` | есть |
+| Интеграция Celery-путь | `src/aitext/tasks.py:280–311` | есть |
+| Интеграция SSE-путь | `src/api/views/chats.py:366–404` | есть, **B1: нет триггера extract** |
+| Триггер summary (новый чат) | `src/api/views/chats.py:139–151` | есть, B6 (фильтр network) |
+| DRF API `/memory/` | — | **не существует** (построить, Спринт D) |
+| Frontend `/account/memory/` | — | **не существует** (построить, Спринт D) |
+| Тесты | `src/aitext/test_memory.py` | существует, дополнить регрессиями |

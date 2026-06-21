@@ -136,11 +136,11 @@ class ChatListCreateView(ListCreateAPIView):
 
         generate_ai_response.delay(assistant_message.id, web_search=web_search)
 
-        # Суммаризация предыдущего чата с той же нейросетью (фон)
+        # Суммаризация последнего чата пользователя (любая нейросеть, фон)
         try:
             from aitext.tasks import generate_chat_summary
             prev_chat = (
-                Chat.objects.filter(user=request.user, network=network)
+                Chat.objects.filter(user=request.user)
                 .exclude(id=chat.id)
                 .order_by('-updated_at')
                 .first()
@@ -494,6 +494,17 @@ class StreamMessageView(APIView):
                 assistant_message.plain_text = full_text
                 assistant_message.status = Message.Status.COMPLETED
                 assistant_message.save()
+
+                # ── Persistent Memory: извлечение фактов (фон, каждые 3 ответа) ──
+                try:
+                    from aitext.tasks import extract_memory_facts
+                    completed_count = chat.messages.filter(
+                        role='assistant', status=Message.Status.COMPLETED
+                    ).count()
+                    if completed_count % 3 == 0:
+                        extract_memory_facts.delay(chat.id)
+                except Exception:
+                    pass  # память не должна ронять стрим
 
                 yield _sse({
                     "type": "done",

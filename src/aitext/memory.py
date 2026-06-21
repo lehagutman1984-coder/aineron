@@ -7,16 +7,19 @@ estimate_tokens()              — быстрая оценка токенов б
 """
 from __future__ import annotations
 
+import re
 import logging
 from typing import TYPE_CHECKING
+
+_HTML_RE = re.compile(r'<[^>]+')
 
 if TYPE_CHECKING:
     from aitext.models import Chat
 
 logger = logging.getLogger(__name__)
 
-# Оценка: ~0.35 символа на токен (подходит для рус + eng смешанного текста)
-_CHARS_PER_TOKEN = 0.35
+# Оценка: ~0.40 символа на токен (кириллица ≈2–3 симв./токен, лат. ≈4–5; берём консервативно)
+_CHARS_PER_TOKEN = 0.40
 
 # Контекстные окна популярных моделей (токены)
 _CONTEXT_WINDOWS: dict[str, int] = {
@@ -98,7 +101,7 @@ def build_memory_context(user, chat: 'Chat') -> str:
             .order_by('-updated_at')[:3]
         )
         for s in reversed(past_summaries):
-            date_str = s.updated_at.strftime('%-d %b %Y') if hasattr(s.updated_at, 'strftime') else ''
+            date_str = f"{s.updated_at.day} {s.updated_at.strftime('%b %Y')}" if hasattr(s.updated_at, 'strftime') else ''
             label = f'[Прошлая сессия, {date_str}]' if date_str else '[Прошлая сессия]'
             parts.append(f'{label}: {s.summary_text[:500]}')
     except Exception as e:
@@ -157,13 +160,13 @@ def get_history_with_compression(
         + 800  # запас на форматирование + ответ
     )
     history_tokens = sum(
-        estimate_tokens((m.plain_text or m.content or '')[:4000])
+        estimate_tokens(_HTML_RE.sub('', m.plain_text or m.content or '')[:4000])
         for m in all_msgs
     )
 
     if overhead + history_tokens <= token_threshold:
-        # Всё помещается — берём последние RECENT_WINDOW
-        return all_msgs[-RECENT_WINDOW:], rolling
+        # Всё помещается в окно — отдаём ВСЮ историю, ничего не теряем.
+        return all_msgs, rolling
 
     # Нужна компрессия: оставляем RECENT_WINDOW, сжимаем остальное
     recent_msgs = all_msgs[-RECENT_WINDOW:]
@@ -179,7 +182,7 @@ def get_history_with_compression(
     compress_parts.append('[Диалог для сжатия]:')
     for msg in to_compress:
         role_label = 'Пользователь' if msg.role == 'user' else 'Ассистент'
-        text = (msg.plain_text or msg.content or '')[:2000]
+        text = _HTML_RE.sub('', msg.plain_text or msg.content or '')[:2000]
         compress_parts.append(f'{role_label}: {text}')
     compress_input = '\n'.join(compress_parts)
 

@@ -1,5 +1,6 @@
 import uuid
 import os
+import re
 import base64
 import logging
 import datetime
@@ -16,6 +17,14 @@ from users.models import UserSpending
 from .code_formatter import CodeFormatter
 
 logger = logging.getLogger(__name__)
+
+_HTML_TAG_RE = re.compile(r'<[^>]+>')
+
+def _strip_html(text: str) -> str:
+    """Удаляет HTML-теги из текста (для передачи в LLM без мусора)."""
+    if not text:
+        return ''
+    return _HTML_TAG_RE.sub('', text).strip()
 
 _client = None
 
@@ -549,7 +558,7 @@ def extract_memory_facts(self, chat_id: int):
 
     dialogue = '\n'.join(
         f"{'Пользователь' if m.role == 'user' else 'Ассистент'}: "
-        f"{(m.plain_text or m.content or '')[:1000]}"
+        f"{_strip_html(m.plain_text or m.content or '')[:1000]}"
         for m in msgs
     )
 
@@ -659,10 +668,12 @@ def generate_chat_summary(self, chat_id: int):
         return  # слишком короткий чат — не стоит
 
     msg_count = len(msgs)
+    # Берём ПОСЛЕДНИЕ сообщения (если много) — свежий контекст важнее начала
+    msgs_for_summary = msgs[-40:] if len(msgs) > 40 else msgs
     dialogue = '\n'.join(
         f"{'Пользователь' if m.role == 'user' else 'Ассистент'}: "
-        f"{(m.plain_text or m.content or '')[:1500]}"
-        for m in msgs
+        f"{_strip_html(m.plain_text or m.content or '')[:1500]}"
+        for m in msgs_for_summary
     )
 
     summary_prompt = (
@@ -677,7 +688,7 @@ def generate_chat_summary(self, chat_id: int):
             model='deepseek-v3',
             messages=[
                 {'role': 'system', 'content': summary_prompt},
-                {'role': 'user', 'content': dialogue[:5000]},
+                {'role': 'user', 'content': dialogue[-5000:]},  # последние 5000 символов
             ],
             max_tokens=400,
             temperature=0.3,
