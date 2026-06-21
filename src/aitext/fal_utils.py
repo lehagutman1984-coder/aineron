@@ -757,30 +757,48 @@ def generate_video_apimart(network, user_msg, message, user_settings=None):
     if body.get('audio'):
         body['mode'] = 'pro'
 
-    logger.info(f"APIMart Video POST model={model_id} params={body}")
-    resp = requests.post(
-        f"{base_url}/videos/generations",
-        headers=auth_headers,
-        json=body,
-        timeout=120,
-    )
-    resp.raise_for_status()
-    data = resp.json()
-    logger.info(f"APIMart creation response: {str(data)[:400]}")
-
-    # data.data — список [{status, task_id}]
+    # Если задача была перезапущена (celery restart), берём сохранённый task_id
+    import json as _json
     task_id = None
-    items = data.get('data') or []
-    if isinstance(items, list):
-        for item in items:
-            task_id = item.get('task_id')
-            if task_id:
-                break
-    elif isinstance(items, dict):
-        task_id = items.get('task_id')
+    try:
+        saved = _json.loads(message.content or '{}')
+        task_id = saved.get('_apimart_task_id')
+        if task_id:
+            logger.info(f"APIMart resuming existing task_id={task_id} (task restarted)")
+    except Exception:
+        task_id = None
 
     if not task_id:
-        raise Exception(f"Нет task_id в ответе APIMart: {str(data)[:200]}")
+        logger.info(f"APIMart Video POST model={model_id} params={body}")
+        resp = requests.post(
+            f"{base_url}/videos/generations",
+            headers=auth_headers,
+            json=body,
+            timeout=120,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        logger.info(f"APIMart creation response: {str(data)[:400]}")
+
+        # data.data — список [{status, task_id}]
+        items = data.get('data') or []
+        if isinstance(items, list):
+            for item in items:
+                task_id = item.get('task_id')
+                if task_id:
+                    break
+        elif isinstance(items, dict):
+            task_id = items.get('task_id')
+
+        if not task_id:
+            raise Exception(f"Нет task_id в ответе APIMart: {str(data)[:200]}")
+
+        # Сохраняем task_id в message до начала polling — при рестарте воркера не создаём новое видео
+        try:
+            message.content = _json.dumps({'_apimart_task_id': task_id})
+            message.save(update_fields=['content'])
+        except Exception as e:
+            logger.warning(f"Не удалось сохранить apimart task_id: {e}")
 
     logger.info(f"APIMart task_id={task_id}, polling...")
     video_urls = []
