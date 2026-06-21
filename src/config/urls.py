@@ -58,5 +58,10 @@ else:
         }),
     ]
 
+# ========== TELEGRAM BOT WEBHOOK ==========
+if settings.TELEGRAM_BOT_ENABLED:
+    from telegram_bot import views as tg_views
+    urlpatterns += [path('telegram/webhook/', tg_views.telegram_webhook, name='telegram_webhook')]
+
 # ========== ОБРАБОТЧИК 404 ==========
 handler404 = 'landing.views.custom_404_view'

@@ -84,3 +84,4 @@ tiktoken
 docker
 beautifulsoup4
 playwright
+aiogram>=3.17,<4.0
