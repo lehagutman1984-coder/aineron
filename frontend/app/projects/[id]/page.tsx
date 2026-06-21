@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import {
@@ -18,7 +18,15 @@ import {
   Zap,
   Globe,
   Palette,
+  FileText,
+  Eye,
+  Pencil,
+  Info,
+  Check,
+  ChevronDown,
 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { listProjects, listChats, deleteChat, updateProject } from "@/lib/api/client";
 import type { ChatListItem, Project } from "@/lib/api/types";
 
@@ -26,7 +34,39 @@ const ICON_MAP: Record<string, React.ElementType> = {
   Folder, Code2, BookOpen, Briefcase, Zap, Globe, Palette, MessageSquare,
 };
 const ICONS = Object.keys(ICON_MAP);
-const COLORS = ["#0a7cff", "#22a85a", "#e67e22", "#9b59b6", "#e74c3c", "#1dd6c1", "#0d0d0d", "#6366f1"];
+const COLORS = [
+  "#0a7cff", "#22a85a", "#e67e22", "#9b59b6",
+  "#e74c3c", "#1dd6c1", "#0d0d0d", "#6366f1",
+];
+
+const INSTRUCTION_TEMPLATES = [
+  {
+    label: "Программист",
+    text: "Ты — опытный программист. Отвечай конкретно и кратко, приводи примеры кода. Предпочтительный язык — Python, если не указано иное.",
+  },
+  {
+    label: "Переводчик",
+    text: "Ты — профессиональный переводчик. Переводи точно и естественно, сохраняй стиль оригинала. При необходимости давай варианты перевода.",
+  },
+  {
+    label: "Аналитик",
+    text: "Ты — аналитик данных. Структурируй ответы, используй списки и таблицы. Опирайся на факты, избегай предположений без оговорок.",
+  },
+  {
+    label: "Редактор",
+    text: "Ты — опытный редактор текстов. Улучшай ясность, стиль и грамматику. Объясняй каждое изменение кратко.",
+  },
+  {
+    label: "Исследователь",
+    text: "Ты — исследователь. Изучай вопросы глубоко, приводи источники и разные точки зрения. Разграничивай установленные факты и гипотезы.",
+  },
+  {
+    label: "Ассистент",
+    text: "Ты — вежливый и точный ассистент. Отвечай на русском языке. Уточняй задачу, если она неоднозначна. Структурируй ответы для лёгкого чтения.",
+  },
+];
+
+const CHAR_SOFT_LIMIT = 4000;
 
 function ProjectIcon({ name, size = 16 }: { name: string; size?: number }) {
   const Icon = ICON_MAP[name] ?? Folder;
@@ -45,6 +85,7 @@ function timeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
 }
 
+/* ── Модальное окно редактирования основных настроек проекта ── */
 function EditProjectModal({
   project,
   onClose,
@@ -55,7 +96,6 @@ function EditProjectModal({
   onSaved: (p: Project) => void;
 }) {
   const [name, setName] = useState(project.name);
-  const [systemPrompt, setSystemPrompt] = useState(project.system_prompt ?? "");
   const [color, setColor] = useState(project.color ?? COLORS[0]);
   const [icon, setIcon] = useState(project.icon ?? "Folder");
   const [loading, setLoading] = useState(false);
@@ -67,12 +107,7 @@ function EditProjectModal({
     setLoading(true);
     setError(null);
     try {
-      const updated = await updateProject(project.id, {
-        name: name.trim(),
-        system_prompt: systemPrompt.trim(),
-        color,
-        icon,
-      });
+      const updated = await updateProject(project.id, { name: name.trim(), color, icon });
       onSaved(updated);
     } catch {
       setError("Не удалось сохранить изменения");
@@ -84,13 +119,13 @@ function EditProjectModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
       <div
-        className="w-full max-w-[440px] rounded-[18px] border border-[rgba(13,13,13,0.10)] bg-white p-6 shadow-2xl"
+        className="w-full max-w-[400px] rounded-[18px] border border-[rgba(13,13,13,0.10)] bg-white p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-[16px] font-semibold text-[#0d0d0d]">Настройки проекта</h2>
-          <button onClick={onClose} className="rounded-[7px] p-1 text-[rgba(13,13,13,0.4)] hover:bg-[rgba(13,13,13,0.06)] hover:text-[#0d0d0d] transition-colors">
-            <X size={16} />
+          <h2 className="text-[15px] font-semibold text-[#0d0d0d]">Настройки проекта</h2>
+          <button onClick={onClose} className="rounded-[7px] p-1 text-[rgba(13,13,13,0.4)] hover:bg-[rgba(13,13,13,0.06)] transition-colors">
+            <X size={15} />
           </button>
         </div>
 
@@ -136,22 +171,6 @@ function EditProjectModal({
             </div>
           </div>
 
-          <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-[rgba(13,13,13,0.55)]">
-              Системный промт <span className="text-[rgba(13,13,13,0.35)]">(необязательно)</span>
-            </label>
-            <textarea
-              value={systemPrompt}
-              onChange={(e) => setSystemPrompt(e.target.value)}
-              placeholder="Ты — помощник-программист, отвечай только на русском..."
-              rows={3}
-              className="w-full resize-none rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] text-[#0d0d0d] outline-none focus:border-[#0a7cff] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all"
-            />
-            <p className="mt-1 text-[11px] text-[rgba(13,13,13,0.38)]">
-              Применяется ко всем чатам в проекте автоматически
-            </p>
-          </div>
-
           {error && (
             <div className="rounded-[8px] bg-[rgba(231,76,60,0.08)] px-3 py-2 text-[13px] text-[#e74c3c]">{error}</div>
           )}
@@ -172,17 +191,10 @@ function EditProjectModal({
   );
 }
 
-export default function ProjectDetailPage({ params }: { params: { id: string } }) {
-  const projectId = parseInt(params.id, 10);
+/* ── Вкладка "Чаты" ── */
+function ChatsTab({ projectId, project }: { projectId: number; project: Project | undefined }) {
   const qc = useQueryClient();
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [showEdit, setShowEdit] = useState(false);
-
-  const { data: projects = [] } = useQuery({
-    queryKey: ["projects"],
-    queryFn: listProjects,
-    staleTime: 60_000,
-  });
 
   const { data: chats = [], isLoading } = useQuery({
     queryKey: ["chats", "project", projectId],
@@ -201,6 +213,290 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
     },
   });
 
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-2">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-16 animate-pulse rounded-[12px] bg-[rgba(13,13,13,0.05)]" />
+        ))}
+      </div>
+    );
+  }
+
+  if (chats.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center rounded-[16px] border border-dashed border-[rgba(13,13,13,0.15)] py-14 text-center">
+        <MessageSquare size={28} className="mb-3 text-[rgba(13,13,13,0.22)]" />
+        <p className="mb-1 text-[14px] font-semibold text-[#0d0d0d]">Нет чатов</p>
+        <p className="mb-4 text-[13px] text-[rgba(13,13,13,0.45)]">
+          Создайте первый чат в этом проекте
+        </p>
+        <Link
+          href={`/models/?project_id=${projectId}`}
+          className="inline-flex items-center gap-1.5 rounded-[9px] bg-[#0a7cff] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#0066cc] transition-colors"
+        >
+          <Plus size={14} />
+          Новый чат
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      {chats.map((chat) => {
+        const isDeleting = deletingId === chat.id;
+        return (
+          <div
+            key={chat.id}
+            className="group relative rounded-[12px] border border-[rgba(13,13,13,0.09)] bg-white p-4 transition-shadow hover:shadow-sm"
+          >
+            {isDeleting ? (
+              <div className="flex items-center gap-2">
+                <p className="flex-1 text-[13px] text-[rgba(13,13,13,0.65)]">Удалить этот чат?</p>
+                <button
+                  onClick={() => deleteMutation.mutate(chat.id)}
+                  disabled={deleteMutation.isPending}
+                  className="rounded-[6px] bg-[#e74c3c] px-2.5 py-1 text-[12px] font-medium text-white hover:bg-[#c0392b] disabled:opacity-50 transition-colors"
+                >
+                  Удалить
+                </button>
+                <button
+                  onClick={() => setDeletingId(null)}
+                  className="rounded-[6px] px-2.5 py-1 text-[12px] text-[rgba(13,13,13,0.50)] hover:bg-[rgba(13,13,13,0.06)] transition-colors"
+                >
+                  Отмена
+                </button>
+              </div>
+            ) : (
+              <Link href={`/chat/${chat.id}/`} className="flex items-start gap-3">
+                <div className="mt-0.5 shrink-0">
+                  {chat.network.avatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={chat.network.avatar} alt="" width={32} height={32} className="rounded-[7px] object-cover" />
+                  ) : (
+                    <div className="flex h-8 w-8 items-center justify-center rounded-[7px] bg-[rgba(10,124,255,0.10)]">
+                      {chat.network.handle_photo || chat.network.handle_video ? (
+                        <ImageIcon size={14} className="text-[#0a7cff]" />
+                      ) : (
+                        <Code2 size={14} className="text-[#0a7cff]" />
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p className="truncate text-[14px] font-medium text-[#0d0d0d]">
+                      {chat.title || chat.network.name}
+                    </p>
+                    <span className="shrink-0 text-[11px] text-[rgba(13,13,13,0.35)]">
+                      {timeAgo(chat.updated_at)}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-[12px] text-[rgba(13,13,13,0.45)]">{chat.network.name}</p>
+                  {chat.last_message && (
+                    <p className="mt-1 truncate text-[12px] text-[rgba(13,13,13,0.40)]">
+                      {chat.last_message.role === "user" ? "Вы: " : ""}
+                      {chat.last_message.preview}
+                    </p>
+                  )}
+                </div>
+              </Link>
+            )}
+            {!isDeleting && (
+              <button
+                onClick={(e) => { e.preventDefault(); setDeletingId(chat.id); }}
+                className="absolute right-3 top-3 hidden h-7 w-7 items-center justify-center rounded-[6px] text-[rgba(13,13,13,0.35)] hover:bg-[rgba(231,76,60,0.09)] hover:text-[#e74c3c] transition-colors group-hover:flex"
+              >
+                <Trash2 size={13} />
+              </button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── Вкладка "Инструкции" ── */
+function InstructionsTab({ project, onSaved }: { project: Project; onSaved: (p: Project) => void }) {
+  const [value, setValue] = useState(project.system_prompt ?? "");
+  const [preview, setPreview] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const charCount = value.length;
+  const isOverLimit = charCount > CHAR_SOFT_LIMIT;
+
+  // Сброс состояния "Сохранено" через 2 сек
+  useEffect(() => {
+    if (!saved) return;
+    const t = setTimeout(() => setSaved(false), 2000);
+    return () => clearTimeout(t);
+  }, [saved]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const updated = await updateProject(project.id, { system_prompt: value.trim() });
+      onSaved(updated);
+      setSaved(true);
+    } catch {
+      setError("Не удалось сохранить инструкции");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const applyTemplate = (text: string) => {
+    setValue(text);
+    setPreview(false);
+    setTimeout(() => textareaRef.current?.focus(), 50);
+  };
+
+  return (
+    <div className="flex flex-col gap-5">
+      {/* Description */}
+      <div className="flex items-start gap-2.5 rounded-[10px] bg-[rgba(10,124,255,0.06)] px-4 py-3">
+        <Info size={14} className="mt-0.5 shrink-0 text-[#0a7cff]" />
+        <p className="text-[13px] leading-relaxed text-[rgba(13,13,13,0.65)]">
+          Инструкции применяются ко всем чатам в этом проекте как системный промт.
+          AI будет следовать им автоматически при каждом ответе.
+        </p>
+      </div>
+
+      {/* Template chips */}
+      <div>
+        <p className="mb-2 text-[12px] font-medium text-[rgba(13,13,13,0.45)] uppercase tracking-wide">
+          Шаблоны
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {INSTRUCTION_TEMPLATES.map((tpl) => (
+            <button
+              key={tpl.label}
+              onClick={() => applyTemplate(tpl.text)}
+              className="rounded-full border border-[rgba(13,13,13,0.14)] bg-white px-3 py-1.5 text-[12px] font-medium text-[rgba(13,13,13,0.65)] transition-all hover:border-[#0a7cff] hover:bg-[rgba(10,124,255,0.05)] hover:text-[#0a7cff]"
+            >
+              {tpl.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Editor / Preview toggle */}
+      <div>
+        <div className="mb-2 flex items-center justify-between">
+          <p className="text-[12px] font-medium text-[rgba(13,13,13,0.45)] uppercase tracking-wide">
+            Инструкции
+          </p>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setPreview(false)}
+              className={["flex items-center gap-1 rounded-[6px] px-2.5 py-1 text-[12px] font-medium transition-colors", !preview ? "bg-[rgba(13,13,13,0.07)] text-[#0d0d0d]" : "text-[rgba(13,13,13,0.45)] hover:text-[#0d0d0d]"].join(" ")}
+            >
+              <Pencil size={11} />
+              Редактор
+            </button>
+            <button
+              onClick={() => setPreview(true)}
+              className={["flex items-center gap-1 rounded-[6px] px-2.5 py-1 text-[12px] font-medium transition-colors", preview ? "bg-[rgba(13,13,13,0.07)] text-[#0d0d0d]" : "text-[rgba(13,13,13,0.45)] hover:text-[#0d0d0d]"].join(" ")}
+            >
+              <Eye size={11} />
+              Предпросмотр
+            </button>
+          </div>
+        </div>
+
+        {preview ? (
+          <div className="min-h-[220px] rounded-[10px] border border-[rgba(13,13,13,0.12)] bg-[rgba(13,13,13,0.02)] px-4 py-3">
+            {value.trim() ? (
+              <div className="prose prose-sm max-w-none text-[13px] text-[#0d0d0d]">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{value}</ReactMarkdown>
+              </div>
+            ) : (
+              <p className="text-[13px] text-[rgba(13,13,13,0.35)] italic">Инструкции не заданы</p>
+            )}
+          </div>
+        ) : (
+          <div className="relative">
+            <textarea
+              ref={textareaRef}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              placeholder={`Ты — опытный программист. Отвечай на русском языке, приводи примеры кода...\n\nМожно описать:\n• Роль и стиль ответов AI\n• Предпочтительный формат вывода\n• Язык, тональность, ограничения`}
+              rows={10}
+              className="w-full resize-none rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-white px-4 py-3 text-[13px] leading-relaxed text-[#0d0d0d] outline-none placeholder-[rgba(13,13,13,0.32)] focus:border-[#0a7cff] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all"
+            />
+            <span
+              className={[
+                "absolute bottom-3 right-3 text-[11px] tabular-nums transition-colors",
+                isOverLimit ? "text-[#e74c3c] font-medium" : "text-[rgba(13,13,13,0.32)]",
+              ].join(" ")}
+            >
+              {charCount.toLocaleString("ru-RU")} / {CHAR_SOFT_LIMIT.toLocaleString("ru-RU")}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Soft limit warning */}
+      {isOverLimit && (
+        <div className="flex items-start gap-2 rounded-[8px] bg-[rgba(231,76,60,0.07)] px-3 py-2.5">
+          <Info size={13} className="mt-0.5 shrink-0 text-[#e74c3c]" />
+          <p className="text-[12px] text-[#e74c3c]">
+            Инструкция превышает рекомендуемый лимит 4 000 символов. Длинный промт уменьшает доступный контекст для диалога.
+          </p>
+        </div>
+      )}
+
+      {error && (
+        <div className="rounded-[8px] bg-[rgba(231,76,60,0.08)] px-3 py-2 text-[13px] text-[#e74c3c]">{error}</div>
+      )}
+
+      {/* Save button */}
+      <div className="flex items-center justify-between">
+        <p className="text-[12px] text-[rgba(13,13,13,0.40)]">
+          Применяется ко всем чатам в проекте автоматически
+        </p>
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="inline-flex items-center gap-1.5 rounded-[8px] bg-[#0a7cff] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 transition-colors"
+        >
+          {saved ? (
+            <>
+              <Check size={13} />
+              Сохранено
+            </>
+          ) : saving ? (
+            "Сохранение..."
+          ) : (
+            "Сохранить инструкции"
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── Главная страница проекта ── */
+type Tab = "chats" | "instructions";
+
+export default function ProjectDetailPage({ params }: { params: { id: string } }) {
+  const projectId = parseInt(params.id, 10);
+  const qc = useQueryClient();
+  const [tab, setTab] = useState<Tab>("chats");
+  const [showEdit, setShowEdit] = useState(false);
+  const [expandInstructions, setExpandInstructions] = useState(false);
+
+  const { data: projects = [] } = useQuery({
+    queryKey: ["projects"],
+    queryFn: listProjects,
+    staleTime: 60_000,
+  });
+
   const project: Project | undefined = projects.find((p) => p.id === projectId);
 
   const handleProjectSaved = (updated: Project) => {
@@ -210,72 +506,83 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
     setShowEdit(false);
   };
 
+  const handleInstructionsSaved = (updated: Project) => {
+    qc.setQueryData<Project[]>(["projects"], (prev) =>
+      prev?.map((p) => (p.id === updated.id ? updated : p)) ?? []
+    );
+  };
+
+  const hasInstructions = Boolean(project?.system_prompt?.trim());
+
   return (
     <div className="mx-auto max-w-[760px] px-4 py-8">
-      {/* Back + header */}
-      <div className="mb-6">
-        <Link
-          href="/projects/"
-          className="mb-4 inline-flex items-center gap-1.5 text-[13px] text-[rgba(13,13,13,0.50)] hover:text-[#0d0d0d] transition-colors"
-        >
-          <ArrowLeft size={14} />
-          Все проекты
-        </Link>
+      {/* Back */}
+      <Link
+        href="/projects/"
+        className="mb-5 inline-flex items-center gap-1.5 text-[13px] text-[rgba(13,13,13,0.50)] hover:text-[#0d0d0d] transition-colors"
+      >
+        <ArrowLeft size={14} />
+        Все проекты
+      </Link>
 
-        <div className="flex items-start gap-3">
-          <div
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px]"
-            style={{ background: project ? `${project.color}18` : "rgba(10,124,255,0.08)" }}
-          >
-            <span style={{ color: project?.color ?? "#0a7cff" }}>
-              <ProjectIcon name={project?.icon ?? "Folder"} size={18} />
-            </span>
-          </div>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-[22px] font-bold text-[#0d0d0d]">{project?.name ?? "Проект"}</h1>
-            {project?.system_prompt && (
-              <p className="mt-0.5 text-[13px] text-[rgba(13,13,13,0.50)]">
-                {project.system_prompt.length > 120
-                  ? project.system_prompt.slice(0, 120) + "..."
-                  : project.system_prompt}
-              </p>
-            )}
-          </div>
-          <button
-            onClick={() => setShowEdit(true)}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] border border-[rgba(13,13,13,0.11)] text-[rgba(13,13,13,0.42)] hover:bg-[rgba(13,13,13,0.05)] hover:text-[#0d0d0d] transition-colors"
-            title="Настройки проекта"
-          >
-            <Settings size={14} />
-          </button>
+      {/* Project header */}
+      <div className="mb-6 flex items-start gap-3">
+        <div
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[11px]"
+          style={{ background: project ? `${project.color}18` : "rgba(10,124,255,0.08)" }}
+        >
+          <span style={{ color: project?.color ?? "#0a7cff" }}>
+            <ProjectIcon name={project?.icon ?? "Folder"} size={20} />
+          </span>
         </div>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-[22px] font-bold text-[#0d0d0d]">{project?.name ?? "Проект"}</h1>
+          {/* Inline instructions preview under project name */}
+          {hasInstructions && (
+            <button
+              onClick={() => setExpandInstructions((v) => !v)}
+              className="mt-1 flex items-center gap-1 text-[12px] text-[rgba(13,13,13,0.45)] hover:text-[rgba(13,13,13,0.65)] transition-colors"
+            >
+              <FileText size={11} />
+              <span>Инструкции активны</span>
+              <ChevronDown size={11} className={["transition-transform", expandInstructions ? "rotate-180" : ""].join(" ")} />
+            </button>
+          )}
+          {hasInstructions && expandInstructions && (
+            <div className="mt-2 rounded-[8px] border border-[rgba(13,13,13,0.10)] bg-[rgba(13,13,13,0.02)] px-3 py-2.5 text-[12px] leading-relaxed text-[rgba(13,13,13,0.60)] line-clamp-4">
+              {project?.system_prompt}
+            </div>
+          )}
+        </div>
+        <button
+          onClick={() => setShowEdit(true)}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] border border-[rgba(13,13,13,0.11)] text-[rgba(13,13,13,0.40)] hover:bg-[rgba(13,13,13,0.05)] hover:text-[#0d0d0d] transition-colors"
+          title="Редактировать проект"
+        >
+          <Settings size={14} />
+        </button>
       </div>
 
-      {/* New chat button */}
-      <div className="mb-5">
-        <Link
-          href={`/models/?project_id=${projectId}`}
-          className="inline-flex items-center gap-1.5 rounded-[9px] bg-[#0a7cff] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#0066cc] transition-colors"
-        >
-          <Plus size={14} />
-          Новый чат в проекте
-        </Link>
+      {/* Tabs */}
+      <div className="mb-5 flex items-center gap-1 border-b border-[rgba(13,13,13,0.09)]">
+        <TabButton
+          active={tab === "chats"}
+          icon={<MessageSquare size={13} />}
+          label="Чаты"
+          onClick={() => setTab("chats")}
+        />
+        <TabButton
+          active={tab === "instructions"}
+          icon={<FileText size={13} />}
+          label="Инструкции"
+          onClick={() => setTab("instructions")}
+          badge={hasInstructions}
+        />
       </div>
 
-      {/* Chat list */}
-      {isLoading ? (
-        <div className="flex flex-col gap-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-16 animate-pulse rounded-[12px] bg-[rgba(13,13,13,0.05)]" />
-          ))}
-        </div>
-      ) : chats.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-[16px] border border-dashed border-[rgba(13,13,13,0.15)] py-14 text-center">
-          <MessageSquare size={28} className="mb-3 text-[rgba(13,13,13,0.25)]" />
-          <p className="mb-1 text-[14px] font-medium text-[#0d0d0d]">Нет чатов</p>
-          <p className="mb-4 text-[13px] text-[rgba(13,13,13,0.45)]">
-            Нажмите «Новый чат в проекте» чтобы начать
-          </p>
+      {/* Tab actions row */}
+      {tab === "chats" && (
+        <div className="mb-4">
           <Link
             href={`/models/?project_id=${projectId}`}
             className="inline-flex items-center gap-1.5 rounded-[9px] bg-[#0a7cff] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#0066cc] transition-colors"
@@ -284,81 +591,18 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
             Новый чат
           </Link>
         </div>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {chats.map((chat) => {
-            const isDeleting = deletingId === chat.id;
-            return (
-              <div
-                key={chat.id}
-                className="group relative rounded-[12px] border border-[rgba(13,13,13,0.09)] bg-white p-4 transition-shadow hover:shadow-sm"
-              >
-                {isDeleting ? (
-                  <div className="flex items-center gap-2">
-                    <p className="flex-1 text-[13px] text-[rgba(13,13,13,0.65)]">Удалить чат?</p>
-                    <button
-                      onClick={() => deleteMutation.mutate(chat.id)}
-                      disabled={deleteMutation.isPending}
-                      className="rounded-[6px] bg-[#e74c3c] px-2.5 py-1 text-[12px] font-medium text-white hover:bg-[#c0392b] disabled:opacity-50 transition-colors"
-                    >
-                      Удалить
-                    </button>
-                    <button
-                      onClick={() => setDeletingId(null)}
-                      className="rounded-[6px] px-2.5 py-1 text-[12px] text-[rgba(13,13,13,0.50)] hover:bg-[rgba(13,13,13,0.06)] transition-colors"
-                    >
-                      Отмена
-                    </button>
-                  </div>
-                ) : (
-                  <Link href={`/chat/${chat.id}/`} className="flex items-start gap-3">
-                    <div className="mt-0.5 shrink-0">
-                      {chat.network.avatar ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={chat.network.avatar} alt="" width={32} height={32} className="rounded-[7px] object-cover" />
-                      ) : (
-                        <div className="flex h-8 w-8 items-center justify-center rounded-[7px] bg-[rgba(10,124,255,0.10)]">
-                          {chat.network.handle_photo || chat.network.handle_video ? (
-                            <ImageIcon size={14} className="text-[#0a7cff]" />
-                          ) : (
-                            <Code2 size={14} className="text-[#0a7cff]" />
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-baseline justify-between gap-2">
-                        <p className="truncate text-[14px] font-medium text-[#0d0d0d]">
-                          {chat.title || chat.network.name}
-                        </p>
-                        <span className="shrink-0 text-[11px] text-[rgba(13,13,13,0.35)]">
-                          {timeAgo(chat.updated_at)}
-                        </span>
-                      </div>
-                      <p className="mt-0.5 text-[12px] text-[rgba(13,13,13,0.45)]">{chat.network.name}</p>
-                      {chat.last_message && (
-                        <p className="mt-1 truncate text-[12px] text-[rgba(13,13,13,0.40)]">
-                          {chat.last_message.role === "user" ? "Вы: " : ""}
-                          {chat.last_message.preview}
-                        </p>
-                      )}
-                    </div>
-                  </Link>
-                )}
-                {!isDeleting && (
-                  <button
-                    onClick={(e) => { e.preventDefault(); setDeletingId(chat.id); }}
-                    className="absolute right-3 top-3 hidden h-7 w-7 items-center justify-center rounded-[6px] text-[rgba(13,13,13,0.35)] hover:bg-[rgba(231,76,60,0.09)] hover:text-[#e74c3c] transition-colors group-hover:flex"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
       )}
 
+      {/* Tab content */}
+      {tab === "chats" && <ChatsTab projectId={projectId} project={project} />}
+      {tab === "instructions" && project && (
+        <InstructionsTab project={project} onSaved={handleInstructionsSaved} />
+      )}
+      {tab === "instructions" && !project && (
+        <div className="h-32 animate-pulse rounded-[12px] bg-[rgba(13,13,13,0.05)]" />
+      )}
+
+      {/* Edit modal (name / icon / color) */}
       {showEdit && project && (
         <EditProjectModal
           project={project}
@@ -367,5 +611,33 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
         />
       )}
     </div>
+  );
+}
+
+function TabButton({
+  active, icon, label, onClick, badge,
+}: {
+  active: boolean;
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  badge?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={[
+        "relative flex items-center gap-1.5 px-3 py-2.5 text-[13px] font-medium transition-colors border-b-2 -mb-px",
+        active
+          ? "border-[#0a7cff] text-[#0a7cff]"
+          : "border-transparent text-[rgba(13,13,13,0.52)] hover:text-[#0d0d0d]",
+      ].join(" ")}
+    >
+      {icon}
+      {label}
+      {badge && (
+        <span className="ml-0.5 h-1.5 w-1.5 rounded-full bg-[#0a7cff]" />
+      )}
+    </button>
   );
 }

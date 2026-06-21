@@ -162,7 +162,7 @@ class ChatDetailView(RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Chat.objects.filter(user=self.request.user).select_related('network', 'network__category')
+        return Chat.objects.filter(user=self.request.user).select_related('network', 'network__category', 'project')
 
     def get_serializer_class(self):
         if self.request.method in ('PATCH', 'PUT'):

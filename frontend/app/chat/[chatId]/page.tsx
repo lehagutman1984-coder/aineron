@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw, Paperclip, BookMarked, Globe, Volume2, Square, Loader, ChevronDown, ChevronRight, Settings2 } from "lucide-react";
+import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw, Paperclip, BookMarked, Globe, Volume2, Square, Loader, ChevronDown, ChevronRight, Settings2, FileText, X } from "lucide-react";
 import { MarkdownContent } from "@/components/chat/MarkdownContent";
 import { AttachmentPreview, type AttachmentState } from "@/components/chat/AttachmentPreview";
 import { PromptPicker } from "@/components/chat/PromptPicker";
@@ -55,6 +55,7 @@ export default function ChatPage() {
   const animatedIds = useRef<Set<number>>(new Set());
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [instructionsDismissed, setInstructionsDismissed] = useState(false);
 
   const { data: chat, isLoading, error } = useQuery<ChatDetail>({
     queryKey: ["chat", id],
@@ -472,6 +473,37 @@ export default function ChatPage() {
           </Link>
         </div>
       </header>
+
+      {/* Project instructions indicator */}
+      {chat.project?.system_prompt && !instructionsDismissed && (
+        <div
+          className="flex shrink-0 items-center gap-2 px-4 py-2"
+          style={{
+            background: `${chat.project.color}0d`,
+            borderBottom: `1px solid ${chat.project.color}22`,
+          }}
+        >
+          <FileText size={13} style={{ color: chat.project.color, flexShrink: 0 }} />
+          <span className="flex-1 truncate text-[12px]" style={{ color: chat.project.color }}>
+            <span className="font-medium">{chat.project.name}</span>
+            <span className="opacity-70"> · инструкции проекта активны</span>
+          </span>
+          <Link
+            href={`/projects/${chat.project.id}/`}
+            className="shrink-0 rounded-[5px] px-2 py-0.5 text-[11px] font-medium transition-colors hover:opacity-80"
+            style={{ color: chat.project.color, background: `${chat.project.color}18` }}
+          >
+            Открыть
+          </Link>
+          <button
+            onClick={() => setInstructionsDismissed(true)}
+            className="shrink-0 rounded-[5px] p-0.5 transition-opacity hover:opacity-60"
+            style={{ color: chat.project.color }}
+          >
+            <X size={12} />
+          </button>
+        </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto">

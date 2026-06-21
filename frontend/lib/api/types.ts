@@ -287,10 +287,20 @@ export interface ChatListItem {
   updated_at: string;
 }
 
+export interface ChatProjectMini {
+  id: number;
+  name: string;
+  system_prompt: string;
+  color: string;
+  icon: string;
+}
+
 export interface ChatDetail {
   id: number;
   title: string;
   network: NetworkMini;
+  project_id: number | null;
+  project: ChatProjectMini | null;
   messages: WebMessage[];
   settings: Record<string, unknown>;
   created_at: string;

@@ -41,10 +41,23 @@ class ChatListSerializer(serializers.ModelSerializer):
 class ChatDetailSerializer(serializers.ModelSerializer):
     network = NeuralNetworkChatSerializer(read_only=True)
     messages = MessageSerializer(many=True, read_only=True)
+    project = serializers.SerializerMethodField()
 
     class Meta:
         model = Chat
-        fields = ['id', 'title', 'network', 'messages', 'settings', 'created_at', 'updated_at']
+        fields = ['id', 'title', 'network', 'project_id', 'project', 'messages', 'settings', 'created_at', 'updated_at']
+
+    def get_project(self, obj):
+        p = obj.project
+        if not p:
+            return None
+        return {
+            'id': p.id,
+            'name': p.name,
+            'system_prompt': p.system_prompt,
+            'color': p.color,
+            'icon': p.icon,
+        }
 
 
 class ChatUpdateSerializer(serializers.ModelSerializer):
