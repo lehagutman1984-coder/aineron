@@ -36,6 +36,38 @@ def models_kb(networks: list, current_id: int | None = None) -> InlineKeyboardMa
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+def models_tabs_kb(active_tab: str, networks: list, current_id: int | None = None) -> InlineKeyboardMarkup:
+    """Three-tab keyboard: Текст / Изображения / Видео."""
+    tab_labels = {
+        'text': 'Текст',
+        'image': 'Изображения',
+        'video': 'Видео',
+    }
+    # Map tab → callback type prefix for setmodel
+    tab_type = active_tab  # 'text' | 'image' | 'video'
+
+    # Tab row
+    tab_row = []
+    for tab_key, tab_name in tab_labels.items():
+        label = f'[ {tab_name} ]' if tab_key == active_tab else tab_name
+        tab_row.append(InlineKeyboardButton(text=label, callback_data=f'models_tab:{tab_key}'))
+
+    rows = [tab_row]
+
+    # Model buttons
+    row = []
+    for net in networks:
+        label = f'[{net.name}]' if net.id == current_id else net.name
+        row.append(InlineKeyboardButton(text=label[:30], callback_data=f'setmodel:{tab_type}:{net.id}'))
+        if len(row) == 2:
+            rows.append(row)
+            row = []
+    if row:
+        rows.append(row)
+
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
 def star_packs_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text='100 звёзд — 50 XTR', callback_data='pack:stars_100')],

@@ -98,6 +98,6 @@ async def on_system_prompt_input(message: Message, state: FSMContext, tg_user=No
 async def cb_change_model(query: CallbackQuery, tg_user=None):
     if tg_user is None:
         return
-    from telegram_bot.handlers.models_cmd import send_models
-    await send_models(query.message, tg_user)
+    from telegram_bot.handlers.models_cmd import _send_tab
+    await _send_tab(query.message, tg_user, 'text', edit=False)
     await query.answer()

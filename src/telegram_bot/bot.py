@@ -12,7 +12,7 @@ def register_routers():
     if _routers_registered:
         return
     from telegram_bot.middlewares import AuthMiddleware
-    from telegram_bot.handlers import start, chat, balance, payment, models_cmd, voice, images, prompts_cmd, settings_cmd, referral
+    from telegram_bot.handlers import start, chat, balance, payment, models_cmd, voice, images, video_cmd, prompts_cmd, settings_cmd, referral
     dp.message.middleware(AuthMiddleware())
     dp.callback_query.middleware(AuthMiddleware())
     dp.include_router(start.router)
@@ -22,6 +22,7 @@ def register_routers():
     dp.include_router(models_cmd.router)
     dp.include_router(voice.router)
     dp.include_router(images.router)
+    dp.include_router(video_cmd.router)
     dp.include_router(prompts_cmd.router)
     dp.include_router(settings_cmd.router)
     dp.include_router(referral.router)
