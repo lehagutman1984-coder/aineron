@@ -29,18 +29,34 @@ def _get_default_network(tg_user):
 
 
 def _ensure_chat(tg_user, network):
+    """Возвращает активный чат, создавая новый если нужно.
+
+    При наличии active_project чат привязывается к проекту.
+    Если активный проект изменился — создаём новый чат.
+    """
     from aitext.models import Chat
     from telegram_bot.models import TelegramChat
+    project = tg_user.active_project  # может быть None
+
     tc = TelegramChat.objects.filter(tg_user=tg_user, is_active=True).select_related('chat').first()
-    if not tc:
-        chat = Chat.objects.create(user=tg_user.user, network=network, title='Telegram')
-        TelegramChat.objects.create(tg_user=tg_user, chat=chat, is_active=True)
+    if tc and tc.chat_id:
+        chat = tc.chat
+        # Если проект у чата не совпадает с active_project — создаём новый чат
+        if chat.project_id != (project.id if project else None):
+            TelegramChat.objects.filter(tg_user=tg_user, is_active=True).update(is_active=False)
+            title = f'Telegram — {project.name}' if project else 'Telegram'
+            chat = Chat.objects.create(user=tg_user.user, network=network, title=title, project=project)
+            TelegramChat.objects.create(tg_user=tg_user, chat=chat, is_active=True)
         return chat
-    if not tc.chat_id:
-        chat = Chat.objects.create(user=tg_user.user, network=network, title='Telegram')
+
+    title = f'Telegram — {project.name}' if project else 'Telegram'
+    chat = Chat.objects.create(user=tg_user.user, network=network, title=title, project=project)
+    if tc:
         tc.chat = chat
         tc.save(update_fields=['chat'])
-    return tc.chat
+    else:
+        TelegramChat.objects.create(tg_user=tg_user, chat=chat, is_active=True)
+    return chat
 
 
 def _create_messages(chat, user_text, network, system_prompt=''):
@@ -94,7 +110,9 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None)
 
     generate_ai_response.delay(assistant_msg.id, web_search=tg_user.web_search)
 
-    sent = await tg_message.answer("Генерирую ответ...")
+    project = tg_user.active_project
+    status_prefix = f'[{project.icon or ""} {project.name}] ' if project else ''
+    sent = await tg_message.answer(f"{status_prefix}Генерирую ответ...")
 
     last_content = ''
     last_edit_time = 0.0

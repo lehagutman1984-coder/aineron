@@ -23,17 +23,18 @@ def register_routers():
         menu, onboarding, start, history, files,
         chat, balance, payment, models_cmd, voice, images,
         video_cmd, prompts_cmd, settings_cmd, referral,
-        inline, group, admin,
+        inline, group, admin, projects_cmd,
     )
     dp.message.middleware(AuthMiddleware())
     dp.callback_query.middleware(AuthMiddleware())
     dp.inline_query.middleware(AuthMiddleware())
-    dp.include_router(inline.router)      # FIRST — inline queries
-    dp.include_router(menu.router)        # SECOND — reply keyboard buttons
-    dp.include_router(onboarding.router)  # FSM onboarding callbacks
+    dp.include_router(inline.router)        # FIRST — inline queries
+    dp.include_router(menu.router)          # SECOND — reply keyboard buttons
+    dp.include_router(onboarding.router)    # FSM onboarding callbacks
     dp.include_router(start.router)
     dp.include_router(history.router)
-    dp.include_router(files.router)       # photos/docs before generic text
+    dp.include_router(files.router)         # photos/docs before generic text
+    dp.include_router(projects_cmd.router)  # /projects — Sprint 4.4
     dp.include_router(chat.router)
     dp.include_router(balance.router)
     dp.include_router(payment.router)
@@ -45,5 +46,5 @@ def register_routers():
     dp.include_router(settings_cmd.router)
     dp.include_router(referral.router)
     dp.include_router(admin.router)
-    dp.include_router(group.router)       # LAST — group chat fallback
+    dp.include_router(group.router)         # LAST — group chat fallback
     _routers_registered = True

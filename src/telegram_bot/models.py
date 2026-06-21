@@ -37,6 +37,13 @@ class TelegramUser(models.Model):
         related_name='telegram_users_video',
         verbose_name='Дефолтная видео модель',
     )
+    active_project = models.ForeignKey(
+        'aitext.Project',
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='telegram_users',
+        verbose_name='Активный проект',
+    )
     voice_responses = models.BooleanField(default=False, verbose_name='Голосовые ответы')
     web_search = models.BooleanField(default=False, verbose_name='Веб-поиск')
     system_prompt = models.TextField(blank=True, verbose_name='Системный промт')

@@ -6,7 +6,7 @@ from asgiref.sync import sync_to_async
 logger = logging.getLogger(__name__)
 router = Router()
 
-MENU_BUTTONS = {'Чат', 'Изображение', 'Видео', 'Баланс', 'Модели', 'Настройки', 'История', 'Помощь'}
+MENU_BUTTONS = {'Чат', 'Изображение', 'Видео', 'Баланс', 'Модели', 'Настройки', 'История', 'Помощь', 'Проекты'}
 
 
 @router.message(F.text.in_(MENU_BUTTONS))
@@ -50,6 +50,12 @@ async def handle_menu_button(message: Message, tg_user=None):
             await cmd_history(message, state=None, tg_user=tg_user)
         else:
             await message.answer('Привяжи аккаунт через /start')
+    elif text == 'Проекты':
+        if tg_user:
+            from telegram_bot.handlers.projects_cmd import send_project_list
+            await send_project_list(message, None, tg_user, offset=0)
+        else:
+            await message.answer('Привяжи аккаунт через /start')
     elif text == 'Помощь':
         await message.answer(
             '<b>Как пользоваться ботом:</b>\n\n'
@@ -62,6 +68,7 @@ async def handle_menu_button(message: Message, tg_user=None):
             '/balance — баланс и пополнение\n'
             '/settings — настройки\n'
             '/newchat — начать новый чат\n'
+            '/projects — проекты (контекст + база знаний)\n'
             '/referral — реферальная программа\n\n'
             'Пополнить баланс: https://aineron.ru/account/billing/',
             parse_mode='HTML',
