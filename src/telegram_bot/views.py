@@ -24,12 +24,22 @@ def telegram_webhook(request):
         return HttpResponse(status=400)
 
     try:
-        from telegram_bot.bot import bot, dp, register_routers
-        from telegram_bot.middlewares import AuthMiddleware
+        from telegram_bot.bot import dp, register_routers
         register_routers()
-        dp.message.middleware(AuthMiddleware())
-        update = types.Update.model_validate(data)
-        async_to_sync(dp.feed_update)(bot, update)
+
+        async def _process(update_data):
+            from aiogram import Bot
+            from aiogram.client.default import DefaultBotProperties
+            from aiogram.enums import ParseMode
+            # Создаём Bot внутри async-контекста — избегаем "Session is closed"
+            async with Bot(
+                token=settings.TELEGRAM_BOT_TOKEN,
+                default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+            ) as bot:
+                update = types.Update.model_validate(update_data)
+                await dp.feed_update(bot, update)
+
+        async_to_sync(_process)(data)
     except Exception as e:
         logger.exception(f'Telegram webhook error: {e}')
 
