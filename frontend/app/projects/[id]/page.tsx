@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import {
@@ -172,9 +172,8 @@ function EditProjectModal({
   );
 }
 
-export default function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
-  const projectId = parseInt(id, 10);
+export default function ProjectDetailPage({ params }: { params: { id: string } }) {
+  const projectId = parseInt(params.id, 10);
   const qc = useQueryClient();
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [showEdit, setShowEdit] = useState(false);
