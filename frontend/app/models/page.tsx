@@ -15,12 +15,14 @@ export const metadata: Metadata = {
 export default async function ModelsPage({
   searchParams,
 }: {
-  searchParams: { category?: string };
+  searchParams: { category?: string; project_id?: string };
 }) {
   const [networks, categories] = await Promise.all([
     serverListNetworks(),
     serverListCategories(),
   ]);
+
+  const projectId = searchParams.project_id ? parseInt(searchParams.project_id, 10) : undefined;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
@@ -35,6 +37,7 @@ export default async function ModelsPage({
         networks={networks ?? []}
         categories={categories ?? []}
         initialCategory={searchParams.category}
+        projectId={projectId}
       />
     </div>
   );

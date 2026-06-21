@@ -9,9 +9,10 @@ interface Props {
   networks: NetworkListItem[];
   categories: Category[];
   initialCategory?: string;
+  projectId?: number;
 }
 
-export function CatalogClient({ networks, categories, initialCategory }: Props) {
+export function CatalogClient({ networks, categories, initialCategory, projectId }: Props) {
   const [activeCategory, setActiveCategory] = useState(initialCategory ?? "");
   const [query, setQuery] = useState("");
 
@@ -69,7 +70,7 @@ export function CatalogClient({ networks, categories, initialCategory }: Props) 
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((n) => (
-            <NetworkCard key={n.id} network={n} />
+            <NetworkCard key={n.id} network={n} projectId={projectId} />
           ))}
         </div>
       )}
@@ -101,10 +102,13 @@ function CategoryTab({
   );
 }
 
-function NetworkCard({ network }: { network: NetworkListItem }) {
+function NetworkCard({ network, projectId }: { network: NetworkListItem; projectId?: number }) {
+  const href = projectId
+    ? `/models/${network.slug}/?project_id=${projectId}`
+    : `/models/${network.slug}/`;
   return (
     <Link
-      href={`/models/${network.slug}/`}
+      href={href}
       className="group flex flex-col gap-3 rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white p-5 hover:border-[#0a7cff] hover:shadow-sm transition-all duration-150"
     >
       <div className="flex items-start gap-3">
