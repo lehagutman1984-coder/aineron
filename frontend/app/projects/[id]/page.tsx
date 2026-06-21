@@ -274,7 +274,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
           <MessageSquare size={28} className="mb-3 text-[rgba(13,13,13,0.25)]" />
           <p className="mb-1 text-[14px] font-medium text-[#0d0d0d]">Нет чатов</p>
           <p className="mb-4 text-[13px] text-[rgba(13,13,13,0.45)]">
-            Нажмите "Новый чат в проекте" чтобы начать
+            Нажмите «Новый чат в проекте» чтобы начать
           </p>
           <Link
             href={`/models/?project_id=${projectId}`}
