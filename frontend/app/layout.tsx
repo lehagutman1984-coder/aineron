@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { Navbar } from "@/components/layout/Navbar";
+import { Footer } from "@/components/layout/Footer";
 import { AuthInit } from "@/components/layout/AuthInit";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
 import { ToastContainer } from "@/components/ui/toast";
@@ -65,6 +66,7 @@ export default function RootLayout({
           <AuthInit />
           <Navbar />
           <main>{children}</main>
+          <Footer />
           <ToastContainer />
           <Analytics />
           <PWAProvider />
