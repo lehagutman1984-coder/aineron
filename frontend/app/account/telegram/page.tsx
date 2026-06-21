@@ -29,7 +29,7 @@ export default function TelegramPage() {
 
   const fetchStatus = useCallback(async () => {
     try {
-      const data = await apiRequest<TelegramStatus>("/api/v1/telegram/link-token/");
+      const data = await apiRequest<TelegramStatus>("/telegram/link-token/");
       setStatus(data);
     } catch {
       setStatus({ linked: false });
@@ -53,7 +53,7 @@ export default function TelegramPage() {
   useEffect(() => {
     if (!linkData || countdown <= 0) return;
     const interval = setInterval(async () => {
-      const data = await apiRequest<TelegramStatus>("/api/v1/telegram/link-token/").catch(() => null);
+      const data = await apiRequest<TelegramStatus>("/telegram/link-token/").catch(() => null);
       if (data?.linked) {
         setStatus(data);
         setLinkData(null);
@@ -65,7 +65,7 @@ export default function TelegramPage() {
   const generateLink = async () => {
     setGenerating(true);
     try {
-      const data = await apiRequest<LinkTokenResponse>("/api/v1/telegram/link-token/", {
+      const data = await apiRequest<LinkTokenResponse>("/telegram/link-token/", {
         method: "POST",
       });
       setLinkData(data);
@@ -81,7 +81,7 @@ export default function TelegramPage() {
     if (!confirm("Отвязать Telegram от аккаунта?")) return;
     setUnlinking(true);
     try {
-      await apiRequest("/api/v1/telegram/link-token/", { method: "DELETE" });
+      await apiRequest("/telegram/link-token/", { method: "DELETE" });
       setStatus({ linked: false });
       setLinkData(null);
     } catch {
