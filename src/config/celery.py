@@ -32,6 +32,11 @@ app.conf.beat_schedule = {
         'schedule': 120.0,
         'options': {'queue': 'studio_queue'},
     },
+    # Memory: суммаризация брошенных чатов (>24ч без активности, без summary) — каждые 2 часа
+    'memory-summarize-stale-chats': {
+        'task': 'aitext.tasks.summarize_stale_chats',
+        'schedule': crontab(minute=0, hour='*/2'),
+    },
 }
 
 @app.task(bind=True, ignore_result=True)

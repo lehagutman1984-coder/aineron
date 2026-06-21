@@ -364,7 +364,9 @@ class StreamMessageView(APIView):
         max_input_tokens = network.max_input_tokens
 
         # ── Persistent Memory: собираем контекст памяти ───────────────────────
-        from aitext.memory import build_memory_context, get_history_with_compression, update_rolling_summary
+        from aitext.memory import (
+            build_memory_context, get_history_with_compression, should_compress,
+        )
         memory_ctx = build_memory_context(request.user, chat)
 
         messages_for_api = []
@@ -387,20 +389,26 @@ class StreamMessageView(APIView):
         if memory_ctx:
             messages_for_api.append({"role": "system", "content": memory_ctx})
 
-        # 4. Умная история: замена [:20] на compression-aware версию
-        history, new_rolling = get_history_with_compression(
+        # 4. Умная история: read-only, никаких sync LLM-вызовов (B5 fix)
+        history, existing_summary = get_history_with_compression(
             chat,
             exclude_msg_id=user_message.id,
             memory_context=memory_ctx,
             network_prompt=network.prompt or '',
         )
-        update_rolling_summary(chat, new_rolling)
+        # Фоновая компрессия если накопилось достаточно новых сообщений
+        if should_compress(chat, exclude_msg_id=user_message.id):
+            try:
+                from aitext.tasks import compress_chat_history
+                compress_chat_history.delay(chat.id)
+            except Exception:
+                pass
 
-        # 5. Rolling summary текущей сессии (если есть)
-        if new_rolling:
+        # 5. Summary текущей сессии (если есть готовое сжатие)
+        if existing_summary:
             messages_for_api.append({
                 "role": "system",
-                "content": f"[Начало этой сессии, сжато]: {new_rolling}",
+                "content": f"[Начало этой сессии, сжато]: {existing_summary}",
             })
 
         for msg in history:

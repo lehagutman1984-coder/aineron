@@ -562,8 +562,8 @@ class UserMemory(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.content_key and self.content:
-            import re
-            self.content_key = re.sub(r'[^а-яёa-z0-9]', '', self.content.lower())[:255]
+            from aitext.memory import normalize_fact
+            self.content_key = normalize_fact(self.content)
         super().save(*args, **kwargs)
 
 

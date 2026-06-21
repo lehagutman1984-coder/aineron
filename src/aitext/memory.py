@@ -1,9 +1,13 @@
 """
 Persistent Memory — ядро системы долговременной памяти.
 
-build_memory_context()         — собирает блок памяти для system-prompt
-get_history_with_compression() — умная замена [:20]: сжимает старые сообщения через DeepSeek
-estimate_tokens()              — быстрая оценка токенов без tiktoken
+build_memory_context()         — собирает блок памяти для system-prompt (Redis-кэш, 5 мин)
+get_history_with_compression() — read-only: recent msgs + существующий summary (без LLM)
+should_compress()              — дешёвая проверка нужна ли фоновая компрессия
+normalize_fact()               — нормализация текста для дедупликации (B3)
+estimate_tokens()              — оценка токенов language-aware (B10)
+invalidate_memory_cache()      — сброс Redis-кэша при мутации фактов (B11)
+update_rolling_summary()       — атомарный upsert с select_for_update (B4)
 """
 from __future__ import annotations
 
@@ -11,46 +15,63 @@ import re
 import logging
 from typing import TYPE_CHECKING
 
-_HTML_RE = re.compile(r'<[^>]+')
-
 if TYPE_CHECKING:
     from aitext.models import Chat
 
 logger = logging.getLogger(__name__)
 
-# Оценка: ~0.40 символа на токен (кириллица ≈2–3 симв./токен, лат. ≈4–5; берём консервативно)
-_CHARS_PER_TOKEN = 0.40
+_HTML_RE = re.compile(r'<[^>]+>')
+
+# Параметры сжатия
+RECENT_WINDOW = 20         # сообщений сохраняем verbatim (не сжимаем)
+COMPRESS_TRIGGER = 30      # при >30 сообщений запускаем суммаризацию
+COMPRESS_THRESHOLD = 0.70  # сжимаем если история > 70% контекстного окна
+MAX_MEMORY_FACTS = 40      # максимум фактов в system-prompt
+EXTRACT_EVERY_N = 3        # каждые N ответов извлекаем факты
+MEMORY_CACHE_TTL = 300     # 5 мин TTL для Redis-кэша контекста памяти
 
 # Контекстные окна популярных моделей (токены)
 _CONTEXT_WINDOWS: dict[str, int] = {
-    'gpt-4o':               128_000,
-    'gpt-4o-mini':          128_000,
-    'gpt-4.1':              128_000,
-    'claude-sonnet':        200_000,
-    'claude-opus':          200_000,
-    'claude-haiku':         200_000,
-    'deepseek-v3':           64_000,
-    'deepseek-r1':           64_000,
-    'gemini-2.0-flash':   1_000_000,
-    'gemini-1.5':         1_000_000,
-    'llama':                128_000,
-    'qwen':                 128_000,
-    'mistral':               32_000,
-    '_default':              32_000,
+    'gpt-4o':              128_000,
+    'gpt-4o-mini':         128_000,
+    'gpt-4.1':             128_000,
+    'claude-sonnet':       200_000,
+    'claude-opus':         200_000,
+    'claude-haiku':        200_000,
+    'deepseek-v3':          64_000,
+    'deepseek-r1':          64_000,
+    'gemini-2.0-flash':  1_000_000,
+    'gemini-1.5':        1_000_000,
+    'llama':               128_000,
+    'qwen':                128_000,
+    'mistral':              32_000,
+    '_default':             32_000,
 }
 
-# Параметры сжатия
-RECENT_WINDOW = 20        # сообщений сохраняем verbatim (не сжимаем)
-SUMMARY_TRIGGER = 30      # при >30 сообщений запускаем суммаризацию
-COMPRESS_THRESHOLD = 0.70 # сжимаем если история > 70% контекстного окна
-MAX_MEMORY_FACTS = 40     # максимум фактов в system-prompt
+
+def normalize_fact(text: str) -> str:
+    """
+    Нормализует текст факта для дедупликации.
+    Пробелы СХЛОПЫВАЮТСЯ (не вырезаются), пунктуация убирается.
+    'Любит Go' и 'Любитgo' теперь РАЗНЫЕ ключи — коллизия не ложная.
+    """
+    t = (text or '').lower().strip()
+    t = re.sub(r'[^\w\s]', '', t, flags=re.UNICODE)
+    t = re.sub(r'\s+', ' ', t).strip()
+    return t[:255]
 
 
 def estimate_tokens(text: str) -> int:
-    """Быстрая оценка числа токенов без tiktoken."""
+    """
+    Быстрая оценка токенов без tiktoken.
+    Language-aware: кириллица ~2.5 симв/токен, латиница ~4.0 симв/токен.
+    """
     if not text:
         return 0
-    return max(1, int(len(text) * _CHARS_PER_TOKEN))
+    cyr = sum(1 for c in text if 'а' <= c.lower() <= 'я' or c.lower() == 'ё')
+    cyr_frac = cyr / max(1, len(text))
+    chars_per_token = 2.5 * cyr_frac + 4.0 * (1 - cyr_frac)
+    return max(1, int(len(text) / chars_per_token))
 
 
 def _get_context_window(model_name: str | None) -> int:
@@ -63,21 +84,39 @@ def _get_context_window(model_name: str | None) -> int:
     return _CONTEXT_WINDOWS['_default']
 
 
+def _memory_cache_key(user_id: int) -> str:
+    return f'memctx:{user_id}'
+
+
+def invalidate_memory_cache(user_id: int) -> None:
+    """Сбрасывает Redis-кэш контекста памяти при изменении фактов."""
+    try:
+        from django.core.cache import cache
+        cache.delete(_memory_cache_key(user_id))
+    except Exception:
+        pass
+
+
 def build_memory_context(user, chat: 'Chat') -> str:
     """
     Возвращает строку для инжекции в system-prompt перед историей.
+    Результат кэшируется в Redis на MEMORY_CACHE_TTL секунд.
     Пустая строка если память отключена или нечего добавить.
     """
     from aitext.models import UserMemory, ChatSummary
+    from django.core.cache import cache
 
-    # Глобальный тоггл (CustomUser.memory_enabled)
     if not getattr(user, 'memory_enabled', True):
         return ''
 
-    # Per-chat тоггл (Chat.settings['memory_enabled'])
     chat_settings = getattr(chat, 'settings', None) or {}
     if not chat_settings.get('memory_enabled', True):
         return ''
+
+    cache_key = _memory_cache_key(user.id)
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
 
     parts: list[str] = []
 
@@ -92,6 +131,7 @@ def build_memory_context(user, chat: 'Chat') -> str:
         parts.append(f'Долговременная память о пользователе:\n{lines}')
 
     # 2. Резюме последних 3 чатов (кроме текущего)
+    # Берём лучшее из двух полей: summary_text (финальное) или rolling_summary (текущее)
     try:
         past_summaries = list(
             ChatSummary.objects
@@ -101,13 +141,40 @@ def build_memory_context(user, chat: 'Chat') -> str:
             .order_by('-updated_at')[:3]
         )
         for s in reversed(past_summaries):
-            date_str = f"{s.updated_at.day} {s.updated_at.strftime('%b %Y')}" if hasattr(s.updated_at, 'strftime') else ''
+            text = (s.summary_text or s.rolling_summary or '').strip()
+            if not text:
+                continue
+            dt = s.updated_at
+            date_str = f"{dt.day} {dt.strftime('%b %Y')}" if hasattr(dt, 'strftime') else ''
             label = f'[Прошлая сессия, {date_str}]' if date_str else '[Прошлая сессия]'
-            parts.append(f'{label}: {s.summary_text[:500]}')
+            parts.append(f'{label}: {text[:500]}')
     except Exception as e:
         logger.warning(f'[memory] build_memory_context past_summaries error: {e}')
 
-    return '\n\n'.join(parts)
+    result = '\n\n'.join(parts)
+    cache.set(cache_key, result, MEMORY_CACHE_TTL)
+    return result
+
+
+def should_compress(chat: 'Chat', exclude_msg_id: int | None = None) -> bool:
+    """
+    Дешёвая проверка: нужно ли запускать фоновую компрессию.
+    Никаких сетевых вызовов — только счётчики в БД.
+    """
+    from aitext.models import Message, ChatSummary
+    qs = chat.messages.filter(status=Message.Status.COMPLETED)
+    if exclude_msg_id:
+        qs = qs.exclude(id=exclude_msg_id)
+    msg_count = qs.count()
+    if msg_count < COMPRESS_TRIGGER:
+        return False
+    try:
+        cs = ChatSummary.objects.get(chat=chat)
+        # Сжимаем если накопилось RECENT_WINDOW новых сообщений с последнего сжатия
+        unsummarized = msg_count - cs.message_count
+        return unsummarized >= RECENT_WINDOW
+    except ChatSummary.DoesNotExist:
+        return True
 
 
 def get_history_with_compression(
@@ -117,46 +184,46 @@ def get_history_with_compression(
     network_prompt: str = '',
 ) -> tuple[list, str]:
     """
-    Умная замена history_qs[:20].
+    Read-only замена history_qs[:20]. Никаких сетевых вызовов.
 
-    Возвращает (messages_list, new_rolling_summary).
+    Возвращает (messages_list, existing_summary).
+    Если нужна компрессия — вызывающий код проверяет should_compress() и
+    запускает compress_chat_history.delay(chat.id) в фоне.
 
     Логика:
     - Загружаем ВСЮ историю выполненных сообщений
-    - Оцениваем токены
-    - Если история + overhead <= COMPRESS_THRESHOLD * context_window → берём последние RECENT_WINDOW
-    - Если история > порога → сжимаем старые через DeepSeek, оставляем последние RECENT_WINDOW verbatim
-    - rolling_summary хранится в ChatSummary.rolling_summary
+    - Читаем готовый summary из ChatSummary (результат фоновой compress_chat_history)
+    - Если история + overhead <= COMPRESS_THRESHOLD * context_window → ВСЯ история (B2 fix)
+    - Если история > порога → RECENT_WINDOW + существующий summary
     """
     from aitext.models import Message, ChatSummary
-    from .tasks import get_laozhang_client
 
     network = chat.network
     context_window = _get_context_window(network.model_name)
     token_threshold = int(context_window * COMPRESS_THRESHOLD)
 
-    # Получаем все завершённые сообщения
     qs = chat.messages.filter(status=Message.Status.COMPLETED)
     if exclude_msg_id:
         qs = qs.exclude(id=exclude_msg_id)
     all_msgs = list(qs.order_by('created_at'))
 
-    # Загружаем текущий rolling_summary
+    # Читаем готовое сжатие — rolling или финальное, что есть
+    existing_summary = ''
     try:
-        chat_summary = ChatSummary.objects.get(chat=chat)
-        rolling = chat_summary.rolling_summary or ''
+        cs = ChatSummary.objects.get(chat=chat)
+        existing_summary = (cs.rolling_summary or cs.summary_text or '').strip()
     except ChatSummary.DoesNotExist:
-        rolling = ''
+        pass
 
-    # Быстрый путь: история маленькая — просто берём последние RECENT_WINDOW
+    # Быстрый путь: история маленькая
     if len(all_msgs) <= RECENT_WINDOW:
-        return all_msgs, rolling
+        return all_msgs, existing_summary
 
-    # Считаем токены полной истории
+    # Считаем токены
     overhead = (
         estimate_tokens(memory_context)
         + estimate_tokens(network_prompt)
-        + estimate_tokens(rolling)
+        + estimate_tokens(existing_summary)
         + 800  # запас на форматирование + ответ
     )
     history_tokens = sum(
@@ -165,68 +232,38 @@ def get_history_with_compression(
     )
 
     if overhead + history_tokens <= token_threshold:
-        # Всё помещается в окно — отдаём ВСЮ историю, ничего не теряем.
-        return all_msgs, rolling
+        # Всё помещается в окно — возвращаем ВСЮ историю (B2 fix: не обрезаем!)
+        return all_msgs, existing_summary
 
-    # Нужна компрессия: оставляем RECENT_WINDOW, сжимаем остальное
+    # Превышаем порог: только свежие + готовый summary
+    # Фоновое сжатие запустит вызывающий код через should_compress()
     recent_msgs = all_msgs[-RECENT_WINDOW:]
-    to_compress = all_msgs[:-RECENT_WINDOW]
-
-    if not to_compress:
-        return recent_msgs, rolling
-
-    # Собираем текст для сжатия
-    compress_parts: list[str] = []
-    if rolling:
-        compress_parts.append(f'[Предыдущее сжатое резюме]:\n{rolling}\n')
-    compress_parts.append('[Диалог для сжатия]:')
-    for msg in to_compress:
-        role_label = 'Пользователь' if msg.role == 'user' else 'Ассистент'
-        text = _HTML_RE.sub('', msg.plain_text or msg.content or '')[:2000]
-        compress_parts.append(f'{role_label}: {text}')
-    compress_input = '\n'.join(compress_parts)
-
-    compression_system = (
-        'Ты система управления контекстом диалога. '
-        'Сожми предоставленный диалог в связное резюме на 150-250 слов. '
-        'Сохрани: все принятые решения и выводы, ключевые факты о пользователе '
-        '(имя, профессия, проект, предпочтения), незакрытые вопросы и задачи, '
-        'технические детали: стек, архитектура, ошибки. '
-        'Не сохраняй: светские фразы, повторяющиеся вопросы, вводные слова. '
-        'Пиши на том же языке что и диалог. '
-        'Выдай только резюме — без заголовков и вступления.'
-    )
-
-    try:
-        client = get_laozhang_client()
-        resp = client.chat.completions.create(
-            model='deepseek-v3',
-            messages=[
-                {'role': 'system', 'content': compression_system},
-                {'role': 'user', 'content': compress_input[:6000]},
-            ],
-            max_tokens=600,
-            temperature=0.3,
-        )
-        new_rolling = resp.choices[0].message.content.strip()
-        logger.info(f'[memory] chat={chat.id}: compressed {len(to_compress)} msgs → rolling_summary')
-    except Exception as e:
-        logger.warning(f'[memory] compression failed for chat {chat.id}: {e}')
-        new_rolling = rolling  # не трогаем при ошибке
-
-    return recent_msgs, new_rolling
+    return recent_msgs, existing_summary
 
 
-def update_rolling_summary(chat: 'Chat', new_rolling: str) -> None:
-    """Сохраняет rolling_summary в ChatSummary (upsert)."""
+def update_rolling_summary(chat: 'Chat', new_rolling: str, msg_count: int = 0) -> None:
+    """Атомарный upsert rolling_summary с select_for_update против гонок (B4)."""
     from aitext.models import ChatSummary
+    from django.db import transaction
+    if not new_rolling:
+        return
     try:
-        cs, _ = ChatSummary.objects.get_or_create(
-            chat=chat,
-            defaults={'summary_text': '', 'rolling_summary': new_rolling},
-        )
-        if cs.rolling_summary != new_rolling:
-            cs.rolling_summary = new_rolling
-            cs.save(update_fields=['rolling_summary', 'updated_at'])
+        with transaction.atomic():
+            cs, _ = ChatSummary.objects.select_for_update().get_or_create(
+                chat=chat,
+                defaults={
+                    'summary_text': '',
+                    'rolling_summary': new_rolling,
+                    'message_count': msg_count,
+                },
+            )
+            changed = cs.rolling_summary != new_rolling
+            if changed:
+                cs.rolling_summary = new_rolling
+            if msg_count and cs.message_count != msg_count:
+                cs.message_count = msg_count
+                changed = True
+            if changed:
+                cs.save(update_fields=['rolling_summary', 'message_count', 'updated_at'])
     except Exception as e:
         logger.warning(f'[memory] update_rolling_summary error for chat {chat.id}: {e}')

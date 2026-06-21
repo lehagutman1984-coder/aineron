@@ -1,6 +1,6 @@
-import re
 from rest_framework import serializers
 from aitext.models import UserMemory, ChatSummary
+from aitext.memory import normalize_fact
 
 
 class UserMemorySerializer(serializers.ModelSerializer):
@@ -18,7 +18,7 @@ class UserMemorySerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         content = validated_data.get('content', '')
         validated_data['source'] = 'user'
-        validated_data['content_key'] = re.sub(r'[^а-яёa-z0-9]', '', content.lower())[:255]
+        validated_data['content_key'] = normalize_fact(content)  # B3: единая нормализация
         validated_data['user'] = self.context['request'].user
         return super().create(validated_data)
 

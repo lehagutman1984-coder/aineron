@@ -16,6 +16,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from aitext.models import UserMemory, ChatSummary
+from aitext.memory import invalidate_memory_cache
 from api.serializers.memory import UserMemorySerializer, ChatSummarySerializer
 
 
@@ -36,6 +37,7 @@ class MemoryListCreateView(ListCreateAPIView):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user, source='user')
+        invalidate_memory_cache(self.request.user.id)  # B11: сбрасываем кэш
 
 
 class MemoryDetailView(RetrieveUpdateDestroyAPIView):
@@ -49,7 +51,6 @@ class MemoryDetailView(RetrieveUpdateDestroyAPIView):
 
     def update(self, request, *args, **kwargs):
         kwargs['partial'] = True
-        # Пользователь может менять только эти поля
         allowed = {'content', 'is_active', 'is_pinned', 'category'}
         data = {k: v for k, v in request.data.items() if k in allowed}
         serializer = self.get_serializer(
@@ -57,7 +58,12 @@ class MemoryDetailView(RetrieveUpdateDestroyAPIView):
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
+        invalidate_memory_cache(request.user.id)  # B11: сбрасываем кэш
         return Response(serializer.data)
+
+    def perform_destroy(self, instance):
+        instance.delete()
+        invalidate_memory_cache(self.request.user.id)  # B11: сбрасываем кэш
 
 
 class MemoryClearView(APIView):
@@ -68,6 +74,7 @@ class MemoryClearView(APIView):
         deleted, _ = UserMemory.objects.filter(
             user=request.user, source='auto'
         ).delete()
+        invalidate_memory_cache(request.user.id)  # B11
         return Response({'deleted': deleted})
 
 
@@ -103,4 +110,5 @@ class MemorySettingsView(APIView):
             return Response({'error': 'memory_enabled обязателен'}, status=400)
         request.user.memory_enabled = bool(enabled)
         request.user.save(update_fields=['memory_enabled'])
+        invalidate_memory_cache(request.user.id)  # B11: тоггл сбрасывает кэш
         return Response({'memory_enabled': request.user.memory_enabled})

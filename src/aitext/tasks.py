@@ -287,7 +287,9 @@ def generate_ai_response(self, message_id, web_search=False):
         max_input_tokens = network.max_input_tokens
 
         # ── Persistent Memory: собираем контекст памяти ───────────────────────
-        from .memory import build_memory_context, get_history_with_compression, update_rolling_summary
+        from .memory import (
+            build_memory_context, get_history_with_compression, should_compress,
+        )
         memory_ctx = build_memory_context(user, chat)
 
         messages_for_api = []
@@ -309,20 +311,22 @@ def generate_ai_response(self, message_id, web_search=False):
         if memory_ctx:
             messages_for_api.append({"role": "system", "content": memory_ctx})
 
-        # 4. Умная история: замена [:20] на compression-aware версию
-        history, new_rolling = get_history_with_compression(
+        # 4. Умная история: read-only, никаких sync LLM-вызовов (B5 fix)
+        history, existing_summary = get_history_with_compression(
             chat,
             exclude_msg_id=message.id,
             memory_context=memory_ctx,
             network_prompt=network.prompt or '',
         )
-        update_rolling_summary(chat, new_rolling)
+        # Фоновая компрессия если накопилось достаточно новых сообщений
+        if should_compress(chat, exclude_msg_id=message.id):
+            compress_chat_history.delay(chat.id)
 
-        # 5. Rolling summary текущей сессии (если есть)
-        if new_rolling:
+        # 5. Summary текущей сессии (если есть готовое сжатие)
+        if existing_summary:
             messages_for_api.append({
                 "role": "system",
-                "content": f"[Начало этой сессии, сжато]: {new_rolling}",
+                "content": f"[Начало этой сессии, сжато]: {existing_summary}",
             })
 
         # Добавляем сообщения из истории
@@ -609,6 +613,8 @@ def extract_memory_facts(self, chat_id: int):
     if not isinstance(facts, list):
         return
 
+    from .memory import normalize_fact, invalidate_memory_cache
+
     added = 0
     for fact in facts:
         content = str(fact.get('content', '')).strip()
@@ -616,9 +622,8 @@ def extract_memory_facts(self, chat_id: int):
         if not content or len(content) < 5:
             continue
 
-        # Нормализованный ключ
-        content_key = re.sub(r'[^а-яёa-z0-9]', '', content.lower())[:255]
-        if content_key in existing_keys:
+        content_key = normalize_fact(content)  # B3: пробелы сохраняются
+        if not content_key:
             continue
 
         valid_categories = {'profile', 'preference', 'project', 'fact', 'skill'}
@@ -626,21 +631,27 @@ def extract_memory_facts(self, chat_id: int):
             category = 'fact'
 
         try:
-            UserMemory.objects.create(
+            # B3: update_or_create вместо continue — новый факт не теряется при коллизии
+            _, was_created = UserMemory.objects.update_or_create(
                 user=user,
-                content=content,
                 content_key=content_key,
-                category=category,
-                source='auto',
-                source_chat=chat,
+                defaults={
+                    'content': content,
+                    'category': category,
+                    'source': 'auto',
+                    'source_chat': chat,
+                    'is_active': True,
+                },
             )
-            existing_keys.add(content_key)
-            added += 1
-        except Exception:
-            pass  # UniqueConstraint сработал — нормально
+            if was_created:
+                existing_keys.add(content_key)
+                added += 1
+        except Exception as exc:
+            logger.debug(f'[memory] upsert fact skip for user={user.id}: {exc}')
 
     if added:
         logger.info(f'[memory] chat={chat_id}: +{added} новых фактов для user={user.id}')
+        invalidate_memory_cache(user.id)  # B11: сбрасываем кэш при новых фактах
 
 
 @shared_task(bind=True, max_retries=2, default_retry_delay=30, ignore_result=True)
@@ -710,3 +721,138 @@ def generate_chat_summary(self, chat_id: int):
         logger.info(f'[memory] chat={chat_id}: summary {"created" if created else "updated"} ({msg_count} msgs)')
     except Exception as e:
         logger.warning(f'[memory] save summary error for chat {chat_id}: {e}')
+
+
+@shared_task(bind=True, max_retries=2, default_retry_delay=60, ignore_result=True)
+def compress_chat_history(self, chat_id: int):
+    """
+    Фоновая компрессия истории чата через DeepSeek.
+    Вызывается из горячего пути (generate_ai_response / SSE generate) когда
+    should_compress() → True. Заменяет синхронный LLM-вызов внутри
+    get_history_with_compression (B5 fix).
+    """
+    from .models import Chat, ChatSummary, Message
+    from .memory import (
+        RECENT_WINDOW, _HTML_RE, _get_context_window,
+        estimate_tokens, update_rolling_summary,
+    )
+
+    try:
+        chat = Chat.objects.select_related('user', 'network').get(id=chat_id)
+    except Chat.DoesNotExist:
+        return
+
+    if not getattr(chat.user, 'memory_enabled', True):
+        return
+
+    msgs = list(
+        Message.objects.filter(chat=chat, status=Message.Status.COMPLETED)
+        .order_by('created_at')
+    )
+    if len(msgs) <= RECENT_WINDOW:
+        return  # нечего сжимать
+
+    to_compress = msgs[:-RECENT_WINDOW]
+    msg_count = len(msgs)
+
+    # Читаем текущее rolling_summary
+    rolling = ''
+    try:
+        cs = ChatSummary.objects.get(chat=chat)
+        rolling = cs.rolling_summary or cs.summary_text or ''
+        # Если уже покрыли это кол-во сообщений — нечего делать
+        if cs.message_count >= msg_count - RECENT_WINDOW:
+            return
+    except ChatSummary.DoesNotExist:
+        pass
+
+    compress_parts: list[str] = []
+    if rolling:
+        compress_parts.append(f'[Предыдущее сжатое резюме]:\n{rolling}\n')
+    compress_parts.append('[Диалог для сжатия]:')
+    for msg in to_compress:
+        role_label = 'Пользователь' if msg.role == 'user' else 'Ассистент'
+        text = _HTML_RE.sub('', msg.plain_text or msg.content or '')[:2000]
+        compress_parts.append(f'{role_label}: {text}')
+    compress_input = '\n'.join(compress_parts)
+
+    compression_system = (
+        'Ты система управления контекстом диалога. '
+        'Сожми предоставленный диалог в связное резюме на 150-250 слов. '
+        'Сохрани: все принятые решения и выводы, ключевые факты о пользователе '
+        '(имя, профессия, проект, предпочтения), незакрытые вопросы и задачи, '
+        'технические детали: стек, архитектура, ошибки. '
+        'Не сохраняй: светские фразы, повторяющиеся вопросы, вводные слова. '
+        'Пиши на том же языке что и диалог. '
+        'Выдай только резюме — без заголовков и вступления.'
+    )
+
+    try:
+        client = get_laozhang_client()
+        resp = client.chat.completions.create(
+            model='deepseek-v3',
+            messages=[
+                {'role': 'system', 'content': compression_system},
+                {'role': 'user', 'content': compress_input[-6000:]},
+            ],
+            max_tokens=600,
+            temperature=0.3,
+        )
+        new_rolling = resp.choices[0].message.content.strip()
+    except Exception as e:
+        logger.warning(f'[memory] compress_chat_history failed for chat {chat_id}: {e}')
+        raise self.retry(exc=e)
+
+    update_rolling_summary(chat, new_rolling, msg_count=msg_count - RECENT_WINDOW)
+    logger.info(
+        f'[memory] chat={chat_id}: compressed {len(to_compress)} msgs → rolling_summary '
+        f'({len(new_rolling)} chars)'
+    )
+
+
+@shared_task(ignore_result=True)
+def summarize_stale_chats():
+    """
+    Beat-таск: суммаризирует чаты которые не получили summary автоматически.
+    Запускается раз в 2 часа. Фиксирует B14 (rolling_summary растёт бесконечно)
+    и B6 (суммаризация только при новом чате с той же моделью).
+
+    Покрывает:
+    - «Брошенные» чаты (последнее сообщение >24ч назад, summary нет/устарело)
+    - Чаты с активностью но без summary_text
+    """
+    from .models import Chat, ChatSummary, Message
+    from .memory import RECENT_WINDOW, COMPRESS_TRIGGER
+    from django.utils import timezone
+    from datetime import timedelta
+
+    cutoff_active = timezone.now() - timedelta(hours=24)
+
+    # Ограничиваем batch: не более 30 чатов за один запуск
+    candidate_ids = list(
+        Chat.objects
+        .filter(updated_at__lt=cutoff_active)
+        .values_list('id', flat=True)[:30]
+    )
+
+    queued = 0
+    for chat_id in candidate_ids:
+        try:
+            msg_count = Message.objects.filter(
+                chat_id=chat_id, status=Message.Status.COMPLETED
+            ).count()
+            if msg_count < 4:
+                continue
+            try:
+                cs = ChatSummary.objects.get(chat_id=chat_id)
+                if cs.summary_text and cs.message_count >= msg_count:
+                    continue  # актуальное summary уже есть
+            except ChatSummary.DoesNotExist:
+                pass
+            generate_chat_summary.delay(chat_id)
+            queued += 1
+        except Exception as e:
+            logger.warning(f'[memory] summarize_stale_chats error for chat {chat_id}: {e}')
+
+    if queued:
+        logger.info(f'[memory] summarize_stale_chats: queued {queued} chats for summarization')
