@@ -28,7 +28,8 @@ def _strip_html(text: str) -> str:
 
 _client = None
 
-FULL_INJECT_LIMIT = 50_000  # символов — порог full-inject vs лексический RAG
+FULL_INJECT_LIMIT = 50_000   # символов на файл — порог full-inject vs лексический RAG
+AGGREGATE_INJECT_LIMIT = 200_000  # символов суммарно по всем файлам проекта
 
 
 def _retrieve_relevant_chunks(text: str, query: str, chunk_size: int = 500, top_k: int = 6) -> str:
@@ -50,21 +51,27 @@ def _retrieve_relevant_chunks(text: str, query: str, chunk_size: int = 500, top_
 def build_project_knowledge_context(project, user_message_text: str = '') -> str:
     """Собирает контекст из файлов базы знаний проекта.
 
-    Файлы ≤ FULL_INJECT_LIMIT символов вставляются целиком,
-    крупные — лексическим отбором релевантных фрагментов.
+    Файлы ≤ FULL_INJECT_LIMIT вставляются целиком, крупные — лексическим RAG.
+    Суммарный объём ограничен AGGREGATE_INJECT_LIMIT.
     """
     files = project.knowledge_files.filter(enabled=True, status='ready').exclude(extracted_text='')
     if not files.exists():
         return ''
 
     parts = []
+    total_chars = 0
     for f in files:
+        if total_chars >= AGGREGATE_INJECT_LIMIT:
+            break
         text = f.extracted_text
-        if len(text) <= FULL_INJECT_LIMIT:
-            parts.append(f"### {f.filename}\n{text}")
-        else:
-            snippet = _retrieve_relevant_chunks(text, user_message_text)
-            parts.append(f"### {f.filename} (фрагменты)\n{snippet}")
+        is_large = len(text) > FULL_INJECT_LIMIT
+        snippet = _retrieve_relevant_chunks(text, user_message_text) if is_large else text
+        remaining = AGGREGATE_INJECT_LIMIT - total_chars
+        if len(snippet) > remaining:
+            snippet = snippet[:remaining]
+        label = f"{f.filename} (фрагменты)" if is_large else f.filename
+        parts.append(f"### {label}\n{snippet}")
+        total_chars += len(snippet)
 
     if not parts:
         return ''
@@ -345,8 +352,9 @@ def generate_ai_response(self, message_id, web_search=False):
                 proj = Project.objects.select_related().get(id=chat.project_id)
                 if proj.system_prompt:
                     messages_for_api.append({"role": "system", "content": proj.system_prompt})
-                # База знаний проекта
-                user_msg_text = message.plain_text or (message.content if isinstance(message.content, str) else '')
+                # База знаний проекта — запрос = текст последнего user-сообщения
+                last_user_msg = chat.messages.filter(role='user').order_by('-created_at').first()
+                user_msg_text = (last_user_msg.plain_text or (last_user_msg.content if isinstance(last_user_msg.content, str) else '')) if last_user_msg else ''
                 knowledge_ctx = build_project_knowledge_context(proj, user_msg_text)
                 if knowledge_ctx:
                     messages_for_api.append({"role": "system", "content": knowledge_ctx})

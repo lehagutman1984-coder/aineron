@@ -371,13 +371,17 @@ class StreamMessageView(APIView):
 
         messages_for_api = []
 
-        # 1. Project system prompt (если есть)
+        # 1. Project system prompt + база знаний (если есть)
         if chat.project_id:
             from aitext.models import Project
+            from aitext.tasks import build_project_knowledge_context
             try:
                 proj = Project.objects.get(id=chat.project_id)
                 if proj.system_prompt:
                     messages_for_api.append({"role": "system", "content": proj.system_prompt})
+                knowledge_ctx = build_project_knowledge_context(proj, message_text)
+                if knowledge_ctx:
+                    messages_for_api.append({"role": "system", "content": knowledge_ctx})
             except Project.DoesNotExist:
                 pass
 
