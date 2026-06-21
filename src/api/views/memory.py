@@ -1,0 +1,106 @@
+"""
+DRF views для Persistent Memory.
+
+GET    /api/v1/memory/               — список фактов пользователя
+POST   /api/v1/memory/               — создать факт вручную
+PATCH  /api/v1/memory/<id>/          — обновить (is_active, is_pinned, content)
+DELETE /api/v1/memory/<id>/          — удалить факт
+POST   /api/v1/memory/clear/         — удалить все авто-факты (source=auto)
+GET    /api/v1/memory/summaries/     — список ChatSummary (readonly)
+PATCH  /api/v1/memory/settings/      — toggle memory_enabled на пользователе
+"""
+from rest_framework.views import APIView
+from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+
+from aitext.models import UserMemory, ChatSummary
+from api.serializers.memory import UserMemorySerializer, ChatSummarySerializer
+
+
+class MemoryListCreateView(ListCreateAPIView):
+    """GET: список фактов. POST: создать вручную."""
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserMemorySerializer
+
+    def get_queryset(self):
+        qs = UserMemory.objects.filter(user=self.request.user)
+        category = self.request.query_params.get('category')
+        if category:
+            qs = qs.filter(category=category)
+        source = self.request.query_params.get('source')
+        if source:
+            qs = qs.filter(source=source)
+        return qs.order_by('-is_pinned', '-created_at')
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user, source='user')
+
+
+class MemoryDetailView(RetrieveUpdateDestroyAPIView):
+    """PATCH/DELETE конкретного факта."""
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserMemorySerializer
+    http_method_names = ['patch', 'delete', 'head', 'options']
+
+    def get_queryset(self):
+        return UserMemory.objects.filter(user=self.request.user)
+
+    def update(self, request, *args, **kwargs):
+        kwargs['partial'] = True
+        # Пользователь может менять только эти поля
+        allowed = {'content', 'is_active', 'is_pinned', 'category'}
+        data = {k: v for k, v in request.data.items() if k in allowed}
+        serializer = self.get_serializer(
+            self.get_object(), data=data, partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+
+class MemoryClearView(APIView):
+    """POST /memory/clear/ — удалить все авто-извлечённые факты."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        deleted, _ = UserMemory.objects.filter(
+            user=request.user, source='auto'
+        ).delete()
+        return Response({'deleted': deleted})
+
+
+class MemorySummariesView(APIView):
+    """GET /memory/summaries/ — список ChatSummary (readonly)."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        summaries = (
+            ChatSummary.objects
+            .filter(chat__user=request.user)
+            .select_related('chat', 'chat__network')
+            .order_by('-updated_at')[:20]
+        )
+        return Response(ChatSummarySerializer(summaries, many=True).data)
+
+
+class MemorySettingsView(APIView):
+    """PATCH /memory/settings/ — включить/выключить глобальную память."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response({
+            'memory_enabled': getattr(request.user, 'memory_enabled', True),
+            'fact_count': UserMemory.objects.filter(
+                user=request.user, is_active=True
+            ).count(),
+        })
+
+    def patch(self, request):
+        enabled = request.data.get('memory_enabled')
+        if enabled is None:
+            return Response({'error': 'memory_enabled обязателен'}, status=400)
+        request.user.memory_enabled = bool(enabled)
+        request.user.save(update_fields=['memory_enabled'])
+        return Response({'memory_enabled': request.user.memory_enabled})

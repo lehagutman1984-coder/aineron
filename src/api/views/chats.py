@@ -136,6 +136,20 @@ class ChatListCreateView(ListCreateAPIView):
 
         generate_ai_response.delay(assistant_message.id, web_search=web_search)
 
+        # Суммаризация предыдущего чата с той же нейросетью (фон)
+        try:
+            from aitext.tasks import generate_chat_summary
+            prev_chat = (
+                Chat.objects.filter(user=request.user, network=network)
+                .exclude(id=chat.id)
+                .order_by('-updated_at')
+                .first()
+            )
+            if prev_chat and prev_chat.messages.filter(status=Message.Status.COMPLETED).count() >= 4:
+                generate_chat_summary.delay(prev_chat.id)
+        except Exception:
+            pass
+
         return Response({
             'chat_id': chat.id,
             'user_message_id': user_message.id,
@@ -348,15 +362,14 @@ class StreamMessageView(APIView):
 
         # Build message history for API (mirrors tasks.py logic)
         max_input_tokens = network.max_input_tokens
-        history_qs = (
-            chat.messages
-            .filter(status=Message.Status.COMPLETED)
-            .exclude(id=user_message.id)
-            .order_by('-created_at')[:20]
-        )
-        history = list(reversed(history_qs))
+
+        # ── Persistent Memory: собираем контекст памяти ───────────────────────
+        from aitext.memory import build_memory_context, get_history_with_compression, update_rolling_summary
+        memory_ctx = build_memory_context(request.user, chat)
 
         messages_for_api = []
+
+        # 1. Project system prompt (если есть)
         if chat.project_id:
             from aitext.models import Project
             try:
@@ -365,8 +378,30 @@ class StreamMessageView(APIView):
                     messages_for_api.append({"role": "system", "content": proj.system_prompt})
             except Project.DoesNotExist:
                 pass
+
+        # 2. Network prompt (если есть)
         if network.has_prompt and network.prompt:
             messages_for_api.append({"role": "system", "content": network.prompt})
+
+        # 3. Блок памяти пользователя
+        if memory_ctx:
+            messages_for_api.append({"role": "system", "content": memory_ctx})
+
+        # 4. Умная история: замена [:20] на compression-aware версию
+        history, new_rolling = get_history_with_compression(
+            chat,
+            exclude_msg_id=user_message.id,
+            memory_context=memory_ctx,
+            network_prompt=network.prompt or '',
+        )
+        update_rolling_summary(chat, new_rolling)
+
+        # 5. Rolling summary текущей сессии (если есть)
+        if new_rolling:
+            messages_for_api.append({
+                "role": "system",
+                "content": f"[Начало этой сессии, сжато]: {new_rolling}",
+            })
 
         for msg in history:
             if msg.role == 'user':

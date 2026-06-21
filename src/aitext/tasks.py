@@ -277,12 +277,13 @@ def generate_ai_response(self, message_id, web_search=False):
 
         max_input_tokens = network.max_input_tokens
 
-        # Получаем последние 20 сообщений из истории
-        history_qs = chat.messages.filter(status=Message.Status.COMPLETED).order_by('-created_at')[:20]
-        history = list(reversed(history_qs))
+        # ── Persistent Memory: собираем контекст памяти ───────────────────────
+        from .memory import build_memory_context, get_history_with_compression, update_rolling_summary
+        memory_ctx = build_memory_context(user, chat)
 
         messages_for_api = []
 
+        # 1. Project system prompt (если есть)
         if chat.project_id:
             try:
                 proj = Project.objects.get(id=chat.project_id)
@@ -291,8 +292,29 @@ def generate_ai_response(self, message_id, web_search=False):
             except Exception:
                 pass
 
+        # 2. Network prompt (если есть)
         if network.has_prompt and network.prompt:
             messages_for_api.append({"role": "system", "content": network.prompt})
+
+        # 3. Блок памяти пользователя
+        if memory_ctx:
+            messages_for_api.append({"role": "system", "content": memory_ctx})
+
+        # 4. Умная история: замена [:20] на compression-aware версию
+        history, new_rolling = get_history_with_compression(
+            chat,
+            exclude_msg_id=message.id,
+            memory_context=memory_ctx,
+            network_prompt=network.prompt or '',
+        )
+        update_rolling_summary(chat, new_rolling)
+
+        # 5. Rolling summary текущей сессии (если есть)
+        if new_rolling:
+            messages_for_api.append({
+                "role": "system",
+                "content": f"[Начало этой сессии, сжато]: {new_rolling}",
+            })
 
         # Добавляем сообщения из истории
         for msg in history:
@@ -470,6 +492,16 @@ def generate_ai_response(self, message_id, web_search=False):
 
         logger.info(f"AI ответ сгенерирован для сообщения {message_id}, сохранено изображений: {len(saved_images)}")
 
+        # Авто-извлечение фактов (каждые 3 ответа ассистента)
+        try:
+            completed_count = chat.messages.filter(
+                role='assistant', status=Message.Status.COMPLETED
+            ).count()
+            if completed_count % 3 == 0:
+                extract_memory_facts.delay(chat.id)
+        except Exception:
+            pass  # не прерываем основной поток при ошибке памяти
+
     except Exception as e:
         logger.error(f"Ошибка генерации AI ответа для сообщения {message_id}: {e}")
         try:
@@ -480,3 +512,190 @@ def generate_ai_response(self, message_id, web_search=False):
         except Message.DoesNotExist:
             pass
         raise self.retry(exc=e, countdown=60)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Persistent Memory Tasks
+# ──────────────────────────────────────────────────────────────────────────────
+
+@shared_task(bind=True, max_retries=2, default_retry_delay=30, ignore_result=True)
+def extract_memory_facts(self, chat_id: int):
+    """
+    Авто-извлечение фактов о пользователе из последних сообщений чата.
+    Вызывается после каждого ответа ассистента (каждые N ответов в generate_ai_response).
+    """
+    import json
+    import re
+    from .models import Chat, UserMemory
+
+    try:
+        chat = Chat.objects.select_related('user').get(id=chat_id)
+    except Chat.DoesNotExist:
+        return
+
+    user = chat.user
+    if not getattr(user, 'memory_enabled', True):
+        return
+
+    # Последние 10 сообщений для анализа
+    msgs = list(
+        chat.messages.filter(status=Message.Status.COMPLETED)
+        .order_by('-created_at')[:10]
+    )
+    msgs.reverse()
+
+    if not msgs:
+        return
+
+    dialogue = '\n'.join(
+        f"{'Пользователь' if m.role == 'user' else 'Ассистент'}: "
+        f"{(m.plain_text or m.content or '')[:1000]}"
+        for m in msgs
+    )
+
+    # Существующие факты для дедупликации
+    existing_keys = set(
+        UserMemory.objects.filter(user=user, is_active=True)
+        .values_list('content_key', flat=True)[:100]
+    )
+
+    existing_preview = '\n'.join(
+        f'- {c}' for c in
+        UserMemory.objects.filter(user=user, is_active=True)
+        .values_list('content', flat=True)[:30]
+    ) or 'нет'
+
+    system_prompt = f"""Ты система управления памятью AI-ассистента.
+
+Из диалога извлеки НОВЫЕ долгосрочные факты о пользователе, которые стоит запомнить.
+Включай только: профессия, проект, язык программирования, стек, предпочтения стиля ответов, цели, имя, город.
+НЕ включай: вопросы пользователя, временный контекст, ответы ассистента.
+
+Уже запомнено (НЕ дублировать):
+{existing_preview}
+
+Отвечай ТОЛЬКО валидным JSON-массивом:
+[{{"content": "факт", "category": "profile|preference|project|fact|skill"}}]
+
+Если новых фактов нет — верни: []"""
+
+    try:
+        client = get_laozhang_client()
+        resp = client.chat.completions.create(
+            model='deepseek-v3',
+            messages=[
+                {'role': 'system', 'content': system_prompt},
+                {'role': 'user', 'content': dialogue[:3000]},
+            ],
+            max_tokens=400,
+            temperature=0.2,
+        )
+        raw = resp.choices[0].message.content.strip()
+        raw = raw.removeprefix('```json').removeprefix('```').removesuffix('```').strip()
+        facts = json.loads(raw)
+    except Exception as e:
+        logger.warning(f'[memory] extract_memory_facts failed for chat {chat_id}: {e}')
+        return
+
+    if not isinstance(facts, list):
+        return
+
+    added = 0
+    for fact in facts:
+        content = str(fact.get('content', '')).strip()
+        category = fact.get('category', 'fact')
+        if not content or len(content) < 5:
+            continue
+
+        # Нормализованный ключ
+        content_key = re.sub(r'[^а-яёa-z0-9]', '', content.lower())[:255]
+        if content_key in existing_keys:
+            continue
+
+        valid_categories = {'profile', 'preference', 'project', 'fact', 'skill'}
+        if category not in valid_categories:
+            category = 'fact'
+
+        try:
+            UserMemory.objects.create(
+                user=user,
+                content=content,
+                content_key=content_key,
+                category=category,
+                source='auto',
+                source_chat=chat,
+            )
+            existing_keys.add(content_key)
+            added += 1
+        except Exception:
+            pass  # UniqueConstraint сработал — нормально
+
+    if added:
+        logger.info(f'[memory] chat={chat_id}: +{added} новых фактов для user={user.id}')
+
+
+@shared_task(bind=True, max_retries=2, default_retry_delay=30, ignore_result=True)
+def generate_chat_summary(self, chat_id: int):
+    """
+    Генерирует/обновляет ChatSummary.summary_text для завершённого чата.
+    Вызывается при открытии нового чата (триггер в SendMessageView/ChatListCreateView).
+    """
+    from .models import Chat, ChatSummary
+
+    try:
+        chat = Chat.objects.select_related('user').get(id=chat_id)
+    except Chat.DoesNotExist:
+        return
+
+    user = chat.user
+    if not getattr(user, 'memory_enabled', True):
+        return
+
+    msgs = list(
+        chat.messages.filter(status=Message.Status.COMPLETED)
+        .order_by('created_at')
+    )
+    if len(msgs) < 4:
+        return  # слишком короткий чат — не стоит
+
+    msg_count = len(msgs)
+    dialogue = '\n'.join(
+        f"{'Пользователь' if m.role == 'user' else 'Ассистент'}: "
+        f"{(m.plain_text or m.content or '')[:1500]}"
+        for m in msgs
+    )
+
+    summary_prompt = (
+        'Создай краткое резюме этого диалога на 100-150 слов. '
+        'Включи: тему разговора, ключевые решения, важные факты о пользователе, незакрытые вопросы. '
+        'Пиши на том же языке что и диалог. Только резюме, без вступления.'
+    )
+
+    try:
+        client = get_laozhang_client()
+        resp = client.chat.completions.create(
+            model='deepseek-v3',
+            messages=[
+                {'role': 'system', 'content': summary_prompt},
+                {'role': 'user', 'content': dialogue[:5000]},
+            ],
+            max_tokens=400,
+            temperature=0.3,
+        )
+        summary_text = resp.choices[0].message.content.strip()
+    except Exception as e:
+        logger.warning(f'[memory] generate_chat_summary failed for chat {chat_id}: {e}')
+        return
+
+    try:
+        cs, created = ChatSummary.objects.get_or_create(
+            chat=chat,
+            defaults={'summary_text': summary_text, 'message_count': msg_count},
+        )
+        if not created:
+            cs.summary_text = summary_text
+            cs.message_count = msg_count
+            cs.save(update_fields=['summary_text', 'message_count', 'updated_at'])
+        logger.info(f'[memory] chat={chat_id}: summary {"created" if created else "updated"} ({msg_count} msgs)')
+    except Exception as e:
+        logger.warning(f'[memory] save summary error for chat {chat_id}: {e}')

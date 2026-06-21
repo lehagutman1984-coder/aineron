@@ -39,6 +39,10 @@ from api.views.prompts import PromptListCreateView, PromptDetailView
 from api.views.projects import ProjectListCreateView, ProjectDetailView
 from api.views.telegram_link import TelegramLinkTokenView
 from api.views.telegram_webapp import telegram_webapp_auth
+from api.views.memory import (
+    MemoryListCreateView, MemoryDetailView,
+    MemoryClearView, MemorySummariesView, MemorySettingsView,
+)
 
 app_name = 'api'
 
@@ -140,6 +144,13 @@ urlpatterns = [
 
     # ========== STUDIO (Vibe-Coding Studio) ==========
     path('v1/studio/', include('studio.urls')),
+
+    # ========== Persistent Memory ==========
+    path('v1/memory/', MemoryListCreateView.as_view(), name='memory_list_create'),
+    path('v1/memory/<int:pk>/', MemoryDetailView.as_view(), name='memory_detail'),
+    path('v1/memory/clear/', MemoryClearView.as_view(), name='memory_clear'),
+    path('v1/memory/summaries/', MemorySummariesView.as_view(), name='memory_summaries'),
+    path('v1/memory/settings/', MemorySettingsView.as_view(), name='memory_settings'),
 
     # ========== Telegram Bot ==========
     path('v1/telegram/link-token/', TelegramLinkTokenView.as_view(), name='telegram_link_token'),

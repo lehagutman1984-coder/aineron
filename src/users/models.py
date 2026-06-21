@@ -485,6 +485,11 @@ class CustomUser(AbstractUser):
         verbose_name='Пригласивший пользователь'
     )
     referral_clicks = models.PositiveIntegerField(default=0, verbose_name='Количество переходов по ссылке')
+    memory_enabled = models.BooleanField(
+        default=True,
+        verbose_name='Память включена',
+        help_text='Глобальный переключатель долговременной памяти',
+    )
 
     # Фикс конфликтов с allauth
     groups = models.ManyToManyField(

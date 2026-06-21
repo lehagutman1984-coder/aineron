@@ -11,6 +11,7 @@ import {
   MessageSquare,
   ExternalLink,
   Key,
+  Brain,
 } from "lucide-react";
 import { getMe, listChats } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
@@ -120,6 +121,24 @@ export default function AccountPage() {
             </div>
           </div>
         )}
+
+        {/* Memory card */}
+        <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-6">
+          <div className="mb-4 flex items-center gap-2 text-[13px] font-medium text-[rgba(13,13,13,0.55)] uppercase tracking-wide">
+            <Brain size={14} className="text-[#0a7cff]" />
+            Память
+          </div>
+          <p className="mb-4 text-[13px] text-[rgba(13,13,13,0.6)]">
+            Факты о вас и история сессий.
+          </p>
+          <Link
+            href="/account/memory/"
+            className="inline-flex h-9 items-center gap-2 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[13px] text-[rgba(13,13,13,0.7)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
+          >
+            <Brain size={13} />
+            Открыть память
+          </Link>
+        </div>
 
         {/* API keys shortcut */}
         <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-6">

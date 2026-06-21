@@ -500,3 +500,92 @@ class FAQ(models.Model):
 
     def __str__(self):
         return self.question[:50]
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Persistent Memory
+# ──────────────────────────────────────────────────────────────────────────────
+
+class UserMemory(models.Model):
+    """Долговременный факт о пользователе. Общий для всех каналов (web, Telegram, Studio)."""
+
+    class Category(models.TextChoices):
+        PROFILE    = 'profile',    'Профиль'
+        PREFERENCE = 'preference', 'Предпочтения'
+        PROJECT    = 'project',    'Проекты'
+        FACT       = 'fact',       'Факты'
+        SKILL      = 'skill',      'Навыки'
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='memories',
+        verbose_name='Пользователь',
+    )
+    category = models.CharField(
+        max_length=20, choices=Category.choices,
+        default=Category.FACT, verbose_name='Категория',
+    )
+    content = models.TextField(verbose_name='Факт')
+    content_key = models.CharField(
+        max_length=255, db_index=True, blank=True,
+        verbose_name='Ключ дедупликации',
+    )
+    source = models.CharField(
+        max_length=10, default='auto',
+        choices=[('auto', 'Авто'), ('user', 'Вручную')],
+        verbose_name='Источник',
+    )
+    source_chat = models.ForeignKey(
+        'Chat', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='extracted_memories',
+    )
+    is_active = models.BooleanField(default=True, verbose_name='Активен')
+    is_pinned = models.BooleanField(default=False, verbose_name='Закреплён')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Факт о пользователе'
+        verbose_name_plural = 'Факты о пользователях'
+        ordering = ['-is_pinned', '-created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'content_key'],
+                name='unique_user_memory_content_key',
+                condition=models.Q(content_key__gt=''),
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.user_id} | {self.category} | {self.content[:60]}"
+
+    def save(self, *args, **kwargs):
+        if not self.content_key and self.content:
+            import re
+            self.content_key = re.sub(r'[^а-яёa-z0-9]', '', self.content.lower())[:255]
+        super().save(*args, **kwargs)
+
+
+class ChatSummary(models.Model):
+    """Сжатое резюме чата. Хранит rolling_summary (текущая сессия) и финальное summary."""
+
+    chat = models.OneToOneField(
+        'Chat', on_delete=models.CASCADE, related_name='summary',
+        verbose_name='Чат',
+    )
+    summary_text = models.TextField(verbose_name='Резюме сессии')
+    rolling_summary = models.TextField(
+        blank=True, default='',
+        verbose_name='Сжатое начало текущей сессии',
+    )
+    message_count = models.PositiveIntegerField(default=0, verbose_name='Кол-во сообщений')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Резюме чата'
+        verbose_name_plural = 'Резюме чатов'
+
+    def __str__(self):
+        return f"Summary for chat {self.chat_id}"
