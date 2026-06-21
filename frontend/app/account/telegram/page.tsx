@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { MessageCircle, Link, Unlink, RefreshCw, CheckCircle, Copy } from "lucide-react";
-import { apiRequest } from "@/lib/api/client";
+import { request as apiRequest } from "@/lib/api/client";
 
 interface TelegramStatus {
   linked: boolean;
