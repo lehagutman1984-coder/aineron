@@ -54,7 +54,7 @@ function ProjectModal({
   mode: "create" | "edit";
   initial?: Project;
   onClose: () => void;
-  onSave: (data: { name: string; system_prompt: string; color: string; icon: string }) => Promise<void>;
+  onSave: (data: { name: string; system_prompt: string; color: string; icon: string }) => Promise<unknown>;
 }) {
   const [name, setName] = useState(initial?.name ?? "");
   const [systemPrompt, setSystemPrompt] = useState(initial?.system_prompt ?? "");
