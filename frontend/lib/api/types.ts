@@ -318,6 +318,38 @@ export interface ChatDetail {
   updated_at: string;
 }
 
+export interface ProjectConnector {
+  id: number;
+  connector_type: "github" | "gitea";
+  repo_url: string;
+  owner: string;
+  repo: string;
+  branch: string;
+  created_at: string;
+}
+
+export interface RepoTreeItem {
+  path: string;
+  type: "file" | "dir";
+  size?: number | null;
+}
+
+export interface CommitFile {
+  path: string;
+  content: string;
+}
+
+export interface ProjectCommit {
+  id: number;
+  connector_id: number | null;
+  commit_message: string;
+  files: CommitFile[];
+  status: "pending" | "pushed" | "rejected" | "failed";
+  error_message: string;
+  created_at: string;
+  pushed_at: string | null;
+}
+
 export interface AttachmentItem {
   id: string;
   url: string;

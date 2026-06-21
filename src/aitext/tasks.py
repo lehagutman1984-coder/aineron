@@ -1020,3 +1020,65 @@ def process_project_file(self, file_id: int):
         pf.save(update_fields=['status'])
         logger.warning(f'[project_file] extraction failed for file {file_id}: {e}')
         raise self.retry(exc=e, countdown=30)
+
+
+# Project Connector — Git Push Tasks
+# ──────────────────────────────────────────────────────────────────────────────
+
+@shared_task(bind=True, max_retries=2, default_retry_delay=30)
+def push_project_commit(self, commit_id: int):
+    """Пушит файлы из ProjectCommit в GitHub/Gitea через PAT."""
+    from django.utils import timezone
+    from .models import ProjectCommit, ProjectConnector
+    from .crypto import decrypt_token
+
+    try:
+        commit = ProjectCommit.objects.select_related('connector').get(id=commit_id)
+    except ProjectCommit.DoesNotExist:
+        return
+
+    connector = commit.connector
+    if not connector:
+        commit.status = 'failed'
+        commit.error_message = 'Коннектор не найден'
+        commit.save(update_fields=['status', 'error_message'])
+        return
+
+    try:
+        token = decrypt_token(connector.access_token_enc)
+    except Exception as e:
+        commit.status = 'failed'
+        commit.error_message = f'Ошибка расшифровки токена: {e}'
+        commit.save(update_fields=['status', 'error_message'])
+        return
+
+    try:
+        if connector.connector_type == 'github':
+            from .github_client import push_files
+            result = push_files(
+                connector.owner, connector.repo, token,
+                commit.files, commit.commit_message, connector.branch,
+            )
+        else:
+            from studio.gitea_client import push_files_ext
+            result = push_files_ext(
+                connector.owner, connector.repo, commit.files,
+                commit.commit_message, connector.branch, token=token,
+            )
+
+        if result.get('errors'):
+            first_err = result['errors'][0].get('error', 'unknown')
+            commit.status = 'failed'
+            commit.error_message = first_err
+        else:
+            commit.status = 'pushed'
+            commit.pushed_at = timezone.now()
+        commit.save(update_fields=['status', 'error_message', 'pushed_at'])
+        logger.info(f'[push_commit] commit {commit_id}: {result}')
+
+    except Exception as e:
+        logger.error(f'[push_commit] commit {commit_id} failed: {e}')
+        commit.status = 'failed'
+        commit.error_message = str(e)[:500]
+        commit.save(update_fields=['status', 'error_message'])
+        raise self.retry(exc=e, countdown=30)

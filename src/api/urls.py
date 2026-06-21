@@ -38,6 +38,11 @@ from api.views.compare import CompareView
 from api.views.prompts import PromptListCreateView, PromptDetailView
 from api.views.projects import ProjectListCreateView, ProjectDetailView
 from api.views.project_files import ProjectFileListCreateView, ProjectFileDetailView
+from api.views.connectors import (
+    ConnectorListCreateView, ConnectorDetailView,
+    ConnectorReadFilesView, ConnectorFileContentView,
+    CommitListCreateView, CommitConfirmView,
+)
 from api.views.telegram_link import TelegramLinkTokenView
 from api.views.telegram_webapp import telegram_webapp_auth
 from api.views.memory import (
@@ -144,6 +149,12 @@ urlpatterns = [
     path('v1/projects/<int:pk>/', ProjectDetailView.as_view(), name='project_detail'),
     path('v1/projects/<int:pk>/files/', ProjectFileListCreateView.as_view(), name='project_files'),
     path('v1/projects/<int:pk>/files/<int:file_id>/', ProjectFileDetailView.as_view(), name='project_file_detail'),
+    path('v1/projects/<int:pk>/connectors/', ConnectorListCreateView.as_view(), name='project_connectors'),
+    path('v1/projects/<int:pk>/connectors/<int:connector_id>/', ConnectorDetailView.as_view(), name='project_connector_detail'),
+    path('v1/projects/<int:pk>/connectors/<int:connector_id>/files/', ConnectorReadFilesView.as_view(), name='connector_files'),
+    path('v1/projects/<int:pk>/connectors/<int:connector_id>/file/', ConnectorFileContentView.as_view(), name='connector_file_content'),
+    path('v1/projects/<int:pk>/commits/', CommitListCreateView.as_view(), name='project_commits'),
+    path('v1/projects/<int:pk>/commits/<int:commit_id>/confirm/', CommitConfirmView.as_view(), name='commit_confirm'),
 
     # ========== STUDIO (Vibe-Coding Studio) ==========
     path('v1/studio/', include('studio.urls')),

@@ -40,6 +40,10 @@ import type {
   PromptTemplate,
   Project,
   ProjectFile,
+  ProjectConnector,
+  RepoTreeItem,
+  ProjectCommit,
+  CommitFile,
 } from "./types";
 
 const BASE_URL =
@@ -593,6 +597,62 @@ export const toggleProjectFile = (
 
 export const deleteProjectFile = (projectId: number, fileId: number): Promise<void> =>
   request<void>(`/projects/${projectId}/files/${fileId}/`, { method: "DELETE" });
+
+// ============ Project Connectors (Git integration) ============
+
+export const listConnectors = (projectId: number): Promise<ProjectConnector[]> =>
+  request<ProjectConnector[]>(`/projects/${projectId}/connectors/`);
+
+export const createConnector = (
+  projectId: number,
+  data: { connector_type: "github" | "gitea"; repo_url: string; access_token: string; branch?: string }
+): Promise<ProjectConnector> =>
+  request<ProjectConnector>(`/projects/${projectId}/connectors/`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+export const deleteConnector = (projectId: number, connectorId: number): Promise<void> =>
+  request<void>(`/projects/${projectId}/connectors/${connectorId}/`, { method: "DELETE" });
+
+export const listRepoFiles = (
+  projectId: number,
+  connectorId: number
+): Promise<{ items: RepoTreeItem[] }> =>
+  request<{ items: RepoTreeItem[] }>(`/projects/${projectId}/connectors/${connectorId}/files/`);
+
+export const getRepoFileContent = (
+  projectId: number,
+  connectorId: number,
+  filePath: string
+): Promise<{ path: string; content: string }> =>
+  request<{ path: string; content: string }>(
+    `/projects/${projectId}/connectors/${connectorId}/file/?path=${encodeURIComponent(filePath)}`
+  );
+
+// ============ Project Commits ============
+
+export const listCommits = (projectId: number): Promise<ProjectCommit[]> =>
+  request<ProjectCommit[]>(`/projects/${projectId}/commits/`);
+
+export const createCommit = (
+  projectId: number,
+  data: { connector_id?: number; commit_message: string; files: CommitFile[] }
+): Promise<ProjectCommit> =>
+  request<ProjectCommit>(`/projects/${projectId}/commits/`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+export const confirmCommit = (
+  projectId: number,
+  commitId: number,
+  action: "push" | "reject"
+): Promise<{ status: string; commit_id?: number } | ProjectCommit> =>
+  request(`/projects/${projectId}/commits/${commitId}/confirm/`, {
+    method: "POST",
+    body: JSON.stringify({ action }),
+  });
 
 // ============ User (legacy Django session endpoint, kept for compatibility) ============
 

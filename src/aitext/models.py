@@ -269,6 +269,64 @@ class ProjectFile(models.Model):
         return f"{self.project.name} / {self.filename}"
 
 
+class ProjectConnector(models.Model):
+    """Git-коннектор проекта (GitHub / Gitea)"""
+    TYPES = [('github', 'GitHub'), ('gitea', 'Gitea')]
+
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name='connectors',
+        verbose_name='Проект',
+    )
+    connector_type = models.CharField(max_length=10, choices=TYPES, verbose_name='Тип')
+    repo_url = models.URLField(verbose_name='URL репозитория')
+    owner = models.CharField(max_length=100, verbose_name='Владелец')
+    repo = models.CharField(max_length=100, verbose_name='Репозиторий')
+    branch = models.CharField(max_length=100, default='main', verbose_name='Ветка')
+    access_token_enc = models.TextField(verbose_name='Токен (зашифрован)')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Git-коннектор'
+        verbose_name_plural = 'Git-коннекторы'
+        unique_together = [('project', 'owner', 'repo')]
+
+    def __str__(self):
+        return f"{self.project.name} → {self.owner}/{self.repo}"
+
+
+class ProjectCommit(models.Model):
+    """Предложенный AI-коммит, ожидающий подтверждения пользователя"""
+    STATUS = [
+        ('pending', 'Ожидает'),
+        ('pushed', 'Запушен'),
+        ('rejected', 'Отклонён'),
+        ('failed', 'Ошибка'),
+    ]
+
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name='commits',
+        verbose_name='Проект',
+    )
+    connector = models.ForeignKey(
+        ProjectConnector, on_delete=models.SET_NULL, null=True, related_name='commits',
+        verbose_name='Коннектор',
+    )
+    commit_message = models.CharField(max_length=500, verbose_name='Сообщение коммита')
+    files = models.JSONField(default=list, verbose_name='Файлы')  # [{"path": ..., "content": ...}]
+    status = models.CharField(max_length=10, choices=STATUS, default='pending', verbose_name='Статус')
+    error_message = models.TextField(blank=True, verbose_name='Ошибка')
+    created_at = models.DateTimeField(auto_now_add=True)
+    pushed_at = models.DateTimeField(null=True, blank=True, verbose_name='Дата пуша')
+
+    class Meta:
+        verbose_name = 'Коммит проекта'
+        verbose_name_plural = 'Коммиты проекта'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.project.name} — {self.commit_message[:50]}"
+
+
 class Chat(models.Model):
     """Чат пользователя с нейросетью"""
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='chats')

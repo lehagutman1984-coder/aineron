@@ -24,6 +24,7 @@ import {
   Info,
   Check,
   ChevronDown,
+  ChevronRight,
   Upload,
   File,
   FileCode2,
@@ -32,11 +33,28 @@ import {
   AlertCircle,
   ToggleLeft,
   ToggleRight,
+  GitBranch,
+  Github,
+  Link2,
+  Link2Off,
+  Send,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  RefreshCw,
+  FolderOpen,
+  FileCode,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { listProjects, listChats, deleteChat, updateProject, listProjectFiles, uploadProjectFile, deleteProjectFile, toggleProjectFile } from "@/lib/api/client";
-import type { ChatListItem, Project, ProjectFile } from "@/lib/api/types";
+import {
+  listProjects, listChats, deleteChat, updateProject,
+  listProjectFiles, uploadProjectFile, deleteProjectFile, toggleProjectFile,
+  listConnectors, createConnector, deleteConnector,
+  listRepoFiles, getRepoFileContent,
+  listCommits, createCommit, confirmCommit,
+} from "@/lib/api/client";
+import type { ChatListItem, Project, ProjectFile, ProjectConnector, RepoTreeItem, ProjectCommit, CommitFile } from "@/lib/api/types";
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Folder, Code2, BookOpen, Briefcase, Zap, Globe, Palette, MessageSquare,
@@ -711,8 +729,559 @@ function FilesTab({ projectId }: { projectId: number }) {
   );
 }
 
+/* ── Вкладка "Коннекторы" (Git) ── */
+function ConnectorsTab({ projectId }: { projectId: number }) {
+  const qc = useQueryClient();
+  const [showConnectForm, setShowConnectForm] = useState(false);
+  const [connType, setConnType] = useState<"github" | "gitea">("github");
+  const [repoUrl, setRepoUrl] = useState("");
+  const [pat, setPat] = useState("");
+  const [branch, setBranch] = useState("main");
+  const [connectErr, setConnectErr] = useState<string | null>(null);
+  const [connectLoading, setConnectLoading] = useState(false);
+
+  // File browser state
+  const [browsingId, setBrowsingId] = useState<number | null>(null);
+  const [openDirs, setOpenDirs] = useState<Set<string>>(new Set());
+  const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [fileContent, setFileContent] = useState<string | null>(null);
+  const [fileLoading, setFileLoading] = useState(false);
+
+  // New commit state
+  const [showCommitModal, setShowCommitModal] = useState(false);
+  const [commitConnId, setCommitConnId] = useState<number | null>(null);
+  const [commitMsg, setCommitMsg] = useState("");
+  const [commitFiles, setCommitFiles] = useState<CommitFile[]>([{ path: "", content: "" }]);
+  const [commitLoading, setCommitLoading] = useState(false);
+  const [commitErr, setCommitErr] = useState<string | null>(null);
+
+  const { data: connectors = [], isLoading: connLoading } = useQuery({
+    queryKey: ["connectors", projectId],
+    queryFn: () => listConnectors(projectId),
+    staleTime: 60_000,
+  });
+
+  const { data: treeData, isLoading: treeLoading } = useQuery({
+    queryKey: ["repo-tree", projectId, browsingId],
+    queryFn: () => browsingId ? listRepoFiles(projectId, browsingId) : null,
+    enabled: browsingId !== null,
+    staleTime: 120_000,
+  });
+
+  const { data: commits = [], isLoading: commitsLoading } = useQuery({
+    queryKey: ["commits", projectId],
+    queryFn: () => listCommits(projectId),
+    staleTime: 15_000,
+    refetchInterval: (query) => {
+      const data = query.state.data ?? [];
+      return data.some((c: ProjectCommit) => c.status === "pending") ? 5000 : false;
+    },
+  });
+
+  const handleConnect = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setConnectErr(null);
+    setConnectLoading(true);
+    try {
+      const conn = await createConnector(projectId, {
+        connector_type: connType,
+        repo_url: repoUrl.trim(),
+        access_token: pat.trim(),
+        branch: branch.trim() || "main",
+      });
+      qc.setQueryData<ProjectConnector[]>(["connectors", projectId], (prev) =>
+        prev ? [...prev.filter((c) => c.id !== conn.id), conn] : [conn]
+      );
+      setShowConnectForm(false);
+      setRepoUrl(""); setPat(""); setBranch("main");
+    } catch (err) {
+      setConnectErr((err as Error).message ?? "Не удалось подключить репозиторий");
+    } finally {
+      setConnectLoading(false);
+    }
+  };
+
+  const disconnectMutation = useMutation({
+    mutationFn: (id: number) => deleteConnector(projectId, id),
+    onSuccess: (_, id) => {
+      qc.setQueryData<ProjectConnector[]>(["connectors", projectId], (prev) =>
+        prev?.filter((c) => c.id !== id) ?? []
+      );
+      if (browsingId === id) setBrowsingId(null);
+    },
+  });
+
+  const handleFileClick = async (path: string, connId: number) => {
+    if (selectedFile === path) { setSelectedFile(null); setFileContent(null); return; }
+    setSelectedFile(path);
+    setFileContent(null);
+    setFileLoading(true);
+    try {
+      const res = await getRepoFileContent(projectId, connId, path);
+      setFileContent(res.content);
+    } catch {
+      setFileContent("Не удалось загрузить содержимое файла");
+    } finally {
+      setFileLoading(false);
+    }
+  };
+
+  const handleConfirm = async (commitId: number, action: "push" | "reject") => {
+    try {
+      await confirmCommit(projectId, commitId, action);
+      qc.invalidateQueries({ queryKey: ["commits", projectId] });
+    } catch {}
+  };
+
+  const handlePropose = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const validFiles = commitFiles.filter((f) => f.path.trim() && f.content.trim());
+    if (!commitMsg.trim() || validFiles.length === 0) return;
+    setCommitLoading(true);
+    setCommitErr(null);
+    try {
+      const c = await createCommit(projectId, {
+        connector_id: commitConnId ?? undefined,
+        commit_message: commitMsg.trim(),
+        files: validFiles,
+      });
+      qc.setQueryData<ProjectCommit[]>(["commits", projectId], (prev) =>
+        prev ? [c, ...prev] : [c]
+      );
+      setShowCommitModal(false);
+      setCommitMsg(""); setCommitFiles([{ path: "", content: "" }]); setCommitConnId(null);
+    } catch (err) {
+      setCommitErr((err as Error).message ?? "Ошибка создания коммита");
+    } finally {
+      setCommitLoading(false);
+    }
+  };
+
+  function buildTree(items: RepoTreeItem[]) {
+    const dirs = new Set(items.filter((i) => i.type === "dir").map((i) => i.path));
+    const roots: RepoTreeItem[] = [];
+    const childrenMap: Record<string, RepoTreeItem[]> = {};
+    for (const item of items) {
+      const parts = item.path.split("/");
+      if (parts.length === 1) { roots.push(item); continue; }
+      const parent = parts.slice(0, -1).join("/");
+      if (!childrenMap[parent]) childrenMap[parent] = [];
+      childrenMap[parent].push(item);
+    }
+    return { roots, childrenMap, dirs };
+  }
+
+  function TreeNode({ item, depth, childrenMap, connId }: {
+    item: RepoTreeItem; depth: number;
+    childrenMap: Record<string, RepoTreeItem[]>;
+    connId: number;
+  }) {
+    const isDir = item.type === "dir";
+    const isOpen = openDirs.has(item.path);
+    const children = childrenMap[item.path] ?? [];
+    const isSelected = selectedFile === item.path;
+    return (
+      <div>
+        <button
+          onClick={() => {
+            if (isDir) {
+              setOpenDirs((prev) => {
+                const next = new Set(prev);
+                next.has(item.path) ? next.delete(item.path) : next.add(item.path);
+                return next;
+              });
+            } else {
+              handleFileClick(item.path, connId);
+            }
+          }}
+          className={[
+            "flex w-full items-center gap-1.5 rounded-[5px] px-2 py-1 text-left text-[12px] transition-colors",
+            isSelected
+              ? "bg-[rgba(10,124,255,0.10)] text-[#0a7cff]"
+              : "text-[rgba(13,13,13,0.75)] hover:bg-[rgba(13,13,13,0.05)]",
+          ].join(" ")}
+          style={{ paddingLeft: `${8 + depth * 14}px` }}
+        >
+          {isDir ? (
+            <>
+              {isOpen ? <ChevronDown size={11} className="shrink-0" /> : <ChevronRight size={11} className="shrink-0" />}
+              {isOpen ? <FolderOpen size={12} className="shrink-0 text-[#e67e22]" /> : <Folder size={12} className="shrink-0 text-[#e67e22]" />}
+            </>
+          ) : (
+            <>
+              <span className="w-[11px] shrink-0" />
+              <FileCode size={11} className="shrink-0 text-[rgba(13,13,13,0.40)]" />
+            </>
+          )}
+          <span className="truncate">{item.path.split("/").pop()}</span>
+        </button>
+        {isDir && isOpen && children.map((child) => (
+          <TreeNode key={child.path} item={child} depth={depth + 1} childrenMap={childrenMap} connId={connId} />
+        ))}
+      </div>
+    );
+  }
+
+  function CommitStatusBadge({ status }: { status: ProjectCommit["status"] }) {
+    if (status === "pending") return <span className="flex items-center gap-1 text-[11px] text-[rgba(13,13,13,0.55)]"><Clock size={10} />Ожидает</span>;
+    if (status === "pushed") return <span className="flex items-center gap-1 text-[11px] text-[#22a85a]"><CheckCircle2 size={10} />Запушен</span>;
+    if (status === "rejected") return <span className="flex items-center gap-1 text-[11px] text-[rgba(13,13,13,0.40)]"><XCircle size={10} />Отклонён</span>;
+    if (status === "failed") return <span className="flex items-center gap-1 text-[11px] text-[#e74c3c]"><XCircle size={10} />Ошибка</span>;
+    return null;
+  }
+
+  const activeConnector = browsingId ? connectors.find((c) => c.id === browsingId) : null;
+  const tree = treeData ? buildTree(treeData.items) : null;
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* Description */}
+      <div className="flex items-start gap-2.5 rounded-[10px] bg-[rgba(10,124,255,0.06)] px-4 py-3">
+        <Info size={14} className="mt-0.5 shrink-0 text-[#0a7cff]" />
+        <p className="text-[13px] leading-relaxed text-[rgba(13,13,13,0.65)]">
+          Подключите GitHub или Gitea-репозиторий: просматривайте файлы и пушьте изменения прямо из проекта.
+        </p>
+      </div>
+
+      {/* Connectors list */}
+      {connLoading ? (
+        <div className="h-16 animate-pulse rounded-[10px] bg-[rgba(13,13,13,0.05)]" />
+      ) : (
+        <div className="flex flex-col gap-3">
+          {connectors.map((conn) => (
+            <div key={conn.id} className="rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white p-4">
+              <div className="flex items-center gap-3">
+                {conn.connector_type === "github"
+                  ? <Github size={16} className="shrink-0 text-[#0d0d0d]" />
+                  : <GitBranch size={16} className="shrink-0 text-[#e67e22]" />
+                }
+                <div className="min-w-0 flex-1">
+                  <p className="text-[14px] font-semibold text-[#0d0d0d]">{conn.owner}/{conn.repo}</p>
+                  <p className="text-[11px] text-[rgba(13,13,13,0.45)]">
+                    {conn.connector_type === "github" ? "GitHub" : "Gitea"} · ветка {conn.branch}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    onClick={() => { setBrowsingId(conn.id === browsingId ? null : conn.id); setSelectedFile(null); setFileContent(null); setOpenDirs(new Set()); }}
+                    className={[
+                      "flex items-center gap-1.5 rounded-[7px] px-3 py-1.5 text-[12px] font-medium transition-colors",
+                      browsingId === conn.id
+                        ? "bg-[rgba(10,124,255,0.12)] text-[#0a7cff]"
+                        : "border border-[rgba(13,13,13,0.14)] text-[rgba(13,13,13,0.65)] hover:border-[#0a7cff] hover:text-[#0a7cff]",
+                    ].join(" ")}
+                  >
+                    <FolderOpen size={12} />
+                    Файлы
+                  </button>
+                  <button
+                    onClick={() => { setCommitConnId(conn.id); setShowCommitModal(true); }}
+                    className="flex items-center gap-1.5 rounded-[7px] border border-[rgba(13,13,13,0.14)] px-3 py-1.5 text-[12px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:border-[#22a85a] hover:text-[#22a85a]"
+                  >
+                    <Send size={11} />
+                    Коммит
+                  </button>
+                  <button
+                    onClick={() => disconnectMutation.mutate(conn.id)}
+                    disabled={disconnectMutation.isPending}
+                    className="flex items-center gap-1 rounded-[7px] p-1.5 text-[rgba(13,13,13,0.35)] transition-colors hover:bg-[rgba(231,76,60,0.09)] hover:text-[#e74c3c]"
+                    title="Отключить"
+                  >
+                    <Link2Off size={14} />
+                  </button>
+                </div>
+              </div>
+
+              {/* File browser inline */}
+              {browsingId === conn.id && (
+                <div className="mt-4 rounded-[8px] border border-[rgba(13,13,13,0.09)] overflow-hidden">
+                  <div className="flex min-h-[200px]">
+                    {/* Tree panel */}
+                    <div className="w-[200px] shrink-0 overflow-y-auto border-r border-[rgba(13,13,13,0.08)] py-1">
+                      {treeLoading ? (
+                        <div className="flex items-center justify-center py-8 text-[12px] text-[rgba(13,13,13,0.40)]">
+                          <Loader2 size={14} className="mr-1.5 animate-spin" />
+                          Загрузка...
+                        </div>
+                      ) : tree && tree.roots.length > 0 ? (
+                        tree.roots.map((item) => (
+                          <TreeNode key={item.path} item={item} depth={0} childrenMap={tree.childrenMap} connId={conn.id} />
+                        ))
+                      ) : (
+                        <p className="px-3 py-6 text-center text-[12px] text-[rgba(13,13,13,0.38)]">Репозиторий пуст</p>
+                      )}
+                    </div>
+                    {/* Content panel */}
+                    <div className="flex-1 overflow-auto">
+                      {selectedFile ? (
+                        <div>
+                          <div className="flex items-center gap-2 border-b border-[rgba(13,13,13,0.08)] bg-[rgba(13,13,13,0.02)] px-3 py-2">
+                            <FileCode size={12} className="shrink-0 text-[rgba(13,13,13,0.40)]" />
+                            <span className="truncate text-[11px] text-[rgba(13,13,13,0.55)]">{selectedFile}</span>
+                          </div>
+                          {fileLoading ? (
+                            <div className="flex items-center justify-center py-10 text-[12px] text-[rgba(13,13,13,0.40)]">
+                              <Loader2 size={14} className="mr-1.5 animate-spin" />
+                              Загрузка...
+                            </div>
+                          ) : (
+                            <pre className="overflow-auto px-3 py-2 text-[11px] leading-relaxed text-[rgba(13,13,13,0.75)]" style={{ maxHeight: 320 }}>
+                              {fileContent ?? ""}
+                            </pre>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex h-full items-center justify-center py-10 text-[12px] text-[rgba(13,13,13,0.35)]">
+                          Выберите файл
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+
+          {/* Connect button */}
+          {!showConnectForm && connectors.length < 3 && (
+            <button
+              onClick={() => setShowConnectForm(true)}
+              className="flex items-center gap-2 rounded-[10px] border border-dashed border-[rgba(13,13,13,0.16)] px-4 py-3.5 text-[13px] text-[rgba(13,13,13,0.55)] transition-colors hover:border-[#0a7cff] hover:text-[#0a7cff]"
+            >
+              <Link2 size={14} />
+              Подключить репозиторий
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Connect form */}
+      {showConnectForm && (
+        <form onSubmit={handleConnect} className="rounded-[12px] border border-[rgba(13,13,13,0.12)] bg-white p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <p className="text-[14px] font-semibold text-[#0d0d0d]">Подключить репозиторий</p>
+            <button type="button" onClick={() => { setShowConnectForm(false); setConnectErr(null); }}
+              className="rounded-[6px] p-1 text-[rgba(13,13,13,0.40)] hover:bg-[rgba(13,13,13,0.06)] transition-colors">
+              <X size={14} />
+            </button>
+          </div>
+          <div className="flex flex-col gap-4">
+            {/* Type */}
+            <div>
+              <label className="mb-1.5 block text-[12px] font-medium text-[rgba(13,13,13,0.55)]">Тип</label>
+              <div className="flex gap-2">
+                {(["github", "gitea"] as const).map((t) => (
+                  <button key={t} type="button" onClick={() => setConnType(t)}
+                    className={[
+                      "flex items-center gap-1.5 rounded-[7px] border px-3 py-1.5 text-[13px] font-medium transition-colors",
+                      connType === t
+                        ? "border-[#0a7cff] bg-[rgba(10,124,255,0.07)] text-[#0a7cff]"
+                        : "border-[rgba(13,13,13,0.14)] text-[rgba(13,13,13,0.65)] hover:border-[rgba(13,13,13,0.25)]",
+                    ].join(" ")}
+                  >
+                    {t === "github" ? <Github size={13} /> : <GitBranch size={13} />}
+                    {t === "github" ? "GitHub" : "Gitea"}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* URL */}
+            <div>
+              <label className="mb-1.5 block text-[12px] font-medium text-[rgba(13,13,13,0.55)]">URL репозитория</label>
+              <input value={repoUrl} onChange={(e) => setRepoUrl(e.target.value)} required
+                placeholder={connType === "github" ? "https://github.com/owner/repo" : "https://gitea.example.com/owner/repo"}
+                className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] text-[#0d0d0d] outline-none focus:border-[#0a7cff] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all" />
+            </div>
+            {/* PAT */}
+            <div>
+              <label className="mb-1.5 block text-[12px] font-medium text-[rgba(13,13,13,0.55)]">Personal Access Token</label>
+              <input value={pat} onChange={(e) => setPat(e.target.value)} required type="password"
+                placeholder="ghp_... или gitea токен"
+                className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] text-[#0d0d0d] outline-none focus:border-[#0a7cff] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all" />
+              <p className="mt-1 text-[11px] text-[rgba(13,13,13,0.40)]">Токен хранится в зашифрованном виде</p>
+            </div>
+            {/* Branch */}
+            <div>
+              <label className="mb-1.5 block text-[12px] font-medium text-[rgba(13,13,13,0.55)]">Ветка</label>
+              <input value={branch} onChange={(e) => setBranch(e.target.value)}
+                placeholder="main"
+                className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] text-[#0d0d0d] outline-none focus:border-[#0a7cff] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all" />
+            </div>
+            {connectErr && (
+              <div className="flex items-center gap-2 rounded-[7px] bg-[rgba(231,76,60,0.08)] px-3 py-2 text-[12px] text-[#e74c3c]">
+                <AlertCircle size={12} /> {connectErr}
+              </div>
+            )}
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => { setShowConnectForm(false); setConnectErr(null); }}
+                className="rounded-[7px] px-4 py-2 text-[13px] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.05)] transition-colors">
+                Отмена
+              </button>
+              <button type="submit" disabled={connectLoading || !repoUrl.trim() || !pat.trim()}
+                className="flex items-center gap-1.5 rounded-[7px] bg-[#0a7cff] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 transition-colors">
+                {connectLoading ? <><Loader2 size={12} className="animate-spin" />Подключение...</> : <><Link2 size={12} />Подключить</>}
+              </button>
+            </div>
+          </div>
+        </form>
+      )}
+
+      {/* Commits section */}
+      <div>
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-[12px] font-semibold uppercase tracking-wide text-[rgba(13,13,13,0.45)]">Коммиты</p>
+          <button
+            onClick={() => { setCommitConnId(connectors[0]?.id ?? null); setShowCommitModal(true); }}
+            className="flex items-center gap-1.5 rounded-[7px] border border-[rgba(13,13,13,0.14)] px-3 py-1.5 text-[12px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:border-[#0a7cff] hover:text-[#0a7cff]"
+          >
+            <Plus size={12} />
+            Новый коммит
+          </button>
+        </div>
+        {commitsLoading ? (
+          <div className="h-12 animate-pulse rounded-[10px] bg-[rgba(13,13,13,0.05)]" />
+        ) : commits.length === 0 ? (
+          <p className="py-4 text-center text-[13px] text-[rgba(13,13,13,0.38)]">Нет коммитов</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {commits.map((c) => (
+              <div key={c.id} className="rounded-[10px] border border-[rgba(13,13,13,0.09)] bg-white p-3.5">
+                <div className="flex items-start gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px] font-medium text-[#0d0d0d]">{c.commit_message}</p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <CommitStatusBadge status={c.status} />
+                      <span className="text-[11px] text-[rgba(13,13,13,0.35)]">
+                        {c.files.length} {c.files.length === 1 ? "файл" : "файлов"}
+                      </span>
+                    </div>
+                    {c.status === "failed" && c.error_message && (
+                      <p className="mt-1 text-[11px] text-[#e74c3c] line-clamp-1">{c.error_message}</p>
+                    )}
+                  </div>
+                  {c.status === "pending" && (
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <button
+                        onClick={() => handleConfirm(c.id, "push")}
+                        className="flex items-center gap-1 rounded-[6px] bg-[#22a85a] px-2.5 py-1 text-[11px] font-medium text-white hover:bg-[#1a8a48] transition-colors"
+                      >
+                        <Send size={10} />
+                        Запушить
+                      </button>
+                      <button
+                        onClick={() => handleConfirm(c.id, "reject")}
+                        className="rounded-[6px] px-2.5 py-1 text-[11px] text-[rgba(13,13,13,0.45)] hover:bg-[rgba(13,13,13,0.06)] transition-colors"
+                      >
+                        Отклонить
+                      </button>
+                    </div>
+                  )}
+                  {c.status === "failed" && (
+                    <button
+                      onClick={() => handleConfirm(c.id, "push")}
+                      className="flex shrink-0 items-center gap-1 rounded-[6px] border border-[rgba(13,13,13,0.14)] px-2.5 py-1 text-[11px] text-[rgba(13,13,13,0.55)] hover:border-[#0a7cff] hover:text-[#0a7cff] transition-colors"
+                    >
+                      <RefreshCw size={10} />
+                      Повторить
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* New commit modal */}
+      {showCommitModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowCommitModal(false)}>
+          <div
+            className="w-full max-w-[560px] max-h-[90vh] overflow-y-auto rounded-[18px] border border-[rgba(13,13,13,0.10)] bg-white p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-[15px] font-semibold text-[#0d0d0d]">Новый коммит</h2>
+              <button onClick={() => setShowCommitModal(false)} className="rounded-[7px] p-1 text-[rgba(13,13,13,0.40)] hover:bg-[rgba(13,13,13,0.06)] transition-colors">
+                <X size={15} />
+              </button>
+            </div>
+            <form onSubmit={handlePropose} className="flex flex-col gap-4">
+              {/* Connector select */}
+              {connectors.length > 0 && (
+                <div>
+                  <label className="mb-1.5 block text-[12px] font-medium text-[rgba(13,13,13,0.55)]">Репозиторий</label>
+                  <select value={commitConnId ?? ""} onChange={(e) => setCommitConnId(e.target.value ? Number(e.target.value) : null)}
+                    className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] text-[#0d0d0d] outline-none focus:border-[#0a7cff] transition-all">
+                    <option value="">Без репозитория (только запись)</option>
+                    {connectors.map((c) => (
+                      <option key={c.id} value={c.id}>{c.owner}/{c.repo} ({c.branch})</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {/* Commit message */}
+              <div>
+                <label className="mb-1.5 block text-[12px] font-medium text-[rgba(13,13,13,0.55)]">Сообщение коммита</label>
+                <input value={commitMsg} onChange={(e) => setCommitMsg(e.target.value)} required
+                  placeholder="feat: add new feature"
+                  className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] text-[#0d0d0d] outline-none focus:border-[#0a7cff] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all" />
+              </div>
+              {/* Files */}
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <label className="text-[12px] font-medium text-[rgba(13,13,13,0.55)]">Файлы</label>
+                  <button type="button" onClick={() => setCommitFiles((prev) => [...prev, { path: "", content: "" }])}
+                    className="flex items-center gap-1 text-[12px] text-[#0a7cff] hover:underline">
+                    <Plus size={11} />Добавить файл
+                  </button>
+                </div>
+                <div className="flex flex-col gap-3">
+                  {commitFiles.map((f, i) => (
+                    <div key={i} className="rounded-[8px] border border-[rgba(13,13,13,0.12)] p-3">
+                      <div className="mb-2 flex items-center gap-2">
+                        <input value={f.path} onChange={(e) => setCommitFiles((prev) => prev.map((x, j) => j === i ? { ...x, path: e.target.value } : x))}
+                          placeholder="src/components/Button.tsx"
+                          className="flex-1 rounded-[6px] border border-[rgba(13,13,13,0.14)] px-2.5 py-1.5 text-[12px] text-[#0d0d0d] outline-none focus:border-[#0a7cff] transition-all" />
+                        {commitFiles.length > 1 && (
+                          <button type="button" onClick={() => setCommitFiles((prev) => prev.filter((_, j) => j !== i))}
+                            className="shrink-0 rounded-[5px] p-1 text-[rgba(13,13,13,0.35)] hover:bg-[rgba(231,76,60,0.09)] hover:text-[#e74c3c] transition-colors">
+                            <X size={12} />
+                          </button>
+                        )}
+                      </div>
+                      <textarea value={f.content} onChange={(e) => setCommitFiles((prev) => prev.map((x, j) => j === i ? { ...x, content: e.target.value } : x))}
+                        placeholder="Содержимое файла..."
+                        rows={5}
+                        className="w-full resize-y rounded-[6px] border border-[rgba(13,13,13,0.14)] px-2.5 py-1.5 font-mono text-[11px] leading-relaxed text-[rgba(13,13,13,0.75)] outline-none focus:border-[#0a7cff] transition-all" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {commitErr && (
+                <div className="flex items-center gap-2 rounded-[7px] bg-[rgba(231,76,60,0.08)] px-3 py-2 text-[12px] text-[#e74c3c]">
+                  <AlertCircle size={12} />{commitErr}
+                </div>
+              )}
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setShowCommitModal(false)}
+                  className="rounded-[7px] px-4 py-2 text-[13px] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.05)] transition-colors">
+                  Отмена
+                </button>
+                <button type="submit" disabled={commitLoading || !commitMsg.trim() || commitFiles.every((f) => !f.path.trim())}
+                  className="flex items-center gap-1.5 rounded-[7px] bg-[#0a7cff] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 transition-colors">
+                  {commitLoading ? <><Loader2 size={12} className="animate-spin" />Создание...</> : "Создать коммит"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Главная страница проекта ── */
-type Tab = "chats" | "instructions" | "files";
+type Tab = "chats" | "instructions" | "files" | "connectors";
 
 export default function ProjectDetailPage({ params }: { params: { id: string } }) {
   const projectId = parseInt(params.id, 10);
@@ -814,6 +1383,12 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
           label="Файлы"
           onClick={() => setTab("files")}
         />
+        <TabButton
+          active={tab === "connectors"}
+          icon={<GitBranch size={13} />}
+          label="Git"
+          onClick={() => setTab("connectors")}
+        />
       </div>
 
       {/* Tab actions row */}
@@ -838,6 +1413,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
         <div className="h-32 animate-pulse rounded-[12px] bg-[rgba(13,13,13,0.05)]" />
       )}
       {tab === "files" && <FilesTab projectId={projectId} />}
+      {tab === "connectors" && <ConnectorsTab projectId={projectId} />}
 
       {/* Edit modal (name / icon / color) */}
       {showEdit && project && (

@@ -1,0 +1,253 @@
+import re
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from rest_framework import serializers
+
+from aitext.models import Project, ProjectConnector, ProjectCommit
+from aitext.crypto import encrypt_token, decrypt_token
+
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
+
+def _parse_github_url(url: str):
+    """github.com/owner/repo → (owner, repo)"""
+    m = re.search(r'github\.com[/:]([^/]+)/([^/.]+)', url)
+    if m:
+        return m.group(1), m.group(2)
+    return None, None
+
+
+def _parse_gitea_url(url: str, base_url: str):
+    """gitea.example.com/owner/repo → (owner, repo)"""
+    host = base_url.rstrip('/').split('://', 1)[-1]
+    m = re.search(rf'{re.escape(host)}/([^/]+)/([^/.]+)', url)
+    if m:
+        return m.group(1), m.group(2)
+    parts = [p for p in url.split('/') if p]
+    if len(parts) >= 2:
+        return parts[-2], parts[-1].replace('.git', '')
+    return None, None
+
+
+# ── Serializers ───────────────────────────────────────────────────────────────
+
+class ConnectorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProjectConnector
+        fields = ['id', 'connector_type', 'repo_url', 'owner', 'repo', 'branch', 'created_at']
+        read_only_fields = ['id', 'owner', 'repo', 'created_at']
+
+
+class CommitFileSerializer(serializers.Serializer):
+    path = serializers.CharField(max_length=500)
+    content = serializers.CharField()
+
+
+class CommitSerializer(serializers.ModelSerializer):
+    connector_id = serializers.IntegerField(source='connector.id', read_only=True)
+
+    class Meta:
+        model = ProjectCommit
+        fields = ['id', 'connector_id', 'commit_message', 'files', 'status', 'error_message', 'created_at', 'pushed_at']
+        read_only_fields = ['id', 'status', 'error_message', 'created_at', 'pushed_at']
+
+
+# ── Views ─────────────────────────────────────────────────────────────────────
+
+class ConnectorListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        project = get_object_or_404(Project, pk=pk, user=request.user)
+        qs = project.connectors.all()
+        return Response(ConnectorSerializer(qs, many=True).data)
+
+    def post(self, request, pk):
+        project = get_object_or_404(Project, pk=pk, user=request.user)
+        if project.connectors.count() >= 3:
+            return Response({'error': 'Максимум 3 коннектора на проект'}, status=400)
+
+        connector_type = request.data.get('connector_type', '').strip()
+        repo_url = request.data.get('repo_url', '').strip()
+        access_token = request.data.get('access_token', '').strip()
+        branch = request.data.get('branch', 'main').strip() or 'main'
+
+        if connector_type not in ('github', 'gitea'):
+            return Response({'error': 'Тип коннектора: github или gitea'}, status=400)
+        if not repo_url:
+            return Response({'error': 'Укажите URL репозитория'}, status=400)
+        if not access_token:
+            return Response({'error': 'Укажите Personal Access Token'}, status=400)
+
+        if connector_type == 'github':
+            owner, repo = _parse_github_url(repo_url)
+        else:
+            from django.conf import settings
+            gitea_base = getattr(settings, 'STUDIO_GITEA_URL', '')
+            owner, repo = _parse_gitea_url(repo_url, gitea_base)
+
+        if not owner or not repo:
+            return Response({'error': 'Не удалось разобрать owner/repo из URL'}, status=400)
+
+        try:
+            enc_token = encrypt_token(access_token)
+        except RuntimeError as e:
+            return Response({'error': str(e)}, status=500)
+
+        connector, created = ProjectConnector.objects.get_or_create(
+            project=project, owner=owner, repo=repo,
+            defaults={
+                'connector_type': connector_type,
+                'repo_url': repo_url,
+                'branch': branch,
+                'access_token_enc': enc_token,
+            }
+        )
+        if not created:
+            connector.branch = branch
+            connector.access_token_enc = enc_token
+            connector.repo_url = repo_url
+            connector.save(update_fields=['branch', 'access_token_enc', 'repo_url'])
+
+        return Response(ConnectorSerializer(connector).data, status=201 if created else 200)
+
+
+class ConnectorDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def _get(self, request, pk, connector_id):
+        project = get_object_or_404(Project, pk=pk, user=request.user)
+        return get_object_or_404(ProjectConnector, pk=connector_id, project=project)
+
+    def delete(self, request, pk, connector_id):
+        connector = self._get(request, pk, connector_id)
+        connector.delete()
+        return Response(status=204)
+
+
+class ConnectorReadFilesView(APIView):
+    """Browse file tree from a connected repo."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk, connector_id):
+        project = get_object_or_404(Project, pk=pk, user=request.user)
+        connector = get_object_or_404(ProjectConnector, pk=connector_id, project=project)
+
+        try:
+            token = decrypt_token(connector.access_token_enc)
+        except Exception as e:
+            return Response({'error': f'Ошибка токена: {e}'}, status=500)
+
+        try:
+            if connector.connector_type == 'github':
+                from aitext.github_client import list_tree
+                items = list_tree(connector.owner, connector.repo, token, connector.branch)
+            else:
+                from studio.gitea_client import list_tree
+                items = list_tree(connector.owner, connector.repo, connector.branch, token=token)
+        except Exception as e:
+            return Response({'error': f'Ошибка доступа к репозиторию: {e}'}, status=502)
+
+        return Response({'items': items})
+
+
+class ConnectorFileContentView(APIView):
+    """Get single file content from connected repo."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk, connector_id):
+        project = get_object_or_404(Project, pk=pk, user=request.user)
+        connector = get_object_or_404(ProjectConnector, pk=connector_id, project=project)
+        path = request.query_params.get('path', '')
+        if not path:
+            return Response({'error': 'Укажите path'}, status=400)
+
+        try:
+            token = decrypt_token(connector.access_token_enc)
+        except Exception as e:
+            return Response({'error': f'Ошибка токена: {e}'}, status=500)
+
+        try:
+            if connector.connector_type == 'github':
+                from aitext.github_client import get_file_content
+                content = get_file_content(connector.owner, connector.repo, token, path, connector.branch)
+            else:
+                from studio.gitea_client import get_file_content_ext
+                content = get_file_content_ext(connector.owner, connector.repo, path, connector.branch, token=token)
+        except Exception as e:
+            return Response({'error': f'Ошибка чтения файла: {e}'}, status=502)
+
+        return Response({'path': path, 'content': content})
+
+
+# ── Commits ───────────────────────────────────────────────────────────────────
+
+class CommitListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        project = get_object_or_404(Project, pk=pk, user=request.user)
+        qs = project.commits.select_related('connector').order_by('-created_at')[:50]
+        return Response(CommitSerializer(qs, many=True).data)
+
+    def post(self, request, pk):
+        """Propose a new commit (status=pending)."""
+        project = get_object_or_404(Project, pk=pk, user=request.user)
+        connector_id = request.data.get('connector_id')
+        commit_message = (request.data.get('commit_message') or '').strip()
+        files = request.data.get('files', [])
+
+        if not commit_message:
+            return Response({'error': 'Укажите сообщение коммита'}, status=400)
+        if not files:
+            return Response({'error': 'Добавьте хотя бы один файл'}, status=400)
+        if len(files) > 50:
+            return Response({'error': 'Максимум 50 файлов на коммит'}, status=400)
+
+        connector = None
+        if connector_id:
+            connector = get_object_or_404(ProjectConnector, pk=connector_id, project=project)
+
+        # Validate files format
+        for f in files:
+            if not isinstance(f, dict) or 'path' not in f or 'content' not in f:
+                return Response({'error': 'Каждый файл должен содержать path и content'}, status=400)
+
+        commit = ProjectCommit.objects.create(
+            project=project,
+            connector=connector,
+            commit_message=commit_message,
+            files=files,
+            status='pending',
+        )
+        return Response(CommitSerializer(commit).data, status=201)
+
+
+class CommitConfirmView(APIView):
+    """Confirm (push) or reject a pending commit."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk, commit_id):
+        project = get_object_or_404(Project, pk=pk, user=request.user)
+        commit = get_object_or_404(ProjectCommit, pk=commit_id, project=project)
+
+        if commit.status != 'pending':
+            return Response({'error': f'Коммит уже обработан: {commit.status}'}, status=400)
+
+        action = request.data.get('action', '')
+        if action == 'reject':
+            commit.status = 'rejected'
+            commit.save(update_fields=['status'])
+            return Response(CommitSerializer(commit).data)
+
+        if action == 'push':
+            if not commit.connector:
+                return Response({'error': 'Нет коннектора для пуша'}, status=400)
+            from aitext.tasks import push_project_commit
+            push_project_commit.delay(commit.id)
+            return Response({'status': 'queued', 'commit_id': commit.id})
+
+        return Response({'error': 'action должен быть push или reject'}, status=400)
