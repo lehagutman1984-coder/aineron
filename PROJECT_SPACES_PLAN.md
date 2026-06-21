@@ -10,10 +10,124 @@ Claude.ai Projects, Perplexity Spaces и ChatGPT Projects.
 
 ---
 
+## СТАТУС РЕАЛИЗАЦИИ (2026-06-21)
+
+| Этап | Статус | Коммиты |
+|------|--------|---------|
+| Спринт 1 — База знаний (ProjectFile + Celery + инжект в контекст) | **ЗАВЕРШЁН** | `bf16907`, `fix(projects)` |
+| Спринт 2 — UX Инструкций (вкладка + счётчик + превью + бейдж в чате) | **ЗАВЕРШЁН** | (`studio-v3`) |
+| Спринт 3 — Git-коннектор (GitHub/Gitea PAT + браузер файлов + коммиты) | **ЗАВЕРШЁН** | `b9f8296` |
+| **Bug-fix пост-аудит** (6 критических исправлений) | **ЗАВЕРШЁН** | `b9f8296` |
+
+---
+
+## Что реализовано (подробно)
+
+### Спринт 1 — База знаний проекта
+
+**Backend:**
+- `ProjectFile` модель в `src/aitext/models.py` — filename, file\_path, file\_size,
+  mime\_type, extracted\_text, char\_count, inject\_mode, enabled, status
+- Миграция `src/aitext/migrations/0012_projectfile.py` (аддитивная, не трогает существующих)
+- `build_project_knowledge_context(proj, user_msg)` в `src/aitext/tasks.py`:
+  - `FULL_INJECT_LIMIT = 50_000` — файлы до 50 КБ инжектятся целиком
+  - `AGGREGATE_INJECT_LIMIT = 200_000` — суммарный cap всего знания в контексте
+  - Для крупных файлов — лексический отбор по релевантным фрагментам (BM25-подобный)
+- `process_project_file` Celery-задача — асинхронное извлечение текста
+- **Инжект в оба пути** (исправлено): Celery (`generate_ai_response`) + SSE streaming
+  (`StreamMessageView` в `src/api/views/chats.py`)
+- Эндпоинты: `v1/projects/<pk>/files/` (GET, POST), `v1/projects/<pk>/files/<id>/` (DELETE, PATCH)
+
+**Frontend:**
+- Вкладка «Файлы» в `frontend/app/projects/[id]/page.tsx`
+- Drag&drop загрузка, список файлов со статусами (processing/ready/error), тумблер enabled,
+  удаление, polling статуса
+- Бейдж «База знаний: N файлов» в чате
+
+### Спринт 2 — UX Инструкций
+
+**Frontend (бэкенд уже работал):**
+- Отдельная вкладка «Инструкции» с полноразмерным textarea
+- Счётчик символов с предупреждением при > 4000
+- Markdown-превью инструкции через `react-markdown`
+- Индикатор «Инструкции активны» в заголовке чата
+
+### Спринт 3 — Git-коннектор
+
+**Backend:**
+- `ProjectConnector` — FK к Project, connector\_type (github/gitea), repo\_url, owner, repo,
+  branch, access\_token\_enc (Fernet), unique\_together `(project, owner, repo)`
+- `ProjectCommit` — предложенные коммиты с JSON-полем files `[{path, content}]`, статусы
+  pending/pushed/rejected/failed
+- Миграция `src/aitext/migrations/0013_project_connector_commit.py`
+- `src/aitext/crypto.py` — Fernet-шифрование PAT: `encrypt_token`, `decrypt_token`
+- `src/config/settings.py` — `PROJECT_CONNECTOR_FERNET_KEY` из env
+- `src/aitext/github_client.py` — полный клиент GitHub REST API:
+  - `list_tree` — Trees API с `recursive=1`
+  - `get_file_content` — Contents API с base64-decode
+  - `push_files` — **атомарный** Git Data API (blob→tree→commit→update-ref)
+- `src/studio/gitea_client.py` — дополнен для внешних репо:
+  - `list_tree`, `get_file_content_ext`, `push_files_ext` — параметр `base_url`
+- `src/api/views/connectors.py` — 6 view-классов:
+  - `ConnectorListCreateView`, `ConnectorDetailView`
+  - `ConnectorReadFilesView`, `ConnectorFileContentView`
+  - `CommitListCreateView`, `CommitConfirmView`
+- `push_project_commit` Celery-задача — маршрутизация по `connector_type`
+- 8 URL-маршрутов в `src/api/urls.py`
+
+**Frontend:**
+- Вкладка «Git» (`ConnectorsTab`) в `frontend/app/projects/[id]/page.tsx`
+- Форма подключения репо (GitHub/Gitea, URL, PAT)
+- Браузер файлов репозитория с TreeNode-компонентом, просмотр содержимого
+- Список коммитов с pending-статусом, кнопки «Подтвердить» / «Отклонить»
+- Модальное окно создания нового коммита
+
+**Типы в `frontend/lib/api/types.ts`:**
+`ProjectConnector`, `RepoTreeItem`, `CommitFile`, `ProjectCommit`
+
+**Методы в `frontend/lib/api/client.ts`:**
+`listConnectors`, `createConnector`, `deleteConnector`, `listRepoFiles`,
+`getRepoFileContent`, `listCommits`, `createCommit`, `confirmCommit`
+
+---
+
+## Bug-fix пост-аудит (коммит b9f8296)
+
+После имплементации Sprint 3 выявлены и исправлены **6 ошибок**:
+
+| # | Проблема | Исправление |
+|---|----------|-------------|
+| 1 | `StreamMessageView` не инжектил знания проекта (только Celery-путь) | `build_project_knowledge_context` добавлен в SSE-путь с `message_text` |
+| 2 | `build_project_knowledge_context` использовал `message.plain_text` от пустого assistant-сообщения | Переключено на `last_user_msg = chat.messages.filter(role='user').order_by('-created_at').first()` |
+| 3 | `gitea_client.py` всегда роутил на внутренний `STUDIO_GITEA_URL` | Добавлен параметр `base_url`; `connectors.py` извлекает его из `connector.repo_url` |
+| 4 | `github_client.py push_files` делал N отдельных коммитов (один на файл) | Заменено на атомарный Git Data API: blob→tree→commit→ref |
+| 5 | `push_project_commit` помечал commit как `failed` до исчерпания retry | Статус `failed` выставляется только при `self.request.retries >= self.max_retries` |
+| 6 | `TreeNode` и `CommitStatusBadge` объявлены внутри `ConnectorsTab` — React ремаунтил дерево на каждый рендер | Вынесены в module-scope компоненты с явными props |
+
+Дополнительно: убран двойной QuerySet в `build_project_knowledge_context` (`.exists()` + цикл заменено на `list(qs)`), добавлены warnings при `truncated` дереве (GitHub ≥100K файлов, Gitea).
+
+---
+
+## Переменные окружения (.env)
+
+```
+# Шифрование PAT-токенов коннекторов
+PROJECT_CONNECTOR_FERNET_KEY=<сгенерировать: from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())>
+```
+
+---
+
+## ЧТО ДАЛЬШЕ: Project Spaces Phase 4
+
+*Разработан с Opus 4.8. Цель: конкурировать с Claude.ai Projects, Cursor, Perplexity Spaces.*
+
+Полный план — раздел `## Phase 4` ниже.
+
+---
+
 ## 0. Что уже работает (не переписываем)
 
-Прежде чем планировать новое — фиксируем, что значительная часть фундамента
-**уже есть** в кодовой базе.
+*(Исходный раздел оставлен для справки)*
 
 ### 0.1. System prompt проекта УЖЕ инжектится в каждый чат
 
@@ -46,23 +160,10 @@ if chat.project_id:
 | `get_commits(owner, repo, limit=20)` | список коммитов |
 | `get_file_content(owner, repo, path, ref='main')` | прочитать содержимое файла |
 
-**Вывод:** Для Gitea-коннектора **писать новый git-слой не нужно** — переиспользуем
-эти функции. Нужны лишь две новые: листинг дерева файлов (`GET .../contents/`)
-и работа с GitHub API (для внешних репозиториев).
-
 ### 0.3. Инфраструктура извлечения текста из файлов УЖЕ есть
 
 `src/aitext/file_utils.py` → `extract_text_from_file(file_path, original_filename, file_data=None)`
-плюс специализированные парсеры: `extract_text_from_pdf`, `extract_text_from_docx`,
-`extract_text_from_txt`, `extract_text_from_excel`, `extract_text_from_pptx`,
-`extract_text_from_archive`.
-
-`FileAttachment` (`src/aitext/models.py`, строка 304) уже хранит результат в поле
-`extracted_text` (TextField). UUID PK, choices `media_type` (image/video/audio/pdf/other).
-
-**Вывод:** База знаний проекта переиспользует ровно тот же конвейер извлечения.
-Новая модель `ProjectFile` хранит метаданные + `extracted_text`, а инжект текста
-в контекст — это +5 строк рядом с уже существующим инжектом system prompt.
+плюс специализированные парсеры: PDF, DOCX, TXT, Excel, PPTX, архивы.
 
 ### 0.4. Persistent Memory работает
 
@@ -70,421 +171,315 @@ if chat.project_id:
 (`get_history_with_compression`, `should_compress`). Контекст проекта (файлы) встаёт
 в ту же сборку `messages_for_api` — между system prompt и историей.
 
-### 0.5. Текущая модель Project
+---
 
-`src/aitext/models.py`, строка 213:
+## Phase 4
 
-```python
-class Project(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='projects')
-    name = models.CharField(max_length=100)
-    system_prompt = models.TextField(blank=True)
-    color = models.CharField(max_length=7, default='#0a7cff')
-    icon = models.CharField(max_length=30, default='Folder')
-    created_at = models.DateTimeField(auto_now_add=True)
-```
+*Эволюционный этап: Project Spaces → конкурентоспособный продукт мирового класса.*
+*Архитектор: Opus 4.8. Дата плана: 2026-06-21. Ветка: `studio-v3`.*
 
-`Chat.project` — FK с `on_delete=SET_NULL`. API: `ProjectListCreateView`,
-`ProjectDetailView` (`src/api/views/projects.py`, маршруты `v1/projects/` и
-`v1/projects/<pk>/` в `src/api/urls.py`, строки 142–143).
+### Принципы Phase 4 (что НЕ переписываем)
+
+Phase 4 строится строго поверх готового кода Спринтов 1–3. Никакого бэкпортирования.
+Точки переиспользования зафиксированы заранее:
+
+| Что переиспользуем | Откуда берём | Где применяем в Phase 4 |
+|--------------------|--------------|--------------------------|
+| `parse_file_blocks(text)` → `{path: content}` + `incomplete[]` | `src/studio/agents/blocks.py` | Sprint 3: AI предлагает коммиты — парсим FILE-блоки из ответа |
+| `ProjectCommit(status='pending')` + `CommitConfirmView` + `push_project_commit` | `aitext/models.py`, `api/views/connectors.py`, `aitext/tasks.py` | Sprint 3: AI-коммит впадает в УЖЕ существующий flow approve→push |
+| `build_project_knowledge_context` + `_retrieve_relevant_chunks` (лексика) | `src/aitext/tasks.py` | Sprint 1: векторный RAG встаёт как альтернативный путь за флагом, лексика — fallback |
+| `github_client.list_tree / get_file_content / push_files` | `src/aitext/github_client.py` | Sprint 2: inbound-синк читает дерево репо |
+| `gitea_client.*_ext(base_url=...)` | `src/studio/gitea_client.py` | Sprint 2: inbound-синк для Gitea |
+| `extract_text_from_file(...)` | `src/aitext/file_utils.py` | Sprint 2: текст из файлов репо |
+| `ProjectFile` модель (статусы, enabled, extracted_text) | `src/aitext/models.py` | Sprint 1 + 2: файлы репо ложатся в ту же модель через `source`-дискриминатор |
+| `EmbeddingsView` + `get_laozhang_client()` | `src/api/views/embeddings.py`, `tasks.py` | Sprint 1: эмбеддинги через тот же laozhang-клиент |
+| Конвенция флагов `STUDIO_V4_*` (по умолчанию `0`) | `settings.py` | весь Phase 4: новые фичи под флагами `PROJECT_*` |
+
+**Терминология «двусторонней синхронизации»:** outbound (проект → репо: propose→approve→push)
+УЖЕ реализован в Sprint 3. Phase 4 добавляет **inbound** (репо → база знаний проекта).
+Вместе они дают двустороннюю синхронизацию.
 
 ---
 
-## ФАЗА 1 — База знаний проекта (Project Files)
+### Дорожная карта Phase 4 (порядок = зависимости)
 
-Пользователь загружает файлы в проект (PDF, .md, .txt, код), AI автоматически
-ссылается на них в **каждом** чате внутри проекта.
+| Sprint | Тема | Сложность | Срок | Зависит от |
+|--------|------|-----------|------|-----------|
+| **4.1** | Векторный RAG (pgvector + чанки + эмбеддинги) | **L** | ~1.5–2 нед | — (фундамент) |
+| **4.2** | Inbound-синхронизация репо → база знаний | **M** | ~1 нед | 4.1 (чтобы файлы репо сразу эмбеддились) |
+| **4.3** | AI предлагает коммиты из чата (FILE-блоки → ProjectCommit) | **M** | ~1 нед | Sprint 3 (готовый push-flow) |
+| **4.4** | Project Spaces в Telegram-боте | **M** | ~1 нед | 4.1 (RAG-инжект общий) |
+| **4.5** | Публичные Spaces и шаринг (read-only) | **S** | ~3–5 дней | — |
 
-### 1.1. Модель `ProjectFile`
-
-Новая модель в `src/aitext/models.py` (рядом с `Project`). Переиспользуем тот же
-конвейер извлечения, что и `FileAttachment`, но привязка — к проекту, а не к сообщению.
-
-```python
-class ProjectFile(models.Model):
-    """Файл базы знаний проекта. Извлечённый текст инжектится в контекст всех чатов проекта."""
-    project = models.ForeignKey(
-        Project, on_delete=models.CASCADE, related_name='files', verbose_name='Проект'
-    )
-    filename = models.CharField(max_length=255, verbose_name='Имя файла')
-    file_path = models.CharField(max_length=500, verbose_name='Путь к файлу')
-    file_size = models.IntegerField(verbose_name='Размер (байты)')
-    mime_type = models.CharField(max_length=100, blank=True, verbose_name='MIME тип')
-
-    # Результат extract_text_from_file() — тот же конвейер, что у FileAttachment
-    extracted_text = models.TextField(blank=True, null=True, verbose_name='Извлечённый текст')
-    char_count = models.IntegerField(default=0, verbose_name='Кол-во символов')
-
-    # Стратегия инжекта: full = целиком в контекст; rag = по релевантности (Фаза 1.5)
-    INJECT_MODES = [('full', 'Целиком'), ('rag', 'По релевантности')]
-    inject_mode = models.CharField(max_length=10, choices=INJECT_MODES, default='full')
-
-    enabled = models.BooleanField(default=True, verbose_name='Активен')
-    status = models.CharField(
-        max_length=20, default='processing',
-        choices=[('processing', 'Обработка'), ('ready', 'Готов'), ('failed', 'Ошибка')],
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        verbose_name = 'Файл проекта'
-        verbose_name_plural = 'Файлы проектов'
-        ordering = ['-created_at']
-
-    def __str__(self):
-        return f"{self.project.name} — {self.filename}"
-```
-
-**Миграция:** `python manage.py makemigrations aitext` → одна аддитивная миграция,
-только новая таблица + индекс по `project`. Существующие данные не трогаются.
-
-### 1.2. API-эндпоинты
-
-Новый view-файл `src/api/views/project_files.py` + регистрация в `src/api/urls.py`:
-
-```
-GET    v1/projects/<pk>/files/            — список файлов проекта
-POST   v1/projects/<pk>/files/            — загрузить файл (multipart)
-DELETE v1/projects/<pk>/files/<file_id>/  — удалить файл
-PATCH  v1/projects/<pk>/files/<file_id>/  — toggle enabled / сменить inject_mode
-```
-
-Загрузка переиспользует логику `src/api/views/uploads.py` (`ChatFileUploadView`):
-сохранение файла в `media/`, вызов `extract_text_from_file()`. Извлечение текста для
-крупных PDF/архивов выносим в **Celery-задачу** `process_project_file.delay(file_id)`
-(`src/aitext/tasks.py`), чтобы не блокировать HTTP-запрос. Пока задача не завершилась —
-`status='processing'`; фронт показывает спиннер и поллит список.
-
-Проверки: владелец проекта = `request.user`; лимит файлов на проект (напр. 20);
-лимит суммарного размера (напр. 50 МБ) — конфиг в `settings.py`.
-
-### 1.3. Критический момент — инжект в контекст (tasks.py)
-
-Главное изменение Фазы 1 — **5 строк** рядом с уже работающим инжектом system prompt.
-В `src/aitext/tasks.py`, сразу после блока «1. Project system prompt» (строка 304):
-
-```python
-# 1. Project system prompt (если есть)
-if chat.project_id:
-    try:
-        proj = Project.objects.get(id=chat.project_id)
-        if proj.system_prompt:
-            messages_for_api.append({"role": "system", "content": proj.system_prompt})
-
-        # 1b. База знаний проекта (Project Files)
-        kb_block = build_project_knowledge_context(proj, user_msg)  # см. ниже
-        if kb_block:
-            messages_for_api.append({"role": "system", "content": kb_block})
-    except Exception:
-        pass
-```
-
-Новая функция `build_project_knowledge_context(proj, user_msg)` (в `src/aitext/tasks.py`
-или отдельном `src/aitext/project_context.py`):
-
-```python
-FULL_INJECT_LIMIT = 50_000  # символов на файл — ГРАНИЦА FULL ↔ RAG
-
-def build_project_knowledge_context(proj, user_msg) -> str:
-    """Собирает блок знаний проекта для system-сообщения."""
-    files = proj.files.filter(enabled=True, status='ready')
-    if not files:
-        return ''
-
-    parts = []
-    for f in files:
-        text = f.extracted_text or ''
-        if f.char_count <= FULL_INJECT_LIMIT:
-            # FULL: маленький файл — целиком
-            parts.append(f"### Файл: {f.filename}\n{text}")
-        else:
-            # RAG-граница: крупный файл — только релевантные фрагменты
-            snippet = retrieve_relevant_chunks(text, query=user_msg.plain_text, top_k=5)
-            parts.append(f"### Файл: {f.filename} (фрагменты)\n{snippet}")
-
-    body = "\n\n".join(parts)
-    return (
-        "Ниже — материалы базы знаний этого проекта. "
-        "Используй их как источник истины при ответах.\n\n" + body
-    )
-```
-
-### 1.4. ГРАНИЦА FULL-INJECT ↔ RAG (явно)
-
-Это ключевое архитектурное решение Фазы 1:
-
-- **Файл ≤ 50 000 символов (`FULL_INJECT_LIMIT`)** → инжектится **целиком**.
-  Просто, надёжно, без эмбеддингов. Покрывает 90% реальных случаев (md, txt,
-  небольшие PDF, файлы кода).
-- **Файл > 50 000 символов** → **RAG-граница**: текст режется на чанки, по запросу
-  пользователя извлекаются top-k релевантных фрагментов (`retrieve_relevant_chunks`).
-
-**Важно для MVP:** на старте `retrieve_relevant_chunks` реализуется **без векторной БД** —
-простой лексический отбор (BM25 / пересечение по ключевым словам через `rapidfuzz`
-или встроенный TF-подсчёт). Это снимает зависимость от pgvector/эмбеддингов в первом
-релизе. Векторный RAG (эмбеддинги через laozhang.ai + pgvector) — отдельный
-инкремент **Фазы 1.5**, когда появится спрос на большие документы.
-
-Суммарный размер инжекта ограничиваем сверху (`max_input_tokens` сети уже учитывается
-ниже в `tasks.py` при сборке истории) — если знаний больше бюджета, режем по приоритету
-(сначала enabled-файлы по дате, RAG-фрагменты вместо full).
-
-### 1.5. Frontend (Фаза 1)
-
-- `frontend/app/projects/` — вкладка **«Файлы»** в настройках проекта.
-- Drag&drop загрузка, список файлов с размером, статусом (обработка/готов/ошибка),
-  тумблером `enabled`, кнопкой удаления. Иконки — **только Lucide React**
-  (`FileText`, `Upload`, `Trash2`, `Loader2`), без эмодзи.
-- API-клиент: добавить методы в `frontend/lib/api/` (рядом с существующими project-методами).
-- В окне чата — бейдж «База знаний: N файлов» рядом с индикатором инструкций (см. Фаза 2).
+**Честная оценка реализуемости:**
+- За **1–2 недели** реально закрыть один из: 4.2, 4.3, 4.4 **или** 4.5 (S/M-спринты — аддитивны, риск низкий).
+- **4.1 — на грани месяца** в одиночку: pgvector в проде (привилегии, бэкфилл всех существующих `ProjectFile`), чанкинг, ребиллинг звёзд за эмбеддинги, тесты на пустую/деградировавшую выдачу. Это фундамент — спешка здесь дорого обходится.
+- Весь Phase 4 целиком (4.1–4.5) — **реалистично ~5–6 недель** при одном разработчике. 4.1 — половина бюджета.
 
 ---
 
-## ФАЗА 2 — UX инструкций проекта (System Instructions)
+### Sprint 4.1 — Векторный RAG (L)
 
-Бэкенд **уже работает** (см. 0.1). Это чисто фронтенд-задача: сделать `system_prompt`
-видимым и удобным.
+**Цель:** опциональный семантический поиск по базе знаний вместо/вместе с лексическим.
+Включается флагом `PROJECT_VECTOR_RAG=1`. При `=0` — текущая лексика (Sprint 1) без изменений.
 
-**Изменений в бэкенде НЕТ.** `system_prompt` уже в модели `Project`, уже сохраняется
-через `ProjectDetailView` (PATCH), уже инжектится в `tasks.py`.
+#### Ключевое архитектурное решение №1: размерность эмбеддингов и индекс
 
-### Frontend (`frontend/app/projects/`)
+text-embedding-3-large = **3072 измерения**. Критичное ограничение pgvector:
+тип `vector` хранит до 16 000 dim, **но ANN-индексы (hnsw / ivfflat) работают только до 2000 dim**.
 
-1. **Отдельная вкладка «Инструкции»** в настройках проекта (вместо узкого поля).
-2. Полноразмерный textarea-редактор с **счётчиком символов** и мягким лимитом
-   (напр. предупреждение на 4000 символов — это контекстный бюджет).
-3. **Превью** — рендер markdown инструкции (переиспользуем `react-markdown`,
-   который уже стоит для чата).
-4. **Индикатор в чате**: когда чат принадлежит проекту с непустым `system_prompt` —
-   показывать ненавязчивый бейдж «Инструкции проекта активны» (Lucide `Sparkles`/`Info`),
-   по клику — popover с текстом инструкции (read-only).
-5. Подсказки-шаблоны инструкций («Тон ответов», «Формат», «Роль»).
+**Решение:** НЕ строим ANN-индекс. Каждый запрос RAG всегда фильтруется по `WHERE project_id = X`
+(чанков на проект — десятки–сотни, редко тысячи). Точный seq-scan по косинусу внутри одного
+проекта дешевле, чем поддержка ANN-индекса, и снимает лимит 2000 dim. Если в будущем понадобится
+глобальный поиск — перейдём на `dimensions=1536` (через параметр API) + hnsw.
 
----
+**Дефолтная модель:** `text-embedding-3-small` (1536 dim) — подтверждённо доступна через laozhang
+(`EmbeddingsView` уже её дефолтит). `text-embedding-3-large` — за флагом
+`PROJECT_EMBED_MODEL`, как апгрейд (требует проверки прохождения `dimensions` через прокси).
+Это снимает риск «модель недоступна через laozhang».
 
-## ФАЗА 3 — Git-коннектор (GitHub / Gitea)
+#### Ключевое архитектурное решение №2: где живут чанки
 
-Подключение GitHub-репозитория или существующего Gitea-репо к проекту. AI читает
-файлы репозитория по запросу и **предлагает коммиты** → пользователь одобряет →
-коммит пушится.
-
-### 3.1. Модель `ProjectConnector`
-
-`src/aitext/models.py`:
+Новая модель `ProjectChunk`, а НЕ поле в `ProjectFile` (файл = много чанков, 1:N).
+`ProjectFile` обогащаем дискриминатором источника (нужно и для Sprint 4.2):
 
 ```python
-class ProjectConnector(models.Model):
-    """Подключённый git-репозиторий проекта (GitHub или Gitea)."""
-    TYPES = [('github', 'GitHub'), ('gitea', 'Gitea')]
+# aitext/models.py — добавить в ProjectFile
+source = models.CharField(max_length=10, default='upload',
+    choices=[('upload', 'Загружен'), ('repo', 'Из репозитория')])
+connector = models.ForeignKey(ProjectConnector, null=True, blank=True,
+    on_delete=models.SET_NULL, related_name='synced_files')
+repo_path = models.CharField(max_length=500, blank=True)  # путь в репо для repo-файлов
+embed_status = models.CharField(max_length=12, default='none',
+    choices=[('none','Нет'),('pending','В очереди'),('done','Готово'),('error','Ошибка')])
 
-    project = models.OneToOneField(
-        Project, on_delete=models.CASCADE, related_name='connector', verbose_name='Проект'
-    )
-    type = models.CharField(max_length=10, choices=TYPES)
-    repo_url = models.URLField(verbose_name='URL репозитория')
-    owner = models.CharField(max_length=200, verbose_name='Владелец (owner)')
-    repo = models.CharField(max_length=200, verbose_name='Имя репозитория')
-    default_branch = models.CharField(max_length=100, default='main')
-
-    # Токен доступа. ХРАНИМ ЗАШИФРОВАННЫМ (Fernet, ключ из settings)
-    access_token = models.TextField(verbose_name='Токен доступа (encrypted)')
-
-    connected_at = models.DateTimeField(auto_now_add=True)
-    last_read_at = models.DateTimeField(null=True, blank=True)
-
-    class Meta:
-        verbose_name = 'Git-коннектор проекта'
-        verbose_name_plural = 'Git-коннекторы проектов'
+# Новая модель
+class ProjectChunk(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='chunks')
+    file = models.ForeignKey(ProjectFile, on_delete=models.CASCADE, related_name='chunks')
+    chunk_index = models.PositiveIntegerField()
+    content = models.TextField()
+    embedding = VectorField(dimensions=1536)  # pgvector, без ANN-индекса
+    token_count = models.PositiveIntegerField(default=0)
+    # индекс только по project (B-tree), вектор — exact scan в пределах проекта
 ```
 
-**Безопасность токена:** `access_token` шифруется через `cryptography.Fernet`
-(ключ — из `settings.SECRET_KEY`-производного или отдельной env-переменной
-`PROJECT_CONNECTOR_FERNET_KEY`). В API наружу токен **никогда** не отдаётся (write-only
-в сериализаторе).
+#### Файлы
 
-### 3.2. Модель `ProjectCommit`
+| Файл | Действие |
+|------|----------|
+| `src/requirements.txt` | + `pgvector` (Python-биндинг для Django) |
+| `src/aitext/migrations/0014_pgvector_chunks.py` | **новая**: `CREATE EXTENSION IF NOT EXISTS vector` (RunSQL), `ProjectChunk`, новые поля `ProjectFile` |
+| `src/aitext/models.py` | `ProjectChunk`, поля `source/connector/repo_path/embed_status` в `ProjectFile` |
+| `src/aitext/embeddings.py` | **новый**: `chunk_text(text)` (~500 ток/чанк, overlap 50), `embed_chunks(file)` (батч в laozhang), `vector_search(project, query, top_k)` (косинус, exact) |
+| `src/aitext/tasks.py` | `embed_project_file(file_id)` Celery-задача; в `build_project_knowledge_context` — ветка `if settings.PROJECT_VECTOR_RAG` → `vector_search`, иначе лексика; `process_project_file` в конце ставит `embed_project_file.delay()` если флаг |
+| `src/aitext/management/commands/backfill_embeddings.py` | **новый**: ребиллинг эмбеддингов всех `ProjectFile(status='ready')` |
+| `src/config/settings.py` | `PROJECT_VECTOR_RAG`, `PROJECT_EMBED_MODEL`, `PROJECT_EMBED_DIMS` |
+
+#### Решение №3: миграция расширения и бэкфилл (честно про прод)
+
+- `CREATE EXTENSION vector` требует **superuser** в Postgres. В docker-compose `db` стартует под
+  `POSTGRES_USER=neiro_user` — он владелец БД, но не superuser. Нужно либо разово выполнить
+  `CREATE EXTENSION` под суперпользователем (init-скрипт контейнера / ручной `psql`), либо
+  выдать `neiro_user` право. **В плане: добавить шаг в `deploy.sh` / отдельный init-SQL.** Миграция
+  делает `CREATE EXTENSION IF NOT EXISTS` — она пройдёт, если расширение уже создано суперъюзером.
+- **Бэкфилл стоит звёзд/токенов.** Включение векторов = переэмбеддить ВСЕ существующие файлы
+  (`backfill_embeddings`). На больших аккаунтах это заметный расход → команда логирует прогресс и
+  суммарные токены, биллинг — за счёт системы (не пользователя) при бэкфилле. Это часть «месячной»
+  оценки 4.1.
+
+#### Биллинг
+
+Эмбеддинги тарифицируются как и любой laozhang-вызов через `charge_for_tokens` (см. `EmbeddingsView`).
+При загрузке файла — звёзды пользователя; при ручном бэкфилле — системно. Дешёвая модель
+(`-3-small`) выбрана в т.ч. ради стоимости.
+
+#### Компромиссы
+
+- **Без ANN-индекса** — осознанно (лимит 2000 dim + per-project фильтр делает exact-scan достаточным). Минус: на проекте с десятками тысяч чанков латентность вырастет — тогда включаем `dimensions=1536`+hnsw как отдельную доработку.
+- **Чанк-overlap 50 токенов** — баланс «не терять контекст на границах» vs дубли.
+- Лексика остаётся как fallback при `embed_status != 'done'` или пустой векторной выдаче — деградация плавная, а не обрыв.
+
+---
+
+### Sprint 4.2 — Inbound-синхронизация репо → база знаний (M)
+
+**Цель:** новый коммит в подключённом репо → Project Space автоматически переэмбеддит изменённые
+файлы. Завершает «двустороннюю» синхронизацию.
+
+#### Ключевое решение: webhook-primary, polling-fallback
+
+- **Primary — webhook.** При создании коннектора регистрируем webhook в репо через сохранённый PAT
+  (`POST /repos/{owner}/{repo}/hooks` у GitHub; аналог у Gitea). Входящий хук **HMAC-верифицируется**
+  секретом, который мы генерируем на коннектор (это *inbound* HMAC — отдельная сущность от уже
+  существующей *outbound* webhook-инфраструктуры в `api/`, не путать).
+- **Fallback — polling.** Celery-beat раз в N минут сверяет `last_synced_sha` коннектора с головой
+  ветки (для приватных репо без публичного webhook-эндпоинта, или если регистрация хука не удалась).
+
+Почему так: webhook даёт мгновенность и «как у взрослых» (Cursor/Copilot), polling гарантирует
+работу там, где webhook недоступен (self-hosted Gitea за NAT, ограничения PAT).
+
+#### Ключевое решение: защита от петли синхронизации
+
+AI-коммит (Sprint 4.3) → push → webhook от репо → переэмбеддинг → НЕ должен заново что-то триггерить.
+Гард: `ProjectConnector.last_synced_sha`. Входящий sync **пропускает коммиты, чей SHA = last_synced_sha**,
+и коммиты, авторские для платформы (по committer email/имени бота). Проектируем сразу — ретрофит больнее.
+
+#### Файлы
+
+| Файл | Действие |
+|------|----------|
+| `src/aitext/migrations/0015_connector_sync.py` | **новая**: `last_synced_sha`, `webhook_secret`, `webhook_id`, `sync_enabled`, `auto_sync` на `ProjectConnector` |
+| `src/aitext/models.py` | поля синка на `ProjectConnector` |
+| `src/aitext/sync.py` | **новый**: `sync_connector(connector)` — diff дерева по SHA, скачивание изменённых текстовых файлов, upsert в `ProjectFile(source='repo', repo_path=...)`, удаление пропавших, постановка `embed_project_file` |
+| `src/aitext/tasks.py` | `sync_connector_task(connector_id)` Celery; `poll_connectors()` beat-задача |
+| `src/config/celery.py` | расписание `poll_connectors` (напр. каждые 10 мин, только `auto_sync=True`) |
+| `src/api/views/connectors.py` | `ConnectorSyncNowView` (ручной триггер), регистрация webhook в `ConnectorListCreateView.create` |
+| `src/api/views/webhooks_inbound.py` | **новый**: `RepoWebhookView` (publicly routed, HMAC-verify, → `sync_connector_task.delay`) |
+| `src/api/urls.py` | `+ projects/<pk>/connectors/<cid>/sync/`, `+ /webhooks/repo/<cid>/` |
+| `src/aitext/github_client.py` / `gitea_client.py` | `create_webhook`, `compare_commits` (или diff через два `list_tree`) |
+| `frontend/app/projects/[id]/page.tsx` | в `ConnectorsTab`: тумблер «Авто-синхронизация», бейдж «Синхронизировано: <sha>», кнопка «Синхронизировать сейчас» |
+| `frontend/lib/api/client.ts` + `types.ts` | `syncConnector()`, поля синка в `ProjectConnector` |
+
+#### Фильтрация файлов
+
+Синкаем только текст/код по расширению и размеру (cap, напр. 256 КБ/файл), бинарь/`node_modules`/`.git`
+игнорируем (re-use логики игнора при необходимости). Извлечение — `extract_text_from_file`.
+
+#### Компромиссы
+
+- **Diff по дереву, не git-clone.** Полный clone репо в песочницу — тяжело и дублирует Studio. Берём дерево через API и тянем только изменённые blob'ы — дёшево, без локального git.
+- **Webhook регистрируем best-effort.** Если PAT без прав на хуки — молча падаем на polling, UI показывает «режим: опрос».
+
+---
+
+### Sprint 4.3 — AI предлагает коммиты из чата (M)
+
+**Цель:** в чате проекта с подключённым репо пользователь просит («добавь README», «отрефактори utils»),
+AI отвечает текстом + FILE-блоками, система детектит блоки и создаёт `ProjectCommit(status='pending')`.
+Дальше — УЖЕ существующий approve→push (Sprint 3). Никакого нового push-кода.
+
+#### Ключевое решение: переиспользуем parser и commit-flow
+
+- Парсинг — `parse_file_blocks` из `studio/agents/blocks.py` (детерминированный, без JSON-escaping).
+- Когда у чата `chat.project_id` и у проекта есть коннектор, в системный промпт добавляется инструкция:
+  «если просят изменить код — выводи файлы в формате `=== FILE: path ===` … `=== END FILE ===`».
+- После генерации ответа (в обоих путях: Celery `generate_ai_response` и SSE `StreamMessageView`)
+  пост-обработчик `extract_commit_from_response()` парсит блоки; если есть — создаёт `ProjectCommit`
+  с `connector` = дефолтный коннектор проекта, `commit_message` из первой строки/эвристики.
+- Фронт показывает «AI предложил коммит (N файлов)» с теми же кнопками Подтвердить/Отклонить.
+
+#### Файлы
+
+| Файл | Действие |
+|------|----------|
+| `src/aitext/commit_extract.py` | **новый**: `extract_commit_from_response(project, assistant_text)` → создаёт `ProjectCommit` или `None`; импортирует `parse_file_blocks` |
+| `src/aitext/tasks.py` | в конце `generate_ai_response`: если `project + connector + флаг` → `extract_commit_from_response`; инжект инструкции о FILE-формате в системный промпт |
+| `src/api/views/chats.py` | то же в SSE-пути (`StreamMessageView`) после завершения стрима |
+| `src/config/settings.py` | `PROJECT_AI_COMMITS=0` (флаг) |
+| `frontend/app/chat/[networkSlug]/...` | карточка «AI предложил коммит» под сообщением ассистента (рендер pending-коммита, привязанного к проекту) |
+| `frontend/lib/api/client.ts` | переиспользует `confirmCommit` (готово) |
+
+#### Решение: «понимание структуры репо»
+
+AI отвечает по коду за счёт RAG (Sprint 4.1) над файлами `source='repo'` (Sprint 4.2). Отдельно
+в системный промпт добавляем **карту дерева репо** (paths-only, из `list_tree`, обрезанную до ~3 КБ) —
+чтобы модель знала, какие файлы существуют, и не плодила дубли. Это дёшево и резко повышает качество
+предложений рефакторинга.
+
+#### Компромиссы
+
+- **Только дефолтный коннектор.** Если у проекта несколько репо — берём первый/помеченный. Мульти-репо выбор в чате — позже, не в MVP.
+- **Коммит всегда pending.** AI НЕ пушит сам — пользователь подтверждает. Безопасность и контроль важнее автономности (в отличие от Studio-песочницы, тут чужой прод-репозиторий).
+- Старый ручной путь создания коммита (модалка Sprint 3) остаётся — это просто второй источник `ProjectCommit`.
+
+---
+
+### Sprint 4.4 — Project Spaces в Telegram-боте (M)
+
+**Цель:** выбор активного Project Space в боте; вопросы AI учитывают знания и инструкции проекта.
+
+#### Ключевое решение: общий RAG-инжект, не дублировать логику
+
+Инжект знаний проекта — это `build_project_knowledge_context` (общая функция). Бот лишь должен
+проставить «активный проект» в чат, который он использует, — и инжект отработает сам (RAG из 4.1
+тоже общий). Минимум нового кода на стороне бота.
+
+#### Файлы
+
+| Файл | Действие |
+|------|----------|
+| `src/telegram_bot/migrations/00XX_active_project.py` | **новая**: `active_project` FK на `aitext.Project` в `TelegramUser` |
+| `src/telegram_bot/models.py` | `active_project = ForeignKey('aitext.Project', null=True, SET_NULL)` |
+| `src/telegram_bot/handlers/projects_cmd.py` | **новый**: `/projects` — список Spaces пользователя (inline-кнопки), выбор активного, «Сбросить»; карточка с числом файлов и активностью инструкций |
+| `src/telegram_bot/handlers/chat.py` | при создании/получении рабочего `Chat` — если `tg_user.active_project` → проставить `chat.project = active_project` (тогда системный промпт + знания инжектятся существующим пайплайном) |
+| `src/telegram_bot/handlers/menu.py` | пункт меню «Проекты»; индикатор активного Space в шапке/статусе |
+| `src/telegram_bot/bot.py` | регистрация роутера `projects_cmd` |
+| `frontend/app/tg/...` (Mini App) | опц.: селектор проекта в Mini App (если есть бюджет) |
+
+#### Компромиссы
+
+- **Read+chat в боте, управление файлами — в вебе.** Загрузка PDF и Git-настройка остаются в веб-UI; бот — это «спросить у своего Space». Это сознательное сужение: TG-загрузка файлов в проект — отдельная задача, не блокирует ценность.
+- **Активный проект — на `TelegramUser`, не на каждый чат.** Проще ментальная модель: «я сейчас работаю в Space X». Переключение — через `/projects`.
+
+---
+
+### Sprint 4.5 — Публичные Spaces и шаринг (S)
+
+**Цель:** сделать Space публичным read-only и поделиться ссылкой (аналог Perplexity Spaces share).
+
+#### Ключевое решение: токен-ссылка + read-only снапшот
+
+Публичность = поле на `Project` + случайный `public_slug`. Публичная страница отдаёт **read-only**:
+название, инструкции (system_prompt), список файлов базы знаний (без скачивания приватных по умолчанию),
+и — опционально — публичные чаты. НЕ отдаём токены коннекторов, не даём писать, не запускаем генерацию
+от имени владельца.
 
 ```python
-class ProjectCommit(models.Model):
-    """Предложенный AI коммит, ожидающий подтверждения пользователя."""
-    STATUSES = [
-        ('pending', 'Ожидает подтверждения'),
-        ('approved', 'Одобрен'),
-        ('rejected', 'Отклонён'),
-        ('pushed', 'Запушен'),
-        ('failed', 'Ошибка'),
-    ]
-    connector = models.ForeignKey(
-        ProjectConnector, on_delete=models.CASCADE, related_name='commits'
-    )
-    message = models.CharField(max_length=500, verbose_name='Сообщение коммита')
-    branch = models.CharField(max_length=100, default='main')
-
-    # {"path/to/file.py": "новое содержимое", ...} — формат put_files_batch()
-    files = models.JSONField(default=dict, verbose_name='Файлы (path -> content)')
-
-    status = models.CharField(max_length=10, choices=STATUSES, default='pending')
-    git_sha = models.CharField(max_length=64, blank=True, verbose_name='SHA после пуша')
-    error = models.TextField(blank=True)
-
-    created_by_message = models.ForeignKey(
-        'Message', on_delete=models.SET_NULL, null=True, blank=True,
-        help_text='Сообщение чата, в котором AI предложил коммит',
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ['-created_at']
+# aitext/models.py — Project
+is_public = models.BooleanField(default=False)
+public_slug = models.CharField(max_length=22, blank=True, db_index=True)  # secrets.token_urlsafe
+public_show_files = models.BooleanField(default=True)
+public_show_chats = models.BooleanField(default=False)
 ```
 
-Формат `files` (`{path: content}`) совпадает с сигнатурой
-`gitea_client.put_files_batch(owner, repo, files, message, branch)` — пуш получается
-тривиальным.
+#### Файлы
 
-**Миграция:** одна аддитивная миграция `aitext` — две новые таблицы.
+| Файл | Действие |
+|------|----------|
+| `src/aitext/migrations/00XX_public_space.py` | **новая**: `is_public`, `public_slug`, флаги видимости |
+| `src/aitext/models.py` | поля выше + генерация `public_slug` |
+| `src/api/views/projects.py` | `ProjectPublicView` (AllowAny, по `public_slug`, только read-only сериализация); экшен «опубликовать/снять» в `ProjectDetailView` |
+| `src/api/urls.py` | `+ public/spaces/<slug>/` (без auth) |
+| `frontend/app/s/[slug]/page.tsx` | **новая** публичная SSR-страница Space (SEO: title/description из проекта, OG-теги) |
+| `frontend/app/projects/[id]/page.tsx` | секция «Доступ»: тумблер «Публичный», копирование ссылки `/s/<slug>`, тумблеры видимости файлов/чатов |
+| `frontend/lib/api/client.ts` + `types.ts` | `publishProject`, `getPublicSpace`, поля публичности |
 
-### 3.3. API-эндпоинты
+#### Компромиссы
 
-`src/api/views/connectors.py` + маршруты в `src/api/urls.py`.
-
-> **Решение по адресации:** `ProjectConnector` — это `OneToOne` к проекту (один
-> репозиторий на проект), поэтому коннектор адресуется через `<pk>` проекта, а не
-> через отдельный `{id}` коннектора. Если в будущем понадобится несколько репо на
-> проект — меняем на `ForeignKey` и добавляем `connectors/<connector_id>/...`.
-
-```
-POST   v1/projects/<pk>/connectors/                      — подключить репо (type, repo_url, token)
-GET    v1/projects/<pk>/connectors/                      — текущий коннектор (без токена)
-DELETE v1/projects/<pk>/connectors/                      — отключить
-
-GET    v1/projects/<pk>/connectors/read-files/?path=...  — листинг / чтение файлов репо
-POST   v1/projects/<pk>/connectors/propose-commit/       — AI предлагает коммит → ProjectCommit(pending)
-POST   v1/projects/<pk>/connectors/confirm-commit/       — {commit_id, action: approve|reject}
-GET    v1/projects/<pk>/connectors/commits/              — список pending/прошлых коммитов
-```
-
-#### read-files
-- **Gitea**: переиспользуем `gitea_client.get_file_content(owner, repo, path, ref)`.
-  Для листинга дерева добавляем **одну** новую функцию `list_files(owner, repo, path='', ref)`
-  → `GET /repos/{owner}/{repo}/contents/{path}` (Gitea и GitHub имеют почти идентичный
-  contents-API).
-- **GitHub**: новый тонкий клиент `src/aitext/github_client.py` с `get_file_content` и
-  `list_files` через `https://api.github.com/repos/{owner}/{repo}/contents/...`
-  (Bearer-токен из расшифрованного `access_token`). Кладём рядом с `gitea_client.py`
-  по аналогии.
-
-#### propose-commit
-Создаёт `ProjectCommit(status='pending')` с предложенными файлами. **Ничего не пушит.**
-Источник предложения — ответ AI в чате: парсим FILE-блоки из ответа модели (как уже
-делает Studio-пайплайн при валидации FILE_BLOCKS). Возвращаем diff для предпросмотра.
-
-#### confirm-commit
-- `action=reject` → `status='rejected'`, ничего не пушится.
-- `action=approve` → `status='approved'`, запускаем Celery-задачу
-  `push_project_commit.delay(commit_id)`.
-
-### 3.4. Celery-задача пуша
-
-`src/aitext/tasks.py`:
-
-```python
-@shared_task(bind=True, max_retries=3)
-def push_project_commit(self, commit_id):
-    commit = ProjectCommit.objects.select_related('connector').get(id=commit_id)
-    conn = commit.connector
-    token = decrypt_token(conn.access_token)
-    try:
-        if conn.type == 'gitea':
-            res = gitea_client.put_files_batch(
-                conn.owner, conn.repo, commit.files, commit.message, commit.branch,
-            )
-        else:  # github
-            res = github_client.put_files_batch(
-                conn.owner, conn.repo, commit.files, commit.message, commit.branch, token,
-            )
-        commit.git_sha = res.get('sha', '')
-        commit.status = 'pushed'
-        commit.save()
-    except Exception as e:
-        commit.status = 'failed'
-        commit.error = str(e)
-        commit.save()
-        raise self.retry(exc=e, countdown=60)
-```
-
-Для Gitea токен уже есть на уровне сервера (`STUDIO_GITEA_ADMIN_TOKEN`); для
-пользовательских GitHub-репо токен берётся из расшифрованного `access_token`.
-`github_client.put_files_batch` реализует пакетный коммит через GitHub Git Data API
-(create blob → tree → commit → update ref) либо последовательные contents-PUT для MVP.
-
-### 3.5. Frontend (Фаза 3)
-
-`frontend/app/projects/` + `frontend/lib/api/`:
-
-1. **Панель «Подключить репозиторий»**: выбор типа (GitHub/Gitea), URL, PAT-токен
-   (инструкция, какие scope нужны). Lucide `Github`, `GitBranch`, `KeyRound`.
-2. **Браузер файлов репо**: дерево (read-files), просмотр содержимого read-only.
-3. **Список pending-коммитов**: для каждого — сообщение, diff по файлам,
-   кнопки «Одобрить» / «Отклонить» (confirm-commit). После approve — статус
-   обновляется до «Запушен» (поллинг или SSE).
-4. Бейдж в чате «Репозиторий подключён: owner/repo».
+- **Slug, а не sequential id** — нельзя перебрать чужие Spaces.
+- **Снятие публичности инвалидирует ссылку** (меняем slug или `is_public=False` → 404). Версионирование снапшотов — избыточно для MVP.
+- **По умолчанию файлы — только список, без контента** приватных загрузок (защита от утечки PDF). `public_show_files` управляет показом списка; полная отдача контента — отдельный явный опт-ин позже.
 
 ---
 
-## Спринт-разбивка
+### Сводка новых флагов окружения (Phase 4)
 
-| Спринт | Содержание | Сложность |
-|--------|-----------|-----------|
-| **Спринт 1 — База знаний** | Модель `ProjectFile` + миграция; эндпоинты files (CRUD); Celery `process_project_file`; функция `build_project_knowledge_context` + инжект в `tasks.py`; FULL-граница 50 КБ (лексический отбор для крупных, без векторов); вкладка «Файлы» на фронте | **M** |
-| **Спринт 2 — Инструкции UX** | Вкладка «Инструкции» (textarea + счётчик + markdown-превью); индикатор активных инструкций в чате; шаблоны. Бэкенд — 0 изменений | **S** |
-| **Спринт 3 — Git-коннектор** | Модели `ProjectConnector` + `ProjectCommit` + миграция; шифрование токена (Fernet); `github_client.py` + `list_files` для Gitea; эндпоинты connectors / read-files / propose-commit / confirm-commit; Celery `push_project_commit`; фронт: панель подключения, браузер файлов, список pending-коммитов | **L** |
+```
+# Векторный RAG (Sprint 4.1) — по умолчанию выключен, лексика остаётся
+PROJECT_VECTOR_RAG=0
+PROJECT_EMBED_MODEL=text-embedding-3-small   # large=3072 как апгрейд (no ANN index)
+PROJECT_EMBED_DIMS=1536
 
-Доп. инкремент вне основных спринтов:
-- **Фаза 1.5 — Векторный RAG** (эмбеддинги laozhang.ai + pgvector) для документов
-  > 50 КБ. Подключается прозрачно за `inject_mode='rag'`. **Сложность M.**
+# AI-коммиты из чата (Sprint 4.3)
+PROJECT_AI_COMMITS=0
+```
 
----
+### Порядок выкатки и риски
 
-## Оценка реализуемости (вердикт)
+1. **4.1 первым** — фундамент знаний (и upload, и repo идут через один RAG). Главный технический риск — pgvector в проде (привилегии + бэкфилл). Закладываем на это половину бюджета Phase 4.
+2. **4.2** сразу за 4.1 — repo-файлы должны эмбеддиться тем же путём.
+3. **4.3 и 4.4 параллелизуемы** — независимы, оба опираются на готовый RAG/commit-flow.
+4. **4.5** — самостоятельный S, можно вставить в любой момент как «быстрая победа» для маркетинга.
 
-| Компонент | Вердикт | Обоснование |
-|-----------|---------|-------------|
-| **Project Files (база знаний)** | **ДА** | Конвейер извлечения (`extract_text_from_file`) и хранение (`extracted_text`) уже есть. Инжект — +5 строк рядом с рабочим инжектом system prompt в `tasks.py:297`. Новая модель + один Celery-таск. Риск минимальный. |
-| **Инжект в контекст** | **ДА** | Точка вставки уже существует и проверена (`messages_for_api.append`). Бюджет токенов учитывается ниже по коду через `max_input_tokens`. Добавляем один system-блок. |
-| **FULL ↔ RAG граница** | **ДА** | MVP — без векторной БД: full-inject ≤ 50 КБ + лексический отбор для крупных. Снимает зависимость от pgvector в первом релизе. Векторный RAG — изолированный инкремент за флагом `inject_mode`. |
-| **Instructions UX** | **ДА (тривиально)** | Бэкенд уже работает на 100%. Чисто фронтенд: вкладка, счётчик, превью, индикатор. Нулевой риск регрессий. |
-| **Git-коннектор (Gitea)** | **ДА** | `gitea_client.py` уже покрывает чтение (`get_file_content`) и пуш (`put_files_batch`). Нужна **одна** новая функция `list_files`. Формат `ProjectCommit.files` совпадает с `put_files_batch`. |
-| **Git-коннектор (GitHub)** | **ДА (с оговоркой)** | Требует нового тонкого клиента `github_client.py` (contents-API + Git Data API для batch). Объём — небольшой, API хорошо документирован. Основной риск — безопасность хранения PAT: решается шифрованием Fernet + write-only в сериализаторе. |
-| **Propose → approve → push** | **ДА** | Паттерн «pending → approve → Celery push» уже знаком кодовой базе (Studio коммитит так же). Парсинг FILE-блоков из ответа AI переиспользует логику валидации Studio-пайплайна. |
-
-### Общий вердикт: **РЕАЛИЗУЕМО.**
-
-Все три фичи опираются на уже существующую инфраструктуру (извлечение текста, инжект
-system prompt, Gitea-клиент, Celery, паттерн pending-коммитов из Studio). Новый код —
-преимущественно модели, тонкие API-вью и фронтенд. Самый объёмный и единственный
-по-настоящему новый кусок — `github_client.py` и шифрование токенов в Фазе 3.
-
-**Рекомендуемый порядок:** Спринт 2 (Инструкции, быстрая победа без бэкенда) →
-Спринт 1 (База знаний, ядро ценности) → Спринт 3 (Git-коннектор, самый объёмный).
-
----
-
-## Файлы, которые меняем / создаём
-
-**Backend:**
-- `src/aitext/models.py` — модели `ProjectFile`, `ProjectConnector`, `ProjectCommit`
-- `src/aitext/migrations/00XX_project_spaces.py` — аддитивные миграции
-- `src/aitext/tasks.py` — `build_project_knowledge_context`, инжект (≈стр. 304),
-  Celery `process_project_file`, `push_project_commit`
-- `src/aitext/project_context.py` *(новый, опц.)* — сборка контекста знаний + RAG-отбор
-- `src/aitext/github_client.py` *(новый)* — GitHub contents / Git Data API
-- `src/studio/gitea_client.py` — добавить `list_files(owner, repo, path, ref)`
-- `src/api/views/project_files.py` *(новый)* — CRUD файлов проекта
-- `src/api/views/connectors.py` *(новый)* — коннекторы, read-files, propose/confirm-commit
-- `src/api/urls.py` — регистрация новых маршрутов под `v1/projects/<pk>/...`
-- `src/config/settings.py` — лимиты файлов проекта, `PROJECT_CONNECTOR_FERNET_KEY`
-
-**Frontend:**
-- `frontend/app/projects/` — вкладки «Файлы», «Инструкции», «Репозиторий»
-- `frontend/lib/api/` — клиентские методы (project files, connectors, commits)
-- `frontend/app/chat/` — индикаторы «Инструкции активны» / «База знаний» / «Репо подключён»
+**Главные грабли, заложенные в дизайн заранее:** лимит 2000 dim у ANN-индексов pgvector (решено exact-scan per-project), привилегии `CREATE EXTENSION` (решено deploy-шагом), петля синхронизации AI-коммит↔webhook (решено `last_synced_sha` + фильтр по автору), путаница inbound/outbound HMAC (решено отдельной сущностью `webhook_secret` на коннекторе).
