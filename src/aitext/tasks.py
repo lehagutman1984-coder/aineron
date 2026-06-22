@@ -455,11 +455,11 @@ def _auto_max_tokens(model_name: str) -> int:
     if any(x in m for x in ('gpt-4.1', 'gpt-4o', 'gpt-5', 'o1', 'o3', 'o4')):
         return 32768
     if any(x in m for x in ('claude',)):
-        return 8192
+        return 16384
     if any(x in m for x in ('gemini',)):
-        return 8192
+        return 16384
     if any(x in m for x in ('deepseek', 'qwen', 'grok')):
-        return 8192
+        return 16384
     return 16384
 
 
