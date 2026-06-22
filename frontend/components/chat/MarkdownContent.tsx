@@ -175,6 +175,35 @@ const components: Components = {
   },
 };
 
+// ── FILE-block preprocessor ─────────────────────────────────────────────────
+// Transforms === FILE: path === ... === END FILE === into markdown code fences
+
+const EXT_LANG: Record<string, string> = {
+  py: "python", ts: "typescript", tsx: "typescript", js: "javascript",
+  jsx: "javascript", html: "html", css: "css", json: "json", yml: "yaml",
+  yaml: "yaml", sh: "bash", bash: "bash", rs: "rust", go: "go",
+  java: "java", rb: "ruby", php: "php", sql: "sql", xml: "xml", md: "markdown",
+};
+
+function preprocessContent(raw: string): string {
+  // Strip outer === RESPONSE === / === END RESPONSE === wrappers if present
+  let text = raw
+    .replace(/^===\s*RESPONSE\s*===\s*\n?/i, "")
+    .replace(/\n?===\s*END RESPONSE\s*===\s*$/i, "");
+
+  // Transform === FILE: path === ... === END FILE === → ```lang\n...\n```
+  text = text.replace(
+    /===\s*FILE:\s*([^\n=]+?)\s*===\n([\s\S]*?)===\s*END FILE\s*===/g,
+    (_, filePath: string, code: string) => {
+      const ext = filePath.trim().split(".").pop()?.toLowerCase() ?? "";
+      const lang = EXT_LANG[ext] ?? "";
+      return `**\`${filePath.trim()}\`**\n\`\`\`${lang}\n${code.trimEnd()}\n\`\`\``;
+    }
+  );
+
+  return text;
+}
+
 // ── Public component ────────────────────────────────────────────────────────
 
 export function MarkdownContent({ content }: { content: string }) {
@@ -185,7 +214,7 @@ export function MarkdownContent({ content }: { content: string }) {
         rehypePlugins={[[rehypeHighlight, { detect: true, ignoreMissing: true }]]}
         components={components}
       >
-        {content}
+        {preprocessContent(content)}
       </ReactMarkdown>
     </div>
   );
