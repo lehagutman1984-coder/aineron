@@ -33,11 +33,10 @@ Claude.ai Projects, Perplexity Spaces и ChatGPT Projects.
 | **Sprint 5.5** — Observability (audit log + public Spaces hardening) | **ЗАВЕРШЁН** | `72e6ab3` |
 | **Sprint 5.6** — Telegram upload (файлы в базу знаний из бота) | **ЗАВЕРШЁН** | `f9a5338` |
 | **Bug-fix RAG-инъекция** (двойная инъекция + sync error-статус + polling-кнопка + бейдж) | **ЗАВЕРШЁН** | (сессия 2026-06-22) |
-| **Phase 6 — RAG Supremacy** (hybrid+rerank+query-expansion+@file/@web+two-level) | **ЗАПЛАНИРОВАН** | — |
+| **Phase 6 — RAG Supremacy** (hybrid+rerank+query-expansion+@file/@web+two-level) | **ЗАВЕРШЁН** | `c680c8a`, `1955105` |
+| **Phase 7 — Code Workspace** (встроенный редактор CodeMirror + deploy-хук) | **ЗАВЕРШЁН** | `c680c8a`, `1955105` |
 
-**Phase 4 + Phase 5 — ПОЛНОСТЬЮ ЗАВЕРШЕНЫ** (все спринты 5.1–5.7).
-**Phase 6 — спроектирована** (раздел `# Phase 6 — RAG Supremacy` ниже): цель — обогнать
-Perplexity/Cursor на уровне самого поиска (hybrid + reranking + query expansion).
+**Phase 4 + Phase 5 + Phase 6 + Phase 7 — ПОЛНОСТЬЮ ЗАВЕРШЕНЫ.**
 
 ### Bug-fix RAG-аудит (текущая сессия)
 
