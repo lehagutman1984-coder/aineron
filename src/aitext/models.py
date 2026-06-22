@@ -222,6 +222,7 @@ class Project(models.Model):
     public_slug = models.CharField(max_length=22, blank=True, db_index=True, verbose_name='Публичный slug')
     public_show_files = models.BooleanField(default=True, verbose_name='Показывать файлы базы знаний')
     public_show_chats = models.BooleanField(default=False, verbose_name='Показывать чаты')
+    public_views = models.PositiveIntegerField(default=0, verbose_name='Просмотры публичного Space')
 
     class Meta:
         verbose_name = 'Проект'
@@ -472,6 +473,44 @@ class KBUsageStat(models.Model):
 
     def __str__(self):
         return f"{self.file.filename}: {self.hits} hits"
+
+
+class ProjectAuditEntry(models.Model):
+    """Sprint 5.5: запись журнала аудита проекта."""
+    ACTION_CHOICES = [
+        ('chat_message', 'Сообщение в чате'),
+        ('file_upload', 'Загрузка файла'),
+        ('file_delete', 'Удаление файла'),
+        ('commit_push', 'Коммит в репозиторий'),
+        ('pr_open', 'Открытие Pull Request'),
+        ('member_invite', 'Приглашение участника'),
+        ('member_remove', 'Удаление участника'),
+        ('published', 'Публикация Space'),
+        ('unpublished', 'Снятие с публикации'),
+    ]
+
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name='audit_entries',
+        verbose_name='Проект',
+    )
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True,
+        related_name='project_audit_entries', verbose_name='Участник',
+    )
+    action = models.CharField(max_length=20, choices=ACTION_CHOICES, verbose_name='Действие')
+    target = models.CharField(max_length=500, blank=True, verbose_name='Объект')
+    files_used = models.JSONField(default=list, blank=True, verbose_name='Файлы базы знаний в контексте')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Запись аудита'
+        verbose_name_plural = 'Журнал аудита'
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['project', '-created_at'])]
+
+    def __str__(self):
+        actor = self.actor.email if self.actor else 'system'
+        return f"{actor} {self.action} в {self.project}"
 
 
 class Chat(models.Model):

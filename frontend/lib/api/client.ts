@@ -730,6 +730,11 @@ export const updateCollaboratorRole = (
 export const removeCollaborator = (projectId: number, collabId: number): Promise<void> =>
   request(`/projects/${projectId}/collaborators/${collabId}/`, { method: "DELETE" });
 
+// ============ Audit Log (Sprint 5.5) ============
+
+export const listProjectAudit = (projectId: number): Promise<{ entries: import("./types").ProjectAuditEntry[] }> =>
+  request(`/projects/${projectId}/audit/`);
+
 // ============ Public Spaces ============
 
 export const publishProject = (

@@ -36,7 +36,7 @@ from api.views.referral import ReferralView, ReferralWithdrawView
 from api.views.files import UserFilesView, UserFileDeleteView
 from api.views.compare import CompareView
 from api.views.prompts import PromptListCreateView, PromptDetailView
-from api.views.projects import ProjectListCreateView, ProjectDetailView, ProjectPublishView, ProjectPublicView
+from api.views.projects import ProjectListCreateView, ProjectDetailView, ProjectPublishView, ProjectPublicView, ProjectAuditView
 from api.views.collaborators import CollaboratorListCreateView, CollaboratorDetailView
 from api.views.project_files import (
     ProjectFileListCreateView, ProjectFileDetailView, ProjectFileSearchView,
@@ -161,6 +161,7 @@ urlpatterns = [
     path('v1/projects/<int:pk>/files/<int:file_id>/versions/<int:version_id>/restore/', FileRestoreView.as_view(), name='project_file_restore'),
     path('v1/projects/<int:pk>/collaborators/', CollaboratorListCreateView.as_view(), name='project_collaborators'),
     path('v1/projects/<int:pk>/collaborators/<int:cid>/', CollaboratorDetailView.as_view(), name='project_collaborator_detail'),
+    path('v1/projects/<int:pk>/audit/', ProjectAuditView.as_view(), name='project_audit'),
     path('v1/projects/<int:pk>/connectors/', ConnectorListCreateView.as_view(), name='project_connectors'),
     path('v1/projects/<int:pk>/connectors/<int:connector_id>/', ConnectorDetailView.as_view(), name='project_connector_detail'),
     path('v1/projects/<int:pk>/connectors/<int:connector_id>/files/', ConnectorReadFilesView.as_view(), name='connector_files'),

@@ -68,8 +68,9 @@ import {
   publishProject, syncConnector, patchConnector,
   listFileVersions, restoreFileVersion,
   listCollaborators, addCollaborator, updateCollaboratorRole, removeCollaborator,
+  listProjectAudit,
 } from "@/lib/api/client";
-import type { ChatListItem, Project, ProjectFile, ProjectConnector, ProjectCollaborator, RepoTreeItem, ProjectCommit, CommitFile } from "@/lib/api/types";
+import type { ChatListItem, Project, ProjectFile, ProjectConnector, ProjectCollaborator, ProjectAuditEntry, RepoTreeItem, ProjectCommit, CommitFile } from "@/lib/api/types";
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Folder, Code2, BookOpen, Briefcase, Zap, Globe, Palette, MessageSquare,
@@ -1572,6 +1573,11 @@ function AccessTab({ project, onSaved }: { project: Project; onSaved: (p: Projec
                 {copied ? "Скопировано" : "Копировать"}
               </button>
             </div>
+            {(project.public_views ?? 0) > 0 && (
+              <p className="mt-1.5 text-[11px] text-[rgba(13,13,13,0.40)]">
+                {project.public_views} {project.public_views === 1 ? "просмотр" : "просмотров"}
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -1801,8 +1807,62 @@ function CollaboratorsTab({ projectId }: { projectId: number }) {
   );
 }
 
+/* ── Вкладка "Журнал" (audit log, только для владельца) ── */
+function AuditTab({ projectId }: { projectId: number }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["project_audit", projectId],
+    queryFn: () => listProjectAudit(projectId),
+    staleTime: 30_000,
+  });
+  const entries: ProjectAuditEntry[] = data?.entries ?? [];
+
+  const actionIcon: Record<string, React.ReactNode> = {
+    chat_message: <MessageSquare size={12} />,
+    file_upload: <Upload size={12} />,
+    file_delete: <Trash2 size={12} />,
+    commit_push: <GitBranch size={12} />,
+    pr_open: <GitPullRequest size={12} />,
+    member_invite: <UserPlus size={12} />,
+    member_remove: <UserMinus size={12} />,
+    published: <Globe size={12} />,
+    unpublished: <Lock size={12} />,
+  };
+
+  if (isLoading) return <div className="h-32 animate-pulse rounded-[12px] bg-[rgba(13,13,13,0.05)]" />;
+
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-[12px] font-semibold uppercase tracking-wide text-[rgba(13,13,13,0.45)]">
+        Журнал аудита
+      </p>
+      {entries.length === 0 ? (
+        <p className="py-8 text-center text-[13px] text-[rgba(13,13,13,0.38)]">Событий нет</p>
+      ) : (
+        <div className="flex flex-col divide-y divide-[rgba(13,13,13,0.06)] rounded-[12px] border border-[rgba(13,13,13,0.09)] bg-white">
+          {entries.map((e) => (
+            <div key={e.id} className="flex items-start gap-3 px-4 py-3">
+              <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[rgba(13,13,13,0.05)] text-[rgba(13,13,13,0.45)]">
+                {actionIcon[e.action] ?? <Info size={12} />}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[12px] font-medium text-[#0d0d0d]">{e.action_display}</p>
+                {e.target && (
+                  <p className="truncate text-[11px] text-[rgba(13,13,13,0.45)]">{e.target}</p>
+                )}
+                <p className="text-[10px] text-[rgba(13,13,13,0.30)]">
+                  {e.actor_email ?? "система"} &middot; {new Date(e.created_at).toLocaleString("ru")}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Главная страница проекта ── */
-type Tab = "chats" | "instructions" | "files" | "connectors" | "access" | "team";
+type Tab = "chats" | "instructions" | "files" | "connectors" | "access" | "team" | "audit";
 
 export default function ProjectDetailPage({ params }: { params: { id: string } }) {
   const projectId = parseInt(params.id, 10);
@@ -1933,6 +1993,14 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
             onClick={() => setTab("team")}
           />
         )}
+        {project?.user_role === "owner" && (
+          <TabButton
+            active={tab === "audit"}
+            icon={<History size={13} />}
+            label="Журнал"
+            onClick={() => setTab("audit")}
+          />
+        )}
       </div>
 
       {/* Tab actions row */}
@@ -1966,6 +2034,9 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
       )}
       {tab === "team" && project?.user_role === "owner" && (
         <CollaboratorsTab projectId={projectId} />
+      )}
+      {tab === "audit" && project?.user_role === "owner" && (
+        <AuditTab projectId={projectId} />
       )}
 
       {/* Edit modal (name / icon / color) */}

@@ -108,8 +108,9 @@ class ProjectFileListCreateView(APIView):
             status='processing',
         )
 
-        from aitext.tasks import process_project_file
+        from aitext.tasks import process_project_file, _write_audit
         process_project_file.delay(pf.id)
+        _write_audit(project, request.user, 'file_upload', target=uploaded.name)
 
         return Response(
             ProjectFileSerializer(pf, context={'request': request}).data,
@@ -134,11 +135,15 @@ class ProjectFileDetailView(APIView):
 
     def delete(self, request, pk, file_id):
         pf = self._get_file(request, pk, file_id, write=True)
+        filename = pf.filename
+        project = pf.project
         try:
             pf.file.delete(save=False)
         except Exception:
             pass
         pf.delete()
+        from aitext.tasks import _write_audit
+        _write_audit(project, request.user, 'file_delete', target=filename)
         return Response(status=204)
 
 

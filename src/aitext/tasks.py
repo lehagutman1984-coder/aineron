@@ -155,6 +155,23 @@ def _track_kb_usage(file_ids: list[int]):
         logger.warning(f"_track_kb_usage failed: {e}")
 
 
+def _write_audit(project, actor, action: str, target: str = '', files_used: list | None = None):
+    """Sprint 5.5: пишет запись в журнал аудита проекта."""
+    if not getattr(settings, 'PROJECT_AUDIT_LOG', False):
+        return
+    try:
+        from .models import ProjectAuditEntry
+        ProjectAuditEntry.objects.create(
+            project=project,
+            actor=actor,
+            action=action,
+            target=target[:500] if target else '',
+            files_used=files_used or [],
+        )
+    except Exception as e:
+        logger.warning(f"_write_audit failed: {e}")
+
+
 def get_laozhang_client():
     global _client
     if _client is None:
@@ -649,6 +666,13 @@ def generate_ai_response(self, message_id, web_search=False):
                 extract_commit_from_response(proj, plain_text)
             except Exception:
                 pass
+
+        # Sprint 5.5: audit log entry
+        if proj:
+            _write_audit(
+                proj, chat.user, 'chat_message',
+                target=network.name,
+            )
 
         # Авто-извлечение фактов (каждые 3 ответа ассистента)
         try:
@@ -1260,6 +1284,12 @@ def push_project_commit(self, commit_id: int):
             commit.pushed_at = timezone.now()
         commit.save(update_fields=['status', 'error_message', 'pushed_at', 'pr_url', 'pr_branch'])
         logger.info(f'[push_commit] commit {commit_id} kind={commit.kind}: {result}')
+
+        # Sprint 5.5: audit
+        if commit.status == 'pushed':
+            audit_action = 'pr_open' if commit.kind == 'pull_request' else 'commit_push'
+            audit_target = commit.pr_url or commit.commit_message[:200]
+            _write_audit(commit.project, commit.project.user, audit_action, target=audit_target)
 
     except Exception as e:
         logger.error(f'[push_commit] commit {commit_id} failed: {e}')

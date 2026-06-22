@@ -68,6 +68,9 @@ class CollaboratorListCreateView(APIView):
             collab.save(update_fields=['role'])
 
         collab_qs = ProjectCollaborator.objects.select_related('user', 'invited_by').get(pk=collab.pk)
+        if created:
+            from aitext.tasks import _write_audit
+            _write_audit(project, request.user, 'member_invite', target=email)
         return Response(CollaboratorSerializer(collab_qs).data, status=201 if created else 200)
 
 
@@ -92,5 +95,9 @@ class CollaboratorDetailView(APIView):
 
     def delete(self, request, pk, cid):
         collab = self._get(request, pk, cid)
+        removed_email = collab.user.email
+        project = collab.project
         collab.delete()
+        from aitext.tasks import _write_audit
+        _write_audit(project, request.user, 'member_remove', target=removed_email)
         return Response(status=204)

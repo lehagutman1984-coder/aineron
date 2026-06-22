@@ -1,3 +1,4 @@
+from django.db import models
 from django.shortcuts import get_object_or_404
 from django.core.cache import cache
 from rest_framework.views import APIView
@@ -21,9 +22,9 @@ class ProjectSerializer(serializers.ModelSerializer):
             'id', 'name', 'system_prompt', 'color', 'icon',
             'chat_count', 'file_count', 'created_at',
             'is_public', 'public_slug', 'public_show_files', 'public_show_chats',
-            'user_role',
+            'public_views', 'user_role',
         ]
-        read_only_fields = ['id', 'created_at', 'chat_count', 'file_count', 'public_slug', 'user_role']
+        read_only_fields = ['id', 'created_at', 'chat_count', 'file_count', 'public_slug', 'public_views', 'user_role']
 
     def get_chat_count(self, obj):
         return obj.chats.count()
@@ -97,6 +98,8 @@ class ProjectPublishView(APIView):
         project.public_show_files = bool(request.data.get('public_show_files', project.public_show_files))
         project.public_show_chats = bool(request.data.get('public_show_chats', project.public_show_chats))
         project.save()
+        from aitext.tasks import _write_audit
+        _write_audit(project, request.user, 'published' if is_public else 'unpublished')
         return Response(ProjectSerializer(project, context={'request': request}).data)
 
 
@@ -147,5 +150,40 @@ class ProjectPublicView(APIView):
         else:
             data['chats'] = []
 
+        # Sprint 5.5: track public_views asynchronously (non-blocking)
+        try:
+            from django.conf import settings as djsettings
+            if getattr(djsettings, 'PROJECT_PUBLIC_HARDENING', False):
+                Project.objects.filter(pk=project.pk).update(public_views=models.F('public_views') + 1)
+        except Exception:
+            pass
+
         cache.set(cache_key, data, self._CACHE_TTL)
         return Response(data)
+
+
+class ProjectAuditView(APIView):
+    """GET /api/v1/projects/<pk>/audit/ — журнал аудита (owner + editors)."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        from django.conf import settings as djsettings
+        if not getattr(djsettings, 'PROJECT_AUDIT_LOG', False):
+            return Response({'entries': []})
+
+        from aitext.models import ProjectAuditEntry
+        project = get_project_for_user(pk, request.user, write=False)
+        qs = ProjectAuditEntry.objects.filter(project=project).select_related('actor')[:100]
+        entries = [
+            {
+                'id': e.id,
+                'action': e.action,
+                'action_display': e.get_action_display(),
+                'target': e.target,
+                'files_used': e.files_used,
+                'actor_email': e.actor.email if e.actor else None,
+                'created_at': e.created_at,
+            }
+            for e in qs
+        ]
+        return Response({'entries': entries})

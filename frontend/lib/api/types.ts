@@ -276,6 +276,7 @@ export interface Project {
   public_slug: string;
   public_show_files: boolean;
   public_show_chats: boolean;
+  public_views: number;
   user_role: "owner" | "editor" | "viewer";
 }
 
@@ -285,6 +286,16 @@ export interface ProjectCollaborator {
   username: string;
   role: "viewer" | "editor";
   invited_by_email: string | null;
+  created_at: string;
+}
+
+export interface ProjectAuditEntry {
+  id: number;
+  action: string;
+  action_display: string;
+  target: string;
+  files_used: string[];
+  actor_email: string | null;
   created_at: string;
 }
 
