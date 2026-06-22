@@ -436,6 +436,16 @@ LOGGING = {
         },
     },
     'loggers': {
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'django.security': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
         'studio.agents': {
             'handlers': ['console'],
             'level': 'INFO',
