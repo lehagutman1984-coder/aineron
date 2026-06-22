@@ -238,6 +238,32 @@ class Project(models.Model):
         super().save(*args, **kwargs)
 
 
+class ProjectCollaborator(models.Model):
+    """Соавтор проекта — пользователь с доступом к чужому проекту."""
+    ROLE_CHOICES = [
+        ('viewer', 'Наблюдатель'),
+        ('editor', 'Редактор'),
+    ]
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='collaborators')
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='project_collaborations'
+    )
+    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='viewer')
+    invited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='project_invitations'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [('project', 'user')]
+        ordering = ['created_at']
+        verbose_name = 'Соавтор'
+        verbose_name_plural = 'Соавторы'
+
+    def __str__(self):
+        return f"{self.user.email} → {self.project.name} ({self.role})"
+
+
 def project_file_upload_path(instance, filename):
     return f'project_files/{instance.project_id}/{filename}'
 

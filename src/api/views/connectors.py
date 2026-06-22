@@ -13,6 +13,7 @@ from rest_framework import serializers
 
 from aitext.models import Project, ProjectConnector, ProjectCommit
 from aitext.crypto import encrypt_token, decrypt_token
+from api.views._project_access import get_project_for_user
 
 
 def _gitea_base_url(connector: 'ProjectConnector') -> str | None:
@@ -89,12 +90,12 @@ class ConnectorListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
-        project = get_object_or_404(Project, pk=pk, user=request.user)
+        project = get_project_for_user(pk, request.user, write=False)
         qs = project.connectors.all()
         return Response(ConnectorSerializer(qs, many=True, context={'request': request}).data)
 
     def post(self, request, pk):
-        project = get_object_or_404(Project, pk=pk, user=request.user)
+        project = get_project_for_user(pk, request.user, write=True)
         if project.connectors.count() >= 3:
             return Response({'error': 'Максимум 3 коннектора на проект'}, status=400)
 
@@ -146,20 +147,19 @@ class ConnectorListCreateView(APIView):
 class ConnectorDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def _get(self, request, pk, connector_id):
-        project = get_object_or_404(Project, pk=pk, user=request.user)
+    def _get(self, request, pk, connector_id, write=False):
+        project = get_project_for_user(pk, request.user, write=write)
         return get_object_or_404(ProjectConnector, pk=connector_id, project=project)
 
     def patch(self, request, pk, connector_id):
-        """PATCH только auto_sync."""
-        connector = self._get(request, pk, connector_id)
+        connector = self._get(request, pk, connector_id, write=True)
         if 'auto_sync' in request.data:
             connector.auto_sync = bool(request.data['auto_sync'])
             connector.save(update_fields=['auto_sync'])
         return Response(ConnectorSerializer(connector, context={'request': request}).data)
 
     def delete(self, request, pk, connector_id):
-        connector = self._get(request, pk, connector_id)
+        connector = self._get(request, pk, connector_id, write=True)
         connector.delete()
         return Response(status=204)
 
@@ -169,7 +169,7 @@ class ConnectorReadFilesView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk, connector_id):
-        project = get_object_or_404(Project, pk=pk, user=request.user)
+        project = get_project_for_user(pk, request.user, write=False)
         connector = get_object_or_404(ProjectConnector, pk=connector_id, project=project)
 
         try:
@@ -196,7 +196,7 @@ class ConnectorFileContentView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk, connector_id):
-        project = get_object_or_404(Project, pk=pk, user=request.user)
+        project = get_project_for_user(pk, request.user, write=False)
         connector = get_object_or_404(ProjectConnector, pk=connector_id, project=project)
         path = request.query_params.get('path', '')
         if not path:
@@ -227,13 +227,12 @@ class CommitListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
-        project = get_object_or_404(Project, pk=pk, user=request.user)
+        project = get_project_for_user(pk, request.user, write=False)
         qs = project.commits.select_related('connector').order_by('-created_at')[:50]
         return Response(CommitSerializer(qs, many=True).data)
 
     def post(self, request, pk):
-        """Propose a new commit (status=pending)."""
-        project = get_object_or_404(Project, pk=pk, user=request.user)
+        project = get_project_for_user(pk, request.user, write=True)
         connector_id = request.data.get('connector_id')
         commit_message = (request.data.get('commit_message') or '').strip()
         files = request.data.get('files', [])
@@ -249,7 +248,6 @@ class CommitListCreateView(APIView):
         if connector_id:
             connector = get_object_or_404(ProjectConnector, pk=connector_id, project=project)
 
-        # Validate files format
         for f in files:
             if not isinstance(f, dict) or 'path' not in f or 'content' not in f:
                 return Response({'error': 'Каждый файл должен содержать path и content'}, status=400)
@@ -269,7 +267,7 @@ class CommitConfirmView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk, commit_id):
-        project = get_object_or_404(Project, pk=pk, user=request.user)
+        project = get_project_for_user(pk, request.user, write=True)
         commit = get_object_or_404(ProjectCommit, pk=commit_id, project=project)
 
         if commit.status != 'pending':
@@ -298,7 +296,7 @@ class ConnectorSyncView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk, connector_id):
-        project = get_object_or_404(Project, pk=pk, user=request.user)
+        project = get_project_for_user(pk, request.user, write=True)
         connector = get_object_or_404(ProjectConnector, pk=connector_id, project=project)
         from aitext.tasks import sync_connector_task
         sync_connector_task.delay(connector.id)
@@ -318,7 +316,6 @@ class ConnectorWebhookView(APIView):
     def _verify_signature(self, request, secret: str) -> bool:
         body = request.body
         expected = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
-        # Try GitHub header first, then Gitea
         sig = (
             request.META.get('HTTP_X_HUB_SIGNATURE_256', '')
             or request.META.get('HTTP_X_GITEA_SIGNATURE', '')
@@ -341,7 +338,6 @@ class ConnectorWebhookView(APIView):
         if not self._verify_signature(request, connector.webhook_secret):
             return Response({'error': 'invalid signature'}, status=401)
 
-        # Only trigger on push events — ignore pings, issues, PRs etc.
         event = (
             request.META.get('HTTP_X_GITHUB_EVENT', '')
             or request.META.get('HTTP_X_GITEA_EVENT', '')

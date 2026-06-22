@@ -41,6 +41,7 @@ import type {
   Project,
   ProjectFile,
   ProjectConnector,
+  ProjectCollaborator,
   RepoTreeItem,
   ProjectCommit,
   CommitFile,
@@ -700,6 +701,34 @@ export const restoreFileVersion = (
   versionId: number
 ): Promise<{ restored: boolean; version_id: number; file_id: number }> =>
   request(`/projects/${projectId}/files/${fileId}/versions/${versionId}/restore/`, { method: "POST" });
+
+// ============ Collaborators (Sprint 5.1) ============
+
+export const listCollaborators = (projectId: number): Promise<ProjectCollaborator[]> =>
+  request<ProjectCollaborator[]>(`/projects/${projectId}/collaborators/`);
+
+export const addCollaborator = (
+  projectId: number,
+  email: string,
+  role: "viewer" | "editor"
+): Promise<ProjectCollaborator> =>
+  request<ProjectCollaborator>(`/projects/${projectId}/collaborators/`, {
+    method: "POST",
+    body: JSON.stringify({ email, role }),
+  });
+
+export const updateCollaboratorRole = (
+  projectId: number,
+  collabId: number,
+  role: "viewer" | "editor"
+): Promise<ProjectCollaborator> =>
+  request<ProjectCollaborator>(`/projects/${projectId}/collaborators/${collabId}/`, {
+    method: "PATCH",
+    body: JSON.stringify({ role }),
+  });
+
+export const removeCollaborator = (projectId: number, collabId: number): Promise<void> =>
+  request(`/projects/${projectId}/collaborators/${collabId}/`, { method: "DELETE" });
 
 // ============ Public Spaces ============
 

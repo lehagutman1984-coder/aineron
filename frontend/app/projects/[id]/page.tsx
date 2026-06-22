@@ -49,6 +49,11 @@ import {
   FileCode,
   Search,
   History,
+  Users,
+  UserPlus,
+  ShieldCheck,
+  ShieldOff,
+  UserMinus,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -60,8 +65,9 @@ import {
   listCommits, createCommit, confirmCommit,
   publishProject, syncConnector, patchConnector,
   listFileVersions, restoreFileVersion,
+  listCollaborators, addCollaborator, updateCollaboratorRole, removeCollaborator,
 } from "@/lib/api/client";
-import type { ChatListItem, Project, ProjectFile, ProjectConnector, RepoTreeItem, ProjectCommit, CommitFile } from "@/lib/api/types";
+import type { ChatListItem, Project, ProjectFile, ProjectConnector, ProjectCollaborator, RepoTreeItem, ProjectCommit, CommitFile } from "@/lib/api/types";
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Folder, Code2, BookOpen, Briefcase, Zap, Globe, Palette, MessageSquare,
@@ -1589,8 +1595,190 @@ function AccessTab({ project, onSaved }: { project: Project; onSaved: (p: Projec
   );
 }
 
+/* ── Вкладка "Команда" (соавторы, только для владельца) ── */
+function CollaboratorsTab({ projectId }: { projectId: number }) {
+  const qc = useQueryClient();
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"viewer" | "editor">("viewer");
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviting, setInviting] = useState(false);
+  const [removingId, setRemovingId] = useState<number | null>(null);
+
+  const { data: collabs = [], isLoading } = useQuery({
+    queryKey: ["collaborators", projectId],
+    queryFn: () => listCollaborators(projectId),
+    staleTime: 30_000,
+  });
+
+  const handleInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteEmail.trim()) return;
+    setInviteError(null);
+    setInviting(true);
+    try {
+      const c = await addCollaborator(projectId, inviteEmail.trim(), inviteRole);
+      qc.setQueryData<ProjectCollaborator[]>(["collaborators", projectId], (prev) => {
+        if (!prev) return [c];
+        const existing = prev.find((x) => x.id === c.id);
+        return existing ? prev.map((x) => (x.id === c.id ? c : x)) : [...prev, c];
+      });
+      setInviteEmail("");
+    } catch (err: unknown) {
+      const msg = (err as { message?: string })?.message ?? "Ошибка приглашения";
+      setInviteError(msg);
+    } finally {
+      setInviting(false);
+    }
+  };
+
+  const handleRoleChange = async (collab: ProjectCollaborator, role: "viewer" | "editor") => {
+    const updated = await updateCollaboratorRole(projectId, collab.id, role);
+    qc.setQueryData<ProjectCollaborator[]>(["collaborators", projectId], (prev) =>
+      prev?.map((c) => (c.id === updated.id ? updated : c)) ?? []
+    );
+  };
+
+  const handleRemove = async (id: number) => {
+    setRemovingId(id);
+    try {
+      await removeCollaborator(projectId, id);
+      qc.setQueryData<ProjectCollaborator[]>(["collaborators", projectId], (prev) =>
+        prev?.filter((c) => c.id !== id) ?? []
+      );
+    } finally {
+      setRemovingId(null);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-5">
+      {/* Info */}
+      <div className="flex items-start gap-2.5 rounded-[10px] bg-[rgba(10,124,255,0.06)] px-4 py-3">
+        <Info size={14} className="mt-0.5 shrink-0 text-[#0a7cff]" />
+        <p className="text-[13px] leading-relaxed text-[rgba(13,13,13,0.65)]">
+          Пригласите коллег по email. Редактор может загружать файлы, синхронизировать репозитории и создавать коммиты.
+          Наблюдатель — только читать.
+        </p>
+      </div>
+
+      {/* Invite form */}
+      <div className="rounded-[14px] border border-[rgba(13,13,13,0.09)] bg-white p-5">
+        <p className="mb-3 text-[13px] font-semibold text-[#0d0d0d]">Пригласить участника</p>
+        <form onSubmit={handleInvite} className="flex flex-col gap-3">
+          <div className="flex gap-2">
+            <input
+              type="email"
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              placeholder="email@example.com"
+              className="flex-1 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] text-[#0d0d0d] outline-none focus:border-[#0a7cff] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all"
+              required
+            />
+            <select
+              value={inviteRole}
+              onChange={(e) => setInviteRole(e.target.value as "viewer" | "editor")}
+              className="rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] text-[#0d0d0d] outline-none focus:border-[#0a7cff] transition-all"
+            >
+              <option value="viewer">Наблюдатель</option>
+              <option value="editor">Редактор</option>
+            </select>
+          </div>
+          {inviteError && (
+            <p className="text-[12px] text-[#e74c3c]">{inviteError}</p>
+          )}
+          <button
+            type="submit"
+            disabled={inviting || !inviteEmail.trim()}
+            className="flex items-center gap-1.5 self-start rounded-[8px] bg-[#0a7cff] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 transition-colors"
+          >
+            {inviting ? (
+              <Loader2 size={13} className="animate-spin" />
+            ) : (
+              <UserPlus size={13} />
+            )}
+            Пригласить
+          </button>
+        </form>
+      </div>
+
+      {/* Collaborators list */}
+      <div className="flex flex-col gap-3">
+        <p className="text-[12px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.40)]">
+          Участники ({collabs.length})
+        </p>
+        {isLoading ? (
+          <div className="space-y-2">
+            {[1, 2].map((i) => (
+              <div key={i} className="h-14 animate-pulse rounded-[10px] bg-[rgba(13,13,13,0.05)]" />
+            ))}
+          </div>
+        ) : collabs.length === 0 ? (
+          <p className="py-4 text-center text-[13px] text-[rgba(13,13,13,0.38)]">Нет участников</p>
+        ) : (
+          collabs.map((c) => (
+            <div
+              key={c.id}
+              className="flex items-center gap-3 rounded-[10px] border border-[rgba(13,13,13,0.09)] bg-white p-3.5"
+            >
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[rgba(13,13,13,0.07)] text-[13px] font-semibold text-[rgba(13,13,13,0.50)]">
+                {c.email[0].toUpperCase()}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[13px] font-medium text-[#0d0d0d]">{c.email}</p>
+                <p className="text-[11px] text-[rgba(13,13,13,0.40)]">{c.username}</p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <div className="flex items-center gap-1.5 rounded-[6px] border border-[rgba(13,13,13,0.12)] bg-white">
+                  <button
+                    onClick={() => c.role !== "viewer" && handleRoleChange(c, "viewer")}
+                    className={[
+                      "flex items-center gap-1 rounded-[5px] px-2.5 py-1 text-[11px] font-medium transition-colors",
+                      c.role === "viewer"
+                        ? "bg-[rgba(13,13,13,0.07)] text-[#0d0d0d]"
+                        : "text-[rgba(13,13,13,0.45)] hover:text-[#0d0d0d]",
+                    ].join(" ")}
+                    title="Наблюдатель: только чтение"
+                  >
+                    <ShieldOff size={10} />
+                    Наблюдатель
+                  </button>
+                  <button
+                    onClick={() => c.role !== "editor" && handleRoleChange(c, "editor")}
+                    className={[
+                      "flex items-center gap-1 rounded-[5px] px-2.5 py-1 text-[11px] font-medium transition-colors",
+                      c.role === "editor"
+                        ? "bg-[rgba(10,124,255,0.10)] text-[#0a7cff]"
+                        : "text-[rgba(13,13,13,0.45)] hover:text-[#0a7cff]",
+                    ].join(" ")}
+                    title="Редактор: загрузка файлов, синк, коммиты"
+                  >
+                    <ShieldCheck size={10} />
+                    Редактор
+                  </button>
+                </div>
+                <button
+                  onClick={() => handleRemove(c.id)}
+                  disabled={removingId === c.id}
+                  className="flex items-center gap-1 rounded-[7px] p-1.5 text-[rgba(13,13,13,0.30)] transition-colors hover:bg-[rgba(231,76,60,0.09)] hover:text-[#e74c3c] disabled:opacity-40"
+                  title="Удалить участника"
+                >
+                  {removingId === c.id ? (
+                    <Loader2 size={13} className="animate-spin" />
+                  ) : (
+                    <UserMinus size={13} />
+                  )}
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ── Главная страница проекта ── */
-type Tab = "chats" | "instructions" | "files" | "connectors" | "access";
+type Tab = "chats" | "instructions" | "files" | "connectors" | "access" | "team";
 
 export default function ProjectDetailPage({ params }: { params: { id: string } }) {
   const projectId = parseInt(params.id, 10);
@@ -1644,7 +1832,15 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
           </span>
         </div>
         <div className="min-w-0 flex-1">
-          <h1 className="text-[22px] font-bold text-[#0d0d0d]">{project?.name ?? "Проект"}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-[22px] font-bold text-[#0d0d0d]">{project?.name ?? "Проект"}</h1>
+            {project?.user_role === "editor" && (
+              <span className="rounded-full bg-[rgba(10,124,255,0.10)] px-2 py-0.5 text-[11px] font-medium text-[#0a7cff]">Редактор</span>
+            )}
+            {project?.user_role === "viewer" && (
+              <span className="rounded-full bg-[rgba(13,13,13,0.07)] px-2 py-0.5 text-[11px] font-medium text-[rgba(13,13,13,0.50)]">Наблюдатель</span>
+            )}
+          </div>
           {/* Inline instructions preview under project name */}
           {hasInstructions && (
             <button
@@ -1705,6 +1901,14 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
           onClick={() => setTab("access")}
           badge={project?.is_public}
         />
+        {project?.user_role === "owner" && (
+          <TabButton
+            active={tab === "team"}
+            icon={<Users size={13} />}
+            label="Команда"
+            onClick={() => setTab("team")}
+          />
+        )}
       </div>
 
       {/* Tab actions row */}
@@ -1735,6 +1939,9 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
       )}
       {tab === "access" && !project && (
         <div className="h-32 animate-pulse rounded-[12px] bg-[rgba(13,13,13,0.05)]" />
+      )}
+      {tab === "team" && project?.user_role === "owner" && (
+        <CollaboratorsTab projectId={projectId} />
       )}
 
       {/* Edit modal (name / icon / color) */}

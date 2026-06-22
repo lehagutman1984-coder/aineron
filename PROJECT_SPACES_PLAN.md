@@ -28,6 +28,7 @@ Claude.ai Projects, Perplexity Spaces и ChatGPT Projects.
 | **Sprint 5.7** — RAG Quality (лимиты + надёжность эмбеддингов + умный чанкинг) | **ЗАВЕРШЁН** | `33046bc` |
 | **Sprint 5.3** — Knowledge intelligence (FTS поиск + кэш эмбеддингов + метрики) | **ЗАВЕРШЁН** | — |
 | **Sprint 5.4** — Sync hardening (версии файлов + polling + auto_sync toggle + sync badge) | **ЗАВЕРШЁН** | — |
+| **Sprint 5.1** — Collaborative Spaces (ProjectCollaborator + viewer/editor roles + UI) | **ЗАВЕРШЁН** | — |
 
 **Phase 4 — ПОЛНОСТЬЮ ЗАВЕРШЕНА** (все 5 спринтов).
 

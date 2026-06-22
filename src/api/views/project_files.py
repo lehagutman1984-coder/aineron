@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import serializers
 
 from aitext.models import Project, ProjectFile
+from api.views._project_access import get_project_for_user
 
 
 MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB
@@ -74,12 +75,12 @@ class ProjectFileListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
-        project = get_object_or_404(Project, pk=pk, user=request.user)
+        project = get_project_for_user(pk, request.user, write=False)
         files = project.knowledge_files.exclude(source='repo')
         return Response(ProjectFileSerializer(files, many=True, context={'request': request}).data)
 
     def post(self, request, pk):
-        project = get_object_or_404(Project, pk=pk, user=request.user)
+        project = get_project_for_user(pk, request.user, write=True)
 
         if project.knowledge_files.count() >= MAX_FILES_PER_PROJECT:
             return Response(
@@ -107,7 +108,6 @@ class ProjectFileListCreateView(APIView):
             status='processing',
         )
 
-        # Запускаем извлечение текста асинхронно
         from aitext.tasks import process_project_file
         process_project_file.delay(pf.id)
 
@@ -120,13 +120,12 @@ class ProjectFileListCreateView(APIView):
 class ProjectFileDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def _get_file(self, request, pk, file_id):
-        project = get_object_or_404(Project, pk=pk, user=request.user)
+    def _get_file(self, request, pk, file_id, write=False):
+        project = get_project_for_user(pk, request.user, write=write)
         return get_object_or_404(ProjectFile, pk=file_id, project=project)
 
     def patch(self, request, pk, file_id):
-        """Переключить enabled."""
-        pf = self._get_file(request, pk, file_id)
+        pf = self._get_file(request, pk, file_id, write=True)
         enabled = request.data.get('enabled')
         if enabled is not None:
             pf.enabled = bool(enabled)
@@ -134,8 +133,7 @@ class ProjectFileDetailView(APIView):
         return Response(ProjectFileSerializer(pf, context={'request': request}).data)
 
     def delete(self, request, pk, file_id):
-        pf = self._get_file(request, pk, file_id)
-        # Удаляем физический файл
+        pf = self._get_file(request, pk, file_id, write=True)
         try:
             pf.file.delete(save=False)
         except Exception:
@@ -157,7 +155,7 @@ class ProjectFileSearchView(APIView):
         if not getattr(settings, 'PROJECT_FILE_SEARCH', False):
             return Response({'error': 'Поиск по файлам отключён'}, status=400)
 
-        project = get_object_or_404(Project, pk=pk, user=request.user)
+        project = get_project_for_user(pk, request.user, write=False)
         query = request.query_params.get('q', '').strip()
 
         if not query:
@@ -182,7 +180,7 @@ class FileVersionListView(APIView):
         if not getattr(settings, 'PROJECT_FILE_VERSIONS', False):
             return Response({'error': 'Версии файлов отключены'}, status=400)
 
-        project = get_object_or_404(Project, pk=pk, user=request.user)
+        project = get_project_for_user(pk, request.user, write=False)
         pf = get_object_or_404(ProjectFile, pk=file_id, project=project)
 
         from aitext.models import ProjectFileVersion
@@ -213,22 +211,19 @@ class FileRestoreView(APIView):
         if not getattr(settings, 'PROJECT_FILE_VERSIONS', False):
             return Response({'error': 'Версии файлов отключены'}, status=400)
 
-        project = get_object_or_404(Project, pk=pk, user=request.user)
+        project = get_project_for_user(pk, request.user, write=True)
         pf = get_object_or_404(ProjectFile, pk=file_id, project=project)
 
         from aitext.models import ProjectFileVersion
         version = get_object_or_404(ProjectFileVersion, pk=version_id, file=pf)
 
-        # Снапшот текущего перед восстановлением
         from aitext.sync import _create_version_snapshot
         _create_version_snapshot(pf, pf.extracted_text)
 
-        # Восстановление
         pf.extracted_text = version.content_snapshot
         pf.embed_status = 'none'
         pf.save(update_fields=['extracted_text', 'embed_status'])
 
-        # Переиндексировать
         if getattr(settings, 'PROJECT_VECTOR_RAG', False):
             from aitext.tasks import embed_project_file
             embed_project_file.delay(pf.id)

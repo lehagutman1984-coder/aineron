@@ -276,6 +276,16 @@ export interface Project {
   public_slug: string;
   public_show_files: boolean;
   public_show_chats: boolean;
+  user_role: "owner" | "editor" | "viewer";
+}
+
+export interface ProjectCollaborator {
+  id: number;
+  email: string;
+  username: string;
+  role: "viewer" | "editor";
+  invited_by_email: string | null;
+  created_at: string;
 }
 
 export interface PublicSpaceFile {
