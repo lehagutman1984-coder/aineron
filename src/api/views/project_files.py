@@ -59,7 +59,7 @@ class ProjectFileListCreateView(APIView):
 
     def get(self, request, pk):
         project = get_object_or_404(Project, pk=pk, user=request.user)
-        files = project.knowledge_files.all()
+        files = project.knowledge_files.exclude(source='repo')
         return Response(ProjectFileSerializer(files, many=True, context={'request': request}).data)
 
     def post(self, request, pk):

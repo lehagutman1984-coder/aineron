@@ -258,16 +258,9 @@ function ChatsTab({ projectId, project }: { projectId: number; project: Project 
       <div className="flex flex-col items-center justify-center rounded-[16px] border border-dashed border-[rgba(13,13,13,0.15)] py-14 text-center">
         <MessageSquare size={28} className="mb-3 text-[rgba(13,13,13,0.22)]" />
         <p className="mb-1 text-[14px] font-semibold text-[#0d0d0d]">Нет чатов</p>
-        <p className="mb-4 text-[13px] text-[rgba(13,13,13,0.45)]">
-          Создайте первый чат в этом проекте
+        <p className="text-[13px] text-[rgba(13,13,13,0.45)]">
+          Нажмите «Новый чат» выше, чтобы начать
         </p>
-        <Link
-          href={`/models/?project_id=${projectId}`}
-          className="inline-flex items-center gap-1.5 rounded-[9px] bg-[#0a7cff] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#0066cc] transition-colors"
-        >
-          <Plus size={14} />
-          Новый чат
-        </Link>
       </div>
     );
   }
