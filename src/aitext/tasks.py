@@ -161,6 +161,7 @@ def build_project_knowledge_context(project, user_message_text: str = '') -> str
 
     # ── Явные запросы файлов: «дай полный tasks.py», «покажи файл X» ────────
     # Детектируем имена файлов в запросе (без @-префикса) и инжектим полностью.
+    _explicit_not_found = []
     for fpath in _detect_explicit_file_request(query):
         if total_chars >= inject_limit:
             break
@@ -180,8 +181,22 @@ def build_project_knowledge_context(project, user_message_text: str = '') -> str
                 total_chars += added
                 used_file_ids.append(pf.id)
                 logger.info(f'[get_file] injected full file "{fpath}" ({added} chars) for project {project.id}')
+            else:
+                _explicit_not_found.append(fpath)
+                logger.warning(f'[get_file] file "{fpath}" not found in project KB (project {project.id})')
         except Exception as e:
             logger.warning(f'[get_file] explicit file "{fpath}" failed: {e}')
+
+    # Если файл явно запрошен но не найден в БД — предупреждаем модель чтобы не генерировала фейк
+    if _explicit_not_found:
+        not_found_msg = (
+            f"ВАЖНО: следующие файлы запрошены пользователем, но НЕ найдены в базе знаний проекта: "
+            f"{', '.join(_explicit_not_found)}. "
+            "НЕ генерируй содержимое этих файлов из памяти — это приведёт к ошибкам. "
+            "Сообщи пользователю что файл не синхронизирован в базу знаний проекта и нужно "
+            "обновить синхронизацию в настройках проекта."
+        )
+        parts.insert(0, not_found_msg)
 
     # @web: Tavily search
     if directives.get('web') and getattr(settings, 'PROJECT_WEB_SEARCH', False) and query:
