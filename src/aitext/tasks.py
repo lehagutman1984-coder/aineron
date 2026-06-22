@@ -449,6 +449,20 @@ def _write_audit(project, actor, action: str, target: str = '', files_used: list
         logger.warning(f"_write_audit failed: {e}")
 
 
+def _auto_max_tokens(model_name: str) -> int:
+    """Auto max_tokens by model family when not set in DB."""
+    m = model_name.lower()
+    if any(x in m for x in ('gpt-4.1', 'gpt-4o', 'gpt-5', 'o1', 'o3', 'o4')):
+        return 32768
+    if any(x in m for x in ('claude',)):
+        return 8192
+    if any(x in m for x in ('gemini',)):
+        return 8192
+    if any(x in m for x in ('deepseek', 'qwen', 'grok')):
+        return 8192
+    return 16384
+
+
 def get_laozhang_client():
     global _client
     if _client is None:
@@ -846,7 +860,7 @@ def generate_ai_response(self, message_id, web_search=False):
             "messages": messages_for_api,
             "temperature": 0.7,
         }
-        completion_kwargs["max_tokens"] = network.max_tokens if network.max_tokens > 0 else 16384
+        completion_kwargs["max_tokens"] = network.max_tokens if network.max_tokens > 0 else _auto_max_tokens(effective_model)
 
         # Обёртка для обработки ошибки deprecated модели
         try:
