@@ -38,18 +38,15 @@ def _get_inject_limit():
 # Группа 1 — имя файла (напр. "tasks.py" или "src/studio/tasks.py").
 _EXPLICIT_FILE_RE = re.compile(
     r'(?:'
-    r'дай(?:\s+мне)?(?:\s+полн\w+)?|'
-    r'покажи(?:\s+мне)?(?:\s+полн\w+)?|'
-    r'напечатай(?:\s+полн\w+)?|'
-    r'выведи(?:\s+полн\w+)?|'
-    r'покажи(?:\s+мне)?\s+файл|'
-    r'полн\w+\s+файл|'
-    r'исправленн\w+\s+(?:файл\s+)?|'
-    r'give\s+(?:me\s+)?(?:the\s+)?(?:full\s+)?|'
-    r'show\s+(?:me\s+)?(?:the\s+)?(?:full\s+)?|'
-    r'print\s+(?:the\s+)?(?:full\s+)?'
+    r'дай(?:\s+мне)?(?:\s+\w+)*|'
+    r'покажи(?:\s+мне)?(?:\s+\w+)*|'
+    r'напечатай(?:\s+\w+)*|'
+    r'выведи(?:\s+\w+)*|'
+    r'give(?:\s+\w+)*|'
+    r'show(?:\s+\w+)*|'
+    r'print(?:\s+\w+)*'
     r')'
-    r'(?:файл\s+)?'
+    r'\s+'
     r'([\w./\\-]+\.(?:py|ts|tsx|js|jsx|html|css|json|yml|yaml|sh|md|txt|go|rs|java|rb|php|sql|xml|env))',
     re.IGNORECASE,
 )
