@@ -51,29 +51,31 @@ def _retrieve_relevant_chunks(text: str, query: str, chunk_size: int = 500, top_
 def build_project_knowledge_context(project, user_message_text: str = '') -> str:
     """Собирает контекст из файлов базы знаний проекта.
 
-    При PROJECT_VECTOR_RAG=1 — векторный поиск (pgvector) с лексикой как fallback.
-    При PROJECT_VECTOR_RAG=0 (default) — только лексика (_retrieve_relevant_chunks).
+    При PROJECT_VECTOR_RAG=1:
+      - векторный поиск по файлам с embed_status='done'
+      - лексический поиск по файлам без эмбеддингов (source='repo', новые загрузки)
+    При PROJECT_VECTOR_RAG=0 — только лексика для всех файлов.
     """
-    # Векторный путь (Sprint 4.1)
+    parts = []
+    total_chars = 0
+
+    # Векторный путь — только файлы с готовыми эмбеддингами
     if getattr(settings, 'PROJECT_VECTOR_RAG', False) and user_message_text:
         try:
             from .embeddings import vector_search
             vec_result = vector_search(project, user_message_text)
             if vec_result:
-                header = "Материалы базы знаний проекта (семантический поиск). Используй как источник истины.\n\n"
-                return header + vec_result
+                parts.append(vec_result)
+                total_chars += len(vec_result)
         except Exception as e:
-            logger.warning(f"vector_search failed, falling back to lexical: {e}")
+            logger.warning(f"vector_search failed: {e}")
 
-    # Лексический путь (Sprint 1, по умолчанию)
-    files_qs = project.knowledge_files.filter(enabled=True, status='ready').exclude(extracted_text='')
-    files_list = list(files_qs)
-    if not files_list:
-        return ''
+    # Лексический путь — файлы без эмбеддингов (новые из GitHub-синка и т.п.)
+    no_embed_qs = project.knowledge_files.filter(
+        enabled=True, status='ready'
+    ).exclude(extracted_text='').exclude(embed_status='done')
 
-    parts = []
-    total_chars = 0
-    for f in files_list:
+    for f in no_embed_qs:
         if total_chars >= AGGREGATE_INJECT_LIMIT:
             break
         text = f.extracted_text
@@ -86,10 +88,26 @@ def build_project_knowledge_context(project, user_message_text: str = '') -> str
         parts.append(f"### {label}\n{snippet}")
         total_chars += len(snippet)
 
+    # Если PROJECT_VECTOR_RAG выключен — лексика по всем файлам
+    if not getattr(settings, 'PROJECT_VECTOR_RAG', False):
+        all_qs = project.knowledge_files.filter(enabled=True, status='ready').exclude(extracted_text='')
+        for f in all_qs:
+            if total_chars >= AGGREGATE_INJECT_LIMIT:
+                break
+            text = f.extracted_text
+            is_large = len(text) > FULL_INJECT_LIMIT
+            snippet = _retrieve_relevant_chunks(text, user_message_text) if is_large else text
+            remaining = AGGREGATE_INJECT_LIMIT - total_chars
+            if len(snippet) > remaining:
+                snippet = snippet[:remaining]
+            label = f"{f.filename} (фрагменты)" if is_large else f.filename
+            parts.append(f"### {label}\n{snippet}")
+            total_chars += len(snippet)
+
     if not parts:
         return ''
 
-    header = "Материалы базы знаний проекта. Используй их как источник истины при ответах.\n\n"
+    header = "Материалы базы знаний проекта. Используй как источник истины при ответах.\n\n"
     return header + "\n\n---\n\n".join(parts)
 
 
