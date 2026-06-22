@@ -203,27 +203,31 @@ def build_project_knowledge_context(project, user_message_text: str = '', recent
 
     # ── Явные запросы файлов: «дай полный tasks.py», «покажи файл X» ────────
     # Детектируем имена файлов в запросе (без @-префикса) и инжектим полностью.
+    # Если fpath — голое имя (tasks.py) и матчей несколько — инжектим все с полными путями,
+    # чтобы модель сама разобралась какой нужен.
     _explicit_not_found = []
     for fpath in _detect_explicit_file_request(query):
         if total_chars >= inject_limit:
             break
-        # Не дублировать файлы, которые уже пришли через @file (used_file_ids хранит int id)
-        # Проверяем только после поиска объекта, чтобы сравнить id, не строку
         try:
             from .models import ProjectFile
             from django.db.models import Q
-            pf = (
+            matches = list(
                 project.knowledge_files.filter(status='ready', enabled=True)
                 .filter(Q(filename=fpath) | Q(filename__endswith='/' + fpath) | Q(repo_path=fpath) | Q(repo_path__endswith='/' + fpath))
-                .first()
+                .exclude(id__in=used_file_ids)
             )
-            if pf and pf.extracted_text and pf.id not in used_file_ids:
-                # Файл есть в KB — инжектируем из БД
-                snippet, added = _inject_file(pf, query, inject_limit, total_chars, force_full=True)
-                parts.insert(0, snippet)
-                total_chars += added
-                used_file_ids.append(pf.id)
-                logger.info(f'[get_file] injected from KB "{fpath}" ({added} chars) project {project.id}')
+            if matches:
+                for pf in matches:
+                    if total_chars >= inject_limit:
+                        break
+                    if not pf.extracted_text:
+                        continue
+                    snippet, added = _inject_file(pf, query, inject_limit, total_chars, force_full=True)
+                    parts.insert(0, snippet)
+                    total_chars += added
+                    used_file_ids.append(pf.id)
+                    logger.info(f'[get_file] injected from KB "{pf.repo_path}" ({added} chars) project {project.id}')
             else:
                 # Файл не в KB (не попал в лимит синка) — фетчим напрямую с GitHub/Gitea
                 content = _fetch_from_connector(project, fpath)
@@ -247,17 +251,22 @@ def build_project_knowledge_context(project, user_message_text: str = '', recent
             try:
                 from .models import ProjectFile
                 from django.db.models import Q
-                pf = (
+                matches = list(
                     project.knowledge_files.filter(status='ready', enabled=True)
                     .filter(Q(filename=fpath) | Q(filename__endswith='/' + fpath) | Q(repo_path=fpath) | Q(repo_path__endswith='/' + fpath))
-                    .first()
+                    .exclude(id__in=used_file_ids)
                 )
-                if pf and pf.extracted_text and pf.id not in used_file_ids:
-                    snippet, added = _inject_file(pf, query, inject_limit, total_chars, force_full=True)
-                    parts.insert(0, snippet)
-                    total_chars += added
-                    used_file_ids.append(pf.id)
-                    logger.info(f'[get_file] implicit inject "{fpath}" from history ({added} chars)')
+                if matches:
+                    for pf in matches:
+                        if total_chars >= inject_limit:
+                            break
+                        if not pf.extracted_text:
+                            continue
+                        snippet, added = _inject_file(pf, query, inject_limit, total_chars, force_full=True)
+                        parts.insert(0, snippet)
+                        total_chars += added
+                        used_file_ids.append(pf.id)
+                        logger.info(f'[get_file] implicit inject "{pf.repo_path}" from history ({added} chars)')
                 else:
                     content = _fetch_from_connector(project, fpath)
                     if content:
