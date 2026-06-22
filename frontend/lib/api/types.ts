@@ -330,6 +330,8 @@ export interface ProjectFile {
   source: "upload" | "repo";
   enabled: boolean;
   created_at: string;
+  usage_hits: number;
+  last_used_at: string | null;
 }
 
 export interface ChatProjectMini {

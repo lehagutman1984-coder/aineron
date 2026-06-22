@@ -184,10 +184,42 @@ def embed_chunks(file) -> int:
     return saved
 
 
+def _get_query_embedding(query: str, model: str, client) -> list[float] | None:
+    """Возвращает эмбеддинг запроса. При PROJECT_EMBED_CACHE=1 кэширует в Redis на 24ч."""
+    use_cache = getattr(settings, 'PROJECT_EMBED_CACHE', False)
+    cache_key = None
+
+    if use_cache:
+        import hashlib
+        from django.core.cache import cache
+        digest = hashlib.sha256(f"{model}:{query}".encode()).hexdigest()
+        cache_key = f'qemb:{digest}'
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+    try:
+        resp = client.embeddings.create(input=[query], model=model)
+        emb = resp.data[0].embedding
+    except Exception as e:
+        logger.error(f"Ошибка эмбеддинга запроса: {e}")
+        return None
+
+    if use_cache and cache_key:
+        try:
+            from django.core.cache import cache as _cache
+            _cache.set(cache_key, emb, 86400)  # 24ч
+        except Exception:
+            pass
+
+    return emb
+
+
 def vector_search(project, query: str, top_k: int = None) -> str:
     """Семантический поиск по чанкам проекта (exact cosine scan per-project).
 
     Возвращает склеенный текст top_k наиболее релевантных чанков.
+    При PROJECT_EMBED_CACHE=1 кэширует эмбеддинг запроса (Redis, 24ч).
     """
     from .tasks import get_laozhang_client
 
@@ -200,11 +232,8 @@ def vector_search(project, query: str, top_k: int = None) -> str:
     client = get_laozhang_client()
     model = _get_embed_model()
 
-    try:
-        resp = client.embeddings.create(input=[query], model=model)
-        q_emb = resp.data[0].embedding
-    except Exception as e:
-        logger.error(f"Ошибка эмбеддинга запроса для проекта {project.id}: {e}")
+    q_emb = _get_query_embedding(query, model, client)
+    if q_emb is None:
         return ''
 
     q_str = '[' + ','.join(str(round(v, 7)) for v in q_emb) + ']'

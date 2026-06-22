@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.postgres',
     'django_celery_beat',
     'django.contrib.sites',
     'django.contrib.sitemaps',
@@ -330,6 +331,10 @@ PROJECT_INJECT_LIMIT   = int(os.getenv('PROJECT_INJECT_LIMIT',   '200000'))
 PROJECT_TOP_K          = int(os.getenv('PROJECT_TOP_K',          '6'))
 PROJECT_CHUNK_SIZE     = int(os.getenv('PROJECT_CHUNK_SIZE',     '500'))
 PROJECT_SMART_CHUNK    = os.getenv('PROJECT_SMART_CHUNK', '0') == '1'
+# Sprint 5.3 — Knowledge intelligence
+PROJECT_FILE_SEARCH  = os.getenv('PROJECT_FILE_SEARCH',  '0') == '1'
+PROJECT_EMBED_CACHE  = os.getenv('PROJECT_EMBED_CACHE',  '0') == '1'
+PROJECT_KB_METRICS   = os.getenv('PROJECT_KB_METRICS',   '0') == '1'
 
 STUDIO_GITEA_URL = os.getenv('STUDIO_GITEA_URL', 'http://gitea:3000')
 STUDIO_GITEA_ADMIN_USER = os.getenv('STUDIO_GITEA_ADMIN_USER', 'studio_admin')

@@ -97,12 +97,14 @@ def build_project_knowledge_context(project, user_message_text: str = '') -> str
         enabled=True, status='ready'
     ).exclude(extracted_text='').exclude(embed_status='done')
 
+    used_file_ids = []
     for f in no_embed_qs:
         if total_chars >= inject_limit:
             break
         block, added = _inject_file(f, user_message_text, inject_limit, total_chars)
         parts.append(block)
         total_chars += added
+        used_file_ids.append(f.id)
 
     # Если PROJECT_VECTOR_RAG выключен — лексика по всем файлам
     if not getattr(settings, 'PROJECT_VECTOR_RAG', False):
@@ -113,12 +115,33 @@ def build_project_knowledge_context(project, user_message_text: str = '') -> str
             block, added = _inject_file(f, user_message_text, inject_limit, total_chars)
             parts.append(block)
             total_chars += added
+            if f.id not in used_file_ids:
+                used_file_ids.append(f.id)
 
     if not parts:
         return ''
 
+    # Sprint 5.3: инкремент счётчика цитирований
+    if getattr(settings, 'PROJECT_KB_METRICS', False) and used_file_ids:
+        _track_kb_usage(used_file_ids)
+
     header = "Материалы базы знаний проекта. Используй как источник истины при ответах.\n\n"
     return header + "\n\n---\n\n".join(parts)
+
+
+def _track_kb_usage(file_ids: list[int]):
+    """Sprint 5.3: инкрементирует KBUsageStat для файлов попавших в контекст."""
+    try:
+        from django.utils import timezone
+        from .models import KBUsageStat, ProjectFile
+        now = timezone.now()
+        for fid in file_ids:
+            stat, _ = KBUsageStat.objects.get_or_create(file_id=fid)
+            stat.hits += 1
+            stat.last_used_at = now
+            stat.save(update_fields=['hits', 'last_used_at'])
+    except Exception as e:
+        logger.warning(f"_track_kb_usage failed: {e}")
 
 
 def get_laozhang_client():

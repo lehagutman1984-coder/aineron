@@ -24,7 +24,9 @@ Claude.ai Projects, Perplexity Spaces и ChatGPT Projects.
 | **Sprint 4.4** — Project Spaces в Telegram-боте | **ЗАВЕРШЁН** | `860fcd8` |
 | **Sprint 4.2** — Inbound sync (repo → knowledge base, webhook+manual) | **ЗАВЕРШЁН** | `927db84` |
 | **Bug-fix RAG-аудит** (3 исправления, текущая сессия) | **ЗАВЕРШЁН** | (текущая сессия, без хэша) |
-| **Sprint 5.7** — RAG Quality (лимиты + надёжность эмбеддингов + умный чанкинг) | **В ПЛАНЕ** | — |
+| **B4 hotfix** — Rate limit публичных Spaces (Redis throttle 60/min + кэш 60s) | **ЗАВЕРШЁН** | `33046bc` |
+| **Sprint 5.7** — RAG Quality (лимиты + надёжность эмбеддингов + умный чанкинг) | **ЗАВЕРШЁН** | `33046bc` |
+| **Sprint 5.3** — Knowledge intelligence (FTS поиск + кэш эмбеддингов + метрики) | **ЗАВЕРШЁН** | — |
 
 **Phase 4 — ПОЛНОСТЬЮ ЗАВЕРШЕНА** (все 5 спринтов).
 

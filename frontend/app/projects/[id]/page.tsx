@@ -47,12 +47,13 @@ import {
   RefreshCw,
   FolderOpen,
   FileCode,
+  Search,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
   listProjects, listChats, deleteChat, updateProject,
-  listProjectFiles, uploadProjectFile, deleteProjectFile, toggleProjectFile,
+  listProjectFiles, uploadProjectFile, deleteProjectFile, toggleProjectFile, searchProjectFiles,
   listConnectors, createConnector, deleteConnector,
   listRepoFiles, getRepoFileContent,
   listCommits, createCommit, confirmCommit,
@@ -510,17 +511,29 @@ function FilesTab({ projectId }: { projectId: number }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchActive, setSearchActive] = useState(false);
 
   const { data: files = [], isLoading } = useQuery({
     queryKey: ["project-files", projectId],
     queryFn: () => listProjectFiles(projectId),
     staleTime: 30_000,
     refetchInterval: (query) => {
-      // Обновляем пока есть файлы в статусе "processing"
       const data = query.state.data ?? [];
       return data.some((f: ProjectFile) => f.status === "processing") ? 3000 : false;
     },
   });
+
+  const { data: searchResults, isLoading: isSearching } = useQuery({
+    queryKey: ["project-files-search", projectId, searchQuery],
+    queryFn: () => searchProjectFiles(projectId, searchQuery),
+    enabled: searchActive && searchQuery.trim().length >= 2,
+    staleTime: 10_000,
+  });
+
+  const displayedFiles = searchActive && searchQuery.trim().length >= 2
+    ? (searchResults ?? [])
+    : files;
 
   const uploadMutation = useMutation({
     mutationFn: (file: File) => uploadProjectFile(projectId, file),
@@ -587,6 +600,24 @@ function FilesTab({ projectId }: { projectId: number }) {
         </p>
       </div>
 
+      {/* Search */}
+      {files.length > 0 && (
+        <div className="relative">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[rgba(13,13,13,0.35)]" />
+          <input
+            type="text"
+            placeholder="Поиск по файлам..."
+            value={searchQuery}
+            onChange={(e) => { setSearchQuery(e.target.value); setSearchActive(true); }}
+            onBlur={() => { if (!searchQuery.trim()) setSearchActive(false); }}
+            className="w-full rounded-[8px] border border-[rgba(13,13,13,0.1)] bg-white py-2 pl-8 pr-3 text-[13px] text-[#0d0d0d] placeholder:text-[rgba(13,13,13,0.35)] focus:border-[rgba(13,13,13,0.25)] focus:outline-none"
+          />
+          {isSearching && (
+            <Loader2 size={12} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-[rgba(13,13,13,0.35)]" />
+          )}
+        </div>
+      )}
+
       {/* Drop zone */}
       <div
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -632,13 +663,13 @@ function FilesTab({ projectId }: { projectId: number }) {
             <div key={i} className="h-14 animate-pulse rounded-[10px] bg-[rgba(13,13,13,0.05)]" />
           ))}
         </div>
-      ) : files.length === 0 ? (
+      ) : displayedFiles.length === 0 ? (
         <p className="py-4 text-center text-[13px] text-[rgba(13,13,13,0.38)]">
-          Файлы не загружены
+          {searchActive && searchQuery.trim() ? "Ничего не найдено" : "Файлы не загружены"}
         </p>
       ) : (
         <div className="flex flex-col gap-2">
-          {files.map((f) => {
+          {displayedFiles.map((f) => {
             const isDeleting = deletingId === f.id;
             return (
               <div
@@ -673,6 +704,17 @@ function FilesTab({ projectId }: { projectId: number }) {
                       <span className="flex items-center gap-1 text-[11px] text-[#e74c3c]">
                         <AlertCircle size={10} />
                         Ошибка
+                      </span>
+                    )}
+                    {f.embed_status === "error" && (
+                      <span className="flex items-center gap-1 text-[11px] text-[rgba(231,76,60,0.7)]">
+                        <AlertCircle size={10} />
+                        Индекс: ошибка
+                      </span>
+                    )}
+                    {f.usage_hits > 0 && (
+                      <span className="text-[11px] text-[rgba(13,13,13,0.35)]">
+                        {f.usage_hits} {f.usage_hits === 1 ? "использование" : f.usage_hits < 5 ? "использования" : "использований"}
                       </span>
                     )}
                   </div>

@@ -389,6 +389,26 @@ class ProjectChunk(models.Model):
         return f"{self.file.filename}[{self.chunk_index}]"
 
 
+class KBUsageStat(models.Model):
+    """Sprint 5.3: счётчик цитирований файлов базы знаний.
+
+    Инкрементируется в build_project_knowledge_context при PROJECT_KB_METRICS=1.
+    """
+    file = models.OneToOneField(
+        ProjectFile, on_delete=models.CASCADE, related_name='usage_stat',
+        verbose_name='Файл',
+    )
+    hits = models.PositiveIntegerField(default=0, verbose_name='Использований в контексте')
+    last_used_at = models.DateTimeField(null=True, blank=True, verbose_name='Последнее использование')
+
+    class Meta:
+        verbose_name = 'Статистика использования файла'
+        verbose_name_plural = 'Статистика использования файлов'
+
+    def __str__(self):
+        return f"{self.file.filename}: {self.hits} hits"
+
+
 class Chat(models.Model):
     """Чат пользователя с нейросетью"""
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='chats')

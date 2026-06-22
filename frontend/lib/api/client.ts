@@ -606,6 +606,9 @@ export const toggleProjectFile = (
 export const deleteProjectFile = (projectId: number, fileId: number): Promise<void> =>
   request<void>(`/projects/${projectId}/files/${fileId}/`, { method: "DELETE" });
 
+export const searchProjectFiles = (projectId: number, query: string): Promise<ProjectFile[]> =>
+  request<ProjectFile[]>(`/projects/${projectId}/files/search/?q=${encodeURIComponent(query)}`);
+
 // ============ Project Connectors (Git integration) ============
 
 export const listConnectors = (projectId: number): Promise<ProjectConnector[]> =>

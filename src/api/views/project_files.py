@@ -35,16 +35,20 @@ def _detect_file_type(filename: str) -> str:
 
 class ProjectFileSerializer(serializers.ModelSerializer):
     file_url = serializers.SerializerMethodField()
+    usage_hits = serializers.SerializerMethodField()
+    last_used_at = serializers.SerializerMethodField()
 
     class Meta:
         model = ProjectFile
         fields = [
             'id', 'filename', 'file_url', 'file_size', 'file_type',
             'status', 'embed_status', 'source', 'enabled', 'created_at',
+            'usage_hits', 'last_used_at',
         ]
         read_only_fields = [
             'id', 'filename', 'file_url', 'file_size', 'file_type',
             'status', 'embed_status', 'source', 'created_at',
+            'usage_hits', 'last_used_at',
         ]
 
     def get_file_url(self, obj):
@@ -52,6 +56,18 @@ class ProjectFileSerializer(serializers.ModelSerializer):
         if obj.file and request:
             return request.build_absolute_uri(obj.file.url)
         return None
+
+    def get_usage_hits(self, obj):
+        try:
+            return obj.usage_stat.hits
+        except Exception:
+            return 0
+
+    def get_last_used_at(self, obj):
+        try:
+            return obj.usage_stat.last_used_at
+        except Exception:
+            return None
 
 
 class ProjectFileListCreateView(APIView):
@@ -126,3 +142,28 @@ class ProjectFileDetailView(APIView):
             pass
         pf.delete()
         return Response(status=204)
+
+
+class ProjectFileSearchView(APIView):
+    """GET /api/v1/projects/<pk>/files/search/?q=<query>
+
+    Sprint 5.3: гибридный FTS+вектор поиск по файлам базы знаний.
+    Требует PROJECT_FILE_SEARCH=1 в .env (иначе 400).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        from django.conf import settings
+        if not getattr(settings, 'PROJECT_FILE_SEARCH', False):
+            return Response({'error': 'Поиск по файлам отключён'}, status=400)
+
+        project = get_object_or_404(Project, pk=pk, user=request.user)
+        query = request.query_params.get('q', '').strip()
+
+        if not query:
+            files = project.knowledge_files.filter(status='ready', enabled=True).exclude(source='repo')
+            return Response(ProjectFileSerializer(files, many=True, context={'request': request}).data)
+
+        from aitext.search import search_knowledge
+        results = search_knowledge(project, query, top_n=20)
+        return Response(ProjectFileSerializer(results, many=True, context={'request': request}).data)
