@@ -260,6 +260,19 @@ REDIS_DB = os.environ.get('REDIS_DB', '0')
 REDIS_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}"
 TELEGRAM_FSM_REDIS_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}/2"
 
+# ========== КЭШИ (Redis DB 3) ==========
+# django-redis для кросс-воркерного кэша и rate limiting
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': f"redis://{REDIS_HOST}:{REDIS_PORT}/3",
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        },
+        'KEY_PREFIX': 'aineron',
+    }
+}
+
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_ACCEPT_CONTENT = ['json']
@@ -311,6 +324,12 @@ PROJECT_AI_COMMITS = os.getenv('PROJECT_AI_COMMITS', '0') == '1'
 PROJECT_VECTOR_RAG   = os.getenv('PROJECT_VECTOR_RAG',   '0') == '1'
 PROJECT_EMBED_MODEL  = os.getenv('PROJECT_EMBED_MODEL',  'text-embedding-3-small')
 PROJECT_EMBED_DIMS   = int(os.getenv('PROJECT_EMBED_DIMS', '1536'))
+# Sprint 5.7 — RAG Quality (env-driven, rollback без деплоя)
+PROJECT_SYNC_MAX_FILES = int(os.getenv('PROJECT_SYNC_MAX_FILES', '50'))
+PROJECT_INJECT_LIMIT   = int(os.getenv('PROJECT_INJECT_LIMIT',   '200000'))
+PROJECT_TOP_K          = int(os.getenv('PROJECT_TOP_K',          '6'))
+PROJECT_CHUNK_SIZE     = int(os.getenv('PROJECT_CHUNK_SIZE',     '500'))
+PROJECT_SMART_CHUNK    = os.getenv('PROJECT_SMART_CHUNK', '0') == '1'
 
 STUDIO_GITEA_URL = os.getenv('STUDIO_GITEA_URL', 'http://gitea:3000')
 STUDIO_GITEA_ADMIN_USER = os.getenv('STUDIO_GITEA_ADMIN_USER', 'studio_admin')
@@ -387,6 +406,7 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_THROTTLE_RATES': {
         'api_key': '120/min',
+        'public_space': '60/min',
     },
     'EXCEPTION_HANDLER': 'api.exceptions.openai_exception_handler',
 }

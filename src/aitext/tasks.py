@@ -29,11 +29,19 @@ def _strip_html(text: str) -> str:
 _client = None
 
 FULL_INJECT_LIMIT = 50_000   # символов на файл — порог full-inject vs лексический RAG
-AGGREGATE_INJECT_LIMIT = 200_000  # символов суммарно по всем файлам проекта
+
+def _get_inject_limit():
+    return int(getattr(settings, 'PROJECT_INJECT_LIMIT', 200_000))
+
+AGGREGATE_INJECT_LIMIT = 200_000  # оставляем как fallback-константу; в коде используем _get_inject_limit()
 
 
-def _retrieve_relevant_chunks(text: str, query: str, chunk_size: int = 500, top_k: int = 6) -> str:
+def _retrieve_relevant_chunks(text: str, query: str, chunk_size: int = None, top_k: int = None) -> str:
     """Простой лексический поиск: разбивает текст на чанки, возвращает top_k по пересечению слов с запросом."""
+    if chunk_size is None:
+        chunk_size = int(getattr(settings, 'PROJECT_CHUNK_SIZE', 500))
+    if top_k is None:
+        top_k = int(getattr(settings, 'PROJECT_TOP_K', 6))
     if not query:
         return text[:FULL_INJECT_LIMIT]
     chunks = [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
@@ -48,6 +56,18 @@ def _retrieve_relevant_chunks(text: str, query: str, chunk_size: int = 500, top_
     return "\n...\n".join(c for _, _, c in top)
 
 
+def _inject_file(f, user_message_text: str, inject_limit: int, total_chars: int) -> tuple[str, int]:
+    """Возвращает (snippet_with_label, chars_added) для одного ProjectFile."""
+    text = f.extracted_text
+    is_large = len(text) > FULL_INJECT_LIMIT
+    snippet = _retrieve_relevant_chunks(text, user_message_text) if is_large else text
+    remaining = inject_limit - total_chars
+    if len(snippet) > remaining:
+        snippet = snippet[:remaining]
+    label = f"{f.filename} (фрагменты)" if is_large else f.filename
+    return f"### {label}\n{snippet}", len(snippet)
+
+
 def build_project_knowledge_context(project, user_message_text: str = '') -> str:
     """Собирает контекст из файлов базы знаний проекта.
 
@@ -56,6 +76,7 @@ def build_project_knowledge_context(project, user_message_text: str = '') -> str
       - лексический поиск по файлам без эмбеддингов (source='repo', новые загрузки)
     При PROJECT_VECTOR_RAG=0 — только лексика для всех файлов.
     """
+    inject_limit = _get_inject_limit()
     parts = []
     total_chars = 0
 
@@ -63,7 +84,8 @@ def build_project_knowledge_context(project, user_message_text: str = '') -> str
     if getattr(settings, 'PROJECT_VECTOR_RAG', False) and user_message_text:
         try:
             from .embeddings import vector_search
-            vec_result = vector_search(project, user_message_text)
+            top_k = int(getattr(settings, 'PROJECT_TOP_K', 6))
+            vec_result = vector_search(project, user_message_text, top_k=top_k)
             if vec_result:
                 parts.append(vec_result)
                 total_chars += len(vec_result)
@@ -76,33 +98,21 @@ def build_project_knowledge_context(project, user_message_text: str = '') -> str
     ).exclude(extracted_text='').exclude(embed_status='done')
 
     for f in no_embed_qs:
-        if total_chars >= AGGREGATE_INJECT_LIMIT:
+        if total_chars >= inject_limit:
             break
-        text = f.extracted_text
-        is_large = len(text) > FULL_INJECT_LIMIT
-        snippet = _retrieve_relevant_chunks(text, user_message_text) if is_large else text
-        remaining = AGGREGATE_INJECT_LIMIT - total_chars
-        if len(snippet) > remaining:
-            snippet = snippet[:remaining]
-        label = f"{f.filename} (фрагменты)" if is_large else f.filename
-        parts.append(f"### {label}\n{snippet}")
-        total_chars += len(snippet)
+        block, added = _inject_file(f, user_message_text, inject_limit, total_chars)
+        parts.append(block)
+        total_chars += added
 
     # Если PROJECT_VECTOR_RAG выключен — лексика по всем файлам
     if not getattr(settings, 'PROJECT_VECTOR_RAG', False):
         all_qs = project.knowledge_files.filter(enabled=True, status='ready').exclude(extracted_text='')
         for f in all_qs:
-            if total_chars >= AGGREGATE_INJECT_LIMIT:
+            if total_chars >= inject_limit:
                 break
-            text = f.extracted_text
-            is_large = len(text) > FULL_INJECT_LIMIT
-            snippet = _retrieve_relevant_chunks(text, user_message_text) if is_large else text
-            remaining = AGGREGATE_INJECT_LIMIT - total_chars
-            if len(snippet) > remaining:
-                snippet = snippet[:remaining]
-            label = f"{f.filename} (фрагменты)" if is_large else f.filename
-            parts.append(f"### {label}\n{snippet}")
-            total_chars += len(snippet)
+            block, added = _inject_file(f, user_message_text, inject_limit, total_chars)
+            parts.append(block)
+            total_chars += added
 
     if not parts:
         return ''
@@ -1068,9 +1078,14 @@ def process_project_file(self, file_id: int):
         raise self.retry(exc=e, countdown=30)
 
 
-@shared_task(bind=True, max_retries=2, default_retry_delay=60, ignore_result=True)
+@shared_task(bind=True, max_retries=3, ignore_result=True)
 def embed_project_file(self, file_id: int):
-    """Sprint 4.1: создаёт/обновляет векторные чанки для файла базы знаний."""
+    """Sprint 4.1 / Sprint 5.7: создаёт/обновляет векторные чанки для файла базы знаний.
+
+    Exponential backoff: 60s / 120s / 300s. embed_status='error' только после всех retry.
+    """
+    _RETRY_COUNTDOWNS = [60, 120, 300]
+
     try:
         pf = ProjectFile.objects.get(id=file_id)
     except ProjectFile.DoesNotExist:
@@ -1084,10 +1099,15 @@ def embed_project_file(self, file_id: int):
         saved = embed_chunks(pf)
         logger.info(f'[embed_project_file] file {file_id}: {saved} chunks embedded')
     except Exception as e:
-        pf.embed_status = 'error'
-        pf.save(update_fields=['embed_status'])
-        logger.error(f'[embed_project_file] failed for file {file_id}: {e}')
-        raise self.retry(exc=e, countdown=60)
+        retry_num = self.request.retries  # 0-based: 0 = первая попытка провалилась
+        countdown = _RETRY_COUNTDOWNS[min(retry_num, len(_RETRY_COUNTDOWNS) - 1)]
+        logger.error(f'[embed_project_file] failed (attempt {retry_num + 1}) for file {file_id}: {e}')
+        if retry_num >= self.max_retries:
+            # Исчерпаны все попытки — ставим финальный статус error
+            pf.embed_status = 'error'
+            pf.save(update_fields=['embed_status'])
+            return
+        raise self.retry(exc=e, countdown=countdown)
 
 
 # Project Connector — Git Sync + Push Tasks

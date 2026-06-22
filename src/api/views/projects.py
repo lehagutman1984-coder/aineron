@@ -1,10 +1,12 @@
 from django.shortcuts import get_object_or_404
+from django.core.cache import cache
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework import serializers
 
 from aitext.models import Project, ProjectFile
+from api.throttling import PublicSpaceThrottle
 
 
 class ProjectSerializer(serializers.ModelSerializer):
@@ -85,8 +87,16 @@ class PublicSpaceFileSerializer(serializers.ModelSerializer):
 class ProjectPublicView(APIView):
     """GET /api/v1/public/spaces/<slug>/ — публичная страница Space."""
     permission_classes = [AllowAny]
+    throttle_classes = [PublicSpaceThrottle]
+
+    _CACHE_TTL = 60  # секунд
 
     def get(self, request, slug):
+        cache_key = f'public_space:{slug}'
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached)
+
         project = get_object_or_404(Project, public_slug=slug, is_public=True)
 
         data = {
@@ -115,4 +125,5 @@ class ProjectPublicView(APIView):
         else:
             data['chats'] = []
 
+        cache.set(cache_key, data, self._CACHE_TTL)
         return Response(data)

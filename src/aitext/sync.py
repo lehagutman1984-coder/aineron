@@ -26,7 +26,7 @@ SYNC_EXTENSIONS = {
     '.toml', '.ini', '.sh', '.sql', '.xml',
 }
 SYNC_MAX_BYTES = 1 * 1024 * 1024   # 1 MB per file
-SYNC_MAX_FILES = 50                 # не более 50 repo-файлов на коннектор
+SYNC_MAX_FILES = 50                 # дефолт; переопределяется через PROJECT_SYNC_MAX_FILES в settings
 
 
 # ── GitHub helpers ─────────────────────────────────────────────────────────────
@@ -56,7 +56,7 @@ def _github_tree(connector, token: str) -> list[dict]:
         if size > SYNC_MAX_BYTES:
             continue
         result.append({'path': item['path'], 'sha': item['sha'], 'size': size})
-    return result[:SYNC_MAX_FILES]
+    return result[:int(getattr(settings, 'PROJECT_SYNC_MAX_FILES', SYNC_MAX_FILES))]
 
 
 def _github_file(connector, token: str, path: str) -> str:
@@ -96,7 +96,7 @@ def _gitea_tree(connector, token: str) -> list[dict]:
         if size > SYNC_MAX_BYTES:
             continue
         result.append({'path': item['path'], 'sha': item['sha'], 'size': size})
-    return result[:SYNC_MAX_FILES]
+    return result[:int(getattr(settings, 'PROJECT_SYNC_MAX_FILES', SYNC_MAX_FILES))]
 
 
 def _gitea_file(connector, token: str, path: str) -> str:

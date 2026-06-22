@@ -17,6 +17,7 @@ class Command(BaseCommand):
         parser.add_argument('--dry-run', action='store_true', help='Только показать, не запускать задачи')
         parser.add_argument('--project-id', type=int, help='Только для конкретного проекта')
         parser.add_argument('--force', action='store_true', help='Перезаписать уже эмбеддированные (embed_status=done)')
+        parser.add_argument('--status', help='Фильтр по embed_status (error, none, pending). Пример: --status=error')
 
     def handle(self, *args, **options):
         from aitext.models import ProjectFile
@@ -25,7 +26,9 @@ class Command(BaseCommand):
         qs = ProjectFile.objects.filter(status='ready').exclude(extracted_text='')
         if options.get('project_id'):
             qs = qs.filter(project_id=options['project_id'])
-        if not options.get('force'):
+        if options.get('status'):
+            qs = qs.filter(embed_status=options['status'])
+        elif not options.get('force'):
             qs = qs.exclude(embed_status='done')
 
         total = qs.count()
