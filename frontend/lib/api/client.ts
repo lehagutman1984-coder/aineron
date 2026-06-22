@@ -46,6 +46,7 @@ import type {
   ProjectCommit,
   CommitFile,
   PublicSpace,
+  DeployStatusResponse,
 } from "./types";
 
 const BASE_URL =
@@ -677,12 +678,31 @@ export const syncConnector = (
 export const patchConnector = (
   projectId: number,
   connectorId: number,
-  data: { auto_sync?: boolean }
+  data: { auto_sync?: boolean; deploy_webhook_url?: string }
 ): Promise<ProjectConnector> =>
   request<ProjectConnector>(`/projects/${projectId}/connectors/${connectorId}/`, {
     method: "PATCH",
     body: JSON.stringify(data),
   });
+
+// ============ Connector Deploy (Sprint 7.2) ============
+
+export const triggerDeploy = (
+  projectId: number,
+  connectorId: number
+): Promise<DeployStatusResponse> =>
+  request<DeployStatusResponse>(
+    `/projects/${projectId}/connectors/${connectorId}/deploy/`,
+    { method: "POST" }
+  );
+
+export const getDeployStatus = (
+  projectId: number,
+  connectorId: number
+): Promise<DeployStatusResponse> =>
+  request<DeployStatusResponse>(
+    `/projects/${projectId}/connectors/${connectorId}/deploy/`
+  );
 
 export interface FileVersion {
   id: number;

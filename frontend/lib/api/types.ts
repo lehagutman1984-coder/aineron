@@ -389,6 +389,17 @@ export interface ProjectConnector {
   auto_sync: boolean;
   sync_status: "ok" | "error" | "running" | "";
   last_sync_report: { created?: number; updated?: number; deleted?: number; skipped?: number; errors?: number; error?: string; error_detail?: string } | null;
+  // Sprint 7.2 — Deploy hook
+  deploy_webhook_url?: string;
+  deploy_status?: "pending" | "running" | "success" | "error" | "";
+  last_deploy_at?: string | null;
+  last_deploy_log?: string;
+}
+
+export interface DeployStatusResponse {
+  deploy_status: "pending" | "running" | "success" | "error" | "";
+  last_deploy_at: string | null;
+  last_deploy_log: string;
 }
 
 export interface RepoTreeItem {

@@ -47,7 +47,9 @@ from api.views.connectors import (
     ConnectorReadFilesView, ConnectorFileContentView,
     CommitListCreateView, CommitConfirmView,
     ConnectorSyncView, ConnectorWebhookView,
+    ConnectorDeployView,
 )
+from api.views.deploy import InternalDeployView
 from api.views.telegram_link import TelegramLinkTokenView
 from api.views.telegram_webapp import telegram_webapp_auth
 from api.views.memory import (
@@ -170,6 +172,8 @@ urlpatterns = [
     path('v1/projects/<int:pk>/commits/<int:commit_id>/confirm/', CommitConfirmView.as_view(), name='commit_confirm'),
     path('v1/projects/<int:pk>/connectors/<int:connector_id>/sync/', ConnectorSyncView.as_view(), name='connector_sync'),
     path('v1/projects/<int:pk>/connectors/<int:connector_id>/webhook/', ConnectorWebhookView.as_view(), name='connector_webhook'),
+    path('v1/projects/<int:pk>/connectors/<int:connector_id>/deploy/', ConnectorDeployView.as_view(), name='connector_deploy'),
+    path('v1/internal/deploy/', InternalDeployView.as_view(), name='internal_deploy'),
 
     # ========== STUDIO (Vibe-Coding Studio) ==========
     path('v1/studio/', include('studio.urls')),

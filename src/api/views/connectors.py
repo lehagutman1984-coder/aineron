@@ -310,6 +310,90 @@ class ConnectorSyncView(APIView):
         return Response({'status': 'queued', 'connector_id': connector.id})
 
 
+class ConnectorDeployView(APIView):
+    """POST .../connectors/<cid>/deploy/ — триггер внешнего deploy-вебхука (HMAC).
+    GET  .../connectors/<cid>/deploy/ — статус деплоя (полинг).
+
+    Sprint 7.2. Флаг: PROJECT_DEPLOY_HOOK=1.
+    Авторизация: владелец проекта (write access).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk, connector_id):
+        from django.conf import settings
+        if not getattr(settings, 'PROJECT_DEPLOY_HOOK', False):
+            return Response({'error': 'deploy hook disabled'}, status=503)
+        project = get_project_for_user(pk, request.user)
+        connector = get_object_or_404(ProjectConnector, pk=connector_id, project=project)
+        return Response({
+            'deploy_status': connector.deploy_status,
+            'last_deploy_at': connector.last_deploy_at.isoformat() if connector.last_deploy_at else None,
+            'last_deploy_log': connector.last_deploy_log[-2000:] if connector.last_deploy_log else '',
+        })
+
+    def post(self, request, pk, connector_id):
+        from django.conf import settings
+        if not getattr(settings, 'PROJECT_DEPLOY_HOOK', False):
+            return Response({'error': 'deploy hook disabled'}, status=503)
+
+        project = get_project_for_user(pk, request.user, write=True)
+        connector = get_object_or_404(ProjectConnector, pk=connector_id, project=project)
+
+        if not connector.deploy_webhook_url:
+            return Response({'error': 'deploy_webhook_url not configured'}, status=400)
+
+        # Decrypt deploy secret
+        deploy_secret = ''
+        if connector.deploy_secret_enc:
+            try:
+                deploy_secret = decrypt_token(connector.deploy_secret_enc)
+            except Exception:
+                pass
+
+        # Build signed payload
+        import json
+        payload = json.dumps({
+            'project_id': project.id,
+            'connector_id': connector.id,
+            'repo': f'{connector.owner}/{connector.repo}',
+            'branch': connector.branch,
+        }).encode()
+
+        # HMAC-sign with deploy_secret (same pattern as services/webhooks.py:25)
+        sig = hmac.new(
+            deploy_secret.encode() if deploy_secret else b'',
+            payload,
+            hashlib.sha256,
+        ).hexdigest()
+
+        try:
+            import requests as _req
+            resp = _req.post(
+                connector.deploy_webhook_url,
+                data=payload,
+                headers={
+                    'Content-Type': 'application/json',
+                    'X-Aineron-Signature': f'sha256={sig}',
+                    'X-Aineron-Event': 'deploy',
+                },
+                timeout=15,
+            )
+            connector.deploy_status = 'success' if resp.ok else 'error'
+            connector.last_deploy_log = resp.text[:2000]
+        except Exception as e:
+            connector.deploy_status = 'error'
+            connector.last_deploy_log = str(e)[:2000]
+
+        connector.last_deploy_at = timezone.now()
+        connector.save(update_fields=['deploy_status', 'last_deploy_at', 'last_deploy_log'])
+
+        return Response({
+            'deploy_status': connector.deploy_status,
+            'last_deploy_at': connector.last_deploy_at.isoformat(),
+            'log': connector.last_deploy_log,
+        })
+
+
 @method_decorator(csrf_exempt, name='dispatch')
 class ConnectorWebhookView(APIView):
     """POST /projects/<pk>/connectors/<connector_id>/webhook/ — GitHub/Gitea push webhook.

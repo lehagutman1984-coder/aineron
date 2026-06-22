@@ -350,6 +350,33 @@ PROJECT_AUDIT_LOG        = os.getenv('PROJECT_AUDIT_LOG',        '0') == '1'
 PROJECT_PUBLIC_HARDENING = os.getenv('PROJECT_PUBLIC_HARDENING', '1') == '1'  # on by default (security)
 # Sprint 5.6 — Telegram upload to project knowledge base
 PROJECT_TG_UPLOAD        = os.getenv('PROJECT_TG_UPLOAD',        '0') == '1'
+# Sprint 6.1 — Hybrid Search (RRF) + Adaptive top_k + Conversation-aware
+PROJECT_HYBRID_SEARCH    = os.getenv('PROJECT_HYBRID_SEARCH',    '0') == '1'
+PROJECT_RRF_K            = int(os.getenv('PROJECT_RRF_K',        '60'))
+PROJECT_ADAPTIVE_TOPK    = os.getenv('PROJECT_ADAPTIVE_TOPK',    '0') == '1'
+PROJECT_CONV_SEARCH      = os.getenv('PROJECT_CONV_SEARCH',      '0') == '1'
+PROJECT_CONV_WINDOW      = int(os.getenv('PROJECT_CONV_WINDOW',  '4'))
+# Sprint 6.2 — Query Expansion
+PROJECT_QUERY_EXPANSION  = os.getenv('PROJECT_QUERY_EXPANSION',  '0') == '1'
+PROJECT_EXPAND_MODEL     = os.getenv('PROJECT_EXPAND_MODEL',     'gpt-4o-mini')
+PROJECT_EXPAND_N         = int(os.getenv('PROJECT_EXPAND_N',     '3'))
+# Sprint 6.3 — Reranking (Cross-Encoder, CPU)
+PROJECT_RERANK           = os.getenv('PROJECT_RERANK',           '0') == '1'
+PROJECT_RERANK_MODEL     = os.getenv('PROJECT_RERANK_MODEL',     'cross-encoder/ms-marco-MiniLM-L-6-v2')
+PROJECT_RERANK_CANDIDATES= int(os.getenv('PROJECT_RERANK_CANDIDATES', '50'))
+PROJECT_RERANK_TOPK      = int(os.getenv('PROJECT_RERANK_TOPK',  '15'))
+# Sprint 6.4 — @file + @web явный контекст
+PROJECT_FILE_PIN         = os.getenv('PROJECT_FILE_PIN',         '0') == '1'
+PROJECT_WEB_SEARCH       = os.getenv('PROJECT_WEB_SEARCH',       '0') == '1'
+# Sprint 6.5 — Two-Level Retrieval (File → Chunk)
+PROJECT_TWO_LEVEL        = os.getenv('PROJECT_TWO_LEVEL',        '0') == '1'
+PROJECT_TWO_LEVEL_FILES  = int(os.getenv('PROJECT_TWO_LEVEL_FILES', '5'))
+# Sprint 7.1 — Встроенный редактор кода (Monaco/CodeMirror)
+PROJECT_CODE_EDITOR      = os.getenv('PROJECT_CODE_EDITOR',      '0') == '1'
+# Sprint 7.2 — Deploy-хук
+PROJECT_DEPLOY_HOOK      = os.getenv('PROJECT_DEPLOY_HOOK',      '0') == '1'
+INTERNAL_DEPLOY_ENABLED  = os.getenv('INTERNAL_DEPLOY_ENABLED',  '0') == '1'
+INTERNAL_DEPLOY_SCRIPT   = os.getenv('INTERNAL_DEPLOY_SCRIPT',   '/app/deploy.sh')
 
 STUDIO_GITEA_URL = os.getenv('STUDIO_GITEA_URL', 'http://gitea:3000')
 STUDIO_GITEA_ADMIN_USER = os.getenv('STUDIO_GITEA_ADMIN_USER', 'studio_admin')

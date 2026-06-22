@@ -66,11 +66,15 @@ import {
   listRepoFiles, getRepoFileContent,
   listCommits, createCommit, confirmCommit,
   publishProject, syncConnector, patchConnector,
+  triggerDeploy, getDeployStatus,
   listFileVersions, restoreFileVersion,
   listCollaborators, addCollaborator, updateCollaboratorRole, removeCollaborator,
   listProjectAudit,
 } from "@/lib/api/client";
-import type { ChatListItem, Project, ProjectFile, ProjectConnector, ProjectCollaborator, ProjectAuditEntry, RepoTreeItem, ProjectCommit, CommitFile } from "@/lib/api/types";
+import type { ChatListItem, Project, ProjectFile, ProjectConnector, ProjectCollaborator, ProjectAuditEntry, RepoTreeItem, ProjectCommit, CommitFile, DeployStatusResponse } from "@/lib/api/types";
+import dynamic from "next/dynamic";
+
+const CodeEditor = dynamic(() => import("@/components/projects/CodeEditor"), { ssr: false });
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Folder, Code2, BookOpen, Briefcase, Zap, Globe, Palette, MessageSquare,
@@ -931,6 +935,11 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
   // Sprint 4.2 — sync state
   const [syncingId, setSyncingId] = useState<number | null>(null);
   const [copiedWebhook, setCopiedWebhook] = useState<number | null>(null);
+  // Sprint 7.2 — deploy state
+  const [deployingId, setDeployingId] = useState<number | null>(null);
+  const [deployStatus, setDeployStatus] = useState<Record<number, DeployStatusResponse>>({});
+  // Sprint 7.1 — editor state
+  const [editorConnId, setEditorConnId] = useState<number | null>(null);
 
   const handleSync = async (connId: number) => {
     setSyncingId(connId);
@@ -950,6 +959,23 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
       }, 3000);
     } catch {
       setSyncingId(null);
+    }
+  };
+
+  // Sprint 7.2: Deploy handler
+  const handleDeploy = async (connId: number) => {
+    setDeployingId(connId);
+    setDeployStatus((prev) => ({ ...prev, [connId]: { deploy_status: "pending", last_deploy_at: null, last_deploy_log: "" } }));
+    try {
+      const result = await triggerDeploy(projectId, connId);
+      setDeployStatus((prev) => ({ ...prev, [connId]: result }));
+    } catch (e) {
+      setDeployStatus((prev) => ({
+        ...prev,
+        [connId]: { deploy_status: "error", last_deploy_at: null, last_deploy_log: (e as Error).message ?? "Ошибка деплоя" },
+      }));
+    } finally {
+      setDeployingId(null);
     }
   };
 
@@ -1010,9 +1036,10 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
   });
 
   const handleFileClick = async (path: string, connId: number) => {
-    if (selectedFile === path) { setSelectedFile(null); setFileContent(null); return; }
+    if (selectedFile === path) { setSelectedFile(null); setFileContent(null); setEditorConnId(null); return; }
     setSelectedFile(path);
     setFileContent(null);
+    setEditorConnId(connId);
     setFileLoading(true);
     try {
       const res = await getRepoFileContent(projectId, connId, path);
@@ -1167,6 +1194,26 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                     <Send size={11} />
                     Коммит
                   </button>
+                  {/* Sprint 7.2: Deploy button */}
+                  {conn.deploy_webhook_url && (
+                    <button
+                      onClick={() => handleDeploy(conn.id)}
+                      disabled={deployingId === conn.id}
+                      className="flex items-center gap-1.5 rounded-[7px] border border-[rgba(13,13,13,0.14)] px-3 py-1.5 text-[12px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:border-[#7c3aed] hover:text-[#7c3aed] disabled:opacity-50"
+                      title="Запустить деплой"
+                    >
+                      {deployingId === conn.id ? (
+                        <Loader2 size={11} className="animate-spin" />
+                      ) : deployStatus[conn.id]?.deploy_status === "success" ? (
+                        <CheckCircle2 size={11} className="text-[#22a85a]" />
+                      ) : deployStatus[conn.id]?.deploy_status === "error" ? (
+                        <AlertCircle size={11} className="text-red-500" />
+                      ) : (
+                        <Zap size={11} />
+                      )}
+                      Deploy
+                    </button>
+                  )}
                   <button
                     onClick={async () => {
                       await patchConnector(projectId, conn.id, { auto_sync: !conn.auto_sync });
@@ -1216,25 +1263,30 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                         <p className="px-3 py-6 text-center text-[12px] text-[rgba(13,13,13,0.38)]">Репозиторий пуст</p>
                       )}
                     </div>
-                    {/* Content panel */}
-                    <div className="flex-1 overflow-auto">
-                      {selectedFile ? (
-                        <div>
-                          <div className="flex items-center gap-2 border-b border-[rgba(13,13,13,0.08)] bg-[rgba(13,13,13,0.02)] px-3 py-2">
-                            <FileCode size={12} className="shrink-0 text-[rgba(13,13,13,0.40)]" />
-                            <span className="truncate text-[11px] text-[rgba(13,13,13,0.55)]">{selectedFile}</span>
+                    {/* Content panel — Sprint 7.1: CodeEditor */}
+                    <div className="flex flex-col flex-1 overflow-hidden" style={{ minHeight: 300, maxHeight: 460 }}>
+                      {selectedFile && editorConnId === conn.id ? (
+                        fileLoading ? (
+                          <div className="flex items-center justify-center py-10 text-[12px] text-[rgba(13,13,13,0.40)]">
+                            <Loader2 size={14} className="mr-1.5 animate-spin" />
+                            Загрузка...
                           </div>
-                          {fileLoading ? (
-                            <div className="flex items-center justify-center py-10 text-[12px] text-[rgba(13,13,13,0.40)]">
-                              <Loader2 size={14} className="mr-1.5 animate-spin" />
-                              Загрузка...
-                            </div>
-                          ) : (
-                            <pre className="overflow-auto px-3 py-2 text-[11px] leading-relaxed text-[rgba(13,13,13,0.75)]" style={{ maxHeight: 320 }}>
-                              {fileContent ?? ""}
-                            </pre>
-                          )}
-                        </div>
+                        ) : (
+                          <CodeEditor
+                            filePath={selectedFile}
+                            initialContent={fileContent ?? ""}
+                            onClose={() => { setSelectedFile(null); setFileContent(null); setEditorConnId(null); }}
+                            onCommit={async (content, message) => {
+                              const commit = await createCommit(projectId, {
+                                connector_id: conn.id,
+                                commit_message: message,
+                                files: [{ path: selectedFile!, content }],
+                              });
+                              await confirmCommit(projectId, commit.id, "push");
+                              qc.invalidateQueries({ queryKey: ["commits", projectId] });
+                            }}
+                          />
+                        )
                       ) : (
                         <div className="flex h-full items-center justify-center py-10 text-[12px] text-[rgba(13,13,13,0.35)]">
                           Выберите файл

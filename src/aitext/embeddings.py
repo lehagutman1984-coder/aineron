@@ -215,26 +215,185 @@ def _get_query_embedding(query: str, model: str, client) -> list[float] | None:
     return emb
 
 
-def vector_search(project, query: str, top_k: int = None) -> str:
-    """Семантический поиск по чанкам проекта (exact cosine scan per-project).
+def vector_search_candidates(project, query: str, top_n: int = 50,
+                              restrict_file_ids=None) -> list[dict]:
+    """Sprint 6.1: Семантический поиск — возвращает ранжированный список кандидатов.
 
-    Возвращает склеенный текст top_k наиболее релевантных чанков.
-    При PROJECT_EMBED_CACHE=1 кэширует эмбеддинг запроса (Redis, 24ч).
+    Каждый кандидат: {'file_id', 'chunk_index', 'content', 'distance'}.
+    restrict_file_ids: list[int] | None — ограничить поиск файлами (6.5 two-level).
+    Чанки с chunk_index=-1 (summary) исключаются.
     """
     from .tasks import get_laozhang_client
 
-    if top_k is None:
-        top_k = int(getattr(settings, 'PROJECT_TOP_K', 6))
-
     if not query or not query.strip():
-        return ''
+        return []
 
     client = get_laozhang_client()
     model = _get_embed_model()
 
     q_emb = _get_query_embedding(query, model, client)
     if q_emb is None:
+        return []
+
+    q_str = '[' + ','.join(str(round(v, 7)) for v in q_emb) + ']'
+
+    try:
+        with connection.cursor() as cur:
+            if restrict_file_ids:
+                placeholders = ','.join(['%s'] * len(restrict_file_ids))
+                cur.execute(
+                    f"""
+                    SELECT file_id, chunk_index, content, embedding <=> %s::vector AS distance
+                    FROM aitext_projectchunk
+                    WHERE project_id = %s AND embedding IS NOT NULL AND chunk_index >= 0
+                      AND file_id IN ({placeholders})
+                    ORDER BY distance
+                    LIMIT %s
+                    """,
+                    [q_str, project.id, *restrict_file_ids, top_n],
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT file_id, chunk_index, content, embedding <=> %s::vector AS distance
+                    FROM aitext_projectchunk
+                    WHERE project_id = %s AND embedding IS NOT NULL AND chunk_index >= 0
+                    ORDER BY distance
+                    LIMIT %s
+                    """,
+                    [q_str, project.id, top_n],
+                )
+            rows = cur.fetchall()
+    except Exception as e:
+        logger.error(f"Ошибка vector_search_candidates для проекта {project.id}: {e}")
+        return []
+
+    return [
+        {'file_id': r[0], 'chunk_index': r[1], 'content': r[2], 'distance': float(r[3])}
+        for r in rows
+    ]
+
+
+def vector_search(project, query: str, top_k: int = None) -> str:
+    """Семантический поиск по чанкам проекта (exact cosine scan per-project).
+
+    Обёртка над vector_search_candidates — контракт существующих вызовов сохраняется.
+    При PROJECT_EMBED_CACHE=1 кэширует эмбеддинг запроса (Redis, 24ч).
+    """
+    if top_k is None:
+        top_k = int(getattr(settings, 'PROJECT_TOP_K', 6))
+
+    candidates = vector_search_candidates(project, query, top_n=top_k)
+    if not candidates:
         return ''
+
+    return '\n...\n'.join(c['content'] for c in candidates)
+
+
+def embed_file_summary(file) -> bool:
+    """Sprint 6.5: генерирует summary файла через дешёвую LLM и эмбеддит его.
+
+    Summary сохраняется в ProjectFile.summary (TextField).
+    Эмбеддинг summary хранится как ProjectChunk с chunk_index=-1.
+    Возвращает True при успехе.
+    """
+    from .tasks import get_laozhang_client
+    from django.db import connection as _conn
+
+    text = file.extracted_text or ''
+    if not text.strip():
+        return False
+
+    client = get_laozhang_client()
+    model = _get_embed_model()
+
+    # 1. Generate summary via cheap LLM
+    summary_model = getattr(settings, 'PROJECT_EXPAND_MODEL', 'gpt-4o-mini')
+    try:
+        prompt = (
+            f"File: {file.filename or 'unknown'}\n\n"
+            f"{text[:6000]}"
+        )
+        resp = client.chat.completions.create(
+            model=summary_model,
+            messages=[
+                {
+                    'role': 'system',
+                    'content': (
+                        'Write a concise summary (150-200 words) of this file: '
+                        'its purpose, key entities, and main functionality. '
+                        'Be factual and specific.'
+                    ),
+                },
+                {'role': 'user', 'content': prompt},
+            ],
+            max_tokens=250,
+            temperature=0.2,
+        )
+        summary_text = resp.choices[0].message.content.strip()
+    except Exception as e:
+        logger.error(f'[6.5] embed_file_summary: LLM failed for file {file.id}: {e}')
+        return False
+
+    # 2. Embed the summary
+    try:
+        emb_resp = client.embeddings.create(input=[summary_text], model=model)
+        emb = emb_resp.data[0].embedding
+    except Exception as e:
+        logger.error(f'[6.5] embed_file_summary: embedding failed for file {file.id}: {e}')
+        return False
+
+    emb_str = '[' + ','.join(str(round(v, 7)) for v in emb) + ']'
+
+    # 3. Save summary text to ProjectFile
+    try:
+        from .models import ProjectFile
+        ProjectFile.objects.filter(pk=file.pk).update(summary=summary_text)
+    except Exception as e:
+        logger.warning(f'[6.5] embed_file_summary: could not save summary text for file {file.id}: {e}')
+
+    # 4. Store embedding as chunk_index=-1 (upsert)
+    try:
+        with _conn.cursor() as cur:
+            cur.execute(
+                'DELETE FROM aitext_projectchunk WHERE file_id = %s AND chunk_index = -1',
+                [file.id],
+            )
+            cur.execute(
+                """
+                INSERT INTO aitext_projectchunk
+                    (project_id, file_id, chunk_index, content, token_count, embedding)
+                VALUES (%s, %s, -1, %s, %s, %s::vector)
+                """,
+                [file.project_id, file.id, summary_text,
+                 math.ceil(len(summary_text.split()) / _WORDS_PER_TOKEN), emb_str],
+            )
+    except Exception as e:
+        logger.error(f'[6.5] embed_file_summary: DB insert failed for file {file.id}: {e}')
+        return False
+
+    logger.info(f'[6.5] File {file.id} summary embedded ({len(summary_text)} chars)')
+    return True
+
+
+def file_level_search(project, query: str, top_files: int = 5) -> list:
+    """Sprint 6.5: Уровень 1 — поиск по summary-эмбеддингам файлов.
+
+    Возвращает список ProjectFile, отсортированных по близости к запросу.
+    Использует chunk_index=-1 как маркер summary-чанка.
+    """
+    from .tasks import get_laozhang_client
+    from .models import ProjectFile
+
+    if not query or not query.strip():
+        return []
+
+    client = get_laozhang_client()
+    model = _get_embed_model()
+
+    q_emb = _get_query_embedding(query, model, client)
+    if q_emb is None:
+        return []
 
     q_str = '[' + ','.join(str(round(v, 7)) for v in q_emb) + ']'
 
@@ -242,20 +401,21 @@ def vector_search(project, query: str, top_k: int = None) -> str:
         with connection.cursor() as cur:
             cur.execute(
                 """
-                SELECT content
+                SELECT DISTINCT ON (file_id) file_id
                 FROM aitext_projectchunk
-                WHERE project_id = %s AND embedding IS NOT NULL
-                ORDER BY embedding <=> %s::vector
+                WHERE project_id = %s AND chunk_index = -1 AND embedding IS NOT NULL
+                ORDER BY file_id, embedding <=> %s::vector
                 LIMIT %s
                 """,
-                [project.id, q_str, top_k],
+                [project.id, q_str, top_files],
             )
-            rows = cur.fetchall()
+            file_ids = [row[0] for row in cur.fetchall()]
     except Exception as e:
-        logger.error(f"Ошибка vector_search для проекта {project.id}: {e}")
-        return ''
+        logger.error(f'[6.5] file_level_search failed for project {project.id}: {e}')
+        return []
 
-    if not rows:
-        return ''
+    if not file_ids:
+        return []
 
-    return '\n...\n'.join(row[0] for row in rows)
+    files_by_id = {f.id: f for f in ProjectFile.objects.filter(id__in=file_ids)}
+    return [files_by_id[fid] for fid in file_ids if fid in files_by_id]

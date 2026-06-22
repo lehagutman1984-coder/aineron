@@ -316,6 +316,8 @@ class ProjectFile(models.Model):
     )
     repo_path = models.CharField(max_length=500, blank=True, verbose_name='Путь в репозитории')
     repo_sha = models.CharField(max_length=64, blank=True, verbose_name='Git blob SHA (для инкрементального синка)')
+    # Sprint 6.5 — Two-Level Retrieval
+    summary = models.TextField(blank=True, verbose_name='Summary файла (для file-level embeddings)')
 
     class Meta:
         verbose_name = 'Файл базы знаний'
@@ -350,6 +352,17 @@ class ProjectConnector(models.Model):
                                    verbose_name='Статус последнего синка')
     last_sync_report = models.JSONField(default=dict, blank=True, verbose_name='Отчёт последнего синка')
     last_repo_head_sha = models.CharField(max_length=64, blank=True, verbose_name='Последний HEAD SHA')
+    # Sprint 7.2 — Deploy hook
+    deploy_webhook_url = models.CharField(max_length=500, blank=True, verbose_name='URL deploy-вебхука')
+    deploy_secret_enc = models.TextField(blank=True, verbose_name='Deploy secret (зашифрован Fernet)')
+    deploy_status = models.CharField(
+        max_length=10, blank=True, default='',
+        choices=[('', '—'), ('pending', 'Ожидает'), ('running', 'В процессе'),
+                 ('success', 'Успешно'), ('error', 'Ошибка')],
+        verbose_name='Статус деплоя',
+    )
+    last_deploy_at = models.DateTimeField(null=True, blank=True, verbose_name='Последний деплой')
+    last_deploy_log = models.TextField(blank=True, verbose_name='Лог последнего деплоя')
 
     class Meta:
         verbose_name = 'Git-коннектор'

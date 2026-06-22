@@ -71,59 +71,192 @@ def _inject_file(f, user_message_text: str, inject_limit: int, total_chars: int)
 def build_project_knowledge_context(project, user_message_text: str = '') -> str:
     """Собирает контекст из файлов базы знаний проекта.
 
-    При PROJECT_VECTOR_RAG=1:
-      - векторный поиск по файлам с embed_status='done'
-      - лексический поиск по файлам без эмбеддингов (source='repo', новые загрузки)
-    При PROJECT_VECTOR_RAG=0 — только лексика для всех файлов.
+    Phase 4/5 (без флагов Phase 6):
+      PROJECT_VECTOR_RAG=1 — векторный поиск по embedded-файлам + лексика по остальным.
+      PROJECT_VECTOR_RAG=0 — только лексика.
+
+    Phase 6 (при соответствующих флагах, контракт не изменяется):
+      6.4 PROJECT_FILE_PIN     — @file/@web директивы в запросе.
+      6.1 PROJECT_HYBRID_SEARCH — RRF-слияние FTS+вектор на уровне чанков.
+      6.1 PROJECT_CONV_SEARCH   — conversation-aware запрос (последние N сообщений).
+      6.1 PROJECT_ADAPTIVE_TOPK — динамический top_k по типу вопроса.
+      6.2 PROJECT_QUERY_EXPANSION — LLM-варианты запроса + RRF.
+      6.3 PROJECT_RERANK        — cross-encoder rerank top-50 → top-15.
+      6.5 PROJECT_TWO_LEVEL     — двухуровневый ретривал (файл → чанк).
     """
     inject_limit = _get_inject_limit()
     parts = []
     total_chars = 0
-
-    # Векторный путь — только файлы с готовыми эмбеддингами
-    if getattr(settings, 'PROJECT_VECTOR_RAG', False) and user_message_text:
-        try:
-            from .embeddings import vector_search
-            top_k = int(getattr(settings, 'PROJECT_TOP_K', 6))
-            vec_result = vector_search(project, user_message_text, top_k=top_k)
-            if vec_result:
-                parts.append(vec_result)
-                total_chars += len(vec_result)
-        except Exception as e:
-            logger.warning(f"vector_search failed: {e}")
-
-    # Лексический путь — файлы без эмбеддингов (новые из GitHub-синка и т.п.)
-    no_embed_qs = project.knowledge_files.filter(
-        enabled=True, status='ready'
-    ).exclude(extracted_text='').exclude(embed_status='done')
-
     used_file_ids = []
-    for f in no_embed_qs:
+
+    query = user_message_text or ''
+
+    # ── Sprint 6.4: @file / @web директивы ───────────────────────────────────
+    directives = {'files': [], 'web': False, 'clean_query': query}
+    if getattr(settings, 'PROJECT_FILE_PIN', False) and query:
+        try:
+            from .retrieval import parse_context_directives
+            directives = parse_context_directives(query)
+            query = directives.get('clean_query', query)
+        except Exception as e:
+            logger.warning(f'[6.4] parse_context_directives failed: {e}')
+
+    # @file: inject pinned files (полный extracted_text, обходит ретривал)
+    for fpath in directives.get('files', []):
         if total_chars >= inject_limit:
             break
-        block, added = _inject_file(f, user_message_text, inject_limit, total_chars)
-        parts.append(block)
-        total_chars += added
-        used_file_ids.append(f.id)
+        try:
+            from .models import ProjectFile
+            from django.db.models import Q
+            pf = (
+                project.knowledge_files.filter(status='ready', enabled=True)
+                .filter(Q(filename=fpath) | Q(filename__endswith='/' + fpath) | Q(repo_path=fpath))
+                .first()
+            )
+            if pf and pf.extracted_text:
+                snippet = pf.extracted_text[:inject_limit - total_chars]
+                parts.append(f"### @file {fpath}\n{snippet}")
+                total_chars += len(snippet)
+                if pf.id not in used_file_ids:
+                    used_file_ids.append(pf.id)
+        except Exception as e:
+            logger.warning(f'[6.4] @file "{fpath}" failed: {e}')
 
-    # Если PROJECT_VECTOR_RAG выключен — лексика по всем файлам (кроме уже добавленных)
-    if not getattr(settings, 'PROJECT_VECTOR_RAG', False):
-        all_qs = project.knowledge_files.filter(enabled=True, status='ready').exclude(extracted_text='')
-        for f in all_qs:
-            if f.id in used_file_ids:
-                continue
+    # @web: Tavily search
+    if directives.get('web') and getattr(settings, 'PROJECT_WEB_SEARCH', False) and query:
+        try:
+            from .web_search import web_search as _ws
+            web_result = _ws(query)
+            if web_result and total_chars < inject_limit:
+                snippet = web_result[:inject_limit - total_chars]
+                parts.append(snippet)
+                total_chars += len(snippet)
+        except Exception as e:
+            logger.warning(f'[6.4] @web failed: {e}')
+
+    # ── Sprint 6.1: Conversation-aware query ─────────────────────────────────
+    effective_query = query
+    if getattr(settings, 'PROJECT_CONV_SEARCH', False) and query:
+        try:
+            from .retrieval import build_search_query
+            effective_query = build_search_query(project, query)
+        except Exception as e:
+            logger.warning(f'[6.1] build_search_query failed: {e}')
+
+    # ── Sprint 6.1: Adaptive top_k ────────────────────────────────────────────
+    if getattr(settings, 'PROJECT_ADAPTIVE_TOPK', False) and effective_query:
+        try:
+            from .retrieval import adaptive_top_k
+            top_k = adaptive_top_k(effective_query)
+        except Exception:
+            top_k = int(getattr(settings, 'PROJECT_TOP_K', 6))
+    else:
+        top_k = int(getattr(settings, 'PROJECT_TOP_K', 6))
+
+    # ── Sprint 6.5: Two-level retrieval: file-level filter ────────────────────
+    restrict_file_ids = None
+    if getattr(settings, 'PROJECT_TWO_LEVEL', False) and effective_query:
+        try:
+            from .embeddings import file_level_search
+            top_files = file_level_search(
+                project, effective_query, int(getattr(settings, 'PROJECT_TWO_LEVEL_FILES', 5))
+            )
+            if top_files:
+                restrict_file_ids = [f.id for f in top_files]
+        except Exception as e:
+            logger.warning(f'[6.5] file_level_search failed: {e}')
+
+    # ── Sprint 6.2: Query expansion ───────────────────────────────────────────
+    queries = [effective_query] if effective_query else []
+    if getattr(settings, 'PROJECT_QUERY_EXPANSION', False) and effective_query:
+        try:
+            from .retrieval import expand_query
+            expanded = expand_query(effective_query)
+            if expanded:
+                queries = expanded
+        except Exception as e:
+            logger.warning(f'[6.2] expand_query failed: {e}')
+
+    # ── Sprint 6.1+6.3: Hybrid search (RRF) + optional rerank ────────────────
+    if getattr(settings, 'PROJECT_HYBRID_SEARCH', False) and queries:
+        try:
+            from .search import hybrid_search
+            candidates_n = (
+                int(getattr(settings, 'PROJECT_RERANK_CANDIDATES', 50))
+                if getattr(settings, 'PROJECT_RERANK', False)
+                else top_k
+            )
+            candidates = hybrid_search(
+                project, queries, top_k=candidates_n,
+                restrict_file_ids=restrict_file_ids,
+            )
+
+            if getattr(settings, 'PROJECT_RERANK', False) and candidates:
+                try:
+                    from .rerank import rerank
+                    candidates = rerank(
+                        effective_query, candidates,
+                        top_k=int(getattr(settings, 'PROJECT_RERANK_TOPK', 15)),
+                    )
+                except Exception as e:
+                    logger.warning(f'[6.3] rerank failed: {e}')
+
+            if candidates:
+                chunks_text = '\n...\n'.join(c['content'] for c in candidates[:top_k])
+                if chunks_text and total_chars < inject_limit:
+                    snippet = chunks_text[:inject_limit - total_chars]
+                    parts.append(snippet)
+                    total_chars += len(snippet)
+                    for c in candidates[:top_k]:
+                        if c['file_id'] not in used_file_ids:
+                            used_file_ids.append(c['file_id'])
+        except Exception as e:
+            logger.warning(f'[6.1] hybrid_search pipeline failed: {e}')
+
+    else:
+        # ── Phase 4/5: оригинальный RAG-путь ─────────────────────────────────
+        if getattr(settings, 'PROJECT_VECTOR_RAG', False) and effective_query:
+            try:
+                from .embeddings import vector_search
+                vec_result = vector_search(project, effective_query, top_k=top_k)
+                if vec_result:
+                    parts.append(vec_result)
+                    total_chars += len(vec_result)
+            except Exception as e:
+                logger.warning(f'vector_search failed: {e}')
+
+        # Лексический путь — файлы без эмбеддингов
+        no_embed_qs = project.knowledge_files.filter(
+            enabled=True, status='ready',
+        ).exclude(extracted_text='').exclude(embed_status='done')
+
+        for f in no_embed_qs:
             if total_chars >= inject_limit:
                 break
-            block, added = _inject_file(f, user_message_text, inject_limit, total_chars)
+            block, added = _inject_file(f, effective_query, inject_limit, total_chars)
             parts.append(block)
             total_chars += added
             used_file_ids.append(f.id)
 
-    # Sprint 5.2: @codebase semantic search over repo files
-    if getattr(settings, 'PROJECT_CODEBASE', False) and user_message_text:
+        if not getattr(settings, 'PROJECT_VECTOR_RAG', False):
+            all_qs = project.knowledge_files.filter(
+                enabled=True, status='ready',
+            ).exclude(extracted_text='')
+            for f in all_qs:
+                if f.id in used_file_ids:
+                    continue
+                if total_chars >= inject_limit:
+                    break
+                block, added = _inject_file(f, effective_query, inject_limit, total_chars)
+                parts.append(block)
+                total_chars += added
+                used_file_ids.append(f.id)
+
+    # ── Sprint 5.2: @codebase semantic search ─────────────────────────────────
+    if getattr(settings, 'PROJECT_CODEBASE', False) and effective_query:
         try:
             from .codebase import build_codebase_context
-            codebase_ctx = build_codebase_context(project, user_message_text)
+            codebase_ctx = build_codebase_context(project, effective_query)
             if codebase_ctx:
                 parts.insert(0, codebase_ctx)
                 total_chars += len(codebase_ctx)
