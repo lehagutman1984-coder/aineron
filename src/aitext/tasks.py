@@ -55,19 +55,34 @@ def _fetch_from_connector(project, fpath: str) -> str | None:
     """Фетчит файл напрямую из GitHub/Gitea коннектора проекта (как Perplexity).
 
     Используется как fallback когда файл не найден в KB (не попал в лимит синхронизации).
+    Если fpath — частичный путь (studio/tasks.py вместо src/studio/tasks.py),
+    пытается найти полный путь через DB (repo_path__endswith).
     """
     try:
         from .sync import _github_file, _gitea_file
         from .crypto import decrypt_token
+        from django.db.models import Q
         connector = project.connectors.order_by('created_at').first()
         if not connector:
             return None
         token = decrypt_token(connector.access_token_enc)
+
+        # Если частичный путь — ищем полный repo_path через DB
+        full_path = fpath
+        if '/' not in fpath or not fpath.startswith('src/'):
+            pf_match = project.knowledge_files.filter(
+                status='ready', enabled=True
+            ).filter(
+                Q(repo_path=fpath) | Q(repo_path__endswith='/' + fpath)
+            ).first()
+            if pf_match:
+                full_path = pf_match.repo_path
+
         if connector.connector_type == 'github':
-            content = _github_file(connector, token, fpath)
+            content = _github_file(connector, token, full_path)
         else:
-            content = _gitea_file(connector, token, fpath)
-        logger.info(f'[get_file] fetched "{fpath}" directly from connector ({len(content)} chars)')
+            content = _gitea_file(connector, token, full_path)
+        logger.info(f'[get_file] fetched "{full_path}" directly from connector ({len(content)} chars)')
         return content
     except Exception as e:
         logger.warning(f'[get_file] direct connector fetch "{fpath}" failed: {e}')
@@ -174,7 +189,7 @@ def build_project_knowledge_context(project, user_message_text: str = '', recent
             from django.db.models import Q
             pf = (
                 project.knowledge_files.filter(status='ready', enabled=True)
-                .filter(Q(filename=fpath) | Q(filename__endswith='/' + fpath) | Q(repo_path=fpath))
+                .filter(Q(filename=fpath) | Q(filename__endswith='/' + fpath) | Q(repo_path=fpath) | Q(repo_path__endswith='/' + fpath))
                 .first()
             )
             if pf and pf.extracted_text:
@@ -199,7 +214,7 @@ def build_project_knowledge_context(project, user_message_text: str = '', recent
             from django.db.models import Q
             pf = (
                 project.knowledge_files.filter(status='ready', enabled=True)
-                .filter(Q(filename=fpath) | Q(filename__endswith='/' + fpath) | Q(repo_path=fpath))
+                .filter(Q(filename=fpath) | Q(filename__endswith='/' + fpath) | Q(repo_path=fpath) | Q(repo_path__endswith='/' + fpath))
                 .first()
             )
             if pf and pf.extracted_text and pf.id not in used_file_ids:
@@ -234,7 +249,7 @@ def build_project_knowledge_context(project, user_message_text: str = '', recent
                 from django.db.models import Q
                 pf = (
                     project.knowledge_files.filter(status='ready', enabled=True)
-                    .filter(Q(filename=fpath) | Q(filename__endswith='/' + fpath) | Q(repo_path=fpath))
+                    .filter(Q(filename=fpath) | Q(filename__endswith='/' + fpath) | Q(repo_path=fpath) | Q(repo_path__endswith='/' + fpath))
                     .first()
                 )
                 if pf and pf.extracted_text and pf.id not in used_file_ids:
