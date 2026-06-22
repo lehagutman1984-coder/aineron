@@ -388,7 +388,7 @@ export interface ProjectConnector {
   created_at: string;
   auto_sync: boolean;
   sync_status: "ok" | "error" | "running" | "";
-  last_sync_report: { created?: number; updated?: number; deleted?: number; skipped?: number; errors?: number } | null;
+  last_sync_report: { created?: number; updated?: number; deleted?: number; skipped?: number; errors?: number; error?: string; error_detail?: string } | null;
 }
 
 export interface RepoTreeItem {

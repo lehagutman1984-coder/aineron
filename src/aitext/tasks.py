@@ -106,17 +106,18 @@ def build_project_knowledge_context(project, user_message_text: str = '') -> str
         total_chars += added
         used_file_ids.append(f.id)
 
-    # Если PROJECT_VECTOR_RAG выключен — лексика по всем файлам
+    # Если PROJECT_VECTOR_RAG выключен — лексика по всем файлам (кроме уже добавленных)
     if not getattr(settings, 'PROJECT_VECTOR_RAG', False):
         all_qs = project.knowledge_files.filter(enabled=True, status='ready').exclude(extracted_text='')
         for f in all_qs:
+            if f.id in used_file_ids:
+                continue
             if total_chars >= inject_limit:
                 break
             block, added = _inject_file(f, user_message_text, inject_limit, total_chars)
             parts.append(block)
             total_chars += added
-            if f.id not in used_file_ids:
-                used_file_ids.append(f.id)
+            used_file_ids.append(f.id)
 
     # Sprint 5.2: @codebase semantic search over repo files
     if getattr(settings, 'PROJECT_CODEBASE', False) and user_message_text:

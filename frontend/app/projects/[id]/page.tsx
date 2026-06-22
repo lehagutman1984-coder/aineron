@@ -932,6 +932,27 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
   const [syncingId, setSyncingId] = useState<number | null>(null);
   const [copiedWebhook, setCopiedWebhook] = useState<number | null>(null);
 
+  const handleSync = async (connId: number) => {
+    setSyncingId(connId);
+    try {
+      await syncConnector(projectId, connId);
+      // Poll for result up to 45 seconds
+      let attempts = 0;
+      const poll = setInterval(async () => {
+        attempts++;
+        await qc.invalidateQueries({ queryKey: ["connectors", projectId] });
+        const updated = qc.getQueryData<typeof connectors>(["connectors", projectId]);
+        const conn = updated?.find((c) => c.id === connId);
+        if (conn?.last_synced_at || attempts >= 15) {
+          clearInterval(poll);
+          setSyncingId(null);
+        }
+      }, 3000);
+    } catch {
+      setSyncingId(null);
+    }
+  };
+
   const { data: connectors = [], isLoading: connLoading } = useQuery({
     queryKey: ["connectors", projectId],
     queryFn: () => listConnectors(projectId),
@@ -1077,15 +1098,28 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                   <div className="flex items-center gap-2">
                     <p className="text-[14px] font-semibold text-[#0d0d0d]">{conn.owner}/{conn.repo}</p>
                     {conn.sync_status === "ok" && (
-                      <span className="rounded-full bg-[rgba(34,168,90,0.12)] px-2 py-0.5 text-[10px] font-medium text-[#22a85a]">синк OK</span>
+                      <span className="rounded-full bg-[rgba(34,168,90,0.12)] px-2 py-0.5 text-[10px] font-medium text-[#22a85a]">
+                        синк OK{conn.last_sync_report?.created ? ` · +${conn.last_sync_report.created}` : ""}
+                      </span>
                     )}
                     {conn.sync_status === "error" && (
-                      <span className="rounded-full bg-[rgba(231,76,60,0.10)] px-2 py-0.5 text-[10px] font-medium text-[#e74c3c]">синк ошибка</span>
+                      <span
+                        className="rounded-full bg-[rgba(231,76,60,0.10)] px-2 py-0.5 text-[10px] font-medium text-[#e74c3c] cursor-help"
+                        title={conn.last_sync_report?.error_detail || conn.last_sync_report?.error || "Ошибка синхронизации"}
+                      >
+                        синк ошибка: {conn.last_sync_report?.error || "неизвестно"}
+                      </span>
                     )}
                   </div>
                   <p className="text-[11px] text-[rgba(13,13,13,0.45)]">
                     {conn.connector_type === "github" ? "GitHub" : "Gitea"} · ветка {conn.branch}
                     {conn.last_synced_at && <> · синхронизировано {new Date(conn.last_synced_at).toLocaleString("ru")}</>}
+                    {conn.last_sync_report && conn.last_sync_report.created != null && conn.last_sync_report.created > 0 && (
+                      <> · <span className="text-[#22a85a]">{conn.last_sync_report.created} новых файлов в базе знаний</span></>
+                    )}
+                    {conn.last_sync_report && conn.last_sync_report.updated != null && conn.last_sync_report.updated > 0 && (
+                      <> · {conn.last_sync_report.updated} обновлено</>
+                    )}
                     {conn.last_sync_report && conn.last_sync_report.errors != null && conn.last_sync_report.errors > 0 && (
                       <> · <span className="text-[#e74c3c]">{conn.last_sync_report.errors} ошибок</span></>
                     )}
@@ -1106,16 +1140,13 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <button
-                    onClick={async () => {
-                      setSyncingId(conn.id);
-                      try { await syncConnector(projectId, conn.id); } finally { setSyncingId(null); }
-                    }}
+                    onClick={() => handleSync(conn.id)}
                     disabled={syncingId === conn.id}
                     className="flex items-center gap-1.5 rounded-[7px] border border-[rgba(13,13,13,0.14)] px-3 py-1.5 text-[12px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:border-[#0a7cff] hover:text-[#0a7cff] disabled:opacity-50"
                     title="Синхронизировать файлы из репозитория в базу знаний"
                   >
                     <RefreshCw size={11} className={syncingId === conn.id ? "animate-spin" : ""} />
-                    Синхронизировать
+                    {syncingId === conn.id ? "Синхронизация..." : "Синхронизировать"}
                   </button>
                   <button
                     onClick={() => { setBrowsingId(conn.id === browsingId ? null : conn.id); setSelectedFile(null); setFileContent(null); setOpenDirs(new Set()); }}

@@ -168,11 +168,19 @@ def sync_connector(connector_id: int) -> dict:
         logger.error(f'[sync] connector {connector_id} not found')
         return {'error': 'not_found'}
 
+    def _fail(reason: str, exc=None) -> dict:
+        report = {'error': reason, 'error_detail': str(exc) if exc else ''}
+        connector.sync_status = 'error'
+        connector.last_sync_report = report
+        connector.last_synced_at = timezone.now()
+        connector.save(update_fields=['sync_status', 'last_sync_report', 'last_synced_at'])
+        return report
+
     try:
         token = decrypt_token(connector.access_token_enc)
     except Exception as e:
         logger.error(f'[sync] token decrypt failed for connector {connector_id}: {e}')
-        return {'error': 'token_error'}
+        return _fail('token_error', e)
 
     try:
         if connector.connector_type == 'github':
@@ -181,7 +189,7 @@ def sync_connector(connector_id: int) -> dict:
             remote_tree = _gitea_tree(connector, token)
     except Exception as e:
         logger.error(f'[sync] fetch tree failed for connector {connector_id}: {e}')
-        return {'error': f'tree_error: {e}'}
+        return _fail(f'tree_error', e)
 
     remote_map = {item['path']: item for item in remote_tree}  # path → {path, sha, size}
 
@@ -209,35 +217,39 @@ def sync_connector(connector_id: int) -> dict:
             continue
 
         filename = os.path.basename(path)
-        if existing:
-            # Снапшот старого содержимого перед обновлением
-            _create_version_snapshot(existing, existing.extracted_text)
-            # Обновляем текст и сбрасываем embed_status
-            existing.extracted_text = content
-            existing.status = 'ready'
-            existing.repo_sha = remote['sha']
-            existing.file_size = len(content.encode('utf-8'))
-            existing.embed_status = 'none'
-            existing.save(update_fields=['extracted_text', 'status', 'repo_sha', 'file_size', 'embed_status'])
-            if getattr(settings, 'PROJECT_VECTOR_RAG', False):
-                embed_project_file.delay(existing.id)
-            updated += 1
-        else:
-            pf = ProjectFile.objects.create(
-                project=connector.project,
-                connector=connector,
-                filename=filename,
-                repo_path=path,
-                source='repo',
-                file_size=len(content.encode('utf-8')),
-                file_type=_detect_file_type(filename),
-                extracted_text=content,
-                status='ready',
-                repo_sha=remote['sha'],
-            )
-            if getattr(settings, 'PROJECT_VECTOR_RAG', False):
-                embed_project_file.delay(pf.id)
-            created += 1
+        try:
+            if existing:
+                # Снапшот старого содержимого перед обновлением
+                _create_version_snapshot(existing, existing.extracted_text)
+                # Обновляем текст и сбрасываем embed_status
+                existing.extracted_text = content
+                existing.status = 'ready'
+                existing.repo_sha = remote['sha']
+                existing.file_size = len(content.encode('utf-8'))
+                existing.embed_status = 'none'
+                existing.save(update_fields=['extracted_text', 'status', 'repo_sha', 'file_size', 'embed_status'])
+                if getattr(settings, 'PROJECT_VECTOR_RAG', False):
+                    embed_project_file.delay(existing.id)
+                updated += 1
+            else:
+                pf = ProjectFile.objects.create(
+                    project=connector.project,
+                    connector=connector,
+                    filename=filename,
+                    repo_path=path,
+                    source='repo',
+                    file_size=len(content.encode('utf-8')),
+                    file_type=_detect_file_type(filename),
+                    extracted_text=content,
+                    status='ready',
+                    repo_sha=remote['sha'],
+                )
+                if getattr(settings, 'PROJECT_VECTOR_RAG', False):
+                    embed_project_file.delay(pf.id)
+                created += 1
+        except Exception as e:
+            logger.error(f'[sync] failed to save {path}: {e}')
+            errors += 1
 
     # Удаляем файлы, которых больше нет в репозитории
     for path, pf in existing_map.items():
