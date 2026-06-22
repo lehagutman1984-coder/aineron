@@ -397,6 +397,9 @@ export interface ProjectCommit {
   commit_message: string;
   files: CommitFile[];
   status: "pending" | "pushed" | "rejected" | "failed";
+  kind: "commit" | "pull_request";
+  pr_branch: string;
+  pr_url: string;
   error_message: string;
   created_at: string;
   pushed_at: string | null;

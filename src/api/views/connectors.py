@@ -80,8 +80,9 @@ class CommitSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ProjectCommit
-        fields = ['id', 'connector_id', 'commit_message', 'files', 'status', 'error_message', 'created_at', 'pushed_at']
-        read_only_fields = ['id', 'status', 'error_message', 'created_at', 'pushed_at']
+        fields = ['id', 'connector_id', 'commit_message', 'files', 'status', 'kind',
+                  'pr_branch', 'pr_url', 'error_message', 'created_at', 'pushed_at']
+        read_only_fields = ['id', 'status', 'kind', 'pr_branch', 'pr_url', 'error_message', 'created_at', 'pushed_at']
 
 
 # ── Views ─────────────────────────────────────────────────────────────────────
@@ -279,14 +280,20 @@ class CommitConfirmView(APIView):
             commit.save(update_fields=['status'])
             return Response(CommitSerializer(commit).data)
 
-        if action == 'push':
+        if action in ('push', 'pr'):
             if not commit.connector:
                 return Response({'error': 'Нет коннектора для пуша'}, status=400)
+            if action == 'pr':
+                from django.conf import settings
+                if not getattr(settings, 'PROJECT_PR_PROPOSALS', False):
+                    return Response({'error': 'PR-режим отключён (PROJECT_PR_PROPOSALS=0)'}, status=400)
+                commit.kind = 'pull_request'
+                commit.save(update_fields=['kind'])
             from aitext.tasks import push_project_commit
             push_project_commit.delay(commit.id)
-            return Response({'status': 'queued', 'commit_id': commit.id})
+            return Response({'status': 'queued', 'commit_id': commit.id, 'kind': commit.kind})
 
-        return Response({'error': 'action должен быть push или reject'}, status=400)
+        return Response({'error': 'action должен быть push, pr или reject'}, status=400)
 
 
 # ── Inbound Sync (Sprint 4.2) ─────────────────────────────────────────────────

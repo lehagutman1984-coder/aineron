@@ -118,6 +118,17 @@ def build_project_knowledge_context(project, user_message_text: str = '') -> str
             if f.id not in used_file_ids:
                 used_file_ids.append(f.id)
 
+    # Sprint 5.2: @codebase semantic search over repo files
+    if getattr(settings, 'PROJECT_CODEBASE', False) and user_message_text:
+        try:
+            from .codebase import build_codebase_context
+            codebase_ctx = build_codebase_context(project, user_message_text)
+            if codebase_ctx:
+                parts.insert(0, codebase_ctx)
+                total_chars += len(codebase_ctx)
+        except Exception as e:
+            logger.warning(f'[codebase] build_codebase_context failed: {e}')
+
     if not parts:
         return ''
 
@@ -1177,22 +1188,68 @@ def push_project_commit(self, commit_id: int):
 
     try:
         from urllib.parse import urlparse
-        if connector.connector_type == 'github':
-            from .github_client import push_files
-            result = push_files(
-                connector.owner, connector.repo, token,
-                commit.files, commit.commit_message, connector.branch,
-            )
+        is_pr = commit.kind == 'pull_request'
+        parsed = urlparse(connector.repo_url)
+        ext_base = f'{parsed.scheme}://{parsed.netloc}' if parsed.netloc else None
+
+        if is_pr:
+            # Sprint 5.2: create a new branch, push files there, then open PR
+            import datetime as _dt
+            pr_branch = commit.pr_branch or f'ai-pr-{commit.id}-{_dt.datetime.utcnow().strftime("%Y%m%d%H%M%S")}'
+            target_branch = connector.branch
+
+            if connector.connector_type == 'github':
+                from .github_client import create_branch, push_files, create_pull
+                create_branch(connector.owner, connector.repo, token, pr_branch, target_branch)
+                result = push_files(
+                    connector.owner, connector.repo, token,
+                    commit.files, commit.commit_message, pr_branch,
+                )
+                if not result.get('errors'):
+                    pr_url = create_pull(
+                        connector.owner, connector.repo, token,
+                        title=commit.commit_message,
+                        body=f'Автоматически создан AI. Изменено файлов: {len(commit.files)}',
+                        head=pr_branch,
+                        base=target_branch,
+                    )
+                    commit.pr_url = pr_url
+            else:
+                from studio.gitea_client import create_branch_ext, push_files_ext, create_pull_ext
+                create_branch_ext(connector.owner, connector.repo, pr_branch, target_branch,
+                                  token=token, base_url=ext_base)
+                result = push_files_ext(
+                    connector.owner, connector.repo, commit.files,
+                    commit.commit_message, pr_branch,
+                    token=token, base_url=ext_base,
+                )
+                if not result.get('errors'):
+                    pr_url = create_pull_ext(
+                        connector.owner, connector.repo,
+                        title=commit.commit_message,
+                        body=f'Автоматически создан AI. Изменено файлов: {len(commit.files)}',
+                        head=pr_branch,
+                        base=target_branch,
+                        token=token, base_url=ext_base,
+                    )
+                    commit.pr_url = pr_url
+
+            commit.pr_branch = pr_branch
         else:
-            from studio.gitea_client import push_files_ext
-            # Extract external Gitea base URL from repo_url (e.g. https://gitea.example.com)
-            parsed = urlparse(connector.repo_url)
-            ext_base = f'{parsed.scheme}://{parsed.netloc}' if parsed.netloc else None
-            result = push_files_ext(
-                connector.owner, connector.repo, commit.files,
-                commit.commit_message, connector.branch,
-                token=token, base_url=ext_base,
-            )
+            # Regular commit path
+            if connector.connector_type == 'github':
+                from .github_client import push_files
+                result = push_files(
+                    connector.owner, connector.repo, token,
+                    commit.files, commit.commit_message, connector.branch,
+                )
+            else:
+                from studio.gitea_client import push_files_ext
+                result = push_files_ext(
+                    connector.owner, connector.repo, commit.files,
+                    commit.commit_message, connector.branch,
+                    token=token, base_url=ext_base,
+                )
 
         if result.get('errors'):
             first_err = result['errors'][0].get('error', 'unknown')
@@ -1201,12 +1258,11 @@ def push_project_commit(self, commit_id: int):
         else:
             commit.status = 'pushed'
             commit.pushed_at = timezone.now()
-        commit.save(update_fields=['status', 'error_message', 'pushed_at'])
-        logger.info(f'[push_commit] commit {commit_id}: {result}')
+        commit.save(update_fields=['status', 'error_message', 'pushed_at', 'pr_url', 'pr_branch'])
+        logger.info(f'[push_commit] commit {commit_id} kind={commit.kind}: {result}')
 
     except Exception as e:
         logger.error(f'[push_commit] commit {commit_id} failed: {e}')
-        # Only mark as permanently failed after all retries exhausted
         if self.request.retries >= self.max_retries:
             commit.status = 'failed'
             commit.error_message = str(e)[:500]

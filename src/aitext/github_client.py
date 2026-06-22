@@ -109,3 +109,40 @@ def push_files(owner: str, repo: str, token: str, files: list, message: str, bra
         return {'pushed': 0, 'errors': [{'path': '*', 'error': f'{e.response.status_code}: {e.response.text[:200]}'}]}
     except Exception as e:
         return {'pushed': 0, 'errors': [{'path': '*', 'error': str(e)[:200]}]}
+
+
+def create_branch(owner: str, repo: str, token: str, new_branch: str, from_branch: str = 'main') -> str:
+    """Create a new branch from from_branch. Returns the SHA of the new branch head."""
+    hdrs = _headers(token)
+    base = f'https://api.github.com/repos/{owner}/{repo}'
+
+    r = requests.get(f'{base}/branches/{from_branch}', headers=hdrs, timeout=10)
+    r.raise_for_status()
+    sha = r.json()['commit']['sha']
+
+    r = requests.post(
+        f'{base}/git/refs',
+        headers=hdrs,
+        json={'ref': f'refs/heads/{new_branch}', 'sha': sha},
+        timeout=10,
+    )
+    if r.status_code == 422:
+        # Branch already exists — OK, reuse it
+        pass
+    else:
+        r.raise_for_status()
+    return sha
+
+
+def create_pull(owner: str, repo: str, token: str, title: str, body: str,
+                head: str, base: str) -> str:
+    """Create a pull request. Returns the PR URL."""
+    hdrs = _headers(token)
+    r = requests.post(
+        f'https://api.github.com/repos/{owner}/{repo}/pulls',
+        headers=hdrs,
+        json={'title': title, 'body': body, 'head': head, 'base': base},
+        timeout=15,
+    )
+    r.raise_for_status()
+    return r.json()['html_url']

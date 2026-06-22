@@ -659,8 +659,8 @@ export const createCommit = (
 export const confirmCommit = (
   projectId: number,
   commitId: number,
-  action: "push" | "reject"
-): Promise<{ status: string; commit_id?: number } | ProjectCommit> =>
+  action: "push" | "pr" | "reject"
+): Promise<{ status: string; commit_id?: number; kind?: string } | ProjectCommit> =>
   request(`/projects/${projectId}/commits/${commitId}/confirm/`, {
     method: "POST",
     body: JSON.stringify({ action }),

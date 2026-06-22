@@ -54,6 +54,8 @@ import {
   ShieldCheck,
   ShieldOff,
   UserMinus,
+  GitPullRequest,
+  ExternalLink,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -1000,7 +1002,7 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
     }
   };
 
-  const handleConfirm = async (commitId: number, action: "push" | "reject") => {
+  const handleConfirm = async (commitId: number, action: "push" | "pr" | "reject") => {
     try {
       await confirmCommit(projectId, commitId, action);
       qc.invalidateQueries({ queryKey: ["commits", projectId] });
@@ -1320,18 +1322,31 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                 <div className="flex items-start gap-3">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[13px] font-medium text-[#0d0d0d]">{c.commit_message}</p>
-                    <div className="mt-1 flex items-center gap-2">
+                    <div className="mt-1 flex items-center gap-2 flex-wrap">
                       <CommitStatusBadge status={c.status} />
+                      {c.kind === "pull_request" && (
+                        <span className="flex items-center gap-1 rounded-full bg-[rgba(10,124,255,0.08)] px-2 py-0.5 text-[10px] font-medium text-[#0a7cff]">
+                          <GitPullRequest size={9} />
+                          PR
+                        </span>
+                      )}
                       <span className="text-[11px] text-[rgba(13,13,13,0.35)]">
                         {c.files.length} {c.files.length === 1 ? "файл" : "файлов"}
                       </span>
+                      {c.pr_url && (
+                        <a href={c.pr_url} target="_blank" rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-[11px] text-[#0a7cff] hover:underline">
+                          <ExternalLink size={9} />
+                          Открыть PR
+                        </a>
+                      )}
                     </div>
                     {c.status === "failed" && c.error_message && (
                       <p className="mt-1 text-[11px] text-[#e74c3c] line-clamp-1">{c.error_message}</p>
                     )}
                   </div>
                   {c.status === "pending" && (
-                    <div className="flex shrink-0 items-center gap-1.5">
+                    <div className="flex shrink-0 items-center gap-1.5 flex-wrap justify-end">
                       <button
                         onClick={() => handleConfirm(c.id, "push")}
                         className="flex items-center gap-1 rounded-[6px] bg-[#22a85a] px-2.5 py-1 text-[11px] font-medium text-white hover:bg-[#1a8a48] transition-colors"
@@ -1339,6 +1354,15 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                         <Send size={10} />
                         Запушить
                       </button>
+                      {c.connector_id && (
+                        <button
+                          onClick={() => handleConfirm(c.id, "pr")}
+                          className="flex items-center gap-1 rounded-[6px] border border-[rgba(10,124,255,0.4)] px-2.5 py-1 text-[11px] font-medium text-[#0a7cff] hover:bg-[rgba(10,124,255,0.06)] transition-colors"
+                        >
+                          <GitPullRequest size={10} />
+                          Pull Request
+                        </button>
+                      )}
                       <button
                         onClick={() => handleConfirm(c.id, "reject")}
                         className="rounded-[6px] px-2.5 py-1 text-[11px] text-[rgba(13,13,13,0.45)] hover:bg-[rgba(13,13,13,0.06)] transition-colors"

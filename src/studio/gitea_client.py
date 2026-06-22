@@ -174,6 +174,42 @@ def push_files_ext(owner: str, repo: str, files: list, message: str, branch: str
     return {'pushed': 0, 'errors': [{'path': '*', 'error': r.text[:200]}]}
 
 
+def create_branch_ext(owner: str, repo: str, new_branch: str, from_branch: str = 'main',
+                      token: str | None = None, base_url: str | None = None) -> None:
+    """Create a new branch in external Gitea from from_branch."""
+    if base_url:
+        hdrs = _ext_headers(token) if token else {}
+        api_base = base_url
+    else:
+        hdrs = _headers()
+        api_base = None
+
+    url = _ext_api(api_base, f'/repos/{owner}/{repo}/branches') if api_base else _api(f'/repos/{owner}/{repo}/branches')
+    r = requests.post(url, headers=hdrs, json={'new_branch_name': new_branch, 'old_branch_name': from_branch}, timeout=10)
+    if r.status_code == 409:
+        return  # branch already exists
+    r.raise_for_status()
+
+
+def create_pull_ext(owner: str, repo: str, title: str, body: str, head: str, base: str,
+                    token: str | None = None, base_url: str | None = None) -> str:
+    """Create a PR in external Gitea. Returns the PR URL."""
+    if base_url:
+        hdrs = _ext_headers(token) if token else {}
+        api_base = base_url
+    else:
+        hdrs = _headers()
+        api_base = None
+
+    url = _ext_api(api_base, f'/repos/{owner}/{repo}/pulls') if api_base else _api(f'/repos/{owner}/{repo}/pulls')
+    r = requests.post(url, headers=hdrs, json={
+        'title': title, 'body': body, 'head': head, 'base': base,
+    }, timeout=15)
+    r.raise_for_status()
+    data = r.json()
+    return data.get('html_url') or data.get('url', '')
+
+
 def get_file_content(owner, repo, path, ref='main') -> str:
     r = requests.get(
         _api(f'/repos/{owner}/{repo}/contents/{path}'),

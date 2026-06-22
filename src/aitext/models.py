@@ -373,6 +373,10 @@ class ProjectCommit(models.Model):
         ('rejected', 'Отклонён'),
         ('failed', 'Ошибка'),
     ]
+    KIND = [
+        ('commit', 'Коммит'),
+        ('pull_request', 'Pull Request'),
+    ]
 
     project = models.ForeignKey(
         Project, on_delete=models.CASCADE, related_name='commits',
@@ -385,6 +389,9 @@ class ProjectCommit(models.Model):
     commit_message = models.CharField(max_length=500, verbose_name='Сообщение коммита')
     files = models.JSONField(default=list, verbose_name='Файлы')  # [{"path": ..., "content": ...}]
     status = models.CharField(max_length=10, choices=STATUS, default='pending', verbose_name='Статус')
+    kind = models.CharField(max_length=14, choices=KIND, default='commit', verbose_name='Тип')
+    pr_branch = models.CharField(max_length=200, blank=True, verbose_name='Ветка PR')
+    pr_url = models.URLField(blank=True, verbose_name='URL Pull Request')
     error_message = models.TextField(blank=True, verbose_name='Ошибка')
     created_at = models.DateTimeField(auto_now_add=True)
     pushed_at = models.DateTimeField(null=True, blank=True, verbose_name='Дата пуша')
