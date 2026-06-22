@@ -28,9 +28,12 @@ Claude.ai Projects, Perplexity Spaces и ChatGPT Projects.
 | **Sprint 5.7** — RAG Quality (лимиты + надёжность эмбеддингов + умный чанкинг) | **ЗАВЕРШЁН** | `33046bc` |
 | **Sprint 5.3** — Knowledge intelligence (FTS поиск + кэш эмбеддингов + метрики) | **ЗАВЕРШЁН** | — |
 | **Sprint 5.4** — Sync hardening (версии файлов + polling + auto_sync toggle + sync badge) | **ЗАВЕРШЁН** | — |
-| **Sprint 5.1** — Collaborative Spaces (ProjectCollaborator + viewer/editor roles + UI) | **ЗАВЕРШЁН** | — |
+| **Sprint 5.1** — Collaborative Spaces (ProjectCollaborator + viewer/editor roles + UI) | **ЗАВЕРШЁН** | `f2f6339` |
+| **Sprint 5.2** — Codebase Intelligence (@codebase + PR proposals) | **ЗАВЕРШЁН** | `3c2d091` |
+| **Sprint 5.5** — Observability (audit log + public Spaces hardening) | **ЗАВЕРШЁН** | `72e6ab3` |
+| **Sprint 5.6** — Telegram upload (файлы в базу знаний из бота) | **ЗАВЕРШЁН** | `f9a5338` |
 
-**Phase 4 — ПОЛНОСТЬЮ ЗАВЕРШЕНА** (все 5 спринтов).
+**Phase 4 + Phase 5 — ПОЛНОСТЬЮ ЗАВЕРШЕНЫ** (все спринты 5.1–5.7).
 
 ### Bug-fix RAG-аудит (текущая сессия)
 
