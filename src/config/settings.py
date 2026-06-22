@@ -348,6 +348,8 @@ PROJECT_PR_PROPOSALS   = os.getenv('PROJECT_PR_PROPOSALS',   '0') == '1'
 # Sprint 5.5 — Observability + public Spaces hardening
 PROJECT_AUDIT_LOG        = os.getenv('PROJECT_AUDIT_LOG',        '0') == '1'
 PROJECT_PUBLIC_HARDENING = os.getenv('PROJECT_PUBLIC_HARDENING', '1') == '1'  # on by default (security)
+# Sprint 5.6 — Telegram upload to project knowledge base
+PROJECT_TG_UPLOAD        = os.getenv('PROJECT_TG_UPLOAD',        '0') == '1'
 
 STUDIO_GITEA_URL = os.getenv('STUDIO_GITEA_URL', 'http://gitea:3000')
 STUDIO_GITEA_ADMIN_USER = os.getenv('STUDIO_GITEA_ADMIN_USER', 'studio_admin')

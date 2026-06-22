@@ -148,12 +148,15 @@ async def cb_project_select(query: CallbackQuery, tg_user=None):
 
     file_count = await sync_to_async(project.knowledge_files.filter(status='ready').count)()
     prompt_preview = (project.system_prompt[:120] + '...') if len(project.system_prompt) > 120 else project.system_prompt
+    from django.conf import settings as djsettings
+    tg_upload_hint = '\nЧтобы добавить файл в базу знаний — просто пришли PDF, TXT, DOC или DOCX.' if getattr(djsettings, 'PROJECT_TG_UPLOAD', False) else ''
     text = (
         f'<b>{project.icon or ""} {project.name}</b> — активирован\n\n'
         + (f'<i>Системный промт:</i>\n{prompt_preview}\n\n' if prompt_preview else '')
         + f'Файлов базы знаний: {file_count}\n\n'
         'Все сообщения теперь идут в контексте этого проекта.\n'
         'Чтобы снять — нажми «Снять проект» или /projects'
+        + tg_upload_hint
     )
     kb = _project_detail_kb(project.id, is_active=True)
     try:
