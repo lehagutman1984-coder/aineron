@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, ChevronDown, ChevronUp, FileCode } from "lucide-react";
 import type { Components } from "react-markdown";
 import type { ComponentPropsWithoutRef } from "react";
 
@@ -14,7 +14,6 @@ function PreBlock({ children, ...props }: ComponentPropsWithoutRef<"pre">) {
   const ref = useRef<HTMLPreElement>(null);
   const [copied, setCopied] = useState(false);
 
-  // Extract language from the inner <code> element's className
   let lang = "";
   const child = Array.isArray(children) ? children[0] : children;
   if (
@@ -37,7 +36,6 @@ function PreBlock({ children, ...props }: ComponentPropsWithoutRef<"pre">) {
 
   return (
     <div className="my-4 overflow-hidden rounded-[10px] border border-[rgba(255,255,255,0.06)] bg-[#0f0f0f]">
-      {/* Header */}
       <div className="flex items-center justify-between border-b border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.04)] px-4 py-2">
         <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.38)]">
           {lang || "code"}
@@ -50,7 +48,6 @@ function PreBlock({ children, ...props }: ComponentPropsWithoutRef<"pre">) {
           {copied ? "Скопировано" : "Копировать"}
         </button>
       </div>
-      {/* Code */}
       <pre
         ref={ref}
         className="m-0 overflow-x-auto px-4 py-3.5 font-mono text-[13px] leading-relaxed text-[#e0e0e0]"
@@ -65,12 +62,9 @@ function PreBlock({ children, ...props }: ComponentPropsWithoutRef<"pre">) {
 // ── react-markdown component map ────────────────────────────────────────────
 
 const components: Components = {
-  // Code blocks
   pre: PreBlock as Components["pre"],
 
-  // Inline code
   code: ({ children, className, ...props }) => {
-    // If inside a pre, rehype-highlight handles it
     if (className) {
       return (
         <code className={className} {...props}>
@@ -88,7 +82,6 @@ const components: Components = {
     );
   },
 
-  // Links — open in new tab
   a: ({ href, children, ...props }) => (
     <a
       href={href}
@@ -101,7 +94,6 @@ const components: Components = {
     </a>
   ),
 
-  // Tables
   table: ({ children, ...props }) => (
     <div className="my-4 overflow-x-auto rounded-[8px] border border-[rgba(13,13,13,0.10)]">
       <table className="w-full border-collapse text-[14px]" {...props}>
@@ -131,7 +123,6 @@ const components: Components = {
     </tr>
   ),
 
-  // Blockquote
   blockquote: ({ children, ...props }) => (
     <blockquote
       className="my-3 border-l-[3px] border-[rgba(13,13,13,0.18)] pl-4 italic text-[rgba(13,13,13,0.58)]"
@@ -141,7 +132,6 @@ const components: Components = {
     </blockquote>
   ),
 
-  // Headings
   h1: ({ children, ...props }) => (
     <h1 className="mb-2 mt-5 text-[1.2rem] font-semibold text-[#0d0d0d]" {...props}>
       {children}
@@ -158,7 +148,6 @@ const components: Components = {
     </h3>
   ),
 
-  // Task list checkboxes
   input: ({ type, checked, ...props }) => {
     if (type === "checkbox") {
       return (
@@ -175,8 +164,7 @@ const components: Components = {
   },
 };
 
-// ── FILE-block preprocessor ─────────────────────────────────────────────────
-// Transforms === FILE: path === ... === END FILE === into markdown code fences
+// ── FILE block collapsed component ──────────────────────────────────────────
 
 const EXT_LANG: Record<string, string> = {
   py: "python", ts: "typescript", tsx: "typescript", js: "javascript",
@@ -185,37 +173,120 @@ const EXT_LANG: Record<string, string> = {
   java: "java", rb: "ruby", php: "php", sql: "sql", xml: "xml", md: "markdown",
 };
 
-function preprocessContent(raw: string): string {
-  // Strip outer === RESPONSE === / === END RESPONSE === wrappers if present
-  let text = raw
+function FileBlock({ filePath, code }: { filePath: string; code: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const lineCount = code.split("\n").length;
+  const ext = filePath.split(".").pop()?.toLowerCase() ?? "";
+  const lang = EXT_LANG[ext] ?? "";
+
+  const copy = () => {
+    navigator.clipboard.writeText(code).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="my-3 overflow-hidden rounded-[10px] border border-[rgba(0,122,255,0.25)] bg-[rgba(0,122,255,0.04)]">
+      {/* Header — always visible */}
+      <div
+        className="flex cursor-pointer items-center gap-2.5 px-4 py-2.5 transition-colors hover:bg-[rgba(0,122,255,0.06)]"
+        onClick={() => setExpanded((v) => !v)}
+      >
+        <FileCode size={14} className="shrink-0 text-[#0a7cff]" />
+        <span className="flex-1 font-mono text-[13px] font-medium text-[#0a7cff]">
+          {filePath}
+        </span>
+        <span className="text-[11px] text-[rgba(0,0,0,0.38)]">
+          {lineCount} строк
+        </span>
+        {expanded ? (
+          <ChevronUp size={14} className="text-[rgba(0,0,0,0.38)]" />
+        ) : (
+          <ChevronDown size={14} className="text-[rgba(0,0,0,0.38)]" />
+        )}
+      </div>
+
+      {/* Expanded code */}
+      {expanded && (
+        <div className="border-t border-[rgba(0,122,255,0.15)] bg-[#0f0f0f]">
+          <div className="flex items-center justify-between px-4 py-2">
+            <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.38)]">
+              {lang || "code"}
+            </span>
+            <button
+              onClick={copy}
+              className="flex items-center gap-1.5 rounded-[5px] border border-[rgba(255,255,255,0.10)] px-2 py-1 text-[11px] font-medium text-[rgba(255,255,255,0.45)] transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-[rgba(255,255,255,0.82)]"
+            >
+              {copied ? <Check size={11} /> : <Copy size={11} />}
+              {copied ? "Скопировано" : "Копировать"}
+            </button>
+          </div>
+          <pre className="m-0 overflow-x-auto px-4 pb-4 font-mono text-[13px] leading-relaxed text-[#e0e0e0]">
+            <code className={lang ? `language-${lang}` : ""}>{code}</code>
+          </pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Content segmentation ─────────────────────────────────────────────────────
+
+interface Segment {
+  type: "text" | "file";
+  content: string;
+  filePath?: string;
+}
+
+const FILE_BLOCK_RE = /===\s*FILE:\s*([^\n=]+?)\s*===\n([\s\S]*?)===\s*END FILE\s*===/g;
+
+function parseSegments(raw: string): Segment[] {
+  const text = raw
     .replace(/^===\s*RESPONSE\s*===\s*\n?/i, "")
     .replace(/\n?===\s*END RESPONSE\s*===\s*$/i, "");
 
-  // Transform === FILE: path === ... === END FILE === → ```lang\n...\n```
-  text = text.replace(
-    /===\s*FILE:\s*([^\n=]+?)\s*===\n([\s\S]*?)===\s*END FILE\s*===/g,
-    (_, filePath: string, code: string) => {
-      const ext = filePath.trim().split(".").pop()?.toLowerCase() ?? "";
-      const lang = EXT_LANG[ext] ?? "";
-      return `**\`${filePath.trim()}\`**\n\`\`\`${lang}\n${code.trimEnd()}\n\`\`\``;
-    }
-  );
+  const segments: Segment[] = [];
+  let lastIndex = 0;
+  FILE_BLOCK_RE.lastIndex = 0;
+  let match: RegExpExecArray | null;
 
-  return text;
+  while ((match = FILE_BLOCK_RE.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      segments.push({ type: "text", content: text.slice(lastIndex, match.index) });
+    }
+    segments.push({ type: "file", content: match[2], filePath: match[1].trim() });
+    lastIndex = FILE_BLOCK_RE.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    segments.push({ type: "text", content: text.slice(lastIndex) });
+  }
+
+  return segments.length > 0 ? segments : [{ type: "text", content: text }];
 }
 
 // ── Public component ────────────────────────────────────────────────────────
 
 export function MarkdownContent({ content }: { content: string }) {
+  const segments = parseSegments(content);
+
   return (
     <div className="chat-md">
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[[rehypeHighlight, { detect: true, ignoreMissing: true }]]}
-        components={components}
-      >
-        {preprocessContent(content)}
-      </ReactMarkdown>
+      {segments.map((seg, i) =>
+        seg.type === "file" ? (
+          <FileBlock key={i} filePath={seg.filePath!} code={seg.content.trimEnd()} />
+        ) : (
+          <ReactMarkdown
+            key={i}
+            remarkPlugins={[remarkGfm]}
+            rehypePlugins={[[rehypeHighlight, { detect: true, ignoreMissing: true }]]}
+            components={components}
+          >
+            {seg.content}
+          </ReactMarkdown>
+        )
+      )}
     </div>
   );
 }
