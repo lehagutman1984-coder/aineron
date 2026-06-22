@@ -43,6 +43,13 @@ _FILE_MENTION_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Запрос «дай этот файл» / «напечатай его» без явного имени файла в запросе.
+_IMPLICIT_FILE_RE = re.compile(
+    r'\b(?:напечатай|дай|покажи|выведи|выдай|дай\s+мне|покажи\s+мне)\b.{0,60}'
+    r'\b(?:этот|его|полн\w*|весь|целик\w*|исправл\w*|обновл\w*)',
+    re.IGNORECASE | re.DOTALL,
+)
+
 
 def _fetch_from_connector(project, fpath: str) -> str | None:
     """Фетчит файл напрямую из GitHub/Gitea коннектора проекта (как Perplexity).
@@ -125,7 +132,7 @@ def _inject_file(f, user_message_text: str, inject_limit: int, total_chars: int,
     return f"### {label}\n{snippet}", len(snippet)
 
 
-def build_project_knowledge_context(project, user_message_text: str = '') -> str:
+def build_project_knowledge_context(project, user_message_text: str = '', recent_context: str = '') -> str:
     """Собирает контекст из файлов базы знаний проекта.
 
     Phase 4/5 (без флагов Phase 6):
@@ -216,6 +223,36 @@ def build_project_knowledge_context(project, user_message_text: str = '') -> str
                     logger.warning(f'[get_file] file "{fpath}" not found anywhere (project {project.id})')
         except Exception as e:
             logger.warning(f'[get_file] explicit file "{fpath}" failed: {e}')
+
+    # Implicit: «напечатай этот» / «дай его» — имя файла не в текущем запросе, но есть в истории
+    if not _detect_explicit_file_request(query) and recent_context and _IMPLICIT_FILE_RE.search(query):
+        for fpath in _detect_explicit_file_request(recent_context):
+            if total_chars >= inject_limit:
+                break
+            try:
+                from .models import ProjectFile
+                from django.db.models import Q
+                pf = (
+                    project.knowledge_files.filter(status='ready', enabled=True)
+                    .filter(Q(filename=fpath) | Q(filename__endswith='/' + fpath) | Q(repo_path=fpath))
+                    .first()
+                )
+                if pf and pf.extracted_text and pf.id not in used_file_ids:
+                    snippet, added = _inject_file(pf, query, inject_limit, total_chars, force_full=True)
+                    parts.insert(0, snippet)
+                    total_chars += added
+                    used_file_ids.append(pf.id)
+                    logger.info(f'[get_file] implicit inject "{fpath}" from history ({added} chars)')
+                else:
+                    content = _fetch_from_connector(project, fpath)
+                    if content:
+                        remaining = inject_limit - total_chars
+                        snippet = content[:remaining]
+                        parts.insert(0, f"### {fpath}\n{snippet}")
+                        total_chars += len(snippet)
+                        logger.info(f'[get_file] implicit fetch "{fpath}" from connector ({len(snippet)} chars)')
+            except Exception as e:
+                logger.warning(f'[get_file] implicit file "{fpath}" failed: {e}')
 
     # Если файл явно запрошен но не найден в БД — предупреждаем модель чтобы не генерировала фейк
     if _explicit_not_found:
@@ -687,7 +724,14 @@ def generate_ai_response(self, message_id, web_search=False):
                 # База знаний проекта — запрос = текст последнего user-сообщения
                 last_user_msg = chat.messages.filter(role='user').order_by('-created_at').first()
                 user_msg_text = (last_user_msg.plain_text or (last_user_msg.content if isinstance(last_user_msg.content, str) else '')) if last_user_msg else ''
-                knowledge_ctx = build_project_knowledge_context(proj, user_msg_text)
+                # Последние 4 сообщения как контекст для implicit file detection
+                recent_msgs = list(chat.messages.order_by('-created_at')[:4])
+                recent_text = ' '.join(
+                    (m.plain_text or (m.content if isinstance(m.content, str) else ''))
+                    for m in reversed(recent_msgs)
+                    if (m.plain_text or isinstance(m.content, str))
+                )
+                knowledge_ctx = build_project_knowledge_context(proj, user_msg_text, recent_context=recent_text)
                 if knowledge_ctx:
                     messages_for_api.append({"role": "system", "content": knowledge_ctx})
                 # AI-коммиты: инструкция о FILE-формате (Sprint 4.3)
