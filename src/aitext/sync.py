@@ -45,6 +45,12 @@ def _github_tree(connector, token: str) -> list[dict]:
     r = requests.get(url, headers=_github_headers(token), params={'recursive': '1'}, timeout=20)
     r.raise_for_status()
     data = r.json()
+
+    if data.get('truncated'):
+        # GitHub обрезал recursive tree — получаем каждую поддиректорию отдельно
+        logger.warning('[sync] GitHub tree truncated — fetching subtrees individually')
+        return _github_tree_full(connector, token)
+
     result = []
     for item in data.get('tree', []):
         if item.get('type') != 'blob':
@@ -57,6 +63,41 @@ def _github_tree(connector, token: str) -> list[dict]:
             continue
         result.append({'path': item['path'], 'sha': item['sha'], 'size': size})
     return result[:int(getattr(settings, 'PROJECT_SYNC_MAX_FILES', SYNC_MAX_FILES))]
+
+
+def _github_tree_full(connector, token: str) -> list[dict]:
+    """Обходит дерево репозитория по уровням когда recursive tree truncated."""
+    max_files = int(getattr(settings, 'PROJECT_SYNC_MAX_FILES', SYNC_MAX_FILES))
+    result = []
+    # Получаем корневое дерево (без recursive)
+    root_url = f'https://api.github.com/repos/{connector.owner}/{connector.repo}/git/trees/{connector.branch}'
+    root_r = requests.get(root_url, headers=_github_headers(token), timeout=20)
+    root_r.raise_for_status()
+    queue = [item for item in root_r.json().get('tree', []) if item.get('type') in ('blob', 'tree')]
+
+    visited_trees = set()
+    while queue and len(result) < max_files:
+        item = queue.pop(0)
+        if item.get('type') == 'blob':
+            ext = os.path.splitext(item['path'])[1].lower()
+            size = item.get('size', 0) or 0
+            if ext in SYNC_EXTENSIONS and size <= SYNC_MAX_BYTES:
+                result.append({'path': item['path'], 'sha': item['sha'], 'size': size})
+        elif item.get('type') == 'tree' and item['sha'] not in visited_trees:
+            visited_trees.add(item['sha'])
+            try:
+                sub_url = f'https://api.github.com/repos/{connector.owner}/{connector.repo}/git/trees/{item["sha"]}'
+                sub_r = requests.get(sub_url, headers=_github_headers(token), timeout=15)
+                sub_r.raise_for_status()
+                prefix = item['path'] + '/'
+                for sub in sub_r.json().get('tree', []):
+                    sub['path'] = prefix + sub['path']
+                    queue.append(sub)
+            except Exception as e:
+                logger.warning(f'[sync] failed to fetch subtree {item["path"]}: {e}')
+
+    logger.info(f'[sync] full tree walk: {len(result)} files found')
+    return result[:max_files]
 
 
 def _github_file(connector, token: str, path: str) -> str:
