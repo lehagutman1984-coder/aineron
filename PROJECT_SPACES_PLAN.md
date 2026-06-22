@@ -1419,3 +1419,267 @@ PROJECT_TWO_LEVEL_FILES=5   # сколько файлов отбирать на 
   монорепо seq-scan заметнее — ловим порогом-алертом из метрик 5.5; hnsw — по данным, не превентивно.
 - **`@web`/Tavily — внешняя зависимость и стоимость.** Гейт по `TAVILY_API_KEY` + флаг; биллинг
   существующим путём; смена провайдера — за одним адаптером `web_search.py`.
+
+---
+
+# Phase 7 — «Code Workspace»
+
+*Архитектор: Opus 4.8. Дата плана: 2026-06-22.*
+*Цель: превратить Git-вкладку Project Space из «браузера репозитория с предложенными коммитами» в*
+*полноценное **рабочее место разработчика** — редактируешь код прямо в Space и одной кнопкой*
+*деплоишь результат. Phase 4–6 сделали Space умным по знаниям и коду; Phase 7 замыкает петлю*
+*«AI предложил → я доработал → задеплоил», не выходя из браузера.*
+
+## Тезис фазы
+
+Сегодня цикл изменения кода в Space разорван на середине. AI умеет предлагать коммиты
+(`extract_commit_from_response`, Phase 4.3) и PR (`push_project_commit`, Phase 5.2), пользователь
+видит дерево репо и содержимое файлов (Sprint 3). Но **между «посмотреть» и «запушить» нет звена
+«отредактировать»**, а после пуша нет звена «выкатить» — пользователь уходит в IDE и на сервер
+руками. Phase 7 добавляет ровно эти два недостающих звена: **встроенный редактор кода** (7.1) и
+**deploy-хук** (7.2). Обе фичи аддитивны, обе встают поверх уже работающего commit/push-flow и **не
+требуют нового backend-кода для записи** — Sprint 3 уже всё умеет.
+
+> **Ground truth — что у нас УЖЕ есть (важно для честной оценки 7.1).**
+> - **Эндпоинт чтения содержимого файла существует** с Sprint 3: `ConnectorFileContentView`
+>   (`src/api/views/connectors.py:195`) — `GET /v1/projects/<pk>/connectors/<cid>/file/?path=...`
+>   (путь **singular** `/file/`, не путать с `/files/` = `ConnectorReadFilesView`, который отдаёт
+>   дерево). Маршрут — `src/api/urls.py:168`. Клиентский метод `getRepoFileContent(projectId, connId, path)`
+>   тоже уже есть (`frontend/lib/api/client.ts:636`) и уже вызывается со страницы проекта
+>   (`frontend/app/projects/[id]/page.tsx:1018`). **Создавать эндпоинт не нужно — это уже работает.**
+>   Это меняет оценку 7.1 с M на **S (чисто фронтенд)**.
+> - **Запись/коммит существует** с Sprint 3: `createCommit` → `ProjectCommit(status='pending')` →
+>   `CommitConfirmView` (`connectors.py:266`) → `push_project_commit` (атомарный Git Data API).
+>   Редактор 7.1 НЕ пишет в репо напрямую — он впадает в этот же flow.
+> - **Полинг-статуса как паттерн существует**: `ConnectorSyncView` (`connectors.py:301`) + фронтовый
+>   цикл 45 с / каждые 3 с (`handleSync`). Deploy-статус 7.2 переиспользует ровно этот паттерн.
+> - **HMAC-подпись исходящих вебхуков существует**: `src/api/services/webhooks.py:25`
+>   (`hmac.new(secret, body, sha256).hexdigest()`, заголовок `X-Aineron-Signature: sha256=...`).
+>   Deploy-вебхук 7.2 подписывается **этим же** способом. Входящий HMAC-приём — `ConnectorWebhookView`
+>   (`connectors.py:314`) как прецедент.
+> - **Шифрование секретов существует**: `crypto.py` Fernet (`encrypt_token`/`decrypt_token`), которым
+>   уже шифруется `ProjectConnector.access_token_enc`. `deploy_secret` шифруется тем же.
+
+## Принципы Phase 7 (что НЕ трогаем)
+
+| НЕ трогаем | Почему |
+|------------|--------|
+| Flow `ProjectCommit`: `createCommit` → `CommitConfirmView` → `push_project_commit` | Редактор 7.1 — ещё один **источник** коммитов в готовый flow, а не новый путь записи. Никакого нового push-кода. |
+| `ConnectorFileContentView` / `getRepoFileContent` | Уже отдаёт содержимое файла. Редактор только **рендерит** результат — контракт не меняем. |
+| Эндпоинты дерева (`ConnectorReadFilesView`, `TreeNode`/`buildTree`) | Дерево слева остаётся как есть; редактор встаёт справа в split-pane, не переписывая навигацию. |
+| Полинг-инфра (`ConnectorSyncView` + 45с/3с цикл на фронте) | Deploy-статус 7.2 копирует этот паттерн, не вводит новый канал. |
+| HMAC исходящих вебхуков (`services/webhooks.py`) + Fernet (`crypto.py`) | Deploy-вебхук и `deploy_secret` 7.2 используют готовые примитивы безопасности. |
+| Флаги `PROJECT_*` = `0/1`, дефолт `0` | Каждая фича Phase 7 — за флагом; при всех `=0` поведение = текущий Phase 6. **Исключение:** `INTERNAL_DEPLOY_ENABLED=0` — опасная capability, выключена по умолчанию намеренно (инверсия логики `PROJECT_PUBLIC_HARDENING=1`). |
+
+## Переиспользование (по образцу таблиц Phase 4/5/6)
+
+| Что переиспользуем | Откуда | Где в Phase 7 |
+|--------------------|--------|---------------|
+| `getRepoFileContent` + `ConnectorFileContentView` | `client.ts:636`, `connectors.py:195` | 7.1: редактор грузит содержимое файла этим методом |
+| `createCommit` + `confirmCommit('push')` | `client.ts`, `connectors.py:227/266` | 7.1: «Commit изменения» из редактора впадает в готовый push-flow |
+| `ProjectCommit.files` (`[{path, content}]`) + `kind/status` | `aitext/models.py:369` | 7.1: правка файла из pending-коммита перед пушем (ревью AI-коммита) |
+| `TreeNode` / `buildTree` / `listRepoFiles` | `frontend/app/projects/[id]/page.tsx` | 7.1: дерево слева в split-pane (без изменений) |
+| Полинг-паттерн `handleSync` (45с/3с) + `ConnectorSyncView` | `page.tsx`, `connectors.py:301` | 7.2: полинг статуса деплоя |
+| HMAC `services/webhooks.py:25` + `ConnectorWebhookView` | `src/api/services/webhooks.py`, `connectors.py:314` | 7.2: подпись deploy-вебхука / прецедент входящего HMAC |
+| `crypto.py` Fernet (`encrypt_token`/`decrypt_token`) | `src/aitext/crypto.py` | 7.2: шифрование `deploy_secret` (как `access_token_enc`) |
+| Конвенция аддитивных миграций | `aitext/migrations/0022_audit_log.py` (последняя) | 7.2: `0023_connector_deploy.py` |
+
+---
+
+## Дорожная карта Phase 7 (порядок = отдача × независимость)
+
+| Sprint | Тема | Сложность | Срок (1 разработчик) | Зависит от | Тип |
+|--------|------|-----------|----------------------|-----------|-----|
+| **7.1** | Встроенный редактор кода (Monaco) в Git-вкладке | **S** (чисто фронт) | ~2–3 дня | — (backend готов с Sprint 3) | Ценность |
+| **7.2** | Deploy-хук: кнопка [Deploy] (внешний вебхук + internal `deploy.sh`) | **M** | ~3–4 дня | — (независим от 7.1) | Ценность + инфра |
+
+**Честная оценка целиком:** ~1–1.5 недели в одиночку. 7.1 и 7.2 **независимы** и параллелизуемы.
+7.1 — почти полностью фронтенд (backend-чтение и backend-запись готовы), наибольшая ценность на
+единицу времени. 7.2 — основной риск фазы сосредоточен в одной точке (internal deploy = выполнение
+shell-команды на проде), поэтому именно ей уделяется бóльшая часть оценки.
+
+---
+
+### Sprint 7.1 — Встроенный редактор кода в Git-вкладке (S)
+
+**Что это даёт пользователю:** открыл файл репо прямо в Space → подсветка синтаксиса 100+ языков →
+кнопка [Редактировать] → правка → [Commit изменения] с сообщением → пуш через готовый flow. Три
+сценария: (1) AI предложил коммит → подправить файл из pending-коммита перед пушем; (2) быстро
+поправить самому без IDE; (3) просто посмотреть код (read-only по умолчанию).
+
+**Конкурентный паритет/превосходство:** vs. **Cursor / GitHub web-editor (`.dev`)** — редактирование
+кода в браузере с подсветкой; мы даём это **внутри Space рядом с AI-чатом и базой знаний**, без
+установки IDE. vs. **Claude/ChatGPT/Perplexity Projects** — **полное превосходство**: ни один не
+редактирует и не коммитит файлы в реальный git-репозиторий из чат-интерфейса.
+
+#### Ключевое решение №1: Monaco с ленивой загрузкой (`next/dynamic`, `ssr:false`)
+
+Monaco (`@monaco-editor/react`) — движок VS Code: автоопределение языка по расширению, подсветка
+100+ языков, бесплатен. Весит ~5 МБ — **нельзя** грузить на страницу проекта по умолчанию. Решение:
+`next/dynamic(() => import('...'), { ssr: false })` — Monaco не умеет SSR и подтягивается только при
+первом открытии файла. Альтернатива **CodeMirror 6** (~300 КБ) — за тем же флагом для медленных
+соединений/мобильных, но Monaco — дефолт по качеству фич.
+
+#### Ключевое решение №2: read-only по умолчанию, явный commit (без автосохранения)
+
+- Открытие файла = read-only просмотр (нельзя случайно сломать). [Редактировать] → edit-режим.
+- Изменения — в локальном React-state, НЕ автосохранение. При наличии diff появляется
+  [Commit изменения] + поле commit message.
+- Commit = `createCommit(projectId, {connector_id, commit_message, files:[{path, content}]})` →
+  `confirmCommit(commitId, 'push')`. **Ноль нового backend-кода** — это готовый flow Sprint 3.
+- Закрытие файла с несохранёнными правками → `beforeunload`-гард («Есть несохранённые изменения»).
+
+#### Ключевое решение №3: ревью pending-коммита в редакторе
+
+AI-коммит (Phase 4.3) приходит как `ProjectCommit(status='pending', files=[{path, content}])`. В
+списке коммитов клик на файл pending-коммита открывает его контент (из `commit.files`, **не** из
+репо — это предложенная, ещё не запушенная версия) в редакторе. Правка → пересобирается
+`commit.files` → `confirmCommit('push')` пушит уже доработанную версию. Это сценарий №1 («AI
+исправил → подправлю перед пушем»), ради которого редактор и нужен в первую очередь.
+
+#### Файлы
+
+| Файл | Действие |
+|------|----------|
+| `frontend/components/projects/CodeEditor.tsx` | **новый**: Monaco через `next/dynamic({ssr:false})`; props `value/language/readOnly/onChange`; commit-панель (message + [Commit изменения]); `beforeunload`-гард на dirty-state |
+| `frontend/app/projects/[id]/page.tsx` | в `ConnectorsTab`: `selectedFile` state (`{path, content, dirty}`); split-pane (дерево 30% / редактор 70%); клик в `TreeNode` → `getRepoFileContent` → открыть в редакторе; клик на файл pending-коммита → открыть `commit.files[i].content` |
+| `frontend/lib/api/client.ts` | **уже есть** `getRepoFileContent`, `createCommit`, `confirmCommit` — переиспользуем, новых методов не требуется |
+| `src/api/views/connectors.py` | **без изменений** — `ConnectorFileContentView` уже отдаёт содержимое (`GET .../file/?path=`) |
+| `src/api/urls.py` | **без изменений** — маршрут `connector_file_content` существует (`:168`) |
+| `package.json` (frontend) | **+** `@monaco-editor/react` (и опц. `@uiw/react-codemirror` для лёгкого режима) |
+
+> **Замечание о ground truth (важно для оценки).** ТЗ предполагало возможное создание эндпоинта
+> `GET .../connectors/{cid}/files/?path=...` и правки `connectors.py`/`urls.py`. По факту эндпоинт
+> существует с Sprint 3 под путём **`/file/`** (singular), а не `/files/?path=`, и клиентский метод
+> `getRepoFileContent` уже им пользуется. Поэтому 7.1 — **чисто фронтенд-спринт (S)**, а не M:
+> backend-чтение и backend-запись (commit-flow) готовы, добавляется только UI редактора.
+
+#### Компромиссы
+
+- **Делаем:** Monaco (lazy, read-only→edit), commit из редактора в готовый flow, правка файла из
+  pending-коммита, `beforeunload`-гард.
+- **НЕ делаем:** diff-вьювер «до/после» в редакторе (Monaco `DiffEditor` умеет, но это +scope) —
+  пока обычный редактор; визуальный diff — позже.
+- **НЕ делаем:** мультифайловые табы / открытие нескольких файлов одновременно — один активный файл
+  в split-pane; табы — позже.
+- **НЕ делаем:** LSP/автодополнение по проекту (как в IDE) — Monaco даёт подсветку и базовую
+  intellisense по языку, но не семантику репо; это IDE-территория.
+- **Риск:** вес Monaco (~5 МБ). Митигация: `ssr:false` + ленивый импорт (грузится только при первом
+  открытии файла), флаг `PROJECT_CODE_EDITOR`, опц. CodeMirror для lean-режима.
+
+**Флаги:** `PROJECT_CODE_EDITOR=0/1` (при `=0` клик на файл — старое поведение «только просмотр
+содержимого», без split-pane и edit-режима).
+
+---
+
+### Sprint 7.2 — Deploy-хук: кнопка [Deploy] (M)
+
+**Что это даёт пользователю:** после коммита/пуша — одна кнопка [Deploy] рядом с
+[Синхронизировать]: внешний пользователь дёргает свой deploy-вебхук (его сервер делает
+`git pull && restart`), владелец сервиса — выкатывает сам aineron.ru через `bash deploy.sh`. Статус:
+[В процессе…] → [Задеплоено] / [Ошибка деплоя] + опц. хвост лога.
+
+**Конкурентный паритет/превосходство:** vs. **Vercel/Netlify deploy-hooks, Cursor** — кнопка деплоя
+прямо из рабочего пространства; уникальность — **деплой в той же вкладке, где AI предложил коммит и
+ты его доработал** (замкнутая петля commit→review→deploy без выхода в CI/терминал). Особенно силён
+B2B-сценарий: один соавтор (Phase 5.1, роль editor) коммитит через AI, другой (owner) ревьюит и
+жмёт [Deploy].
+
+#### Ключевое решение №1: ДВА раздельных пути деплоя с разной авторизацией
+
+Это главное архитектурное решение спринта — пути нельзя смешивать:
+
+1. **Внешний deploy-вебхук** (для репозиториев пользователей). `POST` на
+   `ProjectConnector.deploy_webhook_url` с HMAC-подписью тела (`deploy_secret`). Триггерит **любой
+   владелец проекта** для **своего** сервера. Безопасность вынесена на сторону получателя (его
+   webhook-receiver проверяет подпись и решает, что выполнять).
+2. **Internal deploy самого aineron.ru** (`bash deploy.sh`). Это **платформенно-административное**
+   действие, а не действие произвольного `project.user`. Гейт: **`request.user.is_staff` /
+   `is_superuser`** (владелец сервиса), а НЕ владелец проекта. Запускает `subprocess` без
+   `shell=True`, по whitelist (`INTERNAL_DEPLOY_SCRIPT`), с таймаутом 120 с и rate-limit ≤1/30 с.
+   Флаг `INTERNAL_DEPLOY_ENABLED=0` по умолчанию — это RCE-смежная поверхность, включается осознанно.
+
+> **Почему не «только owner проекта», как в ТЗ.** Деплой самого aineron.ru через `deploy.sh` — это
+> выполнение shell-команды на проде. Дать его любому, кто создал проект, — дыра. Internal deploy
+> отвязан от владения проектом и привязан к роли платформы (`is_staff`). Внешний путь (вебхук на
+> чужой сервер) безопасен для любого owner — там мы лишь шлём подписанный POST, исполнение — не у нас.
+
+#### Ключевое решение №2: статус деплоя — переиспользуем sync-полинг
+
+Не изобретаем канал: deploy возвращает `deploy_status` (`pending/running/success/error`) и опц.
+`deploy_log` (хвост stdout, N строк). Фронт полит ровно как `handleSync` (45 с / каждые 3–5 с) до
+терминального статуса. Опц. модель `ProjectDeployLog` хранит последние N деплоев для истории в UI.
+
+#### Ключевое решение №3: безопасность по образцу существующих примитивов
+
+- `deploy_webhook_url` + `deploy_secret` шифруются Fernet (`crypto.py`), как `access_token_enc`.
+- Подпись тела — `services/webhooks.py:25` (HMAC-SHA256, `X-Aineron-Signature: sha256=...`).
+- Internal subprocess: `subprocess.run([INTERNAL_DEPLOY_SCRIPT], shell=False, timeout=120)`,
+  whitelist скрипта из settings, без интерполяции пользовательского ввода в команду.
+
+#### Файлы
+
+| Файл | Действие |
+|------|----------|
+| `src/aitext/models.py` | **+** `ProjectConnector.deploy_webhook_url` (nullable Char), `deploy_secret` (Fernet, как `access_token_enc`), `deploy_status`/`last_deploy_at`; **новая** (опц.) `ProjectDeployLog(connector, status, log, created_at)` |
+| `src/aitext/migrations/0023_connector_deploy.py` | **новая** (аддитивная): поля деплоя + опц. `ProjectDeployLog` (последняя миграция — `0022_audit_log`) |
+| `src/api/views/connectors.py` | **+** `ConnectorDeployView` (`POST .../connectors/<cid>/deploy/`) — шлёт подписанный POST на `deploy_webhook_url`; `GET` отдаёт `deploy_status`/лог (полинг). Owner проекта. |
+| `src/api/views/deploy.py` | **новый**: `InternalDeployView` — гейт `is_staff`/`is_superuser` + флаг `INTERNAL_DEPLOY_ENABLED` + rate-limit; `subprocess.run([INTERNAL_DEPLOY_SCRIPT], shell=False, timeout=120)` |
+| `src/api/urls.py` | **+** `projects/<pk>/connectors/<cid>/deploy/`, **+** `internal/deploy/` |
+| `src/config/settings.py` | `PROJECT_DEPLOY_HOOK`, `INTERNAL_DEPLOY_ENABLED`, `INTERNAL_DEPLOY_SCRIPT=/app/deploy.sh` |
+| `frontend/app/projects/[id]/page.tsx` | в `ConnectorsTab`: кнопка [Deploy] рядом с [Синхронизировать]; полинг статуса (паттерн `handleSync`); опц. хвост лога; поле deploy-вебхука в настройках коннектора |
+| `frontend/lib/api/client.ts` + `types.ts` | `triggerDeploy(projectId, connId)`, `getDeployStatus(projectId, connId)`; поля деплоя в `ProjectConnector` |
+
+#### Компромиссы
+
+- **Делаем:** внешний deploy-вебхук (HMAC), internal `deploy.sh` (staff-only, флаг), полинг статуса,
+  опц. лог последних деплоев.
+- **НЕ делаем:** полноценный CI/CD (стадии, артефакты, rollback) — это отдельный продукт; мы даём
+  «дёрнуть деплой», не оркестрацию.
+- **НЕ делаем:** стриминг полного лога деплоя в реальном времени — только хвост N строк по
+  завершении (стрим — позже, если будет спрос).
+- **НЕ делаем:** деплой произвольной командой из UI — internal путь жёстко привязан к
+  `INTERNAL_DEPLOY_SCRIPT` из settings, без пользовательского ввода в команду.
+- **Риск (главный в фазе):** internal deploy = выполнение shell на проде. Митигация: `is_staff`-гейт
+  (не owner проекта), `INTERNAL_DEPLOY_ENABLED=0` по умолчанию, `shell=False` + whitelist + таймаут +
+  rate-limit. Внешний путь риск не несёт (исполнение — на чужом сервере).
+
+**Флаги:** `PROJECT_DEPLOY_HOOK=0/1` (внешний вебхук), `INTERNAL_DEPLOY_ENABLED=0/1` (internal
+`deploy.sh`, **выключен по умолчанию** — опасная capability).
+
+---
+
+## Сводка новых флагов окружения (Phase 7)
+
+```
+# Sprint 7.1 — Встроенный редактор кода
+PROJECT_CODE_EDITOR=0       # Monaco-редактор в Git-вкладке (read-only→edit→commit)
+
+# Sprint 7.2 — Deploy-хук
+PROJECT_DEPLOY_HOOK=0       # кнопка [Deploy] → внешний deploy-вебхук (HMAC)
+INTERNAL_DEPLOY_ENABLED=0   # internal-деплой самого aineron.ru (bash deploy.sh) — ОПАСНО, off by default
+INTERNAL_DEPLOY_SCRIPT=/app/deploy.sh   # whitelist-скрипт для internal-деплоя (subprocess, shell=False)
+```
+
+## Порядок выкатки и риски
+
+1. **7.1 первым — почти вся ценность за S-бюджет.** Backend (чтение файла + commit/push-flow) готов с
+   Sprint 3; добавляется только UI Monaco. Главное техническое решение — ленивая загрузка
+   (`next/dynamic`, `ssr:false`), чтобы 5 МБ Monaco не падали на страницу проекта по умолчанию.
+2. **7.2 параллелизуем с 7.1** — независим. Внутри 7.2 — **сначала внешний deploy-вебхук** (безопасен,
+   исполнение на стороне пользователя), **затем** internal `deploy.sh` (опасная capability, отдельный
+   флаг, staff-гейт).
+
+**Главные риски, заложенные в дизайн заранее:**
+- **Internal deploy = RCE-смежная поверхность (7.2).** Выполнение shell на проде. Митигация:
+  `is_staff`/`is_superuser`-гейт (НЕ owner проекта — см. ключевое решение №1), `INTERNAL_DEPLOY_ENABLED=0`
+  по умолчанию, `subprocess` с `shell=False` + whitelist-скрипт из settings + таймаут 120 с +
+  rate-limit ≤1/30 с. Это единственное место фазы, заслуживающее веса уровня B4.
+- **Вес Monaco (7.1).** ~5 МБ. Митигация: `ssr:false` + ленивый импорт + флаг + опц. CodeMirror.
+- **Несохранённые правки в редакторе (7.1).** `beforeunload`-гард; commit — явный, без автосохранения.
+- **Утечка deploy-секрета (7.2).** `deploy_secret` шифруется Fernet (`crypto.py`), тело вебхука
+  подписывается HMAC (`services/webhooks.py`) — те же примитивы, что у `access_token_enc` и исходящих
+  вебхуков; ничего нового не изобретаем.
+- **Путаница двух deploy-путей (7.2).** Внешний вебхук (любой owner → свой сервер) и internal
+  (`is_staff` → aineron.ru) — раздельные вью (`ConnectorDeployView` vs `InternalDeployView`) и
+  раздельные флаги; не смешиваются.
