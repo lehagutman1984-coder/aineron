@@ -24,14 +24,14 @@ class ProjectSerializer(serializers.ModelSerializer):
         return obj.chats.count()
 
     def get_file_count(self, obj):
-        return obj.files.filter(status='ready', enabled=True).count()
+        return obj.knowledge_files.filter(status='ready', enabled=True).count()
 
 
 class ProjectListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        projects = Project.objects.filter(user=request.user).prefetch_related('chats', 'files')
+        projects = Project.objects.filter(user=request.user).prefetch_related('chats', 'knowledge_files')
         return Response(ProjectSerializer(projects, many=True).data)
 
     def post(self, request):
@@ -101,7 +101,7 @@ class ProjectPublicView(APIView):
         }
 
         if project.public_show_files:
-            files = project.files.filter(status='ready', enabled=True)
+            files = project.knowledge_files.filter(status='ready', enabled=True)
             data['files'] = PublicSpaceFileSerializer(files, many=True).data
         else:
             data['files'] = []
