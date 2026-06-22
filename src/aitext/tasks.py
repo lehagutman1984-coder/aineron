@@ -34,29 +34,29 @@ def _get_inject_limit():
     return int(getattr(settings, 'PROJECT_INJECT_LIMIT', 200_000))
 
 
-# Паттерны для автодетекции явных запросов конкретного файла.
-# Группа 1 — имя файла (напр. "tasks.py" или "src/studio/tasks.py").
-_EXPLICIT_FILE_RE = re.compile(
-    r'(?:'
-    r'дай(?:\s+мне)?(?:\s+\w+)*|'
-    r'покажи(?:\s+мне)?(?:\s+\w+)*|'
-    r'напечатай(?:\s+\w+)*|'
-    r'выведи(?:\s+\w+)*|'
-    r'give(?:\s+\w+)*|'
-    r'show(?:\s+\w+)*|'
-    r'print(?:\s+\w+)*'
-    r')'
-    r'\s+'
-    r'([\w./\\-]+\.(?:py|ts|tsx|js|jsx|html|css|json|yml|yaml|sh|md|txt|go|rs|java|rb|php|sql|xml|env))',
+# Любое упоминание файла с кодовым расширением в запросе — инжектируем полностью.
+# Ищет: tasks.py, src/studio/tasks.py и т.д. Не срабатывает на уже обработанные @file.
+_FILE_MENTION_RE = re.compile(
+    r'(?<![/@])'
+    r'((?:[\w-]+/)*[\w-]+\.(?:py|ts|tsx|js|jsx|html|css|json|yml|yaml|sh|md|go|rs|java|rb|php|sql|xml))'
+    r'(?!\w)',
     re.IGNORECASE,
 )
 
 
 def _detect_explicit_file_request(query: str) -> list[str]:
-    """Возвращает список имён файлов, явно запрошенных пользователем (без @file директив)."""
+    """Находит любые упоминания файлов с расширением в запросе (без @file директив)."""
     if not query:
         return []
-    return [m.group(1) for m in _EXPLICIT_FILE_RE.finditer(query)]
+    seen: set[str] = set()
+    result = []
+    for m in _FILE_MENTION_RE.finditer(query):
+        fpath = m.group(1)
+        if fpath not in seen:
+            seen.add(fpath)
+            result.append(fpath)
+    logger.debug('[get_file] detected file mentions: %s', result)
+    return result
 
 AGGREGATE_INJECT_LIMIT = 200_000  # оставляем как fallback-константу; в коде используем _get_inject_limit()
 
