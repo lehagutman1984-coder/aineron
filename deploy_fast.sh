@@ -14,7 +14,7 @@ echo -e "${YELLOW}Подтягиваем код...${NC}"
 git pull origin main
 
 echo -e "${YELLOW}Перезапускаем Python-сервисы (код монтирован как volume)...${NC}"
-docker-compose restart web celery_worker celery_studio celery_beat celery_studio_playwright
+docker-compose up -d --no-build web celery_worker celery_studio celery_beat celery_studio_playwright
 
 echo -e "${YELLOW}Применяем миграции...${NC}"
 docker-compose exec -T web python manage.py migrate --noinput
