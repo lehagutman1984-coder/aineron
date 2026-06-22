@@ -846,8 +846,7 @@ def generate_ai_response(self, message_id, web_search=False):
             "messages": messages_for_api,
             "temperature": 0.7,
         }
-        if network.max_tokens > 0:
-            completion_kwargs["max_tokens"] = network.max_tokens
+        completion_kwargs["max_tokens"] = network.max_tokens if network.max_tokens > 0 else 32768
 
         # Обёртка для обработки ошибки deprecated модели
         try:
