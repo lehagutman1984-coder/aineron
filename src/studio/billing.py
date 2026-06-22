@@ -1,120 +1,55 @@
-import tiktoken
-from .models import StudioProject
-from .models_catalog import MODEL_TIER
+import logging
 
-STAR_RATE = {'fast': 1, 'coder': 1.7, 'smart': 3}
+from .models_catalog import MODEL_TIER, STAR_RATE, AGENT_BUDGET
 
-AGENT_BUDGET = {
-    # 3-role pipeline
-    'architect': ('smart', 10000),   # opus, one time — PROJECT.md + COMMITS.md
-    'coder':     ('coder', 12000),   # qwen3-coder-plus, per step
-    'guardian':  ('smart', 6000),    # sonnet, per step — review+test+fixplan
-    # Legacy agents kept for backward compat with old in-flight projects
-    'interviewer': ('fast', 2000),
-    'analyst':     ('smart', 6000),
-    'planner':     ('smart', 8000),
-    'reviewer':    ('smart', 6000),
-    'tester':      ('fast', 4000),
-    'fixer':       ('smart', 5000),
-}
+logger = logging.getLogger(__name__)
 
+def estimate_stars(model: str, agent: str = 'coder', planned_steps: int = 5) -> int:
+    """
+    Возвращает оценку числа звёзд на весь проект исходя из tier модели и реального planned_steps.
+    """
+    tier = MODEL_TIER.get(model, 'fast')
+    rate = STAR_RATE[tier]
+    base = AGENT_BUDGET.get(agent, 12)
+    return int(round(rate * base * planned_steps))
 
-def count_tokens(text: str, model: str = 'gpt-4') -> int:
-    try:
-        enc = tiktoken.encoding_for_model(model)
-    except KeyError:
-        enc = tiktoken.get_encoding('cl100k_base')
-    return len(enc.encode(text or ''))
-
-
-def estimate_stars(project: StudioProject, planned_steps: int = 5) -> int:
-    """Estimate total stars for 3-role pipeline: architect(1x) + coder+guardian(N steps)."""
-    idata = getattr(project, 'interview_data', {}) or {}
-    plan = idata.get('plan')
-    if isinstance(plan, list) and plan:
-        planned_steps = len(plan)
-    elif idata.get('planned_steps'):
-        planned_steps = int(idata['planned_steps'])
-    total = 0.0
-    ai_tier = MODEL_TIER.get(getattr(project, 'ai_model', ''), 'fast')
-    agent_models = getattr(project, 'agent_models', {}) or {}
-
-    def tier_for(name, default_tier):
-        m = agent_models.get(name)
-        return MODEL_TIER.get(m, default_tier) if m else (ai_tier if name == 'coder' else default_tier)
-
-    arch_tier, arch_budget = AGENT_BUDGET['architect']
-    total += (arch_budget / 1000.0) * STAR_RATE.get(tier_for('architect', arch_tier), STAR_RATE['smart'])
-
-    coder_tier, coder_budget = AGENT_BUDGET['coder']
-    total += (coder_budget / 1000.0) * STAR_RATE.get(tier_for('coder', coder_tier), STAR_RATE['fast']) * planned_steps
-
-    guardian_tier, guardian_budget = AGENT_BUDGET['guardian']
-    total += (guardian_budget / 1000.0) * STAR_RATE.get(tier_for('guardian', guardian_tier), STAR_RATE['smart']) * planned_steps
-
-    return int(total) + 1
-
-
-def stars_for_tokens(prompt_tokens: int, completion_tokens: int, tier: str) -> int:
-    """Реальная стоимость одного вызова агента по факту токенов (суммарные prompt+completion)."""
-    total = (prompt_tokens or 0) + (completion_tokens or 0)
-    rate = STAR_RATE.get(tier, STAR_RATE['fast'])
-    return max(1, int((total / 1000.0) * rate))
-
-
-def coder_tier_for_model(model: str) -> str:
-    """Return billing tier based on model id used by CoderAgent."""
-    return MODEL_TIER.get(model, 'fast')
-
-
-def can_afford(user, amount: int) -> bool:
-    return user.pages_count >= amount
-
-
-def charge(user, amount: int, project: StudioProject):
-    user.spend_pages(amount)
-    project.stars_spent += amount
-    project.save(update_fields=['stars_spent'])
-
-
-def refund(user, amount: int, project: StudioProject):
-    user.add_pages(amount)
-    project.stars_spent = max(0, project.stars_spent - amount)
-    project.save(update_fields=['stars_spent'])
-
-
-def reserve(user, amount: int, project: StudioProject) -> bool:
-    """Lock estimated stars from user's balance into project.stars_reserved."""
-    user.refresh_from_db(fields=['pages_count'])
-    if user.pages_count < amount:
-        return False
-    user.spend_pages(amount)
-    project.stars_reserved += amount
-    project.save(update_fields=['stars_reserved'])
-    return True
-
-
-def charge_from_reserve(amount: int, project: StudioProject) -> bool:
-    """Spend from reserve first; top up from live balance if reserve is short."""
-    take = min(amount, project.stars_reserved)
-    project.stars_reserved -= take
-    project.stars_spent += take
-    rest = amount - take
-    if rest > 0:
-        user = project.user
-        user.refresh_from_db(fields=['pages_count'])
-        if user.pages_count < rest:
-            project.save(update_fields=['stars_reserved', 'stars_spent'])
+def _billing_charge(project, agent, step_index, usage=None, tier_override=None):
+    """
+    Списывает звёзды за шаг. Учитывает prompt_tokens и completion_tokens, если usage задан.
+    """
+    tier = tier_override or MODEL_TIER.get(getattr(project, 'ai_model', 'fast'), 'fast')
+    rate = STAR_RATE[tier]
+    base = AGENT_BUDGET.get(agent, 12)
+    stars = int(round(rate * base))
+    tokens = 0
+    if usage:
+        tokens = usage.get('completion_tokens', 0) + usage.get('prompt_tokens', 0)
+        # Можно пересчитать стоимость по токенам, если нужно: stars = int(math.ceil(tokens / 900 * rate))
+    if getattr(project, 'stars_balance', None) is not None:
+        if project.stars_balance < stars:
+            from .tasks import _pause_no_funds
+            _pause_no_funds(project, agent)
             return False
-        user.spend_pages(rest)
-        project.stars_spent += rest
-    project.save(update_fields=['stars_reserved', 'stars_spent'])
+        project.stars_balance -= stars
+        project.save(update_fields=['stars_balance'])
+    # Логируем расход по шагу
+    log = project.interview_data.get('billing_log', [])
+    log.append({
+        'step': step_index,
+        'agent': agent,
+        'stars': stars,
+        'tokens': tokens,
+    })
+    project.interview_data['billing_log'] = log
+    project.save(update_fields=['interview_data'])
     return True
 
-
-def release_reserve(project: StudioProject):
-    """Return unused reserved stars to the user's balance."""
-    if project.stars_reserved > 0:
-        project.user.add_pages(project.stars_reserved)
+def release_reserve(project):
+    """
+    Возвращает зарезервированные звёзды при завершении/ошибке пайплайна.
+    """
+    if getattr(project, 'stars_reserved', 0) > 0:
+        project.stars_balance += project.stars_reserved
         project.stars_reserved = 0
-        project.save(update_fields=['stars_reserved'])
+        project.save(update_fields=['stars_balance', 'stars_reserved'])
+        logger.info(f'Резерв звёзд возвращён: {project}')
