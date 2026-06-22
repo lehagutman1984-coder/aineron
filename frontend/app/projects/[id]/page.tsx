@@ -1277,12 +1277,11 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                             initialContent={fileContent ?? ""}
                             onClose={() => { setSelectedFile(null); setFileContent(null); setEditorConnId(null); }}
                             onCommit={async (content, message) => {
-                              const commit = await createCommit(projectId, {
+                              await createCommit(projectId, {
                                 connector_id: conn.id,
                                 commit_message: message,
                                 files: [{ path: selectedFile!, content }],
                               });
-                              await confirmCommit(projectId, commit.id, "push");
                               qc.invalidateQueries({ queryKey: ["commits", projectId] });
                             }}
                           />
