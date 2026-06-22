@@ -44,6 +44,29 @@ _FILE_MENTION_RE = re.compile(
 )
 
 
+def _fetch_from_connector(project, fpath: str) -> str | None:
+    """Фетчит файл напрямую из GitHub/Gitea коннектора проекта (как Perplexity).
+
+    Используется как fallback когда файл не найден в KB (не попал в лимит синхронизации).
+    """
+    try:
+        from .sync import _github_file, _gitea_file
+        from .crypto import decrypt_token
+        connector = project.connectors.order_by('created_at').first()
+        if not connector:
+            return None
+        token = decrypt_token(connector.access_token_enc)
+        if connector.connector_type == 'github':
+            content = _github_file(connector, token, fpath)
+        else:
+            content = _gitea_file(connector, token, fpath)
+        logger.info(f'[get_file] fetched "{fpath}" directly from connector ({len(content)} chars)')
+        return content
+    except Exception as e:
+        logger.warning(f'[get_file] direct connector fetch "{fpath}" failed: {e}')
+        return None
+
+
 def _detect_explicit_file_request(query: str) -> list[str]:
     """Находит любые упоминания файлов с расширением в запросе (без @file директив)."""
     if not query:
@@ -173,14 +196,24 @@ def build_project_knowledge_context(project, user_message_text: str = '') -> str
                 .first()
             )
             if pf and pf.extracted_text and pf.id not in used_file_ids:
+                # Файл есть в KB — инжектируем из БД
                 snippet, added = _inject_file(pf, query, inject_limit, total_chars, force_full=True)
-                parts.insert(0, snippet)  # вставляем первым — явный запрос важнее RAG
+                parts.insert(0, snippet)
                 total_chars += added
                 used_file_ids.append(pf.id)
-                logger.info(f'[get_file] injected full file "{fpath}" ({added} chars) for project {project.id}')
+                logger.info(f'[get_file] injected from KB "{fpath}" ({added} chars) project {project.id}')
             else:
-                _explicit_not_found.append(fpath)
-                logger.warning(f'[get_file] file "{fpath}" not found in project KB (project {project.id})')
+                # Файл не в KB (не попал в лимит синка) — фетчим напрямую с GitHub/Gitea
+                content = _fetch_from_connector(project, fpath)
+                if content:
+                    remaining = inject_limit - total_chars
+                    snippet = content[:remaining]
+                    parts.insert(0, f"### {fpath}\n{snippet}")
+                    total_chars += len(snippet)
+                    logger.info(f'[get_file] fetched from connector "{fpath}" ({len(snippet)} chars) project {project.id}')
+                else:
+                    _explicit_not_found.append(fpath)
+                    logger.warning(f'[get_file] file "{fpath}" not found anywhere (project {project.id})')
         except Exception as e:
             logger.warning(f'[get_file] explicit file "{fpath}" failed: {e}')
 
