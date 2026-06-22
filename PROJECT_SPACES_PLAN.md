@@ -35,8 +35,19 @@ Claude.ai Projects, Perplexity Spaces и ChatGPT Projects.
 | **Bug-fix RAG-инъекция** (двойная инъекция + sync error-статус + polling-кнопка + бейдж) | **ЗАВЕРШЁН** | (сессия 2026-06-22) |
 | **Phase 6 — RAG Supremacy** (hybrid+rerank+query-expansion+@file/@web+two-level) | **ЗАВЕРШЁН** | `c680c8a`, `1955105` |
 | **Phase 7 — Code Workspace** (встроенный редактор CodeMirror + deploy-хук) | **ЗАВЕРШЁН** | `c680c8a`, `1955105` |
+| **Post-launch fixes** (chunk_index bug, auto-push bug, rate-limit, lang extensions) | **ЗАВЕРШЁН** | `1955105`, `0620d0c` |
 
-**Phase 4 + Phase 5 + Phase 6 + Phase 7 — ПОЛНОСТЬЮ ЗАВЕРШЕНЫ.**
+**ВСЕ ФАЗЫ ЗАВЕРШЕНЫ. Project Spaces реализован полностью.**
+
+### Post-launch fixes (сессия 2026-06-22)
+
+| # | Проблема | Исправление |
+|---|----------|-------------|
+| 1 | `chunk_index = PositiveIntegerField()` — Postgres CHECK не пропускал `-1`, summary-эмбеддинги Sprint 6.5 падали при INSERT | Изменено на `IntegerField`, миграция `0025` |
+| 2 | `embed_chunks` удалял все чанки файла включая `chunk_index=-1` при ресинке | `DELETE WHERE chunk_index >= 0` — summary-строка сохраняется |
+| 3 | `time.monotonic()` в rate-limit deploy.py — не работает cross-worker в gunicorn | Заменено на `time.time()` |
+| 4 | `CodeEditor` передавал `extensions=[]` — синтаксическая подсветка не работала | Подключены `@codemirror/lang-javascript/html/css` через `getLanguageExtensions()` |
+| 5 | CodeEditor авто-пушил коммит сразу после создания, минуя кнопку «Запушить» | Убран `confirmCommit()` из `onCommit` callback — коммит уходит в «Ожидает» |
 
 ### Bug-fix RAG-аудит (текущая сессия)
 
