@@ -1,8 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { GitCommit, Edit2, Eye, Loader2, X } from "lucide-react";
+import { javascript } from "@codemirror/lang-javascript";
+import { html } from "@codemirror/lang-html";
+import { css } from "@codemirror/lang-css";
+import type { Extension } from "@codemirror/state";
 
 // CodeMirror lazy-loaded (client only — avoid SSR issues)
 const CodeMirrorEditor = dynamic(
@@ -22,6 +26,16 @@ function detectLanguage(path: string): string {
     java: "java", rb: "ruby", php: "php", sql: "sql", xml: "xml",
   };
   return map[ext] ?? "text";
+}
+
+function getLanguageExtensions(lang: string): Extension[] {
+  switch (lang) {
+    case "typescript": return [javascript({ typescript: true, jsx: true })];
+    case "javascript": return [javascript({ jsx: true })];
+    case "html":       return [html()];
+    case "css":        return [css()];
+    default:           return [];
+  }
 }
 
 interface Props {
@@ -116,7 +130,7 @@ export default function CodeEditor({
           readOnly={!editMode}
           height="100%"
           theme="light"
-          extensions={[]}
+          extensions={getLanguageExtensions(lang)}
           basicSetup={{
             lineNumbers: true,
             foldGutter: true,

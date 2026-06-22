@@ -448,7 +448,7 @@ class ProjectChunk(models.Model):
     """Чанк текста из файла базы знаний с векторным эмбеддингом (Sprint 4.1 — Vector RAG)."""
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='chunks')
     file = models.ForeignKey(ProjectFile, on_delete=models.CASCADE, related_name='chunks')
-    chunk_index = models.PositiveIntegerField()
+    chunk_index = models.IntegerField()
     content = models.TextField()
     token_count = models.PositiveIntegerField(default=0)
     # VectorField добавляется миграцией при включённом pgvector (dimensions=1536)

@@ -45,7 +45,7 @@ class InternalDeployView(APIView):
 
         # ── Rate limit: at most 1 request per 30 seconds ─────────────────────
         last_ts = cache.get(_RATE_LIMIT_KEY)
-        now = time.monotonic()
+        now = time.time()
         if last_ts is not None and (now - last_ts) < _RATE_LIMIT_INTERVAL:
             wait = int(_RATE_LIMIT_INTERVAL - (now - last_ts))
             return Response({'error': f'rate limited — try again in {wait}s'}, status=429)

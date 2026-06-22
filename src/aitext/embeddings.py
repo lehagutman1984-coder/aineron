@@ -158,7 +158,7 @@ def embed_chunks(file) -> int:
         logger.warning(f"Мисмэтч чанков/эмбеддингов для файла {file.id}: {len(chunks)} vs {len(embeddings)}")
 
     with connection.cursor() as cur:
-        cur.execute('DELETE FROM aitext_projectchunk WHERE file_id = %s', [file.id])
+        cur.execute('DELETE FROM aitext_projectchunk WHERE file_id = %s AND chunk_index >= 0', [file.id])
 
     saved = 0
     with connection.cursor() as cur:
