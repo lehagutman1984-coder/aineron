@@ -33,6 +33,34 @@ FULL_INJECT_LIMIT = 50_000   # символов на файл — порог ful
 def _get_inject_limit():
     return int(getattr(settings, 'PROJECT_INJECT_LIMIT', 200_000))
 
+
+# Паттерны для автодетекции явных запросов конкретного файла.
+# Группа 1 — имя файла (напр. "tasks.py" или "src/studio/tasks.py").
+_EXPLICIT_FILE_RE = re.compile(
+    r'(?:'
+    r'дай(?:\s+мне)?(?:\s+полн\w+)?|'
+    r'покажи(?:\s+мне)?(?:\s+полн\w+)?|'
+    r'напечатай(?:\s+полн\w+)?|'
+    r'выведи(?:\s+полн\w+)?|'
+    r'покажи(?:\s+мне)?\s+файл|'
+    r'полн\w+\s+файл|'
+    r'исправленн\w+\s+(?:файл\s+)?|'
+    r'give\s+(?:me\s+)?(?:the\s+)?(?:full\s+)?|'
+    r'show\s+(?:me\s+)?(?:the\s+)?(?:full\s+)?|'
+    r'print\s+(?:the\s+)?(?:full\s+)?'
+    r')'
+    r'(?:файл\s+)?'
+    r'([\w./\\-]+\.(?:py|ts|tsx|js|jsx|html|css|json|yml|yaml|sh|md|txt|go|rs|java|rb|php|sql|xml|env))',
+    re.IGNORECASE,
+)
+
+
+def _detect_explicit_file_request(query: str) -> list[str]:
+    """Возвращает список имён файлов, явно запрошенных пользователем (без @file директив)."""
+    if not query:
+        return []
+    return [m.group(1) for m in _EXPLICIT_FILE_RE.finditer(query)]
+
 AGGREGATE_INJECT_LIMIT = 200_000  # оставляем как fallback-константу; в коде используем _get_inject_limit()
 
 
@@ -56,15 +84,24 @@ def _retrieve_relevant_chunks(text: str, query: str, chunk_size: int = None, top
     return "\n...\n".join(c for _, _, c in top)
 
 
-def _inject_file(f, user_message_text: str, inject_limit: int, total_chars: int) -> tuple[str, int]:
-    """Возвращает (snippet_with_label, chars_added) для одного ProjectFile."""
+def _inject_file(f, user_message_text: str, inject_limit: int, total_chars: int,
+                 force_full: bool = False) -> tuple[str, int]:
+    """Возвращает (snippet_with_label, chars_added) для одного ProjectFile.
+
+    force_full=True — инжектить весь файл целиком (для явных запросов типа
+    «дай полный tasks.py»), игнорируя порог FULL_INJECT_LIMIT.
+    """
     text = f.extracted_text
     is_large = len(text) > FULL_INJECT_LIMIT
-    snippet = _retrieve_relevant_chunks(text, user_message_text) if is_large else text
+    if force_full or not is_large:
+        snippet = text
+        label = f.filename
+    else:
+        snippet = _retrieve_relevant_chunks(text, user_message_text)
+        label = f"{f.filename} (фрагменты)"
     remaining = inject_limit - total_chars
     if len(snippet) > remaining:
         snippet = snippet[:remaining]
-    label = f"{f.filename} (фрагменты)" if is_large else f.filename
     return f"### {label}\n{snippet}", len(snippet)
 
 
@@ -121,6 +158,30 @@ def build_project_knowledge_context(project, user_message_text: str = '') -> str
                     used_file_ids.append(pf.id)
         except Exception as e:
             logger.warning(f'[6.4] @file "{fpath}" failed: {e}')
+
+    # ── Явные запросы файлов: «дай полный tasks.py», «покажи файл X» ────────
+    # Детектируем имена файлов в запросе (без @-префикса) и инжектим полностью.
+    for fpath in _detect_explicit_file_request(query):
+        if total_chars >= inject_limit:
+            break
+        # Не дублировать файлы, которые уже пришли через @file (used_file_ids хранит int id)
+        # Проверяем только после поиска объекта, чтобы сравнить id, не строку
+        try:
+            from .models import ProjectFile
+            from django.db.models import Q
+            pf = (
+                project.knowledge_files.filter(status='ready', enabled=True)
+                .filter(Q(filename=fpath) | Q(filename__endswith='/' + fpath) | Q(repo_path=fpath))
+                .first()
+            )
+            if pf and pf.extracted_text and pf.id not in used_file_ids:
+                snippet, added = _inject_file(pf, query, inject_limit, total_chars, force_full=True)
+                parts.insert(0, snippet)  # вставляем первым — явный запрос важнее RAG
+                total_chars += added
+                used_file_ids.append(pf.id)
+                logger.info(f'[get_file] injected full file "{fpath}" ({added} chars) for project {project.id}')
+        except Exception as e:
+            logger.warning(f'[get_file] explicit file "{fpath}" failed: {e}')
 
     # @web: Tavily search
     if directives.get('web') and getattr(settings, 'PROJECT_WEB_SEARCH', False) and query:
