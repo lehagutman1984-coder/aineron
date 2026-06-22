@@ -124,10 +124,39 @@ def _detect_file_type(filename: str) -> str:
     return 'other'
 
 
+VERSION_RETENTION = 10  # Макс. версий на файл
+
+
+def _create_version_snapshot(pf, old_text: str):
+    """Sprint 5.4: создаёт снапшот версии файла. Удаляет лишние (старше VERSION_RETENTION)."""
+    if not getattr(settings, 'PROJECT_FILE_VERSIONS', False):
+        return
+    if not old_text:
+        return
+    try:
+        from aitext.models import ProjectFileVersion
+        ProjectFileVersion.objects.create(
+            file=pf,
+            content_snapshot=old_text,
+            repo_sha=pf.repo_sha,
+        )
+        # Ретеншн: удалить версии старше VERSION_RETENTION
+        old_ids = list(
+            ProjectFileVersion.objects.filter(file=pf)
+            .order_by('-created_at')
+            .values_list('id', flat=True)[VERSION_RETENTION:]
+        )
+        if old_ids:
+            ProjectFileVersion.objects.filter(id__in=old_ids).delete()
+    except Exception as e:
+        logger.warning(f'[sync] version snapshot failed for file {pf.id}: {e}')
+
+
 def sync_connector(connector_id: int) -> dict:
     """Синхронизирует файлы из репозитория в базу знаний проекта.
 
-    Returns {'created': N, 'updated': N, 'deleted': N, 'skipped': N}
+    Returns {'created': N, 'updated': N, 'deleted': N, 'skipped': N, 'errors': N}
+    При PROJECT_FILE_VERSIONS=1 — создаёт снапшоты версий при обновлении.
     """
     from aitext.models import ProjectConnector, ProjectFile
     from aitext.crypto import decrypt_token
@@ -181,6 +210,8 @@ def sync_connector(connector_id: int) -> dict:
 
         filename = os.path.basename(path)
         if existing:
+            # Снапшот старого содержимого перед обновлением
+            _create_version_snapshot(existing, existing.extracted_text)
             # Обновляем текст и сбрасываем embed_status
             existing.extracted_text = content
             existing.status = 'ready'
@@ -214,11 +245,41 @@ def sync_connector(connector_id: int) -> dict:
             pf.delete()
             deleted += 1
 
+    report = {'created': created, 'updated': updated, 'deleted': deleted, 'skipped': skipped, 'errors': errors}
     connector.last_synced_at = timezone.now()
-    connector.save(update_fields=['last_synced_at'])
+    connector.sync_status = 'error' if errors > 0 and (created + updated) == 0 else 'ok'
+    connector.last_sync_report = report
+    connector.save(update_fields=['last_synced_at', 'sync_status', 'last_sync_report'])
 
     logger.info(
         f'[sync] connector {connector_id} ({connector.owner}/{connector.repo}): '
         f'created={created}, updated={updated}, deleted={deleted}, skipped={skipped}, errors={errors}'
     )
-    return {'created': created, 'updated': updated, 'deleted': deleted, 'skipped': skipped, 'errors': errors}
+    return report
+
+
+# ── Polling helpers ────────────────────────────────────────────────────────────
+
+def get_repo_head_sha(connector) -> str | None:
+    """Sprint 5.4: получает HEAD SHA ветки (лёгкий запрос без полного синка)."""
+    try:
+        from aitext.crypto import decrypt_token
+        token = decrypt_token(connector.access_token_enc)
+    except Exception:
+        return None
+
+    try:
+        if connector.connector_type == 'github':
+            url = f'https://api.github.com/repos/{connector.owner}/{connector.repo}/commits/{connector.branch}'
+            r = requests.get(url, headers=_github_headers(token), timeout=10)
+            r.raise_for_status()
+            return r.json().get('sha', '')
+        else:
+            base = _gitea_base(connector)
+            url = f'{base}/api/v1/repos/{connector.owner}/{connector.repo}/branches/{connector.branch}'
+            r = requests.get(url, headers=_gitea_headers(token), timeout=10)
+            r.raise_for_status()
+            return r.json().get('commit', {}).get('id', '')
+    except Exception as e:
+        logger.warning(f'[poll] HEAD check failed for connector {connector.id}: {e}')
+        return None

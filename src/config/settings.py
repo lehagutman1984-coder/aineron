@@ -294,6 +294,10 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': crontab(minute='*/30'),
         'options': {'queue': 'studio_queue'},
     },
+    'poll-project-connectors': {
+        'task': 'aitext.tasks.poll_connectors',
+        'schedule': crontab(minute='*/10'),
+    },
 }
 
 
@@ -335,6 +339,9 @@ PROJECT_SMART_CHUNK    = os.getenv('PROJECT_SMART_CHUNK', '0') == '1'
 PROJECT_FILE_SEARCH  = os.getenv('PROJECT_FILE_SEARCH',  '0') == '1'
 PROJECT_EMBED_CACHE  = os.getenv('PROJECT_EMBED_CACHE',  '0') == '1'
 PROJECT_KB_METRICS   = os.getenv('PROJECT_KB_METRICS',   '0') == '1'
+# Sprint 5.4 — Sync hardening
+PROJECT_FILE_VERSIONS = os.getenv('PROJECT_FILE_VERSIONS', '0') == '1'
+PROJECT_SYNC_POLLING  = os.getenv('PROJECT_SYNC_POLLING',  '0') == '1'
 
 STUDIO_GITEA_URL = os.getenv('STUDIO_GITEA_URL', 'http://gitea:3000')
 STUDIO_GITEA_ADMIN_USER = os.getenv('STUDIO_GITEA_ADMIN_USER', 'studio_admin')

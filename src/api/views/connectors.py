@@ -55,8 +55,10 @@ class ConnectorSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'connector_type', 'repo_url', 'owner', 'repo', 'branch',
             'webhook_url', 'webhook_secret', 'last_synced_at', 'created_at',
+            'auto_sync', 'sync_status', 'last_sync_report',
         ]
-        read_only_fields = ['id', 'owner', 'repo', 'webhook_url', 'webhook_secret', 'last_synced_at', 'created_at']
+        read_only_fields = ['id', 'owner', 'repo', 'webhook_url', 'webhook_secret', 'last_synced_at', 'created_at',
+                            'sync_status', 'last_sync_report']
 
     def get_webhook_url(self, obj) -> str:
         request = self.context.get('request')
@@ -147,6 +149,14 @@ class ConnectorDetailView(APIView):
     def _get(self, request, pk, connector_id):
         project = get_object_or_404(Project, pk=pk, user=request.user)
         return get_object_or_404(ProjectConnector, pk=connector_id, project=project)
+
+    def patch(self, request, pk, connector_id):
+        """PATCH только auto_sync."""
+        connector = self._get(request, pk, connector_id)
+        if 'auto_sync' in request.data:
+            connector.auto_sync = bool(request.data['auto_sync'])
+            connector.save(update_fields=['auto_sync'])
+        return Response(ConnectorSerializer(connector, context={'request': request}).data)
 
     def delete(self, request, pk, connector_id):
         connector = self._get(request, pk, connector_id)

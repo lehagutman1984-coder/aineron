@@ -167,3 +167,70 @@ class ProjectFileSearchView(APIView):
         from aitext.search import search_knowledge
         results = search_knowledge(project, query, top_n=20)
         return Response(ProjectFileSerializer(results, many=True, context={'request': request}).data)
+
+
+class FileVersionListView(APIView):
+    """GET /api/v1/projects/<pk>/files/<file_id>/versions/
+
+    Sprint 5.4: список снапшотов версий файла (последние 10).
+    Требует PROJECT_FILE_VERSIONS=1.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk, file_id):
+        from django.conf import settings
+        if not getattr(settings, 'PROJECT_FILE_VERSIONS', False):
+            return Response({'error': 'Версии файлов отключены'}, status=400)
+
+        project = get_object_or_404(Project, pk=pk, user=request.user)
+        pf = get_object_or_404(ProjectFile, pk=file_id, project=project)
+
+        from aitext.models import ProjectFileVersion
+        versions = ProjectFileVersion.objects.filter(file=pf).order_by('-created_at')[:10]
+        data = [
+            {
+                'id': v.id,
+                'repo_sha': v.repo_sha,
+                'created_at': v.created_at.isoformat(),
+                'content_preview': v.content_snapshot[:200],
+                'size': len(v.content_snapshot),
+            }
+            for v in versions
+        ]
+        return Response(data)
+
+
+class FileRestoreView(APIView):
+    """POST /api/v1/projects/<pk>/files/<file_id>/versions/<version_id>/restore/
+
+    Sprint 5.4: восстанавливает файл из снапшота версии.
+    Перед восстановлением создаёт снапшот текущего содержимого.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk, file_id, version_id):
+        from django.conf import settings
+        if not getattr(settings, 'PROJECT_FILE_VERSIONS', False):
+            return Response({'error': 'Версии файлов отключены'}, status=400)
+
+        project = get_object_or_404(Project, pk=pk, user=request.user)
+        pf = get_object_or_404(ProjectFile, pk=file_id, project=project)
+
+        from aitext.models import ProjectFileVersion
+        version = get_object_or_404(ProjectFileVersion, pk=version_id, file=pf)
+
+        # Снапшот текущего перед восстановлением
+        from aitext.sync import _create_version_snapshot
+        _create_version_snapshot(pf, pf.extracted_text)
+
+        # Восстановление
+        pf.extracted_text = version.content_snapshot
+        pf.embed_status = 'none'
+        pf.save(update_fields=['extracted_text', 'embed_status'])
+
+        # Переиндексировать
+        if getattr(settings, 'PROJECT_VECTOR_RAG', False):
+            from aitext.tasks import embed_project_file
+            embed_project_file.delay(pf.id)
+
+        return Response({'restored': True, 'version_id': version_id, 'file_id': file_id})

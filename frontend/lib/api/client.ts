@@ -673,6 +673,34 @@ export const syncConnector = (
 ): Promise<{ status: string; connector_id: number }> =>
   request(`/projects/${projectId}/connectors/${connectorId}/sync/`, { method: "POST" });
 
+export const patchConnector = (
+  projectId: number,
+  connectorId: number,
+  data: { auto_sync?: boolean }
+): Promise<ProjectConnector> =>
+  request<ProjectConnector>(`/projects/${projectId}/connectors/${connectorId}/`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+
+export interface FileVersion {
+  id: number;
+  repo_sha: string;
+  created_at: string;
+  content_preview: string;
+  size: number;
+}
+
+export const listFileVersions = (projectId: number, fileId: number): Promise<FileVersion[]> =>
+  request<FileVersion[]>(`/projects/${projectId}/files/${fileId}/versions/`);
+
+export const restoreFileVersion = (
+  projectId: number,
+  fileId: number,
+  versionId: number
+): Promise<{ restored: boolean; version_id: number; file_id: number }> =>
+  request(`/projects/${projectId}/files/${fileId}/versions/${versionId}/restore/`, { method: "POST" });
+
 // ============ Public Spaces ============
 
 export const publishProject = (

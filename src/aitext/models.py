@@ -316,6 +316,13 @@ class ProjectConnector(models.Model):
     webhook_secret = models.CharField(max_length=64, blank=True, default='', verbose_name='Webhook secret (HMAC)')
     last_synced_at = models.DateTimeField(null=True, blank=True, verbose_name='Последняя синхронизация')
     created_at = models.DateTimeField(auto_now_add=True)
+    # Sprint 5.4 — Sync hardening
+    auto_sync = models.BooleanField(default=True, verbose_name='Авто-синхронизация')
+    sync_status = models.CharField(max_length=10, blank=True, default='',
+                                   choices=[('ok', 'OK'), ('error', 'Ошибка'), ('running', 'Идёт')],
+                                   verbose_name='Статус последнего синка')
+    last_sync_report = models.JSONField(default=dict, blank=True, verbose_name='Отчёт последнего синка')
+    last_repo_head_sha = models.CharField(max_length=64, blank=True, verbose_name='Последний HEAD SHA')
 
     class Meta:
         verbose_name = 'Git-коннектор'
@@ -363,6 +370,31 @@ class ProjectCommit(models.Model):
 
     def __str__(self):
         return f"{self.project.name} — {self.commit_message[:50]}"
+
+
+class ProjectFileVersion(models.Model):
+    """Sprint 5.4: снапшот версии файла базы знаний.
+
+    Создаётся при каждом обновлении файла через синк (source='repo') или ручной загрузке.
+    Ретеншн: последние 10 версий на файл.
+    """
+    VERSION_LIMIT = 10
+
+    file = models.ForeignKey(
+        ProjectFile, on_delete=models.CASCADE, related_name='versions',
+        verbose_name='Файл',
+    )
+    content_snapshot = models.TextField(verbose_name='Содержимое (снапшот)')
+    repo_sha = models.CharField(max_length=64, blank=True, verbose_name='Git SHA (для repo-файлов)')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Версия файла'
+        verbose_name_plural = 'Версии файлов'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.file.filename} @ {self.created_at:%Y-%m-%d %H:%M}"
 
 
 class ProjectChunk(models.Model):

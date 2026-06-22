@@ -48,6 +48,7 @@ import {
   FolderOpen,
   FileCode,
   Search,
+  History,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -57,7 +58,8 @@ import {
   listConnectors, createConnector, deleteConnector,
   listRepoFiles, getRepoFileContent,
   listCommits, createCommit, confirmCommit,
-  publishProject, syncConnector,
+  publishProject, syncConnector, patchConnector,
+  listFileVersions, restoreFileVersion,
 } from "@/lib/api/client";
 import type { ChatListItem, Project, ProjectFile, ProjectConnector, RepoTreeItem, ProjectCommit, CommitFile } from "@/lib/api/types";
 
@@ -513,6 +515,8 @@ function FilesTab({ projectId }: { projectId: number }) {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchActive, setSearchActive] = useState(false);
+  const [versionFileId, setVersionFileId] = useState<number | null>(null);
+  const [restoringVersionId, setRestoringVersionId] = useState<number | null>(null);
 
   const { data: files = [], isLoading } = useQuery({
     queryKey: ["project-files", projectId],
@@ -534,6 +538,13 @@ function FilesTab({ projectId }: { projectId: number }) {
   const displayedFiles = searchActive && searchQuery.trim().length >= 2
     ? (searchResults ?? [])
     : files;
+
+  const { data: fileVersions = [], isLoading: versionsLoading } = useQuery({
+    queryKey: ["file-versions", projectId, versionFileId],
+    queryFn: () => listFileVersions(projectId, versionFileId!),
+    enabled: versionFileId !== null,
+    staleTime: 30_000,
+  });
 
   const uploadMutation = useMutation({
     mutationFn: (file: File) => uploadProjectFile(projectId, file),
@@ -672,8 +683,8 @@ function FilesTab({ projectId }: { projectId: number }) {
           {displayedFiles.map((f) => {
             const isDeleting = deletingId === f.id;
             return (
+              <div key={f.id}>
               <div
-                key={f.id}
                 className={[
                   "group flex items-center gap-3 rounded-[10px] border p-3.5 transition-all",
                   f.enabled
@@ -749,6 +760,21 @@ function FilesTab({ projectId }: { projectId: number }) {
                         : <ToggleLeft size={16} />
                       }
                     </button>
+                    {/* Version history (only for repo files) */}
+                    {f.source === "repo" && (
+                      <button
+                        onClick={() => setVersionFileId(versionFileId === f.id ? null : f.id)}
+                        className={[
+                          "rounded-[6px] p-1.5 transition-colors",
+                          versionFileId === f.id
+                            ? "bg-[rgba(10,124,255,0.12)] text-[#0a7cff]"
+                            : "text-[rgba(13,13,13,0.35)] hover:bg-[rgba(13,13,13,0.06)] hover:text-[#0d0d0d]",
+                        ].join(" ")}
+                        title="История версий"
+                      >
+                        <History size={14} />
+                      </button>
+                    )}
                     {/* Delete */}
                     <button
                       onClick={() => setDeletingId(f.id)}
@@ -760,6 +786,51 @@ function FilesTab({ projectId }: { projectId: number }) {
                   </div>
                 )}
               </div>
+
+              {/* Inline version history panel */}
+              {versionFileId === f.id && (
+                <div className="mt-1 rounded-[8px] border border-[rgba(13,13,13,0.09)] bg-[rgba(13,13,13,0.02)] p-3">
+                  <p className="mb-2 text-[11px] font-semibold text-[rgba(13,13,13,0.6)]">История версий</p>
+                  {versionsLoading ? (
+                    <div className="h-10 animate-pulse rounded-[6px] bg-[rgba(13,13,13,0.06)]" />
+                  ) : fileVersions.length === 0 ? (
+                    <p className="text-[11px] text-[rgba(13,13,13,0.40)]">Снапшотов нет</p>
+                  ) : (
+                    <div className="flex flex-col gap-1.5">
+                      {fileVersions.map((v) => (
+                        <div key={v.id} className="flex items-center gap-3 rounded-[6px] bg-white px-2.5 py-1.5">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[11px] font-medium text-[#0d0d0d]">
+                              {new Date(v.created_at).toLocaleString("ru")}
+                              {v.repo_sha && <span className="ml-1.5 text-[rgba(13,13,13,0.40)]">· {v.repo_sha.slice(0, 7)}</span>}
+                            </p>
+                            <p className="truncate text-[10px] text-[rgba(13,13,13,0.40)]">{v.content_preview}</p>
+                          </div>
+                          <span className="shrink-0 text-[10px] text-[rgba(13,13,13,0.35)]">{(v.size / 1024).toFixed(1)} KB</span>
+                          <button
+                            onClick={async () => {
+                              setRestoringVersionId(v.id);
+                              try {
+                                await restoreFileVersion(projectId, f.id, v.id);
+                                qc.invalidateQueries({ queryKey: ["project-files", projectId] });
+                                qc.invalidateQueries({ queryKey: ["file-versions", projectId, f.id] });
+                                setVersionFileId(null);
+                              } finally {
+                                setRestoringVersionId(null);
+                              }
+                            }}
+                            disabled={restoringVersionId === v.id}
+                            className="shrink-0 rounded-[5px] border border-[rgba(13,13,13,0.14)] px-2 py-0.5 text-[10px] font-medium text-[rgba(13,13,13,0.55)] transition-colors hover:border-[#0a7cff] hover:text-[#0a7cff] disabled:opacity-50"
+                          >
+                            {restoringVersionId === v.id ? "..." : "Восстановить"}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
             );
           })}
         </div>
@@ -994,10 +1065,21 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                   : <GitBranch size={16} className="shrink-0 text-[#e67e22]" />
                 }
                 <div className="min-w-0 flex-1">
-                  <p className="text-[14px] font-semibold text-[#0d0d0d]">{conn.owner}/{conn.repo}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-[14px] font-semibold text-[#0d0d0d]">{conn.owner}/{conn.repo}</p>
+                    {conn.sync_status === "ok" && (
+                      <span className="rounded-full bg-[rgba(34,168,90,0.12)] px-2 py-0.5 text-[10px] font-medium text-[#22a85a]">синк OK</span>
+                    )}
+                    {conn.sync_status === "error" && (
+                      <span className="rounded-full bg-[rgba(231,76,60,0.10)] px-2 py-0.5 text-[10px] font-medium text-[#e74c3c]">синк ошибка</span>
+                    )}
+                  </div>
                   <p className="text-[11px] text-[rgba(13,13,13,0.45)]">
                     {conn.connector_type === "github" ? "GitHub" : "Gitea"} · ветка {conn.branch}
                     {conn.last_synced_at && <> · синхронизировано {new Date(conn.last_synced_at).toLocaleString("ru")}</>}
+                    {conn.last_sync_report && conn.last_sync_report.errors != null && conn.last_sync_report.errors > 0 && (
+                      <> · <span className="text-[#e74c3c]">{conn.last_sync_report.errors} ошибок</span></>
+                    )}
                   </p>
                   {conn.webhook_url && (
                     <div className="mt-1.5 flex items-center gap-1.5">
@@ -1044,6 +1126,22 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                   >
                     <Send size={11} />
                     Коммит
+                  </button>
+                  <button
+                    onClick={async () => {
+                      await patchConnector(projectId, conn.id, { auto_sync: !conn.auto_sync });
+                      qc.invalidateQueries({ queryKey: ["connectors", projectId] });
+                    }}
+                    className={[
+                      "flex items-center gap-1.5 rounded-[7px] px-2.5 py-1.5 text-[11px] font-medium transition-colors",
+                      conn.auto_sync
+                        ? "bg-[rgba(10,124,255,0.10)] text-[#0a7cff]"
+                        : "border border-[rgba(13,13,13,0.14)] text-[rgba(13,13,13,0.40)]",
+                    ].join(" ")}
+                    title={conn.auto_sync ? "Авто-синк включён (нажмите чтобы отключить)" : "Авто-синк отключён (нажмите чтобы включить)"}
+                  >
+                    <RefreshCw size={10} />
+                    Авто
                   </button>
                   <button
                     onClick={() => disconnectMutation.mutate(conn.id)}

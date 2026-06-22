@@ -1212,3 +1212,40 @@ def push_project_commit(self, commit_id: int):
             commit.error_message = str(e)[:500]
             commit.save(update_fields=['status', 'error_message'])
         raise self.retry(exc=e, countdown=30)
+
+
+
+@shared_task(ignore_result=True)
+def poll_connectors():
+    """Sprint 5.4: Polling-fallback для auto_sync коннекторов.
+
+    Beat: каждые 10 минут (настраивается через PROJECT_SYNC_POLLING в settings).
+    Для каждого коннектора с auto_sync=True:
+      - Проверяет HEAD SHA ветки (лёгкий API-запрос).
+      - Если SHA изменился -> запускает sync_connector_task.
+      - Обновляет last_repo_head_sha.
+    """
+    if not getattr(settings, 'PROJECT_SYNC_POLLING', False):
+        return
+
+    from .models import ProjectConnector
+    from .sync import get_repo_head_sha
+
+    connectors = ProjectConnector.objects.filter(auto_sync=True).select_related('project')
+    triggered = 0
+
+    for connector in connectors:
+        try:
+            head_sha = get_repo_head_sha(connector)
+            if not head_sha:
+                continue
+            if head_sha != connector.last_repo_head_sha:
+                sync_connector_task.delay(connector.id)
+                connector.last_repo_head_sha = head_sha
+                connector.save(update_fields=['last_repo_head_sha'])
+                triggered += 1
+                logger.info(f'[poll_connectors] triggered sync for connector {connector.id} (new SHA: {head_sha[:8]})')
+        except Exception as e:
+            logger.warning(f'[poll_connectors] error checking connector {connector.id}: {e}')
+
+    logger.info(f'[poll_connectors] checked {connectors.count()} connectors, triggered {triggered} syncs')

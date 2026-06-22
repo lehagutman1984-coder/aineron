@@ -27,6 +27,7 @@ Claude.ai Projects, Perplexity Spaces и ChatGPT Projects.
 | **B4 hotfix** — Rate limit публичных Spaces (Redis throttle 60/min + кэш 60s) | **ЗАВЕРШЁН** | `33046bc` |
 | **Sprint 5.7** — RAG Quality (лимиты + надёжность эмбеддингов + умный чанкинг) | **ЗАВЕРШЁН** | `33046bc` |
 | **Sprint 5.3** — Knowledge intelligence (FTS поиск + кэш эмбеддингов + метрики) | **ЗАВЕРШЁН** | — |
+| **Sprint 5.4** — Sync hardening (версии файлов + polling + auto_sync toggle + sync badge) | **ЗАВЕРШЁН** | — |
 
 **Phase 4 — ПОЛНОСТЬЮ ЗАВЕРШЕНА** (все 5 спринтов).
 
