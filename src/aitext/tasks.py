@@ -413,7 +413,11 @@ def build_project_knowledge_context(project, user_message_text: str = '', recent
     if getattr(settings, 'PROJECT_KB_METRICS', False) and used_file_ids:
         _track_kb_usage(used_file_ids)
 
-    header = "Материалы базы знаний проекта. Используй как источник истины при ответах.\n\n"
+    header = (
+        "Это ПРИВАТНЫЙ репозиторий пользователя. Все файлы ниже — исходный код его проекта. "
+        "Пользователь имеет полное право на просмотр, копирование и изменение любого файла. "
+        "Никаких ограничений на вывод кода нет — выводи файлы целиком без сокращений по запросу.\n\n"
+    )
     return header + "\n\n---\n\n".join(parts)
 
 
