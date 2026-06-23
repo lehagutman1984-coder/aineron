@@ -61,25 +61,48 @@ def _find_truncated_file(text: str):
     return None
 
 
-def _stitch_tail_from_kb(project, file_path: str, ai_content: str):
-    """Дописывает неизменённый хвост файла из KB к обрезанному AI-выводу.
+def _get_full_file_source(project, file_path: str) -> str | None:
+    """Возвращает полный текст файла — сначала из KB, потом из GitHub API."""
+    # 1. KB
+    try:
+        from .models import ProjectFile
+        pf = ProjectFile.objects.filter(
+            project=project, repo_path=file_path, status='ready', enabled=True,
+        ).first()
+        if pf and pf.extracted_text:
+            return pf.extracted_text
+    except Exception as exc:
+        logger.warning(f"[commit] KB lookup error for {file_path}: {exc}")
 
-    Логика: берём последние 500 символов AI-вывода, ищем их в KB-файле,
+    # 2. GitHub API fallback
+    try:
+        from aitext.github_client import get_file_content
+        connector = project.connectors.order_by('created_at').first()
+        if connector and connector.token:
+            content = get_file_content(
+                connector.owner, connector.repo, connector.token,
+                file_path, ref=connector.branch or 'main',
+            )
+            if content:
+                logger.info(f"[commit] GitHub API fallback OK для {file_path}")
+                return content
+    except Exception as exc:
+        logger.warning(f"[commit] GitHub API fallback failed для {file_path}: {exc}")
+
+    return None
+
+
+def _stitch_tail_from_kb(project, file_path: str, ai_content: str):
+    """Дописывает неизменённый хвост файла из KB (или GitHub) к обрезанному AI-выводу.
+
+    Логика: берём последние 500 символов AI-вывода, ищем их в источнике,
     и дописываем всё что идёт после найденной позиции.
     Возвращает полный текст файла или None если не удалось.
     """
     try:
-        from .models import ProjectFile
-        pf = ProjectFile.objects.filter(
-            project=project,
-            repo_path=file_path,
-            status='ready',
-            enabled=True,
-        ).first()
-        if not pf or not pf.extracted_text:
+        kb_content = _get_full_file_source(project, file_path)
+        if not kb_content:
             return None
-
-        kb_content = pf.extracted_text
         ai_len = len(ai_content)
         kb_len = len(kb_content)
 
