@@ -62,7 +62,7 @@ def _find_truncated_file(text: str):
 
 
 def _get_full_file_source(project, file_path: str) -> str | None:
-    """Возвращает полный текст файла — сначала из KB, потом из GitHub API."""
+    """Возвращает полный текст файла — сначала из KB, потом из коннектора (GitHub/Gitea)."""
     # 1. KB
     try:
         from .models import ProjectFile
@@ -74,20 +74,15 @@ def _get_full_file_source(project, file_path: str) -> str | None:
     except Exception as exc:
         logger.warning(f"[commit] KB lookup error for {file_path}: {exc}")
 
-    # 2. GitHub API fallback
+    # 2. Connector fallback (GitHub/Gitea) — переиспользуем _fetch_from_connector из tasks.py
     try:
-        from aitext.github_client import get_file_content
-        connector = project.connectors.order_by('created_at').first()
-        if connector and connector.token:
-            content = get_file_content(
-                connector.owner, connector.repo, connector.token,
-                file_path, ref=connector.branch or 'main',
-            )
-            if content:
-                logger.info(f"[commit] GitHub API fallback OK для {file_path}")
-                return content
+        from .tasks import _fetch_from_connector
+        content = _fetch_from_connector(project, file_path)
+        if content:
+            logger.info(f"[commit] connector fallback OK для {file_path}")
+            return content
     except Exception as exc:
-        logger.warning(f"[commit] GitHub API fallback failed для {file_path}: {exc}")
+        logger.warning(f"[commit] connector fallback failed для {file_path}: {exc}")
 
     return None
 
