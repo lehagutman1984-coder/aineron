@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
-import { Copy, Check, ChevronDown, ChevronUp, FileCode } from "lucide-react";
+import { Copy, Check, ChevronDown, ChevronUp, FileCode, Pencil } from "lucide-react";
 import type { Components } from "react-markdown";
 import type { ComponentPropsWithoutRef } from "react";
 
@@ -236,33 +236,148 @@ function FileBlock({ filePath, code, truncated }: { filePath: string; code: stri
   );
 }
 
+// ── EDIT block component ─────────────────────────────────────────────────────
+
+interface EditHunk {
+  search: string;
+  replace: string;
+}
+
+function EditBlock({ filePath, hunks }: { filePath: string; hunks: EditHunk[] }) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="my-3 overflow-hidden rounded-[10px] border border-[rgba(0,200,100,0.25)] bg-[rgba(0,200,100,0.04)]">
+      {/* Header */}
+      <div
+        className="flex cursor-pointer items-center gap-2.5 px-4 py-2.5 transition-colors hover:bg-[rgba(0,200,100,0.07)]"
+        onClick={() => setExpanded((v) => !v)}
+      >
+        <Pencil size={14} className="shrink-0 text-[#00c864]" />
+        <span className="flex-1 font-mono text-[13px] font-medium text-[#00c864]">
+          {filePath}
+        </span>
+        <span className="text-[11px] text-[rgba(0,0,0,0.38)]">
+          {hunks.length} {hunks.length === 1 ? "правка" : "правок"}
+        </span>
+        {expanded ? (
+          <ChevronUp size={14} className="text-[rgba(0,0,0,0.38)]" />
+        ) : (
+          <ChevronDown size={14} className="text-[rgba(0,0,0,0.38)]" />
+        )}
+      </div>
+
+      {/* Expanded diff hunks */}
+      {expanded && (
+        <div className="border-t border-[rgba(0,200,100,0.15)]">
+          {hunks.map((hunk, idx) => (
+            <div key={idx} className="border-b border-[rgba(0,200,100,0.10)] last:border-b-0">
+              <div className="grid grid-cols-2">
+                {/* Было */}
+                <div className="border-r border-[rgba(0,200,100,0.15)] bg-[rgba(255,60,60,0.05)]">
+                  <div className="border-b border-[rgba(255,60,60,0.12)] px-3 py-1">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[rgba(200,60,60,0.7)]">
+                      Было
+                    </span>
+                  </div>
+                  <pre className="m-0 overflow-x-auto px-3 py-2.5 font-mono text-[12px] leading-relaxed text-[rgba(0,0,0,0.75)]">
+                    {hunk.search.trimEnd()}
+                  </pre>
+                </div>
+                {/* Стало */}
+                <div className="bg-[rgba(0,200,100,0.05)]">
+                  <div className="border-b border-[rgba(0,200,100,0.12)] px-3 py-1">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[rgba(0,160,80,0.7)]">
+                      Стало
+                    </span>
+                  </div>
+                  <pre className="m-0 overflow-x-auto px-3 py-2.5 font-mono text-[12px] leading-relaxed text-[rgba(0,0,0,0.75)]">
+                    {hunk.replace.trimEnd() || "(удалено)"}
+                  </pre>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Content segmentation ─────────────────────────────────────────────────────
 
 interface Segment {
-  type: "text" | "file";
+  type: "text" | "file" | "edit";
   content: string;
   filePath?: string;
   truncated?: boolean;
+  hunks?: EditHunk[];
 }
 
+// NOTE: Паттерны должны быть идентичны commit_extract.py (_EDIT_BLOCK_RE, _HUNK_RE)
 const FILE_BLOCK_RE = /===\s*FILE:\s*([^\n=]+?)\s*===\n([\s\S]*?)===\s*END FILE\s*===/g;
+const EDIT_BLOCK_RE = /===\s*EDIT:\s*([^\n=]+?)\s*===\n([\s\S]*?)===\s*END EDIT\s*===/g;
+// Tolerant: trailing whitespace after marker (matches Python _HUNK_RE)
+const HUNK_RE = /<<<SEARCH>>>[ \t]*\n([\s\S]*?)<<<REPLACE>>>[ \t]*\n([\s\S]*?)<<<END>>>/g;
+
+function parseHunks(body: string): EditHunk[] {
+  const hunks: EditHunk[] = [];
+  HUNK_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = HUNK_RE.exec(body)) !== null) {
+    hunks.push({ search: m[1], replace: m[2] });
+  }
+  return hunks;
+}
+
+interface FoundBlock {
+  start: number;
+  end: number;
+  type: "file" | "edit";
+  filePath: string;
+  /** raw inner body (for EDIT: hunk content; for FILE: file content) */
+  body: string;
+}
+
+function collectBlocks(text: string): FoundBlock[] {
+  const blocks: FoundBlock[] = [];
+
+  FILE_BLOCK_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = FILE_BLOCK_RE.exec(text)) !== null) {
+    blocks.push({ start: m.index, end: FILE_BLOCK_RE.lastIndex, type: "file", filePath: m[1].trim(), body: m[2] });
+  }
+
+  EDIT_BLOCK_RE.lastIndex = 0;
+  while ((m = EDIT_BLOCK_RE.exec(text)) !== null) {
+    blocks.push({ start: m.index, end: EDIT_BLOCK_RE.lastIndex, type: "edit", filePath: m[1].trim().replace(/^\//, ""), body: m[2] });
+  }
+
+  return blocks.sort((a, b) => a.start - b.start);
+}
 
 function parseSegments(raw: string): Segment[] {
   const text = raw
     .replace(/^===\s*RESPONSE\s*===\s*\n?/i, "")
     .replace(/\n?===\s*END RESPONSE\s*===\s*$/i, "");
 
+  const blocks = collectBlocks(text);
   const segments: Segment[] = [];
   let lastIndex = 0;
-  FILE_BLOCK_RE.lastIndex = 0;
-  let match: RegExpExecArray | null;
 
-  while ((match = FILE_BLOCK_RE.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      segments.push({ type: "text", content: text.slice(lastIndex, match.index) });
+  for (const block of blocks) {
+    if (block.start > lastIndex) {
+      segments.push({ type: "text", content: text.slice(lastIndex, block.start) });
     }
-    segments.push({ type: "file", content: match[2], filePath: match[1].trim() });
-    lastIndex = FILE_BLOCK_RE.lastIndex;
+    if (block.type === "file") {
+      segments.push({ type: "file", content: block.body, filePath: block.filePath });
+    } else {
+      const hunks = parseHunks(block.body);
+      if (hunks.length > 0) {
+        segments.push({ type: "edit", content: "", filePath: block.filePath, hunks });
+      }
+    }
+    lastIndex = block.end;
   }
 
   // Handle truncated (unclosed) FILE block at end of response
@@ -291,6 +406,8 @@ export function MarkdownContent({ content }: { content: string }) {
       {segments.map((seg, i) =>
         seg.type === "file" ? (
           <FileBlock key={i} filePath={seg.filePath!} code={seg.content.trimEnd()} truncated={seg.truncated} />
+        ) : seg.type === "edit" ? (
+          <EditBlock key={i} filePath={seg.filePath!} hunks={seg.hunks!} />
         ) : (
           <ReactMarkdown
             key={i}

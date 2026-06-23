@@ -3,6 +3,8 @@ import re
 
 logger = logging.getLogger(__name__)
 
+# ── Commit instructions ──────────────────────────────────────────────────────
+
 AI_COMMIT_INSTRUCTION = (
     "В этом проекте есть кнопка «Подтвердить коммит» — она записывает файл целиком в GitHub.\n\n"
     "Когда предлагаешь любое исправление файла (нашёл баг, добавил функцию, рефакторинг):\n"
@@ -20,6 +22,36 @@ AI_COMMIT_INSTRUCTION = (
     "- писать «файл слишком большой» — это не причина не выводить, выводи всегда целиком\n\n"
     "Можно выводить несколько файлов подряд. Заканчивай маркером: === END RESPONSE ==="
 )
+
+AI_COMMIT_INSTRUCTION_WITH_EDITS = (
+    "В этом проекте есть кнопка «Подтвердить коммит» — она записывает изменения в GitHub.\n\n"
+    "Этот проект содержит файлы > 30 000 символов. Используй правильный формат по размеру файла:\n\n"
+    "━━ МАЛЫЕ файлы (<30 000 симв.) — выводи ПОЛНЫЙ файл:\n"
+    "=== FILE: путь/к/файлу.ext ===\n"
+    "<полное содержимое файла от первой до последней строки>\n"
+    "=== END FILE ===\n\n"
+    "━━ БОЛЬШИЕ файлы (≥30 000 симв.) — выводи только ИЗМЕНЕНИЯ (EDIT-блоки):\n"
+    "=== EDIT: путь/к/файлу.ext ===\n"
+    "<<<SEARCH>>>\n"
+    "<точный существующий текст, 5–20 строк с уникальным контекстом вокруг правки>\n"
+    "<<<REPLACE>>>\n"
+    "<новый текст>\n"
+    "<<<END>>>\n"
+    "=== END EDIT ===\n\n"
+    "Правила EDIT-блоков:\n"
+    "- SEARCH копируй дословно из базы знаний (пробелы, отступы, знаки — без изменений).\n"
+    "- SEARCH должен быть уникальным в файле (5–20 строк, включая контекст вокруг правки).\n"
+    "- Несколько правок одного файла — несколько <<<SEARCH>>>...<<<END>>> в одном EDIT-блоке.\n"
+    "- Несколько файлов — несколько =EDIT=...=END EDIT= подряд.\n\n"
+    "СТРОГО ЗАПРЕЩЕНО:\n"
+    "- заглушки: «# ...», «# остальной код без изменений», «# rest of code», «// ...»\n"
+    "- обрезать FILE-блок на полуслове\n"
+    "- писать «файл слишком большой» — для больших файлов есть EDIT-блоки\n"
+    "- изменять SEARCH-текст (копируй дословно из источника)\n\n"
+    "Заканчивай маркером: === END RESPONSE ==="
+)
+
+# ── FILE-block patterns ──────────────────────────────────────────────────────
 
 # Паттерны обрезки которые модель добавляет вместо реального кода
 _TRUNCATION_RE = re.compile(
@@ -39,6 +71,23 @@ _COMPLETE_FILE_RE = re.compile(
     r'===\s*FILE:\s*([^\n=]+?)\s*===\n([\s\S]*?)===\s*END FILE\s*===',
 )
 
+# ── EDIT-block patterns ──────────────────────────────────────────────────────
+
+# Полный EDIT-блок
+_EDIT_BLOCK_RE = re.compile(
+    r'===\s*EDIT:\s*([^\n=]+?)\s*===\n([\s\S]*?)===\s*END EDIT\s*===',
+    re.MULTILINE,
+)
+
+# Один SEARCH/REPLACE хunk внутри EDIT-блока
+# Tolerant: допускаем trailing whitespace после маркеров
+_HUNK_RE = re.compile(
+    r'<<<SEARCH>>>[ \t]*\n([\s\S]*?)<<<REPLACE>>>[ \t]*\n([\s\S]*?)<<<END>>>',
+    re.MULTILINE,
+)
+
+
+# ── FILE helpers ─────────────────────────────────────────────────────────────
 
 def _is_truncated(content: str) -> bool:
     """Возвращает True если файл содержит маркеры обрезки модели."""
@@ -49,14 +98,13 @@ def _find_truncated_file(text: str):
     """Ищет незакрытый FILE-блок в конце ответа (обрезан по токенам).
     Возвращает (path, content) или None.
     """
-    # Найдём конец последнего полного блока
     last_complete_end = 0
     for m in _COMPLETE_FILE_RE.finditer(text):
         last_complete_end = m.end()
 
     remaining = text[last_complete_end:]
     m = _UNCLOSED_FILE_RE.search(remaining)
-    if m and len(m.group(2)) > 500:  # не меньше 500 символов — иначе не стоит
+    if m and len(m.group(2)) > 500:
         return m.group(1).strip(), m.group(2)
     return None
 
@@ -74,7 +122,7 @@ def _get_full_file_source(project, file_path: str) -> str | None:
     except Exception as exc:
         logger.warning(f"[commit] KB lookup error for {file_path}: {exc}")
 
-    # 2. Connector fallback (GitHub/Gitea) — переиспользуем _fetch_from_connector из tasks.py
+    # 2. Connector fallback (GitHub/Gitea)
     try:
         from .tasks import _fetch_from_connector
         content = _fetch_from_connector(project, file_path)
@@ -88,11 +136,10 @@ def _get_full_file_source(project, file_path: str) -> str | None:
 
 
 def _stitch_tail_from_kb(project, file_path: str, ai_content: str):
-    """Дописывает неизменённый хвост файла из KB (или GitHub) к обрезанному AI-выводу.
+    """Дописывает неизменённый хвост файла из KB к обрезанному AI-выводу.
 
-    Логика: берём последние 500 символов AI-вывода, ищем их в источнике,
-    и дописываем всё что идёт после найденной позиции.
-    Возвращает полный текст файла или None если не удалось.
+    Используется как последний fallback — только если EDIT-блоков нет.
+    Если правки были в хвосте файла — хвост будет из KB без изменений (предупреждение в коммите).
     """
     try:
         kb_content = _get_full_file_source(project, file_path)
@@ -102,10 +149,8 @@ def _stitch_tail_from_kb(project, file_path: str, ai_content: str):
         kb_len = len(kb_content)
 
         if ai_len >= kb_len:
-            # AI вывел столько же или больше — нечего дописывать
             return ai_content
 
-        # Ищем конец AI-вывода в KB — пробуем окна 500, 200, 80 символов
         for window in (500, 200, 80):
             if ai_len < window:
                 continue
@@ -128,29 +173,197 @@ def _stitch_tail_from_kb(project, file_path: str, ai_content: str):
         return None
 
 
+# ── EDIT-block logic ─────────────────────────────────────────────────────────
+
+def parse_edit_blocks(text: str) -> dict[str, list[dict]]:
+    """Парсит EDIT-блоки из ответа AI.
+
+    Возвращает {path: [{'search': str, 'replace': str}, ...]} или {}.
+    """
+    result: dict[str, list[dict]] = {}
+    for m in _EDIT_BLOCK_RE.finditer(text):
+        path = m.group(1).strip().lstrip('/')
+        hunks = [
+            {'search': h.group(1), 'replace': h.group(2)}
+            for h in _HUNK_RE.finditer(m.group(2))
+        ]
+        if hunks:
+            result[path] = hunks
+    return result
+
+
+def apply_edit_blocks(source: str, hunks: list[dict]) -> str:
+    """Применяет список SEARCH/REPLACE патчей к тексту файла.
+
+    Стратегии поиска (в порядке применения):
+      1. Exact match — строгое совпадение строки.
+      2. Normalized — strip trailing whitespace с каждой строки (справляется с пробелами в концах).
+
+    Оба варианта требуют уникальности SEARCH — если совпадений > 1, выбрасывает ValueError
+    (это намеренно: тихое исправление не того места хуже явной ошибки).
+
+    Raises:
+        ValueError: если SEARCH не найден, не уникален или пустой.
+    """
+    result = source
+    for i, hunk in enumerate(hunks, start=1):
+        search: str = hunk['search']
+        replace: str = hunk['replace']
+
+        if not search.strip():
+            raise ValueError(f"Хunk #{i}: SEARCH пустой")
+
+        # ── Strategy 1: exact match ──────────────────────────────────────────
+        exact_count = result.count(search)
+        if exact_count == 1:
+            result = result.replace(search, replace, 1)
+            continue
+        if exact_count > 1:
+            raise ValueError(
+                f"Хunk #{i}: SEARCH не уникален ({exact_count} вхождений) — "
+                f"добавь больше контекста. Начало: {search[:60]!r}"
+            )
+
+        # ── Strategy 2: normalized line match ───────────────────────────────
+        src_lines = result.splitlines(keepends=True)
+        search_norm = [line.rstrip() for line in search.splitlines()]
+        # убираем trailing empty lines из search
+        while search_norm and not search_norm[-1]:
+            search_norm.pop()
+
+        if not search_norm:
+            raise ValueError(f"Хunk #{i}: SEARCH пустой после нормализации")
+
+        n = len(search_norm)
+        matches: list[int] = []
+        for idx in range(len(src_lines) - n + 1):
+            window = [ln.rstrip('\n\r').rstrip() for ln in src_lines[idx:idx + n]]
+            if window == search_norm:
+                matches.append(idx)
+
+        if len(matches) == 1:
+            found = matches[0]
+            before = ''.join(src_lines[:found])
+            after = ''.join(src_lines[found + n:])
+            rep = replace if replace.endswith('\n') else replace + '\n'
+            result = before + rep + after
+            continue
+        if len(matches) > 1:
+            raise ValueError(
+                f"Хunk #{i}: SEARCH не уникален после нормализации ({len(matches)} вхождений) — "
+                f"добавь больше контекста. Начало: {search[:60]!r}"
+            )
+
+        raise ValueError(
+            f"Хunk #{i}: SEARCH не найден в файле. "
+            f"Убедись что текст скопирован дословно из базы знаний. "
+            f"Начало: {search[:60]!r}"
+        )
+
+    return result
+
+
+# ── Prompt injection ─────────────────────────────────────────────────────────
+
 def inject_commit_instruction(project, messages_for_api: list) -> None:
-    """Добавляет инструкцию о FILE-формате если проект имеет git-коннектор."""
+    """Добавляет инструкцию о FILE/EDIT-формате если проект имеет git-коннектор.
+
+    Выбирает расширенную инструкцию (с EDIT-блоками) если в KB проекта есть
+    файлы длиннее 30 000 символов.
+    """
     try:
         if not project.connectors.exists():
             return
-        messages_for_api.append({"role": "system", "content": AI_COMMIT_INSTRUCTION})
+        has_large = False
+        try:
+            from django.db.models.functions import Length
+            has_large = (
+                project.knowledge_files
+                .filter(status='ready', enabled=True)
+                .annotate(_tlen=Length('extracted_text'))
+                .filter(_tlen__gt=30_000)
+                .exists()
+            )
+        except Exception as e:
+            logger.debug(f"[commit] large-file check failed: {e}")
+
+        instruction = AI_COMMIT_INSTRUCTION_WITH_EDITS if has_large else AI_COMMIT_INSTRUCTION
+        messages_for_api.append({"role": "system", "content": instruction})
     except Exception:
         pass
 
 
-def extract_commit_from_response(project, assistant_text: str):
-    """Парсит FILE-блоки из ответа AI и создаёт ProjectCommit(status='pending').
+# ── Main extraction ──────────────────────────────────────────────────────────
 
-    Возвращает созданный ProjectCommit или None если FILE-блоков не найдено / нет коннектора.
-    Для файлов обрезанных по токенам — дописывает хвост из KB автоматически.
+def extract_commit_from_response(project, assistant_text: str):
+    """Парсит FILE/EDIT-блоки из ответа AI и создаёт ProjectCommit(status='pending').
+
+    Порядок приоритетов:
+      1. Полные FILE-блоки (малые файлы, полный вывод).
+      2. EDIT-блоки (большие файлы — патч-коммиты, применяются к KB/GitHub источнику).
+      3. Незакрытый FILE-блок + KB tail-stitch (legacy fallback, файл обрезан по токенам).
+      4. None — ничего подходящего не найдено.
+
+    Возвращает ProjectCommit или None.
     """
     try:
         from studio.agents.blocks import parse_file_blocks
         from .models import ProjectCommit
 
+        commit_flags: list[str] = []
+
+        # ── 1. Полные FILE-блоки ─────────────────────────────────────────────
         files, _ = parse_file_blocks(assistant_text)
 
-        # Если нет полных FILE-блоков — ищем незакрытый (обрезанный по API-лимиту)
+        # ── 2. EDIT-блоки ────────────────────────────────────────────────────
+        if not files:
+            edit_blocks = parse_edit_blocks(assistant_text)
+            if edit_blocks:
+                edit_files: dict[str, str] = {}
+                edit_errors: list[str] = []
+
+                for file_path, hunks in edit_blocks.items():
+                    source = _get_full_file_source(project, file_path)
+                    if not source:
+                        msg = f"{file_path}: источник не найден в KB/GitHub"
+                        edit_errors.append(msg)
+                        logger.warning(f"[commit] EDIT-блок: {msg}")
+                        continue
+                    try:
+                        patched = apply_edit_blocks(source, hunks)
+                        if patched == source:
+                            msg = f"{file_path}: EDIT применён, изменений не обнаружено"
+                            edit_errors.append(msg)
+                            logger.warning(f"[commit] {msg}")
+                        else:
+                            edit_files[file_path] = patched
+                            logger.info(
+                                f"[commit] EDIT-блок OK: {file_path} "
+                                f"({len(hunks)} хунк(ов), project {project.id})"
+                            )
+                    except ValueError as e:
+                        msg = f"{file_path}: {e}"
+                        edit_errors.append(msg)
+                        logger.error(f"[commit] EDIT-блок apply failed: {msg}")
+
+                if edit_files:
+                    files = edit_files
+                    if edit_errors:
+                        commit_flags.append(
+                            f"[{len(edit_errors)} EDIT-блок(ов) не применено: "
+                            + "; ".join(edit_errors[:3])
+                            + (f" и ещё {len(edit_errors)-3}" if len(edit_errors) > 3 else "")
+                            + "]"
+                        )
+                elif edit_errors:
+                    # Все EDIT-блоки провалились — сообщаем ошибки в лог ERROR-уровня
+                    logger.error(
+                        f"[commit] Все EDIT-блоки провалились для project {project.id}: "
+                        + "; ".join(edit_errors)
+                    )
+                    return None
+
+        # ── 3. Legacy: незакрытый FILE-блок + KB tail-stitch ─────────────────
         tail_stitched = False
         tail_stitch_failed = False
         if not files:
@@ -162,24 +375,24 @@ def extract_commit_from_response(project, assistant_text: str):
                     files = {file_path: stitched}
                     tail_stitched = True
                     logger.info(
-                        f"[commit] использован KB-tail stitch для {file_path} "
+                        f"[commit] legacy KB-tail stitch для {file_path} "
                         f"(project {project.id})"
                     )
                 else:
-                    # KB не нашёл файл — коммитим обрезанный с предупреждением
                     files = {file_path: ai_content}
                     tail_stitch_failed = True
                     logger.warning(
-                        f"[commit] KB-stitch не сработал, коммитим обрезанный файл: {file_path}"
+                        f"[commit] KB-stitch не сработал, коммитим обрезанный: {file_path}"
                     )
             else:
                 return None
 
-        # Отфильтровываем файлы с маркерами обрезки — коммитить неполный файл опасно
+        # ── Отфильтровываем маркеры обрезки ──────────────────────────────────
         safe_files = {p: c for p, c in files.items() if not _is_truncated(c)}
         if not safe_files:
             logger.warning(
-                f"[commit] все {len(files)} файлов содержат маркеры обрезки — коммит отменён (project {project.id})"
+                f"[commit] все {len(files)} файлов содержат маркеры обрезки — "
+                f"коммит отменён (project {project.id})"
             )
             return None
         if len(safe_files) < len(files):
@@ -190,15 +403,23 @@ def extract_commit_from_response(project, assistant_text: str):
         if not connector:
             return None
 
-        # Эвристика: первая строка ответа как сообщение коммита
         first_line = assistant_text.split('\n')[0].strip().lstrip('#').strip()
         commit_msg = first_line[:200] if first_line else f"AI: {len(safe_files)} файл(ов)"
         if not commit_msg:
             commit_msg = f"AI: {len(safe_files)} файл(ов)"
+
         if tail_stitched:
-            commit_msg += " [ВНИМАНИЕ: хвост файла взят из KB без изменений — проверьте конец файла]"
+            commit_flags.append(
+                "[ВНИМАНИЕ: хвост файла взят из KB без изменений — проверьте конец файла]"
+            )
         elif tail_stitch_failed:
-            commit_msg += " [ВНИМАНИЕ: файл обрезан API (~55K лимит) — хвост файла отсутствует, проверьте перед мержем]"
+            commit_flags.append(
+                "[ВНИМАНИЕ: файл обрезан API (~55K лимит) — хвост файла отсутствует, "
+                "проверьте перед мержем]"
+            )
+
+        if commit_flags:
+            commit_msg += " " + " ".join(commit_flags)
 
         commit = ProjectCommit.objects.create(
             project=project,
@@ -207,8 +428,12 @@ def extract_commit_from_response(project, assistant_text: str):
             files=[{'path': p, 'content': c} for p, c in safe_files.items()],
             status='pending',
         )
-        logger.info(f"AI-коммит {commit.id} создан для проекта {project.id}: {len(files)} файлов")
+        logger.info(
+            f"AI-коммит {commit.id} создан для проекта {project.id}: "
+            f"{len(safe_files)} файл(ов)"
+        )
         return commit
+
     except Exception as e:
         logger.error(f"Ошибка extract_commit_from_response: {e}")
         return None

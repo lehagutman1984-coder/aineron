@@ -28,7 +28,8 @@ def _strip_html(text: str) -> str:
 
 _client = None
 
-FULL_INJECT_LIMIT = 50_000   # символов на файл — порог full-inject vs лексический RAG
+FULL_INJECT_LIMIT = 50_000    # символов на файл — порог full-inject vs лексический RAG
+EDIT_HINT_THRESHOLD = 30_000  # файлы крупнее этого — AI получает подсказку про EDIT-блоки
 
 def _get_inject_limit():
     return int(getattr(settings, 'PROJECT_INJECT_LIMIT', 200_000))
@@ -132,13 +133,23 @@ def _inject_file(f, user_message_text: str, inject_limit: int, total_chars: int,
 
     force_full=True — инжектить весь файл целиком (для явных запросов типа
     «дай полный tasks.py»), игнорируя порог FULL_INJECT_LIMIT.
+    Файлы > EDIT_HINT_THRESHOLD получают аннотацию [БОЛЬШОЙ ФАЙЛ] — подсказка AI
+    использовать EDIT-блоки вместо полного FILE-блока.
     """
     text = f.extracted_text
-    is_large = len(text) > FULL_INJECT_LIMIT
+    text_len = len(text)
+    is_large = text_len > FULL_INJECT_LIMIT
     full_label = (getattr(f, 'repo_path', None) or f.filename)
     if force_full or not is_large:
         snippet = text
-        label = full_label
+        if text_len > EDIT_HINT_THRESHOLD:
+            label = (
+                f"{full_label} "
+                f"[БОЛЬШОЙ ФАЙЛ: {text_len} симв. — для правок используй EDIT-блоки, "
+                f"SEARCH копируй дословно из этого текста]"
+            )
+        else:
+            label = full_label
     else:
         snippet = _retrieve_relevant_chunks(text, user_message_text)
         label = f"{full_label} (фрагменты)"
