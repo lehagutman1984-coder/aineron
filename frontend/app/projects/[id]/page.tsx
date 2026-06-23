@@ -64,7 +64,7 @@ import {
   listProjectFiles, uploadProjectFile, deleteProjectFile, toggleProjectFile, searchProjectFiles,
   listConnectors, createConnector, deleteConnector,
   listRepoFiles, getRepoFileContent,
-  listCommits, createCommit, confirmCommit,
+  listCommits, createCommit, confirmCommit, deleteCommit,
   publishProject, syncConnector, patchConnector,
   triggerDeploy, getDeployStatus,
   listFileVersions, restoreFileVersion,
@@ -1058,6 +1058,13 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
     } catch {}
   };
 
+  const handleDelete = async (commitId: number) => {
+    try {
+      await deleteCommit(projectId, commitId);
+      qc.invalidateQueries({ queryKey: ["commits", projectId] });
+    } catch {}
+  };
+
   const handlePropose = async (e: React.FormEvent) => {
     e.preventDefault();
     const validFiles = commitFiles.filter((f) => f.path.trim() && f.content.trim());
@@ -1455,12 +1462,30 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                     </div>
                   )}
                   {c.status === "failed" && (
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <button
+                        onClick={() => handleConfirm(c.id, "push")}
+                        className="flex items-center gap-1 rounded-[6px] border border-[rgba(13,13,13,0.14)] px-2.5 py-1 text-[11px] text-[rgba(13,13,13,0.55)] hover:border-[#0a7cff] hover:text-[#0a7cff] transition-colors"
+                      >
+                        <RefreshCw size={10} />
+                        Повторить
+                      </button>
+                      <button
+                        onClick={() => handleDelete(c.id)}
+                        className="flex items-center gap-1 rounded-[6px] border border-[rgba(13,13,13,0.10)] px-2 py-1 text-[11px] text-[rgba(13,13,13,0.35)] hover:border-[rgba(231,76,60,0.4)] hover:text-[#e74c3c] transition-colors"
+                        title="Удалить коммит"
+                      >
+                        <Trash2 size={10} />
+                      </button>
+                    </div>
+                  )}
+                  {(c.status === "rejected" || c.status === "pushed") && (
                     <button
-                      onClick={() => handleConfirm(c.id, "push")}
-                      className="flex shrink-0 items-center gap-1 rounded-[6px] border border-[rgba(13,13,13,0.14)] px-2.5 py-1 text-[11px] text-[rgba(13,13,13,0.55)] hover:border-[#0a7cff] hover:text-[#0a7cff] transition-colors"
+                      onClick={() => handleDelete(c.id)}
+                      className="flex shrink-0 items-center gap-1 rounded-[6px] border border-[rgba(13,13,13,0.10)] px-2 py-1 text-[11px] text-[rgba(13,13,13,0.35)] hover:border-[rgba(231,76,60,0.4)] hover:text-[#e74c3c] transition-colors"
+                      title="Удалить коммит"
                     >
-                      <RefreshCw size={10} />
-                      Повторить
+                      <Trash2 size={10} />
                     </button>
                   )}
                 </div>

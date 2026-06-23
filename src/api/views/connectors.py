@@ -296,6 +296,19 @@ class CommitConfirmView(APIView):
         return Response({'error': 'action должен быть push, pr или reject'}, status=400)
 
 
+class CommitDeleteView(APIView):
+    """DELETE /projects/<pk>/commits/<commit_id>/ — удалить коммит из истории."""
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk, commit_id):
+        project = get_project_for_user(pk, request.user, write=True)
+        commit = get_object_or_404(ProjectCommit, pk=commit_id, project=project)
+        if commit.status == 'pending':
+            return Response({'error': 'Нельзя удалить коммит со статусом pending'}, status=400)
+        commit.delete()
+        return Response(status=204)
+
+
 # ── Inbound Sync (Sprint 4.2) ─────────────────────────────────────────────────
 
 class ConnectorSyncView(APIView):

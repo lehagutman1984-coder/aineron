@@ -45,7 +45,7 @@ from api.views.project_files import (
 from api.views.connectors import (
     ConnectorListCreateView, ConnectorDetailView,
     ConnectorReadFilesView, ConnectorFileContentView,
-    CommitListCreateView, CommitConfirmView,
+    CommitListCreateView, CommitConfirmView, CommitDeleteView,
     ConnectorSyncView, ConnectorWebhookView,
     ConnectorDeployView,
 )
@@ -170,6 +170,7 @@ urlpatterns = [
     path('v1/projects/<int:pk>/connectors/<int:connector_id>/file/', ConnectorFileContentView.as_view(), name='connector_file_content'),
     path('v1/projects/<int:pk>/commits/', CommitListCreateView.as_view(), name='project_commits'),
     path('v1/projects/<int:pk>/commits/<int:commit_id>/confirm/', CommitConfirmView.as_view(), name='commit_confirm'),
+    path('v1/projects/<int:pk>/commits/<int:commit_id>/', CommitDeleteView.as_view(), name='commit_detail'),
     path('v1/projects/<int:pk>/connectors/<int:connector_id>/sync/', ConnectorSyncView.as_view(), name='connector_sync'),
     path('v1/projects/<int:pk>/connectors/<int:connector_id>/webhook/', ConnectorWebhookView.as_view(), name='connector_webhook'),
     path('v1/projects/<int:pk>/connectors/<int:connector_id>/deploy/', ConnectorDeployView.as_view(), name='connector_deploy'),

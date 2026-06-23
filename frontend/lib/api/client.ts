@@ -667,6 +667,9 @@ export const confirmCommit = (
     body: JSON.stringify({ action }),
   });
 
+export const deleteCommit = (projectId: number, commitId: number): Promise<void> =>
+  request(`/projects/${projectId}/commits/${commitId}/`, { method: "DELETE" });
+
 // ============ Connector Sync (Sprint 4.2) ============
 
 export const syncConnector = (
