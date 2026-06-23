@@ -17,10 +17,9 @@ DEBUG = int(os.environ.get('DEBUG', 0))
 
 
 # ========== НАСТРОЙКИ ДОМЕНОВ ==========
-ALLOWED_HOSTS = os.environ.get(
-    'DJANGO_ALLOWED_HOSTS',
-    'aineron.ru www.aineron.ru localhost 127.0.0.1 0.0.0.0 *'
-).split()
+ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '').split() or ['*']
+if '*' not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append('*')
 
 
 # Application definition
