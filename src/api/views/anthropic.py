@@ -61,7 +61,7 @@ class AnthropicMessagesView(APIView):
         model_id = data.get('model', '')
         messages = data.get('messages', [])
         system = data.get('system', '')
-        max_tokens = data.get('max_tokens', 1024)
+        max_tokens = data.get('max_tokens', 16384)
 
         if not model_id:
             return Response(
