@@ -4,15 +4,42 @@ import { useState, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
-import { Copy, Check, ChevronDown, ChevronUp, FileCode, Pencil, Download } from "lucide-react";
+import { Copy, Check, ChevronDown, ChevronUp, FileCode, Pencil, Download, Maximize2, X } from "lucide-react";
 import type { Components } from "react-markdown";
 import type { ComponentPropsWithoutRef } from "react";
+
+// ── Fullscreen modal overlay ─────────────────────────────────────────────────
+
+function FullscreenModal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="flex h-[95vh] w-[95vw] flex-col overflow-hidden rounded-[12px] border border-[rgba(255,255,255,0.10)] bg-[#0f0f0f] shadow-2xl">
+        <div className="flex shrink-0 items-center justify-between border-b border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-4 py-2.5">
+          <span className="font-mono text-[12px] font-semibold text-[rgba(255,255,255,0.55)]">{title}</span>
+          <button
+            onClick={onClose}
+            className="flex items-center gap-1.5 rounded-[5px] border border-[rgba(255,255,255,0.10)] px-2.5 py-1 text-[11px] text-[rgba(255,255,255,0.45)] transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-white"
+          >
+            <X size={12} /> Закрыть
+          </button>
+        </div>
+        <div className="flex-1 overflow-auto">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ── Code block with language label + copy button ────────────────────────────
 
 function PreBlock({ children, ...props }: ComponentPropsWithoutRef<"pre">) {
   const ref = useRef<HTMLPreElement>(null);
   const [copied, setCopied] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
 
   let lang = "";
   const child = Array.isArray(children) ? children[0] : children;
@@ -53,37 +80,57 @@ function PreBlock({ children, ...props }: ComponentPropsWithoutRef<"pre">) {
     URL.revokeObjectURL(url);
   };
 
-  return (
-    <div className="my-4 overflow-hidden rounded-[10px] border border-[rgba(255,255,255,0.06)] bg-[#0f0f0f]">
-      <div className="flex items-center justify-between border-b border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.04)] px-4 py-2">
-        <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.38)]">
-          {lang || "code"}
-        </span>
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={download}
-            className="flex items-center gap-1.5 rounded-[5px] border border-[rgba(255,255,255,0.10)] px-2 py-1 text-[11px] font-medium text-[rgba(255,255,255,0.45)] transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-[rgba(255,255,255,0.82)]"
-          >
-            <Download size={11} />
-            Скачать
-          </button>
-          <button
-            onClick={copy}
-            className="flex items-center gap-1.5 rounded-[5px] border border-[rgba(255,255,255,0.10)] px-2 py-1 text-[11px] font-medium text-[rgba(255,255,255,0.45)] transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-[rgba(255,255,255,0.82)]"
-          >
-            {copied ? <Check size={11} /> : <Copy size={11} />}
-            {copied ? "Скопировано" : "Копировать"}
-          </button>
-        </div>
-      </div>
-      <pre
-        ref={ref}
-        className="m-0 overflow-x-auto px-4 py-3.5 font-mono text-[13px] leading-relaxed text-[#e0e0e0]"
-        {...props}
+  const toolbar = (
+    <div className="flex items-center gap-1.5">
+      <button
+        onClick={download}
+        className="flex items-center gap-1.5 rounded-[5px] border border-[rgba(255,255,255,0.10)] px-2 py-1 text-[11px] font-medium text-[rgba(255,255,255,0.45)] transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-[rgba(255,255,255,0.82)]"
       >
-        {children}
-      </pre>
+        <Download size={11} /> Скачать
+      </button>
+      <button
+        onClick={copy}
+        className="flex items-center gap-1.5 rounded-[5px] border border-[rgba(255,255,255,0.10)] px-2 py-1 text-[11px] font-medium text-[rgba(255,255,255,0.45)] transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-[rgba(255,255,255,0.82)]"
+      >
+        {copied ? <Check size={11} /> : <Copy size={11} />}
+        {copied ? "Скопировано" : "Копировать"}
+      </button>
+      <button
+        onClick={() => setFullscreen(true)}
+        className="flex items-center gap-1.5 rounded-[5px] border border-[rgba(255,255,255,0.10)] px-2 py-1 text-[11px] font-medium text-[rgba(255,255,255,0.45)] transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-[rgba(255,255,255,0.82)]"
+      >
+        <Maximize2 size={11} /> Развернуть
+      </button>
     </div>
+  );
+
+  return (
+    <>
+      {fullscreen && (
+        <FullscreenModal title={lang || "code"} onClose={() => setFullscreen(false)}>
+          <pre
+            className="m-0 h-full overflow-auto px-6 py-5 font-mono text-[13px] leading-relaxed text-[#e0e0e0]"
+          >
+            {children}
+          </pre>
+        </FullscreenModal>
+      )}
+      <div className="my-4 overflow-hidden rounded-[10px] border border-[rgba(255,255,255,0.06)] bg-[#0f0f0f]">
+        <div className="flex items-center justify-between border-b border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.04)] px-4 py-2">
+          <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.38)]">
+            {lang || "code"}
+          </span>
+          {toolbar}
+        </div>
+        <pre
+          ref={ref}
+          className="m-0 overflow-x-auto px-4 py-3.5 font-mono text-[13px] leading-relaxed text-[#e0e0e0]"
+          {...props}
+        >
+          {children}
+        </pre>
+      </div>
+    </>
   );
 }
 
@@ -292,8 +339,42 @@ interface EditHunk {
 
 function EditBlock({ filePath, hunks }: { filePath: string; hunks: EditHunk[] }) {
   const [expanded, setExpanded] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+
+  const diffContent = (
+    <div>
+      {hunks.map((hunk, idx) => (
+        <div key={idx} className="border-b border-[rgba(0,200,100,0.10)] last:border-b-0">
+          <div className="grid grid-cols-2">
+            <div className="border-r border-[rgba(0,200,100,0.15)] bg-[rgba(255,60,60,0.05)]">
+              <div className="border-b border-[rgba(255,60,60,0.12)] px-3 py-1">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-[rgba(200,60,60,0.7)]">Было</span>
+              </div>
+              <pre className="m-0 overflow-x-auto px-3 py-2.5 font-mono text-[12px] leading-relaxed text-[rgba(0,0,0,0.75)]">
+                {hunk.search.trimEnd()}
+              </pre>
+            </div>
+            <div className="bg-[rgba(0,200,100,0.05)]">
+              <div className="border-b border-[rgba(0,200,100,0.12)] px-3 py-1">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-[rgba(0,160,80,0.7)]">Стало</span>
+              </div>
+              <pre className="m-0 overflow-x-auto px-3 py-2.5 font-mono text-[12px] leading-relaxed text-[rgba(0,0,0,0.75)]">
+                {hunk.replace.trimEnd() || "(удалено)"}
+              </pre>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 
   return (
+    <>
+      {fullscreen && (
+        <FullscreenModal title={filePath} onClose={() => setFullscreen(false)}>
+          {diffContent}
+        </FullscreenModal>
+      )}
     <div className="my-3 overflow-hidden rounded-[10px] border border-[rgba(0,200,100,0.25)] bg-[rgba(0,200,100,0.04)]">
       {/* Header */}
       <div
@@ -307,6 +388,13 @@ function EditBlock({ filePath, hunks }: { filePath: string; hunks: EditHunk[] })
         <span className="text-[11px] text-[rgba(0,0,0,0.38)]">
           {hunks.length} {hunks.length === 1 ? "правка" : "правок"}
         </span>
+        <button
+          onClick={(e) => { e.stopPropagation(); setFullscreen(true); }}
+          className="rounded-[4px] p-1 text-[rgba(0,0,0,0.30)] transition-colors hover:bg-[rgba(0,200,100,0.12)] hover:text-[#00c864]"
+          title="Развернуть"
+        >
+          <Maximize2 size={13} />
+        </button>
         {expanded ? (
           <ChevronUp size={14} className="text-[rgba(0,0,0,0.38)]" />
         ) : (
@@ -317,37 +405,11 @@ function EditBlock({ filePath, hunks }: { filePath: string; hunks: EditHunk[] })
       {/* Expanded diff hunks */}
       {expanded && (
         <div className="border-t border-[rgba(0,200,100,0.15)]">
-          {hunks.map((hunk, idx) => (
-            <div key={idx} className="border-b border-[rgba(0,200,100,0.10)] last:border-b-0">
-              <div className="grid grid-cols-2">
-                {/* Было */}
-                <div className="border-r border-[rgba(0,200,100,0.15)] bg-[rgba(255,60,60,0.05)]">
-                  <div className="border-b border-[rgba(255,60,60,0.12)] px-3 py-1">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[rgba(200,60,60,0.7)]">
-                      Было
-                    </span>
-                  </div>
-                  <pre className="m-0 overflow-x-auto px-3 py-2.5 font-mono text-[12px] leading-relaxed text-[rgba(0,0,0,0.75)]">
-                    {hunk.search.trimEnd()}
-                  </pre>
-                </div>
-                {/* Стало */}
-                <div className="bg-[rgba(0,200,100,0.05)]">
-                  <div className="border-b border-[rgba(0,200,100,0.12)] px-3 py-1">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[rgba(0,160,80,0.7)]">
-                      Стало
-                    </span>
-                  </div>
-                  <pre className="m-0 overflow-x-auto px-3 py-2.5 font-mono text-[12px] leading-relaxed text-[rgba(0,0,0,0.75)]">
-                    {hunk.replace.trimEnd() || "(удалено)"}
-                  </pre>
-                </div>
-              </div>
-            </div>
-          ))}
+          {diffContent}
         </div>
       )}
     </div>
+    </>
   );
 }
 
