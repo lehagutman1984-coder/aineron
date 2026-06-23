@@ -135,12 +135,13 @@ def _inject_file(f, user_message_text: str, inject_limit: int, total_chars: int,
     """
     text = f.extracted_text
     is_large = len(text) > FULL_INJECT_LIMIT
+    full_label = (getattr(f, 'repo_path', None) or f.filename)
     if force_full or not is_large:
         snippet = text
-        label = f.filename
+        label = full_label
     else:
         snippet = _retrieve_relevant_chunks(text, user_message_text)
-        label = f"{f.filename} (фрагменты)"
+        label = f"{full_label} (фрагменты)"
     remaining = inject_limit - total_chars
     if len(snippet) > remaining:
         snippet = snippet[:remaining]
