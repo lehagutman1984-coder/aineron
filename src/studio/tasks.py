@@ -1136,35 +1136,7 @@ def restart_preview(project_id):
             sandbox.kill_sandbox(project.sandbox_container_id)
         except Exception:
             pass
-    import json as _json
-    # Check if project needs a dev server (has 'dev' script) or is static HTML
-    pkg_file = project.files.filter(path='package.json').first()
-    has_dev_script = False
-    if pkg_file:
-        try:
-            pkg = _json.loads(pkg_file.content)
-            has_dev_script = 'dev' in pkg.get('scripts', {})
-        except Exception:
-            pass
-
-    if not has_dev_script:
-        # Static project: serve files directly from DB — no Docker needed
-        if project.sandbox_container_id:
-            try:
-                sandbox.kill_sandbox(project.sandbox_container_id)
-            except Exception:
-                pass
-            project.sandbox_container_id = ''
-            project.save(update_fields=['sandbox_container_id'])
-        publish_event(project_id, {'agent': 'system', 'level': 'success', 'text': 'Превью готово (статический сайт — файлы из базы)'})
-        return
-
-    # npm project with dev server — spawn sandbox
-    if project.sandbox_container_id:
-        try:
-            sandbox.kill_sandbox(project.sandbox_container_id)
-        except Exception:
-            pass
+    # Re-spawn sandbox for any project that needs a live preview server
     try:
         cid = sandbox.spawn_sandbox(project_id)
         project.sandbox_container_id = cid
