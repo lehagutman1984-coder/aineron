@@ -10,7 +10,7 @@ Claude.ai Projects, Perplexity Spaces и ChatGPT Projects.
 
 ---
 
-## СТАТУС РЕАЛИЗАЦИИ (2026-06-22)
+## СТАТУС РЕАЛИЗАЦИИ (2026-06-23)
 
 | Этап | Статус | Коммиты |
 |------|--------|---------|
@@ -36,6 +36,8 @@ Claude.ai Projects, Perplexity Spaces и ChatGPT Projects.
 | **Phase 6 — RAG Supremacy** (hybrid+rerank+query-expansion+@file/@web+two-level) | **ЗАВЕРШЁН** | `c680c8a`, `1955105` |
 | **Phase 7 — Code Workspace** (встроенный редактор CodeMirror + deploy-хук) | **ЗАВЕРШЁН** | `c680c8a`, `1955105` |
 | **Post-launch fixes** (chunk_index bug, auto-push bug, rate-limit, lang extensions) | **ЗАВЕРШЁН** | `1955105`, `0620d0c` |
+| **Large-file commit fixes** (KB tail-stitch, codebase.py bug, truncation warning) | **ЗАВЕРШЁН** | `d3ecd65`, `643d182`, `43afd10`, `f28fca2` |
+| **Phase 8 — EDIT Blocks** (патч-коммиты для файлов >30K символов) | **ЗАПЛАНИРОВАНО** | — |
 
 **ВСЕ ФАЗЫ ЗАВЕРШЕНЫ. Project Spaces реализован полностью.**
 
@@ -1693,3 +1695,237 @@ INTERNAL_DEPLOY_SCRIPT=/app/deploy.sh   # whitelist-скрипт для internal
 - **Путаница двух deploy-путей (7.2).** Внешний вебхук (любой owner → свой сервер) и internal
   (`is_staff` → aineron.ru) — раздельные вью (`ConnectorDeployView` vs `InternalDeployView`) и
   раздельные флаги; не смешиваются.
+
+  План обновлён. Теперь по вопросу — нужно ли что-то ещё или остановиться?
+
+  Что реализовано — это уже уровень выше Claude.ai Projects и Perplexity Spaces:
+  - База знаний + векторный RAG с гибридным поиском (RRF)
+  - Подключение GitHub/Gitea, AI-коммиты, PR
+  - Query expansion, @file/@web директивы, two-level retrieval
+  - Редактор кода прямо в интерфейсе
+  - Публичные Spaces, коллаборация, Telegram-бот, аудит-лог
+
+  Что имеет смысл делать дальше — только если есть реальные пользователи и обратная связь. Технически можно добавить:
+
+  ┌────────────────────────────────────────────────────────┬────────────────────────────────────────────────────┐
+  │                          Идея                          │                      Ценность                      │
+  ├────────────────────────────────────────────────────────┼────────────────────────────────────────────────────┤
+  │ PROJECT_RERANK=1 + облегчить модель (CPU-only PyTorch) │ Лучше качество поиска при большой базе             │
+  ├────────────────────────────────────────────────────────┼────────────────────────────────────────────────────┤
+  │ backfill_summaries — запустить для существующих файлов │ Активирует two-level retrieval для старых проектов │
+  ├────────────────────────────────────────────────────────┼────────────────────────────────────────────────────┤
+  │ Billing за использование RAG/embed-токенов             │ Монетизация тяжёлых операций                       │
+  ├────────────────────────────────────────────────────────┼────────────────────────────────────────────────────┤
+  │ Поддержка .pdf, .docx в базе знаний                    │ Расширение форматов                                │
+  └────────────────────────────────────────────────────────┴────────────────────────────────────────────────────┘
+
+  Мой совет: остановиться и накапливать обратную связь от пользователей. Все базовые и продвинутые сценарии покрыты. Следующий шаг должен диктовать рынок, а не план.
+
+---
+
+## Large-file commit fixes (сессия 2026-06-23)
+
+### Контекст проблемы
+
+Прокси laozhang.ai жёстко ограничивает output Claude до **16 384 токенов (~55K символов)** — параметр `max_tokens` игнорируется. Файл `src/studio/tasks.py` = 64 298 символов в KB → AI неизбежно обрезает вывод на 55K. Кнопка «Подтвердить коммит» не работала для таких файлов.
+
+**Подтверждение**: dashboard laozhang.ai, поле «Завершение: 16384» для обоих Claude-запросов в логах — это хард-кап прокси, не наш `max_tokens`.
+
+### Что сделано
+
+| # | Файл | Изменение | Коммит |
+|---|------|-----------|--------|
+| 1 | `frontend/components/chat/MarkdownContent.tsx` | Незакрытый FILE-блок (обрезанный) рендерится как `FileBlock` вместо каракулей. Оранжевый баннер предупреждения `truncated=true`. Интерфейс `Segment` получил поле `truncated?: boolean` | `d3ecd65` |
+| 2 | `src/aitext/commit_extract.py` | Полный рерайт: KB tail-stitch (окна 500/200/80 символов), fallback через `_fetch_from_connector()` из tasks.py, предупреждения в commit message | `d3ecd65`, `43afd10`, `f28fca2` |
+| 3 | `src/aitext/codebase.py` | Баг: `vector_search()` возвращал строку, `build_codebase_context` итерировал по символам → `'str' object has no attribute 'extracted_text'`. Исправлено: `vector_search_candidates()` → список file_id → `ProjectFile.objects.filter(id__in=...)` | `643d182` |
+
+### Текущее поведение (с костылями)
+
+```
+AI output (55K) → незакрытый FILE-блок → _stitch_tail_from_kb()
+  → ищет последние 500 симв. AI в KB-файле → дописывает хвост
+  → ProjectCommit с предупреждением в commit message
+```
+
+**Ограничение**: если изменения были в последних ~9K символов файла (хвост) — хвост перетирается оригиналом из KB. Коммит будет создан, но правки в хвосте потеряются.
+
+---
+
+## Phase 8 — EDIT Blocks Architecture (план)
+
+### Цель
+
+Убрать kostyli — сделать надёжные коммиты для файлов **любого размера** с изменениями **в любом месте**, тратя минимум выходных токенов.
+
+### Ключевая идея
+
+AI выводит **только изменённые фрагменты** в формате SEARCH/REPLACE. Сервер применяет патчи к полному файлу из KB/GitHub. Итог — полный правильный файл без участия лимита output.
+
+Для малых файлов (< 30K симв.) — прежний FILE-блок (полный файл, просто и надёжно).  
+Для больших файлов (≥ 30K симв.) — новый EDIT-блок.
+
+### Формат EDIT-блока
+
+```
+=== EDIT: src/studio/tasks.py ===
+<<<SEARCH>>>
+def _build_sandbox_context(project, lang):
+    """old docstring"""
+    return {}
+<<<REPLACE>>>
+def _build_sandbox_context(project, lang):
+    """Returns sandbox context dict for given project and language."""
+    return {"lang": lang, "project_id": project.id}
+<<<END>>>
+<<<SEARCH>>>
+MAX_OUTPUT_TOKENS = 16384
+<<<REPLACE>>>
+MAX_OUTPUT_TOKENS = 32768
+<<<END>>>
+=== END EDIT ===
+```
+
+- Несколько `<<<SEARCH>>>...<<<REPLACE>>>...<<<END>>>` в одном EDIT-блоке — несколько правок одного файла.
+- Несколько `=== EDIT: path === ... === END EDIT ===` подряд — несколько файлов.
+- SEARCH должен содержать 5–20 строк контекста вокруг правки для надёжного поиска.
+- Совместим с существующим FILE-блоком — оба формата могут быть в одном ответе.
+
+### Архитектура реализации
+
+#### 1. `src/aitext/commit_extract.py` — новые функции
+
+```python
+# Паттерн EDIT-блока
+_EDIT_BLOCK_RE = re.compile(
+    r'===\s*EDIT:\s*([^\n=]+?)\s*===\n([\s\S]*?)===\s*END EDIT\s*===',
+    re.MULTILINE,
+)
+# Паттерн одного SEARCH/REPLACE внутри EDIT-блока
+_HUNK_RE = re.compile(
+    r'<<<SEARCH>>>\n([\s\S]*?)<<<REPLACE>>>\n([\s\S]*?)<<<END>>>',
+    re.MULTILINE,
+)
+
+def parse_edit_blocks(text: str) -> dict[str, list[dict]]:
+    """Возвращает {path: [{'search': str, 'replace': str}, ...]}"""
+    result = {}
+    for m in _EDIT_BLOCK_RE.finditer(text):
+        path = m.group(1).strip()
+        hunks = [
+            {'search': h.group(1), 'replace': h.group(2)}
+            for h in _HUNK_RE.finditer(m.group(2))
+        ]
+        if hunks:
+            result[path] = hunks
+    return result
+
+def apply_edit_blocks(source: str, hunks: list[dict]) -> str:
+    """Применяет SEARCH/REPLACE патчи к тексту файла.
+    
+    Стратегия: точное совпадение → нормализованное (strip trailing ws) → ошибка.
+    """
+    result = source
+    for hunk in hunks:
+        search, replace = hunk['search'], hunk['replace']
+        if search in result:
+            result = result.replace(search, replace, 1)
+            continue
+        # Нормализованный поиск — убираем trailing whitespace в каждой строке
+        def _norm(s): return '\n'.join(line.rstrip() for line in s.split('\n'))
+        norm_result = _norm(result)
+        norm_search = _norm(search)
+        if norm_search in norm_result:
+            # Находим позицию нормализованного поиска, применяем в оригинале
+            idx = norm_result.find(norm_search)
+            # Подсчитываем количество символов до idx в нормализованной версии
+            # через маппинг строк (надёжнее чем char-offset)
+            lines_before = norm_result[:idx].count('\n')
+            orig_lines = result.split('\n')
+            search_lines = norm_search.count('\n') + 1
+            orig_block = '\n'.join(orig_lines[lines_before:lines_before + search_lines])
+            result = result.replace(orig_block, replace, 1)
+        else:
+            raise ValueError(f"SEARCH не найден в файле: {search[:80]!r}")
+    return result
+```
+
+#### 2. Приоритетная логика в `extract_commit_from_response()`
+
+```
+Порядок парсинга:
+  1. parse_file_blocks()   — полные FILE-блоки (малые файлы, ≤55K)
+  2. parse_edit_blocks()   — EDIT-блоки (большие файлы, патчи)
+  3. _find_truncated_file() + KB tail-stitch  — legacy fallback
+  4. return None
+```
+
+Если EDIT-блоки найдены:
+- для каждого пути вызываем `_get_full_file_source(project, path)` → полный файл из KB/GitHub
+- применяем `apply_edit_blocks(source, hunks)` → patched content
+- если `patched == source` — предупреждение «ничего не изменилось»
+- если `apply_edit_blocks` бросил `ValueError` — логируем, пропускаем файл
+
+#### 3. Обновление системного промпта (`AI_COMMIT_INSTRUCTION`)
+
+Промпт должен быть контекстно-зависимым. В `inject_commit_instruction()` определяем есть ли в проекте большие файлы:
+
+```python
+def inject_commit_instruction(project, messages_for_api: list) -> None:
+    if not project.connectors.exists():
+        return
+    
+    # Проверяем наличие больших файлов в KB
+    from .models import ProjectFile
+    has_large_files = ProjectFile.objects.filter(
+        project=project, status='ready', enabled=True,
+    ).extra(where=["char_length(extracted_text) > 30000"]).exists()
+    
+    if has_large_files:
+        messages_for_api.append({"role": "system", "content": AI_COMMIT_INSTRUCTION_WITH_EDITS})
+    else:
+        messages_for_api.append({"role": "system", "content": AI_COMMIT_INSTRUCTION})
+```
+
+`AI_COMMIT_INSTRUCTION_WITH_EDITS` объясняет оба формата и говорит: «файлы > 30K символов — используй EDIT-блоки».
+
+#### 4. Подсказка в KB-контексте (`tasks.py`)
+
+Когда большой файл инжектируется в контекст, добавляем аннотацию:
+
+```python
+# В build_project_knowledge_context() или build_codebase_context()
+if len(content) > 30_000:
+    header = f"[БОЛЬШОЙ ФАЙЛ: {len(content)} симв. — для правок используй EDIT-блоки]"
+    injected = f"=== FILE: {path} ===\n{header}\n{content[:30_000]}...\n[обрезано для контекста]"
+else:
+    injected = f"=== FILE: {path} ===\n{content}\n=== END FILE ==="
+```
+
+### Порядок внедрения (Sprint 8)
+
+| # | Задача | Файл |
+|---|--------|------|
+| 8.1 | `parse_edit_blocks()` + `apply_edit_blocks()` + тесты | `src/aitext/commit_extract.py` |
+| 8.2 | Встроить в `extract_commit_from_response()` — приоритет EDIT после FILE | `src/aitext/commit_extract.py` |
+| 8.3 | Контекстный `AI_COMMIT_INSTRUCTION` — два варианта промпта | `src/aitext/commit_extract.py` |
+| 8.4 | Аннотация больших файлов в KB-инжекции | `src/aitext/tasks.py` |
+| 8.5 | Frontend: парсинг и рендер EDIT-блоков (свёртываемый diff-вид) | `frontend/components/chat/MarkdownContent.tsx` |
+| 8.6 | Удалить tail-stitch после подтверждения работы EDIT-блоков | `src/aitext/commit_extract.py` |
+
+### Сравнение подходов
+
+| Подход | Изменения в хвосте | Файлы любого размера | Токены вывода | Сложность |
+|--------|-------------------|----------------------|---------------|-----------|
+| FILE-блок (текущий) | Нет — файл обрезается | Нет (лимит ~55K) | Весь файл | Низкая |
+| KB tail-stitch (текущий) | **Нет** — хвост из KB | Частично | Весь AI-вывод | Средняя |
+| **EDIT-блоки (Phase 8)** | **Да** | **Да** | Только изменения | Средняя |
+| Построчный вывод (line ranges) | Да | Да | Только изменения | Высокая (нужны номера строк) |
+| AST-патч (function-level) | Да | Да | Только функция | Высокая (language-specific) |
+
+**EDIT-блоки — оптимальный баланс** между надёжностью, универсальностью и сложностью реализации. Не требует изменений в протоколе хранения файлов, переиспользует `_get_full_file_source()` и `_fetch_from_connector()`, работает для любого языка.
+
+### Ключевое отличие от tail-stitch
+
+Tail-stitch предполагает, что хвост **не изменялся**. Это работает в 80% случаев, но ломается для правок в конце файла.
+
+EDIT-блоки вообще не делают предположений о хвосте — AI явно указывает что именно изменить, сервер применяет хирургически точно.
