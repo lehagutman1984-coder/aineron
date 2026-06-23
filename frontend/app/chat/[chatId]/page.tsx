@@ -1114,12 +1114,46 @@ function PlainText({ text }: { text: string }) {
 
 /* ─── Live streaming display — smooth drain from token queue ─ */
 function StreamingDisplay({ text }: { text: string }) {
+  const [displayed, setDisplayed] = useState("");
+  const queueRef = useRef("");
+  const enqueuedRef = useRef(0);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (text.length > enqueuedRef.current) {
+      queueRef.current += text.slice(enqueuedRef.current);
+      enqueuedRef.current = text.length;
+    }
+  }, [text]);
+
+  useEffect(() => {
+    function drain() {
+      const q = queueRef.current;
+      if (q.length > 0) {
+        let end = Math.min(12, q.length);
+        // Drain only up to last word boundary so whole words appear at once
+        if (end < q.length) {
+          for (let i = end - 1; i > 0; i--) {
+            if (q[i] === " " || q[i] === "\n") { end = i + 1; break; }
+          }
+        }
+        // Capture chunk BEFORE mutating queue — fixes the race condition
+        const chunk = q.slice(0, end);
+        queueRef.current = q.slice(end);
+        setDisplayed((prev) => prev + chunk);
+      }
+      rafRef.current = requestAnimationFrame(drain);
+    }
+    rafRef.current = requestAnimationFrame(drain);
+    return () => { if (rafRef.current !== null) cancelAnimationFrame(rafRef.current); };
+  }, []);
+
   return (
     <div
       className="text-[15px] leading-[1.75]"
       style={{ color: "rgba(13,13,13,0.86)" }}
     >
-      <PlainText text={text || " "} />
+      <PlainText text={displayed || " "} />
       <span
         className="ml-0.5 inline-block animate-pulse"
         style={{
