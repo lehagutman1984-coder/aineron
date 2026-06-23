@@ -891,7 +891,8 @@ def generate_ai_response(self, message_id, web_search=False):
             "messages": messages_for_api,
             "temperature": 0.7,
         }
-        completion_kwargs["max_tokens"] = network.max_tokens if network.max_tokens > 0 else _auto_max_tokens(effective_model)
+        auto_max = _auto_max_tokens(effective_model)
+        completion_kwargs["max_tokens"] = max(network.max_tokens, auto_max) if network.max_tokens > 0 else auto_max
 
         # Обёртка для обработки ошибки deprecated модели
         try:
