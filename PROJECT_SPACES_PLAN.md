@@ -37,7 +37,7 @@ Claude.ai Projects, Perplexity Spaces и ChatGPT Projects.
 | **Phase 7 — Code Workspace** (встроенный редактор CodeMirror + deploy-хук) | **ЗАВЕРШЁН** | `c680c8a`, `1955105` |
 | **Post-launch fixes** (chunk_index bug, auto-push bug, rate-limit, lang extensions) | **ЗАВЕРШЁН** | `1955105`, `0620d0c` |
 | **Large-file commit fixes** (KB tail-stitch, codebase.py bug, truncation warning) | **ЗАВЕРШЁН** | `d3ecd65`, `643d182`, `43afd10`, `f28fca2` |
-| **Phase 8 — EDIT Blocks** (патч-коммиты для файлов >30K символов) | **ЗАПЛАНИРОВАНО** | — |
+| **Phase 8 — EDIT Blocks** (патч-коммиты для файлов >30K символов) | **ЗАВЕРШЁН** | `45a8841` |
 
 **ВСЕ ФАЗЫ ЗАВЕРШЕНЫ. Project Spaces реализован полностью.**
 
@@ -1751,7 +1751,7 @@ AI output (55K) → незакрытый FILE-блок → _stitch_tail_from_kb(
 
 ---
 
-## Phase 8 — EDIT Blocks Architecture (план)
+## Phase 8 — EDIT Blocks Architecture ✅ ЗАВЕРШЕНО (коммит `45a8841`, 2026-06-23)
 
 ### Цель
 
@@ -1903,14 +1903,14 @@ else:
 
 ### Порядок внедрения (Sprint 8)
 
-| # | Задача | Файл |
-|---|--------|------|
-| 8.1 | `parse_edit_blocks()` + `apply_edit_blocks()` + тесты | `src/aitext/commit_extract.py` |
-| 8.2 | Встроить в `extract_commit_from_response()` — приоритет EDIT после FILE | `src/aitext/commit_extract.py` |
-| 8.3 | Контекстный `AI_COMMIT_INSTRUCTION` — два варианта промпта | `src/aitext/commit_extract.py` |
-| 8.4 | Аннотация больших файлов в KB-инжекции | `src/aitext/tasks.py` |
-| 8.5 | Frontend: парсинг и рендер EDIT-блоков (свёртываемый diff-вид) | `frontend/components/chat/MarkdownContent.tsx` |
-| 8.6 | Удалить tail-stitch после подтверждения работы EDIT-блоков | `src/aitext/commit_extract.py` |
+| # | Задача | Файл | Статус |
+|---|--------|------|--------|
+| 8.1 | `parse_edit_blocks()` + `apply_edit_blocks()` + 15 unit-тестов | `src/aitext/commit_extract.py`, `tests.py` | **ЗАВЕРШЁН** |
+| 8.2 | Встроить в `extract_commit_from_response()` — приоритет EDIT после FILE | `src/aitext/commit_extract.py` | **ЗАВЕРШЁН** |
+| 8.3 | `AI_COMMIT_INSTRUCTION_WITH_EDITS` + контекстный `inject_commit_instruction()` | `src/aitext/commit_extract.py` | **ЗАВЕРШЁН** |
+| 8.4 | `EDIT_HINT_THRESHOLD = 30_000` — аннотация больших файлов в KB-инжекции | `src/aitext/tasks.py` | **ЗАВЕРШЁН** |
+| 8.5 | Frontend: `EditBlock` компонент (зелёная рамка, Pencil, diff "Было/Стало") | `frontend/components/chat/MarkdownContent.tsx` | **ЗАВЕРШЁН** |
+| 8.6 | tail-stitch сохранён как legacy fallback (логирует WARNING), план обновлён | `src/aitext/commit_extract.py` | **ЗАВЕРШЁН** |
 
 ### Сравнение подходов
 
