@@ -51,8 +51,21 @@ def codebase_search(project, query: str, top_k: int = _CODEBASE_TOP_K) -> list:
 
     if getattr(settings, 'PROJECT_VECTOR_RAG', False):
         try:
-            from aitext.embeddings import vector_search
-            return vector_search(project, query, top_k=top_k)
+            from aitext.embeddings import vector_search_candidates
+            candidates = vector_search_candidates(project, query, top_n=top_k * 3)
+            if candidates:
+                seen_ids: list[int] = []
+                for c in candidates:
+                    fid = c['file_id']
+                    if fid not in seen_ids:
+                        seen_ids.append(fid)
+                    if len(seen_ids) >= top_k:
+                        break
+                files_map = {
+                    pf.id: pf
+                    for pf in ProjectFile.objects.filter(id__in=seen_ids)
+                }
+                return [files_map[fid] for fid in seen_ids if fid in files_map]
         except Exception as e:
             logger.warning('[codebase_search] vector_search failed, falling back to lexical: %s', e)
 
