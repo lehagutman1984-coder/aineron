@@ -133,6 +133,8 @@ def extract_commit_from_response(project, assistant_text: str):
         files, _ = parse_file_blocks(assistant_text)
 
         # Если нет полных FILE-блоков — ищем незакрытый (обрезанный по API-лимиту)
+        tail_stitched = False
+        tail_stitch_failed = False
         if not files:
             truncated = _find_truncated_file(assistant_text)
             if truncated:
@@ -140,15 +142,18 @@ def extract_commit_from_response(project, assistant_text: str):
                 stitched = _stitch_tail_from_kb(project, file_path, ai_content)
                 if stitched:
                     files = {file_path: stitched}
+                    tail_stitched = True
                     logger.info(
                         f"[commit] использован KB-tail stitch для {file_path} "
                         f"(project {project.id})"
                     )
                 else:
+                    # KB не нашёл файл — коммитим обрезанный с предупреждением
+                    files = {file_path: ai_content}
+                    tail_stitch_failed = True
                     logger.warning(
-                        f"[commit] файл обрезан и KB-stitch не сработал: {file_path}"
+                        f"[commit] KB-stitch не сработал, коммитим обрезанный файл: {file_path}"
                     )
-                    return None
             else:
                 return None
 
@@ -172,6 +177,10 @@ def extract_commit_from_response(project, assistant_text: str):
         commit_msg = first_line[:200] if first_line else f"AI: {len(safe_files)} файл(ов)"
         if not commit_msg:
             commit_msg = f"AI: {len(safe_files)} файл(ов)"
+        if tail_stitched:
+            commit_msg += " [ВНИМАНИЕ: хвост файла взят из KB без изменений — проверьте конец файла]"
+        elif tail_stitch_failed:
+            commit_msg += " [ВНИМАНИЕ: файл обрезан API (~55K лимит) — хвост файла отсутствует, проверьте перед мержем]"
 
         commit = ProjectCommit.objects.create(
             project=project,
