@@ -161,7 +161,7 @@ class ArchitectAgent(BaseAgent):
             system_project,
             context,
             model=model,
-            max_tokens=8192,
+            max_tokens=32000,
             temperature=0.3,
         )
 
@@ -182,7 +182,7 @@ class ArchitectAgent(BaseAgent):
             design_md = self.run_prompt(
                 system_design,
                 context + f"\n\nPROJECT.md:\n{project_md}",
-                model=model, max_tokens=5000, temperature=0.4,
+                model=model, max_tokens=32000, temperature=0.4,
             )
 
         if is_tma:
@@ -195,7 +195,7 @@ class ArchitectAgent(BaseAgent):
             system_commits,
             context + f"\n\nPROJECT.md already written:\n{project_md}",
             model=model,
-            max_tokens=8192,
+            max_tokens=32000,
             temperature=0.3,
         )
 

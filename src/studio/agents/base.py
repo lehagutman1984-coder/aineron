@@ -96,7 +96,7 @@ class BaseAgent:
         return self.client
 
     def run_prompt(self, system: str, user: str, model: str = None,
-                   max_tokens: int = 8192, temperature: float = 0.7,
+                   max_tokens: int = 32000, temperature: float = 0.7,
                    prior: str = '', on_delta=None) -> str:
         """
         Call model using streaming. Sets self.last_finish_reason and
@@ -184,7 +184,7 @@ class BaseAgent:
         return content
 
     def run_prompt_with_continuation(self, system: str, user: str,
-                                     model: str = None, max_tokens: int = 8192,
+                                     model: str = None, max_tokens: int = 32000,
                                      temperature: float = 0.2,
                                      max_rounds: int = 6,
                                      stop_marker: str = None,
@@ -232,7 +232,7 @@ class BaseAgent:
         self.last_total_tokens = acc_total
         return full
 
-    def run_json(self, system: str, user: str, model: str = None, max_tokens: int = 8192) -> dict:
+    def run_json(self, system: str, user: str, model: str = None, max_tokens: int = 32000) -> dict:
         raw = self.run_prompt(system, user, model=model, max_tokens=max_tokens, temperature=0.2)
         if not raw or not raw.strip():
             logger.warning('agent %s: empty response from model %s', self.name, model)

@@ -34,7 +34,7 @@ class PlannerAgent(BaseAgent):
                 f'\n\nMUST-HAVE компоненты (выбраны пользователем, обязательны):\n{features_text}\n'
                 f'Каждая функция должна быть покрыта хотя бы одним шагом COMMITS.md.'
             )
-        md_raw = self.run_prompt(system, user, model=self.resolve_model(), max_tokens=8192)
+        md_raw = self.run_prompt(system, user, model=self.resolve_model(), max_tokens=32000)
         m = re.search(r'<STEPS_COUNT>(\d+)</STEPS_COUNT>', md_raw)
         marker = int(m.group(1)) if m else 0
         md = re.sub(r'<STEPS_COUNT>\d+</STEPS_COUNT>', '', md_raw).strip()

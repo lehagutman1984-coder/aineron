@@ -29,6 +29,6 @@ class ReviewerAgent(BaseAgent):
         listing = '\n'.join(f'- {p}' for p in (all_files or {}) if p not in files) or ''
         ctx = f"\n\nAll other files (list only):\n{listing}" if listing else ''
         user = f"Step:\n{step_text}\n\nChanged files:\n{body}{ctx}"
-        report = self.run_json(system, user, model=self.resolve_model(), max_tokens=6000)
+        report = self.run_json(system, user, model=self.resolve_model(), max_tokens=32000)
         report.setdefault('passed', not report.get('issues'))
         return report

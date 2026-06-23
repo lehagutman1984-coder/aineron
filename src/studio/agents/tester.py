@@ -21,7 +21,7 @@ class TesterAgent(BaseAgent):
     def run(self, build_logs: str, exit_code=None) -> dict:
         system = pick_prompt(SYSTEM_RU, SYSTEM_EN)
         user = f"exit_code={exit_code}\nBuild logs:\n{build_logs[-6000:]}"
-        report = self.run_json(system, user, model=self.resolve_model(), max_tokens=4000)
+        report = self.run_json(system, user, model=self.resolve_model(), max_tokens=32000)
         if exit_code is not None and exit_code != 0:
             report['build_ok'] = False
             report['passed'] = False

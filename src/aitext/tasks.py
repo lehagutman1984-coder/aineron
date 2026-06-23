@@ -493,16 +493,7 @@ def _write_audit(project, actor, action: str, target: str = '', files_used: list
 
 def _auto_max_tokens(model_name: str) -> int:
     """Auto max_tokens by model family when not set in DB."""
-    m = model_name.lower()
-    if any(x in m for x in ('gpt-4.1', 'gpt-4o', 'gpt-5', 'o1', 'o3', 'o4')):
-        return 32768
-    if any(x in m for x in ('claude',)):
-        return 32768
-    if any(x in m for x in ('gemini',)):
-        return 16384
-    if any(x in m for x in ('deepseek', 'qwen', 'grok')):
-        return 16384
-    return 16384
+    return 32000
 
 
 def get_laozhang_client():

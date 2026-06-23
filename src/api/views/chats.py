@@ -469,7 +469,7 @@ class StreamMessageView(APIView):
         # network.max_tokens == 0 means "no explicit limit in DB" — fall back to
         # laozhang.ai proxy cap (16384). Passing 16384 explicitly is equivalent
         # but makes intent clear and avoids relying on proxy defaults.
-        _auto_max = 16384
+        _auto_max = 32000
         max_tokens = network.max_tokens if network.max_tokens > 0 else _auto_max
 
         def _sse(data):

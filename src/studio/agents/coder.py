@@ -198,7 +198,7 @@ class CoderAgent(BaseAgent):
             f"Existing project files:\n{listing}"
         )
         try:
-            data = self.run_json(system, user, model=model, max_tokens=2000)
+            data = self.run_json(system, user, model=model, max_tokens=32000)
             raw = data.get('files', [])
             if isinstance(raw, list) and raw:
                 files = [str(f) for f in raw if f]
@@ -280,7 +280,7 @@ class CoderAgent(BaseAgent):
                         _b['ts'] = now
 
             raw = self.run_prompt_with_continuation(
-                system, user, model=model, max_tokens=24000, temperature=0.15,
+                system, user, model=model, max_tokens=32000, temperature=0.15,
                 stop_marker=FILE_CLOSE, on_delta=on_delta,
             )
             if settings.STUDIO_V4_STREAMING and on_delta is not None:
@@ -328,7 +328,7 @@ class CoderAgent(BaseAgent):
                     _b['ts'] = now
 
         raw = self.run_prompt_with_continuation(
-            system, user, model=model, max_tokens=24000, temperature=0.15,
+            system, user, model=model, max_tokens=32000, temperature=0.15,
             on_delta=legacy_delta,
         )
         if settings.STUDIO_V4_STREAMING and legacy_delta is not None:
@@ -405,7 +405,7 @@ class CoderAgent(BaseAgent):
             f"All project files:\n{listing}\n\n"
             f"Content of relevant files:\n{body}"
         )
-        data = self.run_json(system, user, model=model, max_tokens=16000)
+        data = self.run_json(system, user, model=model, max_tokens=32000)
         raw = data.get('files', {})
         files = {}
         for p, c in raw.items():

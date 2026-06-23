@@ -29,7 +29,7 @@ class InterviewerAgent(BaseAgent):
             f"Description: {self.project.description}\n"
             f"Stack: {self.project.target_stack}"
         )
-        data = self.run_json(system, user, model=self.resolve_model(), max_tokens=2000)
+        data = self.run_json(system, user, model=self.resolve_model(), max_tokens=32000)
         questions = data if isinstance(data, list) else data.get('questions', [])
         self.project.interview_data['questions'] = questions
         self.project.save(update_fields=['interview_data'])

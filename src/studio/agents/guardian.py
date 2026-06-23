@@ -247,5 +247,5 @@ class GuardianAgent(BaseAgent):
             f'Implemented files:{attempt_note}\n{files_content}'
             f'{build_section}'
         )
-        raw = self.run_prompt(system, user, model=self.resolve_model(), max_tokens=2048)
+        raw = self.run_prompt(system, user, model=self.resolve_model(), max_tokens=32000)
         return _parse_guardian_response(raw)

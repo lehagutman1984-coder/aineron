@@ -37,7 +37,7 @@ class AnalystAgent(BaseAgent):
                 f'\n\nОБЯЗАТЕЛЬНЫЕ ФУНКЦИИ (выбраны пользователем):\n{features_text}\n'
                 f'Включи все эти функции в функциональные требования PROJECT.md.'
             )
-        md = self.run_prompt(system, user, model=self.resolve_model(), max_tokens=8192)
+        md = self.run_prompt(system, user, model=self.resolve_model(), max_tokens=32000)
         self.project.project_md_content = md
         self.project.save(update_fields=['project_md_content'])
         self.log('PROJECT.md готов')
