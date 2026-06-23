@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
-import { Copy, Check, ChevronDown, ChevronUp, FileCode, Pencil } from "lucide-react";
+import { Copy, Check, ChevronDown, ChevronUp, FileCode, Pencil, Download } from "lucide-react";
 import type { Components } from "react-markdown";
 import type { ComponentPropsWithoutRef } from "react";
 
@@ -27,11 +27,30 @@ function PreBlock({ children, ...props }: ComponentPropsWithoutRef<"pre">) {
       .split(" ")[0];
   }
 
+  const EXT_MAP: Record<string, string> = {
+    python: "py", typescript: "ts", javascript: "js", tsx: "tsx",
+    jsx: "jsx", html: "html", css: "css", json: "json", yaml: "yml",
+    bash: "sh", sh: "sh", rust: "rs", go: "go", java: "java",
+    ruby: "rb", php: "php", sql: "sql", xml: "xml", markdown: "md",
+  };
+
   const copy = () => {
     const text = ref.current?.textContent ?? "";
     navigator.clipboard.writeText(text).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const download = () => {
+    const code = ref.current?.textContent ?? "";
+    const ext = EXT_MAP[lang] ?? (lang || "txt");
+    const blob = new Blob([code], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `code.${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -40,13 +59,22 @@ function PreBlock({ children, ...props }: ComponentPropsWithoutRef<"pre">) {
         <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.38)]">
           {lang || "code"}
         </span>
-        <button
-          onClick={copy}
-          className="flex items-center gap-1.5 rounded-[5px] border border-[rgba(255,255,255,0.10)] px-2 py-1 text-[11px] font-medium text-[rgba(255,255,255,0.45)] transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-[rgba(255,255,255,0.82)]"
-        >
-          {copied ? <Check size={11} /> : <Copy size={11} />}
-          {copied ? "Скопировано" : "Копировать"}
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={download}
+            className="flex items-center gap-1.5 rounded-[5px] border border-[rgba(255,255,255,0.10)] px-2 py-1 text-[11px] font-medium text-[rgba(255,255,255,0.45)] transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-[rgba(255,255,255,0.82)]"
+          >
+            <Download size={11} />
+            Скачать
+          </button>
+          <button
+            onClick={copy}
+            className="flex items-center gap-1.5 rounded-[5px] border border-[rgba(255,255,255,0.10)] px-2 py-1 text-[11px] font-medium text-[rgba(255,255,255,0.45)] transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-[rgba(255,255,255,0.82)]"
+          >
+            {copied ? <Check size={11} /> : <Copy size={11} />}
+            {copied ? "Скопировано" : "Копировать"}
+          </button>
+        </div>
       </div>
       <pre
         ref={ref}
@@ -186,6 +214,16 @@ function FileBlock({ filePath, code, truncated }: { filePath: string; code: stri
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const download = () => {
+    const blob = new Blob([code], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filePath.split("/").pop() ?? filePath;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="my-3 overflow-hidden rounded-[10px] border border-[rgba(0,122,255,0.25)] bg-[rgba(0,122,255,0.04)]">
       {truncated && (
@@ -219,13 +257,22 @@ function FileBlock({ filePath, code, truncated }: { filePath: string; code: stri
             <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.38)]">
               {lang || "code"}
             </span>
-            <button
-              onClick={copy}
-              className="flex items-center gap-1.5 rounded-[5px] border border-[rgba(255,255,255,0.10)] px-2 py-1 text-[11px] font-medium text-[rgba(255,255,255,0.45)] transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-[rgba(255,255,255,0.82)]"
-            >
-              {copied ? <Check size={11} /> : <Copy size={11} />}
-              {copied ? "Скопировано" : "Копировать"}
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={download}
+                className="flex items-center gap-1.5 rounded-[5px] border border-[rgba(255,255,255,0.10)] px-2 py-1 text-[11px] font-medium text-[rgba(255,255,255,0.45)] transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-[rgba(255,255,255,0.82)]"
+              >
+                <Download size={11} />
+                Скачать
+              </button>
+              <button
+                onClick={copy}
+                className="flex items-center gap-1.5 rounded-[5px] border border-[rgba(255,255,255,0.10)] px-2 py-1 text-[11px] font-medium text-[rgba(255,255,255,0.45)] transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-[rgba(255,255,255,0.82)]"
+              >
+                {copied ? <Check size={11} /> : <Copy size={11} />}
+                {copied ? "Скопировано" : "Копировать"}
+              </button>
+            </div>
           </div>
           <pre className="m-0 overflow-x-auto px-4 pb-4 font-mono text-[13px] leading-relaxed text-[#e0e0e0]">
             <code className={lang ? `language-${lang}` : ""}>{code}</code>

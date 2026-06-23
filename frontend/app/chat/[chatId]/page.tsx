@@ -60,6 +60,9 @@ export default function ChatPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [instructionsDismissed, setInstructionsDismissed] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const isNearBottomRef = useRef(true);
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
 
   const { data: chat, isLoading, error } = useQuery<ChatDetail>({
     queryKey: ["chat", id],
@@ -107,7 +110,10 @@ export default function ChatPage() {
   }, [polledMessage, id, qc]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (!isNearBottomRef.current) return;
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
   }, [chat?.messages, polledMessage, streamText]);
 
   // Mutation for fal-ai image/video models (uses polling)
@@ -396,6 +402,22 @@ export default function ChatPage() {
     t.style.height = Math.min(t.scrollHeight, 200) + "px";
   };
 
+  const scrollToBottom = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+    isNearBottomRef.current = true;
+    setShowScrollBtn(false);
+  }, []);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    isNearBottomRef.current = distFromBottom < 120;
+    setShowScrollBtn(distFromBottom >= 120);
+  }, []);
+
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -511,7 +533,7 @@ export default function ChatPage() {
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto" ref={scrollContainerRef} onScroll={handleScroll}>
         <div className="mx-auto max-w-2xl px-4 py-8">
           {chat.messages.length === 0 && (
             <div className="flex flex-col items-center pt-14 pb-4 text-center">
@@ -608,6 +630,17 @@ export default function ChatPage() {
 
           <div ref={bottomRef} className="h-4" />
         </div>
+        {showScrollBtn && (
+          <div className="sticky bottom-4 flex justify-end pr-6 pb-1">
+            <button
+              onClick={scrollToBottom}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-[rgba(13,13,13,0.10)] bg-white shadow-md transition-all hover:shadow-lg active:scale-95"
+              title="Прокрутить вниз"
+            >
+              <ChevronDown size={18} className="text-[rgba(13,13,13,0.55)]" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* AI-proposed commit card (Sprint 4.3) */}
@@ -1081,45 +1114,12 @@ function PlainText({ text }: { text: string }) {
 
 /* ─── Live streaming display — smooth drain from token queue ─ */
 function StreamingDisplay({ text }: { text: string }) {
-  const [displayed, setDisplayed] = useState("");
-  // queue of chars received but not yet shown
-  const queueRef = useRef("");
-  // how many chars of `text` we've already enqueued
-  const enqueuedRef = useRef(0);
-  const rafRef = useRef<number | null>(null);
-
-  // Feed new chars into queue whenever accumulated text grows
-  useEffect(() => {
-    if (text.length > enqueuedRef.current) {
-      queueRef.current += text.slice(enqueuedRef.current);
-      enqueuedRef.current = text.length;
-    }
-  }, [text]);
-
-  // Drain queue every animation frame at a smooth, adaptive rate
-  useEffect(() => {
-    function drain() {
-      const pending = queueRef.current.length;
-      if (pending > 0) {
-        // Adaptive speed: slow for small queue (smooth), fast for large queue (catch-up)
-        const take = pending < 15 ? 1 : pending < 60 ? 3 : 7;
-        setDisplayed((p) => p + queueRef.current.slice(0, take));
-        queueRef.current = queueRef.current.slice(take);
-      }
-      rafRef.current = requestAnimationFrame(drain);
-    }
-    rafRef.current = requestAnimationFrame(drain);
-    return () => {
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-    };
-  }, []); // mount once
-
   return (
     <div
       className="text-[15px] leading-[1.75]"
       style={{ color: "rgba(13,13,13,0.86)" }}
     >
-      <PlainText text={displayed || " "} />
+      <PlainText text={text || " "} />
       <span
         className="ml-0.5 inline-block animate-pulse"
         style={{
