@@ -341,24 +341,24 @@ function EditBlock({ filePath, hunks }: { filePath: string; hunks: EditHunk[] })
   const [expanded, setExpanded] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
 
-  const diffContent = (
+  const renderDiff = (dark: boolean) => (
     <div>
       {hunks.map((hunk, idx) => (
-        <div key={idx} className="border-b border-[rgba(0,200,100,0.10)] last:border-b-0">
+        <div key={idx} className={`border-b last:border-b-0 ${dark ? "border-[rgba(255,255,255,0.06)]" : "border-[rgba(0,200,100,0.10)]"}`}>
           <div className="grid grid-cols-2">
-            <div className="border-r border-[rgba(0,200,100,0.15)] bg-[rgba(255,60,60,0.05)]">
-              <div className="border-b border-[rgba(255,60,60,0.12)] px-3 py-1">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-[rgba(200,60,60,0.7)]">Было</span>
+            <div className={`border-r ${dark ? "border-[rgba(255,255,255,0.08)] bg-[rgba(255,60,60,0.12)]" : "border-[rgba(0,200,100,0.15)] bg-[rgba(255,60,60,0.05)]"}`}>
+              <div className={`border-b px-3 py-1 ${dark ? "border-[rgba(255,60,60,0.20)]" : "border-[rgba(255,60,60,0.12)]"}`}>
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-[rgba(220,80,80,0.9)]">Было</span>
               </div>
-              <pre className="m-0 overflow-x-auto px-3 py-2.5 font-mono text-[12px] leading-relaxed text-[rgba(0,0,0,0.75)]">
+              <pre className={`m-0 overflow-x-auto px-3 py-2.5 font-mono text-[12px] leading-relaxed ${dark ? "text-[rgba(255,255,255,0.82)]" : "text-[rgba(0,0,0,0.75)]"}`}>
                 {hunk.search.trimEnd()}
               </pre>
             </div>
-            <div className="bg-[rgba(0,200,100,0.05)]">
-              <div className="border-b border-[rgba(0,200,100,0.12)] px-3 py-1">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-[rgba(0,160,80,0.7)]">Стало</span>
+            <div className={dark ? "bg-[rgba(0,200,100,0.12)]" : "bg-[rgba(0,200,100,0.05)]"}>
+              <div className={`border-b px-3 py-1 ${dark ? "border-[rgba(0,200,100,0.20)]" : "border-[rgba(0,200,100,0.12)]"}`}>
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-[rgba(0,200,100,0.9)]">Стало</span>
               </div>
-              <pre className="m-0 overflow-x-auto px-3 py-2.5 font-mono text-[12px] leading-relaxed text-[rgba(0,0,0,0.75)]">
+              <pre className={`m-0 overflow-x-auto px-3 py-2.5 font-mono text-[12px] leading-relaxed ${dark ? "text-[rgba(255,255,255,0.82)]" : "text-[rgba(0,0,0,0.75)]"}`}>
                 {hunk.replace.trimEnd() || "(удалено)"}
               </pre>
             </div>
@@ -372,7 +372,7 @@ function EditBlock({ filePath, hunks }: { filePath: string; hunks: EditHunk[] })
     <>
       {fullscreen && (
         <FullscreenModal title={filePath} onClose={() => setFullscreen(false)}>
-          {diffContent}
+          {renderDiff(true)}
         </FullscreenModal>
       )}
     <div className="my-3 overflow-hidden rounded-[10px] border border-[rgba(0,200,100,0.25)] bg-[rgba(0,200,100,0.04)]">
@@ -405,7 +405,7 @@ function EditBlock({ filePath, hunks }: { filePath: string; hunks: EditHunk[] })
       {/* Expanded diff hunks */}
       {expanded && (
         <div className="border-t border-[rgba(0,200,100,0.15)]">
-          {diffContent}
+          {renderDiff(false)}
         </div>
       )}
     </div>
