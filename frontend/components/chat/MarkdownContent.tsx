@@ -259,8 +259,17 @@ function parseSegments(raw: string): Segment[] {
     lastIndex = FILE_BLOCK_RE.lastIndex;
   }
 
-  if (lastIndex < text.length) {
-    segments.push({ type: "text", content: text.slice(lastIndex) });
+  // Handle truncated (unclosed) FILE block at end of response
+  const remaining = text.slice(lastIndex);
+  const openBlockMatch = /===\s*FILE:\s*([^\n=]+?)\s*===\n([\s\S]*)$/.exec(remaining);
+  if (openBlockMatch) {
+    const beforeBlock = remaining.slice(0, openBlockMatch.index);
+    if (beforeBlock.trim()) {
+      segments.push({ type: "text", content: beforeBlock });
+    }
+    segments.push({ type: "file", content: openBlockMatch[2], filePath: openBlockMatch[1].trim() });
+  } else if (remaining.length > 0) {
+    segments.push({ type: "text", content: remaining });
   }
 
   return segments.length > 0 ? segments : [{ type: "text", content: text }];
