@@ -534,7 +534,7 @@ export default function ChatPage() {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto" ref={scrollContainerRef} onScroll={handleScroll}>
-        <div className="mx-auto max-w-2xl px-4 py-8">
+        <div className="mx-auto max-w-4xl px-4 py-8">
           {chat.messages.length === 0 && (
             <div className="flex flex-col items-center pt-14 pb-4 text-center">
               {/* Model avatar */}
