@@ -18,12 +18,13 @@ _CODEBASE_TOP_K = 8
 def repo_tree_map(project) -> str:
     """Return a compact list of repo file paths (≤3 KB) for LLM structural awareness."""
     from aitext.models import ProjectFile
-    paths = list(
+    qs = (
         ProjectFile.objects
         .filter(project=project, source='repo', status='ready', enabled=True)
-        .order_by('filename')
-        .values_list('filename', flat=True)[:200]
+        .order_by('repo_path')
+        .values_list('repo_path', 'filename')[:200]
     )
+    paths = [repo_path or filename for repo_path, filename in qs]
     if not paths:
         return ''
     text = '\n'.join(paths)
@@ -51,7 +52,7 @@ def codebase_search(project, query: str, top_k: int = _CODEBASE_TOP_K) -> list:
     if getattr(settings, 'PROJECT_VECTOR_RAG', False):
         try:
             from aitext.embeddings import vector_search
-            return vector_search(project, query, top_k=top_k, source_filter='repo')
+            return vector_search(project, query, top_k=top_k)
         except Exception as e:
             logger.warning('[codebase_search] vector_search failed, falling back to lexical: %s', e)
 
@@ -88,6 +89,7 @@ def build_codebase_context(project, query: str) -> str:
 
     for pf in files:
         snippet = (pf.extracted_text or '')[:2_000]
-        parts.append(f'--- FILE: {pf.filename} ---\n{snippet}\n--- END FILE ---')
+        label = pf.repo_path or pf.filename
+        parts.append(f'--- FILE: {label} ---\n{snippet}\n--- END FILE ---')
 
     return '\n\n'.join(parts)
