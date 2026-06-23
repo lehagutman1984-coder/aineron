@@ -9,3 +9,4 @@ env/
 .vscode/
 .idea/
 *.log
+.claude/
