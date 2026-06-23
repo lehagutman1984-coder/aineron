@@ -454,11 +454,14 @@ class StreamMessageView(APIView):
             if search_context_text:
                 assistant_message.search_context = search_context_text
                 assistant_message.save(update_fields=['search_context'])
+                # Обрезаем поисковый контекст если KB уже большой (чтобы не превысить лимит)
+                ctx_so_far = sum(len(m.get("content", "")) for m in messages_for_api)
+                search_limit = 2000 if ctx_so_far > 30_000 else 4500
                 # Вставляем прямо перед последним user-сообщением — как делает Perplexity
                 insert_pos = max(len(messages_for_api) - 1, 0)
                 messages_for_api.insert(
                     insert_pos,
-                    build_web_search_message(search_context_text, message_text or ""),
+                    build_web_search_message(search_context_text[:search_limit], message_text or ""),
                 )
 
         # Capture values for the generator closure
@@ -553,17 +556,22 @@ class StreamMessageView(APIView):
                 })
 
             except Exception as e:
-                logger.error(f"SSE streaming error for message {assist_msg_id}: {e}")
+                err_type = type(e).__name__
+                err_detail = str(e)
+                logger.error(
+                    f"SSE streaming error for message {assist_msg_id} "
+                    f"(web_search={web_search}, model={model_name}): "
+                    f"{err_type}: {err_detail}",
+                    exc_info=True,
+                )
                 if deduct_stars:
                     user.add_pages(cost)
                     logger.info(f"Refunded {cost} stars to {user.email} after streaming error")
+                user_msg = f"Ошибка при генерации ответа. Попробуйте ещё раз."
                 assistant_message.status = Message.Status.FAILED
-                assistant_message.error_message = "Ошибка при генерации ответа. Попробуйте ещё раз."
+                assistant_message.error_message = user_msg
                 assistant_message.save()
-                yield _sse({
-                    "type": "error",
-                    "message": "Ошибка при генерации ответа. Попробуйте ещё раз.",
-                })
+                yield _sse({"type": "error", "message": user_msg})
 
         resp = StreamingHttpResponse(generate(), content_type='text/event-stream; charset=utf-8')
         resp['Cache-Control'] = 'no-cache'

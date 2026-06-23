@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
@@ -767,11 +767,7 @@ export default function ChatPage() {
                   setWebSearch(next);
                   localStorage.setItem("web_search_enabled", next ? "1" : "0");
                 }}
-                title={
-                  webSearch
-                    ? "Веб-поиск включён — запрос идёт через Grok Search. Нажмите чтобы отключить"
-                    : "Включить поиск в интернете (через Grok Search)"
-                }
+                title={webSearch ? "Веб-поиск включён. Нажмите чтобы отключить" : "Включить поиск в интернете"}
                 className={[
                   "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all",
                   webSearch
@@ -828,7 +824,7 @@ export default function ChatPage() {
               <BouncingDots />
               <span className="text-[12px] text-[rgba(13,13,13,0.42)]">
                 {searchPhase === "searching" ? (
-                  <span className="font-medium text-[#0a7cff]">Grok ищет в интернете...</span>
+                  <span className="font-medium text-[#0a7cff]">Ищем в интернете...</span>
                 ) : searchPhase === "generating" ? (
                   <>
                     <span className="font-medium text-[#16a34a]">Найдено</span>
@@ -1272,7 +1268,7 @@ function SearchContextBlock({ context }: { context: string }) {
       >
         <Globe size={13} className="shrink-0 text-[#0a7cff]" />
         <span className="flex-1 text-[12px] font-medium text-[#0a7cff]">
-          Что нашёл Grok Search
+          Результаты поиска
         </span>
         {open ? (
           <ChevronDown size={13} className="shrink-0 text-[rgba(10,124,255,0.6)]" />
