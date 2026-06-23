@@ -1,4 +1,4 @@
 #!/bin/bash
 cd /root/ai
-git pull
-docker-compose up -d
+git pull origin main
+bash deploy.sh

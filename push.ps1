@@ -1,4 +1,4 @@
 param([string]$message = "update")
 git add .
 git commit -m $message
-git push
+git push origin main
