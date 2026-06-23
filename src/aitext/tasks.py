@@ -29,7 +29,7 @@ def _strip_html(text: str) -> str:
 _client = None
 
 FULL_INJECT_LIMIT = 50_000    # символов на файл — порог full-inject vs лексический RAG
-EDIT_HINT_THRESHOLD = 30_000  # файлы крупнее этого — AI получает подсказку про EDIT-блоки
+EDIT_HINT_THRESHOLD = 80_000  # файлы крупнее этого — AI получает подсказку про EDIT-блоки
 
 def _get_inject_limit():
     return int(getattr(settings, 'PROJECT_INJECT_LIMIT', 200_000))

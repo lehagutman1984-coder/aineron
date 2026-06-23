@@ -281,7 +281,7 @@ def inject_commit_instruction(project, messages_for_api: list) -> None:
                 project.knowledge_files
                 .filter(status='ready', enabled=True)
                 .annotate(_tlen=Length('extracted_text'))
-                .filter(_tlen__gt=30_000)
+                .filter(_tlen__gt=80_000)
                 .exists()
             )
         except Exception as e:
