@@ -115,7 +115,7 @@ function PreBlock({ children, ...props }: ComponentPropsWithoutRef<"pre">) {
           </pre>
         </FullscreenModal>
       )}
-      <div className="my-4 overflow-hidden rounded-[10px] border border-[#413c69] bg-[#0f0f0f]">
+      <div className="my-4 overflow-hidden rounded-[10px] border border-[#413c69] bg-[#1e2034]">
         <div className="flex items-center justify-between border-b border-[rgba(255, 255, 255, 0.06)] bg-[rgba(37, 41, 68, 0.04)] px-4 py-2">
           <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.38)]">
             {lang || "code"}
