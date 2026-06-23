@@ -337,6 +337,57 @@ interface EditHunk {
   replace: string;
 }
 
+function DiffHunk({ hunk, dark }: { hunk: EditHunk; dark: boolean }) {
+  const [copiedSearch, setCopiedSearch] = useState(false);
+  const [copiedReplace, setCopiedReplace] = useState(false);
+
+  const copySearch = () => {
+    navigator.clipboard.writeText(hunk.search.trimEnd()).catch(() => {});
+    setCopiedSearch(true);
+    setTimeout(() => setCopiedSearch(false), 2000);
+  };
+  const copyReplace = () => {
+    navigator.clipboard.writeText(hunk.replace.trimEnd()).catch(() => {});
+    setCopiedReplace(true);
+    setTimeout(() => setCopiedReplace(false), 2000);
+  };
+
+  const btnCls = dark
+    ? "flex items-center gap-1 rounded-[4px] border border-[rgba(255,255,255,0.12)] px-1.5 py-0.5 text-[10px] text-[rgba(255,255,255,0.40)] transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-[rgba(255,255,255,0.80)]"
+    : "flex items-center gap-1 rounded-[4px] border border-[rgba(0,0,0,0.10)] px-1.5 py-0.5 text-[10px] text-[rgba(0,0,0,0.35)] transition-colors hover:bg-[rgba(0,0,0,0.06)] hover:text-[rgba(0,0,0,0.65)]";
+
+  return (
+    <div className={`border-b last:border-b-0 ${dark ? "border-[rgba(255,255,255,0.06)]" : "border-[rgba(0,200,100,0.10)]"}`}>
+      <div className="grid grid-cols-2">
+        <div className={`border-r ${dark ? "border-[rgba(255,255,255,0.08)] bg-[rgba(255,60,60,0.12)]" : "border-[rgba(0,200,100,0.15)] bg-[rgba(255,60,60,0.05)]"}`}>
+          <div className={`flex items-center justify-between border-b px-3 py-1 ${dark ? "border-[rgba(255,60,60,0.20)]" : "border-[rgba(255,60,60,0.12)]"}`}>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-[rgba(220,80,80,0.9)]">Было</span>
+            <button onClick={copySearch} className={btnCls}>
+              {copiedSearch ? <Check size={10} /> : <Copy size={10} />}
+              {copiedSearch ? "Скопировано" : "Копировать"}
+            </button>
+          </div>
+          <pre className={`m-0 overflow-x-auto px-3 py-2.5 font-mono text-[12px] leading-relaxed ${dark ? "text-[rgba(255,255,255,0.82)]" : "text-[rgba(0,0,0,0.75)]"}`}>
+            {hunk.search.trimEnd()}
+          </pre>
+        </div>
+        <div className={dark ? "bg-[rgba(0,200,100,0.12)]" : "bg-[rgba(0,200,100,0.05)]"}>
+          <div className={`flex items-center justify-between border-b px-3 py-1 ${dark ? "border-[rgba(0,200,100,0.20)]" : "border-[rgba(0,200,100,0.12)]"}`}>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-[rgba(0,200,100,0.9)]">Стало</span>
+            <button onClick={copyReplace} className={btnCls}>
+              {copiedReplace ? <Check size={10} /> : <Copy size={10} />}
+              {copiedReplace ? "Скопировано" : "Копировать"}
+            </button>
+          </div>
+          <pre className={`m-0 overflow-x-auto px-3 py-2.5 font-mono text-[12px] leading-relaxed ${dark ? "text-[rgba(255,255,255,0.82)]" : "text-[rgba(0,0,0,0.75)]"}`}>
+            {hunk.replace.trimEnd() || "(удалено)"}
+          </pre>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function EditBlock({ filePath, hunks }: { filePath: string; hunks: EditHunk[] }) {
   const [expanded, setExpanded] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
@@ -344,26 +395,7 @@ function EditBlock({ filePath, hunks }: { filePath: string; hunks: EditHunk[] })
   const renderDiff = (dark: boolean) => (
     <div>
       {hunks.map((hunk, idx) => (
-        <div key={idx} className={`border-b last:border-b-0 ${dark ? "border-[rgba(255,255,255,0.06)]" : "border-[rgba(0,200,100,0.10)]"}`}>
-          <div className="grid grid-cols-2">
-            <div className={`border-r ${dark ? "border-[rgba(255,255,255,0.08)] bg-[rgba(255,60,60,0.12)]" : "border-[rgba(0,200,100,0.15)] bg-[rgba(255,60,60,0.05)]"}`}>
-              <div className={`border-b px-3 py-1 ${dark ? "border-[rgba(255,60,60,0.20)]" : "border-[rgba(255,60,60,0.12)]"}`}>
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-[rgba(220,80,80,0.9)]">Было</span>
-              </div>
-              <pre className={`m-0 overflow-x-auto px-3 py-2.5 font-mono text-[12px] leading-relaxed ${dark ? "text-[rgba(255,255,255,0.82)]" : "text-[rgba(0,0,0,0.75)]"}`}>
-                {hunk.search.trimEnd()}
-              </pre>
-            </div>
-            <div className={dark ? "bg-[rgba(0,200,100,0.12)]" : "bg-[rgba(0,200,100,0.05)]"}>
-              <div className={`border-b px-3 py-1 ${dark ? "border-[rgba(0,200,100,0.20)]" : "border-[rgba(0,200,100,0.12)]"}`}>
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-[rgba(0,200,100,0.9)]">Стало</span>
-              </div>
-              <pre className={`m-0 overflow-x-auto px-3 py-2.5 font-mono text-[12px] leading-relaxed ${dark ? "text-[rgba(255,255,255,0.82)]" : "text-[rgba(0,0,0,0.75)]"}`}>
-                {hunk.replace.trimEnd() || "(удалено)"}
-              </pre>
-            </div>
-          </div>
-        </div>
+        <DiffHunk key={idx} hunk={hunk} dark={dark} />
       ))}
     </div>
   );
