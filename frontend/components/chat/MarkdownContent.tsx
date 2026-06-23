@@ -173,7 +173,7 @@ const EXT_LANG: Record<string, string> = {
   java: "java", rb: "ruby", php: "php", sql: "sql", xml: "xml", md: "markdown",
 };
 
-function FileBlock({ filePath, code }: { filePath: string; code: string }) {
+function FileBlock({ filePath, code, truncated }: { filePath: string; code: string; truncated?: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
   const lineCount = code.split("\n").length;
@@ -188,6 +188,11 @@ function FileBlock({ filePath, code }: { filePath: string; code: string }) {
 
   return (
     <div className="my-3 overflow-hidden rounded-[10px] border border-[rgba(0,122,255,0.25)] bg-[rgba(0,122,255,0.04)]">
+      {truncated && (
+        <div className="px-4 py-1.5 bg-[rgba(255,149,0,0.08)] border-b border-[rgba(255,149,0,0.20)]">
+          <span className="text-[11px] text-[#ff9500]">Файл обрезан API (лимит ~55K симв.) — кнопка коммита недоступна. Запросите конкретную функцию.</span>
+        </div>
+      )}
       {/* Header — always visible */}
       <div
         className="flex cursor-pointer items-center gap-2.5 px-4 py-2.5 transition-colors hover:bg-[rgba(0,122,255,0.06)]"
@@ -237,6 +242,7 @@ interface Segment {
   type: "text" | "file";
   content: string;
   filePath?: string;
+  truncated?: boolean;
 }
 
 const FILE_BLOCK_RE = /===\s*FILE:\s*([^\n=]+?)\s*===\n([\s\S]*?)===\s*END FILE\s*===/g;
@@ -267,7 +273,7 @@ function parseSegments(raw: string): Segment[] {
     if (beforeBlock.trim()) {
       segments.push({ type: "text", content: beforeBlock });
     }
-    segments.push({ type: "file", content: openBlockMatch[2], filePath: openBlockMatch[1].trim() });
+    segments.push({ type: "file", content: openBlockMatch[2], filePath: openBlockMatch[1].trim(), truncated: true });
   } else if (remaining.length > 0) {
     segments.push({ type: "text", content: remaining });
   }
@@ -284,7 +290,7 @@ export function MarkdownContent({ content }: { content: string }) {
     <div className="chat-md">
       {segments.map((seg, i) =>
         seg.type === "file" ? (
-          <FileBlock key={i} filePath={seg.filePath!} code={seg.content.trimEnd()} />
+          <FileBlock key={i} filePath={seg.filePath!} code={seg.content.trimEnd()} truncated={seg.truncated} />
         ) : (
           <ReactMarkdown
             key={i}

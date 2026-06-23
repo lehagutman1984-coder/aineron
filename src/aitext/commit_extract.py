@@ -29,10 +29,85 @@ _TRUNCATION_RE = re.compile(
     re.IGNORECASE | re.MULTILINE,
 )
 
+# Незакрытый FILE-блок в конце ответа (обрезан API по токенам)
+_UNCLOSED_FILE_RE = re.compile(
+    r'===\s*FILE:\s*([^\n=]+?)\s*===\n([\s\S]+)$'
+)
+
+# Полный FILE-блок
+_COMPLETE_FILE_RE = re.compile(
+    r'===\s*FILE:\s*([^\n=]+?)\s*===\n([\s\S]*?)===\s*END FILE\s*===',
+)
+
 
 def _is_truncated(content: str) -> bool:
     """Возвращает True если файл содержит маркеры обрезки модели."""
     return bool(_TRUNCATION_RE.search(content))
+
+
+def _find_truncated_file(text: str):
+    """Ищет незакрытый FILE-блок в конце ответа (обрезан по токенам).
+    Возвращает (path, content) или None.
+    """
+    # Найдём конец последнего полного блока
+    last_complete_end = 0
+    for m in _COMPLETE_FILE_RE.finditer(text):
+        last_complete_end = m.end()
+
+    remaining = text[last_complete_end:]
+    m = _UNCLOSED_FILE_RE.search(remaining)
+    if m and len(m.group(2)) > 500:  # не меньше 500 символов — иначе не стоит
+        return m.group(1).strip(), m.group(2)
+    return None
+
+
+def _stitch_tail_from_kb(project, file_path: str, ai_content: str):
+    """Дописывает неизменённый хвост файла из KB к обрезанному AI-выводу.
+
+    Логика: берём последние 500 символов AI-вывода, ищем их в KB-файле,
+    и дописываем всё что идёт после найденной позиции.
+    Возвращает полный текст файла или None если не удалось.
+    """
+    try:
+        from .models import ProjectFile
+        pf = ProjectFile.objects.filter(
+            project=project,
+            repo_path=file_path,
+            status='ready',
+            enabled=True,
+        ).first()
+        if not pf or not pf.extracted_text:
+            return None
+
+        kb_content = pf.extracted_text
+        ai_len = len(ai_content)
+        kb_len = len(kb_content)
+
+        if ai_len >= kb_len:
+            # AI вывел столько же или больше — нечего дописывать
+            return ai_content
+
+        # Ищем конец AI-вывода в KB — пробуем окна 500, 200, 80 символов
+        for window in (500, 200, 80):
+            if ai_len < window:
+                continue
+            search_window = ai_content[-window:]
+            kb_pos = kb_content.find(search_window)
+            if kb_pos != -1:
+                tail_start = kb_pos + window
+                stitched = ai_content + kb_content[tail_start:]
+                logger.info(
+                    f"[commit] KB-tail stitch: {file_path} "
+                    f"ai={ai_len} kb={kb_len} stitched={len(stitched)} "
+                    f"(window={window}, tail={kb_len - tail_start})"
+                )
+                return stitched
+
+        logger.warning(f"[commit] KB-tail stitch failed: {file_path} — anchor not found in KB")
+        return None
+    except Exception as exc:
+        logger.warning(f"[commit] KB-tail stitch error: {exc}")
+        return None
 
 
 def inject_commit_instruction(project, messages_for_api: list) -> None:
@@ -49,14 +124,33 @@ def extract_commit_from_response(project, assistant_text: str):
     """Парсит FILE-блоки из ответа AI и создаёт ProjectCommit(status='pending').
 
     Возвращает созданный ProjectCommit или None если FILE-блоков не найдено / нет коннектора.
+    Для файлов обрезанных по токенам — дописывает хвост из KB автоматически.
     """
     try:
         from studio.agents.blocks import parse_file_blocks
         from .models import ProjectCommit
 
         files, _ = parse_file_blocks(assistant_text)
+
+        # Если нет полных FILE-блоков — ищем незакрытый (обрезанный по API-лимиту)
         if not files:
-            return None
+            truncated = _find_truncated_file(assistant_text)
+            if truncated:
+                file_path, ai_content = truncated
+                stitched = _stitch_tail_from_kb(project, file_path, ai_content)
+                if stitched:
+                    files = {file_path: stitched}
+                    logger.info(
+                        f"[commit] использован KB-tail stitch для {file_path} "
+                        f"(project {project.id})"
+                    )
+                else:
+                    logger.warning(
+                        f"[commit] файл обрезан и KB-stitch не сработал: {file_path}"
+                    )
+                    return None
+            else:
+                return None
 
         # Отфильтровываем файлы с маркерами обрезки — коммитить неполный файл опасно
         safe_files = {p: c for p, c in files.items() if not _is_truncated(c)}
