@@ -1003,56 +1003,6 @@ def rollback_to_version(project_id, version_id):
     })
 
 
-PLAYWRIGHT_QUEUE = 'studio_playwright_queue'
-
-
-@shared_task(bind=True, max_retries=1, queue=PLAYWRIGHT_QUEUE)
-def crawl_spa_task(self, project_id):
-    """Full JS-rendered crawl via Playwright. Runs in celery_studio_playwright (prefork, NOT gevent)."""
-    from .crawler import crawl_spa
-    project = StudioProject.objects.get(id=project_id)
-    try:
-        data = crawl_spa(project.target_url)
-        project.interview_data['crawled'] = {
-            'title': data['title'],
-            'text': data['text'][:8000],
-        }
-        project.status = 'planning'
-        project.save(update_fields=['interview_data', 'status'])
-        agent_analyze.delay(project_id)
-    except Exception as e:
-        raise self.retry(exc=e, countdown=60)
-
-
-@shared_task(bind=True, max_retries=2, queue=QUEUE)
-def crawl_and_analyze(self, project_id):
-    """Crawl the target_url of a clone-mode project, then continue to agent_analyze."""
-    from .crawler import crawl
-    project = StudioProject.objects.get(id=project_id)
-    try:
-        publish_event(project_id, {
-            'agent': 'system', 'level': 'info',
-            'text': f'Анализирую сайт: {project.target_url}',
-        })
-        data = crawl(project.target_url)
-        if len((data.get('text') or '').strip()) < 200:
-            publish_event(project_id, {
-                'agent': 'system', 'level': 'info',
-                'text': 'SPA — рендерю через браузер...',
-            })
-            crawl_spa_task.delay(project_id)
-            return
-        project.interview_data['crawled'] = {
-            'title': data['title'],
-            'text': data['text'][:8000],
-        }
-        project.status = 'planning'
-        project.save(update_fields=['interview_data', 'status'])
-        agent_analyze.delay(project_id)
-    except Exception as e:
-        raise self.retry(exc=e, countdown=60)
-
-
 @shared_task(queue=QUEUE)
 def sync_manual_edit(project_id, file_id):
     """Push a manually-edited file to sandbox and Gitea after a user PATCH."""

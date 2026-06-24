@@ -271,10 +271,4 @@ class ArchitectAgent(BaseAgent):
                 q = a.get('question', '') if isinstance(a, dict) else ''
                 ans = a.get('answer', '') if isinstance(a, dict) else str(a)
                 parts.append(f"Q: {q}\nA: {ans}")
-        crawled = (self.project.interview_data or {}).get('crawled', {})
-        if crawled:
-            parts.append(
-                f"\nCrawled site:\nTitle: {crawled.get('title', '')}\n"
-                f"{crawled.get('text', '')[:3000]}"
-            )
         return '\n'.join(parts)

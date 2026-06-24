@@ -1,6 +1,6 @@
 from django.urls import path, re_path
 from .views.projects import (
-    StudioProjectListCreateView, StudioProjectDetailView, InterviewView, CloneView,
+    StudioProjectListCreateView, StudioProjectDetailView, InterviewView,
     TemplateListView, PublishTemplateView, CollaboratorView, ProjectSettingsView,
     TimelineView, BranchFromVersionView, ScreenshotView, GithubExportView,
     NotificationPrefsView, DeviationView, ModelsCatalogView,
@@ -46,7 +46,6 @@ urlpatterns = [
     path('projects/<uuid:id>/export/github/', GithubExportView.as_view(), name='export_github'),
     path('projects/<uuid:id>/notifications/', NotificationPrefsView.as_view(), name='notification_prefs'),
     path('projects/<uuid:id>/steps/<int:n>/deviation/', DeviationView.as_view(), name='deviation'),
-    path('clone/', CloneView.as_view(), name='clone'),
     path('templates/', TemplateListView.as_view(), name='template_list'),
     path('models/', ModelsCatalogView.as_view(), name='models_catalog'),
     path('projects/<uuid:id>/explain/', ExplainView.as_view(), name='explain'),

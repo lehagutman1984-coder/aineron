@@ -15,7 +15,7 @@ class StudioProject(models.Model):
         ('failed', 'Ошибка'),
     ]
     MODE_CHOICES = [('auto', 'Авто'), ('semi', 'Полу-авто'), ('manual', 'Ручной')]
-    ENTRY_CHOICES = [('description', 'С нуля'), ('clone_url', 'Клон по URL')]
+    ENTRY_CHOICES = [('description', 'С нуля')]
     STACK_CHOICES = [
         ('nextjs', 'Next.js'), ('react', 'React'), ('vue', 'Vue'), ('html', 'HTML'),
         ('tma', 'Telegram Mini App'),

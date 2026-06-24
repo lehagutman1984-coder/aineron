@@ -142,27 +142,6 @@ class CollaboratorView(APIView):
         return Response({'status': 'added', 'role': role}, status=201)
 
 
-class CloneView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def post(self, request):
-        from ..security import is_safe_url
-        url = request.data.get('url', '')
-        if not is_safe_url(url):
-            return Response({'error': 'Небезопасный URL'}, status=400)
-        project = StudioProject.objects.create(
-            user=request.user,
-            name=request.data.get('name', 'Клон сайта'),
-            entry_mode='clone_url',
-            target_url=url,
-            status='draft',
-        )
-        StudioPipelineState.objects.create(project=project)
-        from ..tasks import crawl_and_analyze
-        crawl_and_analyze.delay(str(project.id))
-        return Response(StudioProjectSerializer(project).data, status=201)
-
-
 class ScreenshotView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
