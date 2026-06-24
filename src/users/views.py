@@ -716,6 +716,28 @@ def payment_success(request):
                     user.add_pages(payment.pages_count)
                     logger.info(f"[OK] Пользователь {user.email} купил {payment.pages_count} страниц, теперь всего: {user.pages_count}")
 
+                # ── Telegram-уведомление об успешной оплате ──
+                try:
+                    from telegram_bot.notify import notify_user
+                    tg = getattr(user, 'telegram', None)
+                    if tg:
+                        if payment.payment_type == 'pages':
+                            msg = (
+                                f"<b>Оплата прошла успешно!</b>\n\n"
+                                f"Начислено: <b>{payment.pages_count} звёзд</b>\n"
+                                f"Баланс: <b>{user.pages_count} звёзд</b>"
+                            )
+                        else:
+                            tname = payment.tariff.display_name if payment.tariff else '—'
+                            msg = (
+                                f"<b>Подписка активирована!</b>\n\n"
+                                f"Тариф: <b>{tname}</b>\n"
+                                f"Баланс: <b>{user.pages_count} звёзд</b>"
+                            )
+                        notify_user(tg.telegram_id, msg)
+                except Exception as tg_err:
+                    logger.warning(f"[WARN] Telegram notify failed: {tg_err}")
+
                 return HttpResponse(f"OK{inv_id}")
 
             except PaymentHistory.DoesNotExist:

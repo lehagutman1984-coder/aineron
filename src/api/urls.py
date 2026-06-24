@@ -53,6 +53,7 @@ from api.views.connectors import (
 )
 from api.views.deploy import InternalDeployView
 from api.views.usage_events import UsageEventListView, UsageEventSummaryView
+from api.views.bot_payment import BotPayUrlView
 from api.views.telegram_link import TelegramLinkTokenView
 from api.views.telegram_webapp import telegram_webapp_auth
 from api.views.memory import (
@@ -184,6 +185,9 @@ urlpatterns = [
     # ========== Unified Usage Events (admin analytics) ==========
     path('v1/usage-events/', UsageEventListView.as_view(), name='usage_events'),
     path('v1/usage-events/summary/', UsageEventSummaryView.as_view(), name='usage_events_summary'),
+
+    # ========== Bot Robokassa Payment ==========
+    path('v1/billing/bot-pay-url/', BotPayUrlView.as_view(), name='bot_pay_url'),
 
     # ========== STUDIO (Vibe-Coding Studio) ==========
     path('v1/studio/', include('studio.urls')),
