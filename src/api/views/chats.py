@@ -390,9 +390,27 @@ class StreamMessageView(APIView):
             except Project.DoesNotExist:
                 pass
 
-        # 2. Network prompt (если есть)
-        if network.has_prompt and network.prompt:
-            messages_for_api.append({"role": "system", "content": network.prompt})
+        # 2. Network prompt (если есть) + A/B тест промтов
+        ab_variant = None
+        ab_test_id = None
+        try:
+            from aitext.models import PromptABTest
+            ab_test = PromptABTest.objects.filter(
+                network=network, is_active=True
+            ).first()
+            if ab_test:
+                ab_variant = ab_test.pick_variant()
+                ab_test_id = ab_test.id
+                ab_prompt = ab_test.get_prompt(ab_variant)
+                messages_for_api.append({"role": "system", "content": ab_prompt})
+                PromptABTest.objects.filter(id=ab_test.id).update(
+                    **({'sends_a': ab_test.sends_a + 1} if ab_variant == 'a' else {'sends_b': ab_test.sends_b + 1})
+                )
+            elif network.has_prompt and network.prompt:
+                messages_for_api.append({"role": "system", "content": network.prompt})
+        except Exception:
+            if network.has_prompt and network.prompt:
+                messages_for_api.append({"role": "system", "content": network.prompt})
 
         # 3. Блок памяти пользователя
         if memory_ctx:
@@ -532,12 +550,14 @@ class StreamMessageView(APIView):
                 # ── UsageEvent (unified analytics) ──
                 try:
                     from aitext.usage import log_usage_event
+                    ab_meta = {'ab_test_id': ab_test_id, 'ab_variant': ab_variant} if ab_test_id else {}
                     log_usage_event(
                         user=user,
                         event_type='search' if web_search else 'message',
                         channel='web',
                         network=network,
                         cost=cost if deduct_stars else 0,
+                        **ab_meta,
                     )
                 except Exception:
                     pass

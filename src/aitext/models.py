@@ -951,3 +951,43 @@ class UsageEvent(models.Model):
 
     def __str__(self):
         return f"{self.channel}/{self.event_type} — {self.created_at.strftime('%d.%m %H:%M')}"
+
+
+class PromptABTest(models.Model):
+    """
+    A/B test for system prompts on a NeuralNetwork.
+    When active, 50% of requests get prompt_a and 50% get prompt_b as system message.
+    The chosen variant ('a' or 'b') is recorded in UsageEvent.meta['ab_test'].
+    """
+    name = models.CharField(max_length=100, verbose_name='Название теста')
+    network = models.ForeignKey(
+        'NeuralNetwork',
+        on_delete=models.CASCADE,
+        related_name='ab_tests',
+        verbose_name='Нейросеть',
+    )
+    prompt_a = models.TextField(verbose_name='Вариант A (контроль)')
+    prompt_b = models.TextField(verbose_name='Вариант B (тест)')
+    is_active = models.BooleanField(default=True, verbose_name='Активен')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    # Auto-tracked counters (updated by post_save or analytics)
+    sends_a = models.PositiveIntegerField(default=0)
+    sends_b = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        verbose_name = 'A/B тест промтов'
+        verbose_name_plural = 'A/B тесты промтов'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        status = 'active' if self.is_active else 'off'
+        return f"{self.name} [{self.network.name}] ({status})"
+
+    def pick_variant(self) -> str:
+        """Return 'a' or 'b' with 50/50 probability."""
+        import random
+        return random.choice(['a', 'b'])
+
+    def get_prompt(self, variant: str) -> str:
+        return self.prompt_a if variant == 'a' else self.prompt_b
