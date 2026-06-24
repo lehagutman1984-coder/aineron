@@ -212,6 +212,39 @@ async def cb_regen(query: CallbackQuery, tg_user=None):
         await query.answer("Не могу найти исходный запрос.")
 
 
+@router.callback_query(F.data.startswith('react_like:'))
+async def cb_react_like(query: CallbackQuery, tg_user=None):
+    """👍 — positive reaction, just acknowledge."""
+    await query.answer("Рад помочь!")
+
+
+@router.callback_query(F.data.startswith('react_dislike:'))
+async def cb_react_dislike(query: CallbackQuery, tg_user=None):
+    """👎 — negative reaction, regenerate with improvement hint."""
+    if tg_user is None:
+        await query.answer()
+        return
+    msg_id = int(query.data.split(':')[1])
+
+    def _get_original_text(m_id):
+        from aitext.models import Message as AiMsg
+        msg = AiMsg.objects.get(id=m_id)
+        chat = msg.chat
+        user_msg = chat.messages.filter(
+            role='user', created_at__lt=msg.created_at
+        ).order_by('-created_at').first()
+        return user_msg.content if user_msg else None
+
+    get_orig = sync_to_async(_get_original_text, thread_sensitive=True)
+    text = await get_orig(msg_id)
+    if text:
+        await query.answer("Пересматриваю ответ...")
+        improved_prompt = f"{text}\n\n[Предыдущий ответ не устроил. Ответь подробнее и точнее.]"
+        await process_text(query.message, tg_user, improved_prompt)
+    else:
+        await query.answer("Не могу найти исходный запрос.")
+
+
 @router.message(F.text & ~F.text.startswith('/'))
 async def handle_text_message(message: Message, tg_user=None):
     if tg_user is None:

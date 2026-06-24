@@ -1,6 +1,5 @@
 from django.db import models
 from django.utils import timezone
-from django.urls import reverse
 from django.contrib.auth import get_user_model
 from aitext.models import NeuralNetwork
 
@@ -41,7 +40,7 @@ class Category(models.Model):
         return self.name
 
     def get_absolute_url(self):
-        return reverse('blog:category', args=[self.slug])
+        return f'/blog/category/{self.slug}/'
 
 
 class Post(models.Model):
@@ -97,4 +96,4 @@ class Post(models.Model):
         return self.title
 
     def get_absolute_url(self):
-        return reverse('blog:detail', args=[self.slug])
+        return f'/blog/{self.slug}/'

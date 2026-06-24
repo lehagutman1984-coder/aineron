@@ -4,13 +4,13 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw, Paperclip, BookMarked, Globe, Volume2, Square, Loader, ChevronDown, ChevronRight, Settings2, FileText, X, GitCommit, CheckCircle2, XCircle } from "lucide-react";
+import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw, Paperclip, BookMarked, Globe, Volume2, Square, Loader, ChevronDown, ChevronRight, Settings2, FileText, X, GitCommit, CheckCircle2, XCircle, Download } from "lucide-react";
 import { MarkdownContent } from "@/components/chat/MarkdownContent";
 import { AttachmentPreview, type AttachmentState } from "@/components/chat/AttachmentPreview";
 import { PromptPicker } from "@/components/chat/PromptPicker";
 import { VoiceButton } from "@/components/chat/VoiceButton";
 import { MediaSettingsPanel } from "@/components/chat/MediaSettingsPanel";
-import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, uploadFile, synthesizeSpeech, confirmCommit, APIError, type CommitProposed } from "@/lib/api/client";
+import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, uploadFile, synthesizeSpeech, confirmCommit, exportChat, APIError, type CommitProposed } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 import type { WebMessage, ChatDetail, UiSection } from "@/lib/api/types";
 
@@ -483,6 +483,33 @@ export default function ChatPage() {
         </div>
 
         <div className="flex items-center gap-1">
+          <div className="relative group/export">
+            <button
+              className="flex h-8 items-center gap-1.5 rounded-[7px] px-2.5 text-[12px] font-medium text-[rgba(13,13,13,0.55)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#0d0d0d]"
+              title="Экспортировать чат"
+            >
+              <Download size={13} />
+              <span className="hidden sm:inline">Экспорт</span>
+            </button>
+            <div className="absolute right-0 top-9 z-20 hidden group-hover/export:block w-32 rounded-[8px] border border-[rgba(13,13,13,0.10)] bg-white shadow-lg overflow-hidden">
+              <a
+                href={exportChat(id, "md")}
+                download
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-[rgba(13,13,13,0.70)] hover:bg-[rgba(13,13,13,0.04)]"
+              >
+                <FileText size={12} />
+                Markdown
+              </a>
+              <a
+                href={exportChat(id, "html")}
+                download
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-[rgba(13,13,13,0.70)] hover:bg-[rgba(13,13,13,0.04)]"
+              >
+                <FileText size={12} />
+                HTML
+              </a>
+            </div>
+          </div>
           <Link
             href="/models/"
             className="flex h-8 items-center gap-1.5 rounded-[7px] px-2.5 text-[12px] font-medium text-[rgba(13,13,13,0.55)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#0d0d0d]"

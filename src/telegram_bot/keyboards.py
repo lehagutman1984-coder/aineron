@@ -20,13 +20,15 @@ def main_reply_kb() -> ReplyKeyboardMarkup:
 
 
 def after_answer_kb(message_id: int, has_tts: bool = True) -> InlineKeyboardMarkup:
-    buttons = [
-        [InlineKeyboardButton(text='Повторить', callback_data=f'regen:{message_id}'),
-         InlineKeyboardButton(text='Новый чат', callback_data='newchat')],
+    row1 = [
+        InlineKeyboardButton(text='👍', callback_data=f'react_like:{message_id}'),
+        InlineKeyboardButton(text='👎', callback_data=f'react_dislike:{message_id}'),
+        InlineKeyboardButton(text='🔄', callback_data=f'regen:{message_id}'),
+        InlineKeyboardButton(text='Новый чат', callback_data='newchat'),
     ]
     if has_tts:
-        buttons[0].append(InlineKeyboardButton(text='Озвучить', callback_data=f'tts:{message_id}'))
-    return InlineKeyboardMarkup(inline_keyboard=buttons)
+        row1.append(InlineKeyboardButton(text='🔊', callback_data=f'tts:{message_id}'))
+    return InlineKeyboardMarkup(inline_keyboard=[row1])
 
 
 def models_kb(networks: list, current_id: int | None = None) -> InlineKeyboardMarkup:

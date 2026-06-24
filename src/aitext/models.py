@@ -891,3 +891,63 @@ class ChatSummary(models.Model):
 
     def __str__(self):
         return f"Summary for chat {self.chat_id}"
+
+
+class UsageEvent(models.Model):
+    """Унифицированное событие использования платформы — веб + бот в одной схеме."""
+
+    class Channel(models.TextChoices):
+        WEB = 'web', 'Веб'
+        BOT = 'bot', 'Telegram-бот'
+        API = 'api', 'API'
+
+    class EventType(models.TextChoices):
+        MESSAGE = 'message', 'Сообщение (текст)'
+        IMAGE = 'image', 'Генерация изображения'
+        VIDEO = 'video', 'Генерация видео'
+        PAYMENT = 'payment', 'Оплата'
+        INLINE = 'inline', 'Inline-запрос'
+        SEARCH = 'search', 'Веб-поиск'
+        VOICE = 'voice', 'Голос (ASR/TTS)'
+        EXPORT = 'export', 'Экспорт чата'
+        IMG2IMG = 'img2img', 'Image-to-Image'
+        ERROR = 'error', 'Ошибка'
+        ONBOARDING = 'onboarding', 'Онбординг'
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='usage_events',
+        verbose_name='Пользователь',
+    )
+    channel = models.CharField(
+        max_length=10, choices=Channel.choices, default=Channel.WEB,
+        verbose_name='Канал',
+    )
+    event_type = models.CharField(
+        max_length=20, choices=EventType.choices,
+        verbose_name='Тип события',
+    )
+    network = models.ForeignKey(
+        'NeuralNetwork',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        verbose_name='Модель',
+    )
+    cost = models.IntegerField(default=0, verbose_name='Стоимость (зв.)')
+    meta = models.JSONField(default=dict, blank=True, verbose_name='Доп. данные')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Время')
+
+    class Meta:
+        verbose_name = 'Событие использования'
+        verbose_name_plural = 'События использования'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['channel', 'event_type', 'created_at'], name='usage_event_channel_idx'),
+            models.Index(fields=['user', 'created_at'], name='usage_event_user_idx'),
+            models.Index(fields=['created_at'], name='usage_event_ts_idx'),
+        ]
+
+    def __str__(self):
+        return f"{self.channel}/{self.event_type} — {self.created_at.strftime('%d.%m %H:%M')}"

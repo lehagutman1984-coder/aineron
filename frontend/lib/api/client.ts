@@ -236,6 +236,12 @@ export const renameChat = (id: number, title: string): Promise<{ id: number; tit
     body: JSON.stringify({ title }),
   });
 
+export const searchChats = (q: string, page = 1): Promise<import("./types").ChatSearchResponse> =>
+  request<import("./types").ChatSearchResponse>(`/chats/search/?q=${encodeURIComponent(q)}&page=${page}`);
+
+export const exportChat = (id: number, format: "md" | "html" = "md"): string =>
+  `${BASE_URL}/chats/${id}/export/?format=${format}`;
+
 export const regenerateChat = (chatId: number): Promise<{ assistant_message_id: number; new_balance: number }> =>
   request<{ assistant_message_id: number; new_balance: number }>(`/chats/${chatId}/regenerate/`, {
     method: "POST",

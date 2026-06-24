@@ -375,6 +375,24 @@ export interface ChatDetail {
   updated_at: string;
 }
 
+export interface ChatSearchResult {
+  chat_id: number;
+  chat_title: string;
+  network_name: string;
+  network_slug: string;
+  message_id: number;
+  role: "user" | "assistant";
+  snippet: string;
+  created_at: string;
+}
+
+export interface ChatSearchResponse {
+  results: ChatSearchResult[];
+  count: number;
+  page: number;
+  has_more: boolean;
+}
+
 export interface ProjectConnector {
   id: number;
   connector_type: "github" | "gitea";

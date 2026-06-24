@@ -733,9 +733,13 @@ export function ChatSidebar() {
                 <X size={12} />
               </button>
             ) : (
-              <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-medium text-[rgba(13,13,13,0.25)]">
+              <button
+                onClick={() => window.dispatchEvent(new Event("open-global-search"))}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-medium text-[rgba(13,13,13,0.25)] hover:text-[rgba(10,124,255,0.7)] transition-colors"
+                title="Поиск по истории (Ctrl+K)"
+              >
                 ⌘K
-              </span>
+              </button>
             )}
           </div>
         </div>

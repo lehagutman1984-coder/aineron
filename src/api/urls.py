@@ -11,6 +11,8 @@ from api.views.chats import (
     ChatListCreateView, ChatDetailView, SendMessageView, MessageStatusView,
     StreamMessageView, RegenerateView,
 )
+from api.views.chat_search import ChatSearchView
+from api.views.chat_export import ChatExportView
 from api.views.uploads import ChatFileUploadView
 from api.views.auth import MeView, LoginView, LogoutView, RegisterView, VerifyEmailView, ResendVerificationView
 from api.views.teams import (
@@ -50,6 +52,7 @@ from api.views.connectors import (
     ConnectorDeployView,
 )
 from api.views.deploy import InternalDeployView
+from api.views.usage_events import UsageEventListView, UsageEventSummaryView
 from api.views.telegram_link import TelegramLinkTokenView
 from api.views.telegram_webapp import telegram_webapp_auth
 from api.views.memory import (
@@ -77,7 +80,9 @@ urlpatterns = [
 
     # ========== Чаты и сообщения (Next.js web-чат) ==========
     path('v1/chats/', ChatListCreateView.as_view(), name='chats_list_create'),
+    path('v1/chats/search/', ChatSearchView.as_view(), name='chats_search'),
     path('v1/chats/<int:pk>/', ChatDetailView.as_view(), name='chat_detail'),
+    path('v1/chats/<int:pk>/export/', ChatExportView.as_view(), name='chat_export'),
     path('v1/chats/<int:chat_id>/messages/', SendMessageView.as_view(), name='chat_send_message'),
     path('v1/chats/<int:chat_id>/messages/stream/', StreamMessageView.as_view(), name='chat_stream_message'),
     path('v1/chats/<int:chat_id>/regenerate/', RegenerateView.as_view(), name='chat_regenerate'),
@@ -175,6 +180,10 @@ urlpatterns = [
     path('v1/projects/<int:pk>/connectors/<int:connector_id>/webhook/', ConnectorWebhookView.as_view(), name='connector_webhook'),
     path('v1/projects/<int:pk>/connectors/<int:connector_id>/deploy/', ConnectorDeployView.as_view(), name='connector_deploy'),
     path('v1/internal/deploy/', InternalDeployView.as_view(), name='internal_deploy'),
+
+    # ========== Unified Usage Events (admin analytics) ==========
+    path('v1/usage-events/', UsageEventListView.as_view(), name='usage_events'),
+    path('v1/usage-events/summary/', UsageEventSummaryView.as_view(), name='usage_events_summary'),
 
     # ========== STUDIO (Vibe-Coding Studio) ==========
     path('v1/studio/', include('studio.urls')),

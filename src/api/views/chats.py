@@ -529,6 +529,19 @@ class StreamMessageView(APIView):
                 except Exception:
                     pass  # память не должна ронять стрим
 
+                # ── UsageEvent (unified analytics) ──
+                try:
+                    from aitext.usage import log_usage_event
+                    log_usage_event(
+                        user=user,
+                        event_type='search' if web_search else 'message',
+                        channel='web',
+                        network=network,
+                        cost=cost if deduct_stars else 0,
+                    )
+                except Exception:
+                    pass
+
                 # AI-коммиты из чата (Sprint 4.3)
                 commit_event = None
                 if getattr(settings, 'PROJECT_AI_COMMITS', False) and chat.project_id and full_text:
