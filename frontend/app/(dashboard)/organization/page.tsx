@@ -376,7 +376,7 @@ function OrgDetail({ org }: { org: Organization }) {
       )}
 
       {/* ── Telegram Integration ────────────────────────────────── */}
-      {selectedOrg && <TelegramSection orgId={selectedOrg.id} />}
+      <TelegramSection orgId={org.id} />
     </div>
   );
 }
