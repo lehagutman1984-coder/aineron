@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, NeuralNetwork, Chat, Message, NeuralNetworkDailyUsage, FileAttachment, GeneratedImage, FAQ, Project
+from .models import Category, NeuralNetwork, Chat, Message, NeuralNetworkDailyUsage, FileAttachment, GeneratedImage, FAQ, Project, UserMemory
 from django.utils.html import format_html
 
 @admin.register(Category)
@@ -188,6 +188,20 @@ class ProjectAdmin(admin.ModelAdmin):
     search_fields = ('name', 'user__email', 'user__username')
     readonly_fields = ('id', 'created_at', 'updated_at')
     raw_id_fields = ('user',)
+
+
+@admin.register(UserMemory)
+class UserMemoryAdmin(admin.ModelAdmin):
+    list_display = ('user', 'category', 'short_fact', 'source', 'is_active', 'created_at')
+    list_filter = ('category', 'source', 'is_active', 'created_at')
+    list_editable = ('is_active',)
+    search_fields = ('fact', 'user__email', 'user__username')
+    raw_id_fields = ('user',)
+    readonly_fields = ('created_at', 'updated_at')
+
+    def short_fact(self, obj):
+        return obj.fact[:60] + ('...' if len(obj.fact) > 60 else '')
+    short_fact.short_description = 'Факт'
 
 
 @admin.register(FAQ)
