@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import TelegramUser, TelegramChat, TelegramLinkToken
+from .models import TelegramUser, TelegramChat, TelegramLinkToken, TelegramGroup
 
 
 @admin.register(TelegramUser)
@@ -22,4 +22,13 @@ class TelegramLinkTokenAdmin(admin.ModelAdmin):
     list_display = ('user', 'token', 'created_at', 'expires_at', 'used')
     list_filter = ('used',)
     raw_id_fields = ('user',)
+    readonly_fields = ('created_at',)
+
+
+@admin.register(TelegramGroup)
+class TelegramGroupAdmin(admin.ModelAdmin):
+    list_display = ('group_id', 'group_title', 'organization', 'enabled', 'created_at')
+    list_filter = ('enabled',)
+    search_fields = ('group_title', 'organization__name')
+    raw_id_fields = ('organization', 'registered_by')
     readonly_fields = ('created_at',)

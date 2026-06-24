@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, NeuralNetwork, Chat, Message, NeuralNetworkDailyUsage, FileAttachment, GeneratedImage, FAQ
+from .models import Category, NeuralNetwork, Chat, Message, NeuralNetworkDailyUsage, FileAttachment, GeneratedImage, FAQ, Project
 from django.utils.html import format_html
 
 @admin.register(Category)
@@ -179,6 +179,16 @@ class MessageAdmin(admin.ModelAdmin):
     def short_content(self, obj):
         return obj.content[:50] + ('...' if len(obj.content) > 50 else '')
     short_content.short_description = 'Содержание'
+
+@admin.register(Project)
+class ProjectAdmin(admin.ModelAdmin):
+    list_display = ('name', 'user', 'status', 'icon', 'created_at')
+    list_filter = ('status', 'created_at')
+    list_editable = ('status',)
+    search_fields = ('name', 'user__email', 'user__username')
+    readonly_fields = ('id', 'created_at', 'updated_at')
+    raw_id_fields = ('user',)
+
 
 @admin.register(FAQ)
 class FAQAdmin(admin.ModelAdmin):
