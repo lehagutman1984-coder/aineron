@@ -9,6 +9,8 @@ Usage:
   /ai brief <тема> — составить бриф/ТЗ для задачи
   /ai summary      — краткое изложение (присылаем текст следующим сообщением)
   /ai translate <текст> — перевести на английский
+
+/translate — перевести ответом на сообщение или /translate <текст>
 """
 from aiogram import Router, F
 from aiogram.filters import Command
@@ -196,3 +198,86 @@ async def _run_scenario(message: Message, tg_user, prompt: str):
     """Run an AI scenario and send the result to the user."""
     from telegram_bot.handlers.chat import process_text
     await process_text(message, tg_user, prompt)
+
+
+_TRANSLATE_TARGETS = {
+    'en': ('английский', 'на английский язык'),
+    'ru': ('русский', 'на русский язык'),
+    'zh': ('китайский', 'на китайский язык (Simplified)'),
+    'de': ('немецкий', 'на немецкий язык'),
+    'es': ('испанский', 'на испанский язык'),
+    'fr': ('французский', 'на французский язык'),
+}
+
+_TRANSLATE_KB = InlineKeyboardMarkup(inline_keyboard=[
+    [
+        InlineKeyboardButton(text='EN', callback_data='tr:en'),
+        InlineKeyboardButton(text='RU', callback_data='tr:ru'),
+        InlineKeyboardButton(text='DE', callback_data='tr:de'),
+    ],
+    [
+        InlineKeyboardButton(text='ES', callback_data='tr:es'),
+        InlineKeyboardButton(text='FR', callback_data='tr:fr'),
+        InlineKeyboardButton(text='ZH', callback_data='tr:zh'),
+    ],
+])
+
+
+@router.message(Command('translate'))
+async def cmd_translate(message: Message, state: FSMContext, tg_user=None):
+    if tg_user is None:
+        await message.answer('Привяжи аккаунт через /start')
+        return
+
+    # Text provided inline: /translate <text>
+    parts = (message.text or '').split(maxsplit=1)
+    inline_text = parts[1].strip() if len(parts) > 1 else ''
+
+    # Or replying to a message
+    reply_text = ''
+    if message.reply_to_message:
+        reply_text = message.reply_to_message.text or message.reply_to_message.caption or ''
+
+    source = inline_text or reply_text
+    if not source:
+        await message.answer(
+            '<b>Перевод текста</b>\n\n'
+            'Используй одним из способов:\n'
+            '• Ответь на любое сообщение командой /translate\n'
+            '• /translate &lt;текст&gt;',
+            parse_mode='HTML',
+        )
+        return
+
+    # If text is short or we know it's Russian, default to EN; otherwise ask
+    await state.update_data(translate_source=source)
+    await message.answer(
+        f'<b>Перевести:</b>\n<i>{source[:200]}{"..." if len(source) > 200 else ""}</i>\n\nВыберите язык:',
+        parse_mode='HTML',
+        reply_markup=_TRANSLATE_KB,
+    )
+
+
+@router.callback_query(F.data.startswith('tr:'))
+async def cb_translate(callback: CallbackQuery, state: FSMContext, tg_user=None):
+    lang_code = callback.data.split(':', 1)[1]
+    target = _TRANSLATE_TARGETS.get(lang_code)
+    if not target:
+        await callback.answer('Неизвестный язык')
+        return
+
+    data = await state.get_data()
+    source = data.get('translate_source', '')
+    await state.clear()
+
+    if not source:
+        await callback.answer('Текст не найден, попробуйте снова')
+        return
+
+    await callback.answer()
+    lang_name, lang_phrase = target
+    prompt = (
+        f"Переведи точно и естественно {lang_phrase} следующий текст. "
+        f"Сохрани тон и стиль оригинала:\n\n{source}"
+    )
+    await _run_scenario(callback.message, tg_user, prompt)

@@ -4,12 +4,13 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw, Paperclip, BookMarked, Globe, Volume2, Square, Loader, ChevronDown, ChevronRight, Settings2, FileText, X, GitCommit, CheckCircle2, XCircle, Download } from "lucide-react";
+import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw, Paperclip, BookMarked, Globe, Volume2, Square, Loader, ChevronDown, ChevronRight, Settings2, FileText, X, GitCommit, CheckCircle2, XCircle, Download, Layers } from "lucide-react";
 import { MarkdownContent } from "@/components/chat/MarkdownContent";
 import { AttachmentPreview, type AttachmentState } from "@/components/chat/AttachmentPreview";
 import { PromptPicker } from "@/components/chat/PromptPicker";
 import { VoiceButton } from "@/components/chat/VoiceButton";
 import { MediaSettingsPanel } from "@/components/chat/MediaSettingsPanel";
+import { ArtifactPanel, extractArtifact, type Artifact } from "@/components/chat/ArtifactPanel";
 import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, uploadFile, synthesizeSpeech, confirmCommit, exportChat, APIError, type CommitProposed } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 import type { WebMessage, ChatDetail, UiSection } from "@/lib/api/types";
@@ -55,6 +56,8 @@ export default function ChatPage() {
   // AI-коммит из чата (Sprint 4.3)
   const [pendingCommit, setPendingCommit] = useState<CommitProposed | null>(null);
   const [commitActionLoading, setCommitActionLoading] = useState(false);
+
+  const [activeArtifact, setActiveArtifact] = useState<Artifact | null>(null);
 
   const animatedIds = useRef<Set<number>>(new Set());
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -443,12 +446,14 @@ export default function ChatPage() {
 
   return (
     <div
-      className="flex h-full flex-col"
-      style={{ background: "var(--chat-page-bg)" }}
+      className="flex h-full"
+      style={{ background: "var(--chat-page-bg)", position: "relative" }}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
+    {/* Main chat column */}
+    <div className="flex h-full min-w-0 flex-1 flex-col">
       {/* Drag overlay */}
       {isDragOver && (
         <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center rounded-[14px] border-2 border-dashed border-[#0a7cff] bg-[rgba(10,124,255,0.06)]">
@@ -650,6 +655,7 @@ export default function ChatPage() {
                   }
                   canRegenerate={!isBusy && msg.id === lastAssistantId}
                   onRegenerate={() => regenerateMutation.mutate()}
+                  onOpenArtifact={setActiveArtifact}
                 />
               ));
             })()}
@@ -877,6 +883,14 @@ export default function ChatPage() {
           onClose={() => setShowPromptPicker(false)}
         />
       )}
+    </div>{/* end main chat column */}
+
+    {/* Artifact side panel */}
+    {activeArtifact && (
+      <div className="hidden h-full w-[45%] shrink-0 lg:flex lg:flex-col">
+        <ArtifactPanel artifact={activeArtifact} onClose={() => setActiveArtifact(null)} />
+      </div>
+    )}
     </div>
   );
 }
@@ -909,6 +923,7 @@ function MessageRow({
   streamingText,
   canRegenerate,
   onRegenerate,
+  onOpenArtifact,
 }: {
   message: WebMessage;
   networkAvatar: string | null;
@@ -917,6 +932,7 @@ function MessageRow({
   streamingText?: string;
   canRegenerate?: boolean;
   onRegenerate?: () => void;
+  onOpenArtifact?: (a: Artifact) => void;
 }) {
   const isUser = message.role === "user";
 
@@ -981,6 +997,28 @@ function MessageRow({
             {/* Hover action bar */}
             <div className="mt-1.5 flex items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
               <CopyButton plainText={message.plain_text} htmlContent={message.content} />
+              {(() => {
+                const artifact = onOpenArtifact ? extractArtifact(message.plain_text || message.content) : null;
+                return artifact && onOpenArtifact ? (
+                  <button
+                    onClick={() => onOpenArtifact(artifact)}
+                    className="flex h-7 items-center gap-1.5 rounded-[6px] px-2 text-[12px] font-medium transition-colors"
+                    style={{ color: "rgba(10,124,255,0.8)" }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background = "rgba(10,124,255,0.08)";
+                      (e.currentTarget as HTMLButtonElement).style.color = "#0a7cff";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background = "";
+                      (e.currentTarget as HTMLButtonElement).style.color = "rgba(10,124,255,0.8)";
+                    }}
+                    title="Открыть превью артефакта"
+                  >
+                    <Layers size={13} />
+                    <span>Preview</span>
+                  </button>
+                ) : null;
+              })()}
               {canRegenerate && onRegenerate && (
                 <button
                   onClick={onRegenerate}

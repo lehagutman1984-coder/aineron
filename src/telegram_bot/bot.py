@@ -25,7 +25,7 @@ def register_routers():
         video_cmd, prompts_cmd, settings_cmd, referral,
         inline, group, admin, projects_cmd,
         search_cmd, export_cmd, img2img_cmd, img2video_cmd, digest_cmd, scenarios_cmd,
-        reggroup_cmd, sticker_cmd, memory_cmd,
+        reggroup_cmd, sticker_cmd, memory_cmd, persona_cmd,
     )
     dp.message.middleware(AuthMiddleware())
     dp.callback_query.middleware(AuthMiddleware())
@@ -53,9 +53,10 @@ def register_routers():
     dp.include_router(img2img_cmd.router)    # Image-to-image FSM
     dp.include_router(img2video_cmd.router)  # Image-to-video FSM
     dp.include_router(digest_cmd.router)      # /digest — daily AI digest
-    dp.include_router(scenarios_cmd.router)  # /ai — AI scenarios/agents
+    dp.include_router(scenarios_cmd.router)  # /ai — AI scenarios/agents + /translate
     dp.include_router(reggroup_cmd.router)   # /reggroup — register group with org
     dp.include_router(sticker_cmd.router)    # /sticker — AI sticker generation
     dp.include_router(memory_cmd.router)     # /memory — persistent memory management
+    dp.include_router(persona_cmd.router)    # /persona — AI personas
     dp.include_router(group.router)           # LAST — group chat fallback
     _routers_registered = True

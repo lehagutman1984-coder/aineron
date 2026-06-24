@@ -62,6 +62,7 @@ from api.views.memory import (
     MemoryListCreateView, MemoryDetailView,
     MemoryClearView, MemorySummariesView, MemorySettingsView,
 )
+from api.views.personas import PersonaListCreateView, PersonaDetailView
 
 app_name = 'api'
 
@@ -206,6 +207,10 @@ urlpatterns = [
     path('v1/memory/clear/', MemoryClearView.as_view(), name='memory_clear'),
     path('v1/memory/summaries/', MemorySummariesView.as_view(), name='memory_summaries'),
     path('v1/memory/settings/', MemorySettingsView.as_view(), name='memory_settings'),
+
+    # ========== AI Personas ==========
+    path('v1/personas/', PersonaListCreateView.as_view(), name='persona_list_create'),
+    path('v1/personas/<int:persona_id>/', PersonaDetailView.as_view(), name='persona_detail'),
 
     # ========== Telegram Bot ==========
     path('v1/telegram/link-token/', TelegramLinkTokenView.as_view(), name='telegram_link_token'),

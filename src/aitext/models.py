@@ -772,6 +772,8 @@ class PromptTemplate(models.Model):
     is_public = models.BooleanField(default=True, verbose_name='Публичный')
     order = models.IntegerField(default=0, verbose_name='Порядок')
     created_at = models.DateTimeField(auto_now_add=True)
+    # Smart variables: [{name, label, type, options?, default?}]
+    variables = models.JSONField(default=list, blank=True, verbose_name='Переменные шаблона')
 
     class Meta:
         verbose_name = 'Шаблон промта'
@@ -780,6 +782,41 @@ class PromptTemplate(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class Persona(models.Model):
+    """AI persona — a named character with its own system prompt and optional model binding."""
+    name = models.CharField(max_length=100, verbose_name='Имя персоны')
+    slug = models.SlugField(max_length=120, unique=True, verbose_name='Slug')
+    description = models.CharField(max_length=255, blank=True, verbose_name='Описание')
+    system_prompt = models.TextField(verbose_name='Системный промт')
+    avatar_url = models.URLField(blank=True, verbose_name='URL аватара')
+    network = models.ForeignKey(
+        'NeuralNetwork',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='personas',
+        verbose_name='Модель по умолчанию',
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True, blank=True,
+        related_name='personas',
+        verbose_name='Владелец (null = системная)',
+    )
+    is_public = models.BooleanField(default=False, verbose_name='Публичная (системная)')
+    is_active = models.BooleanField(default=True, verbose_name='Активна')
+    order = models.IntegerField(default=0, verbose_name='Порядок')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'AI-персона'
+        verbose_name_plural = 'AI-персоны'
+        ordering = ['order', 'name']
+
+    def __str__(self):
+        return self.name
 
 
 class FAQ(models.Model):

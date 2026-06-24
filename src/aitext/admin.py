@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, NeuralNetwork, Chat, Message, NeuralNetworkDailyUsage, FileAttachment, GeneratedImage, FAQ, Project, UserMemory
+from .models import Category, NeuralNetwork, Chat, Message, NeuralNetworkDailyUsage, FileAttachment, GeneratedImage, FAQ, Project, UserMemory, Persona, PromptTemplate
 from django.utils.html import format_html
 
 @admin.register(Category)
@@ -202,6 +202,24 @@ class UserMemoryAdmin(admin.ModelAdmin):
     def short_fact(self, obj):
         return obj.fact[:60] + ('...' if len(obj.fact) > 60 else '')
     short_fact.short_description = 'Факт'
+
+
+@admin.register(PromptTemplate)
+class PromptTemplateAdmin(admin.ModelAdmin):
+    list_display = ('title', 'category', 'icon', 'is_public', 'order', 'created_at')
+    list_editable = ('order', 'is_public')
+    list_filter = ('category', 'is_public')
+    search_fields = ('title', 'content')
+
+
+@admin.register(Persona)
+class PersonaAdmin(admin.ModelAdmin):
+    list_display = ('name', 'slug', 'description', 'is_public', 'is_active', 'order', 'user', 'created_at')
+    list_editable = ('is_public', 'is_active', 'order')
+    list_filter = ('is_public', 'is_active')
+    search_fields = ('name', 'description', 'system_prompt')
+    prepopulated_fields = {'slug': ('name',)}
+    raw_id_fields = ('user', 'network')
 
 
 @admin.register(FAQ)
