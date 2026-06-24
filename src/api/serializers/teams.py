@@ -10,7 +10,9 @@ class OrganizationSerializer(serializers.ModelSerializer):
         model = Organization
         fields = [
             'id', 'name', 'inn', 'kpp', 'legal_address',
-            'balance_rub', 'member_count', 'user_role', 'created_at',
+            'balance_rub', 'member_count', 'user_role',
+            'seats_count', 'seat_monthly_stars',
+            'created_at',
         ]
         read_only_fields = ['id', 'balance_rub', 'member_count', 'user_role', 'created_at']
 
@@ -33,8 +35,8 @@ class OrganizationMemberSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OrganizationMember
-        fields = ['id', 'user_id', 'email', 'username', 'role', 'created_at']
-        read_only_fields = ['id', 'user_id', 'email', 'username', 'created_at']
+        fields = ['id', 'user_id', 'email', 'username', 'role', 'monthly_used', 'monthly_reset_at', 'created_at']
+        read_only_fields = ['id', 'user_id', 'email', 'username', 'monthly_used', 'monthly_reset_at', 'created_at']
 
 
 class OrganizationInviteSerializer(serializers.ModelSerializer):

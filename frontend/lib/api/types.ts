@@ -692,6 +692,42 @@ export interface CompareResponse {
   new_balance: number;
 }
 
+// ============ Model Arena Elo ============
+
+export interface ArenaEntry {
+  slug: string;
+  name: string;
+  elo_rating: number;
+  elo_matches: number;
+  avatar_url: string | null;
+  description: string;
+}
+
+export interface ArenaVoteResult {
+  match_id: number;
+  winner: { slug: string; name: string; elo_rating: number; elo_matches: number };
+  loser: { slug: string; name: string; elo_rating: number; elo_matches: number };
+}
+
+// ============ Knowledge Graph ============
+
+export interface GraphNode {
+  id: number;
+  label: string;
+  type: string;
+}
+
+export interface GraphEdge {
+  source: number;
+  target: number;
+  weight: number;
+}
+
+export interface ProjectGraph {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}
+
 // ============ Stars Usage Analytics ============
 
 export interface StarsUsageDay {

@@ -172,6 +172,16 @@ class NeuralNetwork(models.Model):
         help_text='Для токенного биллинга через API-ключи. 0 = авто-расчёт из cost_per_message.'
     )
 
+    # §7.5 Model Arena Elo rating
+    elo_rating = models.FloatField(
+        default=1500.0,
+        verbose_name='Elo-рейтинг (Arena)',
+    )
+    elo_matches = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Арена-матчей',
+    )
+
     class Meta:
         verbose_name = 'Нейросеть'
         verbose_name_plural = 'Нейросети'
@@ -1034,3 +1044,45 @@ class PromptABTest(models.Model):
 
     def get_prompt(self, variant: str) -> str:
         return self.prompt_a if variant == 'a' else self.prompt_b
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# §7.5 Model Arena — Elo rating matches
+# ──────────────────────────────────────────────────────────────────────────────
+
+class ModelMatch(models.Model):
+    """Arena match: user chose winner over loser; drives Elo updates."""
+    winner = models.ForeignKey(
+        'NeuralNetwork',
+        on_delete=models.CASCADE,
+        related_name='arena_wins',
+        verbose_name='Победитель',
+    )
+    loser = models.ForeignKey(
+        'NeuralNetwork',
+        on_delete=models.CASCADE,
+        related_name='arena_losses',
+        verbose_name='Проигравший',
+    )
+    prompt_snippet = models.CharField(max_length=200, blank=True, verbose_name='Промт (фрагмент)')
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='arena_matches',
+        verbose_name='Пользователь',
+    )
+    compare_chat_ids = models.JSONField(default=list, verbose_name='Chat IDs сравнения (anti-abuse)')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Арена — матч'
+        verbose_name_plural = 'Арена — матчи'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['winner'], name='arena_winner_idx'),
+            models.Index(fields=['loser'], name='arena_loser_idx'),
+        ]
+
+    def __str__(self):
+        return f'{self.winner.name} > {self.loser.name} ({self.created_at.date()})'

@@ -140,6 +140,97 @@ def notify_low_balance():
         logger.error(f'notify_low_balance error: {e}')
 
 
+@shared_task(bind=True, max_retries=2, ignore_result=True,
+             name='telegram_bot.tasks.send_reminders')
+def send_reminders(self):
+    """
+    Runs every minute; dispatches due reminders that haven't been sent yet.
+    Registered via DatabaseScheduler PeriodicTask (see management/commands/setup_periodic_tasks.py).
+    """
+    from django.utils import timezone as tz
+    from telegram_bot.models import Reminder
+
+    now = tz.now()
+    due = list(Reminder.objects.filter(is_sent=False, remind_at__lte=now).select_related('tg_user'))
+    if not due:
+        return
+
+    logger.info(f'send_reminders: {len(due)} due')
+    ids_ok = []
+    for reminder in due:
+        try:
+            text = f'Напоминание:\n\n{reminder.text}'
+            async_to_sync(_bot_send)(reminder.tg_user.telegram_id, text)
+            ids_ok.append(reminder.pk)
+        except Exception as e:
+            logger.warning(f'send_reminders: failed {reminder.pk}: {e}')
+
+    if ids_ok:
+        Reminder.objects.filter(pk__in=ids_ok).update(is_sent=True)
+
+
+@shared_task(bind=True, max_retries=1, ignore_result=True,
+             name='telegram_bot.tasks.summarize_poll')
+def summarize_poll(self, poll_session_id: int):
+    """Generate AI summary for a closed PollSession and deliver to creator."""
+    from telegram_bot.models import PollSession
+    from aitext.models import NeuralNetwork
+    from aitext.tasks import get_laozhang_client
+
+    try:
+        session = PollSession.objects.select_related('tg_user', 'tg_user__default_network').get(pk=poll_session_id)
+    except PollSession.DoesNotExist:
+        return
+
+    if not session.options or not session.vote_counts:
+        return
+
+    lines = []
+    for opt, cnt in zip(session.options, session.vote_counts):
+        lines.append(f'  - {opt}: {cnt} голос(ов)')
+
+    prompt = (
+        f'Вопрос опроса: «{session.question}»\n'
+        f'Результаты:\n' + '\n'.join(lines) + '\n\n'
+        'Сделай краткий аналитический вывод: кто победил, что это значит, '
+        'как можно использовать эти данные. Отвечай на русском, 3-5 предложений.'
+    )
+
+    network = session.tg_user.default_network
+    if not network:
+        network = NeuralNetwork.objects.filter(is_active=True, provider='openrouter').order_by('cost_per_message').first()
+    if not network or not network.model_name:
+        return
+
+    try:
+        client = get_laozhang_client()
+        resp = client.chat.completions.create(
+            model=network.model_name,
+            messages=[{'role': 'user', 'content': prompt}],
+            max_tokens=400,
+            temperature=0.5,
+        )
+        summary = (resp.choices[0].message.content or '').strip()
+    except Exception as e:
+        logger.warning(f'summarize_poll: AI call failed: {e}')
+        return
+
+    PollSession.objects.filter(pk=poll_session_id).update(ai_summary=summary)
+
+    text = f'Опрос завершён!\n\n<b>Вопрос:</b> {session.question}\n\n<b>AI-анализ:</b>\n{summary}'
+    async_to_sync(_bot_send_html)(session.tg_user.telegram_id, text)
+
+
+async def _bot_send_html(telegram_id: int, text: str):
+    from aiogram import Bot
+    from django.conf import settings as dj_settings
+    bot = Bot(token=dj_settings.TELEGRAM_BOT_TOKEN)
+    try:
+        await bot.send_message(chat_id=telegram_id, text=text, parse_mode='HTML')
+    finally:
+        await bot.session.close()
+
+
 @shared_task(name='telegram_bot.tasks.broadcast_message', bind=True, max_retries=0)
 def broadcast_message(self, text: str, admin_tg_id: int):
     """Send broadcast to all linked Telegram users. ~20 msg/s."""

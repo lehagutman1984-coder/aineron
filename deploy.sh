@@ -40,6 +40,9 @@ docker-compose exec -T web python manage.py migrate --noinput
 echo -e "${YELLOW}Устанавливаем Telegram webhook...${NC}"
 docker-compose exec -T web python manage.py setup_webhook || echo -e "${YELLOW}setup_webhook пропущен (нет токена или команды)${NC}"
 
+echo -e "${YELLOW}Регистрируем периодические задачи Celery Beat...${NC}"
+docker-compose exec -T web python manage.py setup_periodic_tasks
+
 echo -e "${YELLOW}Собираем статические файлы...${NC}"
 docker-compose exec -T web python manage.py collectstatic --noinput
 

@@ -20,6 +20,13 @@ class Organization(models.Model):
         verbose_name='Владелец',
     )
     meta = models.JSONField(default=dict, blank=True, verbose_name='Мета-данные (токены, настройки)')
+    # §7.7 Billing seats
+    seats_count = models.PositiveIntegerField(default=5, verbose_name='Лимит мест')
+    seat_monthly_stars = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Звёзд в месяц на участника',
+        help_text='0 = без лимита на участника',
+    )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Создана')
 
     class Meta:
@@ -47,6 +54,9 @@ class OrganizationMember(models.Model):
     role = models.CharField(
         max_length=20, choices=Role.choices, default=Role.MEMBER, verbose_name='Роль'
     )
+    # §7.7 Billing seats — monthly quota tracking
+    monthly_used = models.PositiveIntegerField(default=0, verbose_name='Использовано звёзд (мес.)')
+    monthly_reset_at = models.DateField(null=True, blank=True, verbose_name='Дата сброса квоты')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Добавлен')
 
     class Meta:

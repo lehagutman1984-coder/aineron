@@ -26,6 +26,7 @@ def register_routers():
         inline, group, admin, projects_cmd,
         search_cmd, export_cmd, img2img_cmd, img2video_cmd, digest_cmd, scenarios_cmd,
         reggroup_cmd, sticker_cmd, memory_cmd, persona_cmd,
+        remind_cmd, poll_cmd,
     )
     dp.message.middleware(AuthMiddleware())
     dp.callback_query.middleware(AuthMiddleware())
@@ -58,5 +59,7 @@ def register_routers():
     dp.include_router(sticker_cmd.router)    # /sticker — AI sticker generation
     dp.include_router(memory_cmd.router)     # /memory — persistent memory management
     dp.include_router(persona_cmd.router)    # /persona — AI personas
+    dp.include_router(remind_cmd.router)     # /remind — scheduled reminders
+    dp.include_router(poll_cmd.router)       # /poll — AI polls
     dp.include_router(group.router)           # LAST — group chat fallback
     _routers_registered = True

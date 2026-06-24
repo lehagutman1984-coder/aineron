@@ -47,6 +47,9 @@ import type {
   CommitFile,
   PublicSpace,
   DeployStatusResponse,
+  ArenaEntry,
+  ArenaVoteResult,
+  ProjectGraph,
 } from "./types";
 
 const BASE_URL =
@@ -528,6 +531,22 @@ export const compareModels = (body: {
     method: "POST",
     body: JSON.stringify(body),
   });
+
+export const getArenaLeaderboard = (): Promise<{ results: ArenaEntry[] }> =>
+  request<{ results: ArenaEntry[] }>("/arena/leaderboard/");
+
+export const voteArena = (body: {
+  winner_slug: string;
+  loser_slug: string;
+  compare_chat_ids: number[];
+}): Promise<ArenaVoteResult> =>
+  request<ArenaVoteResult>("/arena/vote/", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+export const getProjectGraph = (projectId: number): Promise<ProjectGraph> =>
+  request<ProjectGraph>(`/projects/${projectId}/graph/`);
 
 // ============ Referral ============
 

@@ -6,10 +6,11 @@ import {
   Layers, Send, RotateCcw, Copy, Check, Code2, Search, X, ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
-import { listNetworks, compareModels, getMessageStatus, APIError } from "@/lib/api/client";
+import { listNetworks, compareModels, getMessageStatus, voteArena, APIError } from "@/lib/api/client";
 import { MarkdownContent } from "@/components/chat/MarkdownContent";
 import { useAuthStore } from "@/lib/stores/auth";
 import type { NetworkListItem, WebMessage, CompareItem } from "@/lib/api/types";
+import { Trophy } from "lucide-react";
 
 const detectHTML = (s: string) =>
   /<(pre|code|div|p|ul|ol|h[1-6]|blockquote|table|img|br)\b/i.test(s);
@@ -271,6 +272,28 @@ function ResultsView({
   items: CompareItem[];
   onReset: () => void;
 }) {
+  const [doneCount, setDoneCount] = useState(0);
+  const [voted, setVoted] = useState<string | null>(null); // winner slug
+  const [voteError, setVoteError] = useState<string | null>(null);
+
+  const allDone = doneCount >= items.length;
+
+  const handleVote = async (winnerSlug: string) => {
+    if (voted) return;
+    const loserSlugs = items.map((i) => i.network_slug).filter((s) => s !== winnerSlug);
+    const chatIds = items.map((i) => i.chat_id);
+    try {
+      await Promise.all(
+        loserSlugs.map((loserSlug) =>
+          voteArena({ winner_slug: winnerSlug, loser_slug: loserSlug, compare_chat_ids: chatIds })
+        )
+      );
+      setVoted(winnerSlug);
+    } catch (err) {
+      setVoteError(err instanceof APIError ? err.message : "Ошибка голосования");
+    }
+  };
+
   return (
     <div className="flex h-full flex-col">
       {/* Top bar */}
@@ -295,6 +318,34 @@ function ResultsView({
             Новое сравнение
           </button>
         </div>
+
+        {/* Arena vote row */}
+        {allDone && !voted && (
+          <div className="mx-auto mt-3 max-w-7xl">
+            <p className="mb-2 flex items-center gap-1.5 text-[12px] font-medium text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.45)]">
+              <Trophy size={12} className="text-[#f4a017]" />
+              Какой ответ лучший? Ваш голос влияет на Elo-рейтинг арены.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {items.map((item) => (
+                <button
+                  key={item.network_slug}
+                  onClick={() => handleVote(item.network_slug)}
+                  className="flex items-center gap-1.5 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 py-1.5 text-[12px] font-medium text-[rgba(13,13,13,0.65)] transition-all hover:border-[#f4a017] hover:bg-[rgba(244,160,23,0.07)] hover:text-[#c68a00] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.55)]"
+                >
+                  <Trophy size={11} />
+                  {item.network_name}
+                </button>
+              ))}
+            </div>
+            {voteError && <p className="mt-1 text-[12px] text-[#e74c3c]">{voteError}</p>}
+          </div>
+        )}
+        {voted && (
+          <p className="mx-auto mt-2 max-w-7xl text-[12px] text-[rgba(13,13,13,0.50)] dark:text-[rgba(236,236,236,0.42)]">
+            Голос засчитан — рейтинг Elo обновлён.
+          </p>
+        )}
       </div>
 
       {/* Columns */}
@@ -304,7 +355,12 @@ function ResultsView({
           style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
         >
           {items.map((item) => (
-            <CompareColumn key={item.network_slug} item={item} />
+            <CompareColumn
+              key={item.network_slug}
+              item={item}
+              onDone={() => setDoneCount((c) => c + 1)}
+              isWinner={voted === item.network_slug}
+            />
           ))}
         </div>
       </div>
@@ -313,11 +369,20 @@ function ResultsView({
 }
 
 // ── Single compare column with polling ────────────────────────────────────────
-function CompareColumn({ item }: { item: CompareItem }) {
+function CompareColumn({
+  item,
+  onDone,
+  isWinner,
+}: {
+  item: CompareItem;
+  onDone?: () => void;
+  isWinner?: boolean;
+}) {
   const [message, setMessage] = useState<WebMessage | null>(null);
   const [done, setDone] = useState(false);
   const [copied, setCopied] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const doneReported = useRef(false);
 
   const poll = useCallback(async () => {
     try {
@@ -326,6 +391,10 @@ function CompareColumn({ item }: { item: CompareItem }) {
       if (msg.status !== "pending") {
         setDone(true);
         if (intervalRef.current) clearInterval(intervalRef.current);
+        if (!doneReported.current) {
+          doneReported.current = true;
+          onDone?.();
+        }
       }
     } catch {
       setDone(true);
@@ -348,17 +417,21 @@ function CompareColumn({ item }: { item: CompareItem }) {
   };
 
   return (
-    <div className="flex flex-col">
+    <div className={["flex flex-col", isWinner ? "ring-2 ring-inset ring-[#f4a017]" : ""].join(" ")}>
       {/* Column header */}
       <div
         className="flex items-center justify-between px-4 py-3"
-        style={{ borderBottom: "1px solid rgba(13,13,13,0.08)", background: "rgba(13,13,13,0.02)" }}
+        style={{
+          borderBottom: "1px solid rgba(13,13,13,0.08)",
+          background: isWinner ? "rgba(244,160,23,0.07)" : "rgba(13,13,13,0.02)",
+        }}
       >
         <div className="flex min-w-0 items-center gap-2">
           <ModelAvatar avatar={item.network_avatar} name={item.network_name} size={22} />
           <span className="truncate text-[13px] font-semibold text-[#0d0d0d] dark:text-[#ececec]">
             {item.network_name}
           </span>
+          {isWinner && <Trophy size={13} className="shrink-0 text-[#f4a017]" />}
         </div>
         <span className="ml-2 shrink-0 rounded-full bg-[rgba(13,13,13,0.06)] px-2 py-0.5 text-[11px] text-[rgba(13,13,13,0.48)] dark:bg-[rgba(255,255,255,0.06)] dark:text-[rgba(236,236,236,0.40)]">
           {item.cost} зв.

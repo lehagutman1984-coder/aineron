@@ -63,6 +63,8 @@ from api.views.memory import (
     MemoryClearView, MemorySummariesView, MemorySettingsView,
 )
 from api.views.personas import PersonaListCreateView, PersonaDetailView
+from api.views.arena import ArenaVoteView, ArenaLeaderboardView
+from api.views.knowledge_graph import KnowledgeGraphView
 
 app_name = 'api'
 
@@ -155,8 +157,10 @@ urlpatterns = [
     path('v1/files/', UserFilesView.as_view(), name='user_files'),
     path('v1/files/<int:file_id>/', UserFileDeleteView.as_view(), name='user_file_delete'),
 
-    # ========== Model Arena (сравнение) ==========
+    # ========== Model Arena (сравнение + Elo-рейтинг) ==========
     path('v1/compare/', CompareView.as_view(), name='compare'),
+    path('v1/arena/vote/', ArenaVoteView.as_view(), name='arena_vote'),
+    path('v1/arena/leaderboard/', ArenaLeaderboardView.as_view(), name='arena_leaderboard'),
 
     # ========== Промпт-библиотека ==========
     path('v1/prompts/', PromptListCreateView.as_view(), name='prompts_list_create'),
@@ -175,6 +179,7 @@ urlpatterns = [
     path('v1/projects/<int:pk>/collaborators/', CollaboratorListCreateView.as_view(), name='project_collaborators'),
     path('v1/projects/<int:pk>/collaborators/<int:cid>/', CollaboratorDetailView.as_view(), name='project_collaborator_detail'),
     path('v1/projects/<int:pk>/audit/', ProjectAuditView.as_view(), name='project_audit'),
+    path('v1/projects/<int:pk>/graph/', KnowledgeGraphView.as_view(), name='project_graph'),
     path('v1/projects/<int:pk>/connectors/', ConnectorListCreateView.as_view(), name='project_connectors'),
     path('v1/projects/<int:pk>/connectors/<int:connector_id>/', ConnectorDetailView.as_view(), name='project_connector_detail'),
     path('v1/projects/<int:pk>/connectors/<int:connector_id>/files/', ConnectorReadFilesView.as_view(), name='connector_files'),

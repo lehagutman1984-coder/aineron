@@ -1,12 +1,49 @@
 """
 Celery-задачи для API-приложения.
 """
+import hashlib
+import hmac
+import json
 import logging
 
+import requests
 from celery import shared_task
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
+
+_RETRY_DELAYS = [10, 60, 300]
+
+
+@shared_task(bind=True, max_retries=3, name='api.tasks.deliver_webhook')
+def deliver_webhook(self, webhook_id: int, event_type: str, payload: dict):
+    """Доставляет одно webhook-событие с HMAC-подписью. Повтор через Celery retry."""
+    from api.models import Webhook
+
+    try:
+        webhook = Webhook.objects.get(pk=webhook_id, is_active=True)
+    except Webhook.DoesNotExist:
+        return
+
+    body = json.dumps({'event': event_type, 'data': payload}, ensure_ascii=False).encode()
+    sig = hmac.new(webhook.secret.encode(), body, digestmod=hashlib.sha256).hexdigest()
+    headers = {
+        'Content-Type': 'application/json',
+        'X-Aineron-Signature': f'sha256={sig}',
+        'X-Aineron-Event': event_type,
+        'User-Agent': 'aineron.ru/webhooks/1.0',
+    }
+
+    try:
+        resp = requests.post(webhook.url, data=body, headers=headers, timeout=10)
+        resp.raise_for_status()
+        Webhook.objects.filter(pk=webhook_id).update(last_triggered_at=timezone.now())
+        logger.info(f'[Webhook] Delivered {event_type} to {webhook.url} status={resp.status_code}')
+    except Exception as exc:
+        attempt = self.request.retries
+        delay = _RETRY_DELAYS[attempt] if attempt < len(_RETRY_DELAYS) else 300
+        logger.warning(f'[Webhook] attempt {attempt + 1} failed for {webhook.url}: {exc}')
+        raise self.retry(exc=exc, countdown=delay)
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
@@ -124,3 +161,18 @@ def process_batch_job(self, job_id: int):
         pass
 
     logger.info(f'[Batch] Job {job_id} done: {completed} ok, {failed} failed')
+
+
+@shared_task(name='api.tasks.reset_monthly_seats', ignore_result=True)
+def reset_monthly_seats():
+    """
+    Run on the 1st of each month (registered via DatabaseScheduler).
+    Resets OrganizationMember.monthly_used to 0 for all members.
+    """
+    from teams.models import OrganizationMember
+
+    today = timezone.now().date()
+    updated = OrganizationMember.objects.filter(
+        organization__seat_monthly_stars__gt=0
+    ).update(monthly_used=0, monthly_reset_at=today)
+    logger.info(f'[Seats] Monthly quota reset for {updated} members')

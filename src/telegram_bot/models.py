@@ -236,3 +236,57 @@ class TelegramGroupChat(models.Model):
     def __str__(self):
         return f'{self.group.group_title} / user {self.from_user_id}'
 
+
+class Reminder(models.Model):
+    """Scheduled reminder — text delivered to user at a given time via bot."""
+    tg_user = models.ForeignKey(
+        TelegramUser,
+        on_delete=models.CASCADE,
+        related_name='reminders',
+        verbose_name='TG пользователь',
+    )
+    text = models.TextField(verbose_name='Текст напоминания')
+    remind_at = models.DateTimeField(verbose_name='Когда напомнить (UTC)')
+    is_sent = models.BooleanField(default=False, verbose_name='Отправлено')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Напоминание'
+        verbose_name_plural = 'Напоминания'
+        ordering = ['remind_at']
+        indexes = [
+            models.Index(fields=['is_sent', 'remind_at'], name='reminder_unsent_idx'),
+        ]
+
+    def __str__(self):
+        return f'{self.tg_user} — {self.remind_at}'
+
+
+class PollSession(models.Model):
+    """AI-powered poll: custom question → Telegram native poll → AI summary on close."""
+    class Status(models.TextChoices):
+        ACTIVE = 'active', 'Активный'
+        CLOSED = 'closed', 'Закрыт'
+
+    tg_user = models.ForeignKey(
+        TelegramUser,
+        on_delete=models.CASCADE,
+        related_name='poll_sessions',
+        verbose_name='Создатель опроса',
+    )
+    question = models.TextField(verbose_name='Вопрос')
+    options = models.JSONField(default=list, verbose_name='Варианты ответа')
+    vote_counts = models.JSONField(default=list, verbose_name='Голоса по вариантам')
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.ACTIVE)
+    ai_summary = models.TextField(blank=True, verbose_name='AI-анализ результатов')
+    telegram_poll_id = models.CharField(max_length=100, blank=True, verbose_name='ID опроса в TG')
+    chat_id = models.BigIntegerField(verbose_name='Chat ID')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'AI-опрос'
+        verbose_name_plural = 'AI-опросы'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.tg_user} — {self.question[:50]}'
