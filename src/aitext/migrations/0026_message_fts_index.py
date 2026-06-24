@@ -2,7 +2,12 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-    """Add GIN FTS index on Message.content + plain_text for fast chat search."""
+    """
+    Add GIN FTS index on Message content fields for chat search.
+    atomic=False required by CONCURRENTLY — avoids lock on large tables.
+    """
+
+    atomic = False  # CONCURRENTLY cannot run inside a transaction
 
     dependencies = [
         ("aitext", "0025_projectchunk_index_integerfield"),
