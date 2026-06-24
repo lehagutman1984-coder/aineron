@@ -1,6 +1,6 @@
 # aineron.ru — TOP-1 Россия + Конкурентоспособность Global
 
-> Составлен: 2026-06-24 | Модель: Claude Opus 4.8
+> Составлен: 2026-06-24 | Обновлён: 2026-06-24 | Модель: Claude Opus 4.8 / Claude Sonnet 4.6
 
 > Цель: позиция #1 среди AI-платформ РФ (обойти GigaChat, YandexGPT, ChatAI) и достичь функционального паритета с ChatGPT / Claude.ai / Perplexity по ключевым возможностям (Canvas, Code Interpreter, Voice mode, Agents, Personas).
 
@@ -24,6 +24,7 @@
 | TelegramEvent аналитика (log_event везде) | Готово | `analytics.py` |
 | Троттлинг edit_message (3.5s) | Готово | `handlers/chat.py:24` |
 | Голос ASR (Whisper) + TTS | Готово | `handlers/voice.py` |
+| Кружочки (video_note) → ASR + AI-ответ | Готово | `handlers/voice.py` (F.video_note) |
 | /image /video /models /balance /settings /prompts /referral | Готово | соответствующие хендлеры |
 | notify_low_balance (Celery) | Готово | `tasks.py` |
 | /img2video FSM (фото + промт → Kling/Veo) | Готово | `handlers/img2video_cmd.py` |
@@ -39,6 +40,13 @@
 | Persistent Memory (UserMemory + RAG) | Готово | `aitext.UserMemory` |
 | Реакции 👍/👎 → regenerate | Готово | `keyboards.py` + `chat.py` |
 | UsageEvent аналитика (бот+веб) | Готово | `aitext.UsageEvent` |
+| **[Sprint 4]** BUG-1 fix: TEXT_BILLING_ENABLED гейт в text-ветке generate_ai_response | Code-complete (флаг off by default) | `aitext/tasks.py` ~992 |
+| **[Sprint 4]** BUG-2 fix: TelegramGroupChat per-user group isolation | Готово | `telegram_bot/models.py`, `handlers/group.py`, миграция `0008` |
+| **[Sprint 4]** _get_default_network: fallback на любую активную модель | Готово | `handlers/chat.py:27` |
+| **[Sprint 4]** Stars/Robokassa кнопки при нехватке баланса | Готово | `handlers/chat.py:108–124` |
+| **[Sprint 4]** 7-дневная сводка списаний в /balance | Готово | `handlers/balance.py` |
+| **[Sprint 6]** /translate по reply с выбором языка (EN/RU/DE/ES/FR/ZH) | Готово | `handlers/scenarios_cmd.py` |
+| **[Sprint 6]** /persona — выбор AI-персоны из каталога | Готово | `handlers/persona_cmd.py` |
 
 ### 1.2 Платформа (Next.js + Django)
 | Фича | Статус | Файл |
@@ -59,8 +67,13 @@
 | EDIT Blocks (патч-коммиты) | Готово | `frontend/app/chat/[chatId]/` (EditBlock) |
 | **Studio — AI app-builder в Docker-sandbox** | Готово (база) | `studio/` (sandbox.py, agents/, gitea_client.py, scaffold.py, pipeline.py), `frontend/app/studio/[id]/`, `frontend/app/ide/` |
 | **Collaborative Spaces (роли в проекте)** | Готово (база) | `api/views/collaborators.py`, `aitext.ProjectCollaborator` |
-| **Model Arena / Compare** | Готово | `api/views/compare.py`, `frontend/app/compare/` |
+| **Model Arena / Compare** | Готово (6 моделей) | `api/views/compare.py`, `frontend/app/compare/` |
 | Аудит-лог проектов | Готово | `aitext.ProjectAuditEntry` (`0022`) |
+| **[Sprint 4]** setup_webhook в deploy.sh | Готово | `deploy.sh` |
+| **[Sprint 5]** ArtifactPanel: React/HTML/SVG/Mermaid previe в чате | Code-complete (не тестировалось на проде) | `frontend/components/chat/ArtifactPanel.tsx`, `frontend/app/chat/[chatId]/page.tsx` |
+| **[Sprint 5]** PDF chat: загрузка PDF + вопросы по тексту | Готово (было) | `api/views/uploads.py` (extract_text_from_file) |
+| **[Sprint 6]** AI Personas: модель, API, bot команда, UI-страница | Code-complete | `aitext.Persona`, `api/views/personas.py`, `/v1/personas/`, `frontend/app/personas/`, `/persona` в боте |
+| **[Sprint 6]** PromptTemplate.variables JSONField (smart templates) | Code-complete | `aitext.PromptTemplate`, миграция `0030` |
 
 > **Важно:** в репозитории уже есть фундамент для трёх «премиальных» фич, которые принято считать greenfield: **Studio** (sandbox-исполнение кода/приложений в Docker — фактически Code Interpreter + v0-style builder), **Collaborative Spaces** (роли/доступы), **Arena**. План ниже их **достраивает**, а не создаёт с нуля.
 
