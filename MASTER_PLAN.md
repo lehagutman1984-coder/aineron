@@ -139,6 +139,12 @@
 
 **Стек:** Django + DRF (OpenAI-совместимый API), Celery (Redis broker), ASGI через daphne (WebSockets), Next.js frontend, PostgreSQL + pgvector, Telegram-бот на aiogram (FSM RedisStorage). Деплой: `bash deploy.sh`. После коммита — сразу `git push origin main`.
 
+**Провайдеры AI (актуальные):**
+- `api.laozhang.ai` — текст (chat completions, streaming) + изображения + ASR/TTS + embeddings
+- `api.apimart.ai` — видео: Sora 2, Veo 3.1, Kling 1.6/2.1, Wan 2.1, Hunyuan, Seedance 1.5 Pro/2.0. Ключ: `APIMART_API_KEY` в `.env`, URL: `settings.APIMART_API_URL`. Роутинг: `NeuralNetwork.config_json.metadata.video_api == 'apimart'` → `fal_utils.generate_video_apimart()` → POST `https://api.apimart.ai/v1/videos/generations`
+- `fal.ai` и `openrouter` — НЕ подключены и НЕ используются. Строка `provider='fal-ai'` в модели `NeuralNetwork` — это устаревший DB-ключ ветвления (legacy), реальные запросы к fal.ai/openrouter не идут. Рефактор этого поля — отдельный PR с data-migration (P3, не горит).
+- Telegram-бот (`/video`, `/img2video`) — тот же путь: `fal_utils.generate_video_apimart()` → `api.apimart.ai`. Бот и веб используют одну функцию.
+
 **Ключевые директории/файлы:**
 - API: `src/api/views/` (chat.py, batch.py, webhooks.py, embeddings.py, audio.py, personas.py, branding.py, compare.py, referral.py, telegram_webapp.py, api_status.py).
 - Текст/AI ядро: `src/aitext/models.py`, `tasks.py` (Celery: webhooks с retry, reset_monthly_seats), `moderation.py`, `consumers.py` (YjsConsumer), `voice_consumers.py` (VoiceConsumer).
@@ -159,7 +165,7 @@
 
 ## 7. Проблема с провайдером laozhang.ai
 
-**Что работает:** чат-комплешны, стриминг, embeddings, audio TTS/ASR, image/video генерация — через api.laozhang.ai (миграция с OpenRouter/fal.ai выполнена).
+**Что работает:** чат-комплешны, стриминг, embeddings, audio TTS/ASR, генерация изображений — через api.laozhang.ai. Видеогенерация — через api.apimart.ai (Sora, Veo, Kling, Wan, Seedance, Hunyuan).
 
 **Что не работает — AI-модерация (§7.9, ⚠️):**
 - Эндпоинт `/v1/moderations` у провайдера существует, но отдаёт неверный формат.
