@@ -49,6 +49,11 @@ class TelegramUser(models.Model):
     system_prompt = models.TextField(blank=True, verbose_name='Системный промт')
     streaming = models.BooleanField(default=True, verbose_name='Streaming (edit_message)')
 
+    # Daily digest settings
+    digest_enabled = models.BooleanField(default=False, verbose_name='Дайджест включён')
+    digest_hour = models.SmallIntegerField(default=9, verbose_name='Час дайджеста (МСК)')
+    digest_minute = models.SmallIntegerField(default=0, verbose_name='Минута дайджеста (МСК)')
+
     last_message_at = models.DateTimeField(null=True, blank=True, verbose_name='Последнее сообщение')
     messages_today = models.PositiveIntegerField(default=0, verbose_name='Сообщений сегодня')
     messages_today_date = models.DateField(null=True, blank=True, verbose_name='Дата счётчика')

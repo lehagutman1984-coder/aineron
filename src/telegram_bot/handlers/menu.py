@@ -70,6 +70,7 @@ async def handle_menu_button(message: Message, tg_user=None):
             '/newchat — начать новый чат\n'
             '/search &lt;запрос&gt; — поиск по истории чатов\n'
             '/export — скачать текущий чат (.md)\n'
+            '/digest — ежедневный AI-дайджест\n'
             '/projects — проекты (контекст + база знаний)\n'
             '/referral — реферальная программа\n\n'
             'Пополнить баланс: https://aineron.ru/account/billing/',

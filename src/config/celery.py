@@ -37,6 +37,11 @@ app.conf.beat_schedule = {
         'task': 'aitext.tasks.summarize_stale_chats',
         'schedule': crontab(minute=0, hour='*/2'),
     },
+    # Daily digest: check every minute who needs a digest right now
+    'telegram-daily-digest': {
+        'task': 'telegram_bot.tasks.send_daily_digests',
+        'schedule': crontab(minute='*'),
+    },
 }
 
 @app.task(bind=True, ignore_result=True)
