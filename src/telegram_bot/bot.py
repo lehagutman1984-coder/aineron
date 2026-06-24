@@ -24,7 +24,7 @@ def register_routers():
         chat, balance, payment, models_cmd, voice, images,
         video_cmd, prompts_cmd, settings_cmd, referral,
         inline, group, admin, projects_cmd,
-        search_cmd, export_cmd, img2img_cmd, digest_cmd, scenarios_cmd,
+        search_cmd, export_cmd, img2img_cmd, img2video_cmd, digest_cmd, scenarios_cmd,
     )
     dp.message.middleware(AuthMiddleware())
     dp.callback_query.middleware(AuthMiddleware())
@@ -49,7 +49,8 @@ def register_routers():
     dp.include_router(admin.router)
     dp.include_router(search_cmd.router)
     dp.include_router(export_cmd.router)
-    dp.include_router(img2img_cmd.router)   # Image-to-image FSM
+    dp.include_router(img2img_cmd.router)    # Image-to-image FSM
+    dp.include_router(img2video_cmd.router)  # Image-to-video FSM
     dp.include_router(digest_cmd.router)      # /digest — daily AI digest
     dp.include_router(scenarios_cmd.router)  # /ai — AI scenarios/agents
     dp.include_router(group.router)           # LAST — group chat fallback
