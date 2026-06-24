@@ -7,6 +7,7 @@ from asgiref.sync import sync_to_async
 from django.conf import settings
 
 from telegram_bot.analytics import async_log_event
+from telegram_bot.utils import DIVIDER
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -67,8 +68,9 @@ async def cmd_image(message: Message, tg_user=None):
     prompt = message.text.removeprefix('/image').strip()
     if not prompt:
         await message.answer(
-            "Укажи описание изображения:\n"
-            "<code>/image закат над морем в стиле аниме</code>",
+            f'<b>Aineron · Изображение</b>\n{DIVIDER}\n'
+            'Опишите изображение:\n\n'
+            '<code>/image закат над морем в стиле аниме</code>',
             parse_mode='HTML',
         )
         return
@@ -80,15 +82,15 @@ async def cmd_image(message: Message, tg_user=None):
 
     if tg_user.user.pages_count < network.cost_per_message:
         await message.answer(
-            f"Недостаточно звёзд.\n"
-            f"Нужно: {network.cost_per_message}, у вас: {tg_user.user.pages_count}\n\n"
-            f"Пополните баланс: /balance"
+            f'<b>Недостаточно средств</b>\n{DIVIDER}\n'
+            f'Нужно: <b>{network.cost_per_message} зв.</b>   У вас: {tg_user.user.pages_count} зв.\n\n'
+            'Пополните баланс: /balance',
+            parse_mode='HTML',
         )
         return
 
     status_msg = await message.answer(
-        f"Генерирую изображение... (обычно 15-30 сек)\n"
-        f"Модель: {network.name}"
+        f'Генерирую изображение...  ({network.name})'
     )
 
     assistant_msg = await create_image_request(tg_user, network, prompt)
@@ -128,20 +130,18 @@ async def cmd_image(message: Message, tg_user=None):
 
         elif msg.status == 'failed':
             await status_msg.edit_text(
-                "Ошибка генерации. Попробуй позже — звёзды возвращены."
+                "Ошибка генерации. Попробуйте позже — средства возвращены."
             )
             await async_log_event(tg_user, 'error', network=network, reason='image_failed')
             return
 
-        # Анимация ожидания
         if i % 5 == 0 and i > 0:
             dots = '.' * ((i // 5) % 4 + 1)
             try:
                 await status_msg.edit_text(
-                    f"Генерирую{dots} ({i * POLL_INTERVAL} сек)\n"
-                    f"Модель: {network.name}"
+                    f'Генерирую{dots}  ({i * POLL_INTERVAL} сек)'
                 )
             except Exception:
                 pass
 
-    await status_msg.edit_text("Превышено время ожидания. Попробуй ещё раз.")
+    await status_msg.edit_text("Превышено время ожидания. Попробуйте ещё раз.")

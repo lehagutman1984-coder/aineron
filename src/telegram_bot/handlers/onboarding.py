@@ -7,6 +7,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from asgiref.sync import sync_to_async
 
 from telegram_bot.analytics import async_log_event
+from telegram_bot.utils import DIVIDER
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -57,7 +58,9 @@ async def start_onboarding(message: Message, state: FSMContext, tg_user):
     """Called from start.py after successful account link."""
     nets = await _get_top_text_networks_async()
     await message.answer(
-        '<b>С чего начнём?</b>\n\nВыбери основную текстовую модель AI:',
+        f'<b>Выбор модели</b>\n{DIVIDER}\n'
+        'Выберите основную модель для чата.\n'
+        'Сменить можно в любое время в <b>Настройках</b>.',
         parse_mode='HTML',
         reply_markup=_model_choice_kb(nets),
     )
@@ -79,8 +82,9 @@ async def cb_onboard_model(query: CallbackQuery, state: FSMContext, tg_user=None
     net = await _set_default_network_async(tg_user, network_id)
     await query.answer(f'Выбрана: {net.name}')
     await query.message.edit_text(
-        f'Отлично! Модель <b>{net.name}</b> установлена по умолчанию.\n\n'
-        f'Задай первый вопрос или используй меню ниже.',
+        f'<b>Модель установлена</b>\n{DIVIDER}\n'
+        f'<b>{net.name}</b>\n\n'
+        'Задайте первый вопрос — я готов к работе.',
         parse_mode='HTML',
     )
     if state:
@@ -92,8 +96,10 @@ async def cb_onboard_model(query: CallbackQuery, state: FSMContext, tg_user=None
 async def cb_onboard_skip(query: CallbackQuery, state: FSMContext, tg_user=None):
     await query.answer()
     await query.message.edit_text(
-        'Модель можно выбрать в любое время через кнопку «Модели».\n\n'
-        'Задай первый вопрос!',
+        f'<b>Готово</b>\n{DIVIDER}\n'
+        'Модель можно выбрать в любое время через <b>Настройки → Сменить модель</b>.\n\n'
+        'Задайте первый вопрос!',
+        parse_mode='HTML',
     )
     if state:
         await state.clear()

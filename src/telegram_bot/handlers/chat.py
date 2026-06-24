@@ -8,7 +8,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message, CallbackQuery
 
 from telegram_bot.keyboards import after_answer_kb, main_reply_kb
-from telegram_bot.utils import telegram_format, split_message
+from telegram_bot.utils import telegram_format, split_message, DIVIDER
 from telegram_bot.analytics import async_log_event
 
 logger = logging.getLogger(__name__)
@@ -115,13 +115,14 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
         if not has_balance:
             from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
             kb = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text='Купить через Telegram Stars', callback_data='buy_stars')],
-                [InlineKeyboardButton(text='Купить через карту/СБП', callback_data='buy_robokassa')],
+                [InlineKeyboardButton(text='Telegram Stars (XTR)', callback_data='buy_stars')],
+                [InlineKeyboardButton(text='Карта / СБП (Robokassa)', callback_data='buy_robokassa')],
+                [InlineKeyboardButton(text='Пополнить на сайте', url='https://aineron.ru/account/billing/')],
             ])
             await tg_message.answer(
-                f"<b>Недостаточно звёзд.</b>\n"
-                f"Нужно: {network.cost_per_message} зв., у вас: {tg_user.user.pages_count} зв.\n\n"
-                f"Пополните баланс одним нажатием:",
+                f'<b>Недостаточно средств</b>\n{DIVIDER}\n'
+                f'Нужно: <b>{network.cost_per_message} зв.</b>   У вас: {tg_user.user.pages_count} зв.\n\n'
+                f'Пополните баланс:',
                 parse_mode='HTML',
                 reply_markup=kb,
             )
@@ -135,7 +136,7 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
     generate_ai_response.delay(assistant_msg.id, web_search=getattr(tg_user, 'web_search', False))
 
     project = tg_user.active_project
-    status_prefix = f'[{project.icon or ""} {project.name}] ' if project else ''
+    status_prefix = f'[{project.name}] ' if project else ''
     sent = await tg_message.answer(f"{status_prefix}Генерирую ответ...")
 
     last_content = ''
@@ -167,7 +168,7 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
             return
 
         elif msg.status == 'failed':
-            await sent.edit_text("Ошибка генерации. Попробуй ещё раз.")
+            await sent.edit_text("Ошибка генерации. Попробуйте ещё раз.")
             await async_log_event(tg_user, 'error', network=network, reason='generation_failed')
             return
 
@@ -185,7 +186,7 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
                 except Exception:
                     pass
 
-    await sent.edit_text("Превышено время ожидания. Попробуй ещё раз.")
+    await sent.edit_text("Превышено время ожидания. Попробуйте ещё раз.")
     await async_log_event(tg_user, 'error', network=network, reason='timeout')
 
 
@@ -197,7 +198,7 @@ async def cmd_newchat(message: Message, tg_user=None):
         from telegram_bot.models import TelegramChat
         TelegramChat.objects.filter(tg_user=u, is_active=True).update(is_active=False)
     await sync_to_async(_reset, thread_sensitive=True)(tg_user)
-    await message.answer("Начинаю новый чат. Напиши первый вопрос.", reply_markup=main_reply_kb())
+    await message.answer("Новый диалог начат. Напишите первый вопрос.", reply_markup=main_reply_kb())
 
 
 @router.callback_query(F.data == 'newchat')
@@ -208,7 +209,7 @@ async def cb_newchat(query: CallbackQuery, tg_user=None):
         from telegram_bot.models import TelegramChat
         TelegramChat.objects.filter(tg_user=u, is_active=True).update(is_active=False)
     await sync_to_async(_reset, thread_sensitive=True)(tg_user)
-    await query.message.answer("Начинаю новый чат. Напиши первый вопрос.")
+    await query.message.answer("Новый диалог начат. Напишите первый вопрос.")
     await query.answer()
 
 
