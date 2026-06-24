@@ -1208,6 +1208,35 @@ TMA_LIB_SIGNATURE = (
 
 Все 18 сессий / 28 коммитов реализованы в коде. Флаги по умолчанию `=0` — включаются в `.env` по мере тестирования и готовности к прод-трафику. Ниже — карта реального состояния для следующего ИИ-ассистента.
 
+## Что удалено из кодовой базы (2026-06-24)
+
+### Фича клонирования сайтов по URL — полностью удалена
+
+**Причина:** pipeline не давал реального клона. `crawl_and_analyze` забирал только `text[:3000]` (title + текст страницы) и передавал Architect как контекст — тот генерировал новый React-код с нуля. Никакого CSS, изображений, layout — только семантический текст. Пользователь ожидал «клон», получал «что-то похожее по смыслу» → ложные ожидания, слабая фича, тяжёлая зависимость (Playwright ~300MB, отдельный worker-процесс).
+
+**Удалено (коммит `75259e4`):**
+
+| Что | Где |
+|-----|-----|
+| `crawl_and_analyze` Celery-задача | `src/studio/tasks.py` |
+| `crawl_spa_task` Celery-задача (Playwright SPA) | `src/studio/tasks.py` |
+| `PLAYWRIGHT_QUEUE = 'studio_playwright_queue'` | `src/studio/tasks.py` |
+| `CloneView` (POST /studio/clone/) | `src/studio/views/projects.py` |
+| `path('clone/', CloneView...)` | `src/studio/urls.py` |
+| Блок `crawled`-контекста в `_build_context` | `src/studio/agents/architect.py` |
+| `crawl_spa()` + Playwright-импорт | `src/studio/crawler.py` |
+| `clone_url` из `ENTRY_CHOICES` | `src/studio/models.py` |
+| Тесты `CloneView`, `SpaCrawlingTest` | `src/studio/tests.py` |
+
+**Сохранено намеренно:**
+
+- `crawl()` + `is_safe_url()` в `crawler.py` — для будущего лёгкого URL-анализа (requests-only, без Playwright)
+- `ScreenshotView` + `ScreenshotAgent` — основа для Screenshot-to-Design фичи
+- Вкладка «Клон по URL» в UI — остаётся, будет переделана под новый подход (см. V5, п. 15-16)
+- DB-колонки `entry_mode`, `target_url` в `StudioProject` — не удалены (нет лишней миграции)
+
+---
+
 ## Что реализовано и где лежит
 
 ### Агенты (`src/studio/agents/`)
@@ -1316,3 +1345,9 @@ TMA_LIB_SIGNATURE = (
 12. **Флаги V4 все `=0`.** Ни один флаг не включён на проде. После тестирования на staging включить поэтапно: сначала `STUDIO_V4_TOKEN_BILLING`, затем `STUDIO_V4_STREAMING`, затем остальные.
 13. **`tma_publish` не проверен на реальном боте.** Логика есть, но `setChatMenuButton` требует прав бота и реального `STUDIO_TMA_BOT_TOKEN`. Нужен интеграционный тест.
 14. **`deploy_to_timeweb/selectel` — заглушки.** API-вызовы написаны, но `TIMEWEB_API_TOKEN` и `SELECTEL_*` не заданы в проде. Нужна документация для DevOps + тест-деплой.
+
+### Новые фичи вместо клонирования (заменяют удалённый clone pipeline)
+
+15. **URL-анализ как вдохновение (лёгкий).** Пользователь вставляет URL в вкладку Studio → `POST /studio/analyze-url/` → лёгкий `crawl()` (requests, без Playwright) → AI (text) описывает: что за продукт, ключевые фичи, структура разделов → результат подставляется в поле «Описание» как стартовая точка, пользователь редактирует и запускает генерацию. Не создаёт проект автоматически — только помогает сформулировать задание. Файлы: новый `AnalyzeUrlView` в `views/projects.py`, маршрут `path('analyze-url/', ...)` в `urls.py`. Модель для анализа — `MODEL_FAST` (дешево).
+
+16. **Screenshot-to-Design (приоритет).** Пользователь загружает 1-3 скриншота чужого сайта во вкладке Studio → `ScreenshotAgent` (vision, уже есть) описывает layout, цветовую схему, компоненты, типографику → описание передаётся в Architect как контекст `design_hints` → генерируется похожий по стилю проект. Переделать вкладку «Клон по URL» в «Вдохновение» (URL-анализ + загрузка скриншотов + описание), убрать слово «клонировать» из UI. Файлы: `frontend/components/studio/NewProjectModal.tsx` (или аналог), `ScreenshotView` уже готов — расширить для множественных скриншотов. Это приоритет над п.15 — скриншот даёт визуальный контекст, URL даёт только текст.
