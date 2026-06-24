@@ -6,6 +6,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message, CallbackQuery
 from asgiref.sync import sync_to_async
 from telegram_bot.keyboards import settings_kb, models_kb
+from telegram_bot.utils import DIVIDER
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -31,11 +32,14 @@ save_system_prompt = sync_to_async(_save_system_prompt, thread_sensitive=True)
 
 
 async def send_settings(message: Message, tg_user):
-    current_model = tg_user.default_network.name if tg_user.default_network else 'не выбрана'
+    model_name = tg_user.default_network.name if tg_user.default_network else '—'
+    prompt_state = 'задан' if tg_user.system_prompt else 'не задан'
     text = (
-        f"<b>Настройки бота</b>\n\n"
-        f"Модель: {current_model}\n"
-        f"Системный промт: {'задан' if tg_user.system_prompt else 'не задан'}"
+        f'<b>Aineron · Настройки</b>\n{DIVIDER}\n'
+        f'Модель:          {model_name}\n'
+        f'Системный промт: {prompt_state}\n'
+        f'{DIVIDER}\n'
+        'Параметры:'
     )
     await message.answer(text, parse_mode='HTML', reply_markup=settings_kb(tg_user))
 
@@ -63,7 +67,6 @@ async def cb_toggle(query: CallbackQuery, tg_user=None):
     new_val = await toggle_field(tg_user, field)
     state = 'включено' if new_val else 'выключено'
     await query.answer(f'{key}: {state}')
-    # Обновляем меню
     await query.message.edit_reply_markup(reply_markup=settings_kb(tg_user))
 
 
@@ -73,8 +76,9 @@ async def cb_set_sysprompt(query: CallbackQuery, state: FSMContext, tg_user=None
         return
     current = tg_user.system_prompt or 'не задан'
     await query.message.answer(
-        f"Текущий системный промт: <i>{current[:200]}</i>\n\n"
-        "Напиши новый системный промт (или /cancel для отмены):",
+        f'<b>Системный промт</b>\n{DIVIDER}\n'
+        f'Текущий: <i>{current[:200]}</i>\n\n'
+        'Отправьте новый промт или /cancel для отмены.',
         parse_mode='HTML',
     )
     await state.set_state(SettingsFSM.waiting_system_prompt)
@@ -91,7 +95,11 @@ async def on_system_prompt_input(message: Message, state: FSMContext, tg_user=No
         return
     await save_system_prompt(tg_user, message.text)
     await state.clear()
-    await message.answer("Системный промт сохранён.")
+    await message.answer(
+        f'<b>Промт сохранён</b>\n{DIVIDER}\n'
+        f'<i>{(message.text or "")[:200]}</i>',
+        parse_mode='HTML',
+    )
 
 
 @router.callback_query(F.data == 'settings:model')

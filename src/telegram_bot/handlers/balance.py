@@ -5,7 +5,7 @@ from aiogram.filters import Command, or_f
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from asgiref.sync import sync_to_async
 from telegram_bot.keyboards import star_packs_kb
-from telegram_bot.utils import stars_estimate
+from telegram_bot.utils import stars_estimate, DIVIDER
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -32,23 +32,31 @@ def _get_week_spending(user):
 async def send_balance(message: Message, tg_user):
     network = tg_user.default_network
     cost = network.cost_per_message if network else 0
-    name = network.name if network else 'не выбрана'
-    estimate = stars_estimate(tg_user.user.pages_count, cost) if cost else '—'
+    name = network.name if network else '—'
+    balance = tg_user.user.pages_count
+    estimate = stars_estimate(balance, cost) if cost else '—'
     week_total = await _get_week_spending(tg_user.user)
 
-    text = (
-        f"<b>Ваш баланс: {tg_user.user.pages_count} звёзд</b>\n\n"
-        f"Текущая модель: {name}"
-    )
+    lines = [
+        f'<b>Aineron · Баланс</b>',
+        DIVIDER,
+        f'Доступно:    <b>{balance} зв.</b>',
+    ]
     if cost:
-        text += f" ({cost} зв./сообщение)\nХватит примерно на: {estimate} сообщений"
+        lines.append(f'Модель:      {name}  ({cost} зв./сообщ.)')
+        lines.append(f'Хватит на:   ~{estimate} ответов')
+    else:
+        lines.append(f'Модель:      {name}')
     if week_total:
-        text += f"\n\n<i>За 7 дней потрачено: {week_total} зв.</i>"
+        lines.append(f'\nЗа 7 дней:   -{week_total} зв.')
+
+    lines += [DIVIDER, 'Пополнение:']
+    text = '\n'.join(lines)
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text='Пополнить на сайте', url='https://aineron.ru/account/billing/')],
-        [InlineKeyboardButton(text='Купить через Telegram Stars', callback_data='buy_stars')],
-        [InlineKeyboardButton(text='Купить через Robokassa (карта/СБП)', callback_data='buy_robokassa')],
+        [InlineKeyboardButton(text='Telegram Stars (XTR)', callback_data='buy_stars')],
+        [InlineKeyboardButton(text='Карта / СБП (Robokassa)', callback_data='buy_robokassa')],
     ])
     await message.answer(text, parse_mode='HTML', reply_markup=kb)
 
@@ -63,16 +71,17 @@ async def cmd_balance(message: Message, tg_user=None):
 @router.message(Command('help'))
 async def cmd_help(message: Message):
     await message.answer(
-        "<b>Команды бота:</b>\n\n"
-        "/models — список моделей и смена текущей\n"
-        "/image &lt;промт&gt; — сгенерировать изображение\n"
-        "/balance — баланс и пополнение\n"
-        "/newchat — начать новый чат (сбросить контекст)\n"
-        "/settings — настройки (голос, веб-поиск, промт)\n"
-        "/prompts — библиотека готовых промтов\n"
-        "/referral — реферальная программа\n"
-        "/help — эта справка\n\n"
-        "Просто напиши любой вопрос — я отвечу.",
+        f'<b>Aineron · Помощь</b>\n{DIVIDER}\n'
+        '<b>Чат и генерация</b>\n'
+        '/image &lt;промт&gt; — создать изображение\n'
+        '/balance — баланс и пополнение\n'
+        '/newchat — начать новый диалог\n'
+        '/settings — настройки (голос, поиск, промт)\n'
+        '/models — выбор модели\n'
+        '/prompts — библиотека промтов\n'
+        '/referral — реферальная программа\n'
+        '/help — эта справка\n\n'
+        'Напишите любой вопрос — я отвечу.',
         parse_mode='HTML',
     )
 
@@ -80,8 +89,8 @@ async def cmd_help(message: Message):
 @router.callback_query(F.data == 'buy_stars')
 async def cb_buy_stars(query: CallbackQuery, tg_user=None):
     await query.message.answer(
-        "<b>Выберите пакет звёзд:</b>\n\n"
-        "Оплата через Telegram Stars (XTR) — мгновенно, без карты.",
+        f'<b>Пополнение через Telegram Stars</b>\n{DIVIDER}\n'
+        'Мгновенное зачисление, без карты.',
         parse_mode='HTML',
         reply_markup=star_packs_kb(),
     )
@@ -95,8 +104,8 @@ async def cb_buy_robokassa(query: CallbackQuery, tg_user=None):
         for key, label in _RBK_PACKS
     ]
     await query.message.answer(
-        "<b>Выберите пакет звёзд (Robokassa):</b>\n\n"
-        "Оплата картой российского банка, СБП, ЮMoney и другими способами.",
+        f'<b>Пополнение через Robokassa</b>\n{DIVIDER}\n'
+        'Карта российского банка, СБП, ЮMoney.',
         parse_mode='HTML',
         reply_markup=InlineKeyboardMarkup(inline_keyboard=rows),
     )
@@ -184,8 +193,8 @@ async def cb_rbk_pack(query: CallbackQuery, tg_user=None):
     await _create_payment()
 
     await query.message.answer(
-        f"<b>Оплата {stars} звёзд — {out_sum} ₽</b>\n\n"
-        "Нажмите кнопку ниже для оплаты. После оплаты звёзды будут начислены автоматически.",
+        f'<b>{stars} звёзд — {out_sum} ₽</b>\n{DIVIDER}\n'
+        'После оплаты звёзды будут начислены автоматически.',
         parse_mode='HTML',
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
             InlineKeyboardButton(text=f'Оплатить {out_sum} ₽', url=pay_url)

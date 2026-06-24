@@ -4,6 +4,7 @@ from aiogram.filters import Command, or_f
 from aiogram.types import Message, CallbackQuery
 from asgiref.sync import sync_to_async
 from telegram_bot.keyboards import models_tabs_kb
+from telegram_bot.utils import DIVIDER
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -73,7 +74,7 @@ set_video_network = sync_to_async(_set_video_network, thread_sensitive=True)
 
 
 # ---------------------------------------------------------------------------
-# Helpers to build tab messages
+# Tab messages
 # ---------------------------------------------------------------------------
 
 TAB_TITLES = {
@@ -84,22 +85,29 @@ TAB_TITLES = {
 
 
 async def _send_tab(target, tg_user, tab: str, edit: bool = False):
-    """Send or edit message with the given tab content."""
     if tab == 'text':
         networks = await get_text_networks()
         current_id = tg_user.default_network_id
+        current_name = tg_user.default_network.name if tg_user.default_network else '—'
     elif tab == 'image':
         networks = await get_image_networks()
         current_id = tg_user.default_image_network_id
-    else:  # video
+        current_name = tg_user.default_image_network.name if tg_user.default_image_network else '—'
+    else:
         networks = await get_video_networks()
         current_id = tg_user.default_video_network_id
+        current_name = tg_user.default_video_network.name if tg_user.default_video_network else '—'
 
     title = TAB_TITLES.get(tab, 'Модели')
+
     if not networks:
-        text = f'<b>{title}</b>\n\nНет доступных моделей.'
+        text = f'<b>Aineron · {title}</b>\n{DIVIDER}\nНет доступных моделей.'
     else:
-        text = f'<b>{title}:</b>'
+        text = (
+            f'<b>Aineron · {title}</b>\n{DIVIDER}\n'
+            f'Текущая: <b>{current_name}</b>\n\n'
+            'Выберите модель:'
+        )
 
     kb = models_tabs_kb(tab, networks, current_id)
 
@@ -128,7 +136,7 @@ async def cmd_models(message: Message, tg_user=None):
 async def cb_models_tab(query: CallbackQuery, tg_user=None):
     if tg_user is None:
         return
-    tab = query.data.split(':')[1]  # 'text' | 'image' | 'video'
+    tab = query.data.split(':')[1]
     if tab not in ('text', 'image', 'video'):
         await query.answer('Неизвестная вкладка')
         return
@@ -149,8 +157,6 @@ async def cb_set_model(query: CallbackQuery, tg_user=None):
         return
 
     parts = query.data.split(':')
-    # New format: setmodel:<type>:<id>
-    # Legacy format (text only): setmodel:<id>
     if len(parts) == 3:
         _, model_type, network_id_str = parts
         network_id = int(network_id_str)
@@ -164,15 +170,12 @@ async def cb_set_model(query: CallbackQuery, tg_user=None):
     try:
         if model_type == 'text':
             net = await set_text_network(tg_user, network_id)
-            label = 'Текстовая модель'
             tab = 'text'
         elif model_type == 'image':
             net = await set_image_network(tg_user, network_id)
-            label = 'Модель изображений'
             tab = 'image'
         elif model_type == 'video':
             net = await set_video_network(tg_user, network_id)
-            label = 'Видео модель'
             tab = 'video'
         else:
             await query.answer('Неизвестный тип модели')
@@ -183,9 +186,7 @@ async def cb_set_model(query: CallbackQuery, tg_user=None):
         return
 
     await query.answer(f'Выбрана: {net.name}')
-    # Refresh the tab view
     try:
-        # Re-fetch tg_user to get updated FK ids
         def _reload(tg_user_obj):
             tg_user_obj.refresh_from_db()
             return tg_user_obj
@@ -194,5 +195,6 @@ async def cb_set_model(query: CallbackQuery, tg_user=None):
         await _send_tab(query.message, tg_user, tab, edit=True)
     except Exception:
         await query.message.edit_text(
-            f'{label} изменена: <b>{net.name}</b>', parse_mode='HTML'
+            f'<b>Aineron · Модель изменена</b>\n{DIVIDER}\n<b>{net.name}</b>',
+            parse_mode='HTML',
         )
