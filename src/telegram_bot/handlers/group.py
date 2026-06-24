@@ -110,8 +110,10 @@ async def handle_group_message(message: Message, bot: Bot):
                 user = group_config.organization.owner
                 default_network = network
                 system_prompt = group_config.system_prompt
+                web_search = False
+                active_project = None
 
-            await _pt(message, _FakeTgUser(), text)
+            await _pt(message, _FakeTgUser(), text, skip_billing=True)
             return
 
     elif tg_user is None:
@@ -129,9 +131,9 @@ async def handle_group_message(message: Message, bot: Bot):
         original_prompt = tg_user.system_prompt
         tg_user.system_prompt = group_config.system_prompt
         from telegram_bot.handlers.chat import process_text
-        await process_text(message, tg_user, text)
+        await process_text(message, tg_user, text, skip_billing=bool(group_config))
         tg_user.system_prompt = original_prompt
         return
 
     from telegram_bot.handlers.chat import process_text
-    await process_text(message, tg_user, text)
+    await process_text(message, tg_user, text, skip_billing=bool(group_config))

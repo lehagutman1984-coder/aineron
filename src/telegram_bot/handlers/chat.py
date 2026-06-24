@@ -65,13 +65,14 @@ def _ensure_chat(tg_user, network):
     return chat
 
 
-def _create_messages(chat, user_text, network, system_prompt=''):
+def _create_messages(chat, user_text, network, system_prompt='', extra_settings=None):
     from aitext.models import Message as AiMessage
     user_msg = AiMessage.objects.create(chat=chat, role='user', content=user_text)
     assistant_msg = AiMessage.objects.create(
         chat=chat, role='assistant',
         status=AiMessage.Status.PENDING,
         content='',
+        settings=extra_settings or {},
     )
     return user_msg, assistant_msg
 
@@ -92,8 +93,8 @@ get_message_state = sync_to_async(_get_message_state, thread_sensitive=True)
 check_balance = sync_to_async(_check_balance, thread_sensitive=True)
 
 
-async def process_text(tg_message: Message, tg_user, text: str, attachment=None):
-    """Общий пайплайн: текст → AI → ответ с polling."""
+async def process_text(tg_message: Message, tg_user, text: str, attachment=None, skip_billing: bool = False):
+    """Общий пайплайн: текст → AI → ответ с polling. skip_billing=True используется при оргбиллинге."""
     from aitext.tasks import generate_ai_response
 
     network = await get_default_network(tg_user)
@@ -101,20 +102,22 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None)
         await tg_message.answer("Нет доступных моделей. Обратитесь в поддержку.")
         return
 
-    has_balance = await check_balance(tg_user.user, network.cost_per_message)
-    if not has_balance:
-        await tg_message.answer(
-            f"Недостаточно звёзд.\n"
-            f"Нужно: {network.cost_per_message}, у вас: {tg_user.user.pages_count}\n\n"
-            f"Пополните баланс: /balance"
-        )
-        await async_log_event(tg_user, 'error', network=network, reason='no_balance')
-        return
+    if not skip_billing:
+        has_balance = await check_balance(tg_user.user, network.cost_per_message)
+        if not has_balance:
+            await tg_message.answer(
+                f"Недостаточно звёзд.\n"
+                f"Нужно: {network.cost_per_message}, у вас: {tg_user.user.pages_count}\n\n"
+                f"Пополните баланс: /balance"
+            )
+            await async_log_event(tg_user, 'error', network=network, reason='no_balance')
+            return
 
+    extra_settings = {'skip_star_billing': True} if skip_billing else {}
     chat = await ensure_chat(tg_user, network)
-    user_msg, assistant_msg = await create_messages(chat, text, network, tg_user.system_prompt)
+    user_msg, assistant_msg = await create_messages(chat, text, network, tg_user.system_prompt, extra_settings)
 
-    generate_ai_response.delay(assistant_msg.id, web_search=tg_user.web_search)
+    generate_ai_response.delay(assistant_msg.id, web_search=getattr(tg_user, 'web_search', False))
 
     project = tg_user.active_project
     status_prefix = f'[{project.icon or ""} {project.name}] ' if project else ''

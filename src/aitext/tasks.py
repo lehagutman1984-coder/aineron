@@ -678,17 +678,20 @@ def generate_ai_response(self, message_id, web_search=False):
 
                 total_cost = base_cost + extra_cost
 
-                if user.pages_count < total_cost:
-                    raise Exception(f"Недостаточно звёзд. Нужно {total_cost} зв., у вас {user.pages_count} зв.")
+                # skip_star_billing: True means org billing was already charged in group handler
+                skip_billing = (message.settings or {}).get('skip_star_billing', False)
+                if not skip_billing:
+                    if user.pages_count < total_cost:
+                        raise Exception(f"Недостаточно звёзд. Нужно {total_cost} зв., у вас {user.pages_count} зв.")
 
-                user.spend_pages(total_cost)
-                stars_deducted = True
-                UserSpending.objects.create(
-                    user=user,
-                    amount=total_cost,
-                    description=f"Сообщение в чате с {network.name} (включая настройки)"
-                )
-                logger.info(f"Списано {total_cost} зв. у пользователя {user.email}")
+                    user.spend_pages(total_cost)
+                    stars_deducted = True
+                    UserSpending.objects.create(
+                        user=user,
+                        amount=total_cost,
+                        description=f"Сообщение в чате с {network.name} (включая настройки)"
+                    )
+                    logger.info(f"Списано {total_cost} зв. у пользователя {user.email}")
 
                 original_prompt = user_msg.content if user_msg else ""
                 if network.translate_to_english and original_prompt:
