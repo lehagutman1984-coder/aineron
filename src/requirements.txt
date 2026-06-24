@@ -75,7 +75,7 @@ websockets==16.0
 zope.interface==8.2
 psycopg2-binary==2.9.9
 pgvector
-sentence-transformers>=3.0.0
+# sentence-transformers>=3.0.0  # optional — pulls PyTorch 4GB; rerank.py has graceful no-op fallback
 gunicorn==21.2.0
 pygments==2.20.0
 gevent==24.2.1
