@@ -31,15 +31,8 @@ def _register_group(group_id: int, group_title: str, token: str, registrant_tg_i
     except TelegramUser.DoesNotExist:
         pass
 
-    # Find org by token (stored in a simple JSON field we'll add to Organization,
-    # or use the owner's token via TelegramLinkToken mechanism).
-    # Here we use a short token stored in Organization.meta['tg_group_token'].
-    org = None
-    for o in Organization.objects.all():
-        meta = getattr(o, 'meta', None) or {}
-        if isinstance(meta, dict) and meta.get('tg_group_token') == token:
-            org = o
-            break
+    # Find org by token stored in Organization.meta['tg_group_token'] (JSONField lookup)
+    org = Organization.objects.filter(meta__tg_group_token=token).first()
 
     if org is None:
         return None, 'Токен не найден. Создай токен в ЛК → Организация → Telegram-интеграция.'
