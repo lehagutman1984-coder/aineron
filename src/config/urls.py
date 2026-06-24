@@ -34,6 +34,9 @@ urlpatterns = [
     # ========== DEV API ==========
     path('api/', include('api.urls', namespace='api')),
 
+    # ========== OAuth2 (django-oauth-toolkit) ==========
+    path('oauth/', include('oauth2_provider.urls', namespace='oauth2_provider')),
+
     # ========== СТРАНИЦЫ ПОЛЬЗОВАТЕЛЕЙ ==========
     # ОДИН РАЗ! Включаем сюда и страницу auth, и blocked
     path('users/pages/', include('users.urls_pages')),

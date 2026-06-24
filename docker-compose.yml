@@ -63,6 +63,24 @@ services:
       - default
       - aineron_sandbox_net
 
+  daphne:
+    build: .
+    container_name: neiro_daphne
+    restart: unless-stopped
+    env_file:
+      - .env
+    command: daphne -b 0.0.0.0 -p 9000 config.asgi:application
+    volumes:
+      - ./src:/app
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   celery_worker:
     build: .
     container_name: neiro_celery_worker
@@ -203,6 +221,7 @@ services:
     depends_on:
       - web
       - frontend
+      - daphne
       - gitea
     networks:
       - default

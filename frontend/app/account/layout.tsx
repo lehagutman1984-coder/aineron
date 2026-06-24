@@ -12,6 +12,7 @@ import {
   Star,
   BarChart2,
   MessageCircle,
+  AppWindow,
 } from "lucide-react";
 import { useAuthStore } from "@/lib/stores/auth";
 import { authLogout } from "@/lib/api/client";
@@ -25,6 +26,7 @@ const NAV = [
   { href: "/account/referral/", label: "Партнёрская программа", icon: Users },
   { href: "/account/files/", label: "Мои файлы", icon: FolderOpen },
   { href: "/account/telegram/", label: "Telegram", icon: MessageCircle },
+  { href: "/account/oauth-apps/", label: "OAuth-приложения", icon: AppWindow },
 ];
 
 export default function AccountLayout({ children }: { children: React.ReactNode }) {

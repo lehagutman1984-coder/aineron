@@ -65,6 +65,7 @@ from api.views.memory import (
 from api.views.personas import PersonaListCreateView, PersonaDetailView
 from api.views.arena import ArenaVoteView, ArenaLeaderboardView
 from api.views.knowledge_graph import KnowledgeGraphView
+from api.views.branding import BrandingView
 
 app_name = 'api'
 
@@ -156,6 +157,9 @@ urlpatterns = [
     # ========== Файлы пользователя ==========
     path('v1/files/', UserFilesView.as_view(), name='user_files'),
     path('v1/files/<int:file_id>/', UserFileDeleteView.as_view(), name='user_file_delete'),
+
+    # ========== White-label брендинг ==========
+    path('v1/branding/', BrandingView.as_view(), name='branding'),
 
     # ========== Model Arena (сравнение + Elo-рейтинг) ==========
     path('v1/compare/', CompareView.as_view(), name='compare'),

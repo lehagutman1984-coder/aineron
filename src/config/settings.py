@@ -44,6 +44,8 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.mailru',
     'allauth.socialaccount.providers.github',
 
+    'channels',
+
     'users.apps.UsersConfig',
     'landing.apps.LandingConfig',
     'aitext',
@@ -52,11 +54,28 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'drf_spectacular',
+    'oauth2_provider',
     'api',
     'teams',
     'studio',
     'telegram_bot',
 ]
+
+OAUTH2_PROVIDER = {
+    'PKCE_REQUIRED': True,
+    'SCOPES': {
+        'read': 'Чтение профиля',
+        'profile': 'Данные пользователя',
+        'api': 'Доступ к API',
+    },
+    'ACCESS_TOKEN_EXPIRE_SECONDS': 3600,
+    'REFRESH_TOKEN_EXPIRE_SECONDS': 86400 * 30,
+    'ROTATE_REFRESH_TOKEN': True,
+    'AUTHENTICATION_BACKENDS': [
+        'telegram_bot.oauth.TelegramOAuthBackend',
+        'django.contrib.auth.backends.ModelBackend',
+    ],
+}
 
 
 MIDDLEWARE = [
@@ -73,6 +92,7 @@ MIDDLEWARE = [
     'users.middleware.ShadowBanMiddleware',
     'users.middleware.EmailVerificationMiddleware',
     'users.middleware.UserActivityMiddleware',
+    'teams.middleware.OrganizationBrandingMiddleware',
 ]
 
 
@@ -103,6 +123,7 @@ TEMPLATES = [
 
 
 WSGI_APPLICATION = 'config.wsgi.application'
+ASGI_APPLICATION = 'config.asgi.application'
 
 
 # ========== НАСТРОЙКИ БАЗЫ ДАННЫХ ==========
@@ -272,6 +293,15 @@ CACHES = {
         'KEY_PREFIX': 'aineron',
     }
 }
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {"hosts": [f"redis://{REDIS_HOST}:{REDIS_PORT}/4"]},
+    }
+}
+
+MODERATION_ENABLED = os.environ.get('MODERATION_ENABLED', '0') == '1'
 
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL

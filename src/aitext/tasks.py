@@ -889,6 +889,18 @@ def generate_ai_response(self, message_id, web_search=False):
                 insert_pos = max(len(messages_for_api) - 1, 0)
                 messages_for_api.insert(insert_pos, build_web_search_message(search_results, user_query))
 
+        # ── AI-модерация (если включена) ──────────────────────────────────────
+        if getattr(settings, 'MODERATION_ENABLED', False) and user_msg:
+            from aitext.moderation import check_moderation, log_moderation
+            mod_text = user_msg.content or ''
+            mod_result = check_moderation(mod_text)
+            log_moderation(user=chat.user, message=message, text=mod_text, result=mod_result, source='web_chat')
+            if mod_result['flagged']:
+                message.status = Message.Status.FAILED
+                message.error_message = 'Контент нарушает политику использования'
+                message.save(update_fields=['status', 'error_message'])
+                return
+
         effective_model = network.model_name  # всегда используем выбранную пользователем модель
         client = get_laozhang_client()
         completion_kwargs = {

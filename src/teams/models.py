@@ -140,3 +140,22 @@ class Invoice(models.Model):
 
     def __str__(self):
         return f'Счёт {self.number} — {self.amount_rub} руб.'
+
+
+class OrganizationBranding(models.Model):
+    organization = models.OneToOneField(Organization, on_delete=models.CASCADE, related_name='branding')
+    subdomain = models.SlugField(max_length=63, unique=True, verbose_name='Субдомен')
+    custom_domain = models.CharField(max_length=253, blank=True, verbose_name='Кастомный домен')
+    logo_url = models.URLField(blank=True, verbose_name='URL логотипа')
+    primary_color = models.CharField(max_length=7, default='#0a7cff', verbose_name='Основной цвет')
+    company_name = models.CharField(max_length=100, blank=True, verbose_name='Название компании')
+    support_email = models.EmailField(blank=True, verbose_name='Email поддержки')
+    is_active = models.BooleanField(default=True, verbose_name='Активен')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Брендинг организации'
+        verbose_name_plural = 'Брендинг организаций'
+
+    def __str__(self):
+        return f'{self.subdomain}.aineron.ru — {self.organization.name}'

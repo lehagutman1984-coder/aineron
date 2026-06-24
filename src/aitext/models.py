@@ -239,6 +239,7 @@ class Project(models.Model):
     public_show_files = models.BooleanField(default=True, verbose_name='Показывать файлы базы знаний')
     public_show_chats = models.BooleanField(default=False, verbose_name='Показывать чаты')
     public_views = models.PositiveIntegerField(default=0, verbose_name='Просмотры публичного Space')
+    yjs_state = models.BinaryField(null=True, blank=True, verbose_name='Yjs документ (бинарный снапшот)')
 
     class Meta:
         verbose_name = 'Проект'
@@ -1086,3 +1087,28 @@ class ModelMatch(models.Model):
 
     def __str__(self):
         return f'{self.winner.name} > {self.loser.name} ({self.created_at.date()})'
+
+
+class ModerationLog(models.Model):
+    ACTION_ALLOWED = 'allowed'
+    ACTION_BLOCKED = 'blocked'
+    ACTION_CHOICES = [(ACTION_ALLOWED, 'Разрешено'), (ACTION_BLOCKED, 'Заблокировано')]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='moderation_logs')
+    message = models.ForeignKey('Message', null=True, blank=True, on_delete=models.SET_NULL)
+    input_excerpt = models.CharField(max_length=200)
+    flagged = models.BooleanField(default=False)
+    categories = models.JSONField(default=dict)
+    scores = models.JSONField(default=dict)
+    action = models.CharField(max_length=10, choices=ACTION_CHOICES, default=ACTION_ALLOWED)
+    source = models.CharField(max_length=20, default='web_chat')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Лог модерации'
+        verbose_name_plural = 'Логи модерации'
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['flagged', 'created_at'], name='modlog_flagged_idx')]
+
+    def __str__(self):
+        return f'{self.action} | {self.source} | {self.created_at.date()}'
