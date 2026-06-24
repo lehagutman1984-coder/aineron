@@ -2,6 +2,9 @@ import logging
 from aiogram import Router, F, Bot
 from aiogram.types import Message
 from asgiref.sync import sync_to_async
+from django.db.models import F as DjF
+
+from telegram_bot.analytics import async_log_event
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -15,7 +18,34 @@ def _get_tg_user(telegram_id):
         return None
 
 
+def _get_group_config(group_id: int):
+    """Return (TelegramGroup | None) for the given chat id."""
+    from telegram_bot.models import TelegramGroup
+    try:
+        return TelegramGroup.objects.select_related('organization').get(
+            group_id=group_id, enabled=True
+        )
+    except TelegramGroup.DoesNotExist:
+        return None
+
+
+def _charge_org(organization, cost_stars: int) -> bool:
+    """Deduct cost from org balance. Returns False if insufficient balance."""
+    from decimal import Decimal
+    from teams.models import Organization
+    # Convert stars to rubles: 1 star ≈ 0.1 rub (adjust to your rate)
+    STAR_TO_RUB = Decimal('0.10')
+    cost_rub = Decimal(cost_stars) * STAR_TO_RUB
+    updated = Organization.objects.filter(
+        id=organization.id,
+        balance_rub__gte=cost_rub,
+    ).update(balance_rub=DjF('balance_rub') - cost_rub)
+    return updated > 0
+
+
 _get_tg_user_async = sync_to_async(_get_tg_user, thread_sensitive=True)
+_get_group_config_async = sync_to_async(_get_group_config, thread_sensitive=True)
+_charge_org_async = sync_to_async(_charge_org, thread_sensitive=True)
 
 
 @router.message(F.chat.type.in_({'group', 'supergroup'}))
@@ -37,7 +67,54 @@ async def handle_group_message(message: Message, bot: Bot):
         return
 
     tg_user = await _get_tg_user_async(message.from_user.id)
-    if not tg_user:
+
+    # Check if this group has org billing configured
+    group_config = await _get_group_config_async(message.chat.id)
+
+    if group_config:
+        # Org billing: anyone in the group can use the bot, charged from org balance
+        network = None
+        if tg_user:
+            network = tg_user.default_network
+        if network is None:
+            from aitext.models import NeuralNetwork
+            def _default_net():
+                return NeuralNetwork.objects.filter(is_active=True).order_by('order').first()
+            network = await sync_to_async(_default_net, thread_sensitive=True)()
+
+        if network is None:
+            await message.reply('Нет доступных моделей.')
+            return
+
+        cost = network.cost_per_message if network else 5
+        ok = await _charge_org_async(group_config.organization, cost)
+        if not ok:
+            await message.reply(
+                f'Баланс организации <b>{group_config.organization.name}</b> исчерпан. '
+                f'Пополните баланс: https://aineron.ru/dashboard/organization/',
+                parse_mode='HTML',
+            )
+            return
+
+        # Build a minimal tg_user-like proxy if user is not registered
+        if tg_user is None:
+            # Anonymous group member — process without billing user
+            text = message.text
+            if bot_user.username:
+                text = text.replace(f'@{bot_user.username}', '').strip()
+            if not text:
+                return
+            from telegram_bot.handlers.chat import process_text as _pt
+
+            class _FakeTgUser:
+                user = group_config.organization.owner
+                default_network = network
+                system_prompt = group_config.system_prompt
+
+            await _pt(message, _FakeTgUser(), text)
+            return
+
+    elif tg_user is None:
         await message.reply('Привяжи аккаунт aineron.ru: напиши /start боту @aineron_bot')
         return
 
@@ -45,6 +122,15 @@ async def handle_group_message(message: Message, bot: Bot):
     if bot_user.username:
         text = text.replace(f'@{bot_user.username}', '').strip()
     if not text:
+        return
+
+    # Override system prompt with group's if set
+    if group_config and group_config.system_prompt and tg_user:
+        original_prompt = tg_user.system_prompt
+        tg_user.system_prompt = group_config.system_prompt
+        from telegram_bot.handlers.chat import process_text
+        await process_text(message, tg_user, text)
+        tg_user.system_prompt = original_prompt
         return
 
     from telegram_bot.handlers.chat import process_text

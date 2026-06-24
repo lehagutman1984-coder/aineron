@@ -164,3 +164,34 @@ class TelegramEvent(models.Model):
 
     def __str__(self):
         return f'{self.get_event_type_display()} — {self.telegram_user}'
+
+
+class TelegramGroup(models.Model):
+    """Telegram-группа или канал, подключённый к организации для оргбиллинга."""
+    group_id = models.BigIntegerField(unique=True, verbose_name='Telegram group/channel ID')
+    group_title = models.CharField(max_length=255, blank=True, verbose_name='Название группы')
+    organization = models.ForeignKey(
+        'teams.Organization',
+        on_delete=models.CASCADE,
+        related_name='telegram_groups',
+        verbose_name='Организация',
+    )
+    registered_by = models.ForeignKey(
+        TelegramUser,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='registered_groups',
+        verbose_name='Кто зарегистрировал',
+    )
+    enabled = models.BooleanField(default=True, verbose_name='Активна')
+    system_prompt = models.TextField(blank=True, verbose_name='Системный промт группы')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата регистрации')
+
+    class Meta:
+        verbose_name = 'Telegram-группа'
+        verbose_name_plural = 'Telegram-группы'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.group_title} ({self.group_id}) → {self.organization.name}'
+

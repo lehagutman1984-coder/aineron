@@ -19,6 +19,7 @@ class Organization(models.Model):
         related_name='owned_organizations',
         verbose_name='Владелец',
     )
+    meta = models.JSONField(default=dict, blank=True, verbose_name='Мета-данные (токены, настройки)')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Создана')
 
     class Meta:

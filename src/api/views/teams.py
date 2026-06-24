@@ -185,6 +185,43 @@ class InviteAcceptView(APIView):
         })
 
 
+class OrgTgTokenView(APIView):
+    """POST /v1/orgs/<pk>/tg-token/ — generate Telegram group registration token."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        import secrets
+        org, member = get_org_admin_or_403(request, pk)
+        token = secrets.token_urlsafe(16)
+        meta = org.meta or {}
+        meta['tg_group_token'] = token
+        org.meta = meta
+        org.save(update_fields=['meta'])
+        return Response({'token': token})
+
+
+class OrgTgGroupsView(APIView):
+    """GET /v1/orgs/<pk>/tg-groups/ — list connected Telegram groups."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        org = get_org_or_403(request, pk)
+        from telegram_bot.models import TelegramGroup
+        groups = TelegramGroup.objects.filter(organization=org).values(
+            'id', 'group_id', 'group_title', 'enabled', 'created_at'
+        )
+        return Response(list(groups))
+
+    def delete(self, request, pk):
+        """DELETE /v1/orgs/<pk>/tg-groups/?group_id=<id> — unregister group."""
+        org = get_org_or_403(request, pk)
+        group_id = request.query_params.get('group_id')
+        if group_id:
+            from telegram_bot.models import TelegramGroup
+            TelegramGroup.objects.filter(organization=org, group_id=group_id).delete()
+        return Response(status=204)
+
+
 def _send_invite_email_async(invite):
     """Отправляет письмо-приглашение в отдельном потоке."""
     from django.core.mail import send_mail

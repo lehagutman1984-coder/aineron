@@ -19,6 +19,7 @@ from api.views.teams import (
     OrgListCreateView, OrgDetailView,
     OrgMemberListView, OrgMemberDeleteView,
     OrgInviteListCreateView, InviteAcceptView,
+    OrgTgTokenView, OrgTgGroupsView,
 )
 from api.views.invoices import InvoiceListCreateView
 from api.views.usage import UsageStatsView
@@ -107,6 +108,8 @@ urlpatterns = [
     path('v1/orgs/<int:org_id>/invites/', OrgInviteListCreateView.as_view(), name='org_invites'),
     path('v1/orgs/<int:org_id>/invoices/', InvoiceListCreateView.as_view(), name='org_invoices'),
     path('v1/orgs/invites/<str:token>/accept/', InviteAcceptView.as_view(), name='invite_accept'),
+    path('v1/orgs/<int:pk>/tg-token/', OrgTgTokenView.as_view(), name='org_tg_token'),
+    path('v1/orgs/<int:pk>/tg-groups/', OrgTgGroupsView.as_view(), name='org_tg_groups'),
 
     # ========== Статистика использования ==========
     path('v1/usage/', UsageStatsView.as_view(), name='usage_stats'),
