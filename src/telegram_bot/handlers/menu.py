@@ -3,80 +3,101 @@ from aiogram import Router, F
 from aiogram.types import Message
 from asgiref.sync import sync_to_async
 
+from telegram_bot.utils import DIVIDER
+
 logger = logging.getLogger(__name__)
 router = Router()
 
-MENU_BUTTONS = {'Чат', 'Изображение', 'Видео', 'Баланс', 'Модели', 'Настройки', 'История', 'Помощь', 'Проекты'}
+MENU_BUTTONS = {'Чат', 'Картинка', 'Видео', 'Баланс', 'Модели', 'Настройки', 'История', 'Помощь', 'Проекты'}
 
 
 @router.message(F.text.in_(MENU_BUTTONS))
 async def handle_menu_button(message: Message, tg_user=None):
     text = message.text
+
     if text == 'Чат':
-        await message.answer('Просто напиши свой вопрос или задачу — отвечу!')
-    elif text == 'Изображение':
         await message.answer(
-            'Отправь описание изображения:\n'
+            f'<b>Aineron · Чат</b>\n{DIVIDER}\n'
+            'Напишите вопрос или задачу — AI ответит.\n\n'
+            'Для нового диалога: /newchat',
+            parse_mode='HTML',
+        )
+
+    elif text == 'Картинка':
+        await message.answer(
+            f'<b>Aineron · Генерация изображения</b>\n{DIVIDER}\n'
+            'Опишите изображение командой:\n\n'
             '<code>/image закат над морем в стиле аниме</code>',
             parse_mode='HTML',
         )
+
     elif text == 'Видео':
         await message.answer(
-            'Отправь описание видео:\n'
-            '<code>/video закат над морем, медленный полёт камеры</code>',
+            f'<b>Aineron · Генерация видео</b>\n{DIVIDER}\n'
+            'Опишите видео командой:\n\n'
+            '<code>/video закат над морем, медленный полёт камеры</code>\n\n'
+            '<i>Готово через 5–15 минут — пришлю результат.</i>',
             parse_mode='HTML',
         )
+
     elif text == 'Баланс':
         if tg_user:
             from telegram_bot.handlers.balance import send_balance
             await send_balance(message, tg_user)
         else:
-            await message.answer('Привяжи аккаунт через /start')
+            await message.answer('Привяжите аккаунт через /start')
+
     elif text == 'Модели':
         if tg_user:
             from telegram_bot.handlers.models_cmd import _send_tab
             await _send_tab(message, tg_user, 'text', edit=False)
         else:
-            await message.answer('Привяжи аккаунт через /start')
+            await message.answer('Привяжите аккаунт через /start')
+
     elif text == 'Настройки':
         if tg_user:
             from telegram_bot.handlers.settings_cmd import send_settings
             await send_settings(message, tg_user)
         else:
-            await message.answer('Привяжи аккаунт через /start')
+            await message.answer('Привяжите аккаунт через /start')
+
     elif text == 'История':
         if tg_user:
             from telegram_bot.handlers.history import cmd_history
             await cmd_history(message, state=None, tg_user=tg_user)
         else:
-            await message.answer('Привяжи аккаунт через /start')
+            await message.answer('Привяжите аккаунт через /start')
+
     elif text == 'Проекты':
         if tg_user:
             from telegram_bot.handlers.projects_cmd import send_project_list
             await send_project_list(message, None, tg_user, offset=0)
         else:
-            await message.answer('Привяжи аккаунт через /start')
+            await message.answer('Привяжите аккаунт через /start')
+
     elif text == 'Помощь':
         await message.answer(
-            '<b>Как пользоваться ботом:</b>\n\n'
-            'Просто напиши любой вопрос — получи ответ AI.\n\n'
-            '<b>Генерация медиа:</b>\n'
+            f'<b>Aineron · Помощь</b>\n{DIVIDER}\n'
+            '<b>Чат и генерация</b>\n'
+            'Напишите любой вопрос — AI ответит.\n'
             '/image &lt;описание&gt; — создать изображение\n'
-            '/video &lt;описание&gt; — создать видео (5-15 мин)\n\n'
-            '<b>Управление:</b>\n'
+            '/video &lt;описание&gt; — создать видео (5–15 мин)\n\n'
+            '<b>Управление</b>\n'
             '/models — выбор модели AI\n'
             '/balance — баланс и пополнение\n'
             '/settings — настройки\n'
-            '/newchat — начать новый чат\n'
-            '/search &lt;запрос&gt; — поиск по истории чатов\n'
+            '/newchat — начать новый диалог\n\n'
+            '<b>Инструменты</b>\n'
+            '/search &lt;запрос&gt; — поиск по истории\n'
             '/export — скачать текущий чат (.md)\n'
-            '/digest — ежедневный AI-дайджест\n'
-            '/ai — AI-агенты: пост, код-ревью, перевод, ТЗ\n'
+            '/digest — AI-дайджест\n'
+            '/ai — AI-агенты: пост, код-ревью, перевод\n'
             '/img2video &lt;промт&gt; — фото → анимация\n'
-            '/sticker &lt;промт&gt; — создать AI-стикер\n'
-            '/memory — что бот помнит о тебе\n'
-            '/projects — проекты (контекст + база знаний)\n'
-            '/referral — реферальная программа\n\n'
-            'Пополнить баланс: https://aineron.ru/account/billing/',
+            '/sticker &lt;промт&gt; — AI-стикер\n'
+            '/memory — что бот помнит о вас\n'
+            '/projects — проекты и база знаний\n'
+            '/referral — реферальная программа\n'
+            f'{DIVIDER}\n'
+            'Пополнение баланса: aineron.ru/account/billing/',
             parse_mode='HTML',
         )

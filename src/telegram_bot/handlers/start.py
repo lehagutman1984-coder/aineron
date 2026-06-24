@@ -6,6 +6,8 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 from django.utils import timezone
 
+from telegram_bot.utils import DIVIDER
+
 logger = logging.getLogger(__name__)
 router = Router()
 
@@ -42,13 +44,11 @@ def _mark_token_used(link_token):
 
 
 def _store_referral_code(telegram_id, referral_code):
-    """Сохраняем реферальный код для нового пользователя когда он привяжет аккаунт."""
     from django.core.cache import cache
-    cache.set(f'tg_ref:{telegram_id}', referral_code, 60 * 60 * 24 * 7)  # 7 дней
+    cache.set(f'tg_ref:{telegram_id}', referral_code, 60 * 60 * 24 * 7)
 
 
 def _apply_referral(user, referral_code):
-    """Применяем реферальный код если аккаунт ещё без реферера."""
     try:
         from users.models import CustomUser
         if user.referrer:
@@ -74,15 +74,16 @@ async def cmd_start(message: Message, state: FSMContext, tg_user=None):
     if message.text and ' ' in message.text:
         args = message.text.split(maxsplit=1)[1].strip()
 
-    # Already linked and no special args — show main menu
+    # Already linked and no special args — show dashboard
     if tg_user and not args:
         from telegram_bot.keyboards import main_reply_kb
         get_balance = sync_to_async(lambda: tg_user.user.pages_count, thread_sensitive=True)
         balance = await get_balance()
         await message.answer(
-            f"<b>Привет, {message.from_user.first_name}!</b>\n\n"
-            f"Баланс: <b>{balance} звёзд</b>\n\n"
-            f"Выбери действие из меню ниже.",
+            f'<b>Aineron</b>\n{DIVIDER}\n'
+            f'Добро пожаловать, <b>{message.from_user.first_name}</b>\n\n'
+            f'Баланс: <b>{balance} зв.</b>\n\n'
+            'Напишите вопрос или выберите раздел в меню.',
             parse_mode='HTML',
             reply_markup=main_reply_kb(),
         )
@@ -98,23 +99,21 @@ async def cmd_start(message: Message, state: FSMContext, tg_user=None):
 
     if args and args.startswith('prompt_'):
         await message.answer(
-            'Промт загружается, пиши свой запрос!',
+            'Промт загружается, пишите запрос!',
             parse_mode='HTML',
         )
         return
 
     if args and args.startswith('ref_'):
-        referral_code = args[4:]  # strip 'ref_'
+        referral_code = args[4:]
         await store_referral_code(message.from_user.id, referral_code)
-        # Показываем обычное приветствие с подсказкой
         await message.answer(
-            "<b>Привет! Я AI-ассистент aineron.ru</b>\n\n"
-            "Реферальный код применён автоматически при регистрации.\n\n"
-            "Чтобы начать работу, привяжи аккаунт:\n\n"
-            "1. Зайди на <b>aineron.ru</b>\n"
-            "2. Кабинет → Telegram\n"
-            "3. Нажми <b>«Подключить Telegram»</b> и перейди по ссылке\n\n"
-            "После привязки тебе будут доступны все AI-модели и баланс звёзд."
+            f'<b>Aineron</b>\n{DIVIDER}\n'
+            'Реферальный код применён. Для начала работы привяжите аккаунт:\n\n'
+            '1. Перейдите на <b>aineron.ru</b>\n'
+            '2. Кабинет → Telegram → Подключить\n'
+            '3. Вернитесь сюда по ссылке',
+            parse_mode='HTML',
         )
         return
 
@@ -123,7 +122,6 @@ async def cmd_start(message: Message, state: FSMContext, tg_user=None):
         if link_token and link_token.is_valid:
             tg_user = await create_tg_user(link_token.user, message.from_user)
             await mark_token_used(link_token)
-            # Применяем сохранённый реферальный код если есть
             get_cached_ref = sync_to_async(
                 lambda: __import__('django.core.cache', fromlist=['cache']).cache.get(f'tg_ref:{message.from_user.id}'),
                 thread_sensitive=True,
@@ -138,9 +136,9 @@ async def cmd_start(message: Message, state: FSMContext, tg_user=None):
             from telegram_bot.keyboards import main_reply_kb
             from telegram_bot.handlers.onboarding import start_onboarding
             await message.answer(
-                f"<b>Аккаунт привязан!</b>\n\n"
-                f"Привет, {message.from_user.first_name}!\n"
-                f"Баланс: <b>{balance} звёзд</b>",
+                f'<b>Аккаунт привязан</b>\n{DIVIDER}\n'
+                f'Добро пожаловать, <b>{message.from_user.first_name}</b>\n\n'
+                f'Баланс: <b>{balance} зв.</b>',
                 parse_mode='HTML',
                 reply_markup=main_reply_kb(),
             )
@@ -149,16 +147,20 @@ async def cmd_start(message: Message, state: FSMContext, tg_user=None):
             return
 
         await message.answer(
-            "Ссылка недействительна или устарела.\n\n"
-            "Зайди на <b>aineron.ru</b> → Кабинет → Telegram и получи новую ссылку."
+            f'<b>Ссылка недействительна</b>\n{DIVIDER}\n'
+            'Ссылка устарела или уже была использована.\n\n'
+            'Перейдите на <b>aineron.ru</b> → Кабинет → Telegram и получите новую ссылку.',
+            parse_mode='HTML',
         )
         return
 
     await message.answer(
-        "<b>Привет! Я AI-ассистент aineron.ru</b>\n\n"
-        "Чтобы начать работу, привяжи аккаунт:\n\n"
-        "1. Зайди на <b>aineron.ru</b>\n"
-        "2. Кабинет → Telegram\n"
-        "3. Нажми <b>«Подключить Telegram»</b> и перейди по ссылке\n\n"
-        "После привязки тебе будут доступны все AI-модели, история чатов и баланс звёзд."
+        f'<b>Aineron</b>\n{DIVIDER}\n'
+        'Платформа AI-сервисов: GPT-4o, Claude, Gemini и другие модели.\n\n'
+        'Чтобы начать:\n'
+        '1. Перейдите на <b>aineron.ru</b>\n'
+        '2. Кабинет → Telegram → Подключить\n'
+        '3. Вернитесь сюда по ссылке\n\n'
+        'После привязки вам станут доступны все модели и баланс.',
+        parse_mode='HTML',
     )

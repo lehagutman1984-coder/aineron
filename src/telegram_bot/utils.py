@@ -5,6 +5,16 @@ import html
 # Символы, требующие экранирования в MarkdownV2
 _MD_SPECIAL = r'\_*[]()~`>#+-=|{}.!'
 
+DIVIDER = '─' * 21
+
+
+def card(title: str, body: str, footer: str = '') -> str:
+    """Build a visual card: bold title + divider + body [+ divider + footer]."""
+    parts = [f'<b>{title}</b>', DIVIDER, body]
+    if footer:
+        parts += [DIVIDER, footer]
+    return '\n'.join(parts)
+
 
 def telegram_format(text: str) -> str:
     """
