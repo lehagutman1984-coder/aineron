@@ -96,24 +96,35 @@ async def handle_group_message(message: Message, bot: Bot):
             )
             return
 
-        # Build a minimal tg_user-like proxy if user is not registered
+        # Anonymous group member — try to find org owner's TelegramUser for chat routing
         if tg_user is None:
-            # Anonymous group member — process without billing user
             text = message.text
             if bot_user.username:
                 text = text.replace(f'@{bot_user.username}', '').strip()
             if not text:
                 return
+
+            def _get_owner_tg_user():
+                from telegram_bot.models import TelegramUser
+                try:
+                    return TelegramUser.objects.select_related('user', 'default_network').get(
+                        user=group_config.organization.owner
+                    )
+                except TelegramUser.DoesNotExist:
+                    return None
+
+            owner_tg = await sync_to_async(_get_owner_tg_user, thread_sensitive=True)()
+            if owner_tg is None:
+                await message.reply('Владелец организации ещё не зарегистрирован в боте.')
+                return
+
+            # Temporarily override system_prompt for group context
+            original_prompt = owner_tg.system_prompt
+            if group_config.system_prompt:
+                owner_tg.system_prompt = group_config.system_prompt
             from telegram_bot.handlers.chat import process_text as _pt
-
-            class _FakeTgUser:
-                user = group_config.organization.owner
-                default_network = network
-                system_prompt = group_config.system_prompt
-                web_search = False
-                active_project = None
-
-            await _pt(message, _FakeTgUser(), text, skip_billing=True)
+            await _pt(message, owner_tg, text, skip_billing=True)
+            owner_tg.system_prompt = original_prompt
             return
 
     elif tg_user is None:
