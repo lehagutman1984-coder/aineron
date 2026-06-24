@@ -753,6 +753,24 @@ export interface ReferralData {
   withdrawals: ReferralWithdrawal[];
 }
 
+// ============ AI Personas ============
+
+export interface Persona {
+  id: number;
+  name: string;
+  slug: string;
+  description: string;
+  system_prompt: string;
+  avatar_url: string;
+  network: number | null;
+  network_name: string | null;
+  is_public: boolean;
+  is_active: boolean;
+  order: number;
+  is_own: boolean;
+  created_at: string;
+}
+
 // ============ Auth (DRF /api/v1/auth/me/) ============
 
 export interface AuthUser {

@@ -28,9 +28,9 @@ class CompareView(APIView):
                 'error': {'message': 'Выберите минимум 2 модели', 'type': 'invalid_request_error', 'code': None}
             }, status=400)
 
-        if len(network_slugs) > 3:
+        if len(network_slugs) > 6:
             return Response({
-                'error': {'message': 'Максимум 3 модели для сравнения', 'type': 'invalid_request_error', 'code': None}
+                'error': {'message': 'Максимум 6 моделей для сравнения', 'type': 'invalid_request_error', 'code': None}
             }, status=400)
 
         # Deduplicate while preserving order

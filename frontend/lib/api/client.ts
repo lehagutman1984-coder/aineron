@@ -784,6 +784,22 @@ export const publishProject = (
 export const getPublicSpace = (slug: string): Promise<PublicSpace> =>
   request<PublicSpace>(`/public/spaces/${slug}/`);
 
+// ============ AI Personas ============
+
+export const listPersonas = (): Promise<import("./types").Persona[]> =>
+  request("/personas/");
+
+export const createPersona = (body: {
+  name: string;
+  description?: string;
+  system_prompt: string;
+  avatar_url?: string;
+}): Promise<import("./types").Persona> =>
+  request("/personas/", { method: "POST", body: JSON.stringify(body) });
+
+export const deletePersona = (id: number): Promise<void> =>
+  request(`/personas/${id}/`, { method: "DELETE" });
+
 // ============ User (legacy Django session endpoint, kept for compatibility) ============
 
 export async function getCurrentUser(): Promise<User | null> {
