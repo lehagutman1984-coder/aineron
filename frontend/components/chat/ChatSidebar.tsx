@@ -27,7 +27,7 @@ import {
   Globe,
   Palette,
 } from "lucide-react";
-import { listChats, deleteChat, renameChat, listProjects, createProject, updateProject, deleteProject } from "@/lib/api/client";
+import { listChats, deleteChat, renameChat, listProjects, createProject, updateProject, deleteProject, listNetworks } from "@/lib/api/client";
 import type { ChatListItem, Project } from "@/lib/api/types";
 
 // ── Project constants ────────────────────────────────────────
@@ -480,6 +480,11 @@ export function ChatSidebar() {
     staleTime: 30_000,
     refetchOnWindowFocus: false,
   });
+
+  // Prefetch networks so /models catalog opens instantly
+  useEffect(() => {
+    qc.prefetchQuery({ queryKey: ["networks", {}], queryFn: () => listNetworks(), staleTime: 5 * 60_000 });
+  }, [qc]);
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
