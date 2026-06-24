@@ -7,9 +7,9 @@ Flow:
 """
 import logging
 import re
-from datetime import timedelta
+from datetime import timedelta, timezone as dt_timezone
+from zoneinfo import ZoneInfo
 
-import pytz
 from aiogram import Router, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -21,7 +21,7 @@ from django.utils import timezone
 logger = logging.getLogger(__name__)
 router = Router()
 
-MOSCOW = pytz.timezone('Europe/Moscow')
+MOSCOW = ZoneInfo('Europe/Moscow')
 
 _TIME_PATTERNS = [
     (re.compile(r'^через\s+(\d+)\s*мин', re.I),   lambda m: timedelta(minutes=int(m.group(1)))),
@@ -46,7 +46,7 @@ def _parse_time(text: str):
     for pattern, calc in _TIME_PATTERNS[:3]:
         m = pattern.match(t)
         if m and calc:
-            return (timezone.now() + calc(m)).astimezone(pytz.utc).replace(tzinfo=None)
+            return (timezone.now() + calc(m)).astimezone(dt_timezone.utc).replace(tzinfo=None)
             return timezone.now() + calc(m)
 
     # HH:MM (today MSK)
@@ -55,14 +55,14 @@ def _parse_time(text: str):
         candidate = now_msk.replace(hour=int(m.group(1)), minute=int(m.group(2)), second=0, microsecond=0)
         if candidate <= now_msk:
             candidate += timedelta(days=1)
-        return candidate.astimezone(pytz.utc)
+        return candidate.astimezone(dt_timezone.utc)
 
     # завтра HH:MM
     m = re.match(r'^завтра\s+(\d{1,2}):(\d{2})$', t, re.I)
     if m:
         tomorrow = now_msk + timedelta(days=1)
         candidate = tomorrow.replace(hour=int(m.group(1)), minute=int(m.group(2)), second=0, microsecond=0)
-        return candidate.astimezone(pytz.utc)
+        return candidate.astimezone(dt_timezone.utc)
 
     return None
 
