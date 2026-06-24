@@ -5,12 +5,13 @@ import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Building2, Users, Plus, Trash2, Mail, ArrowLeft,
-  FileText, Check, X, ChevronRight,
+  FileText, Check, X, ChevronRight, Send, Copy, RefreshCw,
 } from "lucide-react";
 import {
   listOrgs, createOrg, listOrgMembers, removeOrgMember,
   listOrgInvites, createOrgInvite,
   listInvoices, createInvoice,
+  generateOrgTgToken, listOrgTgGroups, unregisterOrgTgGroup,
 } from "@/lib/api/client";
 import { APIError } from "@/lib/api/client";
 import type { Organization, OrgMember, OrgInvite, Invoice } from "@/lib/api/types";
@@ -373,7 +374,103 @@ function OrgDetail({ org }: { org: Organization }) {
           )}
         </Section>
       )}
+
+      {/* ── Telegram Integration ────────────────────────────────── */}
+      {selectedOrg && <TelegramSection orgId={selectedOrg.id} />}
     </div>
+  );
+}
+
+function TelegramSection({ orgId }: { orgId: number }) {
+  const qc = useQueryClient();
+  const [token, setToken] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const { data: groups = [] } = useQuery({
+    queryKey: ["org-tg-groups", orgId],
+    queryFn: () => listOrgTgGroups(orgId),
+    staleTime: 30_000,
+  });
+
+  const genTokenMutation = useMutation({
+    mutationFn: () => generateOrgTgToken(orgId),
+    onSuccess: (res) => setToken(res.token),
+  });
+
+  const unregisterMutation = useMutation({
+    mutationFn: (groupId: number) => unregisterOrgTgGroup(orgId, groupId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["org-tg-groups", orgId] }),
+  });
+
+  const handleCopy = () => {
+    if (!token) return;
+    navigator.clipboard.writeText(token);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <Section title="Telegram-интеграция" icon={<Send size={14} />}>
+      <p className="mb-4 text-[13px] text-[rgba(13,13,13,0.55)]">
+        Подключи Telegram-группы к организации. Участники смогут использовать бота за счёт баланса организации.
+      </p>
+
+      {/* Token generator */}
+      <div className="mb-4 rounded-[10px] border border-[rgba(13,13,13,0.10)] bg-white p-4">
+        <p className="mb-2 text-[12px] font-medium text-[rgba(13,13,13,0.55)]">Токен подключения</p>
+        {token ? (
+          <div className="flex items-center gap-2">
+            <code className="flex-1 rounded-[6px] bg-[rgba(13,13,13,0.05)] px-3 py-1.5 text-[13px] font-mono text-[#0d0d0d] overflow-auto">
+              {token}
+            </code>
+            <button onClick={handleCopy} className="flex h-8 w-8 items-center justify-center rounded-[7px] border border-[rgba(13,13,13,0.12)] hover:bg-[rgba(13,13,13,0.05)] transition-colors">
+              {copied ? <Check size={13} className="text-[#22a85a]" /> : <Copy size={13} />}
+            </button>
+          </div>
+        ) : (
+          <p className="text-[12px] text-[rgba(13,13,13,0.40)]">Нет активного токена</p>
+        )}
+        <div className="mt-3 flex items-start gap-3">
+          <button
+            onClick={() => genTokenMutation.mutate()}
+            disabled={genTokenMutation.isPending}
+            className="flex items-center gap-1.5 rounded-[8px] bg-[#0a7cff] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 transition-colors"
+          >
+            <RefreshCw size={12} className={genTokenMutation.isPending ? "animate-spin" : ""} />
+            {token ? "Обновить токен" : "Создать токен"}
+          </button>
+          {token && (
+            <div className="text-[11px] text-[rgba(13,13,13,0.45)] leading-relaxed">
+              Добавь бота в группу, дай права <b>администратора</b> и напиши:<br />
+              <code className="font-mono">/reggroup {token}</code>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Connected groups */}
+      {groups.length > 0 && (
+        <div>
+          <p className="mb-2 text-[12px] font-medium text-[rgba(13,13,13,0.55)]">Подключённые группы ({groups.length})</p>
+          <div className="flex flex-col gap-2">
+            {groups.map((g) => (
+              <div key={g.id} className="flex items-center justify-between rounded-[8px] border border-[rgba(13,13,13,0.08)] bg-white px-3 py-2">
+                <div>
+                  <p className="text-[13px] font-medium text-[#0d0d0d]">{g.group_title || `Group ${g.group_id}`}</p>
+                  <p className="text-[11px] text-[rgba(13,13,13,0.40)]">ID: {g.group_id}</p>
+                </div>
+                <button
+                  onClick={() => unregisterMutation.mutate(g.group_id)}
+                  className="flex h-7 w-7 items-center justify-center rounded-[6px] text-[rgba(13,13,13,0.35)] hover:bg-[rgba(231,76,60,0.09)] hover:text-[#e74c3c] transition-colors"
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </Section>
   );
 }
 

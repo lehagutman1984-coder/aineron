@@ -413,6 +413,15 @@ export const createInvoice = (
     body: JSON.stringify(body),
   });
 
+export const generateOrgTgToken = (orgId: number): Promise<{ token: string }> =>
+  request<{ token: string }>(`/orgs/${orgId}/tg-token/`, { method: "POST" });
+
+export const listOrgTgGroups = (orgId: number): Promise<Array<{ id: number; group_id: number; group_title: string; enabled: boolean; created_at: string }>> =>
+  request(`/orgs/${orgId}/tg-groups/`);
+
+export const unregisterOrgTgGroup = (orgId: number, groupId: number): Promise<void> =>
+  request<void>(`/orgs/${orgId}/tg-groups/?group_id=${groupId}`, { method: "DELETE" });
+
 // ============ Usage statistics ============
 
 export const getUsageStats = (params?: {
