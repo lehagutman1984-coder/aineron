@@ -186,7 +186,7 @@ class ProjectAdmin(admin.ModelAdmin):
     list_filter = ('status', 'created_at')
     list_editable = ('status',)
     search_fields = ('name', 'user__email', 'user__username')
-    readonly_fields = ('id', 'created_at', 'updated_at')
+    readonly_fields = ('id', 'created_at')
     raw_id_fields = ('user',)
 
 
