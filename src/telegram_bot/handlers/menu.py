@@ -73,6 +73,7 @@ async def handle_menu_button(message: Message, tg_user=None):
             '/digest — ежедневный AI-дайджест\n'
             '/ai — AI-агенты: пост, код-ревью, перевод, ТЗ\n'
             '/img2video &lt;промт&gt; — фото → анимация\n'
+            '/sticker &lt;промт&gt; — создать AI-стикер\n'
             '/projects — проекты (контекст + база знаний)\n'
             '/referral — реферальная программа\n\n'
             'Пополнить баланс: https://aineron.ru/account/billing/',
