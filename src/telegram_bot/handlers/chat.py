@@ -3,6 +3,8 @@ import logging
 from asgiref.sync import sync_to_async
 from aiogram import Router, F
 from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message, CallbackQuery
 
 from telegram_bot.keyboards import after_answer_kb, main_reply_kb
@@ -11,6 +13,10 @@ from telegram_bot.analytics import async_log_event
 
 logger = logging.getLogger(__name__)
 router = Router()
+
+
+class EditMsgFSM(StatesGroup):
+    waiting_new_text = State()
 
 POLL_INTERVAL = 2       # секунд между проверками
 POLL_MAX_TRIES = 75     # 150 секунд максимум
@@ -243,6 +249,62 @@ async def cb_react_dislike(query: CallbackQuery, tg_user=None):
         await process_text(query.message, tg_user, improved_prompt)
     else:
         await query.answer("Не могу найти исходный запрос.")
+
+
+@router.callback_query(F.data.startswith('edit_msg:'))
+async def cb_edit_msg(query: CallbackQuery, state: FSMContext, tg_user=None):
+    """✏️ — ask user for new text, then regenerate."""
+    if tg_user is None:
+        await query.answer()
+        return
+    msg_id = int(query.data.split(':')[1])
+    await state.set_state(EditMsgFSM.waiting_new_text)
+    await state.update_data(original_msg_id=msg_id, edit_query_msg_id=query.message.message_id)
+    await query.answer()
+    await query.message.reply("Отправь новый текст запроса:")
+
+
+@router.message(EditMsgFSM.waiting_new_text)
+async def handle_edit_new_text(message: Message, state: FSMContext, tg_user=None):
+    """Receive new text for edit, regenerate."""
+    if tg_user is None:
+        await state.clear()
+        return
+    new_text = (message.text or '').strip()
+    if not new_text:
+        await message.answer("Пустой текст — отмена редактирования.")
+        await state.clear()
+        return
+    await state.clear()
+    await process_text(message, tg_user, new_text)
+
+
+@router.callback_query(F.data.startswith('del_msg:'))
+async def cb_del_msg(query: CallbackQuery, tg_user=None):
+    """🗑️ — delete the bot's message and mark DB message as deleted."""
+    if tg_user is None:
+        await query.answer()
+        return
+    msg_id = int(query.data.split(':')[1])
+
+    @sync_to_async
+    def _mark_deleted(m_id):
+        from aitext.models import Message as AiMsg
+        try:
+            AiMsg.objects.filter(id=m_id, chat__user=tg_user.user).update(
+                status=AiMsg.Status.FAILED,
+                error_message='[Удалено пользователем]',
+            )
+        except Exception:
+            pass
+
+    await _mark_deleted(msg_id)
+    try:
+        await query.message.delete()
+    except Exception:
+        await query.answer("Не удалось удалить сообщение.")
+    else:
+        await query.answer("Удалено.")
 
 
 @router.message(F.text & ~F.text.startswith('/'))

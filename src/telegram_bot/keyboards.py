@@ -28,7 +28,11 @@ def after_answer_kb(message_id: int, has_tts: bool = True) -> InlineKeyboardMark
     ]
     if has_tts:
         row1.append(InlineKeyboardButton(text='🔊', callback_data=f'tts:{message_id}'))
-    return InlineKeyboardMarkup(inline_keyboard=[row1])
+    row2 = [
+        InlineKeyboardButton(text='✏️', callback_data=f'edit_msg:{message_id}'),
+        InlineKeyboardButton(text='🗑️', callback_data=f'del_msg:{message_id}'),
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=[row1, row2])
 
 
 def models_kb(networks: list, current_id: int | None = None) -> InlineKeyboardMarkup:
