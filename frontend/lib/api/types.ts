@@ -269,6 +269,7 @@ export interface Project {
   system_prompt: string;
   color: string;
   icon: string;
+  status: "active" | "paused" | "done";
   chat_count: number;
   file_count: number;
   created_at: string;

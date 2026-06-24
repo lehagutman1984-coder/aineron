@@ -19,7 +19,7 @@ class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
         fields = [
-            'id', 'name', 'system_prompt', 'color', 'icon',
+            'id', 'name', 'system_prompt', 'color', 'icon', 'status',
             'chat_count', 'file_count', 'created_at',
             'is_public', 'public_slug', 'public_show_files', 'public_show_chats',
             'public_views', 'user_role',

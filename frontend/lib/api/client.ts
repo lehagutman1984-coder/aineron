@@ -583,7 +583,7 @@ export const createProject = (body: {
 
 export const updateProject = (
   id: number,
-  body: Partial<{ name: string; system_prompt: string; color: string; icon: string }>
+  body: Partial<{ name: string; system_prompt: string; color: string; icon: string; status: string }>
 ): Promise<Project> =>
   request<Project>(`/projects/${id}/`, { method: "PATCH", body: JSON.stringify(body) });
 

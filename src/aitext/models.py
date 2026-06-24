@@ -212,11 +212,17 @@ class NeuralNetworkDailyUsage(models.Model):
 
 class Project(models.Model):
     """Проект — папка для группировки чатов"""
+    STATUS_CHOICES = [
+        ('active', 'Активный'),
+        ('paused', 'Пауза'),
+        ('done', 'Завершён'),
+    ]
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='projects')
     name = models.CharField(max_length=100, verbose_name='Название')
     system_prompt = models.TextField(blank=True, verbose_name='Системный промт')
     color = models.CharField(max_length=7, default='#0a7cff', verbose_name='Цвет (hex)')
     icon = models.CharField(max_length=30, default='Folder', verbose_name='Иконка (Lucide)')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='active', verbose_name='Статус')
     created_at = models.DateTimeField(auto_now_add=True)
     is_public = models.BooleanField(default=False, verbose_name='Публичный')
     public_slug = models.CharField(max_length=22, blank=True, db_index=True, verbose_name='Публичный slug')
