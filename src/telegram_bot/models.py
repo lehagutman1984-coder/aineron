@@ -195,3 +195,44 @@ class TelegramGroup(models.Model):
     def __str__(self):
         return f'{self.group_title} ({self.group_id}) → {self.organization.name}'
 
+
+class TelegramGroupChat(models.Model):
+    """Per-user chat isolation inside a registered Telegram group.
+
+    Each unique (group, from_user_id, network) gets its own Chat so that
+    conversation history is never shared across participants.
+    """
+    group = models.ForeignKey(
+        TelegramGroup,
+        on_delete=models.CASCADE,
+        related_name='group_chats',
+        verbose_name='Telegram-группа',
+    )
+    from_user_id = models.BigIntegerField(verbose_name='Telegram ID участника')
+    network = models.ForeignKey(
+        'aitext.NeuralNetwork',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        verbose_name='Модель',
+    )
+    chat = models.ForeignKey(
+        'aitext.Chat',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='telegram_group_chats',
+        verbose_name='Чат',
+    )
+    is_active = models.BooleanField(default=True, verbose_name='Активен')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Чат группы (участник)'
+        verbose_name_plural = 'Чаты группы (участники)'
+        unique_together = [('group', 'from_user_id', 'network')]
+        indexes = [
+            models.Index(fields=['group', 'from_user_id'], name='tg_grpchat_user_idx'),
+        ]
+
+    def __str__(self):
+        return f'{self.group.group_title} / user {self.from_user_id}'
+

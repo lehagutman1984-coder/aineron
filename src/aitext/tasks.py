@@ -993,6 +993,21 @@ def generate_ai_response(self, message_id, web_search=False):
 
         logger.info(f"AI ответ сгенерирован для сообщения {message_id}, сохранено изображений: {len(saved_images)}")
 
+        # TEXT_BILLING_ENABLED: списание звёзд за текстовые сообщения (off by default)
+        if getattr(settings, 'TEXT_BILLING_ENABLED', False):
+            _skip = (message.settings or {}).get('skip_star_billing', False)
+            if not _skip:
+                _cost = network.cost_per_message
+                try:
+                    user.spend_pages(_cost)
+                    UserSpending.objects.create(
+                        user=user,
+                        amount=_cost,
+                        description=f"Сообщение в чате с {network.name}",
+                    )
+                except Exception as _bill_err:
+                    logger.warning(f"Text billing error for message {message_id}: {_bill_err}")
+
         # AI-коммиты из чата (Sprint 4.3)
         if getattr(settings, 'PROJECT_AI_COMMITS', False) and proj and plain_text:
             try:

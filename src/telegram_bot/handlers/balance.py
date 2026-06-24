@@ -18,11 +18,23 @@ _RBK_PACKS = [
 ]
 
 
+@sync_to_async
+def _get_week_spending(user):
+    from django.utils import timezone
+    from datetime import timedelta
+    from django.db.models import Sum
+    from users.models import UserSpending
+    week_ago = timezone.now() - timedelta(days=7)
+    result = UserSpending.objects.filter(user=user, created_at__gte=week_ago).aggregate(total=Sum('amount'))
+    return result['total'] or 0
+
+
 async def send_balance(message: Message, tg_user):
     network = tg_user.default_network
     cost = network.cost_per_message if network else 0
     name = network.name if network else 'не выбрана'
     estimate = stars_estimate(tg_user.user.pages_count, cost) if cost else '—'
+    week_total = await _get_week_spending(tg_user.user)
 
     text = (
         f"<b>Ваш баланс: {tg_user.user.pages_count} звёзд</b>\n\n"
@@ -30,6 +42,8 @@ async def send_balance(message: Message, tg_user):
     )
     if cost:
         text += f" ({cost} зв./сообщение)\nХватит примерно на: {estimate} сообщений"
+    if week_total:
+        text += f"\n\n<i>За 7 дней потрачено: {week_total} зв.</i>"
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text='Пополнить на сайте', url='https://aineron.ru/account/billing/')],

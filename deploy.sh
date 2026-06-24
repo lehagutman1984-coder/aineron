@@ -37,6 +37,9 @@ sleep 10
 echo -e "${YELLOW}Применяем миграции (если нужно)...${NC}"
 docker-compose exec -T web python manage.py migrate --noinput
 
+echo -e "${YELLOW}Устанавливаем Telegram webhook...${NC}"
+docker-compose exec -T web python manage.py setup_webhook || echo -e "${YELLOW}setup_webhook пропущен (нет токена или команды)${NC}"
+
 echo -e "${YELLOW}Собираем статические файлы...${NC}"
 docker-compose exec -T web python manage.py collectstatic --noinput
 

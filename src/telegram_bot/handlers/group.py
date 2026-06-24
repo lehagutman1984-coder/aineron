@@ -96,7 +96,7 @@ async def handle_group_message(message: Message, bot: Bot):
             )
             return
 
-        # Anonymous group member — try to find org owner's TelegramUser for chat routing
+        # Anonymous group member — route to per-user isolated chat
         if tg_user is None:
             text = message.text
             if bot_user.username:
@@ -104,26 +104,46 @@ async def handle_group_message(message: Message, bot: Bot):
             if not text:
                 return
 
-            def _get_owner_tg_user():
-                from telegram_bot.models import TelegramUser
+            def _get_or_create_group_chat(group_cfg, from_uid, net):
+                from telegram_bot.models import TelegramGroupChat, TelegramUser
+                from aitext.models import Chat
                 try:
-                    return TelegramUser.objects.select_related('user', 'default_network').get(
-                        user=group_config.organization.owner
+                    owner_tg = TelegramUser.objects.select_related('user', 'default_network').get(
+                        user=group_cfg.organization.owner
                     )
                 except TelegramUser.DoesNotExist:
-                    return None
+                    return None, None
 
-            owner_tg = await sync_to_async(_get_owner_tg_user, thread_sensitive=True)()
+                gc, _ = TelegramGroupChat.objects.get_or_create(
+                    group=group_cfg,
+                    from_user_id=from_uid,
+                    network=net,
+                    defaults={'is_active': True},
+                )
+                if gc.chat_id and Chat.objects.filter(id=gc.chat_id).exists():
+                    return owner_tg, gc.chat
+                chat = Chat.objects.create(
+                    user=owner_tg.user,
+                    network=net,
+                    title=f'Group {group_cfg.group_title[:30]} / user {from_uid}',
+                )
+                gc.chat = chat
+                gc.save(update_fields=['chat'])
+                return owner_tg, chat
+
+            owner_tg, group_chat = await sync_to_async(
+                _get_or_create_group_chat, thread_sensitive=True
+            )(group_config, message.from_user.id, network)
+
             if owner_tg is None:
                 await message.reply('Владелец организации ещё не зарегистрирован в боте.')
                 return
 
-            # Temporarily override system_prompt for group context
             original_prompt = owner_tg.system_prompt
             if group_config.system_prompt:
                 owner_tg.system_prompt = group_config.system_prompt
             from telegram_bot.handlers.chat import process_text as _pt
-            await _pt(message, owner_tg, text, skip_billing=True)
+            await _pt(message, owner_tg, text, skip_billing=True, chat_override=group_chat)
             owner_tg.system_prompt = original_prompt
             return
 
