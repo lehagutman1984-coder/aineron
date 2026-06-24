@@ -37,6 +37,38 @@
 | /poll FSM (опросы → AI-анализ) | ✅ | Sprint 7 |
 | /img2img FSM | ⚡ | нужна модель в каталоге |
 
+### Frontend (Next.js страницы)
+| Страница | Статус | Примечание |
+|---------|--------|-----------|
+| `/` (лендинг) | ✅ | SSG, JSON-LD, typewriter, FAQ, use-case tabs |
+| `/models/`, `/models/[slug]/` | ✅ | каталог с фильтрацией, деталь + JSON-LD + ChatStartForm |
+| `/chat/[chatId]/` | ✅ | React Query polling, sidebar, markdown, voice, attachments |
+| `/account/` (профиль, навигация) | ✅ | |
+| `/account/billing/` | ✅ | тарифные карточки, слайдер звёзд, промокод, история платежей |
+| `/account/keys/` | ✅ | API-ключи (список, создать, удалить) |
+| `/account/referral/` | ✅ | реферальная программа |
+| `/account/telegram/` | ✅ | привязка Telegram-аккаунта |
+| `/account/analytics/` | ✅ | аналитика пользователя |
+| `/account/files/` | ✅ | файлы пользователя |
+| `/account/memory/` | ✅ | Persistent Memory |
+| `/account/oauth-apps/` | ✅ | OAuth-приложения |
+| `/login/`, `/register/`, `/verify-email/` | ✅ | авторизация |
+| `/blog/`, `/blog/[slug]/` | ✅ | SEO, JSON-LD |
+| `/studio/`, `/studio/[id]/` и сабстраницы | ✅ | AI app-builder, 15+ компонентов |
+| `/projects/`, `/projects/[id]/`, `/projects/[id]/graph/` | ✅ | kanban, база знаний, граф знаний |
+| `/arena/`, `/compare/` | ✅ | Model Arena, Elo-рейтинг, сравнение 6 моделей |
+| `/personas/` | ✅ | AI Personas |
+| `/(dashboard)/organization/`, `/usage/` | ✅ | B2B org-панель, биллинг мест |
+| `/tg/` | ✅ | Telegram Mini App |
+| `/status/` | ✅ | страница статуса API |
+| `/prompts/` | ✅ | библиотека промтов |
+| `/api-docs/`, `/api-docs/playground/` | ✅ | документация API + playground |
+| `/ide/` | ✅ | IDE-интеграции |
+| `/welcome/`, `/s/[slug]/` | ✅ | |
+| `ArtifactPanel.tsx` (артефакты в чате) | ⚡ | code-complete; prod-тест Sprint 8 |
+| `CanvasEditor.tsx` (Canvas mode) | 🚫 | Sprint 8 |
+| Code Interpreter UI | 🚫 | Sprint 9 |
+
 ### Платформа (веб + Django)
 | Фича | Статус | Примечание |
 |------|--------|-----------|
