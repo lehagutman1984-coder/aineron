@@ -146,7 +146,7 @@ def _bg_start_telegram_bot(sbx: Sandbox):
     sbx.commands.run(_BOT_STARTUP_CMD, timeout=30)
 
 
-def _poll_until_up(session_id: str, public_url: str, timeout: int = 180):
+def _poll_until_up(session_id: str, public_url: str, timeout: int = 300):
     """Background thread: polls URL, updates state to RUNNING when app responds."""
     deadline = time.time() + timeout
     while time.time() < deadline:
