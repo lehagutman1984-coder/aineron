@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { RefreshCw, ExternalLink, CheckCircle, Download, Smartphone, Tablet, Monitor, Rocket, RotateCw, AlertTriangle, Wrench, Github, Loader2 } from 'lucide-react';
-import { studioApi } from '@/lib/api/studio';
+import { studioApi, SANDPACK_STACKS } from '@/lib/api/studio';
 import { btn, empty, text } from './styles';
+import { SandpackPreviewPanel } from './SandpackPreviewPanel';
 
 interface ConsoleError {
   message: string;
@@ -18,10 +19,12 @@ interface PreviewPanelProps {
   status?: string;
   githubUrl?: string;
   onRefresh?: () => void;
+  stack?: string;
 }
 
-export function PreviewPanel({ projectId, hasSandbox, status, githubUrl, onRefresh }: PreviewPanelProps) {
+export function PreviewPanel({ projectId, hasSandbox, status, githubUrl, onRefresh, stack }: PreviewPanelProps) {
   const [key, setKey] = useState(0);
+  const isSandpackStack = SANDPACK_STACKS.includes(stack as any);
   const [width, setWidth] = useState<'100%' | '768px' | '375px'>('100%');
   const [errors, setErrors] = useState<ConsoleError[]>([]);
   const [fixing, setFixing] = useState(false);
@@ -140,6 +143,46 @@ export function PreviewPanel({ projectId, hasSandbox, status, githubUrl, onRefre
 
   // Завершён и sandbox поднят (после перезапуска) — показываем iframe
   const showIframe = (status !== 'completed') || previewForced || (status === 'completed' && hasSandbox && previewForced);
+
+  // Sandpack стеки (react/vue/html/tma): превью в браузере, Docker не нужен
+  if (isSandpackStack) {
+    return (
+      <div className="flex flex-col h-full">
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--border)] shrink-0">
+          <button
+            onClick={() => setKey((k) => k + 1)}
+            title="Обновить"
+            className="hover:text-blue-500 transition-colors"
+          >
+            <RefreshCw size={16} />
+          </button>
+          <span className="text-xs text-[var(--text-secondary)] font-mono">sandpack</span>
+          <div className="ml-auto flex items-center gap-1">
+            {status === 'completed' && (
+              <>
+                <a href={studioApi.exportUrl(projectId)} download className={btn.ghostXs}>
+                  <Download size={14} /> ZIP
+                </a>
+                <button onClick={handleDeploy} disabled={deploying} className={btn.ghostXsDisabled}>
+                  {deploying ? <Loader2 size={14} className="animate-spin" /> : <Rocket size={14} />}
+                  {deploying ? 'Публикуем…' : 'Vercel'}
+                </button>
+                {!githubUrl && (
+                  <button onClick={handleGithubExport} disabled={exporting} className={btn.ghostXsDisabled}>
+                    {exporting ? <Loader2 size={14} className="animate-spin" /> : <Github size={14} />}
+                    {exporting ? 'Экспорт…' : 'GitHub'}
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+        <div className="flex-1 overflow-hidden">
+          <SandpackPreviewPanel projectId={projectId} stack={stack!} refreshKey={key} />
+        </div>
+      </div>
+    );
+  }
 
   if (status === 'completed' && !previewForced) {
     return (

@@ -1,19 +1,32 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { studioApi } from '@/lib/api/studio';
+import { studioApi, SANDPACK_STACKS } from '@/lib/api/studio';
 
 interface Props {
   projectId: string;
   projectStatus: string;
+  stack?: string;
 }
 
-export function SandboxStatusBadge({ projectId, projectStatus }: Props) {
+export function SandboxStatusBadge({ projectId, projectStatus, stack }: Props) {
+  const isSandpack = SANDPACK_STACKS.includes(stack as any);
+
   const { data } = useQuery({
     queryKey: ['studio-sandbox', projectId],
     queryFn: () => studioApi.sandbox(projectId),
     refetchInterval: 10000,
+    enabled: !isSandpack,
   });
+
+  if (isSandpack) {
+    return (
+      <span className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)] shrink-0" title="Sandpack — превью работает в браузере, сервер не нужен">
+        <span className="w-2 h-2 rounded-full bg-green-500" />
+        Sandpack — мгновенно
+      </span>
+    );
+  }
 
   let color = 'bg-[var(--text-secondary)]';
   let label = 'Среда не запущена';

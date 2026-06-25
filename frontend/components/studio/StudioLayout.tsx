@@ -269,7 +269,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
           <ArrowLeft size={16} /> Проекты
         </Link>
         <div className={layout.divider} />
-        <SandboxStatusBadge projectId={project.id} projectStatus={project.status} />
+        <SandboxStatusBadge projectId={project.id} projectStatus={project.status} stack={project.target_stack} />
         <div className={layout.divider} />
         <PipelineStatus
           projectStatus={project.status}
@@ -505,7 +505,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
             </Panel>
             <PanelResizeHandle className={layout.resizeHandle} />
             <Panel defaultSize={41} minSize={20} className="overflow-hidden flex flex-col">
-              <PreviewPanel projectId={project.id} hasSandbox={!!project.sandbox_container_id} status={project.status} githubUrl={project.github_repo_url || undefined} onRefresh={onRefresh} />
+              <PreviewPanel projectId={project.id} hasSandbox={!!project.sandbox_container_id} status={project.status} githubUrl={project.github_repo_url || undefined} onRefresh={onRefresh} stack={project.target_stack} />
             </Panel>
           </PanelGroup>
 
@@ -533,7 +533,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
               />
             )}
             {mobileTab === 'preview' && (
-              <PreviewPanel projectId={project.id} hasSandbox={!!project.sandbox_container_id} status={project.status} githubUrl={project.github_repo_url || undefined} onRefresh={onRefresh} />
+              <PreviewPanel projectId={project.id} hasSandbox={!!project.sandbox_container_id} status={project.status} githubUrl={project.github_repo_url || undefined} onRefresh={onRefresh} stack={project.target_stack} />
             )}
           </div>
 
