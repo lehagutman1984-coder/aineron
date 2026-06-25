@@ -123,6 +123,7 @@ services:
       args:
         NEXT_PUBLIC_API_URL: https://aineron.ru/api/v1
         NEXT_PUBLIC_SITE_URL: https://aineron.ru
+        NEXT_PUBLIC_E2B_PREVIEW: "1"
     container_name: neiro_frontend
     restart: unless-stopped
     environment:
