@@ -94,29 +94,27 @@ def _upload_files(sbx: Sandbox, code_files: dict[str, str]):
 # ── Stack-specific startup (all run in background via &) ─────────────────────
 
 def _bg_start_nextjs(sbx: Sandbox, port: int):
-    """npm install (or skip if node_modules present in template) + next dev."""
+    """npm install + next dev — fully detached via setsid so commands.run() returns immediately."""
     cmd = (
-        "bash -c '"
+        "setsid bash -c '"
         "mkdir -p /app && cd /app && "
         "npm install --legacy-peer-deps >> /tmp/preview.log 2>&1 && "
-        f"npm run dev -- -p {port} >> /tmp/preview.log 2>&1 "
-        "& echo started"
-        "'"
+        f"npm run dev -- -p {port} >> /tmp/preview.log 2>&1"
+        "' </dev/null >/dev/null 2>/dev/null &"
     )
-    sbx.commands.run(cmd, timeout=0)
+    sbx.commands.run(cmd, timeout=30)
 
 
 def _bg_start_python(sbx: Sandbox, port: int):
-    """pip install + python main.py (expects main.py at /app/)."""
+    """pip install + python main.py — fully detached via setsid."""
     cmd = (
-        "bash -c '"
+        "setsid bash -c '"
         "cd /app && "
         "[ -f requirements.txt ] && pip install -r requirements.txt -q >> /tmp/preview.log 2>&1; "
-        f"python main.py >> /tmp/preview.log 2>&1 "
-        "& echo started"
-        "'"
+        f"python main.py >> /tmp/preview.log 2>&1"
+        "' </dev/null >/dev/null 2>/dev/null &"
     )
-    sbx.commands.run(cmd, timeout=0)
+    sbx.commands.run(cmd, timeout=30)
 
 
 def _bg_start_django(sbx: Sandbox, port: int):
@@ -126,7 +124,7 @@ def _bg_start_django(sbx: Sandbox, port: int):
     Falls back to `python manage.py runserver 0.0.0.0:{port}` if uvicorn absent.
     """
     cmd = (
-        "bash -c '"
+        "setsid bash -c '"
         "cd /app && "
         "[ -f requirements.txt ] && pip install -r requirements.txt -q >> /tmp/preview.log 2>&1; "
         "python manage.py migrate --noinput >> /tmp/preview.log 2>&1; "
@@ -134,11 +132,10 @@ def _bg_start_django(sbx: Sandbox, port: int):
         f"  uvicorn config.asgi:application --host 0.0.0.0 --port {port} >> /tmp/preview.log 2>&1; "
         "else "
         f"  python manage.py runserver 0.0.0.0:{port} >> /tmp/preview.log 2>&1; "
-        "fi "
-        "& echo started"
-        "'"
+        "fi"
+        "' </dev/null >/dev/null 2>/dev/null &"
     )
-    sbx.commands.run(cmd, timeout=0)
+    sbx.commands.run(cmd, timeout=30)
 
 
 def _bg_start_telegram_bot(sbx: Sandbox):
@@ -146,7 +143,7 @@ def _bg_start_telegram_bot(sbx: Sandbox):
     Sprint 5: Tier 2 — run bot with delete_webhook wrapper before polling.
     Token arrives via envs= only, never written to any file.
     """
-    sbx.commands.run(_BOT_STARTUP_CMD, timeout=0)
+    sbx.commands.run(_BOT_STARTUP_CMD, timeout=30)
 
 
 def _poll_until_up(session_id: str, public_url: str, timeout: int = 180):
