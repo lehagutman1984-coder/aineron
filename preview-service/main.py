@@ -112,7 +112,13 @@ class StartRequest(BaseModel):
     code_files: dict[str, str]
     ttl: int = settings.DEFAULT_TTL
     env: dict[str, str] = {}
-    user_id: str = ""  # Sprint 6: for per-user rate limit
+    user_id: str = ""           # Sprint 6: for per-user rate limit
+    db_credentials_enc: str = ""  # Sprint 7: Fernet-encrypted DBCredentials JSON
+
+
+class LogsResponse(BaseModel):
+    session_id: str
+    lines: list[str]
 
 
 class StartResponse(BaseModel):
@@ -153,7 +159,7 @@ async def preview_start(req: StartRequest):
     try:
         session = await loop.run_in_executor(
             None,
-            partial(_runtime.start, req.project_id, req.code_files, stack, req.ttl, req.env or {}),
+            partial(_runtime.start, req.project_id, req.code_files, stack, req.ttl, req.env or {}, req.db_credentials_enc),
         )
     except RuntimeError as exc:
         if user_slot_acquired:
@@ -197,4 +203,13 @@ def preview_status(session_id: str):
         state=status.state.value,
         public_url=status.public_url,
         logs_tail=status.logs_tail,
+    )
+
+
+@app.get("/preview/{session_id}/logs", response_model=LogsResponse, dependencies=[Depends(verify_token)])
+def preview_logs(session_id: str, lines: int = 200):
+    """Sprint 7: tail /tmp/preview.log from the running E2B sandbox."""
+    return LogsResponse(
+        session_id=session_id,
+        lines=_runtime.get_logs(session_id, lines=min(lines, 500)),
     )

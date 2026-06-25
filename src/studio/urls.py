@@ -10,7 +10,7 @@ from .views.pipeline import (
     PipelinePauseView, PipelineResumeView, PipelineResetView, PreviewProxyView, ContextChatView,
     ApproveStepView, DeployView, SandboxStatusView, PreviewRestartView, ExplainView,
     ConsoleErrorView, PipelineSkipView,
-    E2BPreviewView, E2BPreviewStatusView,
+    E2BPreviewView, E2BPreviewStatusView, E2BPreviewLogsView,
     ProjectDatabaseView,
     BotEmulateView, E2BBotPreviewView,
     DbExportView,
@@ -61,6 +61,7 @@ urlpatterns = [
     path('projects/<uuid:id>/db/', ProjectDatabaseView.as_view(), name='project_db'),
     path('projects/<uuid:id>/e2b/', E2BPreviewView.as_view(), name='e2b_preview_start'),
     path('projects/<uuid:id>/e2b/<str:session_id>/', E2BPreviewStatusView.as_view(), name='e2b_preview_session'),
+    path('projects/<uuid:id>/e2b/<str:session_id>/logs/', E2BPreviewLogsView.as_view(), name='e2b_preview_logs'),
     # Sprint 5: Telegram Bot preview
     path('projects/<uuid:id>/db/export/', DbExportView.as_view(), name='db_export'),
     path('projects/<uuid:id>/bot-emulate/', BotEmulateView.as_view(), name='bot_emulate'),

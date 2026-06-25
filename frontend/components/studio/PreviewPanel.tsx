@@ -146,9 +146,6 @@ export function PreviewPanel({ projectId, hasSandbox, status, githubUrl, onRefre
     }
   };
 
-  // Завершён и sandbox поднят (после перезапуска) — показываем iframe
-  const showIframe = (status !== 'completed') || previewForced || (status === 'completed' && hasSandbox && previewForced);
-
   // E2B стеки (nextjs/python/django): превью через E2B Firecracker sandbox
   if (isE2BStack) {
     return (

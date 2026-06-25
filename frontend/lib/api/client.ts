@@ -52,7 +52,7 @@ import type {
   ProjectGraph,
 } from "./types";
 
-const BASE_URL =
+export const BASE_URL =
   (process.env.NEXT_PUBLIC_API_URL ?? "https://aineron.ru/api/v1").replace(/\/$/, "");
 
 export class APIError extends Error {

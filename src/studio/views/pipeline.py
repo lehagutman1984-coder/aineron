@@ -23,6 +23,67 @@ def _preview_headers():
     return {'X-Internal-Token': _PREVIEW_TOKEN, 'Content-Type': 'application/json'}
 
 
+def _build_db_credentials_enc(project) -> str:
+    """
+    Sprint 7: derive Fernet-encrypted DBCredentials JSON for the preview db-proxy.
+    Returns '' when no usable DB binding exists (db-proxy then 404s cleanly).
+
+    Priority:
+    1. credentials_enc already set (provisioned) — return as-is.
+    2. aineron mode + aineron_schema set — use admin env creds (schema-restricted).
+    3. external mode + conn_enc set — decrypt DSN, re-encode as DBCredentials JSON.
+    4. neon — deferred (requires Neon provisioning API, returns '').
+    """
+    import json
+    from urllib.parse import urlparse
+
+    db = ProjectDatabase.objects.filter(project=project).first()
+    if not db or db.mode in ('none', 'neon'):
+        return ''
+
+    # Already fully provisioned — the stored creds are ready
+    if db.credentials_enc:
+        return db.credentials_enc
+
+    try:
+        from aitext.crypto import encrypt_token, decrypt_token
+
+        if db.mode == 'aineron':
+            schema = db.aineron_schema
+            if not schema:
+                return ''
+            creds = {
+                'host': _os.getenv('AINERON_DB_HOST', 'localhost'),
+                'port': int(_os.getenv('AINERON_DB_PORT', '5432')),
+                'dbname': _os.getenv('AINERON_DB_NAME', 'aineron'),
+                'user': _os.getenv('AINERON_DB_USER', 'aineron'),
+                'password': _os.getenv('AINERON_DB_PASSWORD', ''),
+                'schema': schema,
+                'provider': 'aineron',
+            }
+            return encrypt_token(json.dumps(creds))
+
+        elif db.mode == 'external':
+            if not db.external_conn_enc:
+                return ''
+            dsn = decrypt_token(db.external_conn_enc)
+            u = urlparse(dsn)
+            creds = {
+                'host': u.hostname or 'localhost',
+                'port': u.port or 5432,
+                'dbname': (u.path or '/').lstrip('/') or 'postgres',
+                'user': u.username or '',
+                'password': u.password or '',
+                'schema': None,
+                'provider': 'external',
+            }
+            return encrypt_token(json.dumps(creds))
+
+    except Exception:
+        pass
+    return ''
+
+
 class EventStreamRenderer(BaseRenderer):
     """Allow DRF to accept Accept: text/event-stream without returning 406."""
     media_type = 'text/event-stream'
@@ -36,7 +97,7 @@ class EstimateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, id):
-        project = StudioProject.objects.get(id=id, user=request.user)
+        project = get_object_or_404(StudioProject, id=id, user=request.user)
         planned = project.interview_data.get('planned_steps')
         if not planned:
             from ..tasks import _split_steps
@@ -54,7 +115,7 @@ class PipelineStateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, id):
-        project = StudioProject.objects.get(id=id, user=request.user)
+        project = get_object_or_404(StudioProject, id=id, user=request.user)
         return Response(PipelineStateSerializer(project.pipeline).data)
 
 
@@ -67,7 +128,7 @@ class PipelineRunView(APIView):
             id=id, user=request.user, status__in=['ready', 'paused']
         ).update(status='coding')
         if not triggered:
-            project = StudioProject.objects.get(id=id, user=request.user)
+            project = get_object_or_404(StudioProject, id=id, user=request.user)
             return Response({'status': project.status}, status=200)
         from ..tasks import run_pipeline
         run_pipeline.delay(str(id))
@@ -97,7 +158,7 @@ class PipelinePauseView(APIView):
 
     def post(self, request, id):
         from celery import current_app
-        project = StudioProject.objects.get(id=id, user=request.user)
+        project = get_object_or_404(StudioProject, id=id, user=request.user)
         state = project.pipeline
         state.status = 'paused_manual'
         state.pause_requested = True
@@ -118,7 +179,7 @@ class PipelineResetView(APIView):
         from celery import current_app
         from ..tasks import _timeout_pipeline, release_reserve
         from .. import sandbox as _sandbox
-        project = StudioProject.objects.get(id=id, user=request.user)
+        project = get_object_or_404(StudioProject, id=id, user=request.user)
         state = project.pipeline
         if state.current_task_id:
             try:
@@ -148,7 +209,7 @@ class PipelineResumeView(APIView):
 
     def post(self, request, id):
         from ..billing import estimate_stars, can_afford
-        project = StudioProject.objects.get(id=id, user=request.user)
+        project = get_object_or_404(StudioProject, id=id, user=request.user)
         state = project.pipeline
         action = request.data.get('action', 'continue')
         from ..tasks import coder_iteration, next_step
@@ -182,7 +243,7 @@ class ApproveStepView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, id):
-        project = StudioProject.objects.get(id=id, user=request.user)
+        project = get_object_or_404(StudioProject, id=id, user=request.user)
         state = project.pipeline
         state.status = 'running'
         state.pause_requested = False
@@ -198,7 +259,7 @@ class ContextChatView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, id):
-        project = StudioProject.objects.get(id=id, user=request.user)
+        project = get_object_or_404(StudioProject, id=id, user=request.user)
         from ..agents.assistant import AssistantAgent
         from ..billing import can_afford, charge
         cost = 1
@@ -218,7 +279,7 @@ class DeployView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, id):
-        project = StudioProject.objects.get(id=id, user=request.user)
+        project = get_object_or_404(StudioProject, id=id, user=request.user)
         from ..tasks import deploy_to_vercel, deploy_to_timeweb, deploy_to_selectel
         target = request.data.get('target', getattr(project, 'deploy_target', 'vercel') or 'vercel')
         task = {
@@ -234,7 +295,7 @@ class PreviewRestartView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, id):
-        project = StudioProject.objects.get(id=id, user=request.user)
+        project = get_object_or_404(StudioProject, id=id, user=request.user)
         from ..tasks import restart_preview
         restart_preview.delay(str(project.id))
         return Response({'status': 'restarting'}, status=202)
@@ -292,7 +353,7 @@ class PipelineSkipView(APIView):
 
     def post(self, request, id):
         from ..events import publish_event
-        project = StudioProject.objects.get(id=id, user=request.user)
+        project = get_object_or_404(StudioProject, id=id, user=request.user)
         state = project.pipeline
         state.status = 'running'
         state.pause_requested = False
@@ -319,7 +380,7 @@ class ConsoleErrorView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, id):
-        project = StudioProject.objects.get(id=id, user=request.user)
+        project = get_object_or_404(StudioProject, id=id, user=request.user)
         err = {
             'message': request.data.get('message', '')[:1000],
             'stack': request.data.get('stack', '')[:2000],
@@ -380,7 +441,7 @@ class ExplainView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, id):
-        project = StudioProject.objects.get(id=id, user=request.user)
+        project = get_object_or_404(StudioProject, id=id, user=request.user)
         from ..billing import can_afford, charge
         cost = 1
         if not can_afford(request.user, cost):
@@ -409,7 +470,7 @@ class ProjectDatabaseView(APIView):
     _VALID_MODES = {'aineron', 'neon', 'external'}
 
     def get(self, request, id):
-        project = StudioProject.objects.get(id=id, user=request.user)
+        project = get_object_or_404(StudioProject, id=id, user=request.user)
         db = ProjectDatabase.objects.filter(project=project).first()
         if not db:
             return Response({
@@ -431,7 +492,7 @@ class ProjectDatabaseView(APIView):
 
     def post(self, request, id):
         from aitext.crypto import encrypt_token
-        project = StudioProject.objects.get(id=id, user=request.user)
+        project = get_object_or_404(StudioProject, id=id, user=request.user)
         mode = request.data.get('mode', '')
         if mode not in self._VALID_MODES:
             return Response({'error': 'Недопустимый режим базы данных'}, status=400)
@@ -460,15 +521,69 @@ class ProjectDatabaseView(APIView):
                     return Response({'error': 'DSN должен начинаться с postgresql://'}, status=400)
                 db.external_conn_enc = encrypt_token(external_conn)
             db.neon_api_key_enc = ''
-        else:  # aineron — no user secrets
+        else:  # aineron — provision schema + scoped PG role
+            import secrets as _secrets
+            import psycopg2 as _pg2
+            from psycopg2 import sql as _sql
+            from aitext.crypto import encrypt_token as _enc
+            import json as _json
+
             db.neon_api_key_enc = ''
             db.external_conn_enc = ''
+
+            # Deterministic schema and role names (full UUID, 35 chars)
+            _uuid_bare = str(project.id).replace('-', '')
+            schema_name = f'proj_{_uuid_bare}'
+            role_name = f'sp_{_uuid_bare}'
+            password = _secrets.token_urlsafe(32)
+
+            _db_host = _os.getenv('AINERON_DB_HOST', '')
+            if _db_host:
+                try:
+                    _conn = _pg2.connect(
+                        host=_db_host,
+                        port=int(_os.getenv('AINERON_DB_PORT', '5432')),
+                        dbname=_os.getenv('AINERON_DB_NAME', 'aineron'),
+                        user=_os.getenv('AINERON_DB_USER', 'aineron'),
+                        password=_os.getenv('AINERON_DB_PASSWORD', ''),
+                        connect_timeout=5,
+                    )
+                    _conn.autocommit = True
+                    try:
+                        with _conn.cursor() as _cur:
+                            _cur.execute(_sql.SQL('CREATE SCHEMA IF NOT EXISTS {}').format(_sql.Identifier(schema_name)))
+                            _cur.execute('SELECT 1 FROM pg_roles WHERE rolname = %s', (role_name,))
+                            _role_exists = _cur.fetchone() is not None
+                            if _role_exists:
+                                _cur.execute(_sql.SQL('ALTER ROLE {} WITH LOGIN PASSWORD %s').format(_sql.Identifier(role_name)), (password,))
+                            else:
+                                _cur.execute(_sql.SQL('CREATE ROLE {} WITH LOGIN PASSWORD %s').format(_sql.Identifier(role_name)), (password,))
+                            _cur.execute(_sql.SQL('ALTER SCHEMA {} OWNER TO {}').format(_sql.Identifier(schema_name), _sql.Identifier(role_name)))
+                            _cur.execute(_sql.SQL('GRANT USAGE, CREATE ON SCHEMA {} TO {}').format(_sql.Identifier(schema_name), _sql.Identifier(role_name)))
+                            _cur.execute(_sql.SQL('ALTER ROLE {} SET search_path TO {}').format(_sql.Identifier(role_name), _sql.Identifier(schema_name)))
+                    finally:
+                        _conn.close()
+                    _creds = {
+                        'host': _db_host,
+                        'port': int(_os.getenv('AINERON_DB_PORT', '5432')),
+                        'dbname': _os.getenv('AINERON_DB_NAME', 'aineron'),
+                        'user': role_name,
+                        'password': password,
+                        'schema': schema_name,
+                        'provider': 'aineron',
+                    }
+                    db.credentials_enc = _enc(_json.dumps(_creds))
+                    db.provisioned = True
+                except Exception as exc:
+                    return Response({'error': f'Ошибка создания схемы: {exc}'}, status=503)
+            # else: dev mode without PG — still set schema name for manual setup
+            db.aineron_schema = schema_name
 
         db.save()
         return Response({'ok': True, 'mode': mode})
 
     def delete(self, request, id):
-        project = StudioProject.objects.get(id=id, user=request.user)
+        project = get_object_or_404(StudioProject, id=id, user=request.user)
         db = ProjectDatabase.objects.filter(project=project).first()
         if db:
             db.mode = 'none'
@@ -588,6 +703,8 @@ class E2BPreviewView(APIView):
         files = project.files.all().values('path', 'content')
         code_files = {f['path']: f['content'] for f in files}
 
+        db_credentials_enc = _build_db_credentials_enc(project)
+
         try:
             resp = _rq.post(
                 f'{_PREVIEW_SVC}/preview/start',
@@ -598,6 +715,7 @@ class E2BPreviewView(APIView):
                     'ttl': 900,
                     'env': {},
                     'user_id': str(request.user.id),
+                    'db_credentials_enc': db_credentials_enc,
                 },
                 headers=_preview_headers(),
                 timeout=30,
@@ -616,7 +734,7 @@ class E2BPreviewView(APIView):
         return Response(resp.json())
 
     def delete(self, request, id, session_id):
-        StudioProject.objects.get(id=id, user=request.user)  # auth check
+        get_object_or_404(StudioProject, id=id, user=request.user)  # auth check
         try:
             _rq.delete(
                 f'{_PREVIEW_SVC}/preview/{session_id}',
@@ -633,7 +751,7 @@ class E2BPreviewStatusView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, id, session_id):
-        StudioProject.objects.get(id=id, user=request.user)  # auth check
+        get_object_or_404(StudioProject, id=id, user=request.user)  # auth check
         try:
             resp = _rq.get(
                 f'{_PREVIEW_SVC}/preview/{session_id}/status',
@@ -647,7 +765,7 @@ class E2BPreviewStatusView(APIView):
         return Response(resp.json())
 
     def delete(self, request, id, session_id):
-        StudioProject.objects.get(id=id, user=request.user)  # auth check
+        get_object_or_404(StudioProject, id=id, user=request.user)  # auth check
         try:
             _rq.delete(
                 f'{_PREVIEW_SVC}/preview/{session_id}',
@@ -657,6 +775,26 @@ class E2BPreviewStatusView(APIView):
         except Exception:
             pass
         return Response({'ok': True})
+
+
+class E2BPreviewLogsView(APIView):
+    """Sprint 7: tail /tmp/preview.log from a running E2B sandbox."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, id, session_id):
+        get_object_or_404(StudioProject, id=id, user=request.user)
+        try:
+            resp = _rq.get(
+                f'{_PREVIEW_SVC}/preview/{session_id}/logs',
+                headers=_preview_headers(),
+                params={'lines': 200},
+                timeout=10,
+            )
+        except _rq.exceptions.RequestException:
+            return Response({'lines': []})
+        if not resp.ok:
+            return Response({'lines': []})
+        return Response(resp.json())
 
 
 class BotEmulateView(APIView):
@@ -797,7 +935,7 @@ class PreviewProxyView(APIView):
 
     def get(self, request, id, path=''):
         import os
-        project = StudioProject.objects.get(id=id, user=request.user)
+        project = get_object_or_404(StudioProject, id=id, user=request.user)
 
         # 1. If sandbox is running, proxy to it
         if project.sandbox_container_id:

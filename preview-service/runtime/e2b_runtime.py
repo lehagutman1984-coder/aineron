@@ -240,6 +240,22 @@ class E2BRuntime(Runtime):
                 logger.warning("E2B network= not supported in this SDK version: %s", exc)
         return Sandbox.create(**kwargs)
 
+    def get_logs(self, session_id: str, lines: int = 200) -> list[str]:
+        """Read last N lines of /tmp/preview.log from the running sandbox."""
+        sess = _get_sess(session_id)
+        if not sess:
+            return []
+        sandbox_id = sess.get("internal_sandbox_id")
+        if not sandbox_id:
+            return []
+        try:
+            sbx = Sandbox.connect(sandbox_id, api_key=settings.E2B_API_KEY)
+            raw = sbx.files.read("/tmp/preview.log")
+            all_lines = (raw or "").splitlines()
+            return all_lines[-lines:]
+        except Exception:
+            return []
+
     def start(
         self,
         project_id: str,
@@ -247,6 +263,7 @@ class E2BRuntime(Runtime):
         stack: Stack,
         ttl: int = settings.DEFAULT_TTL,
         env: dict[str, str] | None = None,
+        db_credentials_enc: str = "",
     ) -> PreviewSession:
         # Slot semaphore
         slots = int(_r.incr(SLOTS_KEY))
@@ -318,6 +335,8 @@ class E2BRuntime(Runtime):
                 "state": SessionState.STARTING.value,
                 "logs": [],
                 "stack": stack.value,
+                # Sprint 7: Fernet-encrypted DBCredentials JSON (empty = no DB binding)
+                "db_credentials_enc": db_credentials_enc,
                 # Store sha256 so stop() can release bot lock without needing the token
                 "bot_sha": bot_sha,
             }, ttl)

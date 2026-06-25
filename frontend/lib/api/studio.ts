@@ -1,4 +1,4 @@
-import { request } from './client';
+import { request, BASE_URL } from './client';
 
 export type StudioMode = 'auto' | 'semi' | 'manual';
 export type EntryMode = 'description' | 'clone_url';
@@ -286,7 +286,7 @@ export const studioApi = {
   uploadScreenshot: (id: string, file: File): Promise<{ description: string }> => {
     const fd = new FormData();
     fd.append('image', file);
-    return fetch(`${process.env.NEXT_PUBLIC_API_URL}/studio/projects/${id}/screenshot/`, {
+    return fetch(`${BASE_URL}/studio/projects/${id}/screenshot/`, {
       method: 'POST',
       body: fd,
       credentials: 'include',
@@ -315,7 +315,7 @@ export const studioApi = {
     request<{ id: string }>(`/studio/projects/${id}/branch/${versionId}/`, { method: 'POST' }),
 
   exportUrl: (id: string) =>
-    `${process.env.NEXT_PUBLIC_API_URL}/studio/projects/${id}/export/`,
+    `${BASE_URL}/studio/projects/${id}/export/`,
 
   templates: () =>
     request<StudioTemplate[]>('/studio/templates/'),
@@ -371,6 +371,11 @@ export const studioApi = {
       { method: 'DELETE' },
     ),
 
+  e2bPreviewLogs: (projectId: string, sessionId: string) =>
+    request<{ session_id: string; lines: string[] }>(
+      `/studio/projects/${projectId}/e2b/${sessionId}/logs/`,
+    ),
+
   // ── Database Providers (Sprint 3) ───────────────────────────────────────────
 
   dbGet: (id: string) =>
@@ -392,5 +397,5 @@ export const studioApi = {
 
   // Sprint 6: pg_dump export (aineron mode only)
   dbExportUrl: (id: string) =>
-    `${process.env.NEXT_PUBLIC_API_URL}/studio/projects/${id}/db/export/`,
+    `${BASE_URL}/studio/projects/${id}/db/export/`,
 };

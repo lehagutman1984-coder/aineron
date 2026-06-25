@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ExternalLink, Loader2, RefreshCw, XCircle } from 'lucide-react';
+import { ExternalLink, Loader2, RefreshCw, Terminal, XCircle } from 'lucide-react';
 import { studioApi } from '@/lib/api/studio';
 
 type E2BState = 'idle' | 'starting' | 'running' | 'failed' | 'expired';
@@ -15,8 +15,12 @@ export function E2BPreview({ projectId, refreshKey }: Props) {
   const [state, setState] = useState<E2BState>('idle');
   const [publicUrl, setPublicUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showLogs, setShowLogs] = useState(false);
+  const [logs, setLogs] = useState<string[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
   const sessionRef = useRef<string | null>(null);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const logsEndRef = useRef<HTMLDivElement | null>(null);
 
   const clearPoll = () => {
     if (pollTimerRef.current) {
@@ -31,6 +35,24 @@ export function E2BPreview({ projectId, refreshKey }: Props) {
     } catch { /* best-effort */ }
   };
 
+  const fetchLogs = async () => {
+    if (!sessionRef.current) return;
+    setLogsLoading(true);
+    try {
+      const data = await studioApi.e2bPreviewLogs(projectId, sessionRef.current);
+      setLogs(data.lines ?? []);
+      setTimeout(() => logsEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+    } catch { /* ignore */ } finally {
+      setLogsLoading(false);
+    }
+  };
+
+  const toggleLogs = () => {
+    const next = !showLogs;
+    setShowLogs(next);
+    if (next) fetchLogs();
+  };
+
   const startPreview = async () => {
     clearPoll();
     if (sessionRef.current) {
@@ -41,6 +63,8 @@ export function E2BPreview({ projectId, refreshKey }: Props) {
     setState('starting');
     setError(null);
     setPublicUrl(null);
+    setLogs([]);
+    setShowLogs(false);
 
     try {
       const resp = await studioApi.e2bPreviewStart(projectId);
@@ -142,10 +166,40 @@ export function E2BPreview({ projectId, refreshKey }: Props) {
             <ExternalLink size={16} />
           </a>
         )}
-        <span className="text-xs text-[var(--text-secondary)] font-mono truncate">
+        <span className="text-xs text-[var(--text-secondary)] font-mono truncate flex-1">
           e2b {publicUrl ? `· ${new URL(publicUrl).hostname}` : ''}
         </span>
+        <button
+          onClick={toggleLogs}
+          title={showLogs ? 'Скрыть логи' : 'Показать логи'}
+          className={`transition-colors ${showLogs ? 'text-blue-400' : 'hover:text-blue-500'}`}
+        >
+          <Terminal size={16} />
+        </button>
       </div>
+
+      {showLogs && (
+        <div className="border-b border-[var(--border)] bg-[#0d1117] overflow-y-auto shrink-0" style={{ maxHeight: '40%' }}>
+          <div className="flex items-center justify-between px-3 py-1.5 border-b border-[var(--border)]">
+            <span className="text-xs text-[var(--text-secondary)]">Логи sandbox (/tmp/preview.log)</span>
+            <button
+              onClick={fetchLogs}
+              className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+              disabled={logsLoading}
+            >
+              {logsLoading ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />}
+              Обновить
+            </button>
+          </div>
+          <pre className="text-[11px] font-mono text-green-300 p-3 whitespace-pre-wrap break-all leading-relaxed">
+            {logs.length === 0
+              ? (logsLoading ? 'Загрузка…' : 'Логи недоступны или файл пуст')
+              : logs.join('\n')}
+          </pre>
+          <div ref={logsEndRef} />
+        </div>
+      )}
+
       {publicUrl && (
         <div className="flex-1 overflow-hidden">
           <iframe
