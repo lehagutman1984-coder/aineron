@@ -1,11 +1,14 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2, RefreshCw, SkipForward } from 'lucide-react';
 import { studioApi } from '@/lib/api/studio';
 import { InterviewCards } from '@/components/studio/InterviewCards';
 import { empty } from '@/components/studio/styles';
+
+const INTERVIEW_STATUSES = ['draft', 'interview'];
 
 export default function InterviewPage() {
   const { id } = useParams<{ id: string }>();
@@ -18,11 +21,19 @@ export default function InterviewPage() {
     refetchInterval: (query) => {
       const d = query.state.data;
       if (!d) return 3000;
+      if (!INTERVIEW_STATUSES.includes(d.status ?? '')) return false;
       if ((d.questions?.length ?? 0) > 0) return false;
       if (d.interview_error) return false;
       return 3000;
     },
   });
+
+  // If backend already skipped interview, redirect immediately
+  useEffect(() => {
+    if (data?.status && !INTERVIEW_STATUSES.includes(data.status)) {
+      router.push(`/studio/${id}/review`);
+    }
+  }, [data?.status, id, router]);
 
   const submitMutation = useMutation({
     mutationFn: (answers: { id: string; answer: string }[]) =>

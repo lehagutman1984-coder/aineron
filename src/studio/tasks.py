@@ -164,14 +164,15 @@ DEP_VERSIONS = {
 }
 
 
-def _dependency_gate(project, project_id, step_index, files):
+def _dependency_gate(project, project_id, step_index, files, existing=None):
     """
     Детерминированно сверяет импорты с package.json. Недостающие пакеты с известной
     версией добавляются автоматически; остальные логируются (Guardian/build их поймает).
     """
     import json as _json
     from .validators import validate_dependencies
-    all_files = {f.path: f.content for f in project.files.all()}
+    all_files = existing if existing is not None else {f.path: f.content for f in project.files.all()}
+    all_files = dict(all_files)
     all_files.update(files)
     result = validate_dependencies(all_files)
     if result.get('ok'):
@@ -205,7 +206,7 @@ def _dependency_gate(project, project_id, step_index, files):
     return files
 
 
-def _try_apply_edits(project, project_id, step_index, edits):
+def _try_apply_edits(project, project_id, step_index, edits, existing=None):
     """
     Применяет EDIT blocks к файлам проекта. Возвращает True, если удалось
     применить хотя бы часть патчей и шаг отправлен в guardian; False — если
@@ -213,7 +214,7 @@ def _try_apply_edits(project, project_id, step_index, edits):
     """
     from .agents.edits import apply_edits, edits_too_large
     from .validators import is_structurally_complete
-    files = {f.path: f.content for f in project.files.all()}
+    files = existing if existing is not None else {f.path: f.content for f in project.files.all()}
     big = edits_too_large(files, edits, threshold=0.4)
     edits_small = [e for e in edits if e['path'] not in big]
     if not edits_small:
@@ -282,7 +283,7 @@ def agent_analyze(self, project_id):
     """Architect agent: creates PROJECT.md + COMMITS.md in one call (replaces analyst+planner)."""
     import logging
     log = logging.getLogger('studio.tasks')
-    project = StudioProject.objects.get(id=project_id)
+    project = StudioProject.objects.select_related('pipeline').get(id=project_id)
     if project.status not in ('planning', 'interview'):
         log.info('agent_analyze: project %s status=%s — skipping', project_id, project.status)
         return
@@ -348,7 +349,7 @@ def agent_plan(self, project_id):
 
 @shared_task(queue=QUEUE)
 def run_pipeline(project_id):
-    project = StudioProject.objects.get(id=project_id)
+    project = StudioProject.objects.select_related('pipeline').get(id=project_id)
     if project.status not in ('coding', 'ready', 'paused'):
         return
     if not can_afford(project.user, _agent_cost('coder')):
@@ -518,7 +519,7 @@ def _ensure_sandbox(project, project_id):
 
 @shared_task(bind=True, max_retries=3, queue=QUEUE)
 def coder_iteration(self, project_id, step_index):
-    project = StudioProject.objects.get(id=project_id)
+    project = StudioProject.objects.select_related('pipeline').get(id=project_id)
     state = project.pipeline
     if state.pause_requested or state.status in ('paused_manual', 'paused_on_loop'):
         publish_event(project_id, {'agent': 'system', 'level': 'warning', 'text': 'Пайплайн на паузе — шаг не запущен'})
@@ -537,7 +538,7 @@ def coder_iteration(self, project_id, step_index):
             fp = project.pipeline.fix_plan
             # === V3: попытка применить EDIT blocks без перегенерации ===
             if settings.STUDIO_V3 and fp.get('edits'):
-                applied = _try_apply_edits(project, project_id, step_index, fp['edits'])
+                applied = _try_apply_edits(project, project_id, step_index, fp['edits'], existing=existing)
                 if applied:
                     return  # патчи применены, шаг отправлен в guardian внутри _try_apply_edits
                 # EDIT blocks не применились (SEARCH не совпал) — регенерируем только
@@ -561,7 +562,7 @@ def coder_iteration(self, project_id, step_index):
         # ===== V3: детерминированные gate перед guardian =====
         if settings.STUDIO_V3 and files:
             files = _structure_gate(project, project_id, step_index, step_text, existing, files, agent, model_tier=coder_tier)
-            files = _dependency_gate(project, project_id, step_index, files)
+            files = _dependency_gate(project, project_id, step_index, files, existing=existing)
             _record_metric(project, step_index, files_generated=len(files))
         # =====================================================
 
@@ -936,7 +937,7 @@ def commit_to_gitea(project_id, step_index):
 
 @shared_task(queue=QUEUE)
 def next_step(project_id, step_index):
-    project = StudioProject.objects.get(id=project_id)
+    project = StudioProject.objects.select_related('pipeline').get(id=project_id)
     state = project.pipeline
     if state.pause_requested or state.status == 'failed':
         publish_event(project_id, {'agent': 'system', 'level': 'warning', 'text': 'Пайплайн остановлен — следующий шаг не запущен'})

@@ -140,7 +140,8 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId, refreshKey]);
+  // refreshKey intentionally excluded: sandbox must NOT restart on every coding step
+  }, [projectId]);
 
   if (state === 'idle' || state === 'starting') {
     return (
@@ -150,7 +151,7 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
           <p className="text-sm font-medium text-[var(--text)]">
             {state === 'starting' ? 'Запускаю E2B sandbox…' : 'Инициализация…'}
           </p>
-          <p className="text-xs text-[var(--text-secondary)] mt-1">npm install + next dev — 30–60 с</p>
+          <p className="text-xs text-[var(--text-secondary)] mt-1">npm install + next dev — 1–5 мин (первый запуск)</p>
         </div>
       </div>
     );

@@ -62,17 +62,15 @@ class InterviewView(APIView):
         project = StudioProject.objects.get(id=id, user=request.user)
 
         if triggered:
+            # Interview disabled: skip straight to planning with empty answers
             project.interview_data.pop('interview_error', None)
-            project.save(update_fields=['interview_data'])
-            from ..tasks import agent_interview
-            agent_interview.delay(str(project.id))
+            project.interview_data['answers'] = []
+            project.status = 'planning'
+            project.save(update_fields=['interview_data', 'status'])
+            from ..tasks import agent_analyze
+            agent_analyze.delay(str(project.id))
 
-        questions = project.interview_data.get('questions') or []
-        interview_error = project.interview_data.get('interview_error')
-        resp = {'questions': questions, 'status': project.status}
-        if interview_error:
-            resp['interview_error'] = interview_error
-        return Response(resp)
+        return Response({'questions': [], 'status': project.status})
 
     def post(self, request, id):
         project = StudioProject.objects.get(id=id, user=request.user)
