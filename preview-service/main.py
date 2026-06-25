@@ -179,6 +179,7 @@ async def preview_start(req: StartRequest):
     except Exception as exc:
         if user_slot_acquired:
             _dec_user_sessions(req.user_id)
+        logger.exception("preview_start failed (project=%s stack=%s): %s", req.project_id, req.stack, exc)
         raise HTTPException(status_code=500, detail=f"E2B error: {exc}")
 
     # Record startup latency

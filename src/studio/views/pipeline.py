@@ -727,7 +727,7 @@ class E2BPreviewView(APIView):
                     'db_credentials_enc': db_credentials_enc,
                 },
                 headers=_preview_headers(),
-                timeout=30,
+                timeout=90,
             )
         except _rq.exceptions.RequestException:
             release_reserve(project)
