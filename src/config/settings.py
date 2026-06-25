@@ -327,7 +327,19 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'aitext.tasks.poll_connectors',
         'schedule': crontab(minute='*/10'),
     },
+    # Sprint 8: settle billing for expired/abandoned E2B preview sessions
+    'reconcile-preview-billing': {
+        'task': 'studio.tasks.reconcile_preview_billing',
+        'schedule': crontab(minute='*/5'),
+        'options': {'queue': 'studio_queue'},
+    },
 }
+
+# Sprint 8: E2B preview billing rate (stars per minute of sandbox time)
+# $0.0022/min × markup. Adjust via E2B_PREVIEW_STARS_PER_MIN env var once you know the star-per-ruble rate.
+E2B_PREVIEW_STARS_PER_MIN = int(os.environ.get('E2B_PREVIEW_STARS_PER_MIN', '1'))
+PREVIEW_SERVICE_URL = os.environ.get('PREVIEW_SERVICE_URL', 'http://preview_service:8001')
+PREVIEW_INTERNAL_TOKEN = os.environ.get('PREVIEW_INTERNAL_TOKEN', '')
 
 
 # ========== API КЛЮЧИ ==========

@@ -355,7 +355,15 @@ export const studioApi = {
   // ── E2B Live Preview (Sprint 2) ─────────────────────────────────────────────
 
   e2bPreviewStart: (projectId: string) =>
-    request<{ session_id: string; public_url: string; state: string; expires_at: number }>(
+    request<{
+      session_id: string;
+      public_url: string;
+      state: string;
+      expires_at: number;
+      started_at: number;
+      reserved_stars: number;
+      stars_per_min: number;
+    }>(
       `/studio/projects/${projectId}/e2b/`,
       { method: 'POST' },
     ),
@@ -366,7 +374,7 @@ export const studioApi = {
     ),
 
   e2bPreviewStop: (projectId: string, sessionId: string) =>
-    request<{ ok: boolean }>(
+    request<{ ok: boolean; duration_seconds?: number }>(
       `/studio/projects/${projectId}/e2b/${sessionId}/`,
       { method: 'DELETE' },
     ),

@@ -125,7 +125,14 @@ class StartResponse(BaseModel):
     session_id: str
     public_url: str
     expires_at: float
+    started_at: float = 0.0
     state: str = "starting"
+
+
+class StopResponse(BaseModel):
+    ok: bool
+    duration_seconds: float = 0.0
+    started_at: float = 0.0
 
 
 class StatusResponse(BaseModel):
@@ -178,21 +185,31 @@ async def preview_start(req: StartRequest):
     elapsed = time.perf_counter() - t0
     _record_latency(elapsed)
 
+    # Retrieve started_at from Redis session (written by E2BRuntime.start)
+    _sess_raw = _r.get(f"preview:sess:{session.session_id}")
+    _sess_data = json.loads(_sess_raw) if _sess_raw else {}
     return StartResponse(
         session_id=session.session_id,
         public_url=session.public_url,
         expires_at=session.expires_at,
+        started_at=_sess_data.get("started_at", time.time()),
         state="starting",
     )
 
 
-@app.delete("/preview/{session_id}", dependencies=[Depends(verify_token)])
+@app.delete("/preview/{session_id}", response_model=StopResponse, dependencies=[Depends(verify_token)])
 async def preview_stop(session_id: str, x_user_id: str = Header(default="")):
+    # Read started_at BEFORE stopping (session key will be deleted by stop())
+    _sess_raw = _r.get(f"preview:sess:{session_id}")
+    _sess_data = json.loads(_sess_raw) if _sess_raw else {}
+    started_at = _sess_data.get("started_at", time.time())
+    duration_seconds = max(0.0, time.time() - started_at)
+
     loop = asyncio.get_event_loop()
     await loop.run_in_executor(None, partial(_runtime.stop, session_id))
     if x_user_id:
         _dec_user_sessions(x_user_id)  # reaper also reconciles, so this is a best-effort fast path
-    return {"ok": True}
+    return StopResponse(ok=True, duration_seconds=duration_seconds, started_at=started_at)
 
 
 @app.get("/preview/{session_id}/status", response_model=StatusResponse, dependencies=[Depends(verify_token)])

@@ -209,3 +209,20 @@ class StudioTemplate(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class PreviewSession(models.Model):
+    """Sprint 8: billing record for an E2B live preview session (reserve→charge on stop)."""
+    session_id = models.CharField(max_length=64, unique=True)
+    project = models.ForeignKey(StudioProject, on_delete=models.CASCADE, related_name='preview_sessions')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    started_at = models.DateTimeField(auto_now_add=True)
+    reserved_stars = models.IntegerField(default=0)
+    settled = models.BooleanField(default=False)
+    stack = models.CharField(max_length=32, blank=True)
+
+    class Meta:
+        verbose_name = 'Preview Session'
+
+    def __str__(self):
+        return f'PreviewSession[{self.session_id[:8]}] settled={self.settled}'

@@ -156,13 +156,17 @@ Studio — AI-конструктор приложений внутри aineron.r
 
 ## 5. Следующие спринты (Sprint 8+)
 
-### Sprint 8 — Монетизация E2B (highest ROI) — КРИТ
-- [ ] Учёт минут сессии: в `preview_stop` (и при reaper-истечении) считать `duration = now − started_at`.
-- [ ] Конвертация `минуты × $0.0022 → звёзды` и списание против существующего баланса.
-- [ ] Предстарт-проверка баланса в `preview_start` → 402 при нуле.
-- [ ] Хранить `started_at`, `user_id`, `cost_stars` в Redis + финальная запись в Django audit.
-- [ ] UI: индикатор стоимости и текущего «расхода» сессии (см. §7).
-- [ ] Жёсткий суточный лимит минут на пользователя + глобальный kill-switch (env-флаг).
+### Sprint 8 — Монетизация E2B — ✅ CODE-COMPLETE 2026-06-25
+- [x] `started_at` в Redis-сессии (e2b_runtime.py), `duration_seconds` в stop-ответе.
+- [x] `PreviewSession` модель + migration **0019** (`reserved_stars`, `settled` idempotency guard).
+- [x] `E2BPreviewView.post()`: `reserve(user, 15 × rate, project)` → 402 при нуле баланса.
+- [x] `E2BPreviewView.delete()` + `E2BPreviewStatusView.delete()`: `charge_from_reserve(actual)` + `settled=True`.
+- [x] Celery task `reconcile_preview_billing` каждые 5 мин — settlement по TTL/expiry (Django-side reconciler).
+- [x] `E2B_PREVIEW_STARS_PER_MIN=1` env-var — тариф без деплоя. **Пересчитать под курс звезда/рубль!**
+- [x] UI: `SessionTimer.tsx` — shared countdown (красный < 2 мин), переиспользован в Bot.
+- [x] UI: `StopCircle` кнопка, `Coins` стоимость, stack badge, авто-логи на failed.
+- [x] UI: `TelegramBotPanel.tsx` — countdown + Terminal кнопка + live-логи бота.
+- [x] UI: тосты вместо `window.alert()` в `PreviewPanel.tsx`.
 
 ### Sprint 9 — Холодный старт (UX скорости) — КРИТ
 - [ ] Собрать кастомные образы (`templates/build.sh`) и прописать `E2B_TEMPLATE_NEXTJS/PYTHON/DJANGO`.

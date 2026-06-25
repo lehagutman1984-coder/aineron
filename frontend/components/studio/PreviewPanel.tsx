@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { RefreshCw, ExternalLink, CheckCircle, Download, Smartphone, Tablet, Monitor, Rocket, RotateCw, AlertTriangle, Wrench, Github, Loader2 } from 'lucide-react';
 import { studioApi, SANDPACK_STACKS } from '@/lib/api/studio';
 import { btn, empty, text } from './styles';
@@ -77,16 +77,21 @@ export function PreviewPanel({ projectId, hasSandbox, status, githubUrl, onRefre
     return () => src.close();
   }, [projectId]);
 
+  const [infoMsg, setInfoMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const showInfo = (msg: string) => { setInfoMsg(msg); setTimeout(() => setInfoMsg(null), 4000); };
+  const showError = (msg: string) => { setErrorMsg(msg); setTimeout(() => setErrorMsg(null), 6000); };
+
   const handleGithubExport = async () => {
     const repoName = window.prompt('Имя репозитория GitHub', `aineron-${projectId.slice(0, 8)}`);
     if (!repoName?.trim()) return;
     setExporting(true);
     try {
       await studioApi.exportGithub(projectId, repoName.trim(), true);
-      alert('Экспорт запущен. Репозиторий появится на GitHub через несколько секунд.');
+      showInfo('Экспорт запущен. Репозиторий появится на GitHub через несколько секунд.');
       onRefresh?.();
     } catch {
-      alert('Ошибка экспорта. Проверьте GITHUB_TOKEN в .env или войдите через GitHub.');
+      showError('Ошибка экспорта. Проверьте GITHUB_TOKEN в .env или войдите через GitHub.');
     } finally {
       setExporting(false);
     }
@@ -96,9 +101,9 @@ export function PreviewPanel({ projectId, hasSandbox, status, githubUrl, onRefre
     setDeploying(true);
     try {
       await studioApi.deploy(projectId);
-      alert('Деплой запущен. URL появится в логе агентов через ~30 сек.');
+      showInfo('Деплой запущен. URL появится в логе агентов через ~30 сек.');
     } catch {
-      alert('Ошибка деплоя. Проверьте STUDIO_VERCEL_TOKEN в .env.');
+      showError('Ошибка деплоя. Проверьте STUDIO_VERCEL_TOKEN в .env.');
     } finally {
       setDeploying(false);
     }
@@ -126,9 +131,9 @@ export function PreviewPanel({ projectId, hasSandbox, status, githubUrl, onRefre
           // sandbox endpoint временно недоступен — продолжаем ждать
         }
       }
-      alert('Превью не удалось запустить за 2 минуты. Проверьте логи.');
+      showError('Превью не удалось запустить за 2 минуты. Проверьте логи.');
     } catch {
-      alert('Не удалось перезапустить превью.');
+      showError('Не удалось перезапустить превью.');
     } finally {
       setRestarting(false);
       setRestartSeconds(0);
@@ -146,11 +151,27 @@ export function PreviewPanel({ projectId, hasSandbox, status, githubUrl, onRefre
     }
   };
 
+  const Toast = () => (
+    <>
+      {infoMsg && (
+        <div className="fixed bottom-4 right-4 z-50 bg-[var(--sidebar)] border border-[var(--border)] rounded-lg px-4 py-2.5 text-xs text-[var(--text)] shadow-lg max-w-xs">
+          {infoMsg}
+        </div>
+      )}
+      {errorMsg && (
+        <div className="fixed bottom-4 right-4 z-50 bg-red-900/80 border border-red-500/40 rounded-lg px-4 py-2.5 text-xs text-red-200 shadow-lg max-w-xs">
+          {errorMsg}
+        </div>
+      )}
+    </>
+  );
+
   // E2B стеки (nextjs/python/django): превью через E2B Firecracker sandbox
   if (isE2BStack) {
     return (
       <div className="flex flex-col h-full">
-        <E2BPreview projectId={projectId} refreshKey={key} />
+        <E2BPreview projectId={projectId} refreshKey={key} stack={stack} />
+        <Toast />
       </div>
     );
   }
@@ -191,6 +212,7 @@ export function PreviewPanel({ projectId, hasSandbox, status, githubUrl, onRefre
         <div className="flex-1 overflow-hidden">
           <SandpackPreviewPanel projectId={projectId} stack={stack!} refreshKey={key} />
         </div>
+        <Toast />
       </div>
     );
   }
@@ -346,6 +368,7 @@ export function PreviewPanel({ projectId, hasSandbox, status, githubUrl, onRefre
           title="Sandbox preview"
         />
       </div>
+      <Toast />
     </div>
   );
 }

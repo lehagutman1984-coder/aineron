@@ -10,10 +10,10 @@ from rest_framework import permissions
 from rest_framework.renderers import BaseRenderer
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from ..models import StudioProject, ProjectDatabase
+from ..models import StudioProject, ProjectDatabase, PreviewSession
 from ..serializers import PipelineStateSerializer
 from ..events import get_pipeline_events
-from ..billing import estimate_stars
+from ..billing import estimate_stars, reserve, charge_from_reserve, release_reserve
 
 _PREVIEW_SVC = _os.environ.get('PREVIEW_SERVICE_URL', 'http://localhost:8001')
 _PREVIEW_TOKEN = _os.environ.get('PREVIEW_INTERNAL_TOKEN', '')
@@ -700,9 +700,18 @@ class E2BPreviewView(APIView):
         if stack not in ('nextjs', 'python', 'django'):
             return Response({'error': f'E2B не поддерживает стек {stack}'}, status=400)
 
+        # Sprint 8: reserve stars for max session duration (15 min × rate)
+        rate = getattr(settings, 'E2B_PREVIEW_STARS_PER_MIN', 1)
+        ttl_minutes = 900 // 60  # 15 min
+        max_cost = ttl_minutes * rate
+        if max_cost > 0 and not reserve(request.user, max_cost, project):
+            return Response(
+                {'error': f'Недостаточно звёзд для запуска превью (нужно {max_cost} зв.)'},
+                status=402,
+            )
+
         files = project.files.all().values('path', 'content')
         code_files = {f['path']: f['content'] for f in files}
-
         db_credentials_enc = _build_db_credentials_enc(project)
 
         try:
@@ -721,28 +730,56 @@ class E2BPreviewView(APIView):
                 timeout=30,
             )
         except _rq.exceptions.RequestException:
+            release_reserve(project)
             return Response(
                 {'error': 'preview-service недоступен. Запустите: cd preview-service && uvicorn main:app --port 8001'},
                 status=503,
             )
 
         if resp.status_code == 429:
+            release_reserve(project)
             return Response({'error': resp.json().get('detail', 'Слишком много превью')}, status=429)
         if not resp.ok:
+            release_reserve(project)
             return Response({'error': resp.text[:500]}, status=502)
 
-        return Response(resp.json())
+        data = resp.json()
+        # Create billing record (settled=False — will be charged on stop or by reconciler)
+        PreviewSession.objects.create(
+            session_id=data['session_id'],
+            project=project,
+            user=request.user,
+            reserved_stars=max_cost,
+            stack=stack,
+        )
+        data['reserved_stars'] = max_cost
+        data['stars_per_min'] = rate
+        return Response(data)
 
     def delete(self, request, id, session_id):
-        get_object_or_404(StudioProject, id=id, user=request.user)  # auth check
+        project = get_object_or_404(StudioProject, id=id, user=request.user)
+        stop_data = {}
         try:
-            _rq.delete(
+            stop_resp = _rq.delete(
                 f'{_PREVIEW_SVC}/preview/{session_id}',
                 headers=_preview_headers(),
                 timeout=10,
             )
+            if stop_resp.ok:
+                stop_data = stop_resp.json()
         except Exception:
             pass
+
+        # Sprint 8: settle billing — charge actual duration, release remainder
+        ps = PreviewSession.objects.filter(session_id=session_id, user=request.user, settled=False).first()
+        if ps:
+            rate = getattr(settings, 'E2B_PREVIEW_STARS_PER_MIN', 1)
+            duration_sec = stop_data.get('duration_seconds', 0) or 0
+            actual_stars = min(int((duration_sec / 60) * rate) + 1, ps.reserved_stars)
+            charge_from_reserve(actual_stars, ps.project)
+            ps.settled = True
+            ps.save(update_fields=['settled'])
+
         return Response({'ok': True})
 
 
@@ -765,15 +802,29 @@ class E2BPreviewStatusView(APIView):
         return Response(resp.json())
 
     def delete(self, request, id, session_id):
-        get_object_or_404(StudioProject, id=id, user=request.user)  # auth check
+        project = get_object_or_404(StudioProject, id=id, user=request.user)
+        stop_data = {}
         try:
-            _rq.delete(
+            stop_resp = _rq.delete(
                 f'{_PREVIEW_SVC}/preview/{session_id}',
                 headers=_preview_headers(),
                 timeout=10,
             )
+            if stop_resp.ok:
+                stop_data = stop_resp.json()
         except Exception:
             pass
+
+        # Sprint 8: settle billing (same logic as E2BPreviewView.delete)
+        ps = PreviewSession.objects.filter(session_id=session_id, user=request.user, settled=False).first()
+        if ps:
+            rate = getattr(settings, 'E2B_PREVIEW_STARS_PER_MIN', 1)
+            duration_sec = stop_data.get('duration_seconds', 0) or 0
+            actual_stars = min(int((duration_sec / 60) * rate) + 1, ps.reserved_stars)
+            charge_from_reserve(actual_stars, ps.project)
+            ps.settled = True
+            ps.save(update_fields=['settled'])
+
         return Response({'ok': True})
 
 

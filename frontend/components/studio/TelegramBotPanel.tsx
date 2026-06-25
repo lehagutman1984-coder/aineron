@@ -1,12 +1,15 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { AlertTriangle, Bot, Loader2, StopCircle } from 'lucide-react';
+import { AlertTriangle, Bot, Loader2, RefreshCw, StopCircle, Terminal } from 'lucide-react';
 import { BotEmulator } from './BotEmulator';
+import { SessionTimer } from './SessionTimer';
 import { studioApi } from '@/lib/api/studio';
 
 type Tab = 'emulator' | 'live';
 type BotState = 'idle' | 'starting' | 'running' | 'failed';
+
+const BOT_TTL = 900; // 15 min in seconds
 
 interface Props {
   projectId: string;
@@ -18,44 +21,57 @@ export function TelegramBotPanel({ projectId, refreshKey }: Props) {
   const [token, setToken] = useState('');
   const [botState, setBotState] = useState<BotState>('idle');
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [expiresAt, setExpiresAt] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
-  // Store poll interval in a ref so stopBot() and unmount cleanup can clear it
+  const [showLogs, setShowLogs] = useState(false);
+  const [logs, setLogs] = useState<string[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const logsEndRef = useRef<HTMLDivElement | null>(null);
 
   const clearPoll = () => {
-    if (pollRef.current !== null) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
+    if (pollRef.current !== null) { clearInterval(pollRef.current); pollRef.current = null; }
   };
 
-  // Clean up on unmount to prevent memory leaks and setState on unmounted component
   useEffect(() => () => clearPoll(), []);
 
-  // Reset live tab when project changes (refreshKey increments on project reload)
   useEffect(() => {
     clearPoll();
     setBotState('idle');
     setSessionId(null);
+    setExpiresAt(0);
     setWarning(null);
     setError(null);
+    setLogs([]);
+    setShowLogs(false);
   }, [refreshKey]);
+
+  const fetchLogs = async (sid: string) => {
+    setLogsLoading(true);
+    try {
+      const data = await studioApi.e2bPreviewLogs(projectId, sid);
+      setLogs(data.lines ?? []);
+      setTimeout(() => logsEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+    } catch { /* ignore */ } finally { setLogsLoading(false); }
+  };
 
   const startBot = async () => {
     if (!token.trim()) return;
     setBotState('starting');
     setError(null);
     setWarning(null);
+    setLogs([]);
+    setShowLogs(false);
     try {
       const r = await studioApi.e2bBotStart(projectId, token.trim());
       setSessionId(r.session_id);
       setWarning(r.warning ?? null);
+      setExpiresAt(Date.now() / 1000 + BOT_TTL);
       if (r.state === 'running') {
         setBotState('running');
         return;
       }
-      // Poll for RUNNING — stored in ref so stopBot() can clear it
       const id = setInterval(async () => {
         try {
           const s = await studioApi.e2bPreviewStatus(projectId, r.session_id);
@@ -64,7 +80,9 @@ export function TelegramBotPanel({ projectId, refreshKey }: Props) {
             clearPoll();
           } else if (s.state === 'failed' || s.state === 'stopped' || s.state === 'expired') {
             setBotState('failed');
-            setError('Бот завершился или не смог запуститься. Проверьте файлы проекта.');
+            setError('Бот завершился или не смог запуститься. Проверьте логи.');
+            setShowLogs(true);
+            fetchLogs(r.session_id);
             clearPoll();
           }
         } catch { /* keep polling */ }
@@ -77,17 +95,18 @@ export function TelegramBotPanel({ projectId, refreshKey }: Props) {
   };
 
   const stopBot = async () => {
-    clearPoll();  // stop polling FIRST — prevents flip back to 'running' after stop
+    clearPoll();
     const sid = sessionId;
     setBotState('idle');
     setSessionId(null);
     setToken('');
     setWarning(null);
     setError(null);
+    setExpiresAt(0);
+    setLogs([]);
+    setShowLogs(false);
     if (sid) {
-      try {
-        await studioApi.e2bPreviewStop(projectId, sid);
-      } catch { /* best effort */ }
+      try { await studioApi.e2bPreviewStop(projectId, sid); } catch { /* best effort */ }
     }
   };
 
@@ -136,9 +155,7 @@ export function TelegramBotPanel({ projectId, refreshKey }: Props) {
                   {error}
                 </p>
               )}
-              <label className="text-xs text-[var(--text-secondary)]">
-                Токен тестового бота
-              </label>
+              <label className="text-xs text-[var(--text-secondary)]">Токен тестового бота</label>
               <input
                 type="password"
                 value={token}
@@ -162,29 +179,66 @@ export function TelegramBotPanel({ projectId, refreshKey }: Props) {
                   {warning}
                 </p>
               )}
+
               <div className="flex items-center gap-2">
-                {botState === 'starting' && (
-                  <Loader2 size={15} className="animate-spin text-blue-500" />
-                )}
-                {botState === 'running' && (
-                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                )}
+                {botState === 'starting' && <Loader2 size={15} className="animate-spin text-blue-500" />}
+                {botState === 'running' && <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
                 <span className="text-sm text-[var(--text)]">
                   {botState === 'starting' ? 'Запускаю бота в E2B…' : 'Бот работает в изолированной среде'}
                 </span>
+                {botState === 'running' && expiresAt > 0 && (
+                  <span className="ml-auto flex items-center gap-1 text-[10px] text-[var(--text-secondary)]">
+                    до: <SessionTimer expiresAt={expiresAt} onExpired={stopBot} />
+                  </span>
+                )}
               </div>
+
               {botState === 'starting' && (
                 <p className="text-xs text-[var(--text-secondary)]">
                   pip install + delete_webhook + python bot.py — до 60 с
                 </p>
               )}
-              <button
-                onClick={stopBot}
-                className="flex items-center gap-2 px-3 py-1.5 w-fit text-xs text-red-400 border border-red-400/30 rounded hover:bg-red-500/10 transition-colors"
-              >
-                <StopCircle size={14} />
-                Остановить сессию
-              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={stopBot}
+                  className="flex items-center gap-2 px-3 py-1.5 text-xs text-red-400 border border-red-400/30 rounded hover:bg-red-500/10 transition-colors"
+                >
+                  <StopCircle size={14} />
+                  Остановить сессию
+                </button>
+                {sessionId && (
+                  <button
+                    onClick={() => { setShowLogs(!showLogs); if (!showLogs && sessionId) fetchLogs(sessionId); }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs border rounded transition-colors ${showLogs ? 'border-blue-500/40 text-blue-400' : 'border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text)]'}`}
+                  >
+                    <Terminal size={13} />
+                    Логи
+                  </button>
+                )}
+              </div>
+
+              {showLogs && sessionId && (
+                <div className="border border-[var(--border)] rounded bg-[#0d1117] overflow-hidden">
+                  <div className="flex items-center justify-between px-3 py-1.5 border-b border-[var(--border)]">
+                    <span className="text-xs text-[var(--text-secondary)]">Логи бота</span>
+                    <button
+                      onClick={() => fetchLogs(sessionId)}
+                      className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                      disabled={logsLoading}
+                    >
+                      {logsLoading ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />}
+                      Обновить
+                    </button>
+                  </div>
+                  <pre className="text-[11px] font-mono text-green-300 p-3 max-h-48 overflow-y-auto whitespace-pre-wrap break-all leading-relaxed">
+                    {logs.length === 0
+                      ? (logsLoading ? 'Загрузка…' : 'Логи ещё не появились')
+                      : logs.join('\n')}
+                  </pre>
+                  <div ref={logsEndRef} />
+                </div>
+              )}
             </div>
           )}
         </div>

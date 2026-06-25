@@ -331,6 +331,7 @@ class E2BRuntime(Runtime):
                 "project_id": project_id,
                 "public_url": public_url,
                 "internal_sandbox_id": sbx.sandbox_id,
+                "started_at": time.time(),
                 "expires_at": expires_at,
                 "state": SessionState.STARTING.value,
                 "logs": [],

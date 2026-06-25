@@ -2,7 +2,7 @@ import re
 import hashlib
 from celery import shared_task
 from django.conf import settings
-from .models import StudioProject, StudioFile, StudioVersion, StudioPipelineState
+from .models import StudioProject, StudioFile, StudioVersion, StudioPipelineState, PreviewSession
 from .events import publish_event
 from . import sandbox
 from .billing import (
@@ -1404,6 +1404,57 @@ def tma_publish(project_id):
             'agent': 'system', 'level': 'warning',
             'text': f'TMA publish error: {exc}',
         })
+
+
+@shared_task(queue=QUEUE)
+def reconcile_preview_billing():
+    """
+    Sprint 8: Settle billing for expired/abandoned E2B preview sessions every 5 min.
+    Fast path: explicit stop via E2BPreviewView.delete settles immediately.
+    This task covers sessions that expired via Redis TTL or sandbox timeout without explicit stop.
+    Idempotency: settled=True flag prevents double-charging.
+    """
+    import requests as _rq
+    from django.utils import timezone as _tz
+    _svc = getattr(settings, 'PREVIEW_SERVICE_URL', 'http://preview_service:8001')
+    _tok = getattr(settings, 'PREVIEW_INTERNAL_TOKEN', '')
+    _headers = {'X-Internal-Token': _tok}
+    rate = getattr(settings, 'E2B_PREVIEW_STARS_PER_MIN', 1)
+
+    unsettled = PreviewSession.objects.filter(settled=False).select_related('project', 'user')
+    for ps in unsettled:
+        try:
+            resp = _rq.get(
+                f'{_svc}/preview/{ps.session_id}/status',
+                headers=_headers,
+                timeout=5,
+            )
+            if resp.ok:
+                state = resp.json().get('state', '')
+                if state in ('expired', 'stopped', 'failed'):
+                    _settle_preview_session(ps, rate)
+                    continue
+                # still running — leave it for the next run
+                continue
+        except Exception:
+            pass
+        # Can't reach preview-service or session unknown: settle if >20 min old (TTL 15 min + grace)
+        age_min = (_tz.now() - ps.started_at).total_seconds() / 60
+        if age_min > 20:
+            _settle_preview_session(ps, rate)
+
+
+def _settle_preview_session(ps, rate):
+    """Charge actual duration from reserve and mark session as settled."""
+    from django.utils import timezone as _tz
+    duration_min = (_tz.now() - ps.started_at).total_seconds() / 60
+    actual_stars = min(int(duration_min * rate) + 1, ps.reserved_stars)
+    try:
+        charge_from_reserve(actual_stars, ps.project)
+    except Exception:
+        pass
+    ps.settled = True
+    ps.save(update_fields=['settled'])
 
 
 @shared_task(queue=QUEUE)
