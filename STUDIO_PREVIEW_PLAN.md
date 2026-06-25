@@ -61,9 +61,11 @@ Mode 1 (aineron):  UI "Создать базу" → provision() → CREATE SCHEM
                    → role + GRANT → PgBouncer pool → DBCredentials (мгновенно).
                    Биллинг: aineron. Изоляция: schema-per-project.
 
-Mode 2 (Neon):     UI "Подключить Neon" → OAuth redirect → user authorizes
-                   → partner token → создаём project В АККАУНТЕ ПОЛЬЗОВАТЕЛЯ
-                   → DBCredentials. Биллинг: ПОЛЬЗОВАТЕЛЬ (см. SPIKE-результат).
+Mode 2 (Neon):     UI "Вставить Neon API Key" (10 сек: Neon Console → Settings → API Keys)
+                   → aineron вызывает POST /api/v2/projects с Bearer {user_key}
+                   → project создаётся В АККАУНТЕ ПОЛЬЗОВАТЕЛЯ, ключ Fernet-шифруется.
+                   OAuth недоступен без commercial partnership с Neon (только для партнёров).
+                   Биллинг: ПОЛЬЗОВАТЕЛЬ (Neon free tier: 100 проектов, 0.5GB, 100 CU-h/мес).
 
 Mode 3 (External): UI "Вставить connection string" → Fernet-encrypt → store
                    → db-proxy подключается. Биллинг: пользователь у своего провайдера.
@@ -180,13 +182,13 @@ class TimewebProvider(DatabaseProvider): ...        # Sprint 4 — РФ-юрис
 - Скелет FastAPI + healthcheck + Redis-подключение.
 - Внутренняя авторизация: shared-secret заголовок `X-Internal-Token` между `src/studio` и preview-service (preview-service НЕ публичный).
 
-**SPIKE-1 (design-confirmed по docs; коммерческое подтверждение pending) — Neon OAuth механика.**
-Подтверждено по docs: Neon различает две модели.
-- **OAuth integration** → «Users maintain full ownership of their Neon accounts» и **сам пользователь несёт расходы**. Это и есть наш **Mode 2: база в аккаунте пользователя, платит пользователь.** Реализуем как заявлено.
-- **Embedded "project-per-user"** → проекты создаются под организацией партнёра, **платит партнёр (aineron как реселлер)** — это НЕ Mode 2, держим как опциональный будущий «aineron-managed» тариф.
-- Запрос для финального подтверждения у Neon PoC (OAuth даётся только партнёрам с коммерческим соглашением): docs `neon.com/docs/guides/oauth-integration` + `neon.com/docs/guides/platform-integration-overview`. **Точные OAuth scopes уточнить у Neon** (в docs/результатах поиска конкретный URN на создание project не зафиксирован) и нужна ли заявка на partner OAuth client.
-- Free-tier пользователя (2026): 100 проектов/аккаунт, 0.5 GB storage/проект, 100 CU-hours/мес, scale-to-zero обязателен → для превью более чем достаточно.
-- **Fallback, если коммерческое соглашение затянется:** Mode 2 временно = Mode 3 (paste connection string из Neon-аккаунта пользователя). UI и DatabaseProvider не меняются.
+**SPIKE-1 (ЗАКРЫТ) — Neon механика: OAuth недоступен, используем Management API с user key.**
+- Neon OAuth (`docs/guides/oauth-integration`): *«We only provide OAuth integrations for partners we have active commercial relationships with»* — недоступен без коммерческого соглашения с Neon. Заявку не подаём — это длинный и неопределённый процесс.
+- **Решение (самообслуживание, без блокеров):** Neon Management API (`console.neon.tech/api/v2`) полностью self-serve: пользователь создаёт аккаунт Neon бесплатно → в Neon Console → Settings → API Keys копирует ключ → вставляет в aineron. aineron вызывает `POST /api/v2/projects` с `Authorization: Bearer {user_neon_api_key}` → проект создаётся В АККАУНТЕ ПОЛЬЗОВАТЕЛЯ, он владелец, он платит.
+- UX: не OAuth-кнопка, а поле «Neon API Key» + ссылка на инструкцию (10 секунд для пользователя).
+- Результат идентичен OAuth: база в аккаунте пользователя, aineron ничего не платит, Scale-to-zero.
+- Free tier: 100 проектов/аккаунт, 0.5 GB storage/проект, 100 CU-hours/мес.
+- В будущем: если Neon сам предложит партнёрство при росте трафика → добавим OAuth как апгрейд UX. `NeonProvider` менять не нужно, только добавить OAuth path рядом с API-key path.
 
 **SPIKE-2 (design-confirmed по docs; sandbox ещё НЕ запускался — выполнить в Sprint 0) — E2B Python SDK + первый sandbox.**
 ```python
@@ -273,7 +275,7 @@ TMA (Telegram Mini App):
   - `provision()`: `CREATE SCHEMA proj_<id>`, создать role + `GRANT ... ON SCHEMA`, `search_path=proj_<id>` → `DBCredentials(schema=...)`.
   - **PgBouncer** (transaction pooling) перед общим Postgres для schema-per-project пулинга.
   - `deprovision()`: `DROP SCHEMA proj_<id> CASCADE`.
-- `neon.py` — `NeonProvider` (SPIKE OK): OAuth-flow → partner token → создать project **в аккаунте пользователя** → `DBCredentials`. (Fallback при отсутствии соглашения — поведение Mode 3.)
+- `neon.py` — `NeonProvider` (SPIKE ЗАКРЫТ, без блокеров): принять `neon_api_key` от пользователя (Fernet-encrypt при хранении) → `POST https://console.neon.tech/api/v2/projects` с `Authorization: Bearer {key}` → project создаётся **в аккаунте пользователя** → `DBCredentials`.
 - `external.py` — `ExternalProvider`: принять connection string, **Fernet-encrypt** (`cryptography`) перед хранением; расшифровка только в момент подключения db-proxy.
 - `proxy.py` — **db-proxy endpoint** в preview-service: единая точка коннектов из sandbox в БД с
   `connect_timeout=3`, `statement_timeout='5s'`, **circuit breaker** (3 failures → 60s pause) через Redis-счётчик `cb:<provider>:fails`.
@@ -372,7 +374,7 @@ E2B base image / snapshot:
 1. **Утечка bot token / untrusted code из основного приложения.** Митигация: preview-service — отдельный микросервис, не в `src/`; код исполняется ТОЛЬКО в E2B (Firecracker), не в Docker; токен только в памяти microVM, никогда в БД aineron; egress deny-all + allowlist с первого дня.
 2. **409 Conflict Telegram Bot.** Митигация: `delete_webhook(drop_pending_updates=True)` перед polling + Redis-lock «один токен — одна сессия» (`SETNX ... EX 900`).
 3. **db-proxy нестабильность под нагрузкой.** Митигация: `connect_timeout=3`, `statement_timeout='5s'`, circuit breaker (3 fails → 60s pause), PgBouncer перед Postgres.
-4. **Neon OAuth коммерческое соглашение задерживается.** Митигация: Mode 2 временно деградирует в Mode 3 (paste connection string) без изменения UI/ABC; параллельно ведём заявку на partner OAuth client.
+4. **Neon OAuth недоступен без партнёрства.** Решено: Mode 2 реализован через Neon Management API с user-provided API key — самообслуживание, без блокеров. OAuth добавим позже как UX-апгрейд если Neon сам предложит партнёрство.
 5. **E2B расходы выходят из-под контроля.** Митигация: Redis slot semaphore (`MAX_CONCURRENT`), TTL watchdog, per-user rate limiting, quota-алерты; warm pool минимальный; шов на собственный Firecracker готов.
 6. **Egress allow-rule приоритет над deny.** В E2B allow имеет приоритет — митигация: allowlist держать строго минимальным и ревьюить при каждом добавлении хоста; разные allowlist на стадии build (offline где можно) и runtime.
 7. **РФ-юрисдикция / 152-ФЗ для данных пользователей.** Митигация: Mode 4 TimewebProvider (БД в РФ); preview-service compute (E2B) — отдельный вопрос, для чувствительных данных предлагать Mode 4 + минимизировать persist.
@@ -384,7 +386,7 @@ E2B base image / snapshot:
 
 1. Создать каталог `preview-service/` в корне репо (НЕ в `src/`) с `pyproject.toml`, `main.py` (FastAPI + `/healthz`), `runtime/base.py` и `db/base.py` (ABC-интерфейсы из этого документа).
 2. Получить `E2B_API_KEY`, прогнать SPIKE-2/3: создать первый sandbox и **эмпирически** подтвердить deny-all + allowlist (`network={"deny_out": lambda ctx: [ctx.all_traffic], "allow_out": [...]}`).
-3. Отправить заявку Neon PoC на partner OAuth client (scopes на создание project в аккаунте пользователя) — это длинный лид-тайм, запускаем параллельно Sprint 1.
+3. Для Mode 2 (Neon) — OAuth партнёрство не нужно. Neon Management API self-serve: `POST /api/v2/projects` с user API key. Реализуется в Sprint 3 без блокеров.
 4. Закоммитить скелет (`feat(preview-service): scaffold + Runtime/DatabaseProvider ABC + spikes`) и сразу `git push origin main`.
 
 ---
