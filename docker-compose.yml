@@ -151,6 +151,27 @@ services:
       redis:
         condition: service_healthy
 
+  preview_service:
+    build:
+      context: ./preview-service
+      dockerfile: Dockerfile
+    container_name: neiro_preview
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - REDIS_URL=redis://redis:6379/3
+      - PREVIEW_MAX_CONCURRENT=10
+      - PREVIEW_DEFAULT_TTL=900
+    ports:
+      - "8001:8001"
+    depends_on:
+      redis:
+        condition: service_healthy
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+
   gitea_db:
     image: postgres:15-alpine
     container_name: neiro_gitea_db

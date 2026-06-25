@@ -1,3 +1,5 @@
+import os as _os
+
 import requests as _rq
 from django.http import StreamingHttpResponse, HttpResponse
 from django.utils.decorators import method_decorator
@@ -10,6 +12,13 @@ from ..models import StudioProject
 from ..serializers import PipelineStateSerializer
 from ..events import get_pipeline_events
 from ..billing import estimate_stars
+
+_PREVIEW_SVC = _os.environ.get('PREVIEW_SERVICE_URL', 'http://localhost:8001')
+_PREVIEW_TOKEN = _os.environ.get('PREVIEW_INTERNAL_TOKEN', '')
+
+
+def _preview_headers():
+    return {'X-Internal-Token': _PREVIEW_TOKEN, 'Content-Type': 'application/json'}
 
 
 class EventStreamRenderer(BaseRenderer):
@@ -376,6 +385,92 @@ class ExplainView(APIView):
         answer = ExplainerAgent(project).explain(code, path)
         charge(request.user, cost, project)
         return Response({'explanation': answer})
+
+
+class E2BPreviewView(APIView):
+    """
+    POST → start E2B preview session (collects project files, delegates to preview-service).
+    DELETE /{session_id}/ → stop session.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, id):
+        project = StudioProject.objects.get(id=id, user=request.user)
+        stack = project.target_stack
+        if stack not in ('nextjs', 'python', 'django'):
+            return Response({'error': f'E2B не поддерживает стек {stack} в Sprint 2'}, status=400)
+
+        files = project.files.all().values('path', 'content')
+        code_files = {f['path']: f['content'] for f in files}
+
+        try:
+            resp = _rq.post(
+                f'{_PREVIEW_SVC}/preview/start',
+                json={
+                    'project_id': str(project.id),
+                    'stack': stack,
+                    'code_files': code_files,
+                    'ttl': 900,
+                    'env': {},
+                },
+                headers=_preview_headers(),
+                timeout=30,
+            )
+        except _rq.exceptions.ConnectionError:
+            return Response(
+                {'error': 'preview-service недоступен. Запустите: cd preview-service && uvicorn main:app --port 8001'},
+                status=503,
+            )
+
+        if resp.status_code == 429:
+            return Response({'error': resp.json().get('detail', 'Слишком много превью')}, status=429)
+        if not resp.ok:
+            return Response({'error': resp.text[:500]}, status=502)
+
+        return Response(resp.json())
+
+    def delete(self, request, id, session_id):
+        StudioProject.objects.get(id=id, user=request.user)  # auth check
+        try:
+            _rq.delete(
+                f'{_PREVIEW_SVC}/preview/{session_id}',
+                headers=_preview_headers(),
+                timeout=10,
+            )
+        except Exception:
+            pass
+        return Response({'ok': True})
+
+
+class E2BPreviewStatusView(APIView):
+    """GET → status, DELETE → stop session."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, id, session_id):
+        StudioProject.objects.get(id=id, user=request.user)  # auth check
+        try:
+            resp = _rq.get(
+                f'{_PREVIEW_SVC}/preview/{session_id}/status',
+                headers=_preview_headers(),
+                timeout=5,
+            )
+        except _rq.exceptions.ConnectionError:
+            return Response({'state': 'stopped', 'public_url': None, 'logs_tail': []})
+        if not resp.ok:
+            return Response({'state': 'stopped', 'public_url': None, 'logs_tail': []})
+        return Response(resp.json())
+
+    def delete(self, request, id, session_id):
+        StudioProject.objects.get(id=id, user=request.user)  # auth check
+        try:
+            _rq.delete(
+                f'{_PREVIEW_SVC}/preview/{session_id}',
+                headers=_preview_headers(),
+                timeout=10,
+            )
+        except Exception:
+            pass
+        return Response({'ok': True})
 
 
 _MIME = {

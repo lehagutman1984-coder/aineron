@@ -326,4 +326,23 @@ export const studioApi = {
 
   getModels: () =>
     request<StudioModel[]>('/studio/models/'),
+
+  // ── E2B Live Preview (Sprint 2) ─────────────────────────────────────────────
+
+  e2bPreviewStart: (projectId: string) =>
+    request<{ session_id: string; public_url: string; state: string; expires_at: number }>(
+      `/studio/projects/${projectId}/e2b/`,
+      { method: 'POST' },
+    ),
+
+  e2bPreviewStatus: (projectId: string, sessionId: string) =>
+    request<{ session_id: string; state: string; public_url: string | null; logs_tail: string[] }>(
+      `/studio/projects/${projectId}/e2b/${sessionId}/`,
+    ),
+
+  e2bPreviewStop: (projectId: string, sessionId: string) =>
+    request<{ ok: boolean }>(
+      `/studio/projects/${projectId}/e2b/${sessionId}/`,
+      { method: 'DELETE' },
+    ),
 };

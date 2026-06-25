@@ -5,6 +5,10 @@ import { RefreshCw, ExternalLink, CheckCircle, Download, Smartphone, Tablet, Mon
 import { studioApi, SANDPACK_STACKS } from '@/lib/api/studio';
 import { btn, empty, text } from './styles';
 import { SandpackPreviewPanel } from './SandpackPreviewPanel';
+import { E2BPreview } from './E2BPreview';
+
+const E2B_STACKS = ['nextjs', 'python', 'django'] as const;
+type E2BStack = typeof E2B_STACKS[number];
 
 interface ConsoleError {
   message: string;
@@ -25,6 +29,7 @@ interface PreviewPanelProps {
 export function PreviewPanel({ projectId, hasSandbox, status, githubUrl, onRefresh, stack }: PreviewPanelProps) {
   const [key, setKey] = useState(0);
   const isSandpackStack = SANDPACK_STACKS.includes(stack as any);
+  const isE2BStack = E2B_STACKS.includes(stack as E2BStack) && !!process.env.NEXT_PUBLIC_E2B_PREVIEW;
   const [width, setWidth] = useState<'100%' | '768px' | '375px'>('100%');
   const [errors, setErrors] = useState<ConsoleError[]>([]);
   const [fixing, setFixing] = useState(false);
@@ -143,6 +148,15 @@ export function PreviewPanel({ projectId, hasSandbox, status, githubUrl, onRefre
 
   // Завершён и sandbox поднят (после перезапуска) — показываем iframe
   const showIframe = (status !== 'completed') || previewForced || (status === 'completed' && hasSandbox && previewForced);
+
+  // E2B стеки (nextjs/python/django): превью через E2B Firecracker sandbox
+  if (isE2BStack) {
+    return (
+      <div className="flex flex-col h-full">
+        <E2BPreview projectId={projectId} refreshKey={key} />
+      </div>
+    );
+  }
 
   // Sandpack стеки (react/vue/html/tma): превью в браузере, Docker не нужен
   if (isSandpackStack) {
