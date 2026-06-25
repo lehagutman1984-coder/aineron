@@ -242,7 +242,14 @@ class SandboxStatusView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, id):
+        from django.conf import settings as djsettings
         project = StudioProject.objects.get(id=id, user=request.user)
+
+        # Sprint 6: frontend stacks handled by Sandpack — no Docker sandbox needed
+        _FRONTEND_STACKS = ('react', 'vue', 'html', 'tma')
+        if getattr(djsettings, 'STUDIO_DEPRECATE_DOCKER_FRONTEND', True) and project.target_stack in _FRONTEND_STACKS:
+            return Response({'alive': False, 'port': None, 'uptime_s': 0, 'sandpack': True})
+
         cid = project.sandbox_container_id
 
         # Static mode: no sandbox needed — files served directly from DB
@@ -474,6 +481,73 @@ class ProjectDatabaseView(APIView):
         return Response({'ok': True, 'mode': 'none'})
 
 
+class DbExportView(APIView):
+    """
+    Sprint 6: Export project database as SQL dump (Aineron schema only).
+    GET /studio/projects/{id}/db/export/ → streaming SQL file download.
+    Only supports mode='aineron'. For Neon/External the user manages their own DB.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, id):
+        import subprocess
+        import tempfile
+        from django.http import FileResponse
+        from django.conf import settings as djsettings
+
+        project = StudioProject.objects.get(id=id, user=request.user)
+        db = ProjectDatabase.objects.filter(project=project).first()
+        if not db or db.mode != 'aineron' or not db.aineron_schema:
+            return Response(
+                {'error': 'Экспорт доступен только для режима Aineron. Для Neon/External используйте собственный инструмент БД.'},
+                status=400,
+            )
+
+        schema = db.aineron_schema
+        host = _os.getenv('AINERON_DB_HOST', 'localhost')
+        port = _os.getenv('AINERON_DB_PORT', '5432')
+        db_name = _os.getenv('AINERON_DB_NAME', 'aineron')
+        db_user = _os.getenv('AINERON_DB_USER', 'aineron')
+        db_pass = _os.getenv('AINERON_DB_PASSWORD', '')
+
+        env = dict(_os.environ)
+        env['PGPASSWORD'] = db_pass
+
+        try:
+            tmp = tempfile.NamedTemporaryFile(suffix='.sql', delete=False, prefix=f'export_{schema}_')
+            tmp.close()
+            result = subprocess.run(
+                [
+                    'pg_dump',
+                    '-h', host,
+                    '-p', port,
+                    '-U', db_user,
+                    '-d', db_name,
+                    '-n', schema,
+                    '--no-owner',
+                    '--no-acl',
+                    '-f', tmp.name,
+                ],
+                env=env,
+                capture_output=True,
+                timeout=30,
+            )
+            if result.returncode != 0:
+                return Response({'error': f'pg_dump error: {result.stderr.decode()[:300]}'}, status=502)
+
+            response = FileResponse(
+                open(tmp.name, 'rb'),
+                content_type='application/sql',
+                as_attachment=True,
+                filename=f'{schema}_export.sql',
+            )
+            return response
+        except FileNotFoundError:
+            return Response({'error': 'pg_dump не найден на сервере'}, status=501)
+        except subprocess.TimeoutExpired:
+            return Response({'error': 'pg_dump timeout (>30 s)'}, status=504)
+
+
 class E2BPreviewView(APIView):
     """
     POST → start E2B preview session (collects project files, delegates to preview-service).
@@ -499,6 +573,7 @@ class E2BPreviewView(APIView):
                     'code_files': code_files,
                     'ttl': 900,
                     'env': {},
+                    'user_id': str(request.user.id),  # Sprint 6: per-user rate limiting
                 },
                 headers=_preview_headers(),
                 timeout=30,

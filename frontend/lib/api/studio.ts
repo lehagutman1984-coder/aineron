@@ -389,4 +389,8 @@ export const studioApi = {
     request<{ ok: boolean; mode: string }>(`/studio/projects/${id}/db/`, {
       method: 'DELETE',
     }),
+
+  // Sprint 6: pg_dump export (aineron mode only)
+  dbExportUrl: (id: string) =>
+    `${process.env.NEXT_PUBLIC_API_URL}/studio/projects/${id}/db/export/`,
 };

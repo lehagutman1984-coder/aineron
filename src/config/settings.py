@@ -428,6 +428,8 @@ STUDIO_V4_GUARDIAN_CONTEXT  = os.getenv('STUDIO_V4_GUARDIAN_CONTEXT',  '0') == '
 STUDIO_V4_RU_STACK          = os.getenv('STUDIO_V4_RU_STACK',          '0') == '1'
 STUDIO_V4_TMA               = os.getenv('STUDIO_V4_TMA',               '0') == '1'
 STUDIO_MAX_AUTOFIX          = int(os.getenv('STUDIO_MAX_AUTOFIX',       '3'))
+# Sprint 6: deprecate legacy Docker sandbox for frontend stacks (Sandpack handles react/vue/html/tma)
+STUDIO_DEPRECATE_DOCKER_FRONTEND = os.getenv('STUDIO_DEPRECATE_DOCKER_FRONTEND', '1') == '1'
 LAOZHANG_API_URL_FALLBACK   = os.getenv('LAOZHANG_API_URL_FALLBACK',   '')
 GIGACHAT_API_URL            = os.getenv('GIGACHAT_API_URL',            '')
 GIGACHAT_API_KEY            = os.getenv('GIGACHAT_API_KEY',            '')
