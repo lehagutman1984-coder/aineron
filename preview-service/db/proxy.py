@@ -16,8 +16,14 @@ Security model:
   - Credentials live Fernet-encrypted in the Redis session; decrypted per-request,
     never logged.
   - connect_timeout=3s; statement_timeout=5s.
-  - Per-(provider, project) circuit breaker in Redis: 3 fails -> 503 for 60s.
-  - DROP / ALTER / TRUNCATE refused (case-insensitive, leading whitespace stripped).
+  - Per-(provider, project) circuit breaker in Redis: 3 connectivity fails → 503 for 60s.
+    Query-level user errors (ProgrammingError, DataError) do NOT trip the breaker.
+  - DROP / ALTER / TRUNCATE refused (case-insensitive).
+  - Stacked statements (semicolons) refused — prevents prefix-check bypass.
+
+Bugfixes (2026-06-25):
+  - DDL blocklist bypass via stacked statements fixed (semicolon rejection).
+  - Circuit breaker now only trips on OperationalError (connectivity), not user query errors.
 """
 import json
 import logging
@@ -25,6 +31,7 @@ import sys
 import os
 
 import psycopg2
+import psycopg2.errorcodes
 from psycopg2.extras import RealDictCursor
 import redis as _redis_module
 from fastapi import APIRouter, HTTPException, Header, Depends
@@ -100,8 +107,18 @@ def _load_credentials(session: dict) -> DBCredentials:
 
 
 def _is_blocked(sql_text: str) -> bool:
+    """
+    Reject DDL statements and multi-statement payloads.
+    Prefix-only check is insufficient: 'SELECT 1; DROP TABLE x' passes it.
+    Block any SQL containing ';' (single-statement protocol ensures safety).
+    """
     head = sql_text.lstrip().upper()
-    return any(head.startswith(prefix) for prefix in _BLOCKED_PREFIXES)
+    if any(head.startswith(prefix) for prefix in _BLOCKED_PREFIXES):
+        return True
+    # Reject stacked statements (prevents DDL injection via semicolons)
+    if ";" in sql_text:
+        return True
+    return False
 
 
 def _cb_key(provider: str, project_id: str) -> str:
@@ -129,7 +146,10 @@ def _circuit_record_success(provider: str, project_id: str) -> None:
 @router.post("/query", response_model=QueryResponse, dependencies=[Depends(verify_token)])
 def db_query(req: QueryRequest):
     if _is_blocked(req.sql):
-        raise HTTPException(status_code=403, detail="DDL-операция запрещена (DROP/ALTER/TRUNCATE)")
+        raise HTTPException(
+            status_code=403,
+            detail="Запрос запрещён (DDL-операция или многострочный запрос не поддерживаются)",
+        )
 
     session = _get_session(req.session_id)
     project_id = session.get("project_id", "unknown")
@@ -161,12 +181,19 @@ def db_query(req: QueryRequest):
                 rows = []
     except HTTPException:
         raise
-    except Exception as exc:
+    except psycopg2.OperationalError as exc:
+        # Connectivity failure → trip circuit breaker (DB might be down/unreachable)
         _circuit_record_failure(creds.provider, project_id)
-        # Log the DB error class server-side only. The caller is untrusted code
-        # inside the sandbox — a psycopg2 OperationalError can carry host/user,
-        # so never echo str(exc) back over the wire.
-        logger.warning("db-proxy query failed for project %s: %s", project_id, type(exc).__name__)
+        logger.warning(
+            "db-proxy connection failed for project %s: %s", project_id, type(exc).__name__
+        )
+        raise HTTPException(status_code=503, detail="Ошибка подключения к БД")
+    except Exception as exc:
+        # Query-level error (ProgrammingError, DataError, timeout) → don't trip the breaker;
+        # this is user error, not a connectivity problem.
+        logger.warning(
+            "db-proxy query failed for project %s: %s", project_id, type(exc).__name__
+        )
         raise HTTPException(status_code=400, detail="Ошибка выполнения SQL-запроса")
     finally:
         if conn is not None:

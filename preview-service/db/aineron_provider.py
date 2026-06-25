@@ -31,7 +31,9 @@ def _schema_name(project_id: str) -> str:
 
 
 def _role_name(project_id: str) -> str:
-    return "sp_" + project_id.replace("-", "")[:12]
+    # Use full UUID (32 hex chars) to avoid collision on first 12 chars.
+    # sp_ + 32 = 35 chars, well within PG's 63-byte limit.
+    return "sp_" + project_id.replace("-", "")
 
 
 def _gen_password() -> str:

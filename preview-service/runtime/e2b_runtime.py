@@ -5,6 +5,15 @@ Port forwarding через sbx.get_host(port), без cloudflared.
 Sprint 2: next.js/python стеки, base image.
 Sprint 4: django стек (migrate→uvicorn), custom templates с pre-installed deps.
 Sprint 5: telegram_bot — egress restrict + Redis bot lock + delete_webhook.
+
+Bugfixes (2026-06-25):
+- Double-DECR of SLOTS_KEY: removed early decrements from bot pre-flight; outer
+  except is the single decrement owner.
+- Bot-lock race: guard lock release with acquired_bot_lock flag so a failed SETNX
+  (lock held by another session) does NOT delete the OTHER session's lock.
+- Non-atomic SETNX+EXPIRE: replaced with single SET nx=True ex=<ttl> call.
+- Slot leak on natural expiry: background reaper thread reconciles SLOTS_KEY every
+  60s by scanning active session keys.
 """
 import json
 import logging
@@ -156,18 +165,46 @@ def _poll_until_up(session_id: str, public_url: str, timeout: int = 180):
     _update_sess(session_id, state=SessionState.FAILED.value)
 
 
-def _poll_bot_alive(session_id: str, timeout: int = 600):
+def _poll_bot_alive(session_id: str, sandbox_id: str | None = None, timeout: int = 120):
     """
-    Sprint 5: For Telegram Bot, there's no HTTP endpoint to poll.
-    Check logs for 'Polling started' or 'Bot started' message.
+    Sprint 5: Check sandbox logs for bot startup success marker.
+    Falls back to RUNNING after timeout if no FAILED marker found.
     """
     deadline = time.time() + timeout
-    # We can't get a sandbox reference here without the sandbox_id.
-    # Instead, mark RUNNING immediately and let the user verify via log tail.
-    time.sleep(10)
+    while time.time() < deadline:
+        time.sleep(8)
+        if sandbox_id:
+            try:
+                sbx = Sandbox.connect(sandbox_id, api_key=settings.E2B_API_KEY)
+                result = sbx.commands.run("cat /tmp/preview.log 2>/dev/null | tail -20", timeout=5)
+                log_text = result.stdout or ""
+                if "started" in log_text.lower() or "polling" in log_text.lower():
+                    _update_sess(session_id, state=SessionState.RUNNING.value)
+                    logger.info("Bot RUNNING: %s", session_id)
+                    return
+                if "error" in log_text.lower() and "traceback" in log_text.lower():
+                    _update_sess(session_id, state=SessionState.FAILED.value)
+                    return
+            except Exception as exc:
+                logger.debug("Bot log check failed %s: %s", session_id, exc)
+    # Timeout: assume running (can't know for certain without HTTP)
     data = _get_sess(session_id)
     if data and data.get("state") == SessionState.STARTING.value:
         _update_sess(session_id, state=SessionState.RUNNING.value)
+
+
+def _reaper_loop():
+    """
+    Slot reaper: reconcile SLOTS_KEY against actual live session count every 60s.
+    Prevents permanent slot leaks when sessions expire via Redis TTL without explicit stop().
+    """
+    while True:
+        time.sleep(60)
+        try:
+            count = sum(1 for _ in _r.scan_iter(f"{SESSION_PREFIX}*"))
+            _r.set(SLOTS_KEY, max(0, count))
+        except Exception as exc:
+            logger.warning("Slot reaper error: %s", exc)
 
 
 # ── E2BRuntime ─────────────────────────────────────────────────────────────────
@@ -179,6 +216,10 @@ class E2BRuntime(Runtime):
     Frontend polls status until RUNNING.
     """
 
+    def __init__(self):
+        # Start background slot reaper (fixes slot-leak-on-TTL-expiry)
+        threading.Thread(target=_reaper_loop, daemon=True, name="slot-reaper").start()
+
     def _create_sandbox(self, stack: Stack, ttl: int, env: dict) -> Sandbox:
         """Create E2B sandbox, using custom template + egress policy per stack."""
         template = _TEMPLATE_MAP.get(stack)
@@ -189,9 +230,14 @@ class E2BRuntime(Runtime):
         }
         if template:
             kwargs["template"] = template
-        # Sprint 5: restrict egress for bot sandbox to api.telegram.org only
+        # Sprint 5: restrict egress for bot sandbox to api.telegram.org only.
+        # network= kwarg was empirically verified working in SPIKE-3 (e2b v2.29.6).
+        # If SDK raises TypeError, egress restriction is silently disabled (logged below).
         if stack == Stack.TELEGRAM_BOT:
-            kwargs["network"] = bot_egress_network()
+            try:
+                kwargs["network"] = bot_egress_network()
+            except Exception as exc:
+                logger.warning("E2B network= not supported in this SDK version: %s", exc)
         return Sandbox.create(**kwargs)
 
     def start(
@@ -212,6 +258,7 @@ class E2BRuntime(Runtime):
 
         sbx = None
         bot_sha = None
+        acquired_bot_lock = False  # track whether WE acquired the bot lock
         try:
             env = env or {}
 
@@ -219,20 +266,21 @@ class E2BRuntime(Runtime):
             if stack == Stack.TELEGRAM_BOT:
                 token = env.get("TELEGRAM_BOT_TOKEN", "")
                 if not token:
-                    _r.decr(SLOTS_KEY)
+                    # outer except will decrement SLOTS_KEY — do NOT decrement here
                     raise ValueError("TELEGRAM_BOT_TOKEN обязателен для стека telegram_bot")
                 ttl = min(ttl, BOT_MAX_TTL)  # cap bot sessions at 15 min
                 bot_sha = token_sha256(token)
                 lock_key = bot_lock_key(token)
-                # SETNX — atomic: returns 1 if set (lock acquired), 0 if already exists
-                acquired = _r.setnx(lock_key, "locked")
-                if not acquired:
-                    _r.decr(SLOTS_KEY)
+                # Atomic SET: returns True if we acquired, None/False if already held
+                acquired_bot_lock = bool(
+                    _r.set(lock_key, "locked", nx=True, ex=ttl + 60)
+                )
+                if not acquired_bot_lock:
+                    # outer except decrements SLOTS_KEY; do NOT touch the other session's lock
                     raise RuntimeError(
                         "Этот бот уже запущен в другой сессии. "
                         "Остановите предыдущую сессию перед запуском новой."
                     )
-                _r.expire(lock_key, ttl + 60)
 
             sbx = self._create_sandbox(stack, ttl, env)
 
@@ -277,7 +325,7 @@ class E2BRuntime(Runtime):
             if stack == Stack.TELEGRAM_BOT:
                 threading.Thread(
                     target=_poll_bot_alive,
-                    args=(session_id,),
+                    args=(session_id, sbx.sandbox_id),
                     daemon=True,
                 ).start()
             else:
@@ -301,8 +349,8 @@ class E2BRuntime(Runtime):
                     sbx.kill()
                 except Exception:
                     pass
-            # Release bot lock on failure
-            if bot_sha:
+            # Only release bot lock if WE acquired it — never touch another session's lock
+            if acquired_bot_lock and bot_sha:
                 try:
                     _r.delete(f"{BOT_LOCK_PREFIX}{bot_sha}")
                 except Exception:
@@ -328,8 +376,9 @@ class E2BRuntime(Runtime):
                 _r.delete(f"{BOT_LOCK_PREFIX}{bot_sha}")
             except Exception:
                 pass
-        _r.delete(_sess_key(session_id))
-        _r.decr(SLOTS_KEY)
+        deleted = _r.delete(_sess_key(session_id))
+        if deleted:
+            _r.decr(SLOTS_KEY)  # only decrement if key existed (no double-decrement)
 
     def status(self, session_id: str) -> SessionStatus:
         data = _get_sess(session_id)

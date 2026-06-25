@@ -1,7 +1,9 @@
 import os as _os
 
 import requests as _rq
+from django.conf import settings
 from django.http import StreamingHttpResponse, HttpResponse
+from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
 from django.views.decorators.clickjacking import xframe_options_exempt
 from rest_framework import permissions
@@ -242,12 +244,11 @@ class SandboxStatusView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, id):
-        from django.conf import settings as djsettings
-        project = StudioProject.objects.get(id=id, user=request.user)
+        project = get_object_or_404(StudioProject, id=id, user=request.user)
 
         # Sprint 6: frontend stacks handled by Sandpack — no Docker sandbox needed
         _FRONTEND_STACKS = ('react', 'vue', 'html', 'tma')
-        if getattr(djsettings, 'STUDIO_DEPRECATE_DOCKER_FRONTEND', True) and project.target_stack in _FRONTEND_STACKS:
+        if getattr(settings, 'STUDIO_DEPRECATE_DOCKER_FRONTEND', True) and project.target_stack in _FRONTEND_STACKS:
             return Response({'alive': False, 'port': None, 'uptime_s': 0, 'sandpack': True})
 
         cid = project.sandbox_container_id
@@ -490,12 +491,12 @@ class DbExportView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, id):
+        import re
         import subprocess
         import tempfile
         from django.http import FileResponse
-        from django.conf import settings as djsettings
 
-        project = StudioProject.objects.get(id=id, user=request.user)
+        project = get_object_or_404(StudioProject, id=id, user=request.user)
         db = ProjectDatabase.objects.filter(project=project).first()
         if not db or db.mode != 'aineron' or not db.aineron_schema:
             return Response(
@@ -504,6 +505,10 @@ class DbExportView(APIView):
             )
 
         schema = db.aineron_schema
+        # Validate schema name is safe before passing to subprocess
+        if not re.match(r'^[A-Za-z_][A-Za-z0-9_]*$', schema):
+            return Response({'error': 'Некорректное имя схемы'}, status=400)
+
         host = _os.getenv('AINERON_DB_HOST', 'localhost')
         port = _os.getenv('AINERON_DB_PORT', '5432')
         db_name = _os.getenv('AINERON_DB_NAME', 'aineron')
@@ -513,8 +518,10 @@ class DbExportView(APIView):
         env = dict(_os.environ)
         env['PGPASSWORD'] = db_pass
 
+        tmp_path = None
         try:
             tmp = tempfile.NamedTemporaryFile(suffix='.sql', delete=False, prefix=f'export_{schema}_')
+            tmp_path = tmp.name
             tmp.close()
             result = subprocess.run(
                 [
@@ -526,7 +533,7 @@ class DbExportView(APIView):
                     '-n', schema,
                     '--no-owner',
                     '--no-acl',
-                    '-f', tmp.name,
+                    '-f', tmp_path,
                 ],
                 env=env,
                 capture_output=True,
@@ -535,17 +542,34 @@ class DbExportView(APIView):
             if result.returncode != 0:
                 return Response({'error': f'pg_dump error: {result.stderr.decode()[:300]}'}, status=502)
 
-            response = FileResponse(
-                open(tmp.name, 'rb'),
+            # FileResponse streams the file; delete after response is consumed
+            def _file_gen(path):
+                try:
+                    with open(path, 'rb') as f:
+                        yield from iter(lambda: f.read(8192), b'')
+                finally:
+                    try:
+                        _os.unlink(path)
+                    except OSError:
+                        pass
+
+            response = StreamingHttpResponse(
+                _file_gen(tmp_path),
                 content_type='application/sql',
-                as_attachment=True,
-                filename=f'{schema}_export.sql',
             )
+            response['Content-Disposition'] = f'attachment; filename="{schema}_export.sql"'
+            tmp_path = None  # ownership transferred to generator
             return response
         except FileNotFoundError:
             return Response({'error': 'pg_dump не найден на сервере'}, status=501)
         except subprocess.TimeoutExpired:
             return Response({'error': 'pg_dump timeout (>30 s)'}, status=504)
+        finally:
+            if tmp_path:
+                try:
+                    _os.unlink(tmp_path)
+                except OSError:
+                    pass
 
 
 class E2BPreviewView(APIView):
@@ -556,10 +580,10 @@ class E2BPreviewView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, id):
-        project = StudioProject.objects.get(id=id, user=request.user)
+        project = get_object_or_404(StudioProject, id=id, user=request.user)
         stack = project.target_stack
         if stack not in ('nextjs', 'python', 'django'):
-            return Response({'error': f'E2B не поддерживает стек {stack} в Sprint 2'}, status=400)
+            return Response({'error': f'E2B не поддерживает стек {stack}'}, status=400)
 
         files = project.files.all().values('path', 'content')
         code_files = {f['path']: f['content'] for f in files}
@@ -573,12 +597,12 @@ class E2BPreviewView(APIView):
                     'code_files': code_files,
                     'ttl': 900,
                     'env': {},
-                    'user_id': str(request.user.id),  # Sprint 6: per-user rate limiting
+                    'user_id': str(request.user.id),
                 },
                 headers=_preview_headers(),
                 timeout=30,
             )
-        except _rq.exceptions.ConnectionError:
+        except _rq.exceptions.RequestException:
             return Response(
                 {'error': 'preview-service недоступен. Запустите: cd preview-service && uvicorn main:app --port 8001'},
                 status=503,
@@ -644,7 +668,7 @@ class BotEmulateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, id):
-        project = StudioProject.objects.get(id=id, user=request.user)
+        project = get_object_or_404(StudioProject, id=id, user=request.user)
         from ..billing import can_afford, charge
         cost = 1
         if not can_afford(request.user, cost):
@@ -696,7 +720,7 @@ class E2BBotPreviewView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, id):
-        project = StudioProject.objects.get(id=id, user=request.user)
+        project = get_object_or_404(StudioProject, id=id, user=request.user)
         if project.target_stack != 'telegram_bot':
             return Response({'error': 'Проект не является Telegram Bot'}, status=400)
 
@@ -720,14 +744,13 @@ class E2BBotPreviewView(APIView):
                     'code_files': code_files,
                     'ttl': 900,
                     'env': {'TELEGRAM_BOT_TOKEN': bot_token},  # token in-transit only
+                    'user_id': str(request.user.id),
                 },
                 headers=_preview_headers(),
                 timeout=30,
             )
-        except _rq.exceptions.ConnectionError:
+        except _rq.exceptions.RequestException:
             return Response({'error': 'preview-service недоступен'}, status=503)
-        finally:
-            del bot_token  # discard from local scope immediately
 
         if resp.status_code == 409:
             return Response(
@@ -738,8 +761,11 @@ class E2BBotPreviewView(APIView):
             return Response({'error': resp.text[:300]}, status=502)
 
         data = resp.json()
+        session_id = data.get('session_id')
+        if not session_id:
+            return Response({'error': 'preview-service не вернул session_id'}, status=502)
         return Response({
-            'session_id': data['session_id'],
+            'session_id': session_id,
             'state': data.get('state', 'starting'),
             'warning': (
                 'Токен передан в изолированную E2B среду и хранится только в памяти sandbox. '

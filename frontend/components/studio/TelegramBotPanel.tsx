@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Bot, Loader2, StopCircle } from 'lucide-react';
 import { BotEmulator } from './BotEmulator';
 import { studioApi } from '@/lib/api/studio';
@@ -20,6 +20,27 @@ export function TelegramBotPanel({ projectId, refreshKey }: Props) {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
+  // Store poll interval in a ref so stopBot() and unmount cleanup can clear it
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const clearPoll = () => {
+    if (pollRef.current !== null) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  };
+
+  // Clean up on unmount to prevent memory leaks and setState on unmounted component
+  useEffect(() => () => clearPoll(), []);
+
+  // Reset live tab when project changes (refreshKey increments on project reload)
+  useEffect(() => {
+    clearPoll();
+    setBotState('idle');
+    setSessionId(null);
+    setWarning(null);
+    setError(null);
+  }, [refreshKey]);
 
   const startBot = async () => {
     if (!token.trim()) return;
@@ -34,21 +55,21 @@ export function TelegramBotPanel({ projectId, refreshKey }: Props) {
         setBotState('running');
         return;
       }
-      // Poll for RUNNING
-      const poll = setInterval(async () => {
-        if (!r.session_id) return;
+      // Poll for RUNNING — stored in ref so stopBot() can clear it
+      const id = setInterval(async () => {
         try {
           const s = await studioApi.e2bPreviewStatus(projectId, r.session_id);
           if (s.state === 'running') {
             setBotState('running');
-            clearInterval(poll);
+            clearPoll();
           } else if (s.state === 'failed' || s.state === 'stopped' || s.state === 'expired') {
             setBotState('failed');
             setError('Бот завершился или не смог запуститься. Проверьте файлы проекта.');
-            clearInterval(poll);
+            clearPoll();
           }
         } catch { /* keep polling */ }
       }, 5000);
+      pollRef.current = id;
     } catch (e: unknown) {
       setBotState('failed');
       setError(e instanceof Error ? e.message : 'Ошибка запуска бота');
@@ -56,16 +77,18 @@ export function TelegramBotPanel({ projectId, refreshKey }: Props) {
   };
 
   const stopBot = async () => {
-    if (sessionId) {
-      try {
-        await studioApi.e2bPreviewStop(projectId, sessionId);
-      } catch { /* best effort */ }
-    }
+    clearPoll();  // stop polling FIRST — prevents flip back to 'running' after stop
+    const sid = sessionId;
     setBotState('idle');
     setSessionId(null);
     setToken('');
     setWarning(null);
     setError(null);
+    if (sid) {
+      try {
+        await studioApi.e2bPreviewStop(projectId, sid);
+      } catch { /* best effort */ }
+    }
   };
 
   const tabs: [Tab, string][] = [
