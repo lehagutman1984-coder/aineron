@@ -86,6 +86,5 @@ django-cors-headers==4.7.0
 tiktoken
 docker
 beautifulsoup4
-playwright
 aiogram>=3.17,<4.0
 django-oauth-toolkit>=2.4.0

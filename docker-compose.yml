@@ -189,23 +189,6 @@ services:
       gitea_db:
         condition: service_healthy
 
-  celery_studio_playwright:
-    build:
-      context: .
-      dockerfile: Dockerfile.playwright
-    container_name: neiro_celery_studio_pw
-    restart: unless-stopped
-    env_file:
-      - .env
-    command: celery -A config worker --loglevel=info --pool=prefork --concurrency=2 -Q studio_playwright_queue
-    volumes:
-      - ./src:/app
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
   nginx:
     image: nginx:1.25-alpine
     container_name: neiro_nginx

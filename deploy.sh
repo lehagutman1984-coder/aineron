@@ -24,9 +24,6 @@ docker-compose build
 echo -e "${YELLOW}Собираем sandbox-образ для Studio...${NC}"
 docker build -f Dockerfile.sandbox -t aineron-sandbox:latest .
 
-echo -e "${YELLOW}Собираем Playwright-образ для Studio (необязательно)...${NC}"
-docker build -f Dockerfile.playwright -t aineron-playwright:latest . || echo -e "${YELLOW}Playwright-образ не собран (пропускаем)${NC}"
-
 echo -e "${YELLOW}Запускаем контейнеры...${NC}"
 docker-compose up -d
 

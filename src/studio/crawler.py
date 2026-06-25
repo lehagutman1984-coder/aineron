@@ -5,7 +5,7 @@ from .security import is_safe_url
 
 
 def crawl(url: str) -> dict:
-    """Static crawl via requests. SPA crawling handled by celery_studio_playwright (D2)."""
+    """Static crawl via requests only (no Playwright)."""
     if not is_safe_url(url):
         raise ValueError('Небезопасный URL (SSRF)')
     r = requests.get(url, timeout=15, headers={'User-Agent': 'aineron-studio-bot'})
