@@ -13,10 +13,12 @@ from pydantic import BaseModel
 import settings
 from runtime.base import Stack
 from runtime.e2b_runtime import E2BRuntime
+from db.proxy import router as db_router
 
 logging.basicConfig(level=logging.INFO)
 app = FastAPI(title="aineron preview-service", version="0.2.0")
 _runtime = E2BRuntime()
+app.include_router(db_router)
 
 
 def verify_token(x_internal_token: str = Header(...)):

@@ -8,7 +8,7 @@ from rest_framework import permissions
 from rest_framework.renderers import BaseRenderer
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from ..models import StudioProject
+from ..models import StudioProject, ProjectDatabase
 from ..serializers import PipelineStateSerializer
 from ..events import get_pipeline_events
 from ..billing import estimate_stars
@@ -385,6 +385,93 @@ class ExplainView(APIView):
         answer = ExplainerAgent(project).explain(code, path)
         charge(request.user, cost, project)
         return Response({'explanation': answer})
+
+
+class ProjectDatabaseView(APIView):
+    """
+    Sprint 3 — code-complete, not integration-tested.
+
+    Manage a Studio project's preview database binding. Secrets (Neon API key,
+    external DSN) are Fernet-encrypted before persistence and never returned in
+    clear. Provisioning itself is deferred: we save the binding and set
+    provisioned=False; the preview-service E2BRuntime provisions lazily on start.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    _VALID_MODES = {'aineron', 'neon', 'external'}
+
+    def get(self, request, id):
+        project = StudioProject.objects.get(id=id, user=request.user)
+        db = ProjectDatabase.objects.filter(project=project).first()
+        if not db:
+            return Response({
+                'mode': 'none',
+                'provisioned': False,
+                'aineron_schema': '',
+                'neon_project_id': '',
+                'has_neon_key': False,
+                'has_external_conn': False,
+            })
+        return Response({
+            'mode': db.mode,
+            'provisioned': db.provisioned,
+            'aineron_schema': db.aineron_schema,
+            'neon_project_id': db.neon_project_id,
+            'has_neon_key': bool(db.neon_api_key_enc),
+            'has_external_conn': bool(db.external_conn_enc),
+        })
+
+    def post(self, request, id):
+        from aitext.crypto import encrypt_token
+        project = StudioProject.objects.get(id=id, user=request.user)
+        mode = request.data.get('mode', '')
+        if mode not in self._VALID_MODES:
+            return Response({'error': 'Недопустимый режим базы данных'}, status=400)
+
+        db, _ = ProjectDatabase.objects.get_or_create(project=project)
+        db.mode = mode
+        # New mode invalidates any prior provisioned credentials.
+        db.provisioned = False
+        db.credentials_enc = ''
+        db.aineron_schema = ''
+        db.neon_project_id = ''
+
+        if mode == 'neon':
+            neon_api_key = (request.data.get('neon_api_key') or '').strip()
+            if not neon_api_key and not db.neon_api_key_enc:
+                return Response({'error': 'Требуется Neon API-ключ'}, status=400)
+            if neon_api_key:
+                db.neon_api_key_enc = encrypt_token(neon_api_key)
+            db.external_conn_enc = ''
+        elif mode == 'external':
+            external_conn = (request.data.get('external_conn') or '').strip()
+            if not external_conn and not db.external_conn_enc:
+                return Response({'error': 'Требуется строка подключения'}, status=400)
+            if external_conn:
+                if not external_conn.startswith(('postgresql://', 'postgres://')):
+                    return Response({'error': 'DSN должен начинаться с postgresql://'}, status=400)
+                db.external_conn_enc = encrypt_token(external_conn)
+            db.neon_api_key_enc = ''
+        else:  # aineron — no user secrets
+            db.neon_api_key_enc = ''
+            db.external_conn_enc = ''
+
+        db.save()
+        return Response({'ok': True, 'mode': mode})
+
+    def delete(self, request, id):
+        project = StudioProject.objects.get(id=id, user=request.user)
+        db = ProjectDatabase.objects.filter(project=project).first()
+        if db:
+            db.mode = 'none'
+            db.provisioned = False
+            db.credentials_enc = ''
+            db.neon_api_key_enc = ''
+            db.external_conn_enc = ''
+            db.aineron_schema = ''
+            db.neon_project_id = ''
+            db.save()
+        return Response({'ok': True, 'mode': 'none'})
 
 
 class E2BPreviewView(APIView):

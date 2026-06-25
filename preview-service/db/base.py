@@ -1,5 +1,15 @@
+"""
+Database provider abstractions for Studio live preview.
+
+Sprint 3 — code-complete, not integration-tested.
+
+DBCredentials carries connection info in-transit. When persisted (Django side)
+it is serialized via to_json() and Fernet-encrypted; decrypted only at
+connection time inside the db-proxy. Never log the password / connection_uri.
+"""
+import json
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 
 
 @dataclass
@@ -12,6 +22,22 @@ class DBCredentials:
     schema: str | None   # для schema-per-project (Mode 1)
     provider: str        # "aineron" | "neon" | "external" | "timeweb"
 
+    def to_json(self) -> str:
+        return json.dumps(asdict(self))
+
+    @classmethod
+    def from_json(cls, raw: str) -> "DBCredentials":
+        data = json.loads(raw)
+        return cls(
+            host=data["host"],
+            port=int(data["port"]),
+            dbname=data["dbname"],
+            user=data["user"],
+            password=data["password"],
+            schema=data.get("schema"),
+            provider=data["provider"],
+        )
+
 
 class DatabaseProvider(ABC):
     @abstractmethod
@@ -22,28 +48,6 @@ class DatabaseProvider(ABC):
 
     @abstractmethod
     def deprovision(self, project_id: str) -> None: ...
-
-
-# Sprint 3: CREATE SCHEMA proj_<id> + PgBouncer
-class AineronSchemaProvider(DatabaseProvider):
-    def provision(self, project_id): raise NotImplementedError("Sprint 3")
-    def sync_schema(self, credentials, migrations): raise NotImplementedError
-    def deprovision(self, project_id): raise NotImplementedError
-
-
-# Sprint 3: Neon Management API с user-provided API key (self-serve, без OAuth партнёрства)
-# POST https://console.neon.tech/api/v2/projects с Bearer {user_neon_api_key}
-class NeonProvider(DatabaseProvider):
-    def provision(self, project_id): raise NotImplementedError("Sprint 3")
-    def sync_schema(self, credentials, migrations): raise NotImplementedError
-    def deprovision(self, project_id): raise NotImplementedError
-
-
-# Sprint 3: connection string от пользователя + Fernet-шифрование
-class ExternalProvider(DatabaseProvider):
-    def provision(self, project_id): raise NotImplementedError("Sprint 3")
-    def sync_schema(self, credentials, migrations): raise NotImplementedError
-    def deprovision(self, project_id): raise NotImplementedError
 
 
 # Sprint 4: Timeweb Cloud Databases API (РФ-юрисдикция, 152-ФЗ)

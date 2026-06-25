@@ -11,6 +11,7 @@ from .views.pipeline import (
     ApproveStepView, DeployView, SandboxStatusView, PreviewRestartView, ExplainView,
     ConsoleErrorView, PipelineSkipView,
     E2BPreviewView, E2BPreviewStatusView,
+    ProjectDatabaseView,
 )
 from .views.files import FileTreeView, FileDetailView, FileDiffView, CommitHistoryView, RollbackView, ExportView, SearchFilesView
 
@@ -54,6 +55,8 @@ urlpatterns = [
     path('projects/<uuid:id>/pipeline/skip/', PipelineSkipView.as_view(), name='pipeline_skip'),
     path('projects/<uuid:id>/preview/restart/', PreviewRestartView.as_view(), name='preview_restart'),
     # E2B live preview (Sprint 2): POST to start, GET/<session_id>/ for status, DELETE/<session_id>/ to stop
+    # DB management (Sprint 3): GET status, POST provision, DELETE deprovision
+    path('projects/<uuid:id>/db/', ProjectDatabaseView.as_view(), name='project_db'),
     path('projects/<uuid:id>/e2b/', E2BPreviewView.as_view(), name='e2b_preview_start'),
     path('projects/<uuid:id>/e2b/<str:session_id>/', E2BPreviewStatusView.as_view(), name='e2b_preview_session'),
     # Preview proxy: proxies HTTP to sandbox container; ?path= is the sub-path

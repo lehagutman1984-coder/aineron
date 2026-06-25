@@ -129,6 +129,17 @@ export interface StudioModel {
   description: string;
 }
 
+export type ProjectDbMode = 'none' | 'aineron' | 'neon' | 'external';
+
+export interface ProjectDatabaseInfo {
+  mode: ProjectDbMode;
+  provisioned: boolean;
+  aineron_schema: string;
+  neon_project_id: string;
+  has_neon_key: boolean;
+  has_external_conn: boolean;
+}
+
 export const studioApi = {
   list: () =>
     request<StudioProject[]>('/studio/projects/'),
@@ -345,4 +356,23 @@ export const studioApi = {
       `/studio/projects/${projectId}/e2b/${sessionId}/`,
       { method: 'DELETE' },
     ),
+
+  // ── Database Providers (Sprint 3) ───────────────────────────────────────────
+
+  dbGet: (id: string) =>
+    request<ProjectDatabaseInfo>(`/studio/projects/${id}/db/`),
+
+  dbProvision: (
+    id: string,
+    data: { mode: string; neon_api_key?: string; external_conn?: string },
+  ) =>
+    request<{ ok: boolean; mode: string }>(`/studio/projects/${id}/db/`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  dbDeprovision: (id: string) =>
+    request<{ ok: boolean; mode: string }>(`/studio/projects/${id}/db/`, {
+      method: 'DELETE',
+    }),
 };

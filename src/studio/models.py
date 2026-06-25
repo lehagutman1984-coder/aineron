@@ -83,6 +83,38 @@ class StudioFile(models.Model):
         return f'{self.project_id}/{self.path}'
 
 
+class ProjectDatabase(models.Model):
+    """
+    Sprint 3 — database binding for a Studio project's live preview.
+
+    Holds the chosen DB mode and (Fernet-encrypted) provider secrets. Actual
+    provisioning is done lazily by the preview-service E2BRuntime; this model is
+    the Django-side source of truth for what mode/credentials a project uses.
+    """
+    MODE_CHOICES = [
+        ('none', 'Без базы'),
+        ('aineron', 'Aineron Schema (бесплатно)'),
+        ('neon', 'Neon (ваш аккаунт)'),
+        ('external', 'Внешняя БД'),
+    ]
+    project = models.OneToOneField(StudioProject, on_delete=models.CASCADE, related_name='preview_db')
+    mode = models.CharField(max_length=20, choices=MODE_CHOICES, default='none')
+    aineron_schema = models.CharField(max_length=128, blank=True)
+    neon_project_id = models.CharField(max_length=128, blank=True)
+    neon_api_key_enc = models.TextField(blank=True)
+    external_conn_enc = models.TextField(blank=True)
+    provisioned = models.BooleanField(default=False)
+    credentials_enc = models.TextField(blank=True)  # Fernet-encrypted DBCredentials JSON
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Project Database'
+
+    def __str__(self):
+        return f'DB[{self.project_id}] {self.mode}'
+
+
 class StudioPipelineState(models.Model):
     STATUS_CHOICES = [
         ('idle', 'idle'),

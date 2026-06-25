@@ -8,6 +8,8 @@ RUN pip install --no-cache-dir \
     fastapi>=0.115.0 \
     uvicorn[standard]>=0.30.0 \
     redis>=5.0.0 \
+    cryptography>=42.0.0 \
+    psycopg2-binary>=2.9.0 \
     httpx>=0.27.0 \
     e2b>=2.0.0
 
