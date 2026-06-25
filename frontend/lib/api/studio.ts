@@ -338,6 +338,20 @@ export const studioApi = {
   getModels: () =>
     request<StudioModel[]>('/studio/models/'),
 
+  // ── Sprint 5: Telegram Bot Preview ──────────────────────────────────────────
+
+  botEmulate: (projectId: string, message: string) =>
+    request<{ reply: string }>(`/studio/projects/${projectId}/bot-emulate/`, {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    }),
+
+  e2bBotStart: (projectId: string, botToken: string) =>
+    request<{ session_id: string; state: string; warning?: string }>(
+      `/studio/projects/${projectId}/e2b-bot/`,
+      { method: 'POST', body: JSON.stringify({ bot_token: botToken }) },
+    ),
+
   // ── E2B Live Preview (Sprint 2) ─────────────────────────────────────────────
 
   e2bPreviewStart: (projectId: string) =>

@@ -560,6 +560,119 @@ class E2BPreviewStatusView(APIView):
         return Response({'ok': True})
 
 
+class BotEmulateView(APIView):
+    """
+    Tier 1 Telegram Bot emulator: uses AI to simulate bot responses
+    given the project's source files as context.
+    No Telegram, no execution — pure LLM simulation.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, id):
+        project = StudioProject.objects.get(id=id, user=request.user)
+        from ..billing import can_afford, charge
+        cost = 1
+        if not can_afford(request.user, cost):
+            return Response({'error': 'Недостаточно звёзд'}, status=402)
+
+        message = str(request.data.get('message', ''))[:500]
+        if not message.strip():
+            return Response({'error': 'Пустое сообщение'}, status=400)
+
+        # Build context from project's Python files (first 10, max 1500 chars each)
+        files_ctx = ''
+        for f in project.files.filter(path__endswith='.py').order_by('path')[:10]:
+            files_ctx += f'\n--- {f.path} ---\n{f.content[:1500]}'
+        if not files_ctx:
+            files_ctx = '(файлы бота ещё не созданы)'
+
+        system = (
+            'Ты симулируешь Telegram-бота. Исходный код бота:\n'
+            f'{files_ctx}\n\n'
+            'Отвечай строго как этот бот, используя его логику, команды и текст ответов. '
+            'Ответ должен быть кратким (до 200 символов) и соответствовать поведению бота.'
+        )
+
+        try:
+            from ..agents.base import get_client
+            client = get_client()
+            completion = client.chat.completions.create(
+                model='deepseek-v3.2',
+                messages=[
+                    {'role': 'system', 'content': system},
+                    {'role': 'user', 'content': message},
+                ],
+                max_tokens=300,
+                temperature=0.3,
+            )
+            reply = completion.choices[0].message.content or '(нет ответа)'
+        except Exception as exc:
+            return Response({'error': f'Ошибка LLM: {exc}'}, status=502)
+
+        charge(request.user, cost, project)
+        return Response({'reply': reply})
+
+
+class E2BBotPreviewView(APIView):
+    """
+    Sprint 5 Tier 2: run real Telegram bot in E2B sandbox.
+    Bot token is passed only in-memory (request → preview-service env), never stored.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, id):
+        project = StudioProject.objects.get(id=id, user=request.user)
+        if project.target_stack != 'telegram_bot':
+            return Response({'error': 'Проект не является Telegram Bot'}, status=400)
+
+        bot_token = str(request.data.get('bot_token', '')).strip()
+        if not bot_token or ':' not in bot_token:
+            return Response(
+                {'error': 'Неверный формат токена. Получите тестовый токен у @BotFather.'},
+                status=400,
+            )
+
+        # SECURITY: Never log the token. Log only a safe prefix marker.
+        files = project.files.all().values('path', 'content')
+        code_files = {f['path']: f['content'] for f in files}
+
+        try:
+            resp = _rq.post(
+                f'{_PREVIEW_SVC}/preview/start',
+                json={
+                    'project_id': str(project.id),
+                    'stack': 'telegram_bot',
+                    'code_files': code_files,
+                    'ttl': 900,
+                    'env': {'TELEGRAM_BOT_TOKEN': bot_token},  # token in-transit only
+                },
+                headers=_preview_headers(),
+                timeout=30,
+            )
+        except _rq.exceptions.ConnectionError:
+            return Response({'error': 'preview-service недоступен'}, status=503)
+        finally:
+            del bot_token  # discard from local scope immediately
+
+        if resp.status_code == 409:
+            return Response(
+                {'error': 'Этот бот уже запущен в другой сессии. Остановите её перед новым запуском.'},
+                status=409,
+            )
+        if not resp.ok:
+            return Response({'error': resp.text[:300]}, status=502)
+
+        data = resp.json()
+        return Response({
+            'session_id': data['session_id'],
+            'state': data.get('state', 'starting'),
+            'warning': (
+                'Токен передан в изолированную E2B среду и хранится только в памяти sandbox. '
+                'Сессия автоматически завершится через 15 мин.'
+            ),
+        })
+
+
 _MIME = {
     '.html': 'text/html; charset=utf-8',
     '.htm':  'text/html; charset=utf-8',

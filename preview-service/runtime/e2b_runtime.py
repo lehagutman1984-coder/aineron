@@ -1,10 +1,10 @@
 """
-E2BRuntime — Sprint 2+4: live preview через E2B Firecracker sandboxes.
+E2BRuntime — Sprint 2+4+5: live preview через E2B Firecracker sandboxes.
 Port forwarding через sbx.get_host(port), без cloudflared.
 
 Sprint 2: next.js/python стеки, base image.
 Sprint 4: django стек (migrate→uvicorn), custom templates с pre-installed deps.
-Sprint 5: telegram_bot стек с egress restrict.
+Sprint 5: telegram_bot — egress restrict + Redis bot lock + delete_webhook.
 """
 import json
 import logging
@@ -23,6 +23,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 import settings
 
 from .base import Runtime, Stack, SessionState, PreviewSession, SessionStatus
+from .sprint5_bot import (
+    BOT_MAX_TTL, BOT_LOCK_PREFIX,
+    _BOT_STARTUP_CMD, bot_lock_key, token_sha256, bot_egress_network,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -130,19 +134,10 @@ def _bg_start_django(sbx: Sandbox, port: int):
 
 def _bg_start_telegram_bot(sbx: Sandbox):
     """
-    Sprint 5: Tier 2 — run bot in E2B with egress restricted to api.telegram.org.
-    Bot token arrives via envs= only, never written to files.
-    delete_webhook is mandatory before polling (see sprint_5_bot.py).
+    Sprint 5: Tier 2 — run bot with delete_webhook wrapper before polling.
+    Token arrives via envs= only, never written to any file.
     """
-    cmd = (
-        "bash -c '"
-        "cd /app && "
-        "[ -f requirements.txt ] && pip install -r requirements.txt -q >> /tmp/preview.log 2>&1; "
-        "python bot.py >> /tmp/preview.log 2>&1 "
-        "& echo started"
-        "'"
-    )
-    sbx.commands.run(cmd, timeout=10)
+    sbx.commands.run(_BOT_STARTUP_CMD, timeout=15)
 
 
 def _poll_until_up(session_id: str, public_url: str, timeout: int = 180):
@@ -185,7 +180,7 @@ class E2BRuntime(Runtime):
     """
 
     def _create_sandbox(self, stack: Stack, ttl: int, env: dict) -> Sandbox:
-        """Create E2B sandbox, using custom template if available."""
+        """Create E2B sandbox, using custom template + egress policy per stack."""
         template = _TEMPLATE_MAP.get(stack)
         kwargs = {
             "api_key": settings.E2B_API_KEY,
@@ -194,6 +189,9 @@ class E2BRuntime(Runtime):
         }
         if template:
             kwargs["template"] = template
+        # Sprint 5: restrict egress for bot sandbox to api.telegram.org only
+        if stack == Stack.TELEGRAM_BOT:
+            kwargs["network"] = bot_egress_network()
         return Sandbox.create(**kwargs)
 
     def start(
@@ -213,8 +211,29 @@ class E2BRuntime(Runtime):
             )
 
         sbx = None
+        bot_sha = None
         try:
             env = env or {}
+
+            # Sprint 5: bot-specific pre-flight checks
+            if stack == Stack.TELEGRAM_BOT:
+                token = env.get("TELEGRAM_BOT_TOKEN", "")
+                if not token:
+                    _r.decr(SLOTS_KEY)
+                    raise ValueError("TELEGRAM_BOT_TOKEN обязателен для стека telegram_bot")
+                ttl = min(ttl, BOT_MAX_TTL)  # cap bot sessions at 15 min
+                bot_sha = token_sha256(token)
+                lock_key = bot_lock_key(token)
+                # SETNX — atomic: returns 1 if set (lock acquired), 0 if already exists
+                acquired = _r.setnx(lock_key, "locked")
+                if not acquired:
+                    _r.decr(SLOTS_KEY)
+                    raise RuntimeError(
+                        "Этот бот уже запущен в другой сессии. "
+                        "Остановите предыдущую сессию перед запуском новой."
+                    )
+                _r.expire(lock_key, ttl + 60)
+
             sbx = self._create_sandbox(stack, ttl, env)
 
             _upload_files(sbx, code_files)
@@ -251,6 +270,8 @@ class E2BRuntime(Runtime):
                 "state": SessionState.STARTING.value,
                 "logs": [],
                 "stack": stack.value,
+                # Store sha256 so stop() can release bot lock without needing the token
+                "bot_sha": bot_sha,
             }, ttl)
 
             if stack == Stack.TELEGRAM_BOT:
@@ -280,6 +301,12 @@ class E2BRuntime(Runtime):
                     sbx.kill()
                 except Exception:
                     pass
+            # Release bot lock on failure
+            if bot_sha:
+                try:
+                    _r.delete(f"{BOT_LOCK_PREFIX}{bot_sha}")
+                except Exception:
+                    pass
             _r.decr(SLOTS_KEY)
             raise
 
@@ -294,6 +321,13 @@ class E2BRuntime(Runtime):
                 sbx.kill()
             except Exception as exc:
                 logger.warning("E2B kill failed %s: %s", sandbox_id, exc)
+        # Sprint 5: release bot lock so the bot can be restarted
+        bot_sha = data.get("bot_sha")
+        if bot_sha:
+            try:
+                _r.delete(f"{BOT_LOCK_PREFIX}{bot_sha}")
+            except Exception:
+                pass
         _r.delete(_sess_key(session_id))
         _r.decr(SLOTS_KEY)
 

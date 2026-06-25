@@ -12,6 +12,7 @@ from .views.pipeline import (
     ConsoleErrorView, PipelineSkipView,
     E2BPreviewView, E2BPreviewStatusView,
     ProjectDatabaseView,
+    BotEmulateView, E2BBotPreviewView,
 )
 from .views.files import FileTreeView, FileDetailView, FileDiffView, CommitHistoryView, RollbackView, ExportView, SearchFilesView
 
@@ -59,6 +60,9 @@ urlpatterns = [
     path('projects/<uuid:id>/db/', ProjectDatabaseView.as_view(), name='project_db'),
     path('projects/<uuid:id>/e2b/', E2BPreviewView.as_view(), name='e2b_preview_start'),
     path('projects/<uuid:id>/e2b/<str:session_id>/', E2BPreviewStatusView.as_view(), name='e2b_preview_session'),
+    # Sprint 5: Telegram Bot preview
+    path('projects/<uuid:id>/bot-emulate/', BotEmulateView.as_view(), name='bot_emulate'),
+    path('projects/<uuid:id>/e2b-bot/', E2BBotPreviewView.as_view(), name='e2b_bot_preview'),
     # Preview proxy: proxies HTTP to sandbox container; ?path= is the sub-path
     re_path(r'^projects/(?P<id>[0-9a-f-]{36})/preview/(?P<path>.*)$', PreviewProxyView.as_view(), name='preview_proxy'),
 ]
