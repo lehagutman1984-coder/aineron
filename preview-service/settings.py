@@ -26,3 +26,13 @@ AINERON_DB_PORT: int = int(os.environ.get("DB_PORT", "5432"))
 FERNET_KEY: str = os.environ.get("PROJECT_CONNECTOR_FERNET_KEY", "")
 
 NEON_DEFAULT_REGION: str = os.environ.get("NEON_DEFAULT_REGION", "aws-us-east-2")
+
+# ── Sprint 4: Custom E2B templates (pre-installed deps, egress-restrict safe) ───
+# If empty — falls back to E2B base image (Node 20 + Python 3.11).
+# Build with: cd preview-service/templates && bash build.sh
+E2B_TEMPLATE_NEXTJS: str = os.environ.get("E2B_TEMPLATE_NEXTJS", "")
+E2B_TEMPLATE_PYTHON: str = os.environ.get("E2B_TEMPLATE_PYTHON", "")
+E2B_TEMPLATE_DJANGO: str = os.environ.get("E2B_TEMPLATE_DJANGO", "")
+
+# Timeweb Cloud API (152-ФЗ, российская юрисдикция)
+TIMEWEB_API_TOKEN: str = os.environ.get("TIMEWEB_API_TOKEN", "")

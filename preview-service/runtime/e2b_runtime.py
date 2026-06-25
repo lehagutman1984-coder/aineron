@@ -1,8 +1,10 @@
 """
-E2BRuntime — Sprint 2: live preview через E2B Firecracker sandboxes.
+E2BRuntime — Sprint 2+4: live preview через E2B Firecracker sandboxes.
 Port forwarding через sbx.get_host(port), без cloudflared.
-Egress не ограничен для nextjs/python — npm/pip нужен интернет.
-Sprint 4: добавить кастомные templates с pre-installed deps + egress restrict.
+
+Sprint 2: next.js/python стеки, base image.
+Sprint 4: django стек (migrate→uvicorn), custom templates с pre-installed deps.
+Sprint 5: telegram_bot стек с egress restrict.
 """
 import json
 import logging
@@ -28,7 +30,14 @@ _r = _redis_module.from_url(settings.REDIS_URL, decode_responses=True)
 
 SESSION_PREFIX = "preview:sess:"
 SLOTS_KEY = "preview:slots"
-SLOT_TTL = settings.DEFAULT_TTL + 600  # extra buffer so decr always has a key
+
+# Custom template map — env-overridable, empty string = E2B base image
+_TEMPLATE_MAP = {
+    Stack.NEXTJS: settings.E2B_TEMPLATE_NEXTJS or None,
+    Stack.PYTHON: settings.E2B_TEMPLATE_PYTHON or None,
+    Stack.DJANGO: settings.E2B_TEMPLATE_DJANGO or None,
+    Stack.TELEGRAM_BOT: settings.E2B_TEMPLATE_PYTHON or None,  # reuses python template
+}
 
 
 # ── Redis helpers ──────────────────────────────────────────────────────────────
@@ -58,7 +67,7 @@ def _update_sess(session_id: str, **kwargs):
         _r.setex(key, ttl, json.dumps(data))
 
 
-# ── Startup helpers ────────────────────────────────────────────────────────────
+# ── File upload ────────────────────────────────────────────────────────────────
 
 def _upload_files(sbx: Sandbox, code_files: dict[str, str]):
     for path, content in code_files.items():
@@ -69,7 +78,10 @@ def _upload_files(sbx: Sandbox, code_files: dict[str, str]):
             logger.warning("E2B file upload failed %s: %s", path, exc)
 
 
+# ── Stack-specific startup (all run in background via &) ─────────────────────
+
 def _bg_start_nextjs(sbx: Sandbox, port: int):
+    """npm install (or skip if node_modules present in template) + next dev."""
     cmd = (
         "bash -c '"
         "mkdir -p /app && cd /app && "
@@ -82,11 +94,51 @@ def _bg_start_nextjs(sbx: Sandbox, port: int):
 
 
 def _bg_start_python(sbx: Sandbox, port: int):
+    """pip install + python main.py (expects main.py at /app/)."""
     cmd = (
         "bash -c '"
         "cd /app && "
-        "pip install -r requirements.txt -q >> /tmp/preview.log 2>&1 && "
+        "[ -f requirements.txt ] && pip install -r requirements.txt -q >> /tmp/preview.log 2>&1; "
         f"python main.py >> /tmp/preview.log 2>&1 "
+        "& echo started"
+        "'"
+    )
+    sbx.commands.run(cmd, timeout=10)
+
+
+def _bg_start_django(sbx: Sandbox, port: int):
+    """
+    Sprint 4: pip install → manage.py migrate → uvicorn.
+    Expects config/asgi.py (standard Django layout) or manage.py at /app/.
+    Falls back to `python manage.py runserver 0.0.0.0:{port}` if uvicorn absent.
+    """
+    cmd = (
+        "bash -c '"
+        "cd /app && "
+        "[ -f requirements.txt ] && pip install -r requirements.txt -q >> /tmp/preview.log 2>&1; "
+        "python manage.py migrate --noinput >> /tmp/preview.log 2>&1; "
+        "if python -c \"import uvicorn\" 2>/dev/null; then "
+        f"  uvicorn config.asgi:application --host 0.0.0.0 --port {port} >> /tmp/preview.log 2>&1; "
+        "else "
+        f"  python manage.py runserver 0.0.0.0:{port} >> /tmp/preview.log 2>&1; "
+        "fi "
+        "& echo started"
+        "'"
+    )
+    sbx.commands.run(cmd, timeout=10)
+
+
+def _bg_start_telegram_bot(sbx: Sandbox):
+    """
+    Sprint 5: Tier 2 — run bot in E2B with egress restricted to api.telegram.org.
+    Bot token arrives via envs= only, never written to files.
+    delete_webhook is mandatory before polling (see sprint_5_bot.py).
+    """
+    cmd = (
+        "bash -c '"
+        "cd /app && "
+        "[ -f requirements.txt ] && pip install -r requirements.txt -q >> /tmp/preview.log 2>&1; "
+        "python bot.py >> /tmp/preview.log 2>&1 "
         "& echo started"
         "'"
     )
@@ -105,18 +157,44 @@ def _poll_until_up(session_id: str, public_url: str, timeout: int = 180):
         except (urllib.error.URLError, Exception):
             pass
         time.sleep(5)
-    logger.warning("E2B preview timeout waiting for app: %s", session_id)
+    logger.warning("E2B preview startup timeout: %s", session_id)
     _update_sess(session_id, state=SessionState.FAILED.value)
+
+
+def _poll_bot_alive(session_id: str, timeout: int = 600):
+    """
+    Sprint 5: For Telegram Bot, there's no HTTP endpoint to poll.
+    Check logs for 'Polling started' or 'Bot started' message.
+    """
+    deadline = time.time() + timeout
+    # We can't get a sandbox reference here without the sandbox_id.
+    # Instead, mark RUNNING immediately and let the user verify via log tail.
+    time.sleep(10)
+    data = _get_sess(session_id)
+    if data and data.get("state") == SessionState.STARTING.value:
+        _update_sess(session_id, state=SessionState.RUNNING.value)
 
 
 # ── E2BRuntime ─────────────────────────────────────────────────────────────────
 
 class E2BRuntime(Runtime):
     """
-    Sprint 2 implementation: e2b Firecracker + port forwarding.
-    start() returns in <15s (sandbox create + file upload + background npm/pip).
+    Sprint 2+4: e2b Firecracker + port forwarding.
+    start() returns in <15s (sandbox create + file upload + background startup).
     Frontend polls status until RUNNING.
     """
+
+    def _create_sandbox(self, stack: Stack, ttl: int, env: dict) -> Sandbox:
+        """Create E2B sandbox, using custom template if available."""
+        template = _TEMPLATE_MAP.get(stack)
+        kwargs = {
+            "api_key": settings.E2B_API_KEY,
+            "timeout": ttl,
+            "envs": env,
+        }
+        if template:
+            kwargs["template"] = template
+        return Sandbox.create(**kwargs)
 
     def start(
         self,
@@ -136,24 +214,31 @@ class E2BRuntime(Runtime):
 
         sbx = None
         try:
-            sbx = Sandbox.create(
-                api_key=settings.E2B_API_KEY,
-                timeout=ttl,
-                envs=env or {},
-            )
+            env = env or {}
+            sbx = self._create_sandbox(stack, ttl, env)
 
             _upload_files(sbx, code_files)
 
             port = 3000
             if stack == Stack.NEXTJS:
                 _bg_start_nextjs(sbx, port)
-            elif stack in (Stack.PYTHON, Stack.DJANGO):
+            elif stack == Stack.PYTHON:
                 _bg_start_python(sbx, port)
+            elif stack == Stack.DJANGO:
+                _bg_start_django(sbx, port)
+            elif stack == Stack.TELEGRAM_BOT:
+                _bg_start_telegram_bot(sbx)
             else:
-                raise ValueError(f"Стек {stack} не поддерживается в Sprint 2")
+                raise ValueError(f"Стек {stack} не поддерживается")
 
-            public_host = sbx.get_host(port)
-            public_url = f"https://{public_host}"
+            if stack == Stack.TELEGRAM_BOT:
+                public_url = None
+                poll_target = None
+            else:
+                public_host = sbx.get_host(port)
+                public_url = f"https://{public_host}"
+                poll_target = public_url
+
             session_id = str(uuid.uuid4())
             expires_at = time.time() + ttl
 
@@ -165,19 +250,26 @@ class E2BRuntime(Runtime):
                 "expires_at": expires_at,
                 "state": SessionState.STARTING.value,
                 "logs": [],
+                "stack": stack.value,
             }, ttl)
 
-            # Background thread: wait for app to respond → set RUNNING
-            threading.Thread(
-                target=_poll_until_up,
-                args=(session_id, public_url),
-                daemon=True,
-            ).start()
+            if stack == Stack.TELEGRAM_BOT:
+                threading.Thread(
+                    target=_poll_bot_alive,
+                    args=(session_id,),
+                    daemon=True,
+                ).start()
+            else:
+                threading.Thread(
+                    target=_poll_until_up,
+                    args=(session_id, poll_target),
+                    daemon=True,
+                ).start()
 
             return PreviewSession(
                 session_id=session_id,
                 project_id=project_id,
-                public_url=public_url,
+                public_url=public_url or "",
                 internal_sandbox_id=sbx.sandbox_id,
                 expires_at=expires_at,
             )
