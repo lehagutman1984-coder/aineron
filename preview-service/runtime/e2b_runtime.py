@@ -103,7 +103,7 @@ def _bg_start_nextjs(sbx: Sandbox, port: int):
         "& echo started"
         "'"
     )
-    sbx.commands.run(cmd, timeout=10)
+    sbx.commands.run(cmd, timeout=0)
 
 
 def _bg_start_python(sbx: Sandbox, port: int):
@@ -116,7 +116,7 @@ def _bg_start_python(sbx: Sandbox, port: int):
         "& echo started"
         "'"
     )
-    sbx.commands.run(cmd, timeout=10)
+    sbx.commands.run(cmd, timeout=0)
 
 
 def _bg_start_django(sbx: Sandbox, port: int):
@@ -138,7 +138,7 @@ def _bg_start_django(sbx: Sandbox, port: int):
         "& echo started"
         "'"
     )
-    sbx.commands.run(cmd, timeout=10)
+    sbx.commands.run(cmd, timeout=0)
 
 
 def _bg_start_telegram_bot(sbx: Sandbox):
@@ -146,7 +146,7 @@ def _bg_start_telegram_bot(sbx: Sandbox):
     Sprint 5: Tier 2 — run bot with delete_webhook wrapper before polling.
     Token arrives via envs= only, never written to any file.
     """
-    sbx.commands.run(_BOT_STARTUP_CMD, timeout=15)
+    sbx.commands.run(_BOT_STARTUP_CMD, timeout=0)
 
 
 def _poll_until_up(session_id: str, public_url: str, timeout: int = 180):
