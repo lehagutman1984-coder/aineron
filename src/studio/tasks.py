@@ -1001,6 +1001,9 @@ def commit_to_gitea(project_id, step_index):
     }
     project.interview_data = idata
     project.save(update_fields=['interview_data'])
+    # Sprint 12: fire-and-forget prewarm for E2B cold-start acceleration (L3)
+    if project.target_stack in ('nextjs', 'python', 'django'):
+        prewarm_e2b.delay(str(project.id))
     # V4: soft preview restart hint — frontend reloads iframe without full page reload
     if getattr(settings, 'STUDIO_V4_STREAMING', False):
         publish_event(project_id, {
@@ -1492,6 +1495,46 @@ def tma_publish(project_id):
             'agent': 'system', 'level': 'warning',
             'text': f'TMA publish error: {exc}',
         })
+
+
+@shared_task(bind=True, max_retries=1, queue=QUEUE)
+def prewarm_e2b(self, project_id: str):
+    """
+    Sprint 12 / L3: Generation-triggered project-exact prewarm.
+    Called after commit_to_gitea — runs npm install / pip install with the REAL
+    deps from this project's files while the user reads the code. By the time they
+    click "Превью" the sandbox is warm with all deps already installed.
+
+    Fire-and-forget: any exception is swallowed so it never blocks the pipeline.
+    Idempotency handled by preview-service (same dep_hash → already_warm).
+    """
+    import hashlib as _hl
+    import requests as _rq
+    try:
+        project = StudioProject.objects.get(id=project_id)
+        stack = project.target_stack
+        if stack not in ('nextjs', 'python', 'django'):
+            return
+
+        files = {f.path: f.content for f in project.files.all()}
+        dep_file = files.get('package.json', '') or files.get('requirements.txt', '')
+        dep_hash = _hl.sha256(dep_file.encode()).hexdigest()[:16]
+
+        svc_url = getattr(settings, 'PREVIEW_SERVICE_URL', 'http://preview_service:8001')
+        token = getattr(settings, 'PREVIEW_INTERNAL_TOKEN', '')
+        _rq.post(
+            f'{svc_url}/preview/prewarm',
+            json={
+                'project_id': project_id,
+                'stack': stack,
+                'dep_manifest': dep_file,
+                'dep_hash': dep_hash,
+            },
+            headers={'X-Internal-Token': token},
+            timeout=5,
+        )
+    except Exception:
+        pass  # fire-and-forget: prewarm failure must NEVER surface to the user
 
 
 @shared_task(queue=QUEUE)
