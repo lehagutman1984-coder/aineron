@@ -1,12 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Zap, Code2, Compass, ShieldCheck, ChevronDown } from 'lucide-react';
+import { X, Zap, Code2, Compass, ShieldCheck, ChevronDown, Database } from 'lucide-react';
 import { studioApi, type StudioProject } from '@/lib/api/studio';
 import { useQuery } from '@tanstack/react-query';
 import type { StudioModel } from '@/lib/api/studio';
 import { modal, form } from './styles';
 import { AGENTS } from './agentConfig';
+import { DatabasePanel } from './DatabasePanel';
 
 interface Props {
   project: StudioProject;
@@ -28,6 +29,7 @@ const TIER_BADGE: Record<string, string> = {
 };
 
 export function ProjectSettingsModal({ project, onClose, onSaved }: Props) {
+  const [activeTab, setActiveTab] = useState<'settings' | 'database'>('settings');
   const [aiModel, setAiModel] = useState(project.ai_model ?? 'claude-sonnet-4-6');
   const [agentModels, setAgentModels] = useState<Record<string, string>>(project.agent_models ?? {});
   const [iterations, setIterations] = useState(project.max_iterations ?? 0);
@@ -86,6 +88,31 @@ export function ProjectSettingsModal({ project, onClose, onSaved }: Props) {
           </button>
         </div>
 
+        {/* Tab switcher */}
+        <div className="flex border-b border-[var(--border)] shrink-0">
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`flex items-center gap-1.5 px-5 py-2.5 text-xs border-b-2 transition-colors ${activeTab === 'settings' ? 'border-blue-500 text-blue-500' : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text)]'}`}
+          >
+            <Code2 size={13} />
+            Модели и режим
+          </button>
+          <button
+            onClick={() => setActiveTab('database')}
+            className={`flex items-center gap-1.5 px-5 py-2.5 text-xs border-b-2 transition-colors ${activeTab === 'database' ? 'border-blue-500 text-blue-500' : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text)]'}`}
+          >
+            <Database size={13} />
+            База данных
+          </button>
+        </div>
+
+        {activeTab === 'database' && (
+          <div className="p-5">
+            <DatabasePanel projectId={project.id} />
+          </div>
+        )}
+
+        {activeTab === 'settings' && (
         <div className="p-5 space-y-6">
           {/* Default model */}
           <div>
@@ -224,7 +251,9 @@ export function ProjectSettingsModal({ project, onClose, onSaved }: Props) {
             </label>
           </div>
         </div>
+        )}
 
+        {activeTab === 'settings' && (
         <div className="px-5 pb-5">
           <button
             onClick={save}
@@ -234,6 +263,7 @@ export function ProjectSettingsModal({ project, onClose, onSaved }: Props) {
             {saving ? 'Сохранение…' : 'Сохранить'}
           </button>
         </div>
+        )}
       </div>
     </div>
   );

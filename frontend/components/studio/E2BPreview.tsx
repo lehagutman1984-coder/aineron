@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Coins, ExternalLink, Loader2, Monitor, RefreshCw, Smartphone, StopCircle, Tablet, Terminal, XCircle, Zap } from 'lucide-react';
 import { studioApi } from '@/lib/api/studio';
+import { APIError } from '@/lib/api/client';
 import { SessionTimer } from './SessionTimer';
 
-type E2BState = 'idle' | 'starting' | 'running' | 'failed' | 'expired';
+type E2BState = 'idle' | 'starting' | 'running' | 'failed' | 'expired' | 'capped';
 
 // Human-readable copy per claim_source (L6 progressive UI)
 const CLAIM_COPY: Record<string, { label: string; sub: string }> = {
@@ -183,9 +184,10 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
         } catch { /* keep polling */ }
       }, 3000);
     } catch (err: unknown) {
-      setState('failed');
+      const isCapped = err instanceof APIError && err.status === 429;
+      setState(isCapped ? 'capped' : 'failed');
       setError(err instanceof Error ? err.message : 'Ошибка запуска E2B');
-      setShowLogs(true);
+      if (!isCapped) setShowLogs(true);
       clearPoll();
     }
   };
@@ -249,6 +251,20 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
           <p className="text-[10px] text-[var(--text-secondary)] font-mono">
             {elapsedSeconds}s{etaSeconds > 0 ? ` / ~${etaSeconds}s` : ''}
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Daily cap exceeded ────────────────────────────────────────────────────
+  if (state === 'capped') {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-4 p-6 text-center">
+        <Coins size={36} className="text-amber-400" />
+        <div>
+          <p className="text-sm font-medium text-[var(--text)]">Дневной лимит превью исчерпан</p>
+          {error && <p className="text-xs text-amber-400 mt-2 max-w-xs leading-relaxed">{error}</p>}
+          <p className="text-xs text-[var(--text-secondary)] mt-2">Лимит сбросится в полночь по московскому времени</p>
         </div>
       </div>
     );

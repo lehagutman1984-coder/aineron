@@ -4,6 +4,7 @@ export type StudioMode = 'auto' | 'semi' | 'manual';
 export type EntryMode = 'description' | 'clone_url';
 export type StudioStack = 'nextjs' | 'react' | 'vue' | 'html' | 'tma' | 'python' | 'django' | 'telegram_bot';
 export const SANDPACK_STACKS: StudioStack[] = ['react', 'vue', 'html', 'tma'];
+export const E2B_STACKS = ['nextjs', 'python', 'django'] as const;
 
 export interface StudioProject {
   id: string;

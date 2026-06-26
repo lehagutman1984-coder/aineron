@@ -2,12 +2,12 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { RefreshCw, ExternalLink, CheckCircle, Download, Smartphone, Tablet, Monitor, Rocket, RotateCw, AlertTriangle, Wrench, Github, Loader2 } from 'lucide-react';
-import { studioApi, SANDPACK_STACKS } from '@/lib/api/studio';
+import { studioApi, SANDPACK_STACKS, E2B_STACKS } from '@/lib/api/studio';
 import { btn, empty, text } from './styles';
 import { SandpackPreviewPanel } from './SandpackPreviewPanel';
 import { E2BPreview } from './E2BPreview';
+import { TelegramBotPanel } from './TelegramBotPanel';
 
-const E2B_STACKS = ['nextjs', 'python', 'django'] as const;
 type E2BStack = typeof E2B_STACKS[number];
 
 interface ConsoleError {
@@ -155,6 +155,16 @@ export function PreviewPanel({ projectId, hasSandbox, status, githubUrl, onRefre
       )}
     </>
   );
+
+  // Telegram Bot стек: AI-эмулятор + Живой бот (E2B)
+  if (stack === 'telegram_bot') {
+    return (
+      <div className="flex flex-col h-full">
+        <TelegramBotPanel projectId={projectId} refreshKey={key} />
+        <Toast />
+      </div>
+    );
+  }
 
   // E2B стеки (nextjs/python/django): превью через E2B Firecracker sandbox
   if (isE2BStack) {

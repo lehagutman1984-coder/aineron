@@ -5,7 +5,6 @@ import { useQuery } from '@tanstack/react-query';
 import { Loader2, AlertTriangle, RotateCcw } from 'lucide-react';
 import { studioApi } from '@/lib/api/studio';
 import { StudioLayout } from '@/components/studio/StudioLayout';
-import { BillingEstimate } from '@/components/studio/BillingEstimate';
 import { empty } from '@/components/studio/styles';
 
 const TERMINAL = ['completed', 'failed'];
@@ -123,11 +122,8 @@ export default function StudioProjectPage() {
 
   if (!pipeline) return null;
 
-  const plannedSteps = project.interview_data?.planned_steps as number | undefined;
-
   return (
     <div className="flex flex-col overflow-hidden" style={{ height: 'calc(100vh - 3.5rem)' }}>
-      {/* BillingEstimate removed — info is shown in StudioLayout's compact status bar */}
       <div className="flex-1 min-h-0 overflow-hidden">
         <StudioLayout
           project={project}

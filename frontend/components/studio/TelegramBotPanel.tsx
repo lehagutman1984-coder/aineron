@@ -29,6 +29,7 @@ export function TelegramBotPanel({ projectId, refreshKey }: Props) {
   const [botUsername, setBotUsername] = useState<string | null>(null);
   const [logsLoading, setLogsLoading] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const logsPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const logsEndRef = useRef<HTMLDivElement | null>(null);
   const sessionRef = useRef<string | null>(null);
   const genRef = useRef(0);
@@ -37,9 +38,14 @@ export function TelegramBotPanel({ projectId, refreshKey }: Props) {
     if (pollRef.current !== null) { clearInterval(pollRef.current); pollRef.current = null; }
   };
 
+  const clearLogsPoll = () => {
+    if (logsPollRef.current !== null) { clearInterval(logsPollRef.current); logsPollRef.current = null; }
+  };
+
   useEffect(() => {
     return () => {
       clearPoll();
+      clearLogsPoll();
       const sid = sessionRef.current;
       if (sid) {
         try { studioApi.e2bPreviewStop(projectId, sid).catch(() => {}); } catch {}
@@ -48,6 +54,18 @@ export function TelegramBotPanel({ projectId, refreshKey }: Props) {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Auto-poll logs while bot is running and logs panel is open
+  useEffect(() => {
+    if (botState === 'running' && showLogs && sessionId) {
+      fetchLogs(sessionId);
+      logsPollRef.current = setInterval(() => fetchLogs(sessionId), 3000);
+    } else {
+      clearLogsPoll();
+    }
+    return clearLogsPoll;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [botState, showLogs, sessionId]);
 
   useEffect(() => {
     clearPoll();
