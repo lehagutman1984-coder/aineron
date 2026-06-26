@@ -60,6 +60,45 @@ RU_TEMPLATES = [
     },
 ]
 
+BOT_TEMPLATES = [
+    {
+        'slug': 'bot-aiogram-faq',
+        'name': 'FAQ-бот (aiogram 3)',
+        'description': 'Telegram-бот на aiogram 3: меню, инлайн-кнопки, ответы на частые вопросы',
+        'stack': 'telegram_bot',
+        'is_public': True,
+        'features': [],
+        'seed_prompt': (
+            'Создай Telegram-бота на aiogram 3 (Python). '
+            'Структура: bot.py с Router, main() с asyncio.run, token из os.environ["BOT_TOKEN"]. '
+            'Команды: /start — приветствие + меню инлайн-кнопок (Вопросы, О боте, Помощь). '
+            'Раздел Вопросы — список из 5 часто задаваемых вопросов с ответами через callback_query. '
+            'Команда /help — текст помощи. Красивые эмодзи в сообщениях. '
+            'requirements.txt: aiogram==3.7.0, python-dotenv. '
+            'README.md: инструкция по запуску, создание токена у @BotFather.'
+        ),
+        'order': 20,
+    },
+    {
+        'slug': 'bot-telebot-echo',
+        'name': 'Echo-бот (pyTelegramBotAPI)',
+        'description': 'Простой бот на pyTelegramBotAPI: эхо, команды, Reply-клавиатура',
+        'stack': 'telegram_bot',
+        'is_public': True,
+        'features': [],
+        'seed_prompt': (
+            'Создай Telegram-бота на библиотеке pyTelegramBotAPI (telebot). '
+            'Файл bot.py: token из os.environ["BOT_TOKEN"], polling в конце. '
+            'Команды: /start — приветствие + Reply-клавиатура (Помощь, О боте, Эхо). '
+            '/help — список команд. Обработчик текстовых сообщений — эхо с префиксом "Вы написали: ". '
+            'Кнопка "О боте" — краткое описание бота. '
+            'requirements.txt: pyTelegramBotAPI==4.22.1, python-dotenv. '
+            'README.md: инструкция по запуску, получение токена.'
+        ),
+        'order': 21,
+    },
+]
+
 TEMPLATES = [
     {
         'slug': 'landing',
@@ -120,7 +159,7 @@ class Command(BaseCommand):
     help = 'Seed default project templates (idempotent)'
 
     def handle(self, *args, **options):
-        all_templates = TEMPLATES + RU_TEMPLATES
+        all_templates = TEMPLATES + RU_TEMPLATES + BOT_TEMPLATES
         for data in all_templates:
             obj, created = StudioTemplate.objects.update_or_create(
                 slug=data['slug'],

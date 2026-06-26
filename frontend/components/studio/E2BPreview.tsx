@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Coins, ExternalLink, Loader2, RefreshCw, StopCircle, Terminal, XCircle, Zap } from 'lucide-react';
+import { Coins, ExternalLink, Loader2, Monitor, RefreshCw, Smartphone, StopCircle, Tablet, Terminal, XCircle, Zap } from 'lucide-react';
 import { studioApi } from '@/lib/api/studio';
 import { SessionTimer } from './SessionTimer';
 
@@ -48,6 +48,7 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
   const [starsPerMin, setStarsPerMin] = useState<number>(1);
   const [elapsedMin, setElapsedMin] = useState<number>(0);
   const [showLogs, setShowLogs] = useState(false);
+  const [viewWidth, setViewWidth] = useState<'100%' | '768px' | '375px'>('100%');
   const [logs, setLogs] = useState<string[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
   // Sprint 12: claim source + ETA for progressive UI
@@ -61,11 +62,13 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
   const costTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const etaTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const logsEndRef = useRef<HTMLDivElement | null>(null);
+  const logsPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const clearPoll = () => {
     if (pollTimerRef.current) { clearInterval(pollTimerRef.current); pollTimerRef.current = null; }
     if (costTimerRef.current) { clearInterval(costTimerRef.current); costTimerRef.current = null; }
     if (etaTimerRef.current) { clearInterval(etaTimerRef.current); etaTimerRef.current = null; }
+    if (logsPollRef.current) { clearInterval(logsPollRef.current); logsPollRef.current = null; }
   };
 
   const stopSession = async (sid: string) => {
@@ -187,6 +190,19 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   // refreshKey intentionally excluded: sandbox must NOT restart on every coding step
   }, [projectId]);
+
+  useEffect(() => {
+    if (showLogs && state === 'running') {
+      fetchLogs();
+      logsPollRef.current = setInterval(fetchLogs, 3000);
+    } else {
+      if (logsPollRef.current) { clearInterval(logsPollRef.current); logsPollRef.current = null; }
+    }
+    return () => {
+      if (logsPollRef.current) { clearInterval(logsPollRef.current); logsPollRef.current = null; }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showLogs, state]);
 
   // ── Loading / starting state (L6 progressive) ───────────────────────────────
   if (state === 'idle' || state === 'starting') {
@@ -336,20 +352,43 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
         >
           <Terminal size={16} />
         </button>
+
+        {/* Viewport switcher */}
+        <div className="flex items-center ml-1 border border-[var(--border)] rounded overflow-hidden">
+          <button
+            onClick={() => setViewWidth('375px')}
+            title="375px"
+            className={`p-1 transition-colors ${viewWidth === '375px' ? 'bg-blue-500/20 text-blue-400' : 'text-[var(--text-secondary)] hover:text-[var(--text)]'}`}
+          >
+            <Smartphone size={13} />
+          </button>
+          <button
+            onClick={() => setViewWidth('768px')}
+            title="768px"
+            className={`p-1 transition-colors ${viewWidth === '768px' ? 'bg-blue-500/20 text-blue-400' : 'text-[var(--text-secondary)] hover:text-[var(--text)]'}`}
+          >
+            <Tablet size={13} />
+          </button>
+          <button
+            onClick={() => setViewWidth('100%')}
+            title="100%"
+            className={`p-1 transition-colors ${viewWidth === '100%' ? 'bg-blue-500/20 text-blue-400' : 'text-[var(--text-secondary)] hover:text-[var(--text)]'}`}
+          >
+            <Monitor size={13} />
+          </button>
+        </div>
       </div>
 
       {showLogs && (
         <div className="border-b border-[var(--border)] bg-[#0d1117] overflow-y-auto shrink-0" style={{ maxHeight: '40%' }}>
           <div className="flex items-center justify-between px-3 py-1.5 border-b border-[var(--border)]">
             <span className="text-xs text-[var(--text-secondary)]">Логи sandbox (/tmp/preview.log)</span>
-            <button
-              onClick={fetchLogs}
-              className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
-              disabled={logsLoading}
-            >
-              {logsLoading ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />}
-              Обновить
-            </button>
+            <span className="flex items-center gap-1 text-[10px] text-[var(--text-secondary)]">
+              {logsLoading
+                ? <Loader2 size={10} className="animate-spin" />
+                : <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />}
+              {state === 'running' ? 'авто' : 'стоп'}
+            </span>
           </div>
           <pre className="text-[11px] font-mono text-green-300 p-3 whitespace-pre-wrap break-all leading-relaxed">
             {logs.length === 0
@@ -361,10 +400,11 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
       )}
 
       {publicUrl && (
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-auto flex justify-center bg-[var(--hover)]">
           <iframe
             src={publicUrl}
-            className="w-full h-full border-0 bg-white"
+            style={{ width: viewWidth }}
+            className="h-full border-0 bg-white"
             title="E2B preview"
             allow="cross-origin-isolated"
           />

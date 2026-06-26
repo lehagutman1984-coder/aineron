@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { AlertTriangle, Bot, Loader2, RefreshCw, StopCircle, Terminal } from 'lucide-react';
+import { AlertTriangle, Bot, ExternalLink, Loader2, RefreshCw, StopCircle, Terminal } from 'lucide-react';
 import { BotEmulator } from './BotEmulator';
 import { SessionTimer } from './SessionTimer';
 import { studioApi } from '@/lib/api/studio';
@@ -26,6 +26,7 @@ export function TelegramBotPanel({ projectId, refreshKey }: Props) {
   const [warning, setWarning] = useState<string | null>(null);
   const [showLogs, setShowLogs] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
+  const [botUsername, setBotUsername] = useState<string | null>(null);
   const [logsLoading, setLogsLoading] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const logsEndRef = useRef<HTMLDivElement | null>(null);
@@ -45,7 +46,18 @@ export function TelegramBotPanel({ projectId, refreshKey }: Props) {
     setError(null);
     setLogs([]);
     setShowLogs(false);
+    setBotUsername(null);
   }, [refreshKey]);
+
+  const fetchBotUsername = async (botToken: string) => {
+    try {
+      const resp = await fetch(`https://api.telegram.org/bot${botToken}/getMe`);
+      const data = await resp.json();
+      if (data.ok && data.result?.username) {
+        setBotUsername(data.result.username);
+      }
+    } catch { /* ignore */ }
+  };
 
   const fetchLogs = async (sid: string) => {
     setLogsLoading(true);
@@ -70,6 +82,7 @@ export function TelegramBotPanel({ projectId, refreshKey }: Props) {
       setExpiresAt(Date.now() / 1000 + BOT_TTL);
       if (r.state === 'running') {
         setBotState('running');
+        fetchBotUsername(token.trim());
         return;
       }
       const id = setInterval(async () => {
@@ -78,6 +91,7 @@ export function TelegramBotPanel({ projectId, refreshKey }: Props) {
           if (s.state === 'running') {
             setBotState('running');
             clearPoll();
+            fetchBotUsername(token.trim());
           } else if (s.state === 'failed' || s.state === 'stopped' || s.state === 'expired') {
             setBotState('failed');
             setError('Бот завершился или не смог запуститься. Проверьте логи.');
@@ -105,6 +119,7 @@ export function TelegramBotPanel({ projectId, refreshKey }: Props) {
     setExpiresAt(0);
     setLogs([]);
     setShowLogs(false);
+    setBotUsername(null);
     if (sid) {
       try { await studioApi.e2bPreviewStop(projectId, sid); } catch { /* best effort */ }
     }
@@ -215,6 +230,17 @@ export function TelegramBotPanel({ projectId, refreshKey }: Props) {
                     <Terminal size={13} />
                     Логи
                   </button>
+                )}
+                {botState === 'running' && botUsername && (
+                  <a
+                    href={`https://t.me/${botUsername}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-2 px-3 py-1.5 text-xs text-green-400 border border-green-400/30 rounded hover:bg-green-500/10 transition-colors"
+                  >
+                    <ExternalLink size={14} />
+                    @{botUsername}
+                  </a>
                 )}
               </div>
 

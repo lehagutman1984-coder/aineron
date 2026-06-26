@@ -11,6 +11,7 @@ from .views.pipeline import (
     ApproveStepView, DeployView, SandboxStatusView, PreviewRestartView, ExplainView,
     ConsoleErrorView, PipelineSkipView,
     E2BPreviewView, E2BPreviewStatusView, E2BPreviewLogsView,
+    E2BPreviewLogsStreamView, ProjectDatabaseTestView,
     ProjectDatabaseView,
     BotEmulateView, E2BBotPreviewView,
     DbExportView,
@@ -59,9 +60,11 @@ urlpatterns = [
     # E2B live preview (Sprint 2): POST to start, GET/<session_id>/ for status, DELETE/<session_id>/ to stop
     # DB management (Sprint 3): GET status, POST provision, DELETE deprovision
     path('projects/<uuid:id>/db/', ProjectDatabaseView.as_view(), name='project_db'),
+    path('projects/<uuid:id>/db/test/', ProjectDatabaseTestView.as_view(), name='project_db_test'),
     path('projects/<uuid:id>/e2b/', E2BPreviewView.as_view(), name='e2b_preview_start'),
     path('projects/<uuid:id>/e2b/<str:session_id>/', E2BPreviewStatusView.as_view(), name='e2b_preview_session'),
     path('projects/<uuid:id>/e2b/<str:session_id>/logs/', E2BPreviewLogsView.as_view(), name='e2b_preview_logs'),
+    path('projects/<uuid:id>/e2b/<str:session_id>/logs/stream/', E2BPreviewLogsStreamView.as_view(), name='e2b_preview_logs_stream'),
     # Sprint 5: Telegram Bot preview
     path('projects/<uuid:id>/db/export/', DbExportView.as_view(), name='db_export'),
     path('projects/<uuid:id>/bot-emulate/', BotEmulateView.as_view(), name='bot_emulate'),

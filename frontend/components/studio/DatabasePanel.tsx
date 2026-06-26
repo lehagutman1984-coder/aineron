@@ -13,6 +13,7 @@ import {
   CheckCircle,
   AlertCircle,
   Loader2,
+  ShieldAlert,
   Trash2,
 } from 'lucide-react';
 import { studioApi, type ProjectDatabaseInfo, type ProjectDbMode } from '@/lib/api/studio';
@@ -52,6 +53,9 @@ export function DatabasePanel({ projectId }: DatabasePanelProps) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [testResult, setTestResult] = useState<{ ok: boolean; error: string | null } | null>(null);
+  const [testing, setTesting] = useState(false);
 
   const [selectedMode, setSelectedMode] = useState<Exclude<ProjectDbMode, 'none'>>('aineron');
   const [neonKey, setNeonKey] = useState('');
@@ -97,6 +101,19 @@ export function DatabasePanel({ projectId }: DatabasePanelProps) {
       setError(e instanceof Error ? e.message : 'Ошибка подключения базы данных');
     } finally {
       setBusy(false);
+    }
+  };
+
+  const handleTest = async () => {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const data = await studioApi.dbTest(projectId);
+      setTestResult(data);
+    } catch {
+      setTestResult({ ok: false, error: 'Не удалось проверить подключение' });
+    } finally {
+      setTesting(false);
     }
   };
 
@@ -173,7 +190,25 @@ export function DatabasePanel({ projectId }: DatabasePanelProps) {
             Отключить
           </button>
         )}
+        {isActive && info?.provisioned && (
+          <button
+            type="button"
+            onClick={handleTest}
+            disabled={testing}
+            className="flex items-center gap-1 text-xs text-[var(--text-secondary)] hover:text-[var(--text)] disabled:opacity-50 transition-colors"
+          >
+            {testing ? <Loader2 size={12} className="animate-spin" /> : <ShieldAlert size={12} />}
+            Проверить
+          </button>
+        )}
       </div>
+
+      {testResult !== null && (
+        <div className={`flex items-center gap-1.5 text-xs p-2 rounded border ${testResult.ok ? 'text-green-400 border-green-500/20 bg-green-500/5' : 'text-red-400 border-red-500/20 bg-red-500/5'}`}>
+          {testResult.ok ? <CheckCircle size={12} /> : <AlertCircle size={12} />}
+          {testResult.ok ? 'Подключение успешно' : (testResult.error ?? 'Ошибка подключения')}
+        </div>
+      )}
 
       {/* Mode selector */}
       <div className="grid grid-cols-1 gap-2">

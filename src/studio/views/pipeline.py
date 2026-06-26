@@ -22,6 +22,43 @@ def _preview_headers():
     return {'X-Internal-Token': _PREVIEW_TOKEN, 'Content-Type': 'application/json'}
 
 
+_daily_redis_client = None
+
+def _get_daily_redis():
+    global _daily_redis_client
+    if _daily_redis_client is None:
+        import redis as _rl
+        _daily_redis_client = _rl.from_url(
+            _os.environ.get('REDIS_URL', 'redis://localhost:6379/0'),
+            decode_responses=True,
+            socket_connect_timeout=2,
+            socket_timeout=2,
+        )
+    return _daily_redis_client
+
+
+def _check_and_reserve_daily_cap(user_id: str, ttl_minutes: int) -> tuple[bool, int, int]:
+    """Atomically check+reserve daily preview minutes. Returns (allowed, used_min, cap_min).
+    Fails open on any Redis error — never blocks user due to infrastructure issues."""
+    cap = int(_os.environ.get('E2B_PREVIEW_DAILY_CAP_MIN', '120'))
+    if cap <= 0:
+        return True, 0, 0
+    from datetime import date
+    key = f'preview:daily_min:{user_id}:{date.today().strftime("%Y%m%d")}'
+    try:
+        r = _get_daily_redis()
+        used = int(r.get(key) or 0)
+        if used + ttl_minutes > cap:
+            return False, used, cap
+        pipe = r.pipeline()
+        pipe.incrby(key, ttl_minutes)
+        pipe.expire(key, 86400)
+        pipe.execute()
+        return True, used, cap
+    except Exception:
+        return True, 0, cap
+
+
 def _build_db_credentials_enc(project) -> str:
     """
     Sprint 7: derive Fernet-encrypted DBCredentials JSON for the preview db-proxy.
@@ -613,6 +650,50 @@ class ProjectDatabaseView(APIView):
         return Response({'ok': True, 'mode': 'none'})
 
 
+class ProjectDatabaseTestView(APIView):
+    """Sprint 10: quick connectivity check for the configured preview database."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, id):
+        project = get_object_or_404(StudioProject, id=id, user=request.user)
+        db = ProjectDatabase.objects.filter(project=project).first()
+        if not db or db.mode == 'none':
+            return Response({'ok': False, 'error': 'База не подключена'})
+        if not db.provisioned:
+            return Response({'ok': False, 'error': 'База ещё не провизионирована'})
+
+        if db.mode == 'aineron':
+            try:
+                from django.db import connection as _conn
+                schema = db.aineron_schema
+                with _conn.cursor() as cursor:
+                    cursor.execute(
+                        "SELECT EXISTS(SELECT 1 FROM information_schema.schemata WHERE schema_name = %s)",
+                        [schema],
+                    )
+                    exists = cursor.fetchone()[0]
+                return Response({'ok': exists, 'error': None if exists else f'Схема {schema!r} не найдена'})
+            except Exception as exc:
+                return Response({'ok': False, 'error': str(exc)[:300]})
+
+        if db.mode == 'external':
+            if not db.external_conn_enc:
+                return Response({'ok': False, 'error': 'DSN не настроен'})
+            try:
+                from aitext.crypto import decrypt_token
+                import psycopg2
+                dsn = decrypt_token(db.external_conn_enc)
+                conn = psycopg2.connect(dsn, connect_timeout=5)
+                conn.close()
+                return Response({'ok': True, 'error': None})
+            except ImportError:
+                return Response({'ok': False, 'error': 'psycopg2 не установлен'})
+            except Exception as exc:
+                return Response({'ok': False, 'error': str(exc)[:300]})
+
+        return Response({'ok': None, 'error': f'Тест для режима {db.mode!r} не реализован'})
+
+
 class DbExportView(APIView):
     """
     Sprint 6: Export project database as SQL dump (Aineron schema only).
@@ -720,6 +801,15 @@ class E2BPreviewView(APIView):
         rate = getattr(settings, 'E2B_PREVIEW_STARS_PER_MIN', 1)
         ttl_minutes = 900 // 60  # 15 min
         max_cost = ttl_minutes * rate
+
+        # Daily spend cap — check before reserving stars
+        allowed, used_min, cap_min = _check_and_reserve_daily_cap(str(request.user.id), ttl_minutes)
+        if not allowed:
+            return Response(
+                {'error': f'Дневной лимит превью ({cap_min} мин/день) исчерпан — использовано {used_min} мин. Лимит обновится завтра.'},
+                status=429,
+            )
+
         if max_cost > 0 and not reserve(request.user, max_cost, project):
             return Response(
                 {'error': f'Недостаточно звёзд для запуска превью (нужно {max_cost} зв.)'},
@@ -862,6 +952,34 @@ class E2BPreviewLogsView(APIView):
         if not resp.ok:
             return Response({'lines': []})
         return Response(resp.json())
+
+
+class E2BPreviewLogsStreamView(APIView):
+    """Sprint 10: SSE proxy — streams E2B sandbox logs as server-sent events."""
+    permission_classes = [permissions.IsAuthenticated]
+    renderer_classes = [EventStreamRenderer]
+
+    def get(self, request, id, session_id):
+        get_object_or_404(StudioProject, id=id, user=request.user)
+
+        def _stream():
+            try:
+                with _rq.get(
+                    f'{_PREVIEW_SVC}/preview/{session_id}/logs/stream',
+                    headers={**_preview_headers(), 'Accept': 'text/event-stream'},
+                    stream=True,
+                    timeout=(5, 300),
+                ) as resp:
+                    for chunk in resp.iter_content(chunk_size=None):
+                        if chunk:
+                            yield chunk
+            except Exception:
+                yield b'event: close\ndata: {}\n\n'
+
+        response = StreamingHttpResponse(_stream(), content_type='text/event-stream')
+        response['Cache-Control'] = 'no-cache'
+        response['X-Accel-Buffering'] = 'no'
+        return response
 
 
 class BotEmulateView(APIView):

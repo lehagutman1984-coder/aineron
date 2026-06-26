@@ -320,3 +320,36 @@ def preview_logs(session_id: str, lines: int = 200):
         session_id=session_id,
         lines=_runtime.get_logs(session_id, lines=min(lines, 500)),
     )
+
+
+@app.get("/preview/{session_id}/logs/stream", dependencies=[Depends(verify_token)])
+async def preview_logs_stream(session_id: str):
+    """Sprint 10: SSE stream of sandbox logs, polled every 2 seconds."""
+    from fastapi.responses import StreamingResponse as _SR
+
+    async def _generator():
+        seen = 0
+        idle = 0
+        while True:
+            try:
+                lines = await asyncio.to_thread(_runtime.get_logs, session_id, 500)
+                if lines and len(lines) > seen:
+                    for line in lines[seen:]:
+                        yield f"data: {json.dumps(line)}\n\n"
+                    seen = len(lines)
+                    idle = 0
+                else:
+                    idle += 1
+                    yield ": heartbeat\n\n"
+                    if idle > 60:  # 2 min no new logs → stop
+                        break
+                await asyncio.sleep(2)
+            except Exception:
+                break
+        yield "event: close\ndata: {}\n\n"
+
+    return _SR(
+        _generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )

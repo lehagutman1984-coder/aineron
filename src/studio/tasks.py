@@ -1545,6 +1545,7 @@ def reconcile_preview_billing():
     This task covers sessions that expired via Redis TTL or sandbox timeout without explicit stop.
     Idempotency: settled=True flag prevents double-charging.
     """
+    import os as _os
     import requests as _rq
     from django.utils import timezone as _tz
     _svc = getattr(settings, 'PREVIEW_SERVICE_URL', 'http://preview_service:8001')
@@ -1565,7 +1566,17 @@ def reconcile_preview_billing():
                 if state in ('expired', 'stopped', 'failed'):
                     _settle_preview_session(ps, rate)
                     continue
-                # still running — leave it for the next run
+                # Force-kill sessions that outlived their TTL
+                age_sec = (_tz.now() - ps.started_at).total_seconds()
+                _default_ttl = int(_os.environ.get('PREVIEW_DEFAULT_TTL', '900'))
+                if state in ('running', 'starting') and age_sec > _default_ttl + 60:
+                    try:
+                        _rq.delete(f'{_svc}/preview/{ps.session_id}', headers=_headers, timeout=10)
+                    except Exception:
+                        pass
+                    _settle_preview_session(ps, rate)
+                    continue
+                # still running within TTL — leave it for the next run
                 continue
         except Exception:
             pass
