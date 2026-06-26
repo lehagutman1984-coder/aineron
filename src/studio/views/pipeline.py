@@ -12,7 +12,6 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from ..models import StudioProject, ProjectDatabase, PreviewSession
 from ..serializers import PipelineStateSerializer
-from ..events import get_pipeline_events
 from ..billing import estimate_stars, reserve, charge_from_reserve, release_reserve
 
 _PREVIEW_SVC = _os.environ.get('PREVIEW_SERVICE_URL', 'http://localhost:8001')
@@ -93,6 +92,10 @@ class EventStreamRenderer(BaseRenderer):
         return data
 
 
+class _Http401(Exception):
+    pass
+
+
 class EstimateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -136,15 +139,28 @@ class PipelineRunView(APIView):
 
 
 class PipelineEventsView(APIView):
+    """
+    Async SSE view — nginx routes /events/ to Daphne so this runs in the asyncio
+    event loop, not a Gunicorn worker thread. Each SSE connection costs one async
+    coroutine instead of one OS thread, allowing thousands of concurrent sessions.
+
+    Falls back to sync StreamingHttpResponse when served through Gunicorn (WSGI).
+    """
     permission_classes = [permissions.IsAuthenticated]
     renderer_classes = [EventStreamRenderer]
 
-    def get(self, request, id):
-        StudioProject.objects.get(id=id, user=request.user)
+    async def get(self, request, id):
+        from asgiref.sync import sync_to_async
+        from ..events import get_pipeline_events_async
 
-        def generator():
+        try:
+            await sync_to_async(StudioProject.objects.get)(id=id, user=request.user)
+        except StudioProject.DoesNotExist:
+            return HttpResponse(status=404)
+
+        async def generator():
             yield 'data: {"type": "connected"}\n\n'
-            for raw in get_pipeline_events(str(id)):
+            async for raw in get_pipeline_events_async(str(id)):
                 yield f'data: {raw}\n\n'
 
         resp = StreamingHttpResponse(generator(), content_type='text/event-stream')

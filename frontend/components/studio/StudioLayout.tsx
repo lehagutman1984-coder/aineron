@@ -56,6 +56,9 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
   // Live streaming: path → accumulated chunk text while coder is writing
   const [streamBuffers, setStreamBuffers] = useState<Record<string, string>>({});
   const [streamingPath, setStreamingPath] = useState<string | null>(null);
+  // Single SSE feeds both PreviewPanel (previewKey) and AgentLog (agentLogLines)
+  const [previewKey, setPreviewKey] = useState(0);
+  const [agentLogLines, setAgentLogLines] = useState<{ agent: string; level: string; text: string; type?: string }[]>([]);
 
   const AGENT_LABELS: Record<string, string> = {
     interviewer: 'Интервью', analyst: 'Анализ', planner: 'План',
@@ -206,32 +209,62 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
     setDiff(d);
   };
 
-  // Track current agent from SSE stream for PipelineTimeline
+  // Single SSE connection shared by the whole Studio page.
+  // Feeds: currentAgent (PipelineTimeline), streamBuffers (CodeViewer),
+  //        previewKey (PreviewPanel), agentLogLines (AgentLog).
+  // This replaces the 3 separate SSE connections that previously existed
+  // (StudioLayout + PreviewPanel + AgentLog), reducing Gunicorn thread load by 3×.
   useEffect(() => {
-    const src = new EventSource(
-      `${process.env.NEXT_PUBLIC_API_URL}/studio/projects/${project.id}/events/`,
-      { withCredentials: true },
-    );
-    src.onmessage = (e) => {
-      try {
-        const d = JSON.parse(e.data);
-        if (d.agent && d.agent !== 'system') setCurrentAgent(d.agent);
-        // file_delta: accumulate streaming chunks for live code view
-        if (d.type === 'file_delta' && d.path && d.chunk) {
-          setStreamingPath(d.path);
-          setStreamBuffers((prev) => ({ ...prev, [d.path]: (prev[d.path] ?? '') + d.chunk }));
-        }
-        if (d.type === 'file_delta_done' && d.path) {
-          setStreamingPath(null);
-          setStreamBuffers((prev) => { const n = { ...prev }; delete n[d.path]; return n; });
-        }
-        // preview_restart: soft iframe reload after step completes
-        if (d.type === 'preview_restart') {
-          onRefresh();
-        }
-      } catch { /* noop */ }
+    let src: EventSource | null = null;
+    let closed = false;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const connect = () => {
+      if (closed) return;
+      src = new EventSource(
+        `${process.env.NEXT_PUBLIC_API_URL}/studio/projects/${project.id}/events/`,
+        { withCredentials: true },
+      );
+      src.onmessage = (e) => {
+        try {
+          const d = JSON.parse(e.data);
+          if (d.type === 'connected') return;
+
+          // PipelineTimeline: track current agent
+          if (d.agent && d.agent !== 'system') setCurrentAgent(d.agent);
+
+          // CodeViewer: live file streaming
+          if (d.type === 'file_delta' && d.path && d.chunk) {
+            setStreamingPath(d.path);
+            setStreamBuffers((prev) => ({ ...prev, [d.path]: (prev[d.path] ?? '') + d.chunk }));
+          }
+          if (d.type === 'file_delta_done' && d.path) {
+            setStreamingPath(null);
+            setStreamBuffers((prev) => { const n = { ...prev }; delete n[d.path]; return n; });
+          }
+
+          // PreviewPanel: bump key to reload Sandpack/iframe when step completes
+          if (d.type === 'step_completed' || d.type === 'coder_done' || d.type === 'preview_restart') {
+            setPreviewKey((k) => k + 1);
+          }
+          if (d.type === 'preview_restart') onRefresh();
+
+          // AgentLog: accumulate all events (cap at 500 to avoid memory growth)
+          setAgentLogLines((prev) => [...prev, d].slice(-500));
+        } catch { /* noop */ }
+      };
+      src.onerror = () => {
+        src?.close();
+        if (!closed) retryTimer = setTimeout(connect, 3000);
+      };
     };
-    return () => src.close();
+
+    connect();
+    return () => {
+      closed = true;
+      if (retryTimer) clearTimeout(retryTimer);
+      src?.close();
+    };
   }, [project.id]);
 
   // Clear currentAgent when pipeline is no longer running
@@ -505,7 +538,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
             </Panel>
             <PanelResizeHandle className={layout.resizeHandle} />
             <Panel defaultSize={41} minSize={20} className="overflow-hidden flex flex-col">
-              <PreviewPanel projectId={project.id} hasSandbox={!!project.sandbox_container_id} status={project.status} githubUrl={project.github_repo_url || undefined} onRefresh={onRefresh} stack={project.target_stack} />
+              <PreviewPanel projectId={project.id} hasSandbox={!!project.sandbox_container_id} status={project.status} githubUrl={project.github_repo_url || undefined} onRefresh={onRefresh} stack={project.target_stack} previewKey={previewKey} />
             </Panel>
           </PanelGroup>
 
@@ -533,7 +566,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
               />
             )}
             {mobileTab === 'preview' && (
-              <PreviewPanel projectId={project.id} hasSandbox={!!project.sandbox_container_id} status={project.status} githubUrl={project.github_repo_url || undefined} onRefresh={onRefresh} stack={project.target_stack} />
+              <PreviewPanel projectId={project.id} hasSandbox={!!project.sandbox_container_id} status={project.status} githubUrl={project.github_repo_url || undefined} onRefresh={onRefresh} stack={project.target_stack} previewKey={previewKey} />
             )}
           </div>
 
@@ -589,7 +622,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
             </button>
             {logOpen && (
               <div className="h-40 border-t border-[var(--border)]">
-                <AgentLog projectId={project.id} />
+                <AgentLog projectId={project.id} lines={agentLogLines} />
               </div>
             )}
           </div>

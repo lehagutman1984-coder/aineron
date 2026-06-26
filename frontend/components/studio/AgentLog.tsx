@@ -12,13 +12,17 @@ interface LogLine {
 
 interface AgentLogProps {
   projectId: string;
+  lines?: LogLine[]; // provided by StudioLayout's shared SSE — no own connection needed
 }
 
-export function AgentLog({ projectId }: AgentLogProps) {
-  const [lines, setLines] = useState<LogLine[]>([]);
+export function AgentLog({ projectId, lines: propLines }: AgentLogProps) {
+  const [ownLines, setOwnLines] = useState<LogLine[]>([]);
   const ref = useRef<HTMLDivElement>(null);
 
+  // Own SSE connection — only used when parent does NOT provide lines prop
+  // (i.e. when AgentLog is rendered outside StudioLayout)
   useEffect(() => {
+    if (propLines !== undefined) return; // parent handles SSE
     const base = process.env.NEXT_PUBLIC_API_URL ?? '';
     let es: EventSource | null = null;
     let closed = false;
@@ -34,15 +38,13 @@ export function AgentLog({ projectId }: AgentLogProps) {
         try {
           const data = JSON.parse(e.data);
           if (data.type !== 'connected') {
-            setLines((prev) => [...prev, data]);
+            setOwnLines((prev) => [...prev, data].slice(-500));
           }
         } catch {}
       };
       es.onerror = () => {
         es?.close();
-        if (!closed) {
-          retryTimer = setTimeout(connect, 3000);
-        }
+        if (!closed) retryTimer = setTimeout(connect, 3000);
       };
     };
 
@@ -52,17 +54,16 @@ export function AgentLog({ projectId }: AgentLogProps) {
       if (retryTimer) clearTimeout(retryTimer);
       es?.close();
     };
-  }, [projectId]);
+  }, [projectId, propLines]);
+
+  const lines = propLines ?? ownLines;
 
   useEffect(() => {
     ref.current?.scrollTo(0, ref.current.scrollHeight);
   }, [lines]);
 
   return (
-    <div
-      ref={ref}
-      className={pipeline.log}
-    >
+    <div ref={ref} className={pipeline.log}>
       {lines.length === 0 && (
         <span className="opacity-40">Ожидание событий агентов...</span>
       )}

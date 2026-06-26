@@ -24,9 +24,10 @@ interface PreviewPanelProps {
   githubUrl?: string;
   onRefresh?: () => void;
   stack?: string;
+  previewKey?: number; // bumped by StudioLayout SSE (replaces own SSE connection)
 }
 
-export function PreviewPanel({ projectId, hasSandbox, status, githubUrl, onRefresh, stack }: PreviewPanelProps) {
+export function PreviewPanel({ projectId, hasSandbox, status, githubUrl, onRefresh, stack, previewKey }: PreviewPanelProps) {
   const [key, setKey] = useState(0);
   const isSandpackStack = SANDPACK_STACKS.includes(stack as any);
   const isE2BStack = E2B_STACKS.includes(stack as E2BStack) && !!process.env.NEXT_PUBLIC_E2B_PREVIEW;
@@ -60,22 +61,11 @@ export function PreviewPanel({ projectId, hasSandbox, status, githubUrl, onRefre
     return () => window.removeEventListener('message', onMsg);
   }, [projectId]);
 
-  // Reload iframe when a coding step completes
+  // Reload preview when parent SSE signals step_completed / coder_done.
+  // previewKey is bumped by StudioLayout's single shared SSE connection.
   useEffect(() => {
-    const src = new EventSource(
-      `${process.env.NEXT_PUBLIC_API_URL}/studio/projects/${projectId}/events/`,
-      { withCredentials: true },
-    );
-    src.onmessage = (e) => {
-      try {
-        const d = JSON.parse(e.data);
-        if (d.type === 'step_completed' || d.type === 'coder_done') {
-          setKey((k) => k + 1);
-        }
-      } catch { /* noop */ }
-    };
-    return () => src.close();
-  }, [projectId]);
+    if (previewKey) setKey((k) => k + 1);
+  }, [previewKey]);
 
   const [infoMsg, setInfoMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
