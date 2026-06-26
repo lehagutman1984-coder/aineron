@@ -2,7 +2,9 @@
 
 > Единый источник правды по фиче **Studio Live Preview** (aineron.ru).
 > Заменяет `STUDIO_PREVIEW_PLAN.md` (архитектура) и `STUDIO_PREVIEW_STATUS.md` (статус).
-> Дата актуализации: **2026-06-25**. Состояние: **Sprint 0–7 code-complete**, перед первым продакшн-деплоем.
+> Дата актуализации: **2026-06-26**. Состояние: **Sprint 0–8 code-complete**, перед первым продакшн-деплоем.
+>
+> **Дополняющий план:** [STUDIO_V5_PLAN.md](STUDIO_V5_PLAN.md) — надёжность AI-генерации (build gate, per-stack prompts, quality gate). Оба плана про Studio, но разные слои: этот = среда запуска; V5 = качество кода на выходе.
 
 ---
 
@@ -139,18 +141,19 @@ Studio — AI-конструктор приложений внутри aineron.r
 
 | # | Не сделано | Причина / статус | Приоритет |
 |---|---|---|---|
-| 1 | **E2B billing для пользователя** | Превью бесплатно — расход E2B не биллится | **КРИТ** |
-| 2 | **E2B warm pool / snapshot-restore** | Cold start 30–60 с (`npm install`/`pip install`). Шаблоны помогают, но не собраны | **КРИТ** |
-| 3 | **WebSocket/SSE log streaming** | Логи через ручной poll (кнопка «Обновить»). UX отстаёт от реалтайма | Важно |
-| 4 | **Timeweb провизия** | `TimewebProvider` есть, API = `NotImplementedError`. Нужна для 152-ФЗ клиентов | Важно |
-| 5 | **Status page интеграция** | E2B uptime/метрики не выводятся на `/status/` | Важно |
-| 6 | **Forward-only migrations runner** | `db/_migrate.py` (`__schema_version`) есть, в проде не используется | Опц. |
-| 7 | **Bot templates (aiogram/telebot)** | Готовых стартовых шаблонов в Studio нет | Опц. |
-| 8 | **PgBouncer** | Не нужен при текущей нагрузке (db-proxy достаточен) | Опц. |
-| 9 | **FirecrackerRuntime (своя инфра)** | ABC-шов есть; смысл при расходах E2B > €80–100/мес | Опц. |
-| 10 | **Neon partner OAuth** | Работаем через user API key (самообслуживание) — осознанный выбор | Опц. |
-| 11 | **Cloudflare Tunnel** | Сознательно убран, заменён на `sbx.get_host(port)` | Не нужен |
-| 12 | **README / docs preview-service** | Минимальные | Важно |
+| 1 | **E2B warm pool / snapshot-restore** | Cold start 30–60 с (`npm install`/`pip install`). Шаблоны помогают, но не собраны | **КРИТ** |
+| 2 | **WebSocket/SSE log streaming** | Логи через ручной poll (кнопка «Обновить»). UX отстаёт от реалтайма | Важно |
+| 3 | **Timeweb провизия** | `TimewebProvider` есть, API = `NotImplementedError`. Нужна для 152-ФЗ клиентов | Важно |
+| 4 | **Status page интеграция** | E2B uptime/метрики не выводятся на `/status/` | Важно |
+| 5 | **Forward-only migrations runner** | `db/_migrate.py` (`__schema_version`) есть, в проде не используется | Опц. |
+| 6 | **Bot templates (aiogram/telebot)** | Готовых стартовых шаблонов в Studio нет | Опц. |
+| 7 | **PgBouncer** | Не нужен при текущей нагрузке (db-proxy достаточен) | Опц. |
+| 8 | **FirecrackerRuntime (своя инфра)** | ABC-шов есть; смысл при расходах E2B > €80–100/мес | Опц. |
+| 9 | **Neon partner OAuth** | Работаем через user API key (самообслуживание) — осознанный выбор | Опц. |
+| 10 | **Cloudflare Tunnel** | Сознательно убран, заменён на `sbx.get_host(port)` | Не нужен |
+| 11 | **README / docs preview-service** | Минимальные | Важно |
+
+> **E2B billing (Sprint 8)** — ✅ DONE (см. §5 Sprint 8).
 
 ---
 
@@ -188,7 +191,7 @@ Studio — AI-конструктор приложений внутри aineron.r
 ## 6. Предлагаемые улучшения
 
 ### 6.1 Критические (монетизация / надёжность)
-- [ ] **E2B billing** (Sprint 8) — сейчас фича раздаёт платный ресурс бесплатно. Hook-точка: `preview_start`/`preview_stop` в `main.py`.
+- [x] **E2B billing** (Sprint 8) — DONE. `reserve`/`charge_from_reserve`, `reconcile_preview_billing` Celery task, `SessionTimer.tsx`.
 - [ ] **Жёсткий потолок расходов** — суточный лимит минут на пользователя и глобальный kill-switch.
 - [ ] **Гарантированный teardown** — серверный watchdog, убивающий sandbox по `expires_at` независимо от фронта.
 
@@ -264,7 +267,11 @@ Studio — AI-конструктор приложений внутри aineron.r
 - [ ] **`AINERON_DB_HOST/NAME/USER/PASSWORD/PORT`** — корректны для режима aineron.
 
 ### 8.2 Миграции и сервисы
-- [ ] Применить миграцию **`0018`**: `python manage.py migrate studio`.
+- [ ] Применить миграции:
+  - **`0018`** — `ProjectDatabase` (db provider model)
+  - **`0019`** — `PreviewSession` (billing reserve/settle)
+  - **`0020`** — `target_stack`/`stack` max_length=20 (python/django/telegram_bot стеки)
+  - Команда: `python manage.py migrate studio`
 - [ ] preview-service запущен на :8001; `GET /healthz` → `{"ok": true}`.
 - [ ] Reaper-thread жив (проверить лог `slot-reaper`).
 
@@ -277,8 +284,9 @@ Studio — AI-конструктор приложений внутри aineron.r
 - [ ] Bot token нигде не пишется в файлы/лог.
 - [ ] db-proxy: DDL-block, semicolon-guard, circuit breaker включены.
 
-### 8.5 Биллинг — предупреждение
-- [ ] **До Sprint 8** каждое серверное превью = бесплатный расход E2B. Рекомендуется временно ограничить доступ feature-флагом или суточным лимитом.
+### 8.5 Биллинг
+- [x] Sprint 8 billing реализован — `reserve`/`charge_from_reserve`, `reconcile_preview_billing`.
+- [ ] Проверить тариф `E2B_PREVIEW_STARS_PER_MIN=1` (сейчас ≈$0.0022/мин при 2vCPU/2GiB) — пересчитать под курс звезда/рубль до продакшн-деплоя.
 
 ### 8.6 Уборка после деплоя
 - [ ] `git rm STUDIO_PREVIEW_PLAN.md STUDIO_PREVIEW_STATUS.md` — заменены этим документом.
@@ -308,7 +316,7 @@ Studio — AI-конструктор приложений внутри aineron.r
 `spikes/e2b_basic.py` · `spikes/e2b_egress.py`
 
 **Django (`src/studio/`):**
-`models.py` (ProjectDatabase, migration 0018) · `views/pipeline.py` (все preview/db views)
+`models.py` (ProjectDatabase migration 0018, PreviewSession migration 0019, stack max_length migration 0020) · `views/pipeline.py` (все preview/db views)
 `urls.py` (/e2b/, /e2b/{sid}/, /e2b/{sid}/logs/, /db/, /db/export/, /bot-emulate/, /e2b-bot/)
 
 **Frontend (`frontend/components/studio/`):**
