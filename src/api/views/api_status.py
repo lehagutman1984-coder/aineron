@@ -56,6 +56,36 @@ class APIStatusView(APIView):
         except Exception as e:
             checks['upstream'] = {'status': 'unknown', 'error': str(e)}
 
+        # Preview service (E2B) — informational, не влияет на overall
+        try:
+            import os as _os
+            import requests as _req
+            _prev_url = _os.environ.get('PREVIEW_SERVICE_URL', '')
+            _prev_token = _os.environ.get('PREVIEW_INTERNAL_TOKEN', '')
+            if _prev_url and _prev_token:
+                t0 = time.monotonic()
+                _r = _req.get(
+                    f'{_prev_url}/metrics',
+                    headers={'X-Internal-Token': _prev_token},
+                    timeout=3,
+                )
+                if _r.ok:
+                    _m = _r.json()
+                    checks['preview'] = {
+                        'status': 'operational',
+                        'latency_ms': round((time.monotonic() - t0) * 1000),
+                        'p95_s': _m.get('p95_s'),
+                        'hit_rate': _m.get('hit_rate'),
+                        'slots_used': _m.get('slots_used'),
+                        'max_concurrent': _m.get('max_concurrent'),
+                    }
+                else:
+                    checks['preview'] = {'status': 'degraded', 'error': f'HTTP {_r.status_code}'}
+            else:
+                checks['preview'] = {'status': 'unknown'}
+        except Exception as exc:
+            checks['preview'] = {'status': 'unknown', 'error': str(exc)[:100]}
+
         return Response({
             'status': overall,
             'checks': checks,

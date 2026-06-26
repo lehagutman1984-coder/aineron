@@ -149,8 +149,17 @@ export function DatabasePanel({ projectId }: DatabasePanelProps) {
         <div className="flex items-center gap-2">
           <Database size={16} className="text-[var(--text-secondary)]" />
           <div>
-            <p className="text-sm font-medium">
+            <p className="text-sm font-medium flex items-center gap-1.5">
               {isActive ? MODES.find((m) => m.value === currentMode)?.label ?? currentMode : 'База не подключена'}
+              {isActive && (
+                <span className={`text-[10px] font-mono px-1 py-0.5 rounded border ${
+                  currentMode === 'aineron'
+                    ? 'text-green-400 border-green-500/30 bg-green-500/10'
+                    : 'text-[var(--text-secondary)] border-[var(--border)] bg-[var(--hover)]'
+                }`}>
+                  {currentMode === 'aineron' ? 'RU' : currentMode === 'neon' ? 'US' : 'Ext'}
+                </span>
+              )}
             </p>
             {isActive && (
               <p className="text-xs text-[var(--text-secondary)] flex items-center gap-1">

@@ -8,6 +8,10 @@ interface ServiceCheck {
   latency_ms?: number;
   error?: string;
   active_models?: number;
+  p95_s?: number;
+  hit_rate?: number;
+  slots_used?: number;
+  max_concurrent?: number;
 }
 
 interface StatusData {
@@ -16,6 +20,7 @@ interface StatusData {
     database?: ServiceCheck;
     cache?: ServiceCheck;
     upstream?: ServiceCheck;
+    preview?: ServiceCheck;
   };
   timestamp: number;
 }
@@ -24,6 +29,7 @@ const SERVICES: { key: keyof StatusData["checks"]; label: string }[] = [
   { key: "database", label: "База данных" },
   { key: "cache", label: "Кэш / очередь (Redis)" },
   { key: "upstream", label: "AI-сервис" },
+  { key: "preview", label: "Studio Preview (E2B)" },
 ];
 
 function StatusIcon({ status }: { status: string }) {
@@ -32,6 +38,26 @@ function StatusIcon({ status }: { status: string }) {
   if (status === "degraded")
     return <XCircle size={18} className="text-red-500 shrink-0" />;
   return <AlertCircle size={18} className="text-yellow-500 shrink-0" />;
+}
+
+function PreviewMeta({ check }: { check: ServiceCheck }) {
+  const parts: string[] = [];
+  if (check.p95_s !== undefined && check.p95_s !== null)
+    parts.push(`p95 ${check.p95_s}s`);
+  if (check.hit_rate !== undefined && check.hit_rate !== null)
+    parts.push(`hit ${Math.round(check.hit_rate * 100)}%`);
+  if (
+    check.slots_used !== undefined &&
+    check.max_concurrent !== undefined &&
+    check.slots_used !== null &&
+    check.max_concurrent !== null
+  )
+    parts.push(`${check.slots_used}/${check.max_concurrent} slots`);
+  return parts.length > 0 ? (
+    <span className="font-mono text-[11px] text-[rgba(13,13,13,0.4)]">
+      {parts.join(" · ")}
+    </span>
+  ) : null;
 }
 
 export default function StatusPage() {
@@ -113,6 +139,9 @@ export default function StatusPage() {
                 )}
                 {check?.active_models !== undefined && (
                   <span>{check.active_models} моделей</span>
+                )}
+                {svc.key === "preview" && check && (
+                  <PreviewMeta check={check} />
                 )}
                 {check?.error && (
                   <span className="text-red-500">{check.error}</span>

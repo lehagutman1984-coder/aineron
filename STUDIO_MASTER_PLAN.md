@@ -203,16 +203,19 @@ Studio — AI-конструктор приложений внутри aineron.r
 
 ## 5.1 Что осталось реализовать
 
-| # | Задача | Файл/место | Приоритет |
-|---|---|---|---|
-| 1 | **E2B метрики на /status/ странице** | `src/landing/` + `/status/` template или Next.js `/status` | Важно |
-| 2 | **Единый движок-бейдж** (sandpack / e2b) в `PreviewPanel.tsx` | `frontend/components/studio/PreviewPanel.tsx` | Низкий |
-| 3 | **Глобальный счётчик «N звёзд/мин»** в шапке Studio | Studio layout/header | Низкий |
-| 4 | **Circuit breaker индикатор** в `DatabasePanel.tsx` (`ShieldAlert`) | `DatabasePanel.tsx` | Низкий |
-| 5 | **Jurisdiction badge** (RU/Timeweb vs внешняя) в `DatabasePanel.tsx` | `DatabasePanel.tsx` | Низкий |
-| 6 | **Forward-only migrations** в проде | `preview-service/db/_migrate.py` | Команда решает |
-| 7 | **README preview-service** (env-таблица, runbook) | `preview-service/README.md` | Важно (перед деплоем) |
-| 8 | **Тариф E2B** пересчитать под курс | `E2B_PREVIEW_STARS_PER_MIN` в `.env` | Важно (перед деплоем) |
+| # | Задача | Файл/место | Приоритет | Статус |
+|---|---|---|---|---|
+| 1 | ~~**E2B метрики на /status/ странице**~~ | `api_status.py` + `frontend/app/status/page.tsx` | Важно | ✅ Sprint 12 |
+| 2 | ~~**Jurisdiction badge**~~ (RU/Timeweb vs Ext) в `DatabasePanel.tsx` | `DatabasePanel.tsx` | Низкий | ✅ Sprint 12 |
+| 3 | ~~**README preview-service**~~ (env-таблица, runbook) | `preview-service/README.md` | Важно | ✅ Sprint 12 |
+| 4 | **Единый движок-бейдж** (sandpack уже есть, e2b = stack badge) | `PreviewPanel.tsx` | Низкий — done enough |
+| 5 | **Глобальный счётчик «N звёзд/мин»** в шапке Studio | Studio layout | Низкий | ⏳ |
+| 6 | **Circuit breaker индикатор** в `DatabasePanel.tsx` | нужен эндпоинт в preview-service | Низкий | ⏳ |
+| 7 | **Forward-only migrations** в проде | `preview-service/db/_migrate.py` | Команда решает | ⏳ |
+| 8 | **PgBouncer** | — | Оставить на будущее | ⏳ |
+| 9 | **Тариф E2B** — пересчитать `E2B_PREVIEW_STARS_PER_MIN` | `.env` на сервере | Важно перед деплоем | Пользователь подберёт |
+
+> **Уточнение spend cap:** `_check_and_reserve_daily_cap` резервирует `ttl_minutes` (15 мин) при старте, а не фактически использованные минуты. Cap работает как «≤ 8 стартов/день» при TTL=15, не как «≤ 120 фактических минут». Это безопасный потолок; если нужен точный счётчик фактического времени — декрементировать ключ в `_settle_preview_session` на разницу TTL − actual.
 
 ---
 
@@ -226,8 +229,8 @@ Studio — AI-конструктор приложений внутри aineron.r
 ### 6.2 Важные (UX / конкурентное преимущество)
 - [x] **Realtime-логи** (Sprint 10) — DONE. SSE endpoint + auto-poll 3s в `E2BPreview.tsx`.
 - [x] **Видимая стоимость превью** — DONE. `Coins` индикатор + `SessionTimer` (Sprint 8), viewport switcher (Sprint 11).
-- [ ] **Status-page интеграция** — ⏳ публичный аптайм превью повышает доверие B2B.
-- [ ] **Документация preview-service** — ⏳ env-таблица, схема деплоя, runbook.
+- [x] **Status-page интеграция** (Sprint 12) — DONE. p95/hit_rate/slots на `/status/`.
+- [x] **Документация preview-service** (Sprint 12) — DONE. `preview-service/README.md`.
 
 ### 6.3 Опциональные (nice-to-have)
 - [x] Bot-шаблоны aiogram/telebot (Sprint 11) — DONE.
