@@ -2,7 +2,7 @@
 
 > Единый источник правды по фиче **Studio Live Preview** (aineron.ru).
 > Заменяет `STUDIO_PREVIEW_PLAN.md` (архитектура) и `STUDIO_PREVIEW_STATUS.md` (статус).
-> Дата актуализации: **2026-06-26**. Состояние: **Sprint 0–11 code-complete**.
+> Дата актуализации: **2026-06-26**. Состояние: **Sprint 0–12 code-complete + Bug Hunt pass**.
 >
 > **Дополняющий план:** [STUDIO_V5_PLAN.md](STUDIO_V5_PLAN.md) — надёжность AI-генерации (build gate, per-stack prompts, quality gate). Оба плана про Studio, но разные слои: этот = среда запуска; V5 = качество кода на выходе.
 
@@ -203,19 +203,60 @@ Studio — AI-конструктор приложений внутри aineron.r
 
 ## 5.1 Что осталось реализовать
 
-| # | Задача | Файл/место | Приоритет | Статус |
-|---|---|---|---|---|
-| 1 | ~~**E2B метрики на /status/ странице**~~ | `api_status.py` + `frontend/app/status/page.tsx` | Важно | ✅ Sprint 12 |
-| 2 | ~~**Jurisdiction badge**~~ (RU/Timeweb vs Ext) в `DatabasePanel.tsx` | `DatabasePanel.tsx` | Низкий | ✅ Sprint 12 |
-| 3 | ~~**README preview-service**~~ (env-таблица, runbook) | `preview-service/README.md` | Важно | ✅ Sprint 12 |
-| 4 | **Единый движок-бейдж** (sandpack уже есть, e2b = stack badge) | `PreviewPanel.tsx` | Низкий — done enough |
-| 5 | **Глобальный счётчик «N звёзд/мин»** в шапке Studio | Studio layout | Низкий | ⏳ |
-| 6 | **Circuit breaker индикатор** в `DatabasePanel.tsx` | нужен эндпоинт в preview-service | Низкий | ⏳ |
-| 7 | **Forward-only migrations** в проде | `preview-service/db/_migrate.py` | Команда решает | ⏳ |
-| 8 | **PgBouncer** | — | Оставить на будущее | ⏳ |
-| 9 | **Тариф E2B** — пересчитать `E2B_PREVIEW_STARS_PER_MIN` | `.env` на сервере | Важно перед деплоем | Пользователь подберёт |
+| # | Задача | Приоритет | Статус |
+|---|---|---|---|
+| 1 | ~~E2B метрики на /status/ странице~~ | Важно | ✅ Sprint 12 |
+| 2 | ~~Jurisdiction badge (RU/US/Ext) в DatabasePanel~~ | Низкий | ✅ Sprint 12 |
+| 3 | ~~README preview-service~~ | Важно | ✅ Sprint 12 |
+| 4 | **Глобальный счётчик «N звёзд/мин»** в шапке Studio | Низкий | ⏳ |
+| 5 | **Circuit breaker индикатор** в DatabasePanel | Низкий | ⏳ |
+| 6 | **Forward-only migrations** в проде | Команда решает | ⏳ |
+| 7 | **PgBouncer** | Будущее | ⏳ |
+| 8 | **Тариф E2B** — пересчитать `E2B_PREVIEW_STARS_PER_MIN` | КРИТ перед деплоем | Пользователь подберёт |
 
-> **Уточнение spend cap:** `_check_and_reserve_daily_cap` резервирует `ttl_minutes` (15 мин) при старте, а не фактически использованные минуты. Cap работает как «≤ 8 стартов/день» при TTL=15, не как «≤ 120 фактических минут». Это безопасный потолок; если нужен точный счётчик фактического времени — декрементировать ключ в `_settle_preview_session` на разницу TTL − actual.
+> **Spend cap точность (исправлено Sprint 12):** теперь INCRBY-first с refund-on-overshoot — атомарно; также возвращает cap-минуты при ошибке запуска. Сам cap работает как «≤ 8 стартов/день» при TTL=15 мин, не «≤ 120 фактических мин» — это безопасный потолок.
+
+---
+
+## 5.2 Bug Hunt Sprint 12 (2026-06-26)
+
+Четыре Opus-агента провели глубокий аудит. Найдено и исправлено **13 багов** в коммите `38c49f5`.
+
+### Безопасность / изоляция пользователей
+
+| ID | Файл | Серьёзность | Проблема | Исправлено |
+|---|---|---|---|---|
+| S-1 | `pipeline.py:891+` | HIGH | Нет проверки владельца session_id → user A мог читать/останавливать сессии user B | ✅ |
+| S-2 | `proxy.py:174` | CRIT | `SET search_path TO %s` — не identifier, injection surface | ✅ `sql.Identifier` |
+| S-3 | `proxy.py:116` | HIGH | DDL blocklist обходился через `/* */` комментарий-префикс | ✅ comment strip + string-aware `;` scan |
+
+### Надёжность биллинга
+
+| ID | Файл | Серьёзность | Проблема | Исправлено |
+|---|---|---|---|---|
+| B-1 | `pipeline.py:40` | MED | Daily cap не atomic: GET→INCRBY race позволял double-spend | ✅ INCRBY-first pattern |
+| B-2 | `pipeline.py:829+` | MED | Daily cap не возвращался при ошибке запуска (402/503/429/502) | ✅ `_refund_daily_cap` |
+| B-3 | `pipeline.py:852` | MED | Неохраняемый `data['session_id']` → 500 + orphaned reservation | ✅ `.get()` + 502 |
+| B-4 | `pipeline.py:904` | MED | Transient outage возвращал `200 stopped` (frontend рвал сессию) | ✅ `503 unknown+transient` |
+
+### Конкурентность sandbox
+
+| ID | Файл | Серьёзность | Проблема | Исправлено |
+|---|---|---|---|---|
+| R-1 | `e2b_runtime.py:582` | HIGH | GET→DELETE race: два запроса захватывали один prewarm/paused sandbox | ✅ атомарный `getdel` |
+| R-2 | `e2b_runtime.py:586` | HIGH | `connect()` после `delete` → утечка sandbox при ошибке connect | ✅ connect-first + kill orphan |
+| R-3 | `e2b_runtime.py:prewarm` | MED | Prewarm кэшировал dep_hash даже при ошибке install → skip_install на сломанном sandbox | ✅ gate on exit_code==0 |
+| R-4 | `main.py:prewarm` | HIGH | Prewarm занимал default executor → блокировал `/preview/start` под нагрузкой | ✅ `_PREWARM_EXECUTOR(max_workers=4)` |
+
+### Frontend
+
+| ID | Файл | Серьёзность | Проблема | Исправлено |
+|---|---|---|---|---|
+| F-1 | `studio.ts:410` | HIGH | `dbTest` без leading `/` → 404 каждый раз | ✅ |
+| F-2 | `E2BPreview.tsx` | HIGH | Stop во время in-flight start → orphaned E2B session (billing leak) | ✅ generation guard |
+| F-3 | `TelegramBotPanel.tsx` | HIGH | Аналогичная race + unmount не останавливал бот | ✅ genRef + unmount cleanup |
+| F-4 | `DatabasePanel.tsx:120` | HIGH | Deprovision без подтверждения → потеря данных одним кликом | ✅ `window.confirm` |
+| F-5 | `E2BPreview.tsx:clearPoll` | MED | `clearPoll()` убивал costTimer при переходе в `running` → cost badge всегда 0 | ✅ `clearStatusPoll` |
 
 ---
 
