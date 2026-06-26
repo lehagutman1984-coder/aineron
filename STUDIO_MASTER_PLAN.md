@@ -2,7 +2,7 @@
 
 > Единый источник правды по фиче **Studio Live Preview** (aineron.ru).
 > Заменяет `STUDIO_PREVIEW_PLAN.md` (архитектура) и `STUDIO_PREVIEW_STATUS.md` (статус).
-> Дата актуализации: **2026-06-26**. Состояние: **Sprint 0–8 code-complete**, перед первым продакшн-деплоем.
+> Дата актуализации: **2026-06-26**. Состояние: **Sprint 0–11 code-complete**.
 >
 > **Дополняющий план:** [STUDIO_V5_PLAN.md](STUDIO_V5_PLAN.md) — надёжность AI-генерации (build gate, per-stack prompts, quality gate). Оба плана про Studio, но разные слои: этот = среда запуска; V5 = качество кода на выходе.
 
@@ -147,73 +147,93 @@ Studio — AI-конструктор приложений внутри aineron.r
 
 ## 4. Что НЕ сделано и почему (с приоритетами)
 
-| # | Не сделано | Причина / статус | Приоритет |
+| # | Статус | Задача | Приоритет |
 |---|---|---|---|
-| 1 | **E2B warm pool / snapshot-restore** | Cold start 30–60 с (`npm install`/`pip install`). Шаблоны помогают, но не собраны | **КРИТ** |
-| 2 | **WebSocket/SSE log streaming** | Логи через ручной poll (кнопка «Обновить»). UX отстаёт от реалтайма | Важно |
-| 3 | **Timeweb провизия** | `TimewebProvider` есть, API = `NotImplementedError`. Нужна для 152-ФЗ клиентов | Важно |
-| 4 | **Status page интеграция** | E2B uptime/метрики не выводятся на `/status/` | Важно |
-| 5 | **Forward-only migrations runner** | `db/_migrate.py` (`__schema_version`) есть, в проде не используется | Опц. |
-| 6 | **Bot templates (aiogram/telebot)** | Готовых стартовых шаблонов в Studio нет | Опц. |
-| 7 | **PgBouncer** | Не нужен при текущей нагрузке (db-proxy достаточен) | Опц. |
-| 8 | **FirecrackerRuntime (своя инфра)** | ABC-шов есть; смысл при расходах E2B > €80–100/мес | Опц. |
-| 9 | **Neon partner OAuth** | Работаем через user API key (самообслуживание) — осознанный выбор | Опц. |
-| 10 | **Cloudflare Tunnel** | Сознательно убран, заменён на `sbx.get_host(port)` | Не нужен |
-| 11 | **README / docs preview-service** | Минимальные | Важно |
+| 1 | ✅ DONE Sprint 9 | **E2B cold start < 5s** (L1–L7: шаблоны, warm pool, prewarm, pause/resume, metrics) | КРИТ |
+| 2 | ✅ DONE Sprint 10 | **SSE log streaming** (auto-poll 3s + `/logs/stream` endpoint) | Важно |
+| 3 | ✅ DONE | **Timeweb провизия** (`TimewebProvider` — provision/deprovision через API v2) | Важно |
+| 4 | ⏳ ОСТАЛОСЬ | **Status page интеграция** — E2B p95/hit_rate на `/status/` страницу | Важно |
+| 5 | ⏳ ОСТАЛОСЬ | **Forward-only migrations runner** — `db/_migrate.py` есть, в проде не включён | Опц. |
+| 6 | ✅ DONE Sprint 11 | **Bot templates** (aiogram + telebot в seed_templates) | Опц. |
+| 7 | ✅ Не нужен | **PgBouncer** — db-proxy достаточен при текущей нагрузке | — |
+| 8 | ⏳ При росте | **FirecrackerRuntime** (своя инфра) — ABC-шов есть; смысл при E2B > €80-100/мес | Опц. |
+| 9 | ✅ Осознанно | **Neon partner OAuth** — работаем через user API key | — |
+| 10 | ✅ Не нужен | **Cloudflare Tunnel** — убран, заменён `sbx.get_host(port)` | — |
+| 11 | ⏳ ОСТАЛОСЬ | **README / docs preview-service** — env-таблица, схема деплоя, runbook | Важно |
 
-> **E2B billing (Sprint 8)** — ✅ DONE (см. §5 Sprint 8).
+> **E2B billing (Sprint 8)** — ✅ DONE. **Daily spend cap (Sprint 10)** — ✅ DONE (`E2B_PREVIEW_DAILY_CAP_MIN=120`).
 
 ---
 
-## 5. Sprint 8 (done) + Sprint 9–11 (план)
+## 5. Sprint 8–11 (done) + что осталось
 
 ### Sprint 8 — Монетизация E2B — ✅ CODE-COMPLETE 2026-06-25
-- [x] `started_at` в Redis-сессии (e2b_runtime.py), `duration_seconds` в stop-ответе.
+- [x] `started_at` в Redis-сессии, `duration_seconds` в stop-ответе.
 - [x] `PreviewSession` модель + migration **0019** (`reserved_stars`, `settled` idempotency guard).
-- [x] `E2BPreviewView.post()`: `reserve(user, 15 × rate, project)` → 402 при нуле баланса.
-- [x] `E2BPreviewView.delete()` + `E2BPreviewStatusView.delete()`: `charge_from_reserve(actual)` + `settled=True`.
-- [x] Celery task `reconcile_preview_billing` каждые 5 мин — settlement по TTL/expiry (Django-side reconciler).
-- [x] `E2B_PREVIEW_STARS_PER_MIN=1` env-var — тариф без деплоя. **Пересчитать под курс звезда/рубль!**
-- [x] UI: `SessionTimer.tsx` — shared countdown (красный < 2 мин), переиспользован в Bot.
-- [x] UI: `StopCircle` кнопка, `Coins` стоимость, stack badge, авто-логи на failed.
-- [x] UI: `TelegramBotPanel.tsx` — countdown + Terminal кнопка + live-логи бота.
-- [x] UI: тосты вместо `window.alert()` в `PreviewPanel.tsx`.
+- [x] `reserve`/`charge_from_reserve`, `reconcile_preview_billing` Celery task каждые 5 мин.
+- [x] `E2B_PREVIEW_STARS_PER_MIN=1`. **⚠️ Пересчитать под курс звезда/рубль до прод-деплоя!**
+- [x] UI: `SessionTimer.tsx`, `StopCircle`, `Coins`, stack badge, авто-логи при failed, тосты.
 
-### Sprint 9 — Холодный старт (UX скорости) — КРИТ
-- [ ] Собрать кастомные образы (`templates/build.sh`) и прописать `E2B_TEMPLATE_NEXTJS/PYTHON/DJANGO`.
-- [ ] Опционально warm-pool: 1–2 прогретых sandbox на популярный стек.
-- [ ] Замерить p50/p95 старта до/после (через `/metrics`).
+### Sprint 9 — Холодный старт (L1–L7) — ✅ CODE-COMPLETE 2026-06-25
+- [x] **L1** — `nextjs.Dockerfile` с `/opt/base/node_modules` symlink-merge, delta-install.
+- [x] **L2** — Warm pool (Redis LIST + singleton warmer thread + leader lock).
+- [x] **L3** — `prewarm_e2b` Celery task, fire-and-forget из `commit_to_gitea`.
+- [x] **L4** — Dep-delta hash skip (`_compute_dep_hash`, `skip_install=True`).
+- [x] **L5** — Pause/Resume (`sbx.pause()` при stop, `Sandbox.connect()` при start).
+- [x] **L6** — Progressive UI (`CLAIM_COPY`, progress bar, ETA ticker, Zap badge).
+- [x] **L7** — Hit-rate metrics (`_bump_claim`, `/metrics.hit_rate`, `/pool/stats`).
+- [x] E2B шаблоны собраны: `nextjs=khytik8ssbjahj8v943m`, `python=jibema1fid8nzyw01p95`, `django=x1mi9kdn8kzj7wca18pi`.
 
-### Sprint 10 — Realtime логи и наблюдаемость — Важно
-- [ ] SSE-эндпоинт `/preview/{id}/logs/stream` (заменить ручной poll в `E2BPreview.tsx`).
-- [ ] Вывод E2B uptime + p95-старта на `/status/`.
-- [ ] Алерты при срабатывании circuit breaker в db-proxy.
+### Sprint 10 — Observability + Safety — ✅ CODE-COMPLETE 2026-06-26
+- [x] **Daily spend cap** — `preview:daily_min:{uid}:{date}` Redis, `E2B_PREVIEW_DAILY_CAP_MIN=120`, HTTP 429.
+- [x] **Guaranteed teardown watchdog** — `reconcile_preview_billing` force-kill при `age > TTL+60s`.
+- [x] **SSE logs stream** — `GET /preview/{id}/logs/stream` в main.py + Django proxy `E2BPreviewLogsStreamView`.
+- [x] **Auto-poll logs** — `E2BPreview.tsx` авто-рефреш каждые 3s (logsPollRef), без кнопки «Обновить».
+- [ ] Вывод E2B p95/hit_rate на `/status/` страницу ← **ещё не сделано**.
 
-### Sprint 11 — БД и юрисдикция — Важно
-- [ ] Завершить `TimewebProvider` (152-ФЗ).
-- [ ] Включить forward-only migrations runner (`__schema_version`) в проде.
-- [ ] Bot templates aiogram/telebot как стартовые проекты Studio.
+### Sprint 11 — Bot + UX — ✅ CODE-COMPLETE 2026-06-26
+- [x] **Bot templates** — `bot-aiogram-faq` (aiogram 3) + `bot-telebot-echo` (pyTelegramBotAPI) в seed_templates.
+- [x] **Viewport switcher** — `E2BPreview.tsx`: Smartphone/Tablet/Monitor (375/768/100%).
+- [x] **Telegram deep-link** — `TelegramBotPanel.tsx`: `getMe` API → `t.me/@username` кнопка.
+- [x] **DB test connection** — `DatabasePanel.tsx` + `ProjectDatabaseTestView` + `studioApi.dbTest()`.
+- [x] **TimewebProvider** — уже реализован (provision/deprovision через Timeweb Cloud API v2).
+- [ ] Forward-only migrations (`db/_migrate.py`) в проде ← **решение за командой**.
+
+---
+
+## 5.1 Что осталось реализовать
+
+| # | Задача | Файл/место | Приоритет |
+|---|---|---|---|
+| 1 | **E2B метрики на /status/ странице** | `src/landing/` + `/status/` template или Next.js `/status` | Важно |
+| 2 | **Единый движок-бейдж** (sandpack / e2b) в `PreviewPanel.tsx` | `frontend/components/studio/PreviewPanel.tsx` | Низкий |
+| 3 | **Глобальный счётчик «N звёзд/мин»** в шапке Studio | Studio layout/header | Низкий |
+| 4 | **Circuit breaker индикатор** в `DatabasePanel.tsx` (`ShieldAlert`) | `DatabasePanel.tsx` | Низкий |
+| 5 | **Jurisdiction badge** (RU/Timeweb vs внешняя) в `DatabasePanel.tsx` | `DatabasePanel.tsx` | Низкий |
+| 6 | **Forward-only migrations** в проде | `preview-service/db/_migrate.py` | Команда решает |
+| 7 | **README preview-service** (env-таблица, runbook) | `preview-service/README.md` | Важно (перед деплоем) |
+| 8 | **Тариф E2B** пересчитать под курс | `E2B_PREVIEW_STARS_PER_MIN` в `.env` | Важно (перед деплоем) |
 
 ---
 
 ## 6. Предлагаемые улучшения
 
 ### 6.1 Критические (монетизация / надёжность)
-- [x] **E2B billing** (Sprint 8) — DONE. `reserve`/`charge_from_reserve`, `reconcile_preview_billing` Celery task, `SessionTimer.tsx`.
-- [ ] **Жёсткий потолок расходов** — суточный лимит минут на пользователя и глобальный kill-switch.
-- [ ] **Гарантированный teardown** — серверный watchdog, убивающий sandbox по `expires_at` независимо от фронта.
+- [x] **E2B billing** (Sprint 8) — DONE. `reserve`/`charge_from_reserve`, `reconcile_preview_billing`.
+- [x] **Жёсткий потолок расходов** (Sprint 10) — DONE. `E2B_PREVIEW_DAILY_CAP_MIN=120` мин/день на пользователя.
+- [x] **Гарантированный teardown** (Sprint 10) — DONE. watchdog в `reconcile_preview_billing` (force-kill > TTL+60s).
 
 ### 6.2 Важные (UX / конкурентное преимущество)
-- [ ] **Realtime-логи (SSE)** вместо кнопки «Обновить».
-- [ ] **Видимая стоимость превью** до и во время запуска — прозрачность биллинга.
-- [ ] **Status-page интеграция** — публичный аптайм превью повышает доверие B2B.
-- [ ] **Документация preview-service** (env-таблица, схема деплоя, runbook).
+- [x] **Realtime-логи** (Sprint 10) — DONE. SSE endpoint + auto-poll 3s в `E2BPreview.tsx`.
+- [x] **Видимая стоимость превью** — DONE. `Coins` индикатор + `SessionTimer` (Sprint 8), viewport switcher (Sprint 11).
+- [ ] **Status-page интеграция** — ⏳ публичный аптайм превью повышает доверие B2B.
+- [ ] **Документация preview-service** — ⏳ env-таблица, схема деплоя, runbook.
 
 ### 6.3 Опциональные (nice-to-have)
-- [ ] Bot-шаблоны aiogram/telebot.
-- [ ] Snapshot-restore для мгновенного рестарта.
-- [ ] Forward-only migrations в проде.
-- [ ] FirecrackerRuntime при росте расходов.
+- [x] Bot-шаблоны aiogram/telebot (Sprint 11) — DONE.
+- [x] Snapshot-restore / pause+resume (Sprint 9 L5) — DONE.
+- [ ] Forward-only migrations в проде — команда решает.
+- [ ] FirecrackerRuntime при росте расходов (E2B > €80/мес).
 
 ---
 
@@ -223,45 +243,48 @@ Studio — AI-конструктор приложений внутри aineron.r
 
 ### 7.1 `E2BPreview.tsx` — серверное превью
 
-| Что добавить | Компонент/иконка | Статус |
-|---|---|---|
-| ~~**Кнопка «Остановить сессию»**~~ | `StopCircle` в шапке | ✅ Sprint 8 |
-| ~~**Таймер до истечения** (countdown к `expires_at`)~~ | `SessionTimer.tsx` `MM:SS` | ✅ Sprint 8 |
-| ~~**Индикатор стоимости** (минуты × тариф)~~ | `Coins` иконка | ✅ Sprint 8 |
-| **Realtime-логи (SSE)** | заменить ручной poll | ⏳ Sprint 10 |
-| ~~**Авто-показ логов при `failed`**~~ | раскрывать `<pre>` автоматически | ✅ Sprint 8 |
-| ~~**Бейдж стека** (nextjs/python/django)~~ | бейдж в шапке | ✅ Sprint 8 |
+| Что | Статус |
+|---|---|
+| ~~Кнопка «Остановить сессию» (`StopCircle`)~~ | ✅ Sprint 8 |
+| ~~Таймер (`SessionTimer.tsx`, красный < 2 мин)~~ | ✅ Sprint 8 |
+| ~~Индикатор стоимости (`Coins`)~~ | ✅ Sprint 8 |
+| ~~Авто-показ логов при `failed`~~ | ✅ Sprint 8 |
+| ~~Бейдж стека (nextjs/python/django)~~ | ✅ Sprint 8 |
+| ~~Realtime-логи — auto-poll 3s~~ | ✅ Sprint 10 |
+| ~~Viewport switcher (375/768/100%)~~ | ✅ Sprint 11 |
+| ~~Progressive UI (claimSource, ETA progress bar, Zap badge)~~ | ✅ Sprint 9 L6 |
 
 ### 7.2 `PreviewPanel.tsx` — оркестратор
 
-| Что добавить | Статус |
+| Что | Статус |
 |---|---|
-| **Единый бейдж движка** (sandpack / e2b) | ⏳ TODO |
-| **Переключатель viewport (375/768/100%)** для E2B-ветки | ⏳ TODO |
-| ~~**Тост вместо `window.alert()`**~~ | ✅ Sprint 8 |
+| ~~Тост вместо `window.alert()`~~ | ✅ Sprint 8 |
+| **Единый бейдж движка** (sandpack / e2b) | ⏳ низкий приоритет |
 
 ### 7.3 `TelegramBotPanel.tsx` — живой бот
 
-| Что добавить | Статус |
+| Что | Статус |
 |---|---|
-| ~~**Таймер до автостопа (15 мин)**~~ | ✅ Sprint 8 (`SessionTimer.tsx`) |
-| **Кнопка «Открыть бота в Telegram»** (deep-link `t.me/<botname>`) | ⏳ TODO |
-| ~~**Live-лог бота** (Terminal-кнопка как в E2BPreview)~~ | ✅ Sprint 8 |
+| ~~Таймер до автостопа (15 мин)~~ | ✅ Sprint 8 |
+| ~~Live-лог бота (Terminal-кнопка)~~ | ✅ Sprint 8 |
+| ~~Кнопка «Открыть в Telegram» (`t.me/@username`)~~ | ✅ Sprint 11 |
 
 ### 7.4 `DatabasePanel.tsx` — БД
 
-| Что добавить | Зачем |
+| Что | Статус |
 |---|---|
-| **Кнопка «Проверить подключение»** (ping через db-proxy) | Убедиться, что DSN/Neon-ключ валиден до запуска превью |
-| **Индикатор circuit breaker** (`ShieldAlert`) | Показать, когда proxy временно блокирует соединения |
-| **Прогресс экспорта `pg_dump`** | Сейчас streaming без видимой индикации |
-| **Бейдж юрисдикции** (RU/Timeweb vs внешняя) | Важно для 152-ФЗ клиентов |
+| ~~Кнопка «Проверить подключение»~~ | ✅ Sprint 11 |
+| **Индикатор circuit breaker** (`ShieldAlert`) | ⏳ низкий |
+| **Прогресс pg_dump** | ⏳ низкий |
+| **Бейдж юрисдикции** (RU/Timeweb vs внешняя) | ⏳ низкий |
 
 ### 7.5 Глобально (Studio)
 
-- [ ] **Бейдж «Превью / N звёзд/мин»** в шапке панели — глобальный счётчик расходов.
-- [x] ~~**Единый компонент `<SessionTimer expiresAt>`**~~ — ✅ Sprint 8 (переиспользован в E2BPreview и TelegramBotPanel).
-- [x] ~~**Замена `window.alert/prompt`**~~ — ✅ Sprint 8 (тосты в `PreviewPanel.tsx`; проверить остальные компоненты).
+| Что | Статус |
+|---|---|
+| ~~`<SessionTimer expiresAt>` переиспользован в E2BPreview + TelegramBotPanel~~ | ✅ Sprint 8 |
+| ~~Замена `window.alert/prompt`~~ | ✅ Sprint 8 |
+| **Бейдж «N звёзд/мин»** в шапке Studio | ⏳ низкий |
 
 ---
 
