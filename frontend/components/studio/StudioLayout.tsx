@@ -401,6 +401,29 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
         </div>
       </div>
 
+      {/* Completed status — desktop only, 1-row compact bar (replaces the tall BillingEstimate card) */}
+      {isCompleted && (
+        <div className="hidden md:flex shrink-0 items-center gap-2.5 px-4 h-8 border-b border-green-900/40 bg-green-950/20 text-xs text-green-300/80">
+          <CheckCircle size={12} className="text-green-500 shrink-0" />
+          <span className="font-medium text-green-400">Проект завершён</span>
+          <span className="opacity-30 mx-0.5">·</span>
+          <span>{project.stars_spent ?? 0} звёзд</span>
+          {(project.interview_data?.planned_steps as number | undefined) && (
+            <>
+              <span className="opacity-30 mx-0.5">·</span>
+              <span>{project.interview_data?.planned_steps as number} шагов</span>
+            </>
+          )}
+          <a
+            href={studioApi.exportUrl(project.id)}
+            download
+            className="ml-auto flex items-center gap-1 text-green-400/60 hover:text-green-300 transition-colors"
+          >
+            <Download size={11} /> Скачать ZIP
+          </a>
+        </div>
+      )}
+
       {/* Approval banner for semi/manual mode */}
       {isAwaitingApproval && (
         <div className={banner.amber}>
@@ -461,77 +484,82 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
       )}
 
       {/* Three-panel layout (always shown; pause handled by inline banner) */}
-      <div className="flex-1 overflow-hidden flex flex-col">
-          {/* Desktop: resizable 3 columns */}
-          <PanelGroup orientation="horizontal" className="hidden md:flex flex-1 overflow-hidden">
-            <Panel defaultSize={15} minSize={10} className="overflow-hidden flex flex-col border-r border-[var(--border)]">
-              <div className="flex-1 overflow-hidden">
-                <FileTree
-                  files={files}
-                  selectedId={selectedFileId}
-                  onSelect={handleFileSelect}
-                  onCreate={handleCreateFile}
-                  onDelete={handleDeleteFile}
-                />
-              </div>
-              <div className={`${layout.borderTop} overflow-auto max-h-48`}>
-                <GitHistory projectId={project.id} />
-              </div>
-            </Panel>
-            <PanelResizeHandle className={layout.resizeHandle} />
-            <Panel defaultSize={33} minSize={18} className="overflow-hidden flex flex-col">
-              <div className="flex border-b border-[var(--border)] shrink-0 text-xs">
-                <button
-                  onClick={() => setCenterTab('code')}
-                  className={`px-3 py-1.5 ${centerTab === 'code' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-[var(--text-secondary)]'}`}
-                >Код</button>
-                <button
-                  onClick={() => { setCenterTab('diff'); loadDiff(); }}
-                  className={`px-3 py-1.5 ${centerTab === 'diff' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-[var(--text-secondary)]'}`}
-                >Diff</button>
-              </div>
-              {centerTab === 'code' ? (
-                !fileDetail && isRunning ? (
-                  <div className="flex flex-col items-center justify-center h-full gap-3 text-[var(--text-secondary)]">
-                    <Loader2 size={20} className="animate-spin text-blue-500" />
-                    <p className="text-sm font-medium text-[var(--text)]">
-                      {currentAgent ? (AGENT_LABELS[currentAgent] ?? 'Агент') + ' работает...' : 'Агент пишет код...'}
-                    </p>
-                    <p className="text-xs opacity-60 text-center max-w-xs">
-                      Файлы появятся после завершения первого шага.<br/>
-                      Следите за прогрессом в логе ниже.
-                    </p>
-                  </div>
-                ) : (
-                <CodeViewer
-                  content={fileDetail?.content ?? ''}
-                  language={fileDetail?.language ?? 'text'}
-                  path={fileDetail?.path}
-                  editable={project.status !== 'completed'}
-                  onSave={handleSaveFile}
-                  projectId={project.id}
-                  streaming={streamingPath === fileDetail?.path}
-                  streamContent={fileDetail?.path ? streamBuffers[fileDetail.path] : undefined}
-                />
-                )
-              ) : (
-                <div className="flex-1 overflow-auto">
-                  {diff ? (
-                    <DiffViewer oldContent={diff.old} newContent={diff.new} path={diff.path} />
-                  ) : (
-                    <div className="flex items-center justify-center h-full text-xs text-[var(--text-secondary)]">Нет diff</div>
-                  )}
-                </div>
-              )}
-            </Panel>
-            <PanelResizeHandle className={layout.resizeHandle} />
-            <Panel defaultSize={52} minSize={24} className="overflow-hidden flex flex-col">
-              <PreviewPanel projectId={project.id} hasSandbox={!!project.sandbox_container_id} status={project.status} githubUrl={project.github_repo_url || undefined} onRefresh={onRefresh} stack={project.target_stack} previewKey={previewKey} />
-            </Panel>
-          </PanelGroup>
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
 
-          {/* Mobile: single active tab */}
-          <div className="md:hidden flex-1 overflow-hidden">
+          {/* Desktop: resizable 3 columns.
+              IMPORTANT: PanelGroup sets display:flex via inline style — wrapping in a plain
+              div is the only way to correctly hide it on mobile with Tailwind hidden/md:flex. */}
+          <div className="hidden md:flex flex-1 min-h-0 overflow-hidden">
+            <PanelGroup orientation="horizontal" className="flex-1 overflow-hidden">
+              <Panel defaultSize={15} minSize={10} className="overflow-hidden flex flex-col border-r border-[var(--border)]">
+                <div className="flex-1 overflow-hidden">
+                  <FileTree
+                    files={files}
+                    selectedId={selectedFileId}
+                    onSelect={handleFileSelect}
+                    onCreate={handleCreateFile}
+                    onDelete={handleDeleteFile}
+                  />
+                </div>
+                <div className={`${layout.borderTop} overflow-auto max-h-48`}>
+                  <GitHistory projectId={project.id} />
+                </div>
+              </Panel>
+              <PanelResizeHandle className={layout.resizeHandle} />
+              <Panel defaultSize={33} minSize={18} className="overflow-hidden flex flex-col">
+                <div className="flex border-b border-[var(--border)] shrink-0 text-xs">
+                  <button
+                    onClick={() => setCenterTab('code')}
+                    className={`px-3 py-1.5 ${centerTab === 'code' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-[var(--text-secondary)]'}`}
+                  >Код</button>
+                  <button
+                    onClick={() => { setCenterTab('diff'); loadDiff(); }}
+                    className={`px-3 py-1.5 ${centerTab === 'diff' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-[var(--text-secondary)]'}`}
+                  >Diff</button>
+                </div>
+                {centerTab === 'code' ? (
+                  !fileDetail && isRunning ? (
+                    <div className="flex flex-col items-center justify-center h-full gap-3 text-[var(--text-secondary)]">
+                      <Loader2 size={20} className="animate-spin text-blue-500" />
+                      <p className="text-sm font-medium text-[var(--text)]">
+                        {currentAgent ? (AGENT_LABELS[currentAgent] ?? 'Агент') + ' работает...' : 'Агент пишет код...'}
+                      </p>
+                      <p className="text-xs opacity-60 text-center max-w-xs">
+                        Файлы появятся после завершения первого шага.<br/>
+                        Следите за прогрессом в логе ниже.
+                      </p>
+                    </div>
+                  ) : (
+                  <CodeViewer
+                    content={fileDetail?.content ?? ''}
+                    language={fileDetail?.language ?? 'text'}
+                    path={fileDetail?.path}
+                    editable={project.status !== 'completed'}
+                    onSave={handleSaveFile}
+                    projectId={project.id}
+                    streaming={streamingPath === fileDetail?.path}
+                    streamContent={fileDetail?.path ? streamBuffers[fileDetail.path] : undefined}
+                  />
+                  )
+                ) : (
+                  <div className="flex-1 overflow-auto">
+                    {diff ? (
+                      <DiffViewer oldContent={diff.old} newContent={diff.new} path={diff.path} />
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-xs text-[var(--text-secondary)]">Нет diff</div>
+                    )}
+                  </div>
+                )}
+              </Panel>
+              <PanelResizeHandle className={layout.resizeHandle} />
+              <Panel defaultSize={52} minSize={24} className="overflow-hidden flex flex-col">
+                <PreviewPanel projectId={project.id} hasSandbox={!!project.sandbox_container_id} status={project.status} githubUrl={project.github_repo_url || undefined} onRefresh={onRefresh} stack={project.target_stack} previewKey={previewKey} />
+              </Panel>
+            </PanelGroup>
+          </div>
+
+          {/* Mobile: single active tab — full height, no side-by-side panels */}
+          <div className="flex md:hidden flex-1 min-h-0 overflow-hidden">
             {mobileTab === 'files' && (
               <FileTree
                 files={files}

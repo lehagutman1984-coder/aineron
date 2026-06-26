@@ -127,16 +127,7 @@ export default function StudioProjectPage() {
 
   return (
     <div className="flex flex-col overflow-hidden" style={{ height: 'calc(100vh - 3.5rem)' }}>
-      {project.status === 'completed' && (
-        <div className="hidden md:block shrink-0 px-4 py-2 border-b border-[var(--border)]">
-          <BillingEstimate
-            completed
-            spentStars={project.stars_spent}
-            plannedSteps={plannedSteps}
-            repoUrl={project.repo_url}
-          />
-        </div>
-      )}
+      {/* BillingEstimate removed — info is shown in StudioLayout's compact status bar */}
       <div className="flex-1 min-h-0 overflow-hidden">
         <StudioLayout
           project={project}

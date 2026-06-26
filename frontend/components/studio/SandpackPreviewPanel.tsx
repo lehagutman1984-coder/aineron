@@ -126,13 +126,15 @@ export function SandpackPreviewPanel({ projectId, stack, refreshKey }: Props) {
   const template = STACK_TEMPLATE[stack] ?? 'static';
 
   return (
+    // SandpackProvider renders .sp-wrapper div; without height:100% the iframe gets 0px height
     <SandpackProvider
       files={files}
       template={template}
       theme="dark"
       options={{ recompileDelay: 500, externalResources: stack === 'tma' ? ['/tma-mock.js'] : [] }}
+      style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
     >
-      <SandpackPreview style={{ height: '100%', width: '100%' }} showOpenInCodeSandbox={false} />
+      <SandpackPreview style={{ flex: 1, minHeight: 0 }} showOpenInCodeSandbox={false} showNavigator={false} />
     </SandpackProvider>
   );
 }
