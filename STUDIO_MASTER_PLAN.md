@@ -335,3 +335,514 @@ Studio — AI-конструктор приложений внутри aineron.r
 ---
 
 *При изменении состояния обновлять §3 (сделано), §4 (не сделано), §8 (checklist).*
+
+---
+
+## 12. World-Class Cold Start — полный план (Sprint 9 expansion)
+
+> Цель: **p50 < 3s, p95 < 5s** — лучше Replit (2-5s), CodeSandbox (2-4s), GitHub Codespaces (20-60s).
+> Составлен Opus 4.8, 2026-06-26. Реализовывать слоями в порядке L1 → L3 → L2 → L5/L4 → L6 → L7.
+
+### 12.1 Конкурентный анализ
+
+| Конкурент | Cold start | Техника | Как мы их бьём |
+|---|---|---|---|
+| **StackBlitz** | <1s | WebContainers (Wasm Node, браузер) | Не запускает Python/Django/real servers/DB — мы можем |
+| **Replit** | 2-5s | Persistent Nix VM + snapshot, always-on (paid) | Мы греем с **точными deps проекта** до клика (L3) — они греют generic |
+| **CodeSandbox** | 2-4s | microVM project checkpoint после 1st build | То же через E2B pause/resume (L5), но "1st build" уже выполнен нами заранее |
+| **Vercel v0** | 10-30s | serverless deploy | Другая модель; мы live-editable |
+| **GitHub Codespaces** | 20-60s | полный rebuild контейнера | Мы никогда не делаем rebuild per-session |
+| **E2B base (сейчас)** | 30-60s | base image без шаблонов | Custom template (L1) |
+| **Aineron (цель)** | **p50 <3s / p95 <5s** | L1+L2+L3+L4+L5 | **Мы авторы кода → project-exact prewarm — наш ров** |
+
+**Ключевой инсайт:** Replit/CodeSandbox не знают deps до клика. Aineron пишет `package.json`/`requirements.txt` в процессе генерации (30-120s) — к моменту клика «Превью» мы можем уже закончить `npm install`. Это структурное преимущество, которое конкуренты не могут скопировать.
+
+### 12.2 Архитектурная схема
+
+```
+        DJANGO (Celery pipeline)               PREVIEW-SERVICE (FastAPI :8001)
+ ┌────────────────────────────────┐       ┌──────────────────────────────────────────────┐
+ │ commit_to_gitea                │       │  /preview/start   ◄── E2BPreviewView (Django) │
+ │   └── prewarm_e2b.delay(pid) ──┼─HTTP─►│  /preview/prewarm ◄── prewarm_e2b Celery task │
+ └────────────────────────────────┘  POST  │  /pool/stats      ◄── мониторинг              │
+                                           │                                               │
+                                           │   ┌─── CLAIM ORDER в start() ────────┐       │
+                                           │   │ 1. preview:prewarm:{project_id}  │       │
+                                           │   │ 2. preview:paused:{project_id}   │       │
+                                           │   │ 3. preview:pool:{stack}  (LPOP)  │       │
+                                           │   │ 4. Sandbox.create() — cold       │       │
+                                           │   └──────────────────────────────────┘       │
+                                           └──────────────┬────────────────────────────────┘
+                                                          │ e2b SDK
+                                    ┌─────────────────────┴──────────────────────────────┐
+                                    │  POOL WARMER (singleton thread, Redis leader lock)  │
+                                    │  держит N тёплых sandbox/stack, dev-server запущен  │
+                                    └────────────────────────────────────────────────────┘
+
+  REDIS — единый источник истины для pool/paused/prewarm/slots/latency
+```
+
+Каждый быстрый путь обязательно fallback-ает на следующий → в конечном счёте на `Sandbox.create()`. Нет пути, который не создаёт sandbox при сбое.
+
+### 12.3 Слой L1 — Пребейк deps в шаблоне (1 день → 5-8s)
+
+**Критическая находка:** `nextjs.Dockerfile` делает `npm install -g next@14 react@18 …` — глобальная установка НЕ удовлетворяет локальный `./node_modules` проекта. `_bg_start_nextjs` по-прежнему запускает полный `npm install` (30-60s) в каждой сессии. Простое выставление `E2B_TEMPLATE_NEXTJS` без фикса Dockerfile убирает только ~8s создания sandbox, но не 30-60s установки.
+
+**Что сделать:**
+
+**1a. Переписать `nextjs.Dockerfile`** — пребейковать проектный `node_modules`, а не глобальные пакеты:
+
+```dockerfile
+# preview-service/templates/nextjs.Dockerfile
+FROM e2bdev/code-interpreter:latest
+
+WORKDIR /opt/base
+COPY base-package.json /opt/base/package.json
+RUN npm install --legacy-peer-deps
+# Сохраняем manifest для delta-check
+RUN node -e "const p=require('./package.json'); const fs=require('fs'); \
+    fs.writeFileSync('/opt/base/deps.json', JSON.stringify(p.dependencies||{}))"
+
+WORKDIR /app
+```
+
+Добавить `preview-service/templates/base-package.json`:
+```json
+{
+  "dependencies": {
+    "next": "14",
+    "react": "^18",
+    "react-dom": "^18",
+    "typescript": "^5",
+    "tailwindcss": "^3",
+    "autoprefixer": "^10",
+    "postcss": "^8",
+    "@types/react": "^18",
+    "@types/node": "^20"
+  }
+}
+```
+
+**1b. Обновить `_bg_start_nextjs` в `e2b_runtime.py`** — симлинк-мерж вместо полного install:
+
+```python
+def _bg_start_nextjs(sbx: Sandbox, port: int):
+    cmd = (
+        "setsid bash -c '"
+        "cd /app && "
+        # Symlink base node_modules; only install project delta on top
+        "ln -sfn /opt/base/node_modules /app/node_modules 2>/dev/null || true; "
+        "if [ -f package.json ] && "
+        "! diff -q <(node -p \"JSON.stringify(require('./package.json').dependencies||{})\") "
+        "/opt/base/deps.json >/dev/null 2>&1; then "
+        "  npm install --legacy-peer-deps --prefer-offline >> /tmp/preview.log 2>&1; "
+        "fi; "
+        f"npm run dev -- -p {port} >> /tmp/preview.log 2>&1"
+        "' </dev/null >/dev/null 2>&1 &"
+    )
+    sbx.commands.run(cmd, timeout=30)
+```
+
+Для проектов, deps которых ⊆ base set (типовой scaffolded проект), `npm install` пропускается полностью → только `next dev` первая компиляция (~3-5s).
+
+**1c. Выставить env vars** в `.env`:
+```
+E2B_TEMPLATE_NEXTJS=<id-после-build>
+E2B_TEMPLATE_PYTHON=<id-после-build>
+E2B_TEMPLATE_DJANGO=<id-после-build>
+```
+
+**Файлы:** `templates/nextjs.Dockerfile`, новый `templates/base-package.json`, `e2b_runtime.py`, `.env`.
+**Результат:** nextjs **5-8s**, python/django **4-6s**.
+
+---
+
+### 12.4 Слой L3 — 🔥 UNIQUE: Generation-triggered project-exact pre-warming (1 день → 1.5-3s)
+
+> Самый высокий impact/effort. Конкуренты не могут это реализовать — они не знают deps до клика.
+
+**Идея:** Celery таска `commit_to_gitea` в `tasks.py` создаёт `package.json` за 30-120s ДО того как пользователь кликает «Превью». В этот момент мы запускаем прогрев с точными deps проекта. Когда пользователь кликает — sandbox уже готов.
+
+**Django/Celery (`src/studio/tasks.py`)**:
+```python
+# В commit_to_gitea, после успешного коммита:
+if project.target_stack in ('nextjs', 'python', 'django'):
+    prewarm_e2b.delay(str(project.id))
+
+@shared_task(bind=True, max_retries=1, queue=QUEUE)
+def prewarm_e2b(self, project_id: str):
+    from .models import StudioProject
+    import hashlib, requests
+    p = StudioProject.objects.get(id=project_id)
+    files = {f.path: f.content for f in p.files.all()}
+    dep_file = files.get('package.json') or files.get('requirements.txt') or ''
+    dep_hash = hashlib.sha256(dep_file.encode()).hexdigest()[:16]
+    preview_url = settings.STUDIO_PREVIEW_SERVICE_URL
+    token = settings.STUDIO_PREVIEW_INTERNAL_TOKEN
+    try:
+        requests.post(
+            f'{preview_url}/preview/prewarm',
+            json={'project_id': project_id, 'stack': p.target_stack,
+                  'dep_manifest': dep_file, 'dep_hash': dep_hash},
+            headers={'X-Internal-Token': token},
+            timeout=5,
+        )
+    except Exception:
+        pass  # fire-and-forget: сбой прогрева не блокирует генерацию
+```
+
+**Preview-service (`main.py`)** — новый эндпоинт:
+```python
+class PrewarmRequest(BaseModel):
+    project_id: str
+    stack: str
+    dep_manifest: str = ''
+    dep_hash: str = ''
+
+@app.post("/preview/prewarm", dependencies=[Depends(verify_token)])
+async def prewarm_start(req: PrewarmRequest):
+    # Идемпотентность: пропускаем если прогрев с тем же dep_hash уже есть
+    existing_hash = _r.get(f"preview:prewarmhash:{req.project_id}")
+    if _r.get(f"preview:prewarm:{req.project_id}") and existing_hash == req.dep_hash:
+        return {"status": "already_warm"}
+    asyncio.get_event_loop().run_in_executor(
+        None, partial(_runtime.prewarm, req.project_id, req.stack,
+                      req.dep_manifest, req.dep_hash))
+    return {"status": "warming"}
+```
+
+**`e2b_runtime.py`** — новый метод `prewarm()`:
+```python
+def prewarm(self, project_id: str, stack: Stack, dep_manifest: str, dep_hash: str):
+    # Claim pool sandbox or create new one
+    pool_key = f"preview:pool:{stack.value}"
+    sid = _r.lpop(pool_key)
+    try:
+        sbx = Sandbox.connect(sid, api_key=settings.E2B_API_KEY) if sid else \
+              self._create_sandbox(Stack(stack), settings.DEFAULT_TTL, {})
+        # Write only the dep manifest; start dev server with exact deps
+        if dep_manifest:
+            fname = 'package.json' if 'next' in stack or 'react' in stack else 'requirements.txt'
+            sbx.files.write(f'/app/{fname}', dep_manifest)
+            # Run install (this is the slow step — but happens during generation, not on click)
+            _install_deps_for_stack(sbx, Stack(stack))
+        sandbox_id = sbx.sandbox_id
+        _r.setex(f"preview:prewarm:{project_id}", 600, sandbox_id)
+        _r.setex(f"preview:prewarmhash:{project_id}", 600, dep_hash)
+        _r.setex(f"preview:dephash:{project_id}", 3600, dep_hash)
+        _r.incr("preview:claims:prewarm_created")
+        logger.info("Prewarm done: project=%s sandbox=%s", project_id, sandbox_id)
+    except Exception as exc:
+        logger.warning("Prewarm failed project=%s: %s", project_id, exc)
+```
+
+**Claim в `start()`** (приоритет #1):
+```python
+prewarm_sid = _r.get(f"preview:prewarm:{project_id}")
+if prewarm_sid:
+    try:
+        sbx = Sandbox.connect(prewarm_sid, api_key=settings.E2B_API_KEY)
+        _r.delete(f"preview:prewarm:{project_id}")
+        claim_source = "prewarm"
+    except Exception:
+        sbx = None  # fall through to next claim
+```
+
+**Файлы:** `tasks.py`, `main.py`, `e2b_runtime.py`.
+**Результат:** **1.5-3s** для preview сразу после генерации (основной реальный flow).
+
+---
+
+### 12.5 Слой L2 — Warm pool (2-3 дня → 3-5s cold-click)
+
+Generic warm pool — backstop для превью без предшествующей генерации.
+
+**Redis структуры:**
+```
+preview:pool:{stack}            LIST    sandbox_ids (LPOP claim / RPUSH return)
+preview:pool:meta:{sandbox_id}  HASH    stack, created_at, dev_ready
+preview:pool:target:{stack}     STRING  желаемый размер (default 2, автоскейлинг L7)
+preview:warmer:leader           STRING  SET NX EX 30 — singleton warmer
+```
+
+**Pool warmer** (singleton thread с leader lock в Redis):
+```python
+WORKER_ID = str(uuid.uuid4())
+
+def _pool_warmer():
+    while True:
+        if _r.set("preview:warmer:leader", WORKER_ID, nx=True, ex=30):
+            for stack in (Stack.NEXTJS, Stack.PYTHON, Stack.DJANGO):
+                target = int(_r.get(f"preview:pool:target:{stack.value}") or 2)
+                have = _r.llen(f"preview:pool:{stack.value}")
+                slots_used = int(_r.get(SLOTS_KEY) or 0)
+                budget = settings.MAX_CONCURRENT - slots_used
+                for _ in range(min(target - have, max(0, budget))):
+                    try:
+                        _spawn_warm_sandbox(stack)
+                    except Exception as exc:
+                        logger.warning("Pool warm failed stack=%s: %s", stack, exc)
+        time.sleep(10)
+
+def _spawn_warm_sandbox(stack: Stack):
+    sbx = self._create_sandbox(stack, 1800, {})  # 30 min pool TTL
+    # start dev server on empty /app
+    if stack == Stack.NEXTJS:
+        sbx.commands.run("mkdir -p /app && cd /app && echo '{}' > package.json", timeout=5)
+        _bg_start_nextjs(sbx, 3000)
+    # ...
+    _r.rpush(f"preview:pool:{stack.value}", sbx.sandbox_id)
+    _r.hset(f"preview:pool:meta:{sbx.sandbox_id}", mapping={
+        "stack": stack.value, "created_at": time.time(), "dev_ready": 0})
+    _r.incr(SLOTS_KEY)
+```
+
+**stop() → return vs kill:**
+```python
+pool_key = f"preview:pool:{data['stack']}"
+target = int(_r.get(f"preview:pool:target:{data['stack']}") or 2)
+if _r.llen(pool_key) < target and (time.time() - data.get('created_at', 0)) < 1200:
+    # Wipe user files, keep node_modules
+    sbx.commands.run("find /app -mindepth 1 -not -path '*/node_modules*' -delete", timeout=10)
+    _r.rpush(pool_key, sandbox_id)
+else:
+    sbx.kill()
+    _r.decr(SLOTS_KEY)
+```
+
+**Pool-aware reaper** (расширяет `_reaper_loop`):
+```python
+# preview:slots = COUNT(sess:*) + SUM(LLEN(pool:*)) + COUNT(paused:*)
+running = sum(1 for _ in _r.scan_iter(f"{SESSION_PREFIX}*"))
+pooled  = sum(_r.llen(f"preview:pool:{s.value}") for s in Stack)
+paused  = sum(1 for _ in _r.scan_iter("preview:paused:*"))
+_r.set(SLOTS_KEY, max(0, running + pooled + paused))
+```
+
+---
+
+### 12.6 Слой L5 — Pause/Resume: персистентность сессии (1-2 дня → 1-2s re-preview)
+
+При остановке — **пауза** sandbox вместо kill. При следующем превью того же проекта — `Sandbox.resume()` (~1-2s) с сохранённым filesystem (incl. `node_modules`).
+
+**Redis:**
+```
+preview:paused:{project_id}     STRING EX PAUSE_GRACE   sandbox_id
+preview:paused:meta:{sid}       HASH   project_id, paused_at, stack
+```
+
+**stop() — добавить pause-path:**
+```python
+PAUSE_GRACE = int(os.getenv("PREVIEW_PAUSE_GRACE", "1800"))  # 30 min
+PAUSE_ENABLED = os.getenv("PREVIEW_PAUSE_ENABLED", "1") == "1"
+
+if PAUSE_ENABLED and not data.get("bot_sha"):  # боты не паузим
+    try:
+        sbx.pause()
+        _r.setex(f"preview:paused:{project_id}", PAUSE_GRACE, sandbox_id)
+        _r.hset(f"preview:paused:meta:{sandbox_id}", mapping={
+            "project_id": project_id, "paused_at": time.time(), "stack": data["stack"]})
+        _r.delete(_sess_key(session_id))  # не decr SLOTS_KEY — paused sandbox в пуле
+        return  # НЕ убиваем
+    except Exception as exc:
+        logger.warning("Pause failed, killing: %s", exc)
+sbx.kill()
+_r.decr(SLOTS_KEY)
+```
+
+**Claim в `start()`** (приоритет #2 после prewarm):
+```python
+paused_sid = _r.get(f"preview:paused:{project_id}")
+if paused_sid:
+    try:
+        sbx = Sandbox.resume(paused_sid, api_key=settings.E2B_API_KEY)
+        _r.delete(f"preview:paused:{project_id}")
+        claim_source = "resume"
+        # L4: если dep_hash не изменился — skip install полностью
+        old_hash = _r.get(f"preview:dephash:{project_id}")
+        new_hash = _compute_dep_hash(code_files)
+        if old_hash == new_hash:
+            skip_install = True  # только upload source files + HMR reload
+    except Exception:
+        sbx = None  # GC'd → fall through
+```
+
+**Stale cleanup:** расширить `reconcile_preview_billing` в `src/studio/tasks.py`:
+```python
+# Удалить expired paused sandboxes
+for key in r.scan_iter("preview:paused:*"):
+    if r.ttl(key) < 0:
+        sid = r.get(key)
+        try:
+            sbx = Sandbox.connect(sid, ...)
+            sbx.kill()
+        except: pass
+        r.delete(key)
+```
+
+**Ограничение для Python/Django:** нет HMR, нужен restart процесса + `migrate` → floor ~2-4s даже на resume. Отражать в UI copy.
+
+---
+
+### 12.7 Слой L4 — 🔥 UNIQUE: Dependency-delta hash skip (встроен в L5)
+
+При resume сравниваем hash `package.json`/`requirements.txt`:
+
+```python
+def _compute_dep_hash(code_files: dict) -> str:
+    manifest = code_files.get('package.json') or code_files.get('requirements.txt') or ''
+    return hashlib.sha256(manifest.encode()).hexdigest()[:16]
+
+# В start() после resume:
+old_hash = _r.get(f"preview:dephash:{project_id}")
+new_hash = _compute_dep_hash(code_files)
+if old_hash == new_hash:
+    skip_install = True  # пропустить npm install полностью
+_r.setex(f"preview:dephash:{project_id}", 3600, new_hash)
+```
+
+Для изменившихся deps — delta install (`npm install --prefer-offline` + `--legacy-peer-deps` добавляет только новое поверх `node_modules` из L1 symlink).
+
+---
+
+### 12.8 Слой L6 — Progressive UI: мгновенный первый пиксель (1-2 дня)
+
+Показываем что-нибудь в <300ms пока E2B греется.
+
+**`StartResponse`** в `main.py` — добавить поля:
+```python
+class StartResponse(BaseModel):
+    session_id: str
+    public_url: str
+    expires_at: float
+    started_at: float = 0.0
+    state: str = "starting"
+    claim_source: str = "cold"       # "prewarm" | "resume" | "pool" | "cold"
+    eta_seconds: int = 8             # честная оценка по claim_source
+```
+
+**`E2BPreview.tsx`** — двухфазный рендер:
+- На `state === 'starting'`: показываем Sandpack-shell (статическая версия кода) + прогресс-бар с `eta_seconds`
+- Copy зависит от `claim_source`: `"prewarm"` → "Восстанавливаю готовый сеанс…", `"resume"` → "Возобновляю сессию…", `"pool"` → "Запускаю…", `"cold"` → "Запускаю (первый раз, ~{eta}s)…"
+- Когда `state === 'running'`: crossfade E2B iframe поверх Sandpack-shell
+
+---
+
+### 12.9 Слой L7 — Метрики и автомасштабирование
+
+**Расширить `/metrics`:**
+```python
+claim_prewarm = int(_r.get("preview:claims:prewarm") or 0)
+claim_pool    = int(_r.get("preview:claims:pool")    or 0)
+claim_resume  = int(_r.get("preview:claims:resume")  or 0)
+claim_cold    = int(_r.get("preview:claims:cold")    or 0)
+total = claim_prewarm + claim_pool + claim_resume + claim_cold or 1
+return {
+    ...,
+    "hit_rate": (claim_prewarm + claim_pool + claim_resume) / total,
+    "prewarm_hits": claim_prewarm,
+    "pool_hits": claim_pool,
+    "resume_hits": claim_resume,
+    "cold_starts": claim_cold,
+}
+```
+
+**Новый `/pool/stats`:**
+```python
+@app.get("/pool/stats", dependencies=[Depends(verify_token)])
+def pool_stats():
+    result = {}
+    for stack in Stack:
+        k = f"preview:pool:{stack.value}"
+        result[stack.value] = {
+            "warm": _r.llen(k),
+            "target": int(_r.get(f"preview:pool:target:{stack.value}") or 2),
+        }
+    return result
+```
+
+**Автоскейлинг в warmer:**
+```python
+# Если p95 > 8s → увеличить target
+raw = _r.lrange("preview:latency", 0, -1)
+p95 = _percentile([float(x) for x in raw], 95) if raw else 0
+target_key = f"preview:pool:target:{stack.value}"
+current_target = int(_r.get(target_key) or 2)
+if p95 > 8 and current_target < MAX_POOL_SIZE:
+    _r.set(target_key, current_target + 1)
+elif p95 < 3 and current_target > 1:
+    _r.set(target_key, current_target - 1)
+```
+
+**🔥 UNIQUE — Predictive prewarm из pipeline state:** если проект в статусе `coding` >60s → стадировать pool sandbox под его стек заранее:
+```python
+# В _pool_warmer — predictive boost
+for key in _r.scan_iter("studio:project:coding:*"):
+    project_id = key.split(":")[-1]
+    stack_str = _r.hget(f"studio:project:{project_id}", "stack")
+    # Если ещё нет prewarm и нет resume — стадировать extra pool slot
+    if not _r.get(f"preview:prewarm:{project_id}") and stack_str:
+        _spawn_warm_sandbox(Stack(stack_str))
+```
+
+### 12.10 Полная карта Redis ключей
+
+```
+# Существующие (не менять семантику):
+preview:sess:{session_id}          running session (hash)
+preview:slots                      running + pool + paused (атомарный счётчик)
+preview:latency                    LIST float для p50/p95/p99
+
+# L2 — Pool:
+preview:pool:{stack}               LIST  sandbox_ids  (LPOP claim, RPUSH return)
+preview:pool:meta:{sandbox_id}     HASH  stack, created_at, dev_ready
+preview:pool:target:{stack}        STRING желаемый размер (autoscaled)
+preview:warmer:leader              STRING SET NX EX 30 (singleton)
+
+# L3 — Generation prewarm:
+preview:prewarm:{project_id}       STRING EX 600   sandbox_id
+preview:prewarmhash:{project_id}   STRING EX 600   dep_hash
+
+# L4/L5 — Pause/resume:
+preview:paused:{project_id}        STRING EX 1800  sandbox_id
+preview:paused:meta:{sandbox_id}   HASH  project_id, paused_at, stack
+preview:dephash:{project_id}       STRING EX 3600  sha256[:16] package.json
+
+# L7 — Metrics:
+preview:claims:{source}            STRING INCR (prewarm|pool|resume|cold)
+```
+
+### 12.11 Файлы для изменения
+
+| Файл | Слой | Что изменить |
+|---|---|---|
+| `templates/nextjs.Dockerfile` | L1 | `npm install -g` → project-local `/opt/base/node_modules` |
+| `templates/base-package.json` | L1 | Новый файл: next@14 + deps |
+| `preview-service/runtime/e2b_runtime.py` | L1-L5,L7 | `_bg_start_nextjs` symlink-merge, pool warmer, claim order, prewarm/pause/resume, reaper, delta-hash |
+| `preview-service/main.py` | L3,L6,L7 | `/preview/prewarm`, `/pool/stats`, `StartResponse.claim_source/eta_seconds`, `/metrics` hit-rates |
+| `preview-service/settings.py` | L2,L5,L7 | `POOL_TARGET_DEFAULT`, `POOL_MAX_AGE`, `PAUSE_ENABLED`, `PAUSE_GRACE`, `MAX_PAUSED`, `MAX_POOL_SIZE` |
+| `src/studio/tasks.py` | L3,L5 | `prewarm_e2b` task, hook в `commit_to_gitea`, paused-cleanup в `reconcile_preview_billing` |
+| `src/studio/views/pipeline.py` | L6 | Pass `claim_source` / `eta_seconds` в ответ фронтенда |
+| `frontend/components/studio/E2BPreview.tsx` | L6 | Progressive render: Sandpack-bridge + crossfade + честный ETA |
+| `frontend/components/studio/PreviewPanel.tsx` | L6 | claim_source-aware copy |
+
+### 12.12 Plan порядка реализации (impact/effort)
+
+| # | Слой | Усилие | Cold start после | Почему сначала |
+|---|---|---|---|---|
+| 1 | **L1 пребейк** (npm symlink fix + template build) | 1 день | 5-8s | Разблокирует всё; самое большое единичное падение |
+| 2 | **L3 generation-prewarm** | 1 день | **1.5-3s** на hot path | Высший impact/effort; наш ров; нужен только Redis для prewarm ключей |
+| 3 | **L2 warm pool** | 2-3 дня | 3-5s cold-click | Backstop для превью без предшествующей генерации |
+| 4 | **L5 pause/resume + L4 delta** | 1-2 дня | **1-2s** re-preview | Убирает cost re-preview; реиспользует Redis pool |
+| 5 | **L6 progressive UI** | 1-2 дня | <0.5s perceived | Воспринимаемая latency; независим от backend |
+| 6 | **L7 autoscale + predictive** | 1 день | sustains p95<5s | Тюнинг; нужны L2 метрики |
+
+### 12.13 Мониторинг и алерты
+
+| Метрика | Алерт | Действие |
+|---|---|---|
+| `p95_s > 8` 5 мин подряд | page | warmer авто-увеличивает targets |
+| `hit_rate < 50%` | warn | pool undersized или warmer leader мёртв |
+| `slots_used == max_concurrent` sustained | warn | raise MAX_CONCURRENT или evict paused |
+| warmer leader не обновляется >60s | critical | нет active warmer (crash или split-brain) |
+| `paused_cost_estimate` > бюджет | warn | уменьшить PAUSE_GRACE или MAX_PAUSED |
