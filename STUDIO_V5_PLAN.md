@@ -1,6 +1,6 @@
 # Studio V5 — Надёжный генератор (100% CODE-COMPLETE)
 
-> **Статус: ВСЕ 5 ФАЗ CODE-COMPLETE** (2026-06-26). Последний коммит: `51d851d`.
+> **Статус: ВСЕ 5 ФАЗ CODE-COMPLETE** (2026-06-26).
 > Дополняет [STUDIO_MASTER_PLAN.md](STUDIO_MASTER_PLAN.md) — тот описывает **Live Preview Runtime** (E2B/Sandpack/db-proxy/billing), этот — **надёжность AI-генерации** (Architect → Coder → Guardian → commit).
 >
 > Два плана решают разные слои Studio: V5 = качество кода на выходе, MASTER = среда запуска.

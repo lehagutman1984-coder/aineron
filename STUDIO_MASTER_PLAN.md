@@ -76,7 +76,7 @@ Studio — AI-конструктор приложений внутри aineron.r
 
 ---
 
-## 3. Что сделано (Sprint 0–7)
+## 3. Что сделано (Sprint 0–8)
 
 ### Sprint 0–1 — Каркас и SPIKE
 - [x] `preview-service` (FastAPI, порт 8001), отдельный процесс от Django.
@@ -135,6 +135,14 @@ Studio — AI-конструктор приложений внутри aineron.r
 - [x] `settings` NameError в PreviewProxyView.
 - [x] `setInterval` leak в `TelegramBotPanel` (cleanup на unmount).
 
+### Sprint 8 — Монетизация E2B — ✅ CODE-COMPLETE 2026-06-25
+- [x] `PreviewSession` модель + migration **0019**, `reserve`/`charge_from_reserve`, Celery `reconcile_preview_billing`.
+- [x] UI: `SessionTimer.tsx` (shared countdown, красный < 2 мин), переиспользован в `TelegramBotPanel`.
+- [x] UI: `StopCircle` кнопка явной остановки, `Coins` индикатор стоимости, stack badge в шапке.
+- [x] UI: авто-показ логов при `failed`; тосты вместо `window.alert()` в `PreviewPanel.tsx`.
+- [x] UI: `TelegramBotPanel.tsx` — countdown + Terminal кнопка + live-логи бота.
+- (подробности — §5 Sprint 8)
+
 ---
 
 ## 4. Что НЕ сделано и почему (с приоритетами)
@@ -157,7 +165,7 @@ Studio — AI-конструктор приложений внутри aineron.r
 
 ---
 
-## 5. Следующие спринты (Sprint 8+)
+## 5. Sprint 8 (done) + Sprint 9–11 (план)
 
 ### Sprint 8 — Монетизация E2B — ✅ CODE-COMPLETE 2026-06-25
 - [x] `started_at` в Redis-сессии (e2b_runtime.py), `duration_seconds` в stop-ответе.
@@ -215,30 +223,30 @@ Studio — AI-конструктор приложений внутри aineron.r
 
 ### 7.1 `E2BPreview.tsx` — серверное превью
 
-| Что добавить | Компонент/иконка | Зачем |
+| Что добавить | Компонент/иконка | Статус |
 |---|---|---|
-| **Кнопка «Остановить сессию»** (отсутствует!) | `StopCircle` в шапке рядом с Refresh | Пользователь не может явно освободить слот и прекратить биллинг |
-| **Таймер до истечения** (countdown к `expires_at`) | текст `MM:SS` в шапке | Сессия живёт 15 мин — нужно видеть, сколько осталось |
-| **Индикатор стоимости** (минуты × тариф) | `Coins` иконка | Прозрачность после Sprint 8 billing |
-| **Realtime-логи (SSE)** | заменить ручной poll | Стрим даёт ощущение «живого» dev-сервера |
-| **Авто-показ логов при `failed`** | раскрывать `<pre>` автоматически | При падении пользователь сразу видит traceback без лишнего клика |
-| **Бейдж стека** (nextjs/python/django) | бейдж в шапке | Подтверждение, какой движок запущен |
+| ~~**Кнопка «Остановить сессию»**~~ | `StopCircle` в шапке | ✅ Sprint 8 |
+| ~~**Таймер до истечения** (countdown к `expires_at`)~~ | `SessionTimer.tsx` `MM:SS` | ✅ Sprint 8 |
+| ~~**Индикатор стоимости** (минуты × тариф)~~ | `Coins` иконка | ✅ Sprint 8 |
+| **Realtime-логи (SSE)** | заменить ручной poll | ⏳ Sprint 10 |
+| ~~**Авто-показ логов при `failed`**~~ | раскрывать `<pre>` автоматически | ✅ Sprint 8 |
+| ~~**Бейдж стека** (nextjs/python/django)~~ | бейдж в шапке | ✅ Sprint 8 |
 
 ### 7.2 `PreviewPanel.tsx` — оркестратор
 
-| Что добавить | Зачем |
+| Что добавить | Статус |
 |---|---|
-| **Единый бейдж движка** (sandpack / e2b) | Пользователь видит, где исполняется код |
-| **Переключатель viewport (375/768/100%)** для E2B-ветки | Сейчас есть только в Sandpack-ветке |
-| **Тост вместо `window.alert()`** | `alert()` ломает профессиональный UX |
+| **Единый бейдж движка** (sandpack / e2b) | ⏳ TODO |
+| **Переключатель viewport (375/768/100%)** для E2B-ветки | ⏳ TODO |
+| ~~**Тост вместо `window.alert()`**~~ | ✅ Sprint 8 |
 
 ### 7.3 `TelegramBotPanel.tsx` — живой бот
 
-| Что добавить | Зачем |
+| Что добавить | Статус |
 |---|---|
-| **Таймер до автостопа (15 мин)** | Бот автоматически завершается — нужен видимый обратный отсчёт |
-| **Кнопка «Открыть бота в Telegram»** (deep-link `t.me/<botname>`) | Прямой путь к тесту запущенного бота |
-| **Live-лог бота** (Terminal-кнопка как в E2BPreview) | При ошибке непонятно, что не так |
+| ~~**Таймер до автостопа (15 мин)**~~ | ✅ Sprint 8 (`SessionTimer.tsx`) |
+| **Кнопка «Открыть бота в Telegram»** (deep-link `t.me/<botname>`) | ⏳ TODO |
+| ~~**Live-лог бота** (Terminal-кнопка как в E2BPreview)~~ | ✅ Sprint 8 |
 
 ### 7.4 `DatabasePanel.tsx` — БД
 
@@ -251,9 +259,9 @@ Studio — AI-конструктор приложений внутри aineron.r
 
 ### 7.5 Глобально (Studio)
 
-- [ ] **Бейдж «Превью / N звёзд/мин»** в шапке панели — счётчик расходов.
-- [ ] **Единый компонент `<SessionTimer expiresAt>`** — переиспользовать в E2BPreview и TelegramBotPanel.
-- [ ] **Замена всех `window.alert/prompt`** на единый toast/modal.
+- [ ] **Бейдж «Превью / N звёзд/мин»** в шапке панели — глобальный счётчик расходов.
+- [x] ~~**Единый компонент `<SessionTimer expiresAt>`**~~ — ✅ Sprint 8 (переиспользован в E2BPreview и TelegramBotPanel).
+- [x] ~~**Замена `window.alert/prompt`**~~ — ✅ Sprint 8 (тосты в `PreviewPanel.tsx`; проверить остальные компоненты).
 
 ---
 
