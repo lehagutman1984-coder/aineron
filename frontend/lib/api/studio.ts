@@ -407,7 +407,7 @@ export const studioApi = {
     }),
 
   dbTest: (projectId: string) =>
-    request<{ ok: boolean; error: string | null }>(`studio/projects/${projectId}/db/test/`),
+    request<{ ok: boolean; error: string | null }>(`/studio/projects/${projectId}/db/test/`),
 
   // Sprint 6: pg_dump export (aineron mode only)
   dbExportUrl: (id: string) =>

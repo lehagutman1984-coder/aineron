@@ -23,6 +23,9 @@ from runtime.base import Stack
 from runtime.e2b_runtime import E2BRuntime, POOL_LIST_PREFIX, POOL_TARGET_PREFIX, CLAIMS_PREFIX
 from db.proxy import router as db_router
 
+from concurrent.futures import ThreadPoolExecutor as _TPE
+_PREWARM_EXECUTOR = _TPE(max_workers=4, thread_name_prefix="prewarm")
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 app = FastAPI(title="aineron preview-service", version="0.4.0")
@@ -277,7 +280,7 @@ async def preview_prewarm(req: PrewarmRequest):
     # Fire-and-forget: don't await prewarm() — it can take 30-60s
     loop = asyncio.get_event_loop()
     loop.run_in_executor(
-        None,
+        _PREWARM_EXECUTOR,
         partial(_runtime.prewarm, req.project_id, code_files, stack),
     )
     return {"status": "warming"}

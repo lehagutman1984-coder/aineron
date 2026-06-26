@@ -63,11 +63,16 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
   const etaTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const logsEndRef = useRef<HTMLDivElement | null>(null);
   const logsPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const genRef = useRef<number>(0);
+
+  const clearStatusPoll = () => {
+    if (pollTimerRef.current) { clearInterval(pollTimerRef.current); pollTimerRef.current = null; }
+    if (etaTimerRef.current) { clearInterval(etaTimerRef.current); etaTimerRef.current = null; }
+  };
 
   const clearPoll = () => {
-    if (pollTimerRef.current) { clearInterval(pollTimerRef.current); pollTimerRef.current = null; }
+    clearStatusPoll();
     if (costTimerRef.current) { clearInterval(costTimerRef.current); costTimerRef.current = null; }
-    if (etaTimerRef.current) { clearInterval(etaTimerRef.current); etaTimerRef.current = null; }
     if (logsPollRef.current) { clearInterval(logsPollRef.current); logsPollRef.current = null; }
   };
 
@@ -92,6 +97,7 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
   };
 
   const handleStop = async () => {
+    genRef.current++;
     clearPoll();
     const sid = sessionRef.current;
     sessionRef.current = null;
@@ -110,6 +116,7 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
       stopSession(sessionRef.current);
       sessionRef.current = null;
     }
+    const myGen = ++genRef.current;
 
     setState('starting');
     setError(null);
@@ -121,6 +128,11 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
 
     try {
       const resp = await studioApi.e2bPreviewStart(projectId);
+      if (genRef.current !== myGen) {
+        // Stopped or restarted while fetch was in-flight — kill the orphan session
+        if (resp?.session_id) stopSession(resp.session_id);
+        return;
+      }
       sessionRef.current = resp.session_id;
       setPublicUrl(resp.public_url);
       setExpiresAt(resp.expires_at ?? 0);
@@ -148,7 +160,7 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
       }, 10000);
 
       if (resp.state === 'running') {
-        clearPoll();
+        clearStatusPoll();
         setState('running');
         return;
       }
@@ -159,7 +171,7 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
           const status = await studioApi.e2bPreviewStatus(projectId, sessionRef.current);
           if (status.state === 'running') {
             setState('running');
-            clearPoll();
+            clearStatusPoll();
           } else if (status.state === 'failed' || status.state === 'expired' || status.state === 'stopped') {
             setState(status.state as E2BState);
             clearPoll();
@@ -181,6 +193,7 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
   useEffect(() => {
     startPreview();
     return () => {
+      genRef.current++;
       clearPoll();
       if (sessionRef.current) {
         stopSession(sessionRef.current);

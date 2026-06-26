@@ -38,8 +38,7 @@ def _get_daily_redis():
 
 
 def _check_and_reserve_daily_cap(user_id: str, ttl_minutes: int) -> tuple[bool, int, int]:
-    """Atomically check+reserve daily preview minutes. Returns (allowed, used_min, cap_min).
-    Fails open on any Redis error — never blocks user due to infrastructure issues."""
+    """Check+reserve daily preview minutes. Returns (allowed, used_min_before, cap_min)."""
     cap = int(_os.environ.get('E2B_PREVIEW_DAILY_CAP_MIN', '120'))
     if cap <= 0:
         return True, 0, 0
@@ -47,16 +46,32 @@ def _check_and_reserve_daily_cap(user_id: str, ttl_minutes: int) -> tuple[bool, 
     key = f'preview:daily_min:{user_id}:{date.today().strftime("%Y%m%d")}'
     try:
         r = _get_daily_redis()
-        used = int(r.get(key) or 0)
-        if used + ttl_minutes > cap:
-            return False, used, cap
         pipe = r.pipeline()
         pipe.incrby(key, ttl_minutes)
         pipe.expire(key, 86400)
-        pipe.execute()
-        return True, used, cap
+        results = pipe.execute()
+        new_total = int(results[0])
+        if new_total > cap:
+            # Overshoot — refund and reject
+            r.decrby(key, ttl_minutes)
+            return False, new_total - ttl_minutes, cap
+        return True, new_total - ttl_minutes, cap
     except Exception:
-        return True, 0, cap
+        return True, 0, cap  # fail open on Redis error
+
+
+def _refund_daily_cap(user_id: str, ttl_minutes: int) -> None:
+    """Refund daily cap minutes when a preview fails to start."""
+    cap = int(_os.environ.get('E2B_PREVIEW_DAILY_CAP_MIN', '120'))
+    if cap <= 0:
+        return
+    from datetime import date
+    key = f'preview:daily_min:{user_id}:{date.today().strftime("%Y%m%d")}'
+    try:
+        r = _get_daily_redis()
+        r.decrby(key, ttl_minutes)
+    except Exception:
+        pass
 
 
 def _build_db_credentials_enc(project) -> str:
@@ -811,6 +826,7 @@ class E2BPreviewView(APIView):
             )
 
         if max_cost > 0 and not reserve(request.user, max_cost, project):
+            _refund_daily_cap(str(request.user.id), ttl_minutes)
             return Response(
                 {'error': f'Недостаточно звёзд для запуска превью (нужно {max_cost} зв.)'},
                 status=402,
@@ -836,6 +852,7 @@ class E2BPreviewView(APIView):
                 timeout=90,
             )
         except _rq.exceptions.RequestException:
+            _refund_daily_cap(str(request.user.id), ttl_minutes)
             release_reserve(project)
             return Response(
                 {'error': 'preview-service недоступен. Запустите: cd preview-service && uvicorn main:app --port 8001'},
@@ -843,16 +860,23 @@ class E2BPreviewView(APIView):
             )
 
         if resp.status_code == 429:
+            _refund_daily_cap(str(request.user.id), ttl_minutes)
             release_reserve(project)
             return Response({'error': resp.json().get('detail', 'Слишком много превью')}, status=429)
         if not resp.ok:
+            _refund_daily_cap(str(request.user.id), ttl_minutes)
             release_reserve(project)
             return Response({'error': resp.text[:500]}, status=502)
 
         data = resp.json()
+        session_id_new = data.get('session_id')
+        if not session_id_new:
+            _refund_daily_cap(str(request.user.id), ttl_minutes)
+            release_reserve(project)
+            return Response({'error': 'preview-service вернул неожиданный ответ'}, status=502)
         # Create billing record (settled=False — will be charged on stop or by reconciler)
         PreviewSession.objects.create(
-            session_id=data['session_id'],
+            session_id=session_id_new,
             project=project,
             user=request.user,
             reserved_stars=max_cost,
@@ -864,6 +888,8 @@ class E2BPreviewView(APIView):
 
     def delete(self, request, id, session_id):
         project = get_object_or_404(StudioProject, id=id, user=request.user)
+        if not PreviewSession.objects.filter(session_id=session_id, user=request.user).exists():
+            return Response({'error': 'Сессия не найдена'}, status=404)
         stop_data = {}
         try:
             stop_resp = _rq.delete(
@@ -895,20 +921,24 @@ class E2BPreviewStatusView(APIView):
 
     def get(self, request, id, session_id):
         get_object_or_404(StudioProject, id=id, user=request.user)  # auth check
+        if not PreviewSession.objects.filter(session_id=session_id, user=request.user).exists():
+            return Response({'error': 'Сессия не найдена'}, status=404)
         try:
             resp = _rq.get(
                 f'{_PREVIEW_SVC}/preview/{session_id}/status',
                 headers=_preview_headers(),
                 timeout=5,
             )
-        except _rq.exceptions.ConnectionError:
-            return Response({'state': 'stopped', 'public_url': None, 'logs_tail': []})
+        except _rq.exceptions.RequestException:
+            return Response({'state': 'unknown', 'transient': True, 'public_url': None, 'logs_tail': []}, status=503)
         if not resp.ok:
-            return Response({'state': 'stopped', 'public_url': None, 'logs_tail': []})
+            return Response({'state': 'unknown', 'transient': True, 'public_url': None, 'logs_tail': []}, status=503)
         return Response(resp.json())
 
     def delete(self, request, id, session_id):
         project = get_object_or_404(StudioProject, id=id, user=request.user)
+        if not PreviewSession.objects.filter(session_id=session_id, user=request.user).exists():
+            return Response({'error': 'Сессия не найдена'}, status=404)
         stop_data = {}
         try:
             stop_resp = _rq.delete(
@@ -940,6 +970,8 @@ class E2BPreviewLogsView(APIView):
 
     def get(self, request, id, session_id):
         get_object_or_404(StudioProject, id=id, user=request.user)
+        if not PreviewSession.objects.filter(session_id=session_id, user=request.user).exists():
+            return Response({'error': 'Сессия не найдена'}, status=404)
         try:
             resp = _rq.get(
                 f'{_PREVIEW_SVC}/preview/{session_id}/logs',
@@ -961,6 +993,8 @@ class E2BPreviewLogsStreamView(APIView):
 
     def get(self, request, id, session_id):
         get_object_or_404(StudioProject, id=id, user=request.user)
+        if not PreviewSession.objects.filter(session_id=session_id, user=request.user).exists():
+            return Response({'error': 'Сессия не найдена'}, status=404)
 
         def _stream():
             try:

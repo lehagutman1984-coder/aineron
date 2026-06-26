@@ -118,6 +118,7 @@ export function DatabasePanel({ projectId }: DatabasePanelProps) {
   };
 
   const handleDeprovision = async () => {
+    if (!window.confirm('Отключить базу данных? Данные могут быть удалены безвозвратно.')) return;
     setBusy(true);
     setError(null);
     try {

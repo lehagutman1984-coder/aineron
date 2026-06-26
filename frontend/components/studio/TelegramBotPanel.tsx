@@ -30,15 +30,29 @@ export function TelegramBotPanel({ projectId, refreshKey }: Props) {
   const [logsLoading, setLogsLoading] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const logsEndRef = useRef<HTMLDivElement | null>(null);
+  const sessionRef = useRef<string | null>(null);
+  const genRef = useRef(0);
 
   const clearPoll = () => {
     if (pollRef.current !== null) { clearInterval(pollRef.current); pollRef.current = null; }
   };
 
-  useEffect(() => () => clearPoll(), []);
+  useEffect(() => {
+    return () => {
+      clearPoll();
+      const sid = sessionRef.current;
+      if (sid) {
+        try { studioApi.e2bPreviewStop(projectId, sid).catch(() => {}); } catch {}
+        sessionRef.current = null;
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     clearPoll();
+    genRef.current++;
+    sessionRef.current = null;
     setBotState('idle');
     setSessionId(null);
     setExpiresAt(0);
@@ -70,6 +84,7 @@ export function TelegramBotPanel({ projectId, refreshKey }: Props) {
 
   const startBot = async () => {
     if (!token.trim()) return;
+    const myGen = ++genRef.current;
     setBotState('starting');
     setError(null);
     setWarning(null);
@@ -77,6 +92,11 @@ export function TelegramBotPanel({ projectId, refreshKey }: Props) {
     setShowLogs(false);
     try {
       const r = await studioApi.e2bBotStart(projectId, token.trim());
+      if (genRef.current !== myGen) {
+        if (r?.session_id) { try { await studioApi.e2bPreviewStop(projectId, r.session_id); } catch {} }
+        return;
+      }
+      sessionRef.current = r.session_id;
       setSessionId(r.session_id);
       setWarning(r.warning ?? null);
       setExpiresAt(Date.now() / 1000 + BOT_TTL);
@@ -109,8 +129,10 @@ export function TelegramBotPanel({ projectId, refreshKey }: Props) {
   };
 
   const stopBot = async () => {
+    genRef.current++;
     clearPoll();
-    const sid = sessionId;
+    const sid = sessionRef.current ?? sessionId;
+    sessionRef.current = null;
     setBotState('idle');
     setSessionId(null);
     setToken('');

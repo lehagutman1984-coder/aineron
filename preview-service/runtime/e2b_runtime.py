@@ -551,9 +551,18 @@ class E2BRuntime(Runtime):
                     ">> /tmp/preview.log 2>&1; echo prewarmed'"
                 )
             try:
-                sbx.commands.run(install_cmd, timeout=300)
+                res = sbx.commands.run(install_cmd, timeout=300)
+                install_ok = getattr(res, 'exit_code', 0) == 0
             except Exception as exc:
-                logger.warning("prewarm install failed (project=%s): %s", project_id, exc)
+                logger.warning("prewarm install failed (project=%s): %s — discarding sandbox", project_id, exc)
+                install_ok = False
+
+            if not install_ok:
+                try:
+                    sbx.kill()
+                except Exception:
+                    pass
+                return None
 
             dep_hash = _compute_dep_hash(code_files)
             pipe = _r.pipeline()
@@ -574,17 +583,23 @@ class E2BRuntime(Runtime):
     # ── claim helpers — each returns (sbx, skip_install) or None ────────────────
 
     def _claim_prewarm(self, project_id: str, new_hash: str):
-        """Tier 1: prewarmed sandbox for this project. skip_install if dep hash matches.
-
-        Consumes the prewarm keys regardless of connect outcome (single-use claim).
-        """
+        """Tier 1: prewarmed sandbox for this project. Atomic GETDEL prevents double-claim.
+        Connects AFTER claiming to avoid leaking if connect() fails."""
         try:
-            sid = _r.get(f"{PREWARM_PREFIX}{project_id}")
+            # Atomic claim: winner gets the sid, losers get None
+            sid = _r.getdel(f"{PREWARM_PREFIX}{project_id}")
             if not sid:
                 return None
-            stored_hash = _r.get(f"{PREWARM_HASH_PREFIX}{project_id}")
-            _r.delete(f"{PREWARM_PREFIX}{project_id}", f"{PREWARM_HASH_PREFIX}{project_id}")
-            sbx = Sandbox.connect(sid, api_key=settings.E2B_API_KEY)
+            stored_hash = _r.getdel(f"{PREWARM_HASH_PREFIX}{project_id}")
+            try:
+                sbx = Sandbox.connect(sid, api_key=settings.E2B_API_KEY)
+            except Exception as exc:
+                logger.warning("prewarm connect failed (project=%s sid=%s): %s — killing orphan", project_id, sid, exc)
+                try:
+                    Sandbox.connect(sid, api_key=settings.E2B_API_KEY, timeout=5).kill()
+                except Exception:
+                    pass
+                return None
             skip_install = bool(stored_hash and stored_hash == new_hash)
             return sbx, skip_install
         except Exception as exc:
@@ -592,14 +607,23 @@ class E2BRuntime(Runtime):
             return None
 
     def _claim_paused(self, project_id: str, new_hash: str):
-        """Tier 2: paused sandbox (Sandbox.connect auto-resumes). skip_install if hash matches."""
+        """Tier 2: paused sandbox (Sandbox.connect auto-resumes). Atomic GETDEL prevents double-claim."""
         try:
-            sid = _r.get(f"{PAUSED_PREFIX}{project_id}")
+            # Atomic claim: GETDEL so only one concurrent caller gets this sid
+            sid = _r.getdel(f"{PAUSED_PREFIX}{project_id}")
             if not sid:
                 return None
             meta = _r.hgetall(f"{PAUSED_META_PREFIX}{sid}") or {}
-            _r.delete(f"{PAUSED_PREFIX}{project_id}", f"{PAUSED_META_PREFIX}{sid}")
-            sbx = Sandbox.connect(sid, api_key=settings.E2B_API_KEY)  # auto-resumes if paused
+            _r.delete(f"{PAUSED_META_PREFIX}{sid}")
+            try:
+                sbx = Sandbox.connect(sid, api_key=settings.E2B_API_KEY)  # auto-resumes if paused
+            except Exception as exc:
+                logger.warning("paused connect failed (project=%s sid=%s): %s — killing orphan", project_id, sid, exc)
+                try:
+                    Sandbox.connect(sid, api_key=settings.E2B_API_KEY, timeout=5).kill()
+                except Exception:
+                    pass
+                return None
             stored_hash = meta.get("dep_hash", "")
             skip_install = bool(stored_hash and stored_hash == new_hash)
             return sbx, skip_install

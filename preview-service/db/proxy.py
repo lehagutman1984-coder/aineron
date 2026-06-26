@@ -58,7 +58,10 @@ _CB_THRESHOLD = 3
 _CB_TTL = 60                  # seconds
 _MAX_ROWS = 1000
 
-_BLOCKED_PREFIXES = ("DROP", "ALTER", "TRUNCATE")
+_BLOCKED_PREFIXES = (
+    "DROP", "ALTER", "TRUNCATE",
+    "CREATE", "GRANT", "REVOKE", "COPY",
+)
 
 
 # ── Auth ────────────────────────────────────────────────────────────────────────
@@ -108,16 +111,44 @@ def _load_credentials(session: dict) -> DBCredentials:
 
 def _is_blocked(sql_text: str) -> bool:
     """
-    Reject DDL statements and multi-statement payloads.
-    Prefix-only check is insufficient: 'SELECT 1; DROP TABLE x' passes it.
-    Block any SQL containing ';' (single-statement protocol ensures safety).
+    Reject DDL/DDL-stacked statements.
+
+    Security model:
+    - Strip block comments (/* ... */) and line comments (-- ...) before keyword check
+      so that comment-prefixed DDL like '/* */ DROP TABLE x' doesn't slip through.
+    - Reject stacked statements (;) except when inside a string literal.
+      Simple heuristic: reject if ';' appears outside of single-quoted strings.
+    - Blocklist covers DDL + privilege statements (schema-change intent blocked;
+      DML writes are allowed for the sandboxed app).
     """
-    head = sql_text.lstrip().upper()
+    import re
+
+    # Strip block comments (/* ... */) — multiline
+    cleaned = re.sub(r"/\*.*?\*/", " ", sql_text, flags=re.DOTALL)
+    # Strip line comments (-- to end of line)
+    cleaned = re.sub(r"--[^\n]*", " ", cleaned)
+
+    head = cleaned.lstrip().upper()
     if any(head.startswith(prefix) for prefix in _BLOCKED_PREFIXES):
         return True
-    # Reject stacked statements (prevents DDL injection via semicolons)
-    if ";" in sql_text:
-        return True
+
+    # Reject stacked statements: check for ';' outside string literals
+    # Walk character by character to track string context
+    in_string = False
+    escape_next = False
+    for ch in sql_text:
+        if escape_next:
+            escape_next = False
+            continue
+        if ch == '\\' and in_string:
+            escape_next = True
+            continue
+        if ch == "'":
+            in_string = not in_string
+            continue
+        if ch == ';' and not in_string:
+            return True
+
     return False
 
 
@@ -172,7 +203,8 @@ def db_query(req: QueryRequest):
         with conn.cursor() as cur:
             cur.execute(f"SET statement_timeout = '{_STATEMENT_TIMEOUT_MS}'")
             if creds.schema:
-                cur.execute("SET search_path TO %s", (creds.schema,))
+                from psycopg2 import sql as _sql
+                cur.execute(_sql.SQL("SET search_path TO {}").format(_sql.Identifier(creds.schema)))
             cur.execute(req.sql, req.params or None)
             rowcount = cur.rowcount
             if cur.description is not None:
