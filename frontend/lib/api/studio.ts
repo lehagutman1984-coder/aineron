@@ -2,7 +2,7 @@ import { request, BASE_URL } from './client';
 
 export type StudioMode = 'auto' | 'semi' | 'manual';
 export type EntryMode = 'description' | 'clone_url';
-export type StudioStack = 'nextjs' | 'react' | 'vue' | 'html' | 'tma';
+export type StudioStack = 'nextjs' | 'react' | 'vue' | 'html' | 'tma' | 'python' | 'django' | 'telegram_bot';
 export const SANDPACK_STACKS: StudioStack[] = ['react', 'vue', 'html', 'tma'];
 
 export interface StudioProject {

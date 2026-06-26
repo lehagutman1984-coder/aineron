@@ -35,6 +35,10 @@ const STACK_OPTIONS: { value: StudioStack; label: string }[] = [
   { value: "react", label: "React" },
   { value: "vue", label: "Vue" },
   { value: "html", label: "HTML" },
+  { value: "tma", label: "Telegram Mini App" },
+  { value: "python", label: "Python (FastAPI/Flask)" },
+  { value: "django", label: "Django" },
+  { value: "telegram_bot", label: "Telegram Bot" },
 ];
 
 const STAR_RATE: Record<string, number> = { fast: 1, coder: 1.7, smart: 3 };

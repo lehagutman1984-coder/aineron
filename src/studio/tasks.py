@@ -519,6 +519,8 @@ def _ensure_sandbox(project, project_id):
 
 @shared_task(bind=True, max_retries=3, queue=QUEUE)
 def coder_iteration(self, project_id, step_index):
+    import logging
+    log = logging.getLogger('studio.tasks')
     project = StudioProject.objects.select_related('pipeline').get(id=project_id)
     state = project.pipeline
     if state.pause_requested or state.status in ('paused_manual', 'paused_on_loop'):
@@ -669,8 +671,17 @@ def guardian_review(self, project_id, step_index):
         )
     except Exception as exc:
         if self.request.retries >= self.max_retries:
-            log.warning('guardian failed (%s) — auto-passing step %s', exc, step_index)
-            result = {'verdict': 'pass', 'issues': [], 'instructions': '', 'target_files': []}
+            log.error('guardian failed (%s) — pausing pipeline for step %s (max retries exhausted)', exc, step_index)
+            publish_event(project_id, {
+                'agent': 'system', 'level': 'error',
+                'text': f'Ревью не удалось ({type(exc).__name__}: {exc}). Пайплайн на паузе — обновите описание и продолжите.',
+            })
+            state.status = 'paused_on_loop'
+            state.pause_reason = f'Guardian review failed after retries: {exc}'
+            state.save(update_fields=['status', 'pause_reason'])
+            project.status = 'paused'
+            project.save(update_fields=['status'])
+            return
         else:
             raise self.retry(exc=exc, countdown=30)
     try:

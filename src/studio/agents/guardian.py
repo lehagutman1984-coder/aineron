@@ -131,7 +131,7 @@ def _parse_guardian_response(text: str) -> dict:
 
     # Extract VERDICT
     m = re.search(r'VERDICT\s*:\s*(pass|fix)', text, re.IGNORECASE)
-    verdict = m.group(1).lower() if m else 'pass'
+    verdict = m.group(1).lower() if m else 'fix'  # unparseable response → treat as needs-fix, never auto-pass
 
     # Extract ISSUES list
     issues = []

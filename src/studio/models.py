@@ -19,6 +19,9 @@ class StudioProject(models.Model):
     STACK_CHOICES = [
         ('nextjs', 'Next.js'), ('react', 'React'), ('vue', 'Vue'), ('html', 'HTML'),
         ('tma', 'Telegram Mini App'),
+        ('python', 'Python (FastAPI/Flask)'),
+        ('django', 'Django'),
+        ('telegram_bot', 'Telegram Bot'),
     ]
     DEPLOY_TARGET_CHOICES = [
         ('none', 'Не деплоить'), ('vercel', 'Vercel'), ('timeweb', 'Timeweb Cloud'),
@@ -35,7 +38,7 @@ class StudioProject(models.Model):
     mode = models.CharField(max_length=10, choices=MODE_CHOICES, default='auto')
     entry_mode = models.CharField(max_length=20, choices=ENTRY_CHOICES, default='description')
     target_url = models.URLField(blank=True)
-    target_stack = models.CharField(max_length=10, choices=STACK_CHOICES, default='nextjs')
+    target_stack = models.CharField(max_length=20, choices=STACK_CHOICES, default='nextjs')
     interview_data = models.JSONField(default=dict, blank=True)
     project_md_content = models.TextField(blank=True)
     commits_md_content = models.TextField(blank=True)
@@ -187,12 +190,15 @@ class StudioTemplate(models.Model):
     STACK_CHOICES = [
         ('nextjs', 'Next.js'), ('react', 'React'), ('vue', 'Vue'), ('html', 'HTML'),
         ('tma', 'Telegram Mini App'),
+        ('python', 'Python (FastAPI/Flask)'),
+        ('django', 'Django'),
+        ('telegram_bot', 'Telegram Bot'),
     ]
 
     slug = models.SlugField(unique=True)
     name = models.CharField(max_length=120)
     description = models.TextField()
-    stack = models.CharField(max_length=10, choices=STACK_CHOICES, default='nextjs')
+    stack = models.CharField(max_length=20, choices=STACK_CHOICES, default='nextjs')
     preview_image = models.CharField(max_length=300, blank=True)
     seed_prompt = models.TextField()
     features = models.JSONField(default=list, blank=True)  # list of feature keys: ['robokassa','vk_id','yandex_maps','telegram_login']
