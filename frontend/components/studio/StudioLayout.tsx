@@ -310,10 +310,16 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
           onStepClick={(key) => setDrawerAgent(key)}
         />
         {isRunning && currentAgent && (
-          <span className="hidden sm:flex items-center gap-1.5 text-xs text-blue-400 shrink-0">
+          <span className="flex items-center gap-1.5 text-xs text-blue-400 shrink-0">
             <Loader2 size={11} className="animate-spin" />
             {AGENT_LABELS[currentAgent] ?? currentAgent}
-            {elapsedSeconds > 0 && <span className="opacity-60">{Math.floor(elapsedSeconds / 60)}:{String(elapsedSeconds % 60).padStart(2, '0')}</span>}
+            {elapsedSeconds > 0 && <span className="opacity-60 hidden sm:inline">{Math.floor(elapsedSeconds / 60)}:{String(elapsedSeconds % 60).padStart(2, '0')}</span>}
+          </span>
+        )}
+        {isCompleted && (
+          <span className="md:hidden flex items-center gap-1 text-[11px] text-green-500 shrink-0">
+            <CheckCircle size={11} />
+            {project.stars_spent ? `${project.stars_spent}★` : 'Готово'}
           </span>
         )}
         <div className={layout.rightGroup}>
@@ -427,24 +433,6 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
         </div>
       )}
 
-      {/* Mobile tabs */}
-      <div className="md:hidden flex border-b border-[var(--border)] shrink-0">
-        {MOBILE_TABS.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setMobileTab(tab.key)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors ${
-              mobileTab === tab.key
-                ? 'border-b-2 border-blue-500 text-blue-500'
-                : 'text-[var(--text-secondary)]'
-            }`}
-          >
-            {tab.icon}
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
       {/* Inline pause banner for paused_on_loop */}
       {pipeline.status === 'paused_on_loop' && (
         <div className={banner.amberCol}>
@@ -476,7 +464,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
       <div className="flex-1 overflow-hidden flex flex-col">
           {/* Desktop: resizable 3 columns */}
           <PanelGroup orientation="horizontal" className="hidden md:flex flex-1 overflow-hidden">
-            <Panel defaultSize={18} minSize={12} className="overflow-hidden flex flex-col border-r border-[var(--border)]">
+            <Panel defaultSize={15} minSize={10} className="overflow-hidden flex flex-col border-r border-[var(--border)]">
               <div className="flex-1 overflow-hidden">
                 <FileTree
                   files={files}
@@ -491,7 +479,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
               </div>
             </Panel>
             <PanelResizeHandle className={layout.resizeHandle} />
-            <Panel defaultSize={41} minSize={20} className="overflow-hidden flex flex-col">
+            <Panel defaultSize={33} minSize={18} className="overflow-hidden flex flex-col">
               <div className="flex border-b border-[var(--border)] shrink-0 text-xs">
                 <button
                   onClick={() => setCenterTab('code')}
@@ -537,7 +525,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
               )}
             </Panel>
             <PanelResizeHandle className={layout.resizeHandle} />
-            <Panel defaultSize={41} minSize={20} className="overflow-hidden flex flex-col">
+            <Panel defaultSize={52} minSize={24} className="overflow-hidden flex flex-col">
               <PreviewPanel projectId={project.id} hasSandbox={!!project.sandbox_container_id} status={project.status} githubUrl={project.github_repo_url || undefined} onRefresh={onRefresh} stack={project.target_stack} previewKey={previewKey} />
             </Panel>
           </PanelGroup>
@@ -570,61 +558,64 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
             )}
           </div>
 
-          {/* Pipeline timeline drawer */}
-          <div className="border-t border-[var(--border)] shrink-0">
-            <button
-              onClick={() => setTimelineOpen(!timelineOpen)}
-              className="w-full flex items-center justify-between px-4 py-2 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--hover)] transition-colors"
-            >
-              <span className="flex items-center gap-1.5"><GitBranch size={12} /> Прогресс</span>
-              <span>{timelineOpen ? '▼' : '▲'}</span>
-            </button>
-            {timelineOpen && (
-              <div className="border-t border-[var(--border)] max-h-52 overflow-auto p-3">
-                {(() => {
-                  const md = project.commits_md_content || '';
-                  const parts = md.split(/\n(?=#{2,3}\s)/).filter((p) => p.trim());
-                  const steps = parts.map((p, i) => {
-                    const title = p.split('\n')[0].replace(/^#{2,3}\s+/, '').trim();
-                    let status: 'done' | 'active' | 'waiting' | 'error' = 'waiting';
-                    if (i < pipeline.step_index) status = 'done';
-                    else if (i === pipeline.step_index) {
-                      if (pipeline.status === 'running') status = 'active';
-                      else if (pipeline.status === 'failed') status = 'error';
-                    }
-                    return { title, status };
-                  });
-                  const maxIter = (pipeline as { max_iterations?: number }).max_iterations ?? 3;
-                  return parts.length > 0 ? (
-                    <PipelineTimeline
-                      steps={steps}
-                      currentAgent={pipeline.status === 'running' ? currentAgent : ''}
-                      iterationCount={pipeline.iteration_count}
-                      maxIterations={maxIter}
-                      elapsedSeconds={elapsedSeconds}
-                    />
-                  ) : (
-                    <StepTimeline projectId={project.id} />
-                  );
-                })()}
-              </div>
-            )}
-          </div>
+          {/* Bottom drawers: desktop only — on mobile tabs provide navigation */}
+          <div className="hidden md:block shrink-0">
+            {/* Pipeline timeline drawer */}
+            <div className="border-t border-[var(--border)]">
+              <button
+                onClick={() => setTimelineOpen(!timelineOpen)}
+                className="w-full flex items-center justify-between px-4 py-2 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--hover)] transition-colors"
+              >
+                <span className="flex items-center gap-1.5"><GitBranch size={12} /> Прогресс</span>
+                <span>{timelineOpen ? '▼' : '▲'}</span>
+              </button>
+              {timelineOpen && (
+                <div className="border-t border-[var(--border)] max-h-52 overflow-auto p-3">
+                  {(() => {
+                    const md = project.commits_md_content || '';
+                    const parts = md.split(/\n(?=#{2,3}\s)/).filter((p) => p.trim());
+                    const steps = parts.map((p, i) => {
+                      const title = p.split('\n')[0].replace(/^#{2,3}\s+/, '').trim();
+                      let status: 'done' | 'active' | 'waiting' | 'error' = 'waiting';
+                      if (i < pipeline.step_index) status = 'done';
+                      else if (i === pipeline.step_index) {
+                        if (pipeline.status === 'running') status = 'active';
+                        else if (pipeline.status === 'failed') status = 'error';
+                      }
+                      return { title, status };
+                    });
+                    const maxIter = (pipeline as { max_iterations?: number }).max_iterations ?? 3;
+                    return parts.length > 0 ? (
+                      <PipelineTimeline
+                        steps={steps}
+                        currentAgent={pipeline.status === 'running' ? currentAgent : ''}
+                        iterationCount={pipeline.iteration_count}
+                        maxIterations={maxIter}
+                        elapsedSeconds={elapsedSeconds}
+                      />
+                    ) : (
+                      <StepTimeline projectId={project.id} />
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
 
-          {/* Agent log drawer */}
-          <div className="border-t border-[var(--border)] shrink-0">
-            <button
-              onClick={() => setLogOpen(!logOpen)}
-              className="w-full flex items-center justify-between px-4 py-2 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--hover)] transition-colors"
-            >
-              <span>Лог агентов</span>
-              <span>{logOpen ? '▼' : '▲'}</span>
-            </button>
-            {logOpen && (
-              <div className="h-40 border-t border-[var(--border)]">
-                <AgentLog projectId={project.id} lines={agentLogLines} />
-              </div>
-            )}
+            {/* Agent log drawer */}
+            <div className="border-t border-[var(--border)]">
+              <button
+                onClick={() => setLogOpen(!logOpen)}
+                className="w-full flex items-center justify-between px-4 py-2 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--hover)] transition-colors"
+              >
+                <span>Лог агентов</span>
+                <span>{logOpen ? '▼' : '▲'}</span>
+              </button>
+              {logOpen && (
+                <div className="h-40 border-t border-[var(--border)]">
+                  <AgentLog projectId={project.id} lines={agentLogLines} />
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -675,8 +666,8 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
         />
       )}
 
-      {/* Status bar */}
-      <div className={layout.statusBar}>
+      {/* Status bar — desktop only */}
+      <div className="hidden md:flex shrink-0 h-6 items-center gap-4 px-3 border-t border-[var(--border)] bg-[var(--hover)] text-xs text-[var(--text-secondary)] select-none">
         <span className={layout.statusBarItem}>{project.name}</span>
         <span className={layout.divider} />
         <span className={layout.statusBarItem}>
@@ -696,6 +687,26 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
           </>
         )}
       </div>
+
+      {/* Mobile bottom tab bar — native-app style navigation */}
+      <nav className="md:hidden shrink-0 flex items-stretch border-t border-[var(--border)] bg-[var(--bg)] z-10" style={{ height: '56px', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        {MOBILE_TABS.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setMobileTab(tab.key)}
+            className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors ${
+              mobileTab === tab.key
+                ? 'text-blue-500'
+                : 'text-[var(--text-secondary)]'
+            }`}
+          >
+            <span className={`transition-transform ${mobileTab === tab.key ? 'scale-110' : ''}`}>
+              {tab.icon}
+            </span>
+            {tab.label}
+          </button>
+        ))}
+      </nav>
     </div>
   );
 }
