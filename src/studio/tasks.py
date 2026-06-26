@@ -648,8 +648,15 @@ _BUILD_ERROR_RE = re.compile(
     re.IGNORECASE,
 )
 _BUILD_OK_RE = re.compile(r'\bcompiled successfully\b|\b0 errors?\b', re.IGNORECASE)
-# Stacks that use a JS/TS build toolchain (pnpm/tsc)
-_JS_BUILD_STACKS = frozenset({'nextjs', 'react', 'vue', 'html', 'tma'})
+# Checker couldn't find its config — not a real code error (e.g. html has no tsconfig)
+_GATE_INAPPLICABLE_RE = re.compile(
+    r'No inputs were found|Cannot find a tsconfig|Could not find a tsconfig'
+    r'|No ESLint configuration|configure ESLint'
+    r'|error TS18003',
+    re.IGNORECASE,
+)
+# Stacks that use a JS/TS build toolchain (pnpm/tsc). html excluded: no tsconfig.
+_JS_BUILD_STACKS = frozenset({'nextjs', 'react', 'vue', 'tma'})
 
 
 def _has_build_error(logs: str) -> bool:
@@ -683,7 +690,10 @@ def guardian_review(self, project_id, step_index):
             )
         except Exception as exc:
             build_logs = f'build check unavailable: {exc}'
-    build_failed = (exit_code != 0) or _has_build_error(build_logs)
+    _raw_build_failed = (exit_code != 0) or _has_build_error(build_logs)
+    # If checker couldn't find its own config (no tsconfig, no eslint config), that's
+    # not a code error — don't block the commit on a missing-toolchain signal.
+    build_failed = _raw_build_failed and not _GATE_INAPPLICABLE_RE.search(build_logs or '')
     quality_logs = ''
     # Фаза 5: quality gate only when build is green and sandbox available
     if not build_failed and project.sandbox_container_id:
@@ -691,7 +701,7 @@ def guardian_review(self, project_id, step_index):
             q_code, quality_logs = sandbox.run_quality_gate(
                 project.sandbox_container_id, project.target_stack,
             )
-            if q_code != 0 and quality_logs.strip():
+            if q_code != 0 and quality_logs.strip() and not _GATE_INAPPLICABLE_RE.search(quality_logs):
                 # Treat linter errors as build-level failures (hard gate)
                 build_failed = True
                 build_logs = (build_logs + '\n\nLINTER ERRORS:\n' + quality_logs).strip()
@@ -735,7 +745,7 @@ def guardian_review(self, project_id, step_index):
     if settings.STUDIO_V3:
         _record_metric(project, step_index,
                        guardian_iterations=state.iteration_count,
-                       build_pass=1 if (build_logs and 'error' not in build_logs.lower()) else 0,
+                       build_pass=0 if build_failed else 1,
                        verdict=verdict)
     publish_event(project_id, {
         'agent': 'guardian',

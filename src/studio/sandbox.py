@@ -211,7 +211,7 @@ def run_quality_gate(container_id: str, stack: str) -> tuple:
     elif stack in ('python', 'django', 'telegram_bot'):
         cmd = (
             'find /workspace -name "*.py" -not -path "*/__pycache__/*" | head -60 '
-            '| xargs python -m py_compile > /tmp/pycheck.log 2>&1; _c=$?; '
+            '| xargs python3 -m py_compile > /tmp/pycheck.log 2>&1; _c=$?; '
             'cat /tmp/pycheck.log; exit $_c'
         )
     else:
