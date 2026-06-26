@@ -36,3 +36,13 @@ E2B_TEMPLATE_DJANGO: str = os.environ.get("E2B_TEMPLATE_DJANGO", "")
 
 # Timeweb Cloud API (152-ФЗ, российская юрисдикция)
 TIMEWEB_API_TOKEN: str = os.environ.get("TIMEWEB_API_TOKEN", "")
+
+# ── Sprint 12: Cold-Start system ─────────────────────────────────────────────
+# L2 warm pool
+POOL_TARGET_DEFAULT: int = int(os.environ.get("PREVIEW_POOL_TARGET", "2"))
+POOL_MAX_AGE: int = int(os.environ.get("PREVIEW_POOL_MAX_AGE", "1200"))   # 20 min
+MAX_POOL_SIZE: int = int(os.environ.get("PREVIEW_MAX_POOL_SIZE", "6"))
+
+# L5 pause/resume
+PAUSE_ENABLED: bool = os.environ.get("PREVIEW_PAUSE_ENABLED", "1") == "1"
+PAUSE_GRACE: int = int(os.environ.get("PREVIEW_PAUSE_GRACE", "1800"))    # 30 min
