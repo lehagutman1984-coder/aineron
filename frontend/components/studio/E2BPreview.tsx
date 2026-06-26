@@ -1,11 +1,31 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Coins, ExternalLink, Loader2, RefreshCw, StopCircle, Terminal, XCircle } from 'lucide-react';
+import { Coins, ExternalLink, Loader2, RefreshCw, StopCircle, Terminal, XCircle, Zap } from 'lucide-react';
 import { studioApi } from '@/lib/api/studio';
 import { SessionTimer } from './SessionTimer';
 
 type E2BState = 'idle' | 'starting' | 'running' | 'failed' | 'expired';
+
+// Human-readable copy per claim_source (L6 progressive UI)
+const CLAIM_COPY: Record<string, { label: string; sub: string }> = {
+  prewarm: {
+    label: 'Подключаю готовый sandbox…',
+    sub: 'Зависимости установлены заранее — будет быстро',
+  },
+  paused: {
+    label: 'Восстанавливаю сессию…',
+    sub: 'Состояние сохранено — npm install не нужен',
+  },
+  pool: {
+    label: 'Запускаю из пула…',
+    sub: 'Sandbox уже прогрет — заливаю код',
+  },
+  cold: {
+    label: 'Запускаю sandbox…',
+    sub: 'Первый запуск — устанавливаю зависимости',
+  },
+};
 
 const STACK_LABELS: Record<string, string> = {
   nextjs: 'next.js',
@@ -30,14 +50,22 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
   const [showLogs, setShowLogs] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
+  // Sprint 12: claim source + ETA for progressive UI
+  const [claimSource, setClaimSource] = useState<string>('cold');
+  const [etaSeconds, setEtaSeconds] = useState<number>(12);
+  const [elapsedStart, setElapsedStart] = useState<number>(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
+
   const sessionRef = useRef<string | null>(null);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const costTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const etaTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const logsEndRef = useRef<HTMLDivElement | null>(null);
 
   const clearPoll = () => {
     if (pollTimerRef.current) { clearInterval(pollTimerRef.current); pollTimerRef.current = null; }
     if (costTimerRef.current) { clearInterval(costTimerRef.current); costTimerRef.current = null; }
+    if (etaTimerRef.current) { clearInterval(etaTimerRef.current); etaTimerRef.current = null; }
   };
 
   const stopSession = async (sid: string) => {
@@ -69,6 +97,7 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
     setExpiresAt(0);
     setLogs([]);
     setShowLogs(false);
+    setElapsedSeconds(0);
     if (sid) await stopSession(sid);
   };
 
@@ -85,6 +114,7 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
     setExpiresAt(0);
     setLogs([]);
     setShowLogs(false);
+    setElapsedSeconds(0);
 
     try {
       const resp = await studioApi.e2bPreviewStart(projectId);
@@ -94,13 +124,28 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
       setStartedAt(resp.started_at ?? Date.now() / 1000);
       setStarsPerMin(resp.stars_per_min ?? 1);
 
+      // L6: claim_source-aware UX
+      const src = resp.claim_source ?? 'cold';
+      const eta = resp.eta_seconds ?? 12;
+      setClaimSource(src);
+      setEtaSeconds(eta);
+      const t0 = Date.now() / 1000;
+      setElapsedStart(t0);
+      setElapsedSeconds(0);
+
+      // ETA elapsed ticker (shows "3s / ~5s" during starting state)
+      etaTimerRef.current = setInterval(() => {
+        setElapsedSeconds(Math.floor(Date.now() / 1000 - t0));
+      }, 1000);
+
       // Cost elapsed ticker
       costTimerRef.current = setInterval(() => {
-        const t0 = resp.started_at ?? Date.now() / 1000;
-        setElapsedMin((Date.now() / 1000 - t0) / 60);
+        const t0cost = resp.started_at ?? Date.now() / 1000;
+        setElapsedMin((Date.now() / 1000 - t0cost) / 60);
       }, 10000);
 
       if (resp.state === 'running') {
+        clearPoll();
         setState('running');
         return;
       }
@@ -115,18 +160,18 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
           } else if (status.state === 'failed' || status.state === 'expired' || status.state === 'stopped') {
             setState(status.state as E2BState);
             clearPoll();
-            // Auto-expand logs on failure
             if (status.state === 'failed') {
               setShowLogs(true);
               fetchLogs();
             }
           }
         } catch { /* keep polling */ }
-      }, 5000);
+      }, 3000);
     } catch (err: unknown) {
       setState('failed');
       setError(err instanceof Error ? err.message : 'Ошибка запуска E2B');
       setShowLogs(true);
+      clearPoll();
     }
   };
 
@@ -143,20 +188,44 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
   // refreshKey intentionally excluded: sandbox must NOT restart on every coding step
   }, [projectId]);
 
+  // ── Loading / starting state (L6 progressive) ───────────────────────────────
   if (state === 'idle' || state === 'starting') {
+    const copy = CLAIM_COPY[claimSource] ?? CLAIM_COPY.cold;
+    const isHot = claimSource === 'prewarm' || claimSource === 'paused';
+    const pct = Math.min(100, Math.round((elapsedSeconds / Math.max(etaSeconds, 1)) * 100));
+
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-4 p-6 text-center">
-        <Loader2 size={36} className="animate-spin text-blue-500" />
-        <div>
-          <p className="text-sm font-medium text-[var(--text)]">
-            {state === 'starting' ? 'Запускаю E2B sandbox…' : 'Инициализация…'}
+      <div className="flex flex-col items-center justify-center h-full gap-5 p-6 text-center">
+        <div className="relative">
+          <Loader2 size={36} className="animate-spin text-blue-500" />
+          {isHot && (
+            <span className="absolute -top-1 -right-1">
+              <Zap size={14} className="text-yellow-400" />
+            </span>
+          )}
+        </div>
+
+        <div className="w-full max-w-xs">
+          <p className="text-sm font-medium text-[var(--text)] mb-1">{copy.label}</p>
+          <p className="text-xs text-[var(--text-secondary)] mb-3">{copy.sub}</p>
+
+          {/* Progress bar */}
+          <div className="w-full h-1 bg-[var(--border)] rounded-full overflow-hidden mb-1">
+            <div
+              className="h-full bg-blue-500 rounded-full transition-all duration-1000"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+
+          <p className="text-[10px] text-[var(--text-secondary)] font-mono">
+            {elapsedSeconds}s{etaSeconds > 0 ? ` / ~${etaSeconds}s` : ''}
           </p>
-          <p className="text-xs text-[var(--text-secondary)] mt-1">npm install + next dev — 1–5 мин (первый запуск)</p>
         </div>
       </div>
     );
   }
 
+  // ── Error / expired state ─────────────────────────────────────────────────
   if (state === 'failed' || state === 'expired') {
     return (
       <div className="flex flex-col h-full">
@@ -189,7 +258,7 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
 
   const costStars = Math.ceil(elapsedMin * starsPerMin);
 
-  // RUNNING
+  // ── RUNNING ───────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--border)] shrink-0">
@@ -216,6 +285,17 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
         {stack && STACK_LABELS[stack] && (
           <span className="text-[10px] font-mono px-1.5 py-0.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded">
             {STACK_LABELS[stack]}
+          </span>
+        )}
+
+        {/* Sprint 12: claim source badge — shows prewarm/resume path to user */}
+        {claimSource !== 'cold' && (
+          <span
+            className="text-[10px] font-mono px-1.5 py-0.5 bg-green-500/10 text-green-400 border border-green-500/20 rounded flex items-center gap-1"
+            title={`Запущено через: ${claimSource}`}
+          >
+            <Zap size={9} />
+            {claimSource}
           </span>
         )}
 

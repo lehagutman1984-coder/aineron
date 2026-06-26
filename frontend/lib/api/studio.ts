@@ -363,6 +363,9 @@ export const studioApi = {
       started_at: number;
       reserved_stars: number;
       stars_per_min: number;
+      // Sprint 12: cold-start UX hints
+      claim_source?: string;
+      eta_seconds?: number;
     }>(
       `/studio/projects/${projectId}/e2b/`,
       { method: 'POST' },
