@@ -640,6 +640,27 @@ def coder_iteration(self, project_id, step_index):
         raise self.retry(exc=e, countdown=60)
 
 
+_BUILD_ERROR_RE = re.compile(
+    r'(error TS\d+|Type error:|Failed to compile|Build failed'
+    r'|Module not found|Cannot find module|Cannot find name'
+    r'|is not assignable|Expected \d+ argument|Object is possibly'
+    r'|Property .+ does not exist|SyntaxError|ReferenceError:)',
+    re.IGNORECASE,
+)
+_BUILD_OK_RE = re.compile(r'\bcompiled successfully\b|\b0 errors?\b', re.IGNORECASE)
+# Stacks that use a JS/TS build toolchain (pnpm/tsc)
+_JS_BUILD_STACKS = frozenset({'nextjs', 'react', 'vue', 'html', 'tma'})
+
+
+def _has_build_error(logs: str) -> bool:
+    """Return True if logs contain clear build/type errors (fail-closed)."""
+    if not logs:
+        return False
+    if _BUILD_OK_RE.search(logs):
+        return False
+    return bool(_BUILD_ERROR_RE.search(logs))
+
+
 @shared_task(bind=True, max_retries=2, queue=QUEUE)
 def guardian_review(self, project_id, step_index):
     """Guardian: review + build check + fix plan in one call. Replaces reviewer+tester+fixer chord."""
@@ -653,11 +674,29 @@ def guardian_review(self, project_id, step_index):
     state.current_task_id = self.request.id or ''
     state.save(update_fields=['current_task_id'])
     build_logs = ''
-    if project.sandbox_container_id:
+    exit_code = 0
+    if project.sandbox_container_id and project.target_stack in _JS_BUILD_STACKS:
         try:
-            _, build_logs = sandbox.run_build_check(project.sandbox_container_id)
+            is_nextjs = project.target_stack in ('nextjs', 'tma')
+            exit_code, build_logs = sandbox.run_build_check(
+                project.sandbox_container_id, is_nextjs=is_nextjs,
+            )
         except Exception as exc:
             build_logs = f'build check unavailable: {exc}'
+    build_failed = (exit_code != 0) or _has_build_error(build_logs)
+    quality_logs = ''
+    # Фаза 5: quality gate only when build is green and sandbox available
+    if not build_failed and project.sandbox_container_id:
+        try:
+            q_code, quality_logs = sandbox.run_quality_gate(
+                project.sandbox_container_id, project.target_stack,
+            )
+            if q_code != 0 and quality_logs.strip():
+                # Treat linter errors as build-level failures (hard gate)
+                build_failed = True
+                build_logs = (build_logs + '\n\nLINTER ERRORS:\n' + quality_logs).strip()
+        except Exception as qexc:
+            log.debug('quality gate unavailable: %s', qexc)
     changed_paths = project.interview_data.get('last_changed', {}).get(str(step_index), [])
     all_files = _existing_files(project)
     review_files = {p: all_files[p] for p in changed_paths if p in all_files} or all_files
@@ -705,6 +744,20 @@ def guardian_review(self, project_id, step_index):
     })
     if state.pause_requested:
         return
+    if verdict == 'pass' and build_failed:
+        # Guardian approved but build is still red — override verdict, force fix iteration.
+        verdict = 'fix'
+        result['instructions'] = (
+            'Build/typecheck failed despite code review passing. '
+            'Fix ALL TypeScript/build errors shown below — do not skip any:\n\n'
+            + build_logs[-3000:]
+        )
+        result['issues'] = ['Build errors (see instructions)']
+        result['target_files'] = []
+        publish_event(project_id, {
+            'agent': 'guardian', 'level': 'warning',
+            'text': f'Шаг {step_index}: билд красный — отправляю на исправление ошибок сборки',
+        })
     if verdict == 'pass':
         if settings.STUDIO_V4_AUTOFIX and (state.autofix_count or 0) > 0:
             state.autofix_count = 0
@@ -743,15 +796,18 @@ def guardian_review(self, project_id, step_index):
             'agent': 'system', 'level': 'warning',
             'text': f'Шаг {step_index} не сошёлся за {max_iter} итераций — пропускаю',
         })
-        # auto mode: skip to next step without pausing
-        if project.mode == 'auto':
+        # auto mode: skip to next step ONLY when build is green; red build always pauses
+        if project.mode == 'auto' and not build_failed:
             state.iteration_count = 0
             state.fix_plan = {}
             state.save(update_fields=['iteration_count', 'fix_plan'])
             commit_to_gitea.delay(project_id, step_index)
         else:
+            build_note = ' (сборка красная — коммит заблокирован)' if build_failed else ''
             state.status = 'paused_on_loop'
-            state.pause_reason = f'Шаг {step_index} не сошёлся за {max_iter} итераций'
+            state.pause_reason = (
+                f'Шаг {step_index} не сошёлся за {max_iter} итераций{build_note}'
+            )
             state.save(update_fields=['status', 'pause_reason'])
             project.status = 'paused'
             project.save(update_fields=['status'])
@@ -925,6 +981,16 @@ def commit_to_gitea(project_id, step_index):
         git_sha=git_sha,
         stars_spent_at_version=project.stars_spent,
     )
+    # Фаза 4: persist design_state so subsequent agents know what's been built
+    changed = (project.interview_data or {}).get('last_changed', {}).get(str(step_index), [])
+    idata = project.interview_data or {}
+    idata['design_state'] = {
+        'completed_steps': step_index + 1,
+        'last_step_files': changed[:20],
+        'build_status': 'green',
+    }
+    project.interview_data = idata
+    project.save(update_fields=['interview_data'])
     # V4: soft preview restart hint — frontend reloads iframe without full page reload
     if getattr(settings, 'STUDIO_V4_STREAMING', False):
         publish_event(project_id, {

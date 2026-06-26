@@ -135,6 +135,95 @@ CODER_FILE_BLOCKS_EN = (
 )
 
 
+_STACK_RULES = {
+    "nextjs": (
+        "- App Router only: всё в app/, никаких pages/. Не смешивай два роутера в одном проекте.\n"
+        "- Серверные компоненты по умолчанию: 'use client' добавляй ТОЛЬКО при useState/useEffect/onClick/браузерных API.\n"
+        "- Данные тяни прямо в async серверном компоненте через await fetch()/ORM — не используй useEffect для первичной загрузки серверных данных.\n"
+        "- fetch кэшируй осознанно: { cache: 'no-store' } для динамики, { next: { revalidate: N } } для ISR.\n"
+        "- Метаданные через export const metadata или export async function generateMetadata() — не вставляй <head>/<title> вручную в JSX.\n"
+        "- Картинки через next/image с обязательными width/height; внешние домены добавь в images.remotePatterns в next.config.\n"
+        "- Навигация через next/link и useRouter из 'next/navigation' (НЕ из 'next/router').\n"
+        "- params и searchParams в page.tsx это Promise (Next 15): объявляй props как Promise и await их.\n"
+        "- TypeScript strict: пропсы и возвращаемые типы явно, никаких any.\n"
+        "- Route Handlers в app/api/.../route.ts экспортируют именованные GET/POST и возвращают NextResponse."
+    ),
+    "react": (
+        "- Vite + React + TypeScript: точка входа src/main.tsx, корневой App.tsx, index.html в корне проекта.\n"
+        "- Хуки только на верхнем уровне компонента: никаких useState/useEffect внутри условий или циклов.\n"
+        "- useEffect всегда с корректным массивом зависимостей; для очистки — возвращай cleanup-функцию.\n"
+        "- Пропсы типизируй через interface/type без React.FC; деструктурируй пропсы в сигнатуре.\n"
+        "- Списки рендери со стабильным key (id сущности), НЕ используй индекс массива как key при изменяемых списках.\n"
+        "- Состояние не мутируй напрямую: новые объекты/массивы через спред, обновления-от-предыдущего через setState(prev => ...).\n"
+        "- Запросы данных в useEffect обрабатывай loading/error/empty и отменяй гонки через AbortController или флаг ignore.\n"
+        "- Оберни рискованные ветки в ErrorBoundary (class-компонент с componentDidCatch).\n"
+        "- Стили: CSS Modules (Component.module.css) или Tailwind — выбери один подход на весь проект.\n"
+        "- Не обращайся к DOM напрямую: используй useRef вместо document.getElementById."
+    ),
+    "vue": (
+        "- Vite + Vue 3 + TypeScript: только Composition API, каждый компонент через <script setup lang=\"ts\"> (не Options API).\n"
+        "- Пропсы через defineProps<{...}>() с TS-дженериком; значения по умолчанию через withDefaults.\n"
+        "- События через const emit = defineEmits<{(e:'name', payload:T):void}>() — не вызывай методы родителя напрямую.\n"
+        "- ref() для примитивов, reactive() для объектов; производные через computed(), не пересчитывай вручную.\n"
+        "- В <script> обращайся к ref через .value; в <template> .value не нужен.\n"
+        "- Не деструктурируй reactive-объект (теряется реактивность) — используй toRefs() при необходимости.\n"
+        "- v-for всегда с :key по стабильному id; не сочетай v-for и v-if на одном элементе.\n"
+        "- Переиспользуемую логику выноси в композаблы useXxx() в src/composables/.\n"
+        "- Двустороннее связывание форм через v-model; для кастомных компонентов — defineModel() (Vue 3.4+).\n"
+        "- Сайд-эффекты в onMounted; чистка таймеров/подписок в onUnmounted."
+    ),
+    "html": (
+        "- Чистый HTML5/CSS3/JS без фреймворков и CDN-зависимостей React/Vue.\n"
+        "- Семантическая разметка: header/nav/main/section/article/aside/footer вместо сплошных div.\n"
+        "- Один <h1> на страницу, корректная иерархия заголовков без пропусков уровней.\n"
+        "- Доступность: alt у всех img, label[for] у инпутов, aria-* и role где нужно, видимый :focus-стиль.\n"
+        "- CSS-переменные в :root для цветов/отступов/типографики — без хардкода по всему файлу.\n"
+        "- Адаптивность: <meta name=\"viewport\">, rem/%/clamp, медиазапросы mobile-first.\n"
+        "- JS через <script type=\"module\">; никаких inline-обработчиков onclick= в разметке.\n"
+        "- Обработчики через addEventListener, элементы через querySelector; делегирование событий для списков.\n"
+        "- Внешние данные через fetch с try/catch и обработкой loading/error/empty в UI.\n"
+        "- Внешние ссылки target=\"_blank\" с rel=\"noopener noreferrer\"."
+    ),
+    "python": (
+        "- FastAPI (предпочтительно) + Python 3.11+; запуск: uvicorn main:app --host 0.0.0.0 --port 3000 --reload.\n"
+        "- Полные аннотации типов на всех функциях и эндпоинтах; модели данных на Pydantic v2.\n"
+        "- Pydantic v2: model_config = ConfigDict(...) вместо class Config; .model_dump()/.model_validate() вместо .dict()/.parse_obj().\n"
+        "- Каждый эндпоинт с response_model= в декораторе и явным status_code (201 для создания).\n"
+        "- I/O-эндпоинты объявляй async def; не блокируй event loop синхронными вызовами.\n"
+        "- CORS обязательно: app.add_middleware(CORSMiddleware, allow_origins=[\"*\"], allow_methods=[\"*\"], allow_headers=[\"*\"]).\n"
+        "- Ошибки через raise HTTPException(status_code=..., detail=...), не возвращай голые dict с кодом ошибки.\n"
+        "- Конфиг и секреты через pydantic-settings/os.environ, никогда не хардкодь ключи.\n"
+        "- Структура: main.py (create app), routers/, models/ (Pydantic); не пихай всё в один файл.\n"
+        "- requirements.txt с fastapi, uvicorn[standard], pydantic; версии указывай.\n"
+        "- Если Flask: фабрика create_app(), Blueprint'ы, flask-cors, jsonify для ответов."
+    ),
+    "django": (
+        "- Django 5.x; модели с явными типами полей, обязательно __str__ и Meta (ordering/verbose_name).\n"
+        "- DRF: ViewSet + ModelSerializer + router в urls.py; serializer с fields= (не '__all__' для записи).\n"
+        "- ForeignKey/OneToOne с обязательным on_delete; не редактируй применённые миграции вручную.\n"
+        "- settings.py: SECRET_KEY/DEBUG/ALLOWED_HOSTS из окружения; DEBUG=False по умолчанию для прода.\n"
+        "- INSTALLED_APPS включает приложения и 'rest_framework'; runserver на 0.0.0.0:3000.\n"
+        "- URL-маршрутизация: корневой urls.py с include() приложений; используй name= и path().\n"
+        "- Запросы оптимизируй: select_related (FK) и prefetch_related (M2M) против N+1.\n"
+        "- Бизнес-логика в моделях/сервисах, а не во вьюхах; вьюхи тонкие.\n"
+        "- Чувствительные операции под permission_classes/authentication; не открывай AllowAny по умолчанию.\n"
+        "- Не используй objects.all() без пагинации в API — подключи DRF pagination."
+    ),
+    "telegram_bot": (
+        "- python-telegram-bot v20+ (async): ApplicationBuilder().token(BOT_TOKEN).build(), запуск app.run_polling().\n"
+        "- BOT_TOKEN строго из os.environ['BOT_TOKEN']; никогда не хардкодь токен в коде.\n"
+        "- Все хендлеры async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE); внутри await на всех send/reply.\n"
+        "- Регистрация: app.add_handler(CommandHandler('start', start)), MessageHandler(filters.TEXT & ~filters.COMMAND, ...).\n"
+        "- FSM-диалоги через ConversationHandler с states/entry_points/fallbacks; выход — ConversationHandler.END.\n"
+        "- Состояние пользователя в context.user_data / context.chat_data, не в глобальных переменных.\n"
+        "- Инлайн-кнопки: InlineKeyboardMarkup + CallbackQueryHandler; в хендлере await update.callback_query.answer().\n"
+        "- Длинный/спецтекст экранируй под parse_mode (MarkdownV2/HTML); следи за разметкой чтобы не падал send.\n"
+        "- Для разработки run_polling(); для прода run_webhook(url=...) — не оба одновременно.\n"
+        "- Глобальный error handler через app.add_error_handler(...) для логирования и graceful-ответа."
+    ),
+}
+
+
 def _is_truncated(content: str) -> bool:
     """Return True if file content looks cut off mid-code."""
     s = content.rstrip()
@@ -245,6 +334,12 @@ class CoderAgent(BaseAgent):
         )
         if settings.STUDIO_V3:
             system = FILE_SYSTEM_TMA if is_tma else pick_prompt(CODER_FILE_BLOCKS_RU, CODER_FILE_BLOCKS_EN)
+            # Per-stack rules (TMA has its own dedicated prompt — skip for it)
+            if not is_tma:
+                stack = getattr(self.project, 'target_stack', '')
+                stack_rules = _STACK_RULES.get(stack, '')
+                if stack_rules:
+                    system = f"{system}\n\n## Правила стека ({stack}):\n{stack_rules}"
             # V3: добавляем DESIGN.md и лимит строк (если заданы в Коммите 5)
             max_lines, role = self._file_spec(path)
             design = self._design_excerpt()
@@ -351,6 +446,17 @@ class CoderAgent(BaseAgent):
 
     def _design_excerpt(self) -> str:
         d = getattr(self.project, 'design_md_content', '') or ''
+        state = ((getattr(self.project, 'interview_data', {}) or {})).get('design_state')
+        if state:
+            files_list = ', '.join(state.get('last_step_files', [])) or '—'
+            status_icon = '✓ зелёная' if state.get('build_status') == 'green' else '✗ красная'
+            state_block = (
+                f"\n\n## Прогресс реализации:\n"
+                f"- Завершено шагов: {state.get('completed_steps', 0)}\n"
+                f"- Файлы последнего шага: {files_list}\n"
+                f"- Сборка: {status_icon}"
+            )
+            return d[:4500] + state_block
         return d[:5000]
 
     def _commits_summary(self) -> str:

@@ -174,13 +174,49 @@ def is_http_alive(container_id: str) -> bool:
 
 
 def run_build_check(container_id: str, is_nextjs: bool = False) -> tuple:
-    """Run typecheck/build in container. Returns (exit_code, output)."""
+    """Run typecheck/build in container. Returns (exit_code, output).
+
+    IMPORTANT: pipe to tail loses the real exit_code (tail always exits 0).
+    We redirect to a file first, then tail the file, then exit with the real code.
+    """
     if is_nextjs:
-        return exec_command(container_id, 'pnpm build 2>&1 | tail -n 150')
-    return exec_command(
-        container_id,
-        'pnpm -s exec tsc --noEmit 2>&1 | tail -n 100 || pnpm -s build 2>&1 | tail -n 120',
-    )
+        # Next.js full build (includes type checking)
+        cmd = (
+            'pnpm build > /tmp/build.log 2>&1; _c=$?; '
+            'tail -n 150 /tmp/build.log; exit $_c'
+        )
+    else:
+        # tsc --noEmit for react/vue/html/tma (faster than full build)
+        cmd = (
+            'pnpm -s exec tsc --noEmit > /tmp/tsc.log 2>&1; _c=$?; '
+            'tail -n 100 /tmp/tsc.log; exit $_c'
+        )
+    return exec_command(container_id, cmd)
+
+
+def run_quality_gate(container_id: str, stack: str) -> tuple:
+    """Run stack-specific linter/type-checker for quality signals. Returns (exit_code, output).
+
+    Used as a supplementary signal after build_check passes. Stack-aware:
+    - nextjs: next lint (ESLint preconfigured via Next.js); returns lint errors
+    - python/django/telegram_bot: py_compile on all .py files
+    - other JS stacks: tsc (already covered by run_build_check; skip here)
+    Returns (0, '') if stack has no applicable quality gate.
+    """
+    if stack == 'nextjs':
+        cmd = (
+            'pnpm exec next lint --max-warnings 0 > /tmp/lint.log 2>&1; _c=$?; '
+            'tail -n 60 /tmp/lint.log; exit $_c'
+        )
+    elif stack in ('python', 'django', 'telegram_bot'):
+        cmd = (
+            'find /workspace -name "*.py" -not -path "*/__pycache__/*" | head -60 '
+            '| xargs python -m py_compile > /tmp/pycheck.log 2>&1; _c=$?; '
+            'cat /tmp/pycheck.log; exit $_c'
+        )
+    else:
+        return 0, ''
+    return exec_command(container_id, cmd)
 
 
 def get_logs_stream(container_id: str):

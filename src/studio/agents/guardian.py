@@ -212,6 +212,13 @@ class GuardianAgent(BaseAgent):
         elif settings.STUDIO_V3:
             system = pick_prompt(SYSTEM_V3_RU, SYSTEM_V3_EN)
             design = (getattr(self.project, 'design_md_content', '') or '')[:2000]
+            ds = ((getattr(self.project, 'interview_data', {}) or {})).get('design_state')
+            if ds:
+                files_list = ', '.join(ds.get('last_step_files', [])) or '—'
+                design += (
+                    f"\n\n## Прогресс: {ds.get('completed_steps', 0)} шаг(ов) сдано. "
+                    f"Файлы последнего шага: {files_list}."
+                )
             design_section = f'\n\nDESIGN.md (проверь соответствие):\n{design}' if design else ''
         else:
             system = pick_prompt(SYSTEM_RU, SYSTEM_EN)

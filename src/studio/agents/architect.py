@@ -157,6 +157,32 @@ class ArchitectAgent(BaseAgent):
             and getattr(self.project, 'target_stack', '') == 'tma'
         )
         system_project = SYSTEM_PROJECT_TMA if is_tma else pick_prompt(SYSTEM_PROJECT_RU, SYSTEM_PROJECT_EN)
+        # Per-stack architect addendum (overrides JS defaults for non-web stacks)
+        _ARCHITECT_STACK_NOTES = {
+            'python': (
+                "\n\nСТЕК: Python. НЕ упоминай pnpm/vite/npm/Next.js.\n"
+                "Структура: main.py (точка входа), requirements.txt, routers/, models/.\n"
+                "Запуск: uvicorn main:app --host 0.0.0.0 --port 3000 --reload (FastAPI)"
+                " или python main.py (Flask).\n"
+                "Шаг 1: requirements.txt + main.py с базовым сервером. Без mock-data.ts."
+            ),
+            'django': (
+                "\n\nСТЕК: Django. НЕ упоминай pnpm/vite/npm/Next.js.\n"
+                "Структура: manage.py, config/settings.py, приложения Django, requirements.txt.\n"
+                "Запуск: python manage.py runserver 0.0.0.0:3000.\n"
+                "Шаг 1: requirements.txt + manage.py + settings + корневой urls.py. Без mock-data.ts."
+            ),
+            'telegram_bot': (
+                "\n\nСТЕК: Telegram Bot (python-telegram-bot v20). НЕ упоминай pnpm/vite/Next.js.\n"
+                "Структура: bot.py (точка входа), handlers/, keyboards/, requirements.txt.\n"
+                "Запуск: python bot.py (polling режим). BOT_TOKEN из .env.\n"
+                "Шаг 1: requirements.txt + bot.py с базовым ApplicationBuilder + /start хендлер. "
+                "Без mock-data.ts."
+            ),
+        }
+        stack_note = _ARCHITECT_STACK_NOTES.get(stack, '')
+        if stack_note:
+            system_project = system_project + stack_note
         project_md = self.run_prompt(
             system_project,
             context,
@@ -191,6 +217,8 @@ class ArchitectAgent(BaseAgent):
             system_commits = pick_prompt(ARCHITECT_COMMITS_V3_RU, ARCHITECT_COMMITS_V3_EN)
         else:
             system_commits = pick_prompt(SYSTEM_COMMITS_RU, SYSTEM_COMMITS_EN)
+        if stack_note:
+            system_commits = system_commits + stack_note
         commits_md = self.run_prompt(
             system_commits,
             context + f"\n\nPROJECT.md already written:\n{project_md}",
