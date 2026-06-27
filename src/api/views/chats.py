@@ -546,20 +546,12 @@ class StreamMessageView(APIView):
                     assistant_message.kb_sources = kb_sources
 
                 # ── Sprint 3: генерация доп. вариантов ответа ─────────────────
+                # main bubble = Краткий; variants array holds the two alternatives only
                 all_variants = []
                 if variants_mode and full_text:
-                    all_variants.append({
-                        "label": "Краткий",
-                        "content": formatted_html,
-                        "plain_text": full_text,
-                    })
-                    _variant_defs = [
-                        ("Подробный", "Дай развёрнутый ответ с примерами кода если применимо. Минимум 200 слов."),
-                        ("Пошаговый", "Структурируй ответ как пошаговое руководство с нумерованными шагами."),
-                    ]
                     _base_msgs = [m for m in messages_for_api if not (
                         m.get("role") == "system" and "КРАТКИЙ ответ" in m.get("content", "")
-                    )][:-1]  # все кроме суффикса и последнего user
+                    )][:-1]  # all except brief suffix + last user msg
 
                     def _gen_variant(suffix_text, label):
                         try:
@@ -591,7 +583,7 @@ class StreamMessageView(APIView):
                             if _v:
                                 all_variants.append(_v)
 
-                    all_variants.sort(key=lambda v: ["Краткий", "Подробный", "Пошаговый"].index(v["label"]) if v["label"] in ["Краткий", "Подробный", "Пошаговый"] else 99)
+                    all_variants.sort(key=lambda v: ["Подробный", "Пошаговый"].index(v["label"]) if v["label"] in ["Подробный", "Пошаговый"] else 99)
                     assistant_message.variants = all_variants
 
                 assistant_message.save()

@@ -958,7 +958,6 @@ function MessageRow({
   chatId?: number;
 }) {
   const isUser = message.role === "user";
-  const router = typeof window !== "undefined" ? null : null; // placeholder, use router hook below
   const [savedFact, setSavedFact] = useState(false);
   const [branchLoading, setBranchLoading] = useState(false);
 

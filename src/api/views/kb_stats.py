@@ -24,7 +24,7 @@ class ProjectKBStatsView(APIView):
         disabled_count = 0
 
         for f in files:
-            chunk_count = f.chunks.count()
+            chunk_count = len(f.chunks.all())
             total_chunks += chunk_count
 
             if not f.enabled:

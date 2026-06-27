@@ -11,7 +11,7 @@ interface Props {
 export function ResponseVariants({ variants }: Props) {
   const [activeIndex, setActiveIndex] = useState(0);
 
-  if (!variants || variants.length < 2) return null;
+  if (!variants || variants.length < 1) return null;
 
   const active = variants[activeIndex];
 
