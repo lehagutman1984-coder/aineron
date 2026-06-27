@@ -1,250 +1,251 @@
-# Memory & Project Spaces: Plan for Market Leadership in Russia
-**Version 1.0 — 2026-06-27**
+# Память и Пространства проектов: план лидерства в России
+**Версия 1.0 — 2026-06-27**
 
 ---
 
-## Executive Summary
+## Краткое резюме
 
-Aineron already has strong infrastructure: hybrid RAG (vector + FTS + RRF), cross-encoder reranking, query expansion, rolling chat compression, persistent UserMemory with categories, and a memory management UI at `/account/memory/`. This is more technically advanced than most Russian competitors.
+У Aineron уже сильная инфраструктура: гибридный RAG (вектор + FTS + RRF), кросс-энкодерный реранкинг, расширение запросов, скользящее сжатие истории чата, постоянная UserMemory с категориями и интерфейс управления памятью на `/account/memory/`. Это технически лучше большинства российских конкурентов.
 
-The gap is not in the backend — it is in **what users see and feel**:
-- No citation display (user doesn't know which files answered their question)
-- No Deep Research mode (multi-step autonomous research with sources)
-- No multiple response variants
-- No quick memory actions from the chat interface
-- No knowledge base health dashboard
-- A few performance bugs in the write path
+Проблема не в бэкенде — она в **том, что пользователь видит и чувствует**:
+- Нет отображения источников (пользователь не знает, какие файлы дали ответ)
+- Нет режима глубокого исследования (многошаговый автономный поиск с источниками)
+- Нет нескольких вариантов ответа
+- Нет быстрых действий с памятью прямо из чата
+- Нет дашборда состояния базы знаний
+- Несколько багов в write-пути
 
-**Goal:** Become the #1 AI assistant in Russia for users who care about accurate, well-sourced answers — coders, researchers, analysts, and professionals who create projects.
+**Цель:** стать лучшим AI-ассистентом в России для пользователей, которым важны точные, хорошо обоснованные ответы — разработчики, исследователи, аналитики и профессионалы, создающие проекты.
 
 ---
 
-## Part 1: Current State Audit
+## Часть 1: Аудит текущего состояния
 
-### What works well
-| Feature | Status | Notes |
+### Что работает хорошо
+| Функция | Статус | Примечание |
 |---|---|---|
-| Persistent UserMemory (facts) | ✅ Production | Categories, pinning, dedup via content_key |
-| Memory management UI | ✅ Production | `/account/memory/` — 736 lines, full CRUD |
-| ChatSummary compression | ✅ Production | Rolling + incremental, Redis lock vs races |
-| RAG: hybrid search (FTS + vector) | ✅ Production | RRF merge, pgvector |
-| RAG: cross-encoder reranking | ✅ Production | Top-50 → Top-15 |
-| RAG: query expansion | ✅ Production | 3 LLM variants, Redis cache 24h |
-| @file / @web directives | ✅ Production | Parse, inject, web flag |
-| Conversation-aware search | ✅ Production | Last 4 messages fused with query |
-| Adaptive top_k | ✅ Production | Broad vs narrow query heuristic |
-| Two-level retrieval | ✅ Production | File → Chunk |
-| Git connector (GitHub/Gitea) | ✅ Production | Sync, commits, file versions |
-| Collaboration + audit log | ✅ Production | Collaborators, audit entries |
-| EDIT Blocks | ✅ Production | Patch-commit for large files |
-| Knowledge graph | ✅ Production | `/projects/[id]/graph` page |
+| Постоянная UserMemory (факты) | ✅ Продакшн | Категории, закрепление, дедупликация по content_key |
+| Интерфейс управления памятью | ✅ Продакшн | `/account/memory/` — 736 строк, полный CRUD |
+| Сжатие ChatSummary | ✅ Продакшн | Скользящее + инкрементальное, Redis-блокировка от гонок |
+| RAG: гибридный поиск (FTS + вектор) | ✅ Продакшн | RRF-слияние, pgvector |
+| RAG: кросс-энкодерный реранкинг | ✅ Продакшн | Top-50 → Top-15 |
+| RAG: расширение запросов | ✅ Продакшн | 3 LLM-варианта, Redis-кэш 24ч |
+| Директивы @file / @web | ✅ Продакшн | Парсинг, инжект, web-флаг |
+| Контекстно-зависимый поиск | ✅ Продакшн | Последние 4 сообщения слиты с запросом |
+| Адаптивный top_k | ✅ Продакшн | Эвристика широкий/узкий запрос |
+| Двухуровневый ретривал | ✅ Продакшн | Файл → Чанк |
+| Git-коннектор (GitHub/Gitea) | ✅ Продакшн | Синхронизация, коммиты, версии файлов |
+| Совместная работа + лог аудита | ✅ Продакшн | Коллабораторы, записи аудита |
+| EDIT Blocks | ✅ Продакшн | Патч-коммиты для больших файлов |
+| Граф знаний | ✅ Продакшн | Страница `/projects/[id]/graph` |
 
-### Bugs Found (write-path audit)
+### Найденные баги (аудит write-пути)
 
-**BUG-1 (performance): `existing_keys` computed but unused**
-In `tasks.py:extract_memory_facts` line 1100: a set of existing `content_key` values is loaded from DB but never used to pre-filter before `update_or_create`. Result: N extra DB round trips per extracted fact even when all facts already exist. Pre-filter check before update_or_create would reduce DB hits by ~70%.
+**БАГ-1 (производительность): `existing_keys` вычисляется, но не используется**
+В `tasks.py:extract_memory_facts` строка 1100: набор существующих `content_key` загружается из БД, но никогда не используется для предварительной фильтрации перед `update_or_create`. Результат: N лишних обращений к БД на каждый извлечённый факт, даже если все они уже существуют. Предварительная проверка перед `update_or_create` снизит нагрузку на БД примерно на 70%.
 
-**BUG-2 (performance): Two separate queries for existing facts**
-Lines 1100-1109 make two separate queries (`.values_list('content_key')` + `.values_list('content')`) that could be one query with both fields.
+**БАГ-2 (производительность): Два отдельных запроса к БД вместо одного**
+Строки 1100–1109 делают два отдельных запроса (`.values_list('content_key')` + `.values_list('content')`), которые можно объединить в один с обоими полями.
 
-**BUG-3 (correctness): Past summaries limited to 3 with no date range**
-`build_memory_context` loads only the 3 most recent `ChatSummary` records excluding current chat. If a user has 20 chats, the 4th-20th are silently dropped. No warning, no user control.
+**БАГ-3 (корректность): Прошлые резюме ограничены тремя и без настройки диапазона дат**
+`build_memory_context` загружает только 3 последние записи `ChatSummary`, исключая текущий чат. Если у пользователя 20 чатов — 4-й по 20-й молча отбрасываются. Без предупреждения, без контроля пользователя.
 
-**BUG-4 (correctness): `build_search_query` fetches `conv_window + 1` messages**
-Line 68 in `retrieval.py`: `[:conv_window + 1]` fetches one extra message to guard against the current message being already saved — but then the dedup check `if msg.strip() == user_message.strip()` is fragile (encoding differences, HTML, whitespace). Can silently include the current message twice.
+**БАГ-4 (корректность): `build_search_query` выбирает `conv_window + 1` сообщений**
+Строка 68 в `retrieval.py`: `[:conv_window + 1]` выбирает одно лишнее сообщение на случай, если текущее уже сохранено — но проверка дедупликации `if msg.strip() == user_message.strip()` хрупкая (разница кодировок, HTML, пробелы). Текущее сообщение может незаметно попасть дважды.
 
-**BUG-5 (UX): No memory feedback in chat**
-When `extract_memory_facts` runs and saves new facts, the user sees nothing in the chat interface. ChatGPT shows "Memory updated" notifications. Users don't know the system is learning.
+**БАГ-5 (UX): Нет обратной связи по памяти в чате**
+Когда `extract_memory_facts` выполняется и сохраняет новые факты, пользователь ничего не видит в интерфейсе чата. ChatGPT показывает уведомление «Память обновлена». Пользователи не знают, что система обучается.
 
-**BUG-6 (UX): No citation/source display**
-`build_project_knowledge_context` injects up to 15 chunks into the system prompt. The final answer includes knowledge from those chunks but shows zero attribution. Users don't know which files were consulted.
+**БАГ-6 (UX): Нет отображения источников/цитат**
+`build_project_knowledge_context` инжектирует до 15 чанков в системный промпт. Финальный ответ содержит знания из этих чанков, но показывает ноль атрибуции. Пользователи не знают, какие файлы были использованы.
 
 ---
 
-## Part 2: Competitor Analysis
+## Часть 2: Анализ конкурентов
 
-### World-Class Feature Inventory
+### Таблица функций мирового уровня
 
-| Feature | Claude.ai | ChatGPT | Cursor | Perplexity | Gemini |
+| Функция | Claude.ai | ChatGPT | Cursor | Perplexity | Gemini |
 |---|---|---|---|---|---|
-| File uploads to project | ✅ | ✅ | ✅ (codebase) | ✅ | ✅ |
-| Auto memory extraction | ❌ | ✅ | ❌ | ❌ | ✅ (partial) |
-| Memory management UI | ❌ | ✅ | ❌ | ❌ | ✅ |
-| Citation display | ❌ | ✅ | ✅ | ✅✅ (best) | ✅ |
-| Deep Research mode | ❌ | ✅ | ❌ | ✅✅ (best) | ✅ |
-| Multiple response variants | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Knowledge graph | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Git sync | ❌ | ❌ | ✅✅ (core) | ❌ | ❌ |
-| Team collaboration | ✅ | ✅ (Teams) | ✅ (Teams) | ✅ | ✅ |
-| Quick memory actions in chat | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Conversation branching | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Web search in projects | ❌ | ✅ | ✅ | ✅✅ | ✅ |
+| Загрузка файлов в проект | ✅ | ✅ | ✅ (кодовая база) | ✅ | ✅ |
+| Авто-извлечение памяти | ❌ | ✅ | ❌ | ❌ | ✅ (частично) |
+| Интерфейс управления памятью | ❌ | ✅ | ❌ | ❌ | ✅ |
+| Отображение источников/цитат | ❌ | ✅ | ✅ | ✅✅ (лучший) | ✅ |
+| Режим глубокого исследования | ❌ | ✅ | ❌ | ✅✅ (лучший) | ✅ |
+| Несколько вариантов ответа | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Граф знаний | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Синхронизация с Git | ❌ | ❌ | ✅✅ (основное) | ❌ | ❌ |
+| Командная работа | ✅ | ✅ (Teams) | ✅ (Teams) | ✅ | ✅ |
+| Быстрые действия с памятью в чате | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Ветвление разговоров | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Веб-поиск в проектах | ❌ | ✅ | ✅ | ✅✅ | ✅ |
 
-**Aineron unique strengths today:**
-- Knowledge graph visualization (no one else has this)
-- Git connector (only Cursor has this at scale)
-- EDIT Blocks for large file patching
-- Auto memory extraction from conversations (only ChatGPT has this among big players)
-- Hybrid RAG + cross-encoder reranking (backend quality higher than most)
+**Уникальные сильные стороны Aineron сегодня:**
+- Граф знаний (ни у кого из конкурентов нет)
+- Git-коннектор (только у Cursor, но он десктопный)
+- EDIT Blocks для патчинга больших файлов
+- Авто-извлечение памяти из разговоров (только у ChatGPT среди крупных игроков)
+- Гибридный RAG + кросс-энкодерный реранкинг (качество бэкенда выше большинства)
 
-**Critical gaps vs world class:**
-1. Citation display — Perplexity's core differentiator; users **expect** this
-2. Deep Research mode — ChatGPT, Perplexity, Gemini all have it; users ask for it
-3. Multiple response variants — no one has it; strong differentiator if well-executed
-4. Memory notifications in chat — ChatGPT shows "Memory updated"; builds trust
-5. Knowledge base health dashboard — Cursor shows indexing status prominently
-
----
-
-## Part 3: Sprint Plan
-
-### Sprint 1 — Citation Display & Source Cards (Priority: CRITICAL)
-**Estimated: 4-5 days**
-**Impact: HIGHEST — changes how users perceive every RAG response**
-
-**What:**
-- Backend: return `used_sources` in API response alongside the answer (file names, chunk IDs, confidence)
-- Frontend: `SourceCard` component — collapsible list below every AI response in project chats
-- Source cards show: file name, file path, excerpt (100 chars), relevance score
-- "3 источника" collapsed by default, expandable with one click
-- Visual: thin horizontal divider + `BookOpen` icon + file name badges
-
-**Technical:**
-- Modify `build_project_knowledge_context()` to also return `List[SourceRef]` (name, path, excerpt)
-- Pass sources through the response stream as a final SSE event `{"type": "sources", "data": [...]}`
-- Frontend: parse sources event, render below message bubble
-
-**Files to change:**
-- `src/aitext/tasks.py` — `build_project_knowledge_context` returns `(context_str, sources)`
-- `src/aitext/views.py` (or SSE endpoint) — append sources event
-- `frontend/components/chat/Message.tsx` — add SourceCards slot
-- `frontend/components/chat/SourceCard.tsx` — new component
+**Критические пробелы по сравнению с мировым уровнем:**
+1. Отображение источников — ключевой дифференциатор Perplexity; пользователи **ожидают** этого
+2. Режим глубокого исследования — у ChatGPT, Perplexity, Gemini уже есть; пользователи запрашивают
+3. Несколько вариантов ответа — ни у кого нет; сильный дифференциатор при хорошей реализации
+4. Уведомления о памяти в чате — ChatGPT показывает «Память обновлена»; это строит доверие
+5. Дашборд состояния базы знаний — Cursor показывает статус индексации заметно
 
 ---
 
-### Sprint 2 — Deep Research Mode (Priority: HIGH)
-**Estimated: 6-8 days**
-**Impact: HIGH — major competitive gap; users explicitly request**
+## Часть 3: Спринты реализации
 
-**What:**
-Deep Research = multi-step autonomous research that goes beyond a single RAG lookup:
-1. User clicks "Глубокое исследование" button in project chat
-2. AI plans 4-8 search queries (project KB + web)
-3. Executes searches in parallel, reads top results
-4. Synthesizes into a long-form structured report with citations
-5. Shows progress: "Поиск 3/7: authentication patterns..."
-6. Final report: headers, bullet points, numbered footnotes, sources section
+### Спринт 1 — Отображение источников и карточки источников (Приоритет: КРИТИЧЕСКИЙ)
+**Оценка: 4–5 дней**
+**Влияние: МАКСИМАЛЬНОЕ — меняет восприятие каждого RAG-ответа**
 
-**Architecture:**
+**Что делаем:**
+- Бэкенд: возвращаем `used_sources` в API-ответе вместе с текстом (имена файлов, ID чанков, уверенность)
+- Фронтенд: компонент `SourceCard` — раскрываемый список под каждым ответом ИИ в чатах проекта
+- Карточки источников показывают: имя файла, путь, отрывок (100 символов), оценку релевантности
+- «3 источника» — свёрнуто по умолчанию, раскрывается одним кликом
+- Визуально: тонкий разделитель + иконка `BookOpen` + значки имён файлов
+- При наведении на номер источника [1] — всплывающая подсказка с заголовком источника, доменом и точной цитатой (без перехода на другую страницу)
+
+**Технически:**
+- Изменить `build_project_knowledge_context()` — возвращать `(context_str, sources)` где `sources: List[SourceRef]` (имя, путь, отрывок)
+- Передавать источники через поток ответа как финальное SSE-событие `{"type": "sources", "data": [...]}`
+- Фронтенд: парсить событие источников, рендерить под пузырьком сообщения
+
+**Файлы для изменения:**
+- `src/aitext/tasks.py` — `build_project_knowledge_context` возвращает `(context_str, sources)`
+- `src/aitext/views.py` (или SSE-эндпоинт) — добавляем событие sources
+- `frontend/components/chat/Message.tsx` — добавляем слот SourceCards
+- `frontend/components/chat/SourceCard.tsx` — новый компонент
+
+---
+
+### Спринт 2 — Режим глубокого исследования (Приоритет: ВЫСОКИЙ)
+**Оценка: 6–8 дней**
+**Влияние: ВЫСОКОЕ — крупный конкурентный пробел; пользователи явно запрашивают**
+
+**Что делаем:**
+Глубокое исследование = многошаговый автономный поиск, выходящий за рамки единственного RAG-запроса:
+1. Пользователь нажимает кнопку «Глубокое исследование» в чате проекта
+2. ИИ планирует 4–8 поисковых запросов (база знаний проекта + веб)
+3. Выполняет поиски параллельно, читает лучшие результаты
+4. Синтезирует в структурированный отчёт с цитатами
+5. Показывает прогресс: «Поиск 3/7: паттерны аутентификации... (4 источника)»
+6. Финальный отчёт: заголовки, пункты, нумерованные сноски, раздел источников
+
+**Архитектура:**
 ```
-DeepResearch task (Celery):
-  → plan_queries(question)           # LLM: generates 4-8 sub-queries
+Задача DeepResearch (Celery):
+  → plan_queries(question)           # LLM: генерирует 4–8 подзапросов
   → parallel_search(queries):
-      → kb_search(q) for each        # project RAG
-      → web_search(q) for each       # Serper/Tavily API
-  → deduplicate + score results
-  → synthesize_report(all_chunks)    # long LLM call with citations
-  → stream progress via SSE
+      → kb_search(q) для каждого     # RAG проекта
+      → web_search(q) для каждого    # Serper/Tavily API
+  → дедупликация + оценка результатов
+  → synthesize_report(all_chunks)    # длинный вызов LLM с цитатами
+  → стриминг прогресса через SSE
 ```
 
-**Frontend:**
-- Toggle button "Обычный" / "Исследование" in project chat input
-- **Research runs in background**: user can close tab and return to completed report (SSE notification on finish)
-- Research progress sidebar: live step-by-step "Поиск 3/7: authentication patterns... (4 источника)" 
-- Report renderer: `<ResearchReport>` with collapsible sections + numbered footnotes
-- **Hover-to-preview citations**: tooltip on citation [1] shows source title, domain, exact excerpt — no navigation needed
-- Export: Download as Markdown / PDF
+**Фронтенд:**
+- Кнопка-переключатель «Обычный» / «Исследование» в строке ввода чата проекта
+- **Исследование работает в фоне**: пользователь может закрыть вкладку и вернуться к готовому отчёту (SSE-уведомление по завершении)
+- Живая боковая панель прогресса: пошаговое «Поиск 3/7: паттерны аутентификации... (4 источника)»
+- Рендерер отчёта: компонент `<ResearchReport>` с раскрываемыми разделами + нумерованными сносками
+- **Предпросмотр цитаты по наведению**: всплывающая подсказка на [1] показывает заголовок источника, домен, точный отрывок — без перехода
+- Экспорт: скачать как Markdown / PDF
 
-**Files to change:**
+**Файлы для изменения:**
 - `src/aitext/tasks.py` — `deep_research_task(chat_id, message_id, question)`
-- `src/aitext/views.py` — `DeepResearchView` (POST to start, GET for status)
+- `src/aitext/views.py` — `DeepResearchView` (POST для старта, GET для статуса)
 - `frontend/components/chat/DeepResearchPanel.tsx`
 - `frontend/components/chat/ResearchReport.tsx`
 - `frontend/app/projects/[id]/page.tsx`
 
 ---
 
-### Sprint 3 — Multiple Response Variants (Priority: HIGH)
-**Estimated: 3-4 days**
-**Impact: HIGH — unique feature, no competitor has it**
+### Спринт 3 — Несколько вариантов ответа (Приоритет: ВЫСОКИЙ)
+**Оценка: 3–4 дня**
+**Влияние: ВЫСОКОЕ — уникальная функция, ни у кого из конкурентов нет**
 
-**What:**
-- "Варианты ответа" toggle in chat input (only available in project chats, premium)
-- Generates 3 responses in parallel with different instructions:
-  - Вариант 1: "Краткий — максимум 150 слов"
-  - Вариант 2: "Развёрнутый с примерами кода"
-  - Вариант 3: "Пошаговое руководство"
-- Horizontal tabs above the response: "Краткий · Подробный · Пошаговый"
-- User picks one, the others are discarded
-- Optional: user can customize variant names ("Для джуна" / "Для тимлида")
+**Что делаем:**
+- Переключатель «Варианты ответа» в строке ввода чата (только для чатов проекта, premium)
+- Генерирует 3 ответа параллельно с разными инструкциями:
+  - Вариант 1: «Краткий — максимум 150 слов»
+  - Вариант 2: «Развёрнутый с примерами кода»
+  - Вариант 3: «Пошаговое руководство»
+- Горизонтальные вкладки над ответом: «Краткий · Подробный · Пошаговый»
+- Пользователь выбирает один, остальные отбрасываются
+- Дополнительно: пользователь может кастомизировать названия вариантов («Для джуна» / «Для тимлида»)
 
-**Technical:**
-- 3 parallel LLM calls with different system prompt suffixes
-- Stream all 3 via separate SSE channels (or bundle into one multiplexed stream)
-- Frontend: tab switcher component with lazy loading per variant
-- Billing: count as 1.5× stars (3 requests for price of 1.5)
+**Технически:**
+- 3 параллельных вызова LLM с разными суффиксами системного промпта
+- Стриминг всех трёх через отдельные SSE-каналы (или один мультиплексированный поток)
+- Фронтенд: компонент переключения вкладок с ленивой загрузкой для каждого варианта
+- Биллинг: считается как 1.5× звезды (3 запроса по цене 1.5)
 
-**Files to change:**
+**Файлы для изменения:**
 - `src/aitext/tasks.py` — `generate_response_variants(message_id, n=3)`
 - `src/aitext/views.py` — `VariantsView`
 - `frontend/components/chat/ResponseVariants.tsx`
 
 ---
 
-### Sprint 4 — Memory Quick Actions in Chat (Priority: MEDIUM-HIGH)
-**Estimated: 2-3 days**
-**Impact: MEDIUM — trust + discoverability; ChatGPT shows this builds strong user habits**
+### Спринт 4 — Быстрые действия с памятью в чате (Приоритет: СРЕДНИЙ-ВЫСОКИЙ)
+**Оценка: 2–3 дня**
+**Влияние: СРЕДНЕЕ — доверие + обнаруживаемость; ChatGPT показал, что это формирует сильные привычки**
 
-**What:**
-1. **Memory notification toast**: When `extract_memory_facts` saves new facts, push SSE event `{"type": "memory_update", "facts": ["Разработчик на Python", "Работает в стартапе"]}` — frontend shows brief toast "Запомнено: 2 факта"
-2. **"Запомнить" quick action**: Hover on any user message → action menu with "Запомнить" → creates UserMemory fact from selected text, category selector popup
-3. **"Забыть" from response**: Long-press or right-click on assistant message → "Удалить из памяти" — deactivates the fact that was used to generate this
-4. **Memory indicator**: Small brain icon on messages that used memory facts, tooltip shows which facts were applied
+**Что делаем:**
+1. **Тост-уведомление о памяти**: когда `extract_memory_facts` сохраняет новые факты — SSE-событие `{"type": "memory_update", "facts": ["Разработчик на Python", "Работает в стартапе"]}` — фронтенд показывает краткий тост «Запомнено: 2 факта»
+2. **Быстрое действие «Запомнить»**: наведение на любое сообщение пользователя → меню действий с «Запомнить» → создаёт факт UserMemory из выделенного текста, всплывающий выбор категории
+3. **«Забыть» из ответа**: долгое нажатие или правый клик на сообщение ассистента → «Удалить из памяти» — деактивирует факт, использованный для генерации этого ответа
+4. **Индикатор памяти**: маленькая иконка мозга на сообщениях, использовавших факты памяти, всплывающая подсказка показывает какие факты были применены
 
-**Files to change:**
-- `src/aitext/tasks.py` — `extract_memory_facts` emits SSE event after save
-- `frontend/components/chat/Message.tsx` — add action menu, memory indicator
-- `frontend/components/chat/MemoryToast.tsx` — new animated toast
+**Файлы для изменения:**
+- `src/aitext/tasks.py` — `extract_memory_facts` отправляет SSE-событие после сохранения
+- `frontend/components/chat/Message.tsx` — добавляем меню действий, индикатор памяти
+- `frontend/components/chat/MemoryToast.tsx` — новый анимированный тост
 - `frontend/lib/api/memory.ts` — `quickSaveFact(text, category)`
 
 ---
 
-### Sprint 5 — Knowledge Base Health Dashboard (Priority: MEDIUM)
-**Estimated: 3-4 days**
-**Impact: MEDIUM — Cursor's strongest UX pattern; users trust indexed codebases more when they can see the status**
+### Спринт 5 — Дашборд состояния базы знаний (Приоритет: СРЕДНИЙ)
+**Оценка: 3–4 дня**
+**Влияние: СРЕДНЕЕ — сильнейший UX-паттерн Cursor; пользователи больше доверяют индексированным кодовым базам, когда видят статус**
 
-**What:**
-Inside `/projects/[id]/` — new "База знаний" tab:
-- File list with status badges: Indexed / Pending / Failed / Disabled
-- Chunk count per file, embedding size, last indexed at
-- "Re-index" button per file + "Re-index all" batch
-- Chunk preview: expandable view of what the AI sees from each file
-- Coverage gauge: "X из Y файлов проиндексировано"
-- Connector sync status: last sync, next sync, manual trigger
-- Embedding model info: which model, dimension, total vectors
+**Что делаем:**
+Внутри `/projects/[id]/` — новая вкладка «База знаний»:
+- Список файлов со значками статуса: Проиндексирован / Ожидание / Ошибка / Отключён
+- Количество чанков на файл, размер эмбеддингов, дата последней индексации
+- Кнопка «Переиндексировать» на файл + пакетное «Переиндексировать всё»
+- Предпросмотр чанков: раскрываемый вид того, что видит ИИ из каждого файла
+- Индикатор покрытия: «X из Y файлов проиндексировано»
+- Статус синхронизации коннектора: последняя синхронизация, следующая, ручной запуск
+- Информация о модели эмбеддингов: какая модель, размерность, общее количество векторов
 
-**Files to change:**
+**Файлы для изменения:**
 - `src/aitext/views.py` — `ProjectKBStatsView`, `ProjectFileReindexView`
-- `frontend/app/projects/[id]/kb/page.tsx` — new page
+- `frontend/app/projects/[id]/kb/page.tsx` — новая страница
 - `frontend/components/project/KBFileRow.tsx`
 - `frontend/components/project/KBCoverageGauge.tsx`
 
 ---
 
-### Sprint 6 — Bug Fixes & Performance (Priority: MEDIUM)
-**Estimated: 2 days**
-**Impact: Backend quality — users feel it as faster, more accurate memory**
+### Спринт 6 — Исправление багов и производительность (Приоритет: СРЕДНИЙ)
+**Оценка: 2 дня**
+**Влияние: Качество бэкенда — пользователи ощущают это как более быструю и точную память**
 
-**What (from BUG-1 to BUG-4 above):**
+**Что делаем (БАГ-1 — БАГ-4 выше):**
 
-1. **BUG-1 fix**: Use `existing_keys` set to pre-filter before `update_or_create`:
+1. **Исправление БАГ-1**: использовать набор `existing_keys` для предварительной фильтрации перед `update_or_create`:
 ```python
-# Before calling update_or_create, check if key already in set
+# Перед вызовом update_or_create проверяем есть ли ключ в наборе
 if content_key in existing_keys:
-    continue  # skip DB hit entirely
+    continue  # пропускаем обращение к БД полностью
 ```
 
-2. **BUG-2 fix**: Merge two queries into one with `.values('content_key', 'content')`:
+2. **Исправление БАГ-2**: объединяем два запроса в один через `.values('content_key', 'content')`:
 ```python
 existing_facts = {
     f['content_key']: f['content']
@@ -255,106 +256,106 @@ existing_keys = set(existing_facts.keys())
 existing_preview = '\n'.join(f'- {v}' for v in list(existing_facts.values())[:30])
 ```
 
-3. **BUG-3 fix**: Add `days` parameter to `build_memory_context`, allow configuring past summary count via `MEMORY_PAST_SESSIONS` setting (default 5, not 3).
+3. **Исправление БАГ-3**: добавить параметр `days` в `build_memory_context`, настройка количества прошлых резюме через переменную `MEMORY_PAST_SESSIONS` (по умолчанию 5, а не 3).
 
-4. **BUG-4 fix**: In `build_search_query`, remove `+1` and use ID comparison instead of string equality.
+4. **Исправление БАГ-4**: в `build_search_query` убрать `+1` и использовать сравнение по ID вместо сравнения строк.
 
-5. Add database index on `ChatSummary.updated_at` for the past_summaries query.
+5. Добавить индекс БД на `ChatSummary.updated_at` для запроса прошлых резюме.
 
 ---
 
-### Sprint 7 — Conversation Branching (Priority: LOW-MEDIUM)
-**Estimated: 5-6 days**
-**Impact: MEDIUM — power users love this; differentiated from all competitors**
+### Спринт 7 — Ветвление разговоров (Приоритет: НИЗКИЙ-СРЕДНИЙ)
+**Оценка: 5–6 дней**
+**Влияние: СРЕДНЕЕ — продвинутые пользователи любят это; дифференцирует от всех конкурентов**
 
-**What:**
-- "Создать ветку" button on any message in project chat
-- Branches from that message point, creating a new chat with same history up to that point
-- Branch indicator showing parent message
-- Sidebar: list of branches for a chat
-- Merge best branch back to main: manually select "Сделать основной"
+**Что делаем:**
+- Кнопка «Создать ветку» на любом сообщении в чате проекта
+- Ответвляется от точки этого сообщения, создавая новый чат с той же историей до этой точки
+- Индикатор ветки показывает родительское сообщение
+- Боковая панель: список веток для чата
+- Слияние лучшей ветки с основной: вручную выбрать «Сделать основным»
 
-**Files to change:**
+**Файлы для изменения:**
 - `src/aitext/models.py` — `Chat.parent_chat`, `Chat.branch_from_message_id`
 - `src/aitext/views.py` — `BranchChatView`
 - `frontend/components/chat/BranchButton.tsx`
-- `frontend/app/projects/[id]/page.tsx` — branch sidebar
+- `frontend/app/projects/[id]/page.tsx` — боковая панель веток
 
 ---
 
-## Part 3b: Verified UX Patterns from Competitor Research (Workflow Agents)
+## Часть 3б: Проверенные UX-паттерны конкурентов (исследование агентами)
 
-The following patterns were verified via live web search across all 5 competitors:
+Следующие паттерны проверены через живой веб-поиск по всем 5 конкурентам:
 
-**What users universally love (ranked by trust signal per dev-hour):**
+**Что пользователи любят больше всего (по соотношению доверия к трудозатратам):**
 
-1. **Hover-to-preview citations** (Perplexity) — tooltip shows source title, domain, and exact quoted sentence without page navigation. Zero friction, maximum trust. Implement: frontend-only tooltip on citation number hover.
+1. **Предпросмотр цитаты по наведению** (Perplexity) — всплывающая подсказка показывает заголовок источника, домен и точное предложение без перехода на страницу. Нулевое трение, максимальное доверие. Реализация: только фронтенд, подсказка по наведению на номер цитаты.
 
-2. **Research runs in background** (ChatGPT, Perplexity) — user can close tab and return to a finished report. Eliminates "babysitting" long operations. Implement: Celery task + SSE notification on completion.
+2. **Исследование работает в фоне** (ChatGPT, Perplexity) — пользователь может закрыть вкладку и вернуться к готовому отчёту. Устраняет необходимость «сидеть и ждать». Реализация: задача Celery + SSE-уведомление по завершении.
 
-3. **Live progress sidebar with sub-topic breakdown** (Perplexity, Gemini) — shows "Searching for: X... Found 3 sources" live. Trust signal #1 vs. competitors, cited by users as primary reason to prefer Perplexity.
+3. **Живая боковая панель прогресса с разбивкой по подтемам** (Perplexity, Gemini) — показывает «Поиск: X... Найдено 3 источника» в реальном времени. Главный сигнал доверия, который пользователи называют основной причиной предпочтения Perplexity.
 
-4. **One-click rollback on artifacts** (Claude Artifacts) — every AI edit creates a snapshot, revert in one click. Users describe it as "makes editing feel safe."
+4. **Откат артефакта одним кликом** (Claude Artifacts) — каждое изменение ИИ создаёт снимок, откат одним кликом. Пользователи описывают это как «редактировать стало безопасно».
 
-5. **Visible, versionable project instructions** (Cursor .cursorrules) — plain-text in sidebar or checked into git. Team-shareable, auditable, not buried in settings.
+5. **Видимые, версионируемые инструкции проекта** (Cursor .cursorrules) — обычный текст в боковой панели или в git. Общий для команды, проверяемый, не спрятан в настройках.
 
-**Table stakes already covered in Aineron (confirmed):**
-- ✅ Persistent per-project conversation history
-- ✅ File upload + project knowledge base with RAG
-- ✅ Custom instructions / system prompt per workspace
-- ✅ Memory view/edit/delete at `/account/memory/`
-- ✅ Project-level sharing with collaborators
+**Базовые возможности, уже реализованные в Aineron (подтверждено):**
+- ✅ Постоянная история разговоров на уровне проекта
+- ✅ Загрузка файлов + база знаний проекта с RAG
+- ✅ Пользовательские инструкции / системный промпт для рабочего пространства
+- ✅ Просмотр/редактирование/удаление памяти на `/account/memory/`
+- ✅ Шаринг проекта с коллабораторами
 
-**Differentiators Aineron can own uniquely:**
-- Knowledge graph (no competitor has this)
-- Git connector with EDIT Blocks (only Cursor has Git, but as desktop app)
-- Multiple response variants (no competitor has this)
-- Auto memory extraction from conversations (only ChatGPT has this)
-- Hover-to-preview citations with knowledge graph link (unique combination)
+**Уникальные дифференциаторы, которые может занять Aineron:**
+- Граф знаний (ни у кого из конкурентов нет)
+- Git-коннектор + EDIT Blocks (только у Cursor, но он десктопный)
+- Несколько вариантов ответа (ни у кого нет)
+- Авто-извлечение памяти из разговоров (только у ChatGPT)
+- Предпросмотр цитат по наведению с переходом в граф знаний (уникальная комбинация)
 
 ---
 
-## Part 4: Success Metrics
+## Часть 4: Метрики успеха
 
-| Metric | Baseline | Target (90 days) |
+| Метрика | Базовый уровень | Цель (90 дней) |
 |---|---|---|
-| Project chat DAU | — | +40% after Deep Research launch |
-| Memory fact retention (% users with >5 facts) | — | 60%+ |
-| Citation click-through rate | N/A | 20% of responses |
-| Deep Research activations / day | N/A | 100+ |
-| Response variant selection | N/A | 30% of variant users pick non-default |
-| KB health dashboard views / week | N/A | 200+ |
+| DAU чатов проектов | — | +40% после запуска глубокого исследования |
+| Удержание фактов памяти (% пользователей с >5 фактами) | — | 60%+ |
+| Кликабельность источников | — | 20% ответов |
+| Активаций глубокого исследования / день | — | 100+ |
+| Выбор вариантов ответа | — | 30% пользователей вариантов выбирают не первый |
+| Просмотры дашборда базы знаний / неделю | — | 200+ |
 
 ---
 
-## Part 5: Priority Stack-Rank
+## Часть 5: Приоритизация спринтов
 
-| Sprint | Feature | Effort | Impact | Start |
+| Спринт | Функция | Трудозатраты | Влияние | Начало |
 |---|---|---|---|---|
-| Sprint 1 | Citation Display | 4-5d | CRITICAL | Immediately |
-| Sprint 2 | Deep Research | 6-8d | HIGH | After Sprint 1 |
-| Sprint 3 | Response Variants | 3-4d | HIGH | Parallel with Sprint 2 |
-| Sprint 4 | Memory Quick Actions | 2-3d | MEDIUM | After Sprint 1 |
-| Sprint 5 | KB Health Dashboard | 3-4d | MEDIUM | After Sprint 2 |
-| Sprint 6 | Bug Fixes | 2d | MEDIUM | Any time |
-| Sprint 7 | Conversation Branching | 5-6d | LOW-MED | After Sprint 3 |
+| Спринт 1 | Отображение источников | 4–5 дн | КРИТИЧЕСКОЕ | Немедленно |
+| Спринт 2 | Глубокое исследование | 6–8 дн | ВЫСОКОЕ | После спринта 1 |
+| Спринт 3 | Варианты ответа | 3–4 дн | ВЫСОКОЕ | Параллельно со спринтом 2 |
+| Спринт 4 | Быстрые действия с памятью | 2–3 дн | СРЕДНЕЕ | После спринта 1 |
+| Спринт 5 | Дашборд базы знаний | 3–4 дн | СРЕДНЕЕ | После спринта 2 |
+| Спринт 6 | Исправление багов | 2 дн | СРЕДНЕЕ | В любое время |
+| Спринт 7 | Ветвление разговоров | 5–6 дн | НИЗКОЕ-СРЕДНЕЕ | После спринта 3 |
 
-**Recommended order**: Sprint 6 (bugs, quick wins) → Sprint 1 (citations) → Sprint 3 + Sprint 4 (parallel) → Sprint 2 (Deep Research, most impact) → Sprint 5 → Sprint 7.
-
----
-
-## Part 6: Why This Makes Aineron #1 in Russia
-
-After these sprints, Aineron will be the **only** Russian AI service with:
-1. **Citation display with knowledge graph** — users see exactly which file answered their question + graph showing connections
-2. **Git-connected projects with KB health** — like Cursor but as a web SaaS
-3. **Auto memory extraction + quick chat actions** — better UX than ChatGPT's memory (Russian-native)
-4. **Deep Research** — matches Perplexity/ChatGPT for research use cases
-5. **Multiple response variants** — unique feature no competitor offers
-6. **Conversation branching** — power users love exploring alternative paths
-
-The combination of **code intelligence** (Git + KB + Studio) + **research** (Deep Research + Citations) + **memory** (auto extraction + quick actions) creates a product that is genuinely better than individual competitors for Russian professional users.
+**Рекомендуемый порядок**: Спринт 6 (баги, быстрые победы) → Спринт 1 (источники) → Спринты 3 + 4 (параллельно) → Спринт 2 (глубокое исследование, максимальное влияние) → Спринт 5 → Спринт 7.
 
 ---
 
-*Plan written 2026-06-27. Update on each sprint completion.*
+## Часть 6: Почему это делает Aineron №1 в России
+
+После этих спринтов Aineron станет **единственным** российским AI-сервисом с:
+1. **Отображением источников + граф знаний** — пользователи видят точно, какой файл ответил на вопрос + граф связей
+2. **Git-подключёнными проектами с дашбордом базы знаний** — как Cursor, но веб-сервис
+3. **Авто-извлечением памяти + быстрыми действиями в чате** — лучший UX, чем у ChatGPT (нативно на русском)
+4. **Глубоким исследованием** — на уровне Perplexity/ChatGPT для исследовательских задач
+5. **Несколькими вариантами ответа** — уникальная функция, которой нет ни у кого
+6. **Ветвлением разговоров** — продвинутые пользователи любят исследовать альтернативные пути
+
+Сочетание **интеллекта кода** (Git + База знаний + Studio) + **исследования** (Глубокое исследование + Источники) + **памяти** (авто-извлечение + быстрые действия) создаёт продукт, который объективно лучше каждого конкурента по отдельности для российских профессиональных пользователей.
+
+---
+
+*План написан 2026-06-27. Обновлять после завершения каждого спринта.*
