@@ -8,7 +8,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.clickjacking import xframe_options_exempt
 from rest_framework import permissions
 from rest_framework.renderers import BaseRenderer
-from rest_framework.views import APIView, AsyncAPIView
+from rest_framework.views import APIView
 from rest_framework.response import Response
 from ..models import StudioProject, ProjectDatabase, PreviewSession
 from ..serializers import PipelineStateSerializer
@@ -190,33 +190,32 @@ class PipelineRunView(APIView):
         return Response({'status': 'running'}, status=202)
 
 
-class PipelineEventsView(AsyncAPIView):
+async def PipelineEventsView(request, id):
     """
-    Async SSE view — nginx routes /events/ to Daphne so this runs in the asyncio
-    event loop, not a Gunicorn worker thread. Each SSE connection costs one async
-    coroutine instead of one OS thread, allowing thousands of concurrent sessions.
-    Requires AsyncAPIView (DRF 3.15+) so dispatch() properly awaits get().
+    Async SSE endpoint — pure Django async function view (no DRF wrapper).
+    DRF APIView.dispatch() is sync and cannot await async handlers.
+    Django's own ASGI handler detects async functions and runs them natively.
+    nginx routes /events/ to Daphne:9000 so this stays in the asyncio event loop.
     """
-    permission_classes = [permissions.IsAuthenticated]
-    renderer_classes = [EventStreamRenderer]
+    from ..events import get_pipeline_events_async
 
-    async def get(self, request, id):
-        from ..events import get_pipeline_events_async
+    if not request.user.is_authenticated:
+        return HttpResponse(status=401)
 
-        try:
-            await StudioProject.objects.aget(id=id, user=request.user)
-        except StudioProject.DoesNotExist:
-            return HttpResponse(status=404)
+    try:
+        await StudioProject.objects.aget(id=id, user=request.user)
+    except StudioProject.DoesNotExist:
+        return HttpResponse(status=404)
 
-        async def generator():
-            yield 'data: {"type": "connected"}\n\n'
-            async for raw in get_pipeline_events_async(str(id)):
-                yield f'data: {raw}\n\n'
+    async def generator():
+        yield 'data: {"type": "connected"}\n\n'
+        async for raw in get_pipeline_events_async(str(id)):
+            yield f'data: {raw}\n\n'
 
-        resp = StreamingHttpResponse(generator(), content_type='text/event-stream')
-        resp['Cache-Control'] = 'no-cache'
-        resp['X-Accel-Buffering'] = 'no'
-        return resp
+    resp = StreamingHttpResponse(generator(), content_type='text/event-stream')
+    resp['Cache-Control'] = 'no-cache'
+    resp['X-Accel-Buffering'] = 'no'
+    return resp
 
 
 class PipelinePauseView(APIView):
