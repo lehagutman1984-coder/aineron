@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw, Paperclip, BookMarked, Globe, Volume2, Square, Loader, ChevronDown, ChevronRight, Settings2, FileText, X, GitCommit, CheckCircle2, XCircle, Download, Layers, BookmarkPlus, GitBranch } from "lucide-react";
+import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw, Paperclip, BookMarked, Globe, Volume2, Square, Loader, ChevronDown, ChevronRight, Settings2, FileText, X, GitCommit, CheckCircle2, XCircle, Download, Layers, BookmarkPlus, GitBranch, Microscope } from "lucide-react";
 import { MarkdownContent } from "@/components/chat/MarkdownContent";
 import { AttachmentPreview, type AttachmentState } from "@/components/chat/AttachmentPreview";
 import { PromptPicker } from "@/components/chat/PromptPicker";
@@ -12,7 +12,9 @@ import { VoiceButton } from "@/components/chat/VoiceButton";
 import { MediaSettingsPanel } from "@/components/chat/MediaSettingsPanel";
 import { ArtifactPanel, extractArtifact, type Artifact } from "@/components/chat/ArtifactPanel";
 import { ResponseVariants } from "@/components/chat/ResponseVariants";
-import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, uploadFile, synthesizeSpeech, confirmCommit, exportChat, quickSaveFact, branchChat, APIError, type CommitProposed } from "@/lib/api/client";
+import { DeepResearchPanel } from "@/components/chat/DeepResearchPanel";
+import { ResearchReport } from "@/components/chat/ResearchReport";
+import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, uploadFile, synthesizeSpeech, confirmCommit, exportChat, quickSaveFact, branchChat, startDeepResearch, getResearchStatus, APIError, type CommitProposed } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 import type { WebMessage, ChatDetail, UiSection, KBSource } from "@/lib/api/types";
 
@@ -37,6 +39,9 @@ export default function ChatPage() {
     return localStorage.getItem("web_search_enabled") === "1";
   });
   const [variantsMode, setVariantsMode] = useState(false);
+  const [researchMode, setResearchMode] = useState(false);
+  const [activeResearchId, setActiveResearchId] = useState<number | null>(null);
+  const [activeResearchMsgId, setActiveResearchMsgId] = useState<number | null>(null);
 
   // Настройки медиа-моделей (video/image): инициализируются из config_json.api_defaults
   const [mediaSettings, setMediaSettings] = useState<Record<string, unknown>>({});
@@ -87,6 +92,41 @@ export default function ChatPage() {
       return false;
     },
   });
+
+  // Sprint 2 — deep research polling
+  const { data: researchPoll } = useQuery({
+    queryKey: ["deep-research", activeResearchId],
+    queryFn: () => getResearchStatus(activeResearchId!),
+    enabled: activeResearchId !== null,
+    refetchInterval: (query) => {
+      const st = query.state.data?.status;
+      if (st === "done" || st === "error") return false;
+      return 2000;
+    },
+  });
+
+  useEffect(() => {
+    if (!researchPoll || !activeResearchMsgId) return;
+    if (researchPoll.status === "done" && researchPoll.content) {
+      qc.setQueryData<ChatDetail>(["chat", id], (prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          messages: prev.messages.map((m) =>
+            m.id === activeResearchMsgId
+              ? { ...m, content: researchPoll.content!, plain_text: researchPoll.plain_text ?? "", status: "completed" as const }
+              : m
+          ),
+        };
+      });
+      setActiveResearchId(null);
+      setActiveResearchMsgId(null);
+    }
+    if (researchPoll.status === "error") {
+      setActiveResearchId(null);
+      setActiveResearchMsgId(null);
+    }
+  }, [researchPoll?.status, researchPoll?.content, activeResearchMsgId, id, qc]);
 
   // Инициализируем настройки медиа-модели из api_defaults при загрузке чата
   useEffect(() => {
@@ -305,6 +345,51 @@ export default function ChatPage() {
     [id, qc, setStars, webSearch, variantsMode]
   );
 
+  // Sprint 2 — Deep Research submit
+  const handleResearchSubmit = useCallback(
+    async (question: string) => {
+      if (!question.trim()) return;
+      const now = Date.now();
+      const tempUserId = now;
+      const tempAssistId = now + 1;
+      qc.setQueryData<ChatDetail>(["chat", id], (prev) =>
+        prev
+          ? {
+              ...prev,
+              messages: [
+                ...prev.messages,
+                { id: tempUserId, role: "user", content: question, plain_text: question, files: [], status: "completed", error_message: null, created_at: new Date().toISOString() },
+                { id: tempAssistId, role: "assistant", content: "", plain_text: null, files: [], status: "pending", error_message: null, created_at: new Date().toISOString() },
+              ],
+            }
+          : prev
+      );
+      try {
+        const res = await startDeepResearch(id, question);
+        // Replace temp IDs with real ones
+        qc.setQueryData<ChatDetail>(["chat", id], (prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            messages: prev.messages
+              .filter((m) => m.id !== tempUserId && m.id !== tempAssistId)
+              .concat([
+                { id: res.user_message_id, role: "user", content: question, plain_text: question, files: [], status: "completed", error_message: null, created_at: new Date().toISOString() },
+                { id: res.message_id, role: "assistant", content: "", plain_text: null, files: [], status: "pending", error_message: null, created_at: new Date().toISOString() },
+              ]),
+          };
+        });
+        setActiveResearchId(res.research_id);
+        setActiveResearchMsgId(res.message_id);
+      } catch (e) {
+        qc.setQueryData<ChatDetail>(["chat", id], (prev) =>
+          prev ? { ...prev, messages: prev.messages.filter((m) => m.id !== tempUserId && m.id !== tempAssistId) } : prev
+        );
+      }
+    },
+    [id, qc]
+  );
+
   // File attachment upload
   const handleFiles = useCallback(
     async (fileList: FileList | File[]) => {
@@ -385,6 +470,12 @@ export default function ChatPage() {
     const msg = text.trim();
     const hasUploading = attachments.some((a) => a.uploading);
     if ((!msg && attachments.filter((a) => !a.error && !a.uploading).length === 0) || isBusy || hasUploading) return;
+    if (researchMode && msg) {
+      setText("");
+      setAttachments([]);
+      void handleResearchSubmit(msg);
+      return;
+    }
     const attachmentIds = attachments.filter((a) => !a.uploading && !a.error).map((a) => a.id);
     if (chat?.network.provider === "fal-ai") {
       sendMutation.mutate({ msg: msg || " ", attachmentIds, ws: webSearch, settings: Object.keys(mediaSettings).length > 0 ? mediaSettings : undefined });
@@ -659,6 +750,11 @@ export default function ChatPage() {
                   onRegenerate={() => regenerateMutation.mutate()}
                   onOpenArtifact={setActiveArtifact}
                   chatId={id}
+                  researchData={
+                    msg.id === activeResearchMsgId && researchPoll
+                      ? { steps: researchPoll.steps, status: researchPoll.status, error: researchPoll.error }
+                      : undefined
+                  }
                 />
               ));
             })()}
@@ -836,6 +932,24 @@ export default function ChatPage() {
                 )}
               </button>
 
+              <button
+                type="button"
+                onClick={() => setResearchMode((v) => !v)}
+                title={researchMode ? "Режим исследования включён. Нажмите чтобы отключить" : "Глубокое исследование — многошаговый автономный анализ с цитатами"}
+                className={[
+                  "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all",
+                  researchMode
+                    ? "bg-[rgba(22,163,74,0.12)] text-[#16a34a] ring-1 ring-[rgba(22,163,74,0.35)]"
+                    : "text-[rgba(13,13,13,0.45)] hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.38)] dark:hover:text-[#ececec]",
+                ].join(" ")}
+              >
+                <Microscope size={12} />
+                Исследование
+                {researchMode && (
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#16a34a]" />
+                )}
+              </button>
+
               <VoiceButton
                 disabled={isBusy}
                 onTranscript={(t) =>
@@ -946,6 +1060,7 @@ function MessageRow({
   onRegenerate,
   onOpenArtifact,
   chatId,
+  researchData,
 }: {
   message: WebMessage;
   networkAvatar: string | null;
@@ -956,6 +1071,7 @@ function MessageRow({
   onRegenerate?: () => void;
   onOpenArtifact?: (a: Artifact) => void;
   chatId?: number;
+  researchData?: { steps: import("@/lib/api/types").DeepResearchStep[]; status: import("@/lib/api/types").DeepResearchStatus; error: string };
 }) {
   const isUser = message.role === "user";
   const [savedFact, setSavedFact] = useState(false);
@@ -1040,6 +1156,13 @@ function MessageRow({
         {/* Live streaming: show accumulated tokens with cursor */}
         {streamingText !== undefined ? (
           <StreamingDisplay text={streamingText} />
+        ) : researchData && (researchData.status === "pending" || researchData.status === "running") ? (
+          <DeepResearchPanel steps={researchData.steps} status={researchData.status} error={researchData.error} />
+        ) : researchData?.status === "error" ? (
+          <>
+            <DeepResearchPanel steps={researchData.steps} status={researchData.status} error={researchData.error} />
+            <p className="mt-2 text-[13px] text-red-500">Ошибка исследования. Попробуйте ещё раз.</p>
+          </>
         ) : message.status === "pending" ? (
           <div className="flex items-center gap-1 py-2">
             <BouncingDots />
@@ -1053,15 +1176,19 @@ function MessageRow({
             {message.search_context && (
               <SearchContextBlock context={message.search_context} />
             )}
-            <AssistantContent
-              content={message.content}
-              plain_text={message.plain_text ?? null}
-              shouldAnimate={shouldAnimate}
-            />
+            {message.content && message.content.includes("<h2") ? (
+              <ResearchReport html={message.content} />
+            ) : (
+              <AssistantContent
+                content={message.content}
+                plain_text={message.plain_text ?? null}
+                shouldAnimate={shouldAnimate}
+              />
+            )}
             {message.kb_sources && message.kb_sources.length > 0 && (
               <SourcesBlock sources={message.kb_sources} />
             )}
-            {message.variants && message.variants.length >= 2 && (
+            {message.variants && message.variants.length >= 1 && (
               <ResponseVariants variants={message.variants} />
             )}
             {/* Hover action bar */}

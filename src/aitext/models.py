@@ -926,6 +926,40 @@ class UserMemory(models.Model):
         super().save(*args, **kwargs)
 
 
+class DeepResearch(models.Model):
+    """Sprint 2 — фоновое глубокое исследование с прогрессом по шагам."""
+
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Ожидает'
+        RUNNING = 'running', 'Выполняется'
+        DONE    = 'done',    'Готово'
+        ERROR   = 'error',   'Ошибка'
+
+    chat     = models.ForeignKey(Chat, on_delete=models.CASCADE, related_name='deep_researches')
+    message  = models.OneToOneField(
+        Message, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='deep_research',
+    )
+    question = models.TextField(verbose_name='Вопрос')
+    status   = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
+    steps    = models.JSONField(default=list, blank=True, verbose_name='Шаги выполнения')
+    error    = models.TextField(blank=True, verbose_name='Ошибка')
+    created_at  = models.DateTimeField(auto_now_add=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Глубокое исследование'
+        verbose_name_plural = 'Глубокие исследования'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Research #{self.id} — {self.status} — {self.question[:60]}"
+
+    def append_step(self, kind: str, text: str):
+        self.steps = list(self.steps) + [{'kind': kind, 'text': text}]
+        self.save(update_fields=['steps'])
+
+
 class ChatSummary(models.Model):
     """Сжатое резюме чата. Хранит rolling_summary (текущая сессия) и финальное summary."""
 

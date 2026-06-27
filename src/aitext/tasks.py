@@ -1714,3 +1714,188 @@ def poll_connectors():
             logger.warning(f'[poll_connectors] error checking connector {connector.id}: {e}')
 
     logger.info(f'[poll_connectors] checked {connectors.count()} connectors, triggered {triggered} syncs')
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Sprint 2 — Deep Research Mode
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _plan_research_queries(question: str, model_name: str, n: int = 6) -> list[str]:
+    """Ask LLM to generate n search sub-queries for a deep research question."""
+    client = get_laozhang_client()
+    prompt = (
+        f"You are a research assistant. For the question below, generate exactly {n} "
+        f"specific and diverse search sub-queries that together cover the topic comprehensively.\n"
+        f"Return ONLY a JSON array of strings, nothing else.\n\n"
+        f"Question: {question}"
+    )
+    try:
+        r = client.chat.completions.create(
+            model=model_name,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.5,
+            max_tokens=512,
+            stream=False,
+        )
+        raw = (r.choices[0].message.content or "").strip()
+        # extract JSON array
+        start = raw.find('[')
+        end = raw.rfind(']') + 1
+        if start != -1 and end > start:
+            import json as _json
+            return _json.loads(raw[start:end])
+    except Exception as e:
+        logger.warning(f"[deep_research] plan_queries failed: {e}")
+    return [question]
+
+
+def _kb_search_chunks(project, query: str, top_k: int = 5) -> list[dict]:
+    """Search project KB and return chunk dicts."""
+    if project is None:
+        return []
+    try:
+        from aitext.search import hybrid_search
+        chunks = hybrid_search(project, [query], top_k=top_k)
+        return [{'text': c.get('text', ''), 'source': c.get('filename', ''), 'kind': 'kb'} for c in chunks]
+    except Exception:
+        pass
+    try:
+        from aitext.embeddings import vector_search_candidates
+        candidates = vector_search_candidates(project, query, top_n=top_k)
+        return [{'text': c.get('text', ''), 'source': c.get('filename', ''), 'kind': 'kb'} for c in candidates]
+    except Exception as e:
+        logger.warning(f"[deep_research] kb_search failed: {e}")
+    return []
+
+
+def _web_search_chunks(query: str) -> list[dict]:
+    """Search web via Tavily and return chunk dicts (empty if no key)."""
+    tavily_key = getattr(settings, "TAVILY_API_KEY", "")
+    if not tavily_key:
+        return []
+    try:
+        r = _req.post(
+            "https://api.tavily.com/search",
+            json={"api_key": tavily_key, "query": query[:400], "search_depth": "basic", "max_results": 4},
+            timeout=10,
+        )
+        r.raise_for_status()
+        items = r.json().get("results", [])
+        return [{'text': f"{it['title']}\n{it.get('content','')[:300]}", 'source': it['url'], 'kind': 'web'} for it in items]
+    except Exception as e:
+        logger.warning(f"[deep_research] web_search failed: {e}")
+    return []
+
+
+def _synthesize_report(question: str, chunks: list[dict], model_name: str) -> str:
+    """Generate a structured research report from collected chunks."""
+    client = get_laozhang_client()
+    numbered = []
+    for i, c in enumerate(chunks, 1):
+        numbered.append(f"[{i}] ({c['kind']}) {c['source']}\n{c['text'][:400]}")
+    context = "\n\n".join(numbered)
+    prompt = (
+        f"You are a research analyst. Based on the sources below, write a comprehensive "
+        f"research report answering the question. Use markdown with headers (##), bullet points, "
+        f"and numbered citations like [1][2] inline when you reference a source. "
+        f"End with a ## Источники section listing all sources.\n\n"
+        f"Question: {question}\n\n"
+        f"Sources:\n{context}\n\n"
+        f"Write the full report in the same language as the question:"
+    )
+    try:
+        r = client.chat.completions.create(
+            model=model_name,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.4,
+            max_tokens=3000,
+            stream=False,
+        )
+        return r.choices[0].message.content or ""
+    except Exception as e:
+        logger.error(f"[deep_research] synthesize failed: {e}")
+        return f"Ошибка синтеза: {e}"
+
+
+@shared_task(bind=True, max_retries=1, soft_time_limit=300)
+def deep_research_task(self, research_id: int):
+    """Sprint 2 — multi-step autonomous research with KB + web, stores progress in DeepResearch.steps."""
+    from aitext.models import DeepResearch, Chat, Message, NeuralNetwork
+    from django.utils import timezone
+
+    try:
+        research = DeepResearch.objects.select_related('chat', 'chat__network', 'message').get(id=research_id)
+    except DeepResearch.DoesNotExist:
+        logger.error(f"[deep_research] research {research_id} not found")
+        return
+
+    research.status = 'running'
+    research.save(update_fields=['status'])
+
+    chat = research.chat
+    project = getattr(chat, 'project', None)
+    network = chat.network
+    model_name = getattr(network, 'model_name', 'gpt-4o-mini') if network else 'gpt-4o-mini'
+    question = research.question
+
+    try:
+        # Step 1: plan queries
+        research.append_step('plan', f'Планирование поисковых запросов...')
+        queries = _plan_research_queries(question, model_name, n=5)
+        research.append_step('plan_done', f'Сгенерировано {len(queries)} подзапросов')
+
+        # Step 2: parallel search
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        all_chunks = []
+        completed_searches = 0
+
+        def _search_one(q):
+            kb = _kb_search_chunks(project, q, top_k=4)
+            web = _web_search_chunks(q)
+            return q, kb + web
+
+        with ThreadPoolExecutor(max_workers=3) as ex:
+            futures = {ex.submit(_search_one, q): q for q in queries}
+            for fut in as_completed(futures):
+                q, chunks = fut.result()
+                completed_searches += 1
+                all_chunks.extend(chunks)
+                research.append_step(
+                    'search',
+                    f'Поиск {completed_searches}/{len(queries)}: «{q[:60]}» — {len(chunks)} источников',
+                )
+
+        # Step 3: dedup by text prefix
+        seen = set()
+        deduped = []
+        for c in all_chunks:
+            key = c['text'][:120].strip()
+            if key and key not in seen:
+                seen.add(key)
+                deduped.append(c)
+        deduped = deduped[:20]  # cap at 20 chunks
+        research.append_step('dedup', f'Дедупликация: {len(deduped)} уникальных источников')
+
+        # Step 4: synthesize
+        research.append_step('synthesize', 'Синтез отчёта...')
+        report_md = _synthesize_report(question, deduped, model_name)
+
+        # Step 5: format and save to message
+        formatted_html = CodeFormatter.format_ai_response(report_md)
+        if research.message:
+            research.message.content = formatted_html
+            research.message.plain_text = report_md
+            research.message.status = 'completed'
+            research.message.save(update_fields=['content', 'plain_text', 'status'])
+
+        research.status = 'done'
+        research.finished_at = timezone.now()
+        research.append_step('done', 'Исследование завершено')
+        research.save(update_fields=['status', 'finished_at'])
+
+    except Exception as e:
+        logger.error(f"[deep_research] task {research_id} failed: {e}", exc_info=True)
+        research.status = 'error'
+        research.error = str(e)
+        research.finished_at = timezone.now()
+        research.save(update_fields=['status', 'error', 'finished_at'])

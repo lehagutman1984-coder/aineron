@@ -857,3 +857,31 @@ export interface AuthUser {
   avatar: string;
   email_verified: boolean;
 }
+
+// ============ Deep Research (Sprint 2) ============
+
+export type DeepResearchStatus = "pending" | "running" | "done" | "error";
+
+export interface DeepResearchStep {
+  kind: string;
+  text: string;
+}
+
+export interface DeepResearchStartResponse {
+  research_id: number;
+  message_id: number;
+  user_message_id: number;
+  status: DeepResearchStatus;
+}
+
+export interface DeepResearchPollResponse {
+  id: number;
+  status: DeepResearchStatus;
+  steps: DeepResearchStep[];
+  error: string;
+  message_id: number | null;
+  created_at: string;
+  finished_at: string | null;
+  content?: string;
+  plain_text?: string;
+}

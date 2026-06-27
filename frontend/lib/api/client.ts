@@ -851,3 +851,14 @@ export const reindexProjectFile = (projectId: number, fileId: number): Promise<{
 
 export const branchChat = (chatId: number, messageId: number): Promise<{ chat_id: number; title: string }> =>
   request(`/chats/${chatId}/branch/`, { method: "POST", body: JSON.stringify({ message_id: messageId }) });
+
+// ============ Sprint 2: Deep Research ============
+
+export const startDeepResearch = (
+  chatId: number,
+  question: string,
+): Promise<import("./types").DeepResearchStartResponse> =>
+  request(`/chats/${chatId}/research/`, { method: "POST", body: JSON.stringify({ question }) });
+
+export const getResearchStatus = (researchId: number): Promise<import("./types").DeepResearchPollResponse> =>
+  request(`/research/${researchId}/`);

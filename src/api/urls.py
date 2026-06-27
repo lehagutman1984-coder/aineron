@@ -65,6 +65,7 @@ from api.views.memory import (
 )
 from api.views.branch import BranchChatView
 from api.views.kb_stats import ProjectKBStatsView, ProjectFileReindexView
+from api.views.deep_research import DeepResearchStartView, DeepResearchStatusView
 from api.views.personas import PersonaListCreateView, PersonaDetailView
 from api.views.arena import ArenaVoteView, ArenaLeaderboardView
 from api.views.knowledge_graph import KnowledgeGraphView
@@ -97,6 +98,8 @@ urlpatterns = [
     path('v1/chats/<int:chat_id>/messages/stream/', StreamMessageView.as_view(), name='chat_stream_message'),
     path('v1/chats/<int:chat_id>/regenerate/', RegenerateView.as_view(), name='chat_regenerate'),
     path('v1/chats/<int:chat_id>/branch/', BranchChatView.as_view(), name='chat_branch'),
+    path('v1/chats/<int:chat_id>/research/', DeepResearchStartView.as_view(), name='deep_research_start'),
+    path('v1/research/<int:research_id>/', DeepResearchStatusView.as_view(), name='deep_research_status'),
     path('v1/chats/<int:chat_id>/upload/', ChatFileUploadView.as_view(), name='chat_file_upload'),
     path('v1/messages/<int:message_id>/status/', MessageStatusView.as_view(), name='message_status'),
 
