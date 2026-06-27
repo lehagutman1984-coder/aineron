@@ -240,6 +240,7 @@ export interface WebMessage {
   variants?: MessageVariant[];
   is_research?: boolean;
   research_id?: number | null;
+  used_memory?: boolean;
   created_at: string;
 }
 
@@ -414,6 +415,8 @@ export interface ChatDetail {
   settings: Record<string, unknown>;
   created_at: string;
   updated_at: string;
+  parent_chat_id?: number | null;
+  branches?: { id: number; title: string; created_at: string }[];
 }
 
 export interface ChatSearchResult {

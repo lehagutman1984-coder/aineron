@@ -6,13 +6,14 @@ from api.serializers.catalog import NeuralNetworkListSerializer
 class MessageSerializer(serializers.ModelSerializer):
     is_research = serializers.SerializerMethodField()
     research_id = serializers.SerializerMethodField()
+    used_memory = serializers.SerializerMethodField()
 
     class Meta:
         model = Message
         fields = [
             'id', 'role', 'content', 'plain_text', 'files', 'status',
             'error_message', 'search_context', 'kb_sources', 'variants', 'created_at',
-            'is_research', 'research_id',
+            'is_research', 'research_id', 'used_memory',
         ]
 
     def get_is_research(self, obj):
@@ -27,6 +28,9 @@ class MessageSerializer(serializers.ModelSerializer):
             return dr.id if dr is not None else None
         except Exception:
             return None
+
+    def get_used_memory(self, obj):
+        return bool((obj.settings or {}).get('used_memory', False))
 
 
 class NeuralNetworkChatSerializer(NeuralNetworkListSerializer):
@@ -59,10 +63,12 @@ class ChatDetailSerializer(serializers.ModelSerializer):
     network = NeuralNetworkChatSerializer(read_only=True)
     messages = MessageSerializer(many=True, read_only=True)
     project = serializers.SerializerMethodField()
+    parent_chat_id = serializers.SerializerMethodField()
+    branches = serializers.SerializerMethodField()
 
     class Meta:
         model = Chat
-        fields = ['id', 'title', 'network', 'project_id', 'project', 'messages', 'settings', 'created_at', 'updated_at']
+        fields = ['id', 'title', 'network', 'project_id', 'project', 'messages', 'settings', 'created_at', 'updated_at', 'parent_chat_id', 'branches']
 
     def get_project(self, obj):
         p = obj.project
@@ -75,6 +81,14 @@ class ChatDetailSerializer(serializers.ModelSerializer):
             'color': p.color,
             'icon': p.icon,
         }
+
+    def get_parent_chat_id(self, obj):
+        return obj.parent_chat_id
+
+    def get_branches(self, obj):
+        return list(
+            obj.branches.values('id', 'title', 'created_at').order_by('-created_at')[:10]
+        )
 
 
 class ChatUpdateSerializer(serializers.ModelSerializer):

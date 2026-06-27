@@ -308,4 +308,12 @@ class CodeFormatter:
                 formatted_para = cls._format_inline_markdown(para)
                 if formatted_para.strip():
                     final_paragraphs.append(f'<p>{formatted_para}</p>')
-        return '\n'.join(final_paragraphs)
+        import re as _re
+        result = '\n'.join(final_paragraphs)
+        # Wrap citation refs [1], [2], etc. in hoverable spans (skip markdown links [N](url))
+        result = _re.sub(
+            r'\[(\d+)\](?!\()',
+            r'<span class="cite-ref" data-cite="\1">[\1]</span>',
+            result
+        )
+        return result

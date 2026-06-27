@@ -290,7 +290,7 @@ type SSEEvent =
   | { type: "init"; user_message_id: number; assistant_message_id: number; new_balance: number }
   | { type: "search_done"; preview: string }
   | { type: "token"; text: string }
-  | { type: "done"; content: string; plain_text: string; search_context?: string; sources?: import("./types").KBSource[]; variants?: import("./types").MessageVariant[]; commit_proposed?: { id: number; commit_message: string; files_count: number; project_id: number } | null }
+  | { type: "done"; content: string; plain_text: string; search_context?: string; sources?: import("./types").KBSource[]; variants?: import("./types").MessageVariant[]; commit_proposed?: { id: number; commit_message: string; files_count: number; project_id: number } | null; used_memory?: boolean }
   | { type: "error"; message: string };
 
 export interface CommitProposed {
@@ -307,7 +307,7 @@ export async function streamMessage(
     onInit: (data: { user_message_id: number; assistant_message_id: number; new_balance: number }) => void;
     onSearchDone?: (preview: string) => void;
     onToken: (text: string) => void;
-    onDone: (data: { content: string; plain_text: string; search_context?: string; sources?: import("./types").KBSource[]; variants?: import("./types").MessageVariant[]; commit_proposed?: CommitProposed | null }) => void;
+    onDone: (data: { content: string; plain_text: string; search_context?: string; sources?: import("./types").KBSource[]; variants?: import("./types").MessageVariant[]; commit_proposed?: CommitProposed | null; used_memory?: boolean }) => void;
     onError: (message: string) => void;
   }
 ): Promise<void> {
@@ -841,6 +841,27 @@ export const quickSaveFact = (text: string): Promise<{ id: number; content: stri
 
 export const getMemoryToast = (): Promise<import("./types").MemoryToastData> =>
   request("/memory/toast/");
+
+export async function getMemoryFacts(): Promise<{ id: number; content: string; category: string; is_active: boolean }[]> {
+  try {
+    const res = await fetch(`${BASE_URL}/memory/`, { credentials: "include" });
+    if (!res.ok) return [];
+    const data = await res.json() as { results?: { id: number; content: string; category: string; is_active: boolean }[] } | { id: number; content: string; category: string; is_active: boolean }[];
+    if (Array.isArray(data)) return data;
+    return (data as { results?: { id: number; content: string; category: string; is_active: boolean }[] }).results ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export async function deactivateMemoryFact(id: number): Promise<void> {
+  await fetch(`${BASE_URL}/memory/${id}/`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ is_active: false }),
+    credentials: "include",
+  });
+}
 
 // ============ Sprint 5: KB Health Dashboard ============
 

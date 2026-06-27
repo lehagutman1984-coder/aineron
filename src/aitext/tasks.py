@@ -1020,6 +1020,10 @@ def generate_ai_response(self, message_id, web_search=False):
         message.content = formatted_html
         message.plain_text = plain_text
         message.status = Message.Status.COMPLETED
+        if memory_ctx:
+            _s = dict(message.settings or {})
+            _s['used_memory'] = True
+            message.settings = _s
         message.save()
 
         logger.info(f"AI ответ сгенерирован для сообщения {message_id}, сохранено изображений: {len(saved_images)}")

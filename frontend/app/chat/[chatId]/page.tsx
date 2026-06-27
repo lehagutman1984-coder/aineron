@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw, Paperclip, BookMarked, Globe, Volume2, Square, Loader, ChevronDown, ChevronRight, Settings2, FileText, X, GitCommit, CheckCircle2, XCircle, Download, Layers, BookmarkPlus, GitBranch, Microscope } from "lucide-react";
+import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw, Paperclip, BookMarked, Globe, Volume2, Square, Loader, ChevronDown, ChevronRight, Settings2, FileText, X, GitCommit, CheckCircle2, XCircle, Download, Layers, BookmarkPlus, GitBranch, Microscope, Brain } from "lucide-react";
 import { MarkdownContent } from "@/components/chat/MarkdownContent";
 import { AttachmentPreview, type AttachmentState } from "@/components/chat/AttachmentPreview";
 import { PromptPicker } from "@/components/chat/PromptPicker";
@@ -15,6 +15,7 @@ import { ResponseVariants } from "@/components/chat/ResponseVariants";
 import { DeepResearchPanel } from "@/components/chat/DeepResearchPanel";
 import { ResearchReport } from "@/components/chat/ResearchReport";
 import { MemoryToast } from "@/components/chat/MemoryToast";
+import { ForgetMemoryPanel } from "@/components/chat/ForgetMemoryPanel";
 import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, uploadFile, synthesizeSpeech, confirmCommit, exportChat, quickSaveFact, branchChat, startDeepResearch, getResearchStatus, getMemoryToast, APIError, type CommitProposed } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 import type { WebMessage, ChatDetail, UiSection, KBSource } from "@/lib/api/types";
@@ -299,14 +300,14 @@ export default function ChatPage() {
             setSearchPhase("idle");
             setStreamText((prev) => prev + token);
           },
-          onDone: ({ content, plain_text, search_context, sources, variants, commit_proposed }) => {
+          onDone: ({ content, plain_text, search_context, sources, variants, commit_proposed, used_memory }) => {
             qc.setQueryData<ChatDetail>(["chat", id], (prev) => {
               if (!prev) return prev;
               return {
                 ...prev,
                 messages: prev.messages.map((m) =>
                   m.id === realAssistId
-                    ? { ...m, content, plain_text, status: "completed" as const, search_context: search_context ?? "", kb_sources: sources ?? m.kb_sources, variants: variants ?? m.variants }
+                    ? { ...m, content, plain_text, status: "completed" as const, search_context: search_context ?? "", kb_sources: sources ?? m.kb_sources, variants: variants ?? m.variants, used_memory: used_memory ?? false }
                     : m
                 ),
               };
@@ -675,6 +676,36 @@ export default function ChatPage() {
           >
             <X size={12} />
           </button>
+        </div>
+      )}
+
+      {/* Branch tree: parent link */}
+      {chat?.parent_chat_id && (
+        <div className="flex shrink-0 items-center gap-1.5 border-b border-[rgba(13,13,13,0.06)] px-4 py-1.5 text-[12px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.4)] dark:border-[rgba(255,255,255,0.06)]">
+          <GitBranch size={11} className="shrink-0" />
+          <span>Ветка от:</span>
+          <a href={`/chat/${chat.parent_chat_id}/`} className="text-[#0a7cff] hover:underline">родительский чат</a>
+        </div>
+      )}
+
+      {/* Branch tree: child branches */}
+      {chat?.branches && chat.branches.length > 0 && (
+        <div className="shrink-0 border-b border-[rgba(13,13,13,0.06)] px-4 py-2 dark:border-[rgba(255,255,255,0.06)]">
+          <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.4)]">
+            <GitBranch size={11} />
+            Ветки ({chat.branches.length})
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {chat.branches.map((b) => (
+              <a
+                key={b.id}
+                href={`/chat/${b.id}/`}
+                className="rounded-[6px] border border-[rgba(13,13,13,0.1)] px-2 py-0.5 text-[11px] text-[rgba(13,13,13,0.6)] hover:border-[#0a7cff] hover:text-[#0a7cff] transition-colors dark:border-[rgba(255,255,255,0.1)] dark:text-[rgba(236,236,236,0.5)]"
+              >
+                {b.title || `Ветка #${b.id}`}
+              </a>
+            ))}
+          </div>
         </div>
       )}
 
@@ -1106,6 +1137,7 @@ function MessageRow({
   const isUser = message.role === "user";
   const [savedFact, setSavedFact] = useState(false);
   const [branchLoading, setBranchLoading] = useState(false);
+  const [forgetPanelMsgId, setForgetPanelMsgId] = useState<number | null>(null);
 
   if (isUser) {
     return (
@@ -1213,6 +1245,7 @@ function MessageRow({
                 content={message.content}
                 plain_text={message.plain_text ?? null}
                 shouldAnimate={shouldAnimate}
+                sources={message.kb_sources}
               />
             )}
             {message.kb_sources && message.kb_sources.length > 0 && (
@@ -1271,6 +1304,24 @@ function MessageRow({
                 />
               )}
             </div>
+            {/* Brain indicator + Забыть — только для assistant с used_memory */}
+            {message.used_memory && (
+              <div className="relative mt-1 flex items-center gap-1">
+                <div className="relative">
+                  <button
+                    onClick={() => setForgetPanelMsgId((v) => v === message.id ? null : message.id)}
+                    className="flex items-center gap-1 rounded-[6px] px-1.5 py-1 text-[11px] text-[rgba(124,58,237,0.6)] hover:bg-[rgba(124,58,237,0.07)] hover:text-[#7c3aed] transition-colors"
+                    title="Забыть из памяти"
+                  >
+                    <Brain size={12} />
+                    <span className="text-[10px]">Память</span>
+                  </button>
+                  {forgetPanelMsgId === message.id && (
+                    <ForgetMemoryPanel onClose={() => setForgetPanelMsgId(null)} />
+                  )}
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
@@ -1461,10 +1512,12 @@ function AssistantContent({
   content,
   plain_text,
   shouldAnimate,
+  sources,
 }: {
   content: string;
   plain_text: string | null;
   shouldAnimate: boolean;
+  sources?: KBSource[];
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -1486,6 +1539,21 @@ function AssistantContent({
       });
     });
   }, [content]);
+
+  // Attach cite-ref tooltips (KB inline citations).
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !sources?.length) return;
+    const spans = container.querySelectorAll<HTMLElement>(".cite-ref");
+    spans.forEach((span) => {
+      const n = parseInt(span.dataset.cite ?? "0", 10);
+      const src = sources[n - 1];
+      if (!src) return;
+      span.style.cursor = "pointer";
+      span.style.color = "#0a7cff";
+      span.title = `${src.filename}${src.snippet ? ": " + src.snippet : ""}`;
+    });
+  }, [content, sources]);
 
   // Prefer plain_text (raw markdown) → render with react-markdown.
   // Skip if plain_text is itself HTML — fal-ai stores HTML (with <img>) in plain_text.
