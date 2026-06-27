@@ -290,7 +290,7 @@ type SSEEvent =
   | { type: "init"; user_message_id: number; assistant_message_id: number; new_balance: number }
   | { type: "search_done"; preview: string }
   | { type: "token"; text: string }
-  | { type: "done"; content: string; plain_text: string; search_context?: string; sources?: import("./types").KBSource[]; commit_proposed?: { id: number; commit_message: string; files_count: number; project_id: number } | null }
+  | { type: "done"; content: string; plain_text: string; search_context?: string; sources?: import("./types").KBSource[]; variants?: import("./types").MessageVariant[]; commit_proposed?: { id: number; commit_message: string; files_count: number; project_id: number } | null }
   | { type: "error"; message: string };
 
 export interface CommitProposed {
@@ -302,12 +302,12 @@ export interface CommitProposed {
 
 export async function streamMessage(
   chatId: number,
-  body: { message: string; files?: unknown[]; settings?: Record<string, unknown>; attachment_ids?: string[]; web_search?: boolean },
+  body: { message: string; files?: unknown[]; settings?: Record<string, unknown>; attachment_ids?: string[]; web_search?: boolean; variants_mode?: boolean },
   callbacks: {
     onInit: (data: { user_message_id: number; assistant_message_id: number; new_balance: number }) => void;
     onSearchDone?: (preview: string) => void;
     onToken: (text: string) => void;
-    onDone: (data: { content: string; plain_text: string; search_context?: string; sources?: import("./types").KBSource[]; commit_proposed?: CommitProposed | null }) => void;
+    onDone: (data: { content: string; plain_text: string; search_context?: string; sources?: import("./types").KBSource[]; variants?: import("./types").MessageVariant[]; commit_proposed?: CommitProposed | null }) => void;
     onError: (message: string) => void;
   }
 ): Promise<void> {
@@ -830,3 +830,24 @@ export async function getCurrentUser(): Promise<User | null> {
     return null;
   }
 }
+
+// ============ Sprint 3: Response Variants ============
+// variants_mode is passed via streamMessage body — no separate endpoint needed
+
+// ============ Sprint 4: Memory Quick Save ============
+
+export const quickSaveFact = (text: string): Promise<{ id: number; content: string; created: boolean }> =>
+  request("/memory/quick-save/", { method: "POST", body: JSON.stringify({ text }) });
+
+// ============ Sprint 5: KB Health Dashboard ============
+
+export const getProjectKBStats = (projectId: number): Promise<import("./types").ProjectKBStats> =>
+  request<import("./types").ProjectKBStats>(`/projects/${projectId}/kb/stats/`);
+
+export const reindexProjectFile = (projectId: number, fileId: number): Promise<{ ok: boolean; embed_status: string }> =>
+  request(`/projects/${projectId}/files/${fileId}/reindex/`, { method: "POST" });
+
+// ============ Sprint 7: Conversation Branching ============
+
+export const branchChat = (chatId: number, messageId: number): Promise<{ chat_id: number; title: string }> =>
+  request(`/chats/${chatId}/branch/`, { method: "POST", body: JSON.stringify({ message_id: messageId }) });

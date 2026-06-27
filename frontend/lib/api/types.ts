@@ -220,6 +220,12 @@ export interface KBSource {
   path: string;
 }
 
+export interface MessageVariant {
+  label: string;
+  content: string;
+  plain_text: string;
+}
+
 export interface WebMessage {
   id: number;
   role: "user" | "assistant";
@@ -230,7 +236,31 @@ export interface WebMessage {
   error_message: string | null;
   search_context?: string;
   kb_sources?: KBSource[];
+  variants?: MessageVariant[];
   created_at: string;
+}
+
+export interface KBFileStat {
+  id: number;
+  filename: string;
+  file_type: "pdf" | "doc" | "text" | "code" | "other";
+  status: "processing" | "ready" | "error";
+  embed_status: "none" | "pending" | "done" | "error";
+  enabled: boolean;
+  chunk_count: number;
+  file_size: number;
+  source: "upload" | "repo";
+  created_at: string;
+}
+
+export interface ProjectKBStats {
+  file_count: number;
+  indexed_count: number;
+  pending_count: number;
+  error_count: number;
+  disabled_count: number;
+  total_chunks: number;
+  files: KBFileStat[];
 }
 
 export interface UiField {

@@ -4,14 +4,15 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw, Paperclip, BookMarked, Globe, Volume2, Square, Loader, ChevronDown, ChevronRight, Settings2, FileText, X, GitCommit, CheckCircle2, XCircle, Download, Layers } from "lucide-react";
+import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw, Paperclip, BookMarked, Globe, Volume2, Square, Loader, ChevronDown, ChevronRight, Settings2, FileText, X, GitCommit, CheckCircle2, XCircle, Download, Layers, BookmarkPlus, GitBranch } from "lucide-react";
 import { MarkdownContent } from "@/components/chat/MarkdownContent";
 import { AttachmentPreview, type AttachmentState } from "@/components/chat/AttachmentPreview";
 import { PromptPicker } from "@/components/chat/PromptPicker";
 import { VoiceButton } from "@/components/chat/VoiceButton";
 import { MediaSettingsPanel } from "@/components/chat/MediaSettingsPanel";
 import { ArtifactPanel, extractArtifact, type Artifact } from "@/components/chat/ArtifactPanel";
-import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, uploadFile, synthesizeSpeech, confirmCommit, exportChat, APIError, type CommitProposed } from "@/lib/api/client";
+import { ResponseVariants } from "@/components/chat/ResponseVariants";
+import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, uploadFile, synthesizeSpeech, confirmCommit, exportChat, quickSaveFact, branchChat, APIError, type CommitProposed } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 import type { WebMessage, ChatDetail, UiSection, KBSource } from "@/lib/api/types";
 
@@ -35,6 +36,7 @@ export default function ChatPage() {
     if (typeof window === "undefined") return false;
     return localStorage.getItem("web_search_enabled") === "1";
   });
+  const [variantsMode, setVariantsMode] = useState(false);
 
   // Настройки медиа-моделей (video/image): инициализируются из config_json.api_defaults
   const [mediaSettings, setMediaSettings] = useState<Record<string, unknown>>({});
@@ -217,7 +219,7 @@ export default function ChatPage() {
       try {
         // Показываем "Ищу в интернете..." сразу при отправке (поиск синхронный на backend)
         if (webSearch) setSearchPhase("searching");
-        await streamMessage(id, { message: msg, attachment_ids: attachmentIds, web_search: webSearch }, {
+        await streamMessage(id, { message: msg, attachment_ids: attachmentIds, web_search: webSearch, variants_mode: variantsMode }, {
           onInit: ({ user_message_id, assistant_message_id, new_balance }) => {
             realAssistId = assistant_message_id;
             setStars(new_balance);
@@ -242,14 +244,14 @@ export default function ChatPage() {
             setSearchPhase("idle");
             setStreamText((prev) => prev + token);
           },
-          onDone: ({ content, plain_text, search_context, sources, commit_proposed }) => {
+          onDone: ({ content, plain_text, search_context, sources, variants, commit_proposed }) => {
             qc.setQueryData<ChatDetail>(["chat", id], (prev) => {
               if (!prev) return prev;
               return {
                 ...prev,
                 messages: prev.messages.map((m) =>
                   m.id === realAssistId
-                    ? { ...m, content, plain_text, status: "completed" as const, search_context: search_context ?? "", kb_sources: sources ?? m.kb_sources }
+                    ? { ...m, content, plain_text, status: "completed" as const, search_context: search_context ?? "", kb_sources: sources ?? m.kb_sources, variants: variants ?? m.variants }
                     : m
                 ),
               };
@@ -300,7 +302,7 @@ export default function ChatPage() {
         setStreamError(errMsg);
       }
     },
-    [id, qc, setStars, webSearch]
+    [id, qc, setStars, webSearch, variantsMode]
   );
 
   // File attachment upload
@@ -656,6 +658,7 @@ export default function ChatPage() {
                   canRegenerate={!isBusy && msg.id === lastAssistantId}
                   onRegenerate={() => regenerateMutation.mutate()}
                   onOpenArtifact={setActiveArtifact}
+                  chatId={id}
                 />
               ));
             })()}
@@ -815,6 +818,24 @@ export default function ChatPage() {
                 )}
               </button>
 
+              <button
+                type="button"
+                onClick={() => setVariantsMode((v) => !v)}
+                title={variantsMode ? "Режим вариантов включён. Нажмите чтобы отключить" : "Получить 3 варианта ответа (Кратко / Подробно / Пошагово)"}
+                className={[
+                  "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all",
+                  variantsMode
+                    ? "bg-[rgba(124,58,237,0.12)] text-[#7c3aed] ring-1 ring-[rgba(124,58,237,0.35)]"
+                    : "text-[rgba(13,13,13,0.45)] hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.38)] dark:hover:text-[#ececec]",
+                ].join(" ")}
+              >
+                <Layers size={12} />
+                Варианты
+                {variantsMode && (
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#7c3aed]" />
+                )}
+              </button>
+
               <VoiceButton
                 disabled={isBusy}
                 onTranscript={(t) =>
@@ -924,6 +945,7 @@ function MessageRow({
   canRegenerate,
   onRegenerate,
   onOpenArtifact,
+  chatId,
 }: {
   message: WebMessage;
   networkAvatar: string | null;
@@ -933,18 +955,61 @@ function MessageRow({
   canRegenerate?: boolean;
   onRegenerate?: () => void;
   onOpenArtifact?: (a: Artifact) => void;
+  chatId?: number;
 }) {
   const isUser = message.role === "user";
+  const router = typeof window !== "undefined" ? null : null; // placeholder, use router hook below
+  const [savedFact, setSavedFact] = useState(false);
+  const [branchLoading, setBranchLoading] = useState(false);
 
   if (isUser) {
     return (
-      <div className="flex justify-end">
+      <div className="group flex flex-col items-end gap-1">
         <div
           className="max-w-[78%] rounded-[18px] rounded-br-[4px] px-4 py-3 text-[14px] leading-relaxed text-white"
           style={{ background: "var(--chat-user-bubble)" }}
         >
           <PlainText text={message.content} />
         </div>
+        {/* User message quick actions */}
+        {message.content && (
+          <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+            <button
+              onClick={async () => {
+                if (savedFact) return;
+                try {
+                  await quickSaveFact(message.content);
+                  setSavedFact(true);
+                  setTimeout(() => setSavedFact(false), 2000);
+                } catch {}
+              }}
+              className="flex h-6 items-center gap-1 rounded-[5px] px-2 text-[11px] font-medium text-[rgba(13,13,13,0.42)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.38)]"
+              title="Запомнить это сообщение как факт памяти"
+            >
+              <BookmarkPlus size={11} />
+              {savedFact ? "Запомнено" : "Запомнить"}
+            </button>
+            {chatId && (
+              <button
+                onClick={async () => {
+                  if (branchLoading) return;
+                  setBranchLoading(true);
+                  try {
+                    const result = await branchChat(chatId, message.id);
+                    window.location.href = `/chat/${result.chat_id}/`;
+                  } catch {
+                    setBranchLoading(false);
+                  }
+                }}
+                className="flex h-6 items-center gap-1 rounded-[5px] px-2 text-[11px] font-medium text-[rgba(13,13,13,0.42)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.38)]"
+                title="Создать ветку разговора от этого сообщения"
+              >
+                {branchLoading ? <Loader size={11} className="animate-spin" /> : <GitBranch size={11} />}
+                Ветка
+              </button>
+            )}
+          </div>
+        )}
       </div>
     );
   }
@@ -996,6 +1061,9 @@ function MessageRow({
             />
             {message.kb_sources && message.kb_sources.length > 0 && (
               <SourcesBlock sources={message.kb_sources} />
+            )}
+            {message.variants && message.variants.length >= 2 && (
+              <ResponseVariants variants={message.variants} />
             )}
             {/* Hover action bar */}
             <div className="mt-1.5 flex items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100">

@@ -92,6 +92,32 @@ class MemorySummariesView(APIView):
         return Response(ChatSummarySerializer(summaries, many=True).data)
 
 
+class QuickSaveFactView(APIView):
+    """POST /memory/quick-save/ — Sprint 4: сохранить факт одним кликом из чата."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        text = (request.data.get('text') or '').strip()
+        if not text:
+            return Response({'error': 'text обязателен'}, status=400)
+
+        from aitext.memory import normalize_fact
+        content_key = normalize_fact(text)[:200]
+
+        fact, created = UserMemory.objects.update_or_create(
+            user=request.user,
+            content_key=content_key,
+            defaults={
+                'content': text[:500],
+                'category': 'fact',
+                'source': 'user',
+                'is_active': True,
+            },
+        )
+        invalidate_memory_cache(request.user.id)
+        return Response({'id': fact.id, 'content': fact.content, 'created': created})
+
+
 class MemorySettingsView(APIView):
     """PATCH /memory/settings/ — включить/выключить глобальную память."""
     permission_classes = [IsAuthenticated]

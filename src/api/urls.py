@@ -61,7 +61,10 @@ from api.views.telegram_webapp import telegram_webapp_auth
 from api.views.memory import (
     MemoryListCreateView, MemoryDetailView,
     MemoryClearView, MemorySummariesView, MemorySettingsView,
+    QuickSaveFactView,
 )
+from api.views.branch import BranchChatView
+from api.views.kb_stats import ProjectKBStatsView, ProjectFileReindexView
 from api.views.personas import PersonaListCreateView, PersonaDetailView
 from api.views.arena import ArenaVoteView, ArenaLeaderboardView
 from api.views.knowledge_graph import KnowledgeGraphView
@@ -93,6 +96,7 @@ urlpatterns = [
     path('v1/chats/<int:chat_id>/messages/', SendMessageView.as_view(), name='chat_send_message'),
     path('v1/chats/<int:chat_id>/messages/stream/', StreamMessageView.as_view(), name='chat_stream_message'),
     path('v1/chats/<int:chat_id>/regenerate/', RegenerateView.as_view(), name='chat_regenerate'),
+    path('v1/chats/<int:chat_id>/branch/', BranchChatView.as_view(), name='chat_branch'),
     path('v1/chats/<int:chat_id>/upload/', ChatFileUploadView.as_view(), name='chat_file_upload'),
     path('v1/messages/<int:message_id>/status/', MessageStatusView.as_view(), name='message_status'),
 
@@ -179,6 +183,8 @@ urlpatterns = [
     path('v1/projects/<int:pk>/files/search/', ProjectFileSearchView.as_view(), name='project_files_search'),
     path('v1/projects/<int:pk>/files/<int:file_id>/', ProjectFileDetailView.as_view(), name='project_file_detail'),
     path('v1/projects/<int:pk>/files/<int:file_id>/versions/', FileVersionListView.as_view(), name='project_file_versions'),
+    path('v1/projects/<int:pk>/files/<int:file_id>/reindex/', ProjectFileReindexView.as_view(), name='project_file_reindex'),
+    path('v1/projects/<int:pk>/kb/stats/', ProjectKBStatsView.as_view(), name='project_kb_stats'),
     path('v1/projects/<int:pk>/files/<int:file_id>/versions/<int:version_id>/restore/', FileRestoreView.as_view(), name='project_file_restore'),
     path('v1/projects/<int:pk>/collaborators/', CollaboratorListCreateView.as_view(), name='project_collaborators'),
     path('v1/projects/<int:pk>/collaborators/<int:cid>/', CollaboratorDetailView.as_view(), name='project_collaborator_detail'),
@@ -216,6 +222,7 @@ urlpatterns = [
     path('v1/memory/clear/', MemoryClearView.as_view(), name='memory_clear'),
     path('v1/memory/summaries/', MemorySummariesView.as_view(), name='memory_summaries'),
     path('v1/memory/settings/', MemorySettingsView.as_view(), name='memory_settings'),
+    path('v1/memory/quick-save/', QuickSaveFactView.as_view(), name='memory_quick_save'),
 
     # ========== AI Personas ==========
     path('v1/personas/', PersonaListCreateView.as_view(), name='persona_list_create'),

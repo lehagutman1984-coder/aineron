@@ -304,6 +304,7 @@ class StreamMessageView(APIView):
         message_text = (request.data.get('message') or '').strip()
         files = request.data.get('files', [])
         web_search = bool(request.data.get('web_search', False))
+        variants_mode = bool(request.data.get('variants_mode', False))
 
         if not message_text and not files:
             return Response({
@@ -460,6 +461,12 @@ class StreamMessageView(APIView):
                         assistant_text = assistant_text[:max_input_tokens] + "..."
                     messages_for_api.append({"role": "assistant", "content": assistant_text})
 
+        if variants_mode:
+            messages_for_api.append({
+                "role": "system",
+                "content": "Дай КРАТКИЙ ответ — не более 150 слов. Только суть.",
+            })
+
         messages_for_api.append({"role": "user", "content": message_text or "Привет"})
 
         # ── Шаг 1: веб-поиск СИНХРОННО до генератора ─────────────────────────
@@ -537,6 +544,56 @@ class StreamMessageView(APIView):
                 assistant_message.status = Message.Status.COMPLETED
                 if kb_sources:
                     assistant_message.kb_sources = kb_sources
+
+                # ── Sprint 3: генерация доп. вариантов ответа ─────────────────
+                all_variants = []
+                if variants_mode and full_text:
+                    all_variants.append({
+                        "label": "Краткий",
+                        "content": formatted_html,
+                        "plain_text": full_text,
+                    })
+                    _variant_defs = [
+                        ("Подробный", "Дай развёрнутый ответ с примерами кода если применимо. Минимум 200 слов."),
+                        ("Пошаговый", "Структурируй ответ как пошаговое руководство с нумерованными шагами."),
+                    ]
+                    _base_msgs = [m for m in messages_for_api if not (
+                        m.get("role") == "system" and "КРАТКИЙ ответ" in m.get("content", "")
+                    )][:-1]  # все кроме суффикса и последнего user
+
+                    def _gen_variant(suffix_text, label):
+                        try:
+                            _msgs = _base_msgs + [
+                                {"role": "system", "content": suffix_text},
+                                {"role": "user", "content": message_text or "Привет"},
+                            ]
+                            _c = get_laozhang_client()
+                            _r = _c.chat.completions.create(
+                                model=model_name,
+                                messages=_msgs,
+                                temperature=0.7,
+                                max_tokens=min(max_tokens, 2000),
+                                stream=False,
+                            )
+                            _t = _r.choices[0].message.content or ""
+                            return {"label": label, "content": CodeFormatter.format_ai_response(_t), "plain_text": _t}
+                        except Exception:
+                            return None
+
+                    from concurrent.futures import ThreadPoolExecutor, as_completed
+                    with ThreadPoolExecutor(max_workers=2) as _ex:
+                        _futures = {_ex.submit(_gen_variant, suf, lbl): lbl for suf, lbl in [
+                            ("Дай развёрнутый ответ с примерами кода если применимо. Минимум 200 слов.", "Подробный"),
+                            ("Структурируй ответ как пошаговое руководство с нумерованными шагами.", "Пошаговый"),
+                        ]}
+                        for _fut in as_completed(_futures):
+                            _v = _fut.result()
+                            if _v:
+                                all_variants.append(_v)
+
+                    all_variants.sort(key=lambda v: ["Краткий", "Подробный", "Пошаговый"].index(v["label"]) if v["label"] in ["Краткий", "Подробный", "Пошаговый"] else 99)
+                    assistant_message.variants = all_variants
+
                 assistant_message.save()
 
                 # ── Persistent Memory: извлечение фактов (фон, каждые 3 ответа) ──
@@ -589,6 +646,7 @@ class StreamMessageView(APIView):
                     "plain_text": full_text,
                     "search_context": search_context_text,
                     **({"sources": kb_sources} if kb_sources else {}),
+                    **({"variants": all_variants} if all_variants else {}),
                     **({"commit_proposed": commit_event} if commit_event else {}),
                 })
 

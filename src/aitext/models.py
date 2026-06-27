@@ -553,6 +553,11 @@ class Chat(models.Model):
     )
     title = models.CharField(max_length=255, blank=True, verbose_name='Название чата')
     settings = models.JSONField(default=dict, blank=True, verbose_name='Настройки генерации для чата')
+    parent_chat = models.ForeignKey(
+        'self', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='branches', verbose_name='Родительский чат',
+    )
+    branch_from_message_id = models.IntegerField(null=True, blank=True, verbose_name='ID сообщения ветвления')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -606,6 +611,7 @@ class Message(models.Model):
     plain_text = models.TextField(blank=True, verbose_name='Оригинальный текст без форматирования')
     search_context = models.TextField(blank=True, default='', verbose_name='Результаты веб-поиска')
     kb_sources = models.JSONField(default=list, blank=True, verbose_name='Источники базы знаний')
+    variants = models.JSONField(default=list, blank=True, verbose_name='Варианты ответа')
 
     class Meta:
         verbose_name = 'Сообщение'
