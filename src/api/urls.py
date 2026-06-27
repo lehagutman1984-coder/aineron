@@ -61,7 +61,7 @@ from api.views.telegram_webapp import telegram_webapp_auth
 from api.views.memory import (
     MemoryListCreateView, MemoryDetailView,
     MemoryClearView, MemorySummariesView, MemorySettingsView,
-    QuickSaveFactView,
+    QuickSaveFactView, MemoryToastView,
 )
 from api.views.branch import BranchChatView
 from api.views.kb_stats import ProjectKBStatsView, ProjectFileReindexView
@@ -226,6 +226,7 @@ urlpatterns = [
     path('v1/memory/summaries/', MemorySummariesView.as_view(), name='memory_summaries'),
     path('v1/memory/settings/', MemorySettingsView.as_view(), name='memory_settings'),
     path('v1/memory/quick-save/', QuickSaveFactView.as_view(), name='memory_quick_save'),
+    path('v1/memory/toast/', MemoryToastView.as_view(), name='memory_toast'),
 
     # ========== AI Personas ==========
     path('v1/personas/', PersonaListCreateView.as_view(), name='persona_list_create'),

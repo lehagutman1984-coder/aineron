@@ -14,7 +14,8 @@ import { ArtifactPanel, extractArtifact, type Artifact } from "@/components/chat
 import { ResponseVariants } from "@/components/chat/ResponseVariants";
 import { DeepResearchPanel } from "@/components/chat/DeepResearchPanel";
 import { ResearchReport } from "@/components/chat/ResearchReport";
-import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, uploadFile, synthesizeSpeech, confirmCommit, exportChat, quickSaveFact, branchChat, startDeepResearch, getResearchStatus, APIError, type CommitProposed } from "@/lib/api/client";
+import { MemoryToast } from "@/components/chat/MemoryToast";
+import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, uploadFile, synthesizeSpeech, confirmCommit, exportChat, quickSaveFact, branchChat, startDeepResearch, getResearchStatus, getMemoryToast, APIError, type CommitProposed } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 import type { WebMessage, ChatDetail, UiSection, KBSource } from "@/lib/api/types";
 
@@ -42,6 +43,7 @@ export default function ChatPage() {
   const [researchMode, setResearchMode] = useState(false);
   const [activeResearchId, setActiveResearchId] = useState<number | null>(null);
   const [activeResearchMsgId, setActiveResearchMsgId] = useState<number | null>(null);
+  const [memoryToast, setMemoryToast] = useState<{ count: number; facts: string[] } | null>(null);
 
   // Настройки медиа-моделей (video/image): инициализируются из config_json.api_defaults
   const [mediaSettings, setMediaSettings] = useState<Record<string, unknown>>({});
@@ -302,6 +304,12 @@ export default function ChatPage() {
             setSearchPhase("idle");
             setLiveSearchPreview("");
             if (commit_proposed) setPendingCommit(commit_proposed);
+            // Sprint 4: poll for memory toast ~3s after done (Celery task runs async)
+            setTimeout(() => {
+              getMemoryToast().then((d) => {
+                if (d.count > 0) setMemoryToast(d);
+              }).catch(() => undefined);
+            }, 3000);
           },
           onError: (errorMsg) => {
             qc.setQueryData<ChatDetail>(["chat", id], (prev) => {
@@ -1026,6 +1034,15 @@ export default function ChatPage() {
         <ArtifactPanel artifact={activeArtifact} onClose={() => setActiveArtifact(null)} />
       </div>
     )}
+
+    {/* Sprint 4: Memory Toast */}
+    {memoryToast && memoryToast.count > 0 && (
+      <MemoryToast
+        count={memoryToast.count}
+        facts={memoryToast.facts}
+        onDismiss={() => setMemoryToast(null)}
+      />
+    )}
     </div>
   );
 }
@@ -1177,7 +1194,7 @@ function MessageRow({
               <SearchContextBlock context={message.search_context} />
             )}
             {message.content && message.content.includes("<h2") ? (
-              <ResearchReport html={message.content} />
+              <ResearchReport html={message.content} plainText={message.plain_text ?? undefined} />
             ) : (
               <AssistantContent
                 content={message.content}
@@ -1579,14 +1596,21 @@ function SourcesBlock({ sources }: { sources: KBSource[] }) {
           {sources.map((s) => (
             <div
               key={s.id}
-              className="flex items-center gap-2 rounded-[6px] px-2 py-1.5 text-[12px] text-[rgba(13,13,13,0.7)] dark:text-[rgba(236,236,236,0.6)] hover:bg-[rgba(10,124,255,0.06)] transition-colors"
+              className="group/src relative flex flex-col gap-0.5 rounded-[6px] px-2 py-1.5 text-[12px] text-[rgba(13,13,13,0.7)] dark:text-[rgba(236,236,236,0.6)] hover:bg-[rgba(10,124,255,0.06)] transition-colors"
             >
-              <FileText size={11} className="shrink-0 text-[rgba(10,124,255,0.5)]" />
-              <span className="font-mono truncate" title={s.path}>{s.filename}</span>
-              {s.path !== s.filename && (
-                <span className="ml-auto shrink-0 text-[10px] text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.3)] font-mono truncate max-w-[180px]" title={s.path}>
-                  {s.path}
-                </span>
+              <div className="flex items-center gap-2">
+                <FileText size={11} className="shrink-0 text-[rgba(10,124,255,0.5)]" />
+                <span className="font-mono truncate" title={s.path}>{s.filename}</span>
+                {s.path !== s.filename && (
+                  <span className="ml-auto shrink-0 text-[10px] text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.3)] font-mono truncate max-w-[180px]" title={s.path}>
+                    {s.path}
+                  </span>
+                )}
+              </div>
+              {s.snippet && (
+                <div className="hidden group-hover/src:block ml-5 text-[11px] leading-relaxed text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.38)] line-clamp-2">
+                  {s.snippet}
+                </div>
               )}
             </div>
           ))}

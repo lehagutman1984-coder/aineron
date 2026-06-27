@@ -454,11 +454,12 @@ def build_project_knowledge_context(project, user_message_text: str = '', recent
     if used_file_ids:
         try:
             from .models import ProjectFile
-            for pf in ProjectFile.objects.filter(id__in=used_file_ids).only('id', 'filename', 'repo_path'):
+            for pf in ProjectFile.objects.filter(id__in=used_file_ids).only('id', 'filename', 'repo_path', 'extracted_text'):
                 sources.append({
                     'id': pf.id,
                     'filename': pf.filename,
                     'path': pf.repo_path or pf.filename,
+                    'snippet': (pf.extracted_text or '')[:200].strip(),
                 })
         except Exception:
             pass
@@ -1200,6 +1201,14 @@ def extract_memory_facts(self, chat_id: int):
     if added:
         logger.info(f'[memory] chat={chat_id}: +{added} новых фактов для user={user.id}')
         invalidate_memory_cache(user.id)  # B11: сбрасываем кэш при новых фактах
+        # Sprint 4: toast-уведомление — frontend опрашивает /v1/memory/toast/ после ответа
+        try:
+            import json as _json
+            from django.core.cache import cache as _cache
+            new_labels = [str(f.get('content', ''))[:80] for f in facts if f.get('content')][:5]
+            _cache.set(f"memory:toast:{user.id}", _json.dumps({'count': added, 'facts': new_labels}), timeout=120)
+        except Exception:
+            pass
 
 
 @shared_task(bind=True, max_retries=2, default_retry_delay=30, ignore_result=True)

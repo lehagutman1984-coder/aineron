@@ -218,6 +218,7 @@ export interface KBSource {
   id: number;
   filename: string;
   path: string;
+  snippet?: string;
 }
 
 export interface MessageVariant {
@@ -856,6 +857,13 @@ export interface AuthUser {
   tariff_name: string;
   avatar: string;
   email_verified: boolean;
+}
+
+// ============ Memory Toast (Sprint 4) ============
+
+export interface MemoryToastData {
+  count: number;
+  facts: string[];
 }
 
 // ============ Deep Research (Sprint 2) ============

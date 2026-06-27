@@ -834,10 +834,13 @@ export async function getCurrentUser(): Promise<User | null> {
 // ============ Sprint 3: Response Variants ============
 // variants_mode is passed via streamMessage body — no separate endpoint needed
 
-// ============ Sprint 4: Memory Quick Save ============
+// ============ Sprint 4: Memory Quick Save + Toast ============
 
 export const quickSaveFact = (text: string): Promise<{ id: number; content: string; created: boolean }> =>
   request("/memory/quick-save/", { method: "POST", body: JSON.stringify({ text }) });
+
+export const getMemoryToast = (): Promise<import("./types").MemoryToastData> =>
+  request("/memory/toast/");
 
 // ============ Sprint 5: KB Health Dashboard ============
 

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronDown, ChevronRight, BookOpen } from "lucide-react";
+import { useState, useCallback } from "react";
+import { ChevronDown, ChevronRight, BookOpen, Download } from "lucide-react";
 
 interface Props {
   html: string;
+  plainText?: string;
 }
 
 function CollapsibleSection({ title, html }: { title: string; html: string }) {
@@ -47,15 +48,42 @@ function parseReportSections(html: string): Array<{ title: string; html: string 
   });
 }
 
-export function ResearchReport({ html }: Props) {
+export function ResearchReport({ html, plainText }: Props) {
   const sections = parseReportSections(html);
+
+  const handleExport = useCallback(() => {
+    const content = plainText || html.replace(/<[^>]+>/g, "");
+    const blob = new Blob([content], { type: "text/markdown; charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `research-${new Date().toISOString().slice(0, 10)}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [html, plainText]);
 
   if (sections.length <= 1) {
     return (
-      <div
-        className="text-[14px] leading-relaxed"
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
+      <div className="mt-3 rounded-[12px] border border-[rgba(124,58,237,0.15)] bg-[rgba(124,58,237,0.02)]">
+        <div className="flex items-center gap-2 border-b border-[rgba(124,58,237,0.1)] px-4 py-2.5">
+          <BookOpen size={13} className="text-[#7c3aed]" />
+          <span className="flex-1 text-[11px] font-semibold uppercase tracking-wide text-[#7c3aed]">
+            Отчёт исследования
+          </span>
+          <button
+            onClick={handleExport}
+            title="Скачать как Markdown"
+            className="flex items-center gap-1 rounded-[5px] px-2 py-1 text-[11px] text-[rgba(13,13,13,0.45)] transition hover:bg-[rgba(124,58,237,0.08)] hover:text-[#7c3aed] dark:text-[rgba(236,236,236,0.4)]"
+          >
+            <Download size={11} />
+            MD
+          </button>
+        </div>
+        <div
+          className="px-4 py-3 text-[14px] leading-relaxed"
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
+      </div>
     );
   }
 
@@ -63,9 +91,17 @@ export function ResearchReport({ html }: Props) {
     <div className="mt-3 rounded-[12px] border border-[rgba(124,58,237,0.15)] bg-[rgba(124,58,237,0.02)]">
       <div className="flex items-center gap-2 border-b border-[rgba(124,58,237,0.1)] px-4 py-2.5">
         <BookOpen size={13} className="text-[#7c3aed]" />
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-[#7c3aed]">
+        <span className="flex-1 text-[11px] font-semibold uppercase tracking-wide text-[#7c3aed]">
           Отчёт исследования
         </span>
+        <button
+          onClick={handleExport}
+          title="Скачать как Markdown"
+          className="flex items-center gap-1 rounded-[5px] px-2 py-1 text-[11px] text-[rgba(13,13,13,0.45)] transition hover:bg-[rgba(124,58,237,0.08)] hover:text-[#7c3aed] dark:text-[rgba(236,236,236,0.4)]"
+        >
+          <Download size={11} />
+          MD
+        </button>
       </div>
       <div className="px-4 py-1">
         {sections.map((s, i) => (

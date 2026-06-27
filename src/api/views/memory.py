@@ -118,6 +118,28 @@ class QuickSaveFactView(APIView):
         return Response({'id': fact.id, 'content': fact.content, 'created': created})
 
 
+class MemoryToastView(APIView):
+    """GET /memory/toast/ — Sprint 4: one-shot toast data after extract_memory_facts.
+
+    Returns and immediately clears the Redis key so the toast shows once.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        import json
+        from django.core.cache import cache
+        key = f"memory:toast:{request.user.id}"
+        raw = cache.get(key)
+        if not raw:
+            return Response({'count': 0, 'facts': []})
+        cache.delete(key)
+        try:
+            data = json.loads(raw)
+        except Exception:
+            data = {'count': 0, 'facts': []}
+        return Response(data)
+
+
 class MemorySettingsView(APIView):
     """PATCH /memory/settings/ — включить/выключить глобальную память."""
     permission_classes = [IsAuthenticated]

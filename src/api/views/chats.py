@@ -586,6 +586,19 @@ class StreamMessageView(APIView):
                     all_variants.sort(key=lambda v: ["Подробный", "Пошаговый"].index(v["label"]) if v["label"] in ["Подробный", "Пошаговый"] else 99)
                     assistant_message.variants = all_variants
 
+                    # Sprint 3: 1.5× billing — charge extra 0.5× for the 2 parallel variant calls
+                    if all_variants and deduct_stars:
+                        import math as _math
+                        _extra = max(1, _math.ceil(cost * 0.5))
+                        try:
+                            user.spend_pages(_extra)
+                            UserSpending.objects.create(
+                                user=user, amount=_extra,
+                                description=f"Генерация вариантов ответа (×1.5) в чате с {network.name}",
+                            )
+                        except Exception:
+                            pass
+
                 assistant_message.save()
 
                 # ── Persistent Memory: извлечение фактов (фон, каждые 3 ответа) ──
