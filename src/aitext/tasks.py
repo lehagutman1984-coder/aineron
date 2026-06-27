@@ -1164,10 +1164,8 @@ def extract_memory_facts(self, chat_id: int):
         if category not in valid_categories:
             category = 'fact'
 
-        if content_key in existing_keys:
-            continue  # уже активный факт — не трогаем, экономим DB round-trip
-
         try:
+            # update_or_create сохраняет переформулированные факты с тем же ключом
             _, was_created = UserMemory.objects.update_or_create(
                 user=user,
                 content_key=content_key,
