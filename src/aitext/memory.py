@@ -14,6 +14,7 @@ from __future__ import annotations
 import re
 import logging
 from typing import TYPE_CHECKING
+from django.conf import settings
 
 if TYPE_CHECKING:
     from aitext.models import Chat
@@ -146,7 +147,7 @@ def build_memory_context(user, chat: 'Chat') -> str:
             .filter(chat__user=user)
             .exclude(chat=chat)
             .select_related('chat')
-            .order_by('-updated_at')[:3]
+            .order_by('-updated_at')[:getattr(settings, 'MEMORY_PAST_SESSIONS', 5)]
         )
         for s in reversed(past_summaries):
             text = (s.summary_text or s.rolling_summary or '').strip()

@@ -47,11 +47,12 @@ def adaptive_top_k(query: str) -> int:
     return default
 
 
-def build_search_query(project, user_message: str, conv_window: int = None) -> str:
+def build_search_query(project, user_message: str, conv_window: int = None, current_msg_id: int | None = None) -> str:
     """Conversation-aware поисковый запрос: конкатенация последних N user-сообщений.
 
     Берёт последние conv_window сообщений role='user' из последнего чата проекта,
     конкатенирует с текущим запросом. Суммарная длина ограничена 1500 символами.
+    current_msg_id: ID текущего user-сообщения — исключается точно по ID (если известен).
     """
     if conv_window is None:
         conv_window = int(getattr(settings, 'PROJECT_CONV_WINDOW', 4))
@@ -61,20 +62,22 @@ def build_search_query(project, user_message: str, conv_window: int = None) -> s
 
     try:
         from aitext.models import Message
-        recent = (
-            Message.objects
-            .filter(chat__project=project, role='user')
-            .order_by('-created_at')
-            .values_list('content', flat=True)[:conv_window + 1]  # +1 because current may already be saved
-        )
+        qs = Message.objects.filter(chat__project=project, role='user').order_by('-created_at')
+        if current_msg_id is not None:
+            qs = qs.exclude(id=current_msg_id)
+            limit = conv_window
+        else:
+            limit = conv_window + 1  # +1 потому что текущее может уже быть сохранено
+        recent = qs.values_list('content', flat=True)[:limit]
+
         context_parts = []
         total = 0
         CAP = 1500
         for msg in reversed(list(recent)):
             if not msg:
                 continue
-            if msg.strip() == user_message.strip():
-                continue  # skip current message (already in query)
+            if current_msg_id is None and msg.strip() == user_message.strip():
+                continue  # fallback dedup когда ID неизвестен
             available = CAP - total - len(user_message)
             if available <= 0:
                 break

@@ -937,7 +937,7 @@ class ChatSummary(models.Model):
         verbose_name='ID последнего сжатого сообщения',
     )
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    updated_at = models.DateTimeField(auto_now=True, db_index=True)
 
     class Meta:
         verbose_name = 'Резюме чата'

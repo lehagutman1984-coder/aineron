@@ -159,7 +159,7 @@ def _inject_file(f, user_message_text: str, inject_limit: int, total_chars: int,
     return f"### {label}\n{snippet}", len(snippet)
 
 
-def build_project_knowledge_context(project, user_message_text: str = '', recent_context: str = '') -> str:
+def build_project_knowledge_context(project, user_message_text: str = '', recent_context: str = '', current_msg_id: int | None = None) -> str:
     """Собирает контекст из файлов базы знаний проекта.
 
     Phase 4/5 (без флагов Phase 6):
@@ -318,7 +318,7 @@ def build_project_knowledge_context(project, user_message_text: str = '', recent
     if getattr(settings, 'PROJECT_CONV_SEARCH', False) and query:
         try:
             from .retrieval import build_search_query
-            effective_query = build_search_query(project, query)
+            effective_query = build_search_query(project, query, current_msg_id=current_msg_id)
         except Exception as e:
             logger.warning(f'[6.1] build_search_query failed: {e}')
 
@@ -781,7 +781,11 @@ def generate_ai_response(self, message_id, web_search=False):
                     for m in reversed(recent_msgs)
                     if (m.plain_text or isinstance(m.content, str))
                 )
-                knowledge_ctx = build_project_knowledge_context(proj, user_msg_text, recent_context=recent_text)
+                knowledge_ctx = build_project_knowledge_context(
+                    proj, user_msg_text,
+                    recent_context=recent_text,
+                    current_msg_id=last_user_msg.id if last_user_msg else None,
+                )
                 if knowledge_ctx:
                     messages_for_api.append({"role": "system", "content": knowledge_ctx})
                 # AI-коммиты: инструкция о FILE-формате (Sprint 4.3)
@@ -1096,16 +1100,16 @@ def extract_memory_facts(self, chat_id: int):
         for m in msgs
     )
 
-    # Существующие факты для дедупликации
-    existing_keys = set(
-        UserMemory.objects.filter(user=user, is_active=True)
-        .values_list('content_key', flat=True)[:100]
-    )
-
+    # Существующие факты для дедупликации (один запрос вместо двух)
+    existing_facts = {
+        f['content_key']: f['content']
+        for f in UserMemory.objects.filter(user=user, is_active=True)
+        .values('content_key', 'content')
+        .order_by('-is_pinned', '-created_at')[:100]
+    }
+    existing_keys = set(existing_facts.keys())
     existing_preview = '\n'.join(
-        f'- {c}' for c in
-        UserMemory.objects.filter(user=user, is_active=True)
-        .values_list('content', flat=True)[:30]
+        f'- {v}' for v in list(existing_facts.values())[:30]
     ) or 'нет'
 
     system_prompt = f"""Ты система управления памятью AI-ассистента.
@@ -1160,8 +1164,10 @@ def extract_memory_facts(self, chat_id: int):
         if category not in valid_categories:
             category = 'fact'
 
+        if content_key in existing_keys:
+            continue  # уже активный факт — не трогаем, экономим DB round-trip
+
         try:
-            # B3: update_or_create вместо continue — новый факт не теряется при коллизии
             _, was_created = UserMemory.objects.update_or_create(
                 user=user,
                 content_key=content_key,
