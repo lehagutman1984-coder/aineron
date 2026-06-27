@@ -214,6 +214,12 @@ export interface NetworkDetail extends NetworkListItem {
 
 // ============ Web Chat ============
 
+export interface KBSource {
+  id: number;
+  filename: string;
+  path: string;
+}
+
 export interface WebMessage {
   id: number;
   role: "user" | "assistant";
@@ -223,6 +229,7 @@ export interface WebMessage {
   status: "pending" | "completed" | "failed";
   error_message: string | null;
   search_context?: string;
+  kb_sources?: KBSource[];
   created_at: string;
 }
 

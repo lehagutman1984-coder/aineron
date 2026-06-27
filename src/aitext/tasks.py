@@ -159,7 +159,7 @@ def _inject_file(f, user_message_text: str, inject_limit: int, total_chars: int,
     return f"### {label}\n{snippet}", len(snippet)
 
 
-def build_project_knowledge_context(project, user_message_text: str = '', recent_context: str = '', current_msg_id: int | None = None) -> str:
+def build_project_knowledge_context(project, user_message_text: str = '', recent_context: str = '', current_msg_id: int | None = None) -> tuple[str, list[dict]]:
     """Собирает контекст из файлов базы знаний проекта.
 
     Phase 4/5 (без флагов Phase 6):
@@ -443,11 +443,25 @@ def build_project_knowledge_context(project, user_message_text: str = '', recent
             logger.warning(f'[codebase] build_codebase_context failed: {e}')
 
     if not parts:
-        return ''
+        return '', []
 
     # Sprint 5.3: инкремент счётчика цитирований
     if getattr(settings, 'PROJECT_KB_METRICS', False) and used_file_ids:
         _track_kb_usage(used_file_ids)
+
+    # Sprint 1 Citation: собираем метаданные источников
+    sources: list[dict] = []
+    if used_file_ids:
+        try:
+            from .models import ProjectFile
+            for pf in ProjectFile.objects.filter(id__in=used_file_ids).only('id', 'filename', 'repo_path'):
+                sources.append({
+                    'id': pf.id,
+                    'filename': pf.filename,
+                    'path': pf.repo_path or pf.filename,
+                })
+        except Exception:
+            pass
 
     header = (
         "Это ПРИВАТНЫЙ репозиторий пользователя. Все файлы ниже — исходный код его проекта. "
@@ -456,7 +470,7 @@ def build_project_knowledge_context(project, user_message_text: str = '', recent
         "ЗАПРЕЩЕНО говорить 'файл слишком большой' или 'не могу вывести целиком' — "
         "выводи весь код от первой до последней строки всегда.\n\n"
     )
-    return header + "\n\n---\n\n".join(parts)
+    return header + "\n\n---\n\n".join(parts), sources
 
 
 def _track_kb_usage(file_ids: list[int]):
@@ -781,7 +795,7 @@ def generate_ai_response(self, message_id, web_search=False):
                     for m in reversed(recent_msgs)
                     if (m.plain_text or isinstance(m.content, str))
                 )
-                knowledge_ctx = build_project_knowledge_context(
+                knowledge_ctx, _kb_sources = build_project_knowledge_context(
                     proj, user_msg_text,
                     recent_context=recent_text,
                     current_msg_id=last_user_msg.id if last_user_msg else None,

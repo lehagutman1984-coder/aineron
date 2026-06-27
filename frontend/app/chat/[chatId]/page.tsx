@@ -13,7 +13,7 @@ import { MediaSettingsPanel } from "@/components/chat/MediaSettingsPanel";
 import { ArtifactPanel, extractArtifact, type Artifact } from "@/components/chat/ArtifactPanel";
 import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, uploadFile, synthesizeSpeech, confirmCommit, exportChat, APIError, type CommitProposed } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
-import type { WebMessage, ChatDetail, UiSection } from "@/lib/api/types";
+import type { WebMessage, ChatDetail, UiSection, KBSource } from "@/lib/api/types";
 
 const POLL_INTERVAL = 800;
 
@@ -242,14 +242,14 @@ export default function ChatPage() {
             setSearchPhase("idle");
             setStreamText((prev) => prev + token);
           },
-          onDone: ({ content, plain_text, search_context, commit_proposed }) => {
+          onDone: ({ content, plain_text, search_context, sources, commit_proposed }) => {
             qc.setQueryData<ChatDetail>(["chat", id], (prev) => {
               if (!prev) return prev;
               return {
                 ...prev,
                 messages: prev.messages.map((m) =>
                   m.id === realAssistId
-                    ? { ...m, content, plain_text, status: "completed" as const, search_context: search_context ?? "" }
+                    ? { ...m, content, plain_text, status: "completed" as const, search_context: search_context ?? "", kb_sources: sources ?? m.kb_sources }
                     : m
                 ),
               };
@@ -994,6 +994,9 @@ function MessageRow({
               plain_text={message.plain_text ?? null}
               shouldAnimate={shouldAnimate}
             />
+            {message.kb_sources && message.kb_sources.length > 0 && (
+              <SourcesBlock sources={message.kb_sources} />
+            )}
             {/* Hover action bar */}
             <div className="mt-1.5 flex items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
               <CopyButton plainText={message.plain_text} htmlContent={message.content} />
@@ -1354,6 +1357,47 @@ function SearchContextBlock({ context }: { context: string }) {
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+/* ─── KB Sources block ───────────────────────────────────── */
+function SourcesBlock({ sources }: { sources: KBSource[] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-2.5 rounded-[10px] border border-[rgba(10,124,255,0.14)] bg-[rgba(10,124,255,0.03)]">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-2 px-3 py-2 text-left"
+      >
+        <FileText size={13} className="shrink-0 text-[#0a7cff]" />
+        <span className="flex-1 text-[12px] font-medium text-[#0a7cff]">
+          Источники ({sources.length})
+        </span>
+        {open ? (
+          <ChevronDown size={13} className="shrink-0 text-[rgba(10,124,255,0.6)]" />
+        ) : (
+          <ChevronRight size={13} className="shrink-0 text-[rgba(10,124,255,0.6)]" />
+        )}
+      </button>
+      {open && (
+        <div className="border-t border-[rgba(10,124,255,0.1)] px-3 pb-2 pt-1.5 flex flex-col gap-1">
+          {sources.map((s) => (
+            <div
+              key={s.id}
+              className="flex items-center gap-2 rounded-[6px] px-2 py-1.5 text-[12px] text-[rgba(13,13,13,0.7)] dark:text-[rgba(236,236,236,0.6)] hover:bg-[rgba(10,124,255,0.06)] transition-colors"
+            >
+              <FileText size={11} className="shrink-0 text-[rgba(10,124,255,0.5)]" />
+              <span className="font-mono truncate" title={s.path}>{s.filename}</span>
+              {s.path !== s.filename && (
+                <span className="ml-auto shrink-0 text-[10px] text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.3)] font-mono truncate max-w-[180px]" title={s.path}>
+                  {s.path}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

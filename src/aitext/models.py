@@ -605,6 +605,7 @@ class Message(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     plain_text = models.TextField(blank=True, verbose_name='Оригинальный текст без форматирования')
     search_context = models.TextField(blank=True, default='', verbose_name='Результаты веб-поиска')
+    kb_sources = models.JSONField(default=list, blank=True, verbose_name='Источники базы знаний')
 
     class Meta:
         verbose_name = 'Сообщение'

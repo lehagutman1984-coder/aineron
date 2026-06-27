@@ -290,7 +290,7 @@ type SSEEvent =
   | { type: "init"; user_message_id: number; assistant_message_id: number; new_balance: number }
   | { type: "search_done"; preview: string }
   | { type: "token"; text: string }
-  | { type: "done"; content: string; plain_text: string; search_context?: string; commit_proposed?: { id: number; commit_message: string; files_count: number; project_id: number } | null }
+  | { type: "done"; content: string; plain_text: string; search_context?: string; sources?: import("./types").KBSource[]; commit_proposed?: { id: number; commit_message: string; files_count: number; project_id: number } | null }
   | { type: "error"; message: string };
 
 export interface CommitProposed {
@@ -307,7 +307,7 @@ export async function streamMessage(
     onInit: (data: { user_message_id: number; assistant_message_id: number; new_balance: number }) => void;
     onSearchDone?: (preview: string) => void;
     onToken: (text: string) => void;
-    onDone: (data: { content: string; plain_text: string; search_context?: string; commit_proposed?: CommitProposed | null }) => void;
+    onDone: (data: { content: string; plain_text: string; search_context?: string; sources?: import("./types").KBSource[]; commit_proposed?: CommitProposed | null }) => void;
     onError: (message: string) => void;
   }
 ): Promise<void> {

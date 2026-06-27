@@ -373,6 +373,7 @@ class StreamMessageView(APIView):
         messages_for_api = []
 
         # 1. Project system prompt + база знаний (если есть)
+        kb_sources: list[dict] = []
         if chat.project_id:
             from aitext.models import Project
             from aitext.tasks import build_project_knowledge_context
@@ -380,7 +381,7 @@ class StreamMessageView(APIView):
                 proj = Project.objects.get(id=chat.project_id)
                 if proj.system_prompt:
                     messages_for_api.append({"role": "system", "content": proj.system_prompt})
-                knowledge_ctx = build_project_knowledge_context(proj, message_text)
+                knowledge_ctx, kb_sources = build_project_knowledge_context(proj, message_text)
                 if knowledge_ctx:
                     messages_for_api.append({"role": "system", "content": knowledge_ctx})
                 # AI-коммиты: инструкция о FILE-формате (Sprint 4.3)
@@ -534,6 +535,8 @@ class StreamMessageView(APIView):
                 assistant_message.content = formatted_html
                 assistant_message.plain_text = full_text
                 assistant_message.status = Message.Status.COMPLETED
+                if kb_sources:
+                    assistant_message.kb_sources = kb_sources
                 assistant_message.save()
 
                 # ── Persistent Memory: извлечение фактов (фон, каждые 3 ответа) ──
@@ -585,6 +588,7 @@ class StreamMessageView(APIView):
                     "content": formatted_html,
                     "plain_text": full_text,
                     "search_context": search_context_text,
+                    **({"sources": kb_sources} if kb_sources else {}),
                     **({"commit_proposed": commit_event} if commit_event else {}),
                 })
 
