@@ -57,6 +57,7 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
   const [etaSeconds, setEtaSeconds] = useState<number>(12);
   const [elapsedStart, setElapsedStart] = useState<number>(0);
   const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
+  const [sessionCost, setSessionCost] = useState<number>(0); // stars spent in last session
 
   const sessionRef = useRef<string | null>(null);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -108,7 +109,14 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
     setLogs([]);
     setShowLogs(false);
     setElapsedSeconds(0);
+    setSessionCost(0);
     if (sid) await stopSession(sid);
+  };
+
+  const handleExpired = () => {
+    setSessionCost(Math.ceil(elapsedMin * starsPerMin));
+    clearPoll();
+    setState('expired');
   };
 
   const startPreview = async () => {
@@ -237,7 +245,9 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
         <Monitor size={36} className="text-[var(--text-secondary)]" />
         <div>
           <p className="text-sm font-medium text-[var(--text)]">Превью не запущено</p>
-          <p className="text-xs text-[var(--text-secondary)] mt-1">Sandbox запускается вручную — каждая сессия списывает звёзды</p>
+          <p className="text-xs text-[var(--text-secondary)] mt-1 max-w-[220px] leading-relaxed">
+            ~1 зв./мин · сессия до 15 мин · списывается только фактическое время
+          </p>
         </div>
         <button
           onClick={startPreview}
@@ -282,6 +292,13 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
             {elapsedSeconds}s{etaSeconds > 0 ? ` / ~${etaSeconds}s` : ''}
           </p>
         </div>
+
+        <button
+          onClick={handleStop}
+          className="text-xs text-[var(--text-secondary)] hover:text-red-400 transition-colors"
+        >
+          Отмена
+        </button>
       </div>
     );
   }
@@ -300,16 +317,36 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
     );
   }
 
-  // ── Error / expired state ─────────────────────────────────────────────────
-  if (state === 'failed' || state === 'expired') {
+  // ── Expired: session timed out naturally ─────────────────────────────────────
+  if (state === 'expired') {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-4 p-6 text-center">
+        <Monitor size={36} className="text-[var(--text-secondary)]" />
+        <div>
+          <p className="text-sm font-medium text-[var(--text)]">Сессия завершена</p>
+          <p className="text-xs text-[var(--text-secondary)] mt-1">
+            15 мин истекли{sessionCost > 0 ? ` · потрачено ~${sessionCost} зв.` : ''}
+          </p>
+        </div>
+        <button
+          onClick={startPreview}
+          className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
+        >
+          <Zap size={15} />
+          Запустить новую сессию
+        </button>
+      </div>
+    );
+  }
+
+  // ── Failed: launch error ──────────────────────────────────────────────────
+  if (state === 'failed') {
     return (
       <div className="flex flex-col h-full">
         <div className="flex flex-col items-center justify-center flex-1 gap-4 p-6 text-center">
           <XCircle size={36} className="text-red-400" />
           <div>
-            <p className="text-sm font-medium text-[var(--text)]">
-              {state === 'expired' ? 'Сессия истекла' : 'Не удалось запустить превью'}
-            </p>
+            <p className="text-sm font-medium text-[var(--text)]">Не удалось запустить превью</p>
             {error && <p className="text-xs text-red-400 mt-1 max-w-xs">{error}</p>}
           </div>
           <button
@@ -390,7 +427,7 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
         {expiresAt > 0 && (
           <SessionTimer
             expiresAt={expiresAt}
-            onExpired={() => setState('expired')}
+            onExpired={handleExpired}
           />
         )}
 
