@@ -65,6 +65,12 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
   const logsEndRef = useRef<HTMLDivElement | null>(null);
   const logsPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const genRef = useRef<number>(0);
+  const expiresAtRef = useRef<number>(0);
+  const stateRef = useRef<E2BState>('idle');
+
+  // keep refs in sync so visibilitychange closure always reads fresh values
+  useEffect(() => { stateRef.current = state; }, [state]);
+  useEffect(() => { expiresAtRef.current = expiresAt; }, [expiresAt]);
 
   const clearStatusPoll = () => {
     if (pollTimerRef.current) { clearInterval(pollTimerRef.current); pollTimerRef.current = null; }
@@ -204,6 +210,21 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   // refreshKey intentionally excluded: sandbox must NOT restart on every coding step
+  }, [projectId]);
+
+  // Auto-restart when user returns to tab after sandbox expired in background
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState !== 'visible') return;
+      const isRunningOrExpired = stateRef.current === 'running' || stateRef.current === 'expired';
+      const isExpired = expiresAtRef.current > 0 && Date.now() / 1000 > expiresAtRef.current + 5;
+      if (isRunningOrExpired && isExpired) {
+        startPreview();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
   useEffect(() => {
