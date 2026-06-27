@@ -8,7 +8,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.clickjacking import xframe_options_exempt
 from rest_framework import permissions
 from rest_framework.renderers import BaseRenderer
-from rest_framework.views import APIView
+from rest_framework.views import APIView, AsyncAPIView
 from rest_framework.response import Response
 from ..models import StudioProject, ProjectDatabase, PreviewSession
 from ..serializers import PipelineStateSerializer
@@ -190,23 +190,21 @@ class PipelineRunView(APIView):
         return Response({'status': 'running'}, status=202)
 
 
-class PipelineEventsView(APIView):
+class PipelineEventsView(AsyncAPIView):
     """
     Async SSE view — nginx routes /events/ to Daphne so this runs in the asyncio
     event loop, not a Gunicorn worker thread. Each SSE connection costs one async
     coroutine instead of one OS thread, allowing thousands of concurrent sessions.
-
-    Falls back to sync StreamingHttpResponse when served through Gunicorn (WSGI).
+    Requires AsyncAPIView (DRF 3.15+) so dispatch() properly awaits get().
     """
     permission_classes = [permissions.IsAuthenticated]
     renderer_classes = [EventStreamRenderer]
 
     async def get(self, request, id):
-        from asgiref.sync import sync_to_async
         from ..events import get_pipeline_events_async
 
         try:
-            await sync_to_async(StudioProject.objects.get)(id=id, user=request.user)
+            await StudioProject.objects.aget(id=id, user=request.user)
         except StudioProject.DoesNotExist:
             return HttpResponse(status=404)
 
