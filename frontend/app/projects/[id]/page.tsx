@@ -56,6 +56,7 @@ import {
   UserMinus,
   GitPullRequest,
   ExternalLink,
+  Database,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -2079,6 +2080,13 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
           label="Файлы"
           onClick={() => setTab("files")}
         />
+        <Link
+          href={`/projects/${projectId}/kb/`}
+          className="relative flex items-center gap-1.5 border-b-2 -mb-px px-3 py-2.5 text-[13px] font-medium transition-colors border-transparent text-[rgba(13,13,13,0.52)] hover:text-[#0d0d0d]"
+        >
+          <Database size={13} />
+          База знаний
+        </Link>
         <TabButton
           active={tab === "connectors"}
           icon={<GitBranch size={13} />}
