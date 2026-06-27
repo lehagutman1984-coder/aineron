@@ -1165,6 +1165,7 @@ def extract_memory_facts(self, chat_id: int):
     from .memory import normalize_fact, invalidate_memory_cache
 
     added = 0
+    new_labels = []
     for fact in facts:
         content = str(fact.get('content', '')).strip()
         category = fact.get('category', 'fact')
@@ -1195,6 +1196,7 @@ def extract_memory_facts(self, chat_id: int):
             if was_created:
                 existing_keys.add(content_key)
                 added += 1
+                new_labels.append(content[:80])
         except Exception as exc:
             logger.debug(f'[memory] upsert fact skip for user={user.id}: {exc}')
 
@@ -1205,8 +1207,7 @@ def extract_memory_facts(self, chat_id: int):
         try:
             import json as _json
             from django.core.cache import cache as _cache
-            new_labels = [str(f.get('content', ''))[:80] for f in facts if f.get('content')][:5]
-            _cache.set(f"memory:toast:{user.id}", _json.dumps({'count': added, 'facts': new_labels}), timeout=120)
+            _cache.set(f"memory:toast:{user.id}", _json.dumps({'count': added, 'facts': new_labels[:5]}), timeout=120)
         except Exception:
             pass
 
@@ -1844,7 +1845,7 @@ def deep_research_task(self, research_id: int):
     chat = research.chat
     project = getattr(chat, 'project', None)
     network = chat.network
-    model_name = getattr(network, 'model_name', 'gpt-4o-mini') if network else 'gpt-4o-mini'
+    model_name = network.model_name if network else 'claude-3-5-sonnet-20241022'
     question = research.question
 
     try:
@@ -1859,9 +1860,13 @@ def deep_research_task(self, research_id: int):
         completed_searches = 0
 
         def _search_one(q):
-            kb = _kb_search_chunks(project, q, top_k=4)
-            web = _web_search_chunks(q)
-            return q, kb + web
+            try:
+                kb = _kb_search_chunks(project, q, top_k=4)
+                web = _web_search_chunks(q)
+                return q, kb + web
+            finally:
+                from django.db import close_old_connections
+                close_old_connections()
 
         with ThreadPoolExecutor(max_workers=3) as ex:
             futures = {ex.submit(_search_one, q): q for q in queries}

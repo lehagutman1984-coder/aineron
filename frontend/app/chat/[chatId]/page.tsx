@@ -107,6 +107,19 @@ export default function ChatPage() {
     },
   });
 
+  // Plan Gap 1: restore research polling after page reload (close-tab resume)
+  useEffect(() => {
+    if (!chat?.messages || activeResearchId !== null) return;
+    const inFlight = chat.messages.find(
+      (m) => m.is_research && m.status === "pending" && m.research_id
+    );
+    if (inFlight) {
+      setActiveResearchId(inFlight.research_id!);
+      setActiveResearchMsgId(inFlight.id);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chat?.id]);
+
   useEffect(() => {
     if (!researchPoll || !activeResearchMsgId) return;
     if (researchPoll.status === "done" && researchPoll.content) {
@@ -116,7 +129,7 @@ export default function ChatPage() {
           ...prev,
           messages: prev.messages.map((m) =>
             m.id === activeResearchMsgId
-              ? { ...m, content: researchPoll.content!, plain_text: researchPoll.plain_text ?? "", status: "completed" as const }
+              ? { ...m, content: researchPoll.content!, plain_text: researchPoll.plain_text ?? "", status: "completed" as const, is_research: true }
               : m
           ),
         };
@@ -383,7 +396,7 @@ export default function ChatPage() {
               .filter((m) => m.id !== tempUserId && m.id !== tempAssistId)
               .concat([
                 { id: res.user_message_id, role: "user", content: question, plain_text: question, files: [], status: "completed", error_message: null, created_at: new Date().toISOString() },
-                { id: res.message_id, role: "assistant", content: "", plain_text: null, files: [], status: "pending", error_message: null, created_at: new Date().toISOString() },
+                { id: res.message_id, role: "assistant", content: "", plain_text: null, files: [], status: "pending", error_message: null, is_research: true, research_id: res.research_id, created_at: new Date().toISOString() },
               ]),
           };
         });
@@ -1193,7 +1206,7 @@ function MessageRow({
             {message.search_context && (
               <SearchContextBlock context={message.search_context} />
             )}
-            {message.content && message.content.includes("<h2") ? (
+            {message.is_research && message.content ? (
               <ResearchReport html={message.content} plainText={message.plain_text ?? undefined} />
             ) : (
               <AssistantContent

@@ -238,6 +238,8 @@ export interface WebMessage {
   search_context?: string;
   kb_sources?: KBSource[];
   variants?: MessageVariant[];
+  is_research?: boolean;
+  research_id?: number | null;
   created_at: string;
 }
 

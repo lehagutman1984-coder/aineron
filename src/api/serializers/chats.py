@@ -4,12 +4,29 @@ from api.serializers.catalog import NeuralNetworkListSerializer
 
 
 class MessageSerializer(serializers.ModelSerializer):
+    is_research = serializers.SerializerMethodField()
+    research_id = serializers.SerializerMethodField()
+
     class Meta:
         model = Message
         fields = [
             'id', 'role', 'content', 'plain_text', 'files', 'status',
             'error_message', 'search_context', 'kb_sources', 'variants', 'created_at',
+            'is_research', 'research_id',
         ]
+
+    def get_is_research(self, obj):
+        try:
+            return obj.deep_research is not None
+        except Exception:
+            return False
+
+    def get_research_id(self, obj):
+        try:
+            dr = obj.deep_research
+            return dr.id if dr is not None else None
+        except Exception:
+            return None
 
 
 class NeuralNetworkChatSerializer(NeuralNetworkListSerializer):
