@@ -1,12 +1,11 @@
-const CACHE = "aineron-v1";
-const PRECACHE = ["/", "/catalog/", "/account/", "/api-docs/"];
+const CACHE = "aineron-v2";
+const PRECACHE = ["/", "/catalog/", "/account/"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches
-      .open(CACHE)
-      .then((c) => c.addAll(PRECACHE))
-      .then(() => self.skipWaiting())
+    caches.open(CACHE).then((c) =>
+      Promise.allSettled(PRECACHE.map((url) => c.add(url)))
+    ).then(() => self.skipWaiting())
   );
 });
 

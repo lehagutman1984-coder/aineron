@@ -218,6 +218,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
     let src: EventSource | null = null;
     let closed = false;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let retryDelay = 3000;
 
     const connect = () => {
       if (closed) return;
@@ -226,6 +227,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
         { withCredentials: true },
       );
       src.onmessage = (e) => {
+        retryDelay = 3000; // reset backoff on successful message
         try {
           const d = JSON.parse(e.data);
           if (d.type === 'connected') return;
@@ -255,7 +257,10 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
       };
       src.onerror = () => {
         src?.close();
-        if (!closed) retryTimer = setTimeout(connect, 3000);
+        if (!closed) {
+          retryTimer = setTimeout(connect, retryDelay);
+          retryDelay = Math.min(retryDelay * 2, 60000); // exponential backoff, cap 60s
+        }
       };
     };
 
