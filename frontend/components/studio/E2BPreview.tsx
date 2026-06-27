@@ -65,12 +65,6 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
   const logsEndRef = useRef<HTMLDivElement | null>(null);
   const logsPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const genRef = useRef<number>(0);
-  const expiresAtRef = useRef<number>(0);
-  const stateRef = useRef<E2BState>('idle');
-
-  // keep refs in sync so visibilitychange closure always reads fresh values
-  useEffect(() => { stateRef.current = state; }, [state]);
-  useEffect(() => { expiresAtRef.current = expiresAt; }, [expiresAt]);
 
   const clearStatusPoll = () => {
     if (pollTimerRef.current) { clearInterval(pollTimerRef.current); pollTimerRef.current = null; }
@@ -199,7 +193,19 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
   };
 
   useEffect(() => {
-    startPreview();
+    // Reset to idle when project changes — do NOT auto-start (costs money)
+    setState('idle');
+    setPublicUrl(null);
+    setError(null);
+    setExpiresAt(0);
+    setLogs([]);
+    setShowLogs(false);
+    genRef.current++;
+    clearPoll();
+    if (sessionRef.current) {
+      stopSession(sessionRef.current);
+      sessionRef.current = null;
+    }
     return () => {
       genRef.current++;
       clearPoll();
@@ -208,22 +214,6 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
         sessionRef.current = null;
       }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  // refreshKey intentionally excluded: sandbox must NOT restart on every coding step
-  }, [projectId]);
-
-  // Auto-restart when user returns to tab after sandbox expired in background
-  useEffect(() => {
-    const handleVisibility = () => {
-      if (document.visibilityState !== 'visible') return;
-      const isRunningOrExpired = stateRef.current === 'running' || stateRef.current === 'expired';
-      const isExpired = expiresAtRef.current > 0 && Date.now() / 1000 > expiresAtRef.current + 5;
-      if (isRunningOrExpired && isExpired) {
-        startPreview();
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => document.removeEventListener('visibilitychange', handleVisibility);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
@@ -240,8 +230,28 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showLogs, state]);
 
-  // ── Loading / starting state (L6 progressive) ───────────────────────────────
-  if (state === 'idle' || state === 'starting') {
+  // ── Idle: user must explicitly launch (sandbox costs money) ─────────────────
+  if (state === 'idle') {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-4 p-6 text-center">
+        <Monitor size={36} className="text-[var(--text-secondary)]" />
+        <div>
+          <p className="text-sm font-medium text-[var(--text)]">Превью не запущено</p>
+          <p className="text-xs text-[var(--text-secondary)] mt-1">Sandbox запускается вручную — каждая сессия списывает звёзды</p>
+        </div>
+        <button
+          onClick={startPreview}
+          className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
+        >
+          <Zap size={15} />
+          Запустить превью
+        </button>
+      </div>
+    );
+  }
+
+  // ── Starting state (L6 progressive) ─────────────────────────────────────────
+  if (state === 'starting') {
     const copy = CLAIM_COPY[claimSource] ?? CLAIM_COPY.cold;
     const isHot = claimSource === 'prewarm' || claimSource === 'paused';
     const pct = Math.min(100, Math.round((elapsedSeconds / Math.max(etaSeconds, 1)) * 100));
@@ -261,7 +271,6 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
           <p className="text-sm font-medium text-[var(--text)] mb-1">{copy.label}</p>
           <p className="text-xs text-[var(--text-secondary)] mb-3">{copy.sub}</p>
 
-          {/* Progress bar */}
           <div className="w-full h-1 bg-[var(--border)] rounded-full overflow-hidden mb-1">
             <div
               className="h-full bg-blue-500 rounded-full transition-all duration-1000"
