@@ -1085,11 +1085,11 @@ def generate_ai_response(self, message_id, web_search=False):
 # ──────────────────────────────────────────────────────────────────────────────
 
 @shared_task(bind=True, max_retries=1)
-def upscale_generation_task(self, generation_id, user_id, factor=2, image_url=None, cost=0):
-    """Sprint 6: апскейл существующей генерации через upscale-модель провайдера.
+def upscale_generation_task(self, generation_id, user_id, factor=2, image_url=None, cost=0, placeholder_id=None):
+    """Sprint 6: улучшение изображения через upscale-модель провайдера.
 
-    Биллинг со списанием/возвратом звёзд выполняется здесь (как в generate_ai_response).
-    Возвращает id новой GeneratedImage.
+    Биллинг со списанием/возвратом звёзд выполняется здесь.
+    После завершения создаёт новое сообщение ассистента в чате.
     """
     from .fal_utils import generate_upscale
     from users.models import CustomUser
@@ -1110,15 +1110,38 @@ def upscale_generation_task(self, generation_id, user_id, factor=2, image_url=No
             UserSpending.objects.create(
                 user=user,
                 amount=cost,
-                description=f"Апскейл изображения ×{factor}",
+                description=f"Улучшение изображения ×{factor}",
             )
             logger.info(f"[upscale] списано {cost} зв. у пользователя {user.email}")
 
-        gen = generate_upscale(generation_id, user_id=user_id, factor=factor, image_url=image_url)
-        logger.info(f"[upscale] генерация {generation_id} апскейлнута ×{factor} → {gen.id if gen else None}")
+        gen = generate_upscale(generation_id, user_id=user_id, factor=factor, image_url=image_url, placeholder_id=placeholder_id)
+        logger.info(f"[upscale] генерация {generation_id} улучшена ×{factor} → {gen.id if gen else None}")
+
+        # Публикуем результат как новое сообщение ассистента в чате
+        if gen and gen.image:
+            try:
+                from .models import GeneratedImage as GI, Message
+                orig = GI.objects.filter(id=generation_id).select_related('message__chat').first()
+                if orig and orig.message_id:
+                    chat_obj = orig.message.chat
+                    img_url = gen.image.url
+                    new_msg = Message.objects.create(
+                        chat=chat_obj,
+                        role='assistant',
+                        content=f"<img src='{img_url}' alt='Улучшенное изображение ×{factor}' style='max-width:100%;border-radius:12px;'>",
+                        plain_text=f"Улучшенное изображение ×{factor}",
+                        status=Message.Status.COMPLETED,
+                        fal_ai=True,
+                    )
+                    gen.message = new_msg
+                    gen.save(update_fields=['message'])
+                    logger.info(f"[upscale] создано сообщение {new_msg.id} в чате {chat_obj.id}")
+            except Exception as notify_err:
+                logger.warning(f"[upscale] не удалось создать сообщение с результатом: {notify_err}")
+
         return gen.id if gen else None
     except Exception as e:
-        logger.error(f"[upscale] ошибка апскейла генерации {generation_id}: {e}")
+        logger.error(f"[upscale] ошибка улучшения генерации {generation_id}: {e}")
         if stars_deducted and user:
             user.add_pages(cost)
             logger.info(f"[upscale] возвращено {cost} зв. пользователю {user.email} из-за ошибки")

@@ -699,15 +699,11 @@ UPSCALE_FALLBACK_PROMPTS = {
 }
 
 
-def generate_upscale(generation_id, user_id=None, factor=2, image_url=None):
+def generate_upscale(generation_id, user_id=None, factor=2, image_url=None, placeholder_id=None):
     """Sprint 6: апскейл GeneratedImage в factor раз через upscale-модель провайдера.
 
-    Создаёт placeholder-строку (status='running', image='' — отфильтрована из галереи),
-    скачивает исходник server-side и шлёт его через images.edit (как generate_image_edit),
-    с фолбэком на images.generate + image_url в теле. Возвращает заполненный GeneratedImage.
-
-    image_url — абсолютный URL исходника (вычисляется во view, чтобы не зависеть от SITE_URL).
-    user_id принимается для совместимости с сигнатурой задачи (биллинг — в задаче).
+    image_url — абсолютный URL исходника (вычисляется во view).
+    placeholder_id — если передан view создал placeholder заранее; иначе создаём здесь.
     """
     from .models import GeneratedImage
     original = GeneratedImage.objects.get(id=generation_id)
@@ -729,20 +725,22 @@ def generate_upscale(generation_id, user_id=None, factor=2, image_url=None):
     if factor not in (2, 4):
         factor = 2
 
-    # Placeholder — image='' пока генерация идёт (UserFilesView отфильтровывает такие строки)
-    placeholder = GeneratedImage.objects.create(
-        message=original.message,
-        image='',
-        prompt=original.prompt or '',
-        media_type='image',
-        model_name=UPSCALE_MODELS[0],
-        provider='laozhang',
-        source=original.source or 'chat',
-        parent_id=original.id,
-        params={'op': 'upscale', 'factor': factor, 'source_id': original.id},
-        status='running',
-        progress=10,
-    )
+    if placeholder_id:
+        placeholder = GeneratedImage.objects.get(id=placeholder_id)
+    else:
+        placeholder = GeneratedImage.objects.create(
+            message=original.message,
+            image='',
+            prompt=original.prompt or '',
+            media_type='image',
+            model_name=UPSCALE_MODELS[0],
+            provider='laozhang',
+            source=original.source or 'chat',
+            parent_id=original.id,
+            params={'op': 'upscale', 'factor': factor, 'source_id': original.id},
+            status='running',
+            progress=10,
+        )
 
     client = get_laozhang_image_client()
 

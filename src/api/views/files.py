@@ -242,10 +242,28 @@ class GenerationUpscaleView(APIView):
 
         image_url = request.build_absolute_uri(gen.image.url)
 
+        # Создаём placeholder ДО запуска задачи — возвращаем его ID фронту для SSE-прогресса
+        from aitext.fal_utils import UPSCALE_MODELS
+        placeholder = GeneratedImage.objects.create(
+            message=gen.message,
+            user=request.user,
+            image='',
+            prompt=gen.prompt or '',
+            media_type='image',
+            model_name=UPSCALE_MODELS[0],
+            provider='laozhang',
+            source=gen.source or 'chat',
+            parent_id=gen.id,
+            params={'op': 'upscale', 'factor': factor, 'source_id': gen.id},
+            status='running',
+            progress=10,
+        )
+
         from aitext.tasks import upscale_generation_task
-        task = upscale_generation_task.delay(gen.id, request.user.id, factor, image_url, cost)
+        task = upscale_generation_task.delay(gen.id, request.user.id, factor, image_url, cost, placeholder.id)
 
         return Response({
+            'placeholder_id': placeholder.id,
             'task_id': task.id,
             'status': 'pending',
             'factor': factor,

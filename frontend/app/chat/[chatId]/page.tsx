@@ -20,7 +20,7 @@ import { EditImageModal, type EditImagePayload } from "@/components/chat/EditIma
 import { AnimateImageModal } from "@/components/chat/AnimateImageModal";
 import { GenerationProgress } from "@/components/chat/GenerationProgress";
 import { PromptEnhancer } from "@/components/chat/PromptEnhancer";
-import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, uploadFile, synthesizeSpeech, confirmCommit, exportChat, quickSaveFact, branchChat, startDeepResearch, getResearchStatus, getMemoryToast, upscaleGeneration, createVariations, APIError, type CommitProposed } from "@/lib/api/client";
+import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, uploadFile, synthesizeSpeech, confirmCommit, exportChat, quickSaveFact, branchChat, startDeepResearch, getResearchStatus, getMemoryToast, upscaleGeneration, createVariations, APIError, BASE_URL, type CommitProposed } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 import { useUIStore } from "@/lib/stores/ui";
 import type { WebMessage, ChatDetail, UiSection, KBSource } from "@/lib/api/types";
@@ -68,6 +68,8 @@ export default function ChatPage() {
   // Настройки медиа-моделей (video/image): инициализируются из config_json.api_defaults
   const [mediaSettings, setMediaSettings] = useState<Record<string, unknown>>({});
   const [showMediaSettings, setShowMediaSettings] = useState(false);
+  // Референс стиля для следующей генерации (кнопка «Стиль»)
+  const [styleReferenceUrl, setStyleReferenceUrl] = useState<string | null>(null);
 
   // Polling state (used for fal-ai image models)
   const [pendingMessageId, setPendingMessageId] = useState<number | null>(null);
@@ -540,23 +542,40 @@ export default function ChatPage() {
     qc.invalidateQueries({ queryKey: ["chat", id] });
   }, [qc, id]);
 
-  // Sprint 6: апскейл сгенерированного изображения из пузыря сообщения
+  // Sprint 6: улучшение изображения — запускает задачу и слушает SSE прогресс
   const handleUpscaleImage = useCallback(
     async (generationId: number, factor: 2 | 4) => {
       try {
         const res = await upscaleGeneration(String(generationId), factor);
         addToast({
-          type: "success",
-          message: `Апскейл ×${res.factor} запущен. Результат появится в «Мои файлы» через минуту.`,
+          type: "info",
+          message: `Улучшение ×${res.factor} запущено, обычно занимает 15–30 сек...`,
         });
+        if (res.placeholder_id) {
+          const es = new EventSource(`${BASE_URL}/generations/${res.placeholder_id}/progress/`, { withCredentials: true });
+          es.onmessage = (e) => {
+            try {
+              const data = JSON.parse(e.data) as { status?: string };
+              if (data.status === "done") {
+                es.close();
+                qc.invalidateQueries({ queryKey: ["chat", id] });
+                addToast({ type: "success", message: `Изображение улучшено ×${factor}! Появилось в чате.` });
+              } else if (data.status === "error") {
+                es.close();
+                addToast({ type: "error", message: "Не удалось улучшить изображение. Попробуйте позже." });
+              }
+            } catch { /* */ }
+          };
+          es.onerror = () => es.close();
+        }
       } catch (err) {
         addToast({
           type: "error",
-          message: err instanceof APIError ? err.message : "Не удалось запустить апскейл.",
+          message: err instanceof APIError ? err.message : "Не удалось запустить улучшение.",
         });
       }
     },
-    [addToast]
+    [addToast, qc, id]
   );
 
   // Sprint 6: вариации сгенерированного изображения из пузыря сообщения
@@ -576,13 +595,11 @@ export default function ChatPage() {
     [addToast, qc, id]
   );
 
-  // Sprint 6: использовать изображение как референс стиля (переход к выбору модели)
+  // Sprint 6: референс стиля — сохраняем в state, применяем к следующей генерации
   const handleStyleImage = useCallback((url: string) => {
-    try {
-      localStorage.setItem("aineron_style_image", url);
-    } catch {}
-    window.location.href = "/models/";
-  }, []);
+    setStyleReferenceUrl(url);
+    addToast({ type: "info", message: "Стиль задан. Следующая генерация будет в этом стиле." });
+  }, [addToast]);
 
   // img2img: применить редактирование из модалки — отправляет сообщение с image_url/mask_url/outpaint
   const handleEditModalSubmit = useCallback(
@@ -653,6 +670,10 @@ export default function ChatPage() {
       const falSettings: Record<string, unknown> = { ...mediaSettings };
       if (sourceImage && sourceImage.url && !sourceImage.error) {
         falSettings.image_url = sourceImage.url;
+      }
+      if (styleReferenceUrl) {
+        falSettings.style_image_url = styleReferenceUrl;
+        setStyleReferenceUrl(null);
       }
       sendMutation.mutate({ msg: msg || " ", attachmentIds, ws: webSearch, settings: Object.keys(falSettings).length > 0 ? falSettings : undefined });
     } else {
@@ -1228,6 +1249,24 @@ export default function ChatPage() {
                   setText((prev) => (prev.trim() ? prev.trimEnd() + " " + t : t))
                 }
               />
+            </div>
+          )}
+
+          {/* Баннер «Стиль задан» — показываем если есть styleReferenceUrl */}
+          {styleReferenceUrl && (
+            <div className="mx-1 mt-1.5 flex items-center gap-2 rounded-[8px] border border-[rgba(10,124,255,0.2)] bg-[rgba(10,124,255,0.06)] px-3 py-1.5">
+              <img src={styleReferenceUrl} alt="стиль" className="h-8 w-8 rounded-[4px] object-cover" />
+              <span className="flex-1 text-[12px] text-[rgba(13,13,13,0.7)] dark:text-[rgba(236,236,236,0.7)]">
+                Следующая генерация будет в стиле этого изображения
+              </span>
+              <button
+                type="button"
+                onClick={() => setStyleReferenceUrl(null)}
+                className="text-[rgba(13,13,13,0.4)] hover:text-[rgba(13,13,13,0.7)] dark:text-[rgba(236,236,236,0.4)] dark:hover:text-[rgba(236,236,236,0.7)]"
+                title="Убрать референс стиля"
+              >
+                <X size={14} />
+              </button>
             </div>
           )}
 

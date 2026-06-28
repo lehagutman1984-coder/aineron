@@ -762,6 +762,7 @@ export interface RerunGenerationResponse {
 }
 
 export interface UpscaleGenerationResponse {
+  placeholder_id: number;
   task_id: string;
   status: string;
   factor: number;
