@@ -31,6 +31,14 @@ interface Props {
 
 type Direction = "left" | "right" | "up" | "down" | "all";
 
+const ASPECT_HINT: Record<Direction, string> = {
+  left: "→ финальное: ~4:3",
+  right: "→ финальное: ~4:3",
+  up: "→ финальное: ~3:4",
+  down: "→ финальное: ~3:4",
+  all: "→ финальное: ~1:1",
+};
+
 const OUTPAINT_BTNS: { dir: Direction; icon: typeof ArrowLeft; label: string }[] = [
   { dir: "left", icon: ArrowLeft, label: "Влево" },
   { dir: "up", icon: ArrowUp, label: "Вверх" },
@@ -121,6 +129,23 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
 
           {/* Mask toggle + status */}
           <div className={outpaint ? "opacity-40 pointer-events-none select-none" : ""}>
+            {/* Quick presets */}
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {[
+                { label: "Убрать фон", prompt: "Remove background, make it transparent or white", icon: "bg" },
+                { label: "Ярче и чётче", prompt: "Enhance sharpness, increase brightness and contrast, professional photo editing", icon: "enhance" },
+                { label: "Добавить текст", prompt: "", icon: "text", placeholder: "Добавить текст..." },
+              ].map(({ label, prompt }) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => { if (prompt) setPrompt(prompt); }}
+                  className="h-8 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 text-[12px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:bg-[rgba(13,13,13,0.04)] hover:border-[rgba(13,13,13,0.25)] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.65)]"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
@@ -168,6 +193,7 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
                 >
                   <Icon size={14} />
                   {label}
+                  <span className="text-[10px] opacity-60 ml-0.5">{ASPECT_HINT[dir]}</span>
                 </button>
               ))}
             </div>
@@ -193,6 +219,11 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
               }
               className="w-full resize-none rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-3 py-2.5 text-[13px] text-[#0d0d0d] outline-none transition-all focus:border-[#0a7cff] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] dark:border-[rgba(255,255,255,0.12)] dark:bg-[rgba(255,255,255,0.04)] dark:text-[#ececec]"
             />
+            {outpaint && (
+              <p className="mt-1 text-[11px] text-[rgba(13,13,13,0.4)] dark:text-[rgba(236,236,236,0.4)]">
+                Холст расширяется на 25% в выбранном направлении. GPT Image / Flux — наилучшие результаты.
+              </p>
+            )}
           </div>
         </div>
 
