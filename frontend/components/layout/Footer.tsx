@@ -5,7 +5,6 @@ const COLUMNS = [
     title: "Продукт",
     links: [
       { label: "Каталог моделей", href: "/models/" },
-      { label: "Студия", href: "/studio/" },
       { label: "Сравнение моделей", href: "/compare/" },
       { label: "Проекты", href: "/projects/" },
       { label: "Промты", href: "/prompts/" },

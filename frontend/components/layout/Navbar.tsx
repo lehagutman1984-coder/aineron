@@ -47,7 +47,6 @@ export function Navbar() {
         {/* Desktop nav */}
         <nav className="hidden items-center gap-1 md:flex">
           <NavLink href="/models/">Каталог</NavLink>
-          <NavLink href="/studio/">Студия</NavLink>
           <NavLink href="/compare/">Сравнение</NavLink>
           <NavLink href="/blog/">Блог</NavLink>
           <NavLink href="/api-docs/">API</NavLink>
@@ -126,7 +125,6 @@ export function Navbar() {
         <div className="border-t border-[rgba(13,13,13,0.10)] bg-white px-4 py-3 dark:border-[rgba(255,255,255,0.08)] dark:bg-[#111113] md:hidden">
           <div className="flex flex-col gap-1">
             <MobileNavLink href="/models/" onClick={() => setMobileOpen(false)}>Каталог</MobileNavLink>
-            <MobileNavLink href="/studio/" onClick={() => setMobileOpen(false)}>Студия</MobileNavLink>
             <MobileNavLink href="/compare/" onClick={() => setMobileOpen(false)}>Сравнение</MobileNavLink>
             <MobileNavLink href="/blog/" onClick={() => setMobileOpen(false)}>Блог</MobileNavLink>
             <MobileNavLink href="/api-docs/" onClick={() => setMobileOpen(false)}>API</MobileNavLink>
