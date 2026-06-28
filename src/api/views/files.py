@@ -352,3 +352,62 @@ class GenerationVariationsView(APIView):
             'message_ids': message_ids,
             'count': count,
         }, status=201)
+
+
+class GenerationDescribeView(APIView):
+    """POST /v1/generations/<pk>/describe/
+
+    Анализирует изображение через GPT-4o и возвращает детальный промпт.
+    Возвращает { "prompt": "..." }
+    """
+    authentication_classes = [CsrfExemptSessionAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        from django.conf import settings as django_settings
+        from openai import OpenAI
+        import requests as _req
+
+        gen = get_object_or_404(
+            GeneratedImage, _user_gens_q(request.user), id=pk
+        )
+
+        # Получаем URL изображения
+        if gen.image:
+            # Строим абсолютный URL
+            request_host = request.build_absolute_uri('/')[:-1]
+            image_url = request_host + gen.image.url
+        else:
+            return Response({'error': {'message': 'Изображение не найдено', 'type': 'not_found', 'code': None}}, status=404)
+
+        try:
+            client = OpenAI(
+                api_key=django_settings.LAOZHANG_API_KEY,
+                base_url=django_settings.LAOZHANG_API_URL,
+            )
+            describe_prompt = (
+                "Analyze this AI-generated image and write a detailed text-to-image prompt "
+                "that would recreate it. Include: main subject, art style, lighting, colors, "
+                "composition, mood, technical details (camera angle, depth of field). "
+                "Write in English. Be specific and detailed. Max 200 words. "
+                "Return only the prompt text, no explanations."
+            )
+            resp = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "image_url", "image_url": {"url": image_url}},
+                            {"type": "text", "text": describe_prompt},
+                        ],
+                    }
+                ],
+                max_tokens=400,
+            )
+            prompt_text = resp.choices[0].message.content.strip() if resp.choices else ""
+            if not prompt_text:
+                return Response({'error': {'message': 'Не удалось получить описание', 'type': 'api_error', 'code': None}}, status=500)
+            return Response({'prompt': prompt_text})
+        except Exception as e:
+            return Response({'error': {'message': str(e), 'type': 'api_error', 'code': None}}, status=500)
