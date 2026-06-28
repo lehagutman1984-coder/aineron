@@ -53,11 +53,16 @@ class MemoryDetailView(RetrieveUpdateDestroyAPIView):
         kwargs['partial'] = True
         allowed = {'content', 'is_active', 'is_pinned', 'category'}
         data = {k: v for k, v in request.data.items() if k in allowed}
-        serializer = self.get_serializer(
-            self.get_object(), data=data, partial=True
-        )
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        obj = serializer.save()
+        if 'content' in data:
+            from aitext.memory import normalize_fact
+            new_key = normalize_fact(str(data['content']))
+            if new_key:
+                obj.content_key = new_key
+                obj.save(update_fields=['content_key'])
         invalidate_memory_cache(request.user.id)  # B11: сбрасываем кэш
         return Response(serializer.data)
 

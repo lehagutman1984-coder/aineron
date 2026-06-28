@@ -384,6 +384,12 @@ export default function MemoryPage() {
               <p className="py-8 text-center text-[14px] text-[rgba(13,13,13,0.45)]">
                 Загрузка фактов...
               </p>
+            ) : factsQuery.isError ? (
+              <div className="rounded-[14px] border border-dashed border-[rgba(13,13,13,0.15)] bg-white px-4 py-10 text-center">
+                <p className="text-[14px] text-[rgba(13,13,13,0.55)]">
+                  Не удалось загрузить факты. Попробуйте обновить страницу.
+                </p>
+              </div>
             ) : filtered.length === 0 ? (
               <div className="rounded-[14px] border border-dashed border-[rgba(13,13,13,0.15)] bg-white px-4 py-10 text-center">
                 <p className="text-[14px] text-[rgba(13,13,13,0.55)]">

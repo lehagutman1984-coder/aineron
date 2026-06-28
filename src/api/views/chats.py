@@ -611,8 +611,8 @@ class StreamMessageView(APIView):
                     ).count()
                     if completed_count % 3 == 0:
                         extract_memory_facts.delay(chat.id)
-                except Exception:
-                    pass  # память не должна ронять стрим
+                except Exception as _mem_err:
+                    logger.error(f'[memory] failed to enqueue extract_memory_facts for chat {chat.id}: {_mem_err}')
 
                 # ── UsageEvent (unified analytics) ──
                 try:

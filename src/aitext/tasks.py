@@ -1065,8 +1065,8 @@ def generate_ai_response(self, message_id, web_search=False):
             ).count()
             if completed_count % 3 == 0:
                 extract_memory_facts.delay(chat.id)
-        except Exception:
-            pass  # не прерываем основной поток при ошибке памяти
+        except Exception as _mem_err:
+            logger.error(f'[memory] failed to enqueue extract_memory_facts for chat {chat.id}: {_mem_err}')
 
     except Exception as e:
         logger.error(f"Ошибка генерации AI ответа для сообщения {message_id}: {e}")
@@ -1161,7 +1161,7 @@ def extract_memory_facts(self, chat_id: int):
         facts = json.loads(raw)
     except Exception as e:
         logger.warning(f'[memory] extract_memory_facts failed for chat {chat_id}: {e}')
-        return
+        raise self.retry(exc=e, countdown=30)
 
     if not isinstance(facts, list):
         return
