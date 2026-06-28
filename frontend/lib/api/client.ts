@@ -536,6 +536,23 @@ export const createVariations = (
     body: JSON.stringify({ count }),
   });
 
+export const describeGeneration = (
+  genId: string
+): Promise<{ prompt: string }> =>
+  request<{ prompt: string }>(`/generations/${genId}/describe/`, {
+    method: "POST",
+  });
+
+export const downloadImageUrl = (url: string, filename?: string): void => {
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename || "aineron-image.png";
+  a.target = "_blank";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+};
+
 // ============ Sprint 7: Public gallery & sharing ============
 
 export const shareGeneration = (genId: string): Promise<ShareGenerationResponse> =>
