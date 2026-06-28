@@ -172,7 +172,9 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
 
           {createMutation.isError && (
             <p className="text-[12px] text-[#e74c3c]">
-              Не удалось запустить генерацию. Проверьте баланс и попробуйте снова.
+              {createMutation.error instanceof Error
+                ? createMutation.error.message
+                : "Не удалось запустить генерацию. Попробуйте снова."}
             </p>
           )}
         </div>
