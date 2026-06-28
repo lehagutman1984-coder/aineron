@@ -1,6 +1,7 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useState } from "react";
+import { useParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -12,10 +13,14 @@ import {
   Clock,
   XCircle,
   BarChart3,
+  MinusCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { getProjectKBStats, reindexProjectFile } from "@/lib/api/client";
 import type { KBFileStat } from "@/lib/api/types";
+
+type EffectiveStatus = "done" | "pending" | "none" | "error" | "skipped";
+type FilterKey = "all" | EffectiveStatus;
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 Б";
@@ -25,14 +30,30 @@ function formatBytes(bytes: number): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
-function StatusBadge({ embedStatus }: { embedStatus: KBFileStat["embed_status"] }) {
-  const map: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-    done: { label: "Проиндексирован", color: "#16a34a", icon: <CheckCircle size={12} /> },
-    pending: { label: "В очереди", color: "#d97706", icon: <Clock size={12} /> },
-    none: { label: "Не проиндексирован", color: "#6b7280", icon: <Clock size={12} /> },
-    error: { label: "Ошибка", color: "#dc2626", icon: <XCircle size={12} /> },
-  };
-  const s = map[embedStatus] ?? map.none;
+function getEffectiveStatus(file: KBFileStat): EffectiveStatus {
+  if (file.file_size === 0 && file.embed_status === "error") return "skipped";
+  return file.embed_status as EffectiveStatus;
+}
+
+const STATUS_MAP: Record<EffectiveStatus, { label: string; color: string; icon: React.ReactNode }> = {
+  done:    { label: "Проиндексирован",   color: "#16a34a", icon: <CheckCircle  size={12} /> },
+  pending: { label: "В очереди",         color: "#d97706", icon: <Clock        size={12} /> },
+  none:    { label: "Не проиндексирован",color: "#6b7280", icon: <Clock        size={12} /> },
+  error:   { label: "Ошибка",            color: "#dc2626", icon: <XCircle      size={12} /> },
+  skipped: { label: "Пропущен",          color: "#9ca3af", icon: <MinusCircle  size={12} /> },
+};
+
+const FILTERS: { key: FilterKey; label: string }[] = [
+  { key: "all",     label: "Все" },
+  { key: "done",    label: "Проиндексированы" },
+  { key: "error",   label: "Ошибки" },
+  { key: "skipped", label: "Пропущены" },
+  { key: "pending", label: "В очереди" },
+  { key: "none",    label: "Не индексированы" },
+];
+
+function StatusBadge({ status }: { status: EffectiveStatus }) {
+  const s = STATUS_MAP[status] ?? STATUS_MAP.none;
   return (
     <span
       className="inline-flex items-center gap-1 rounded-[5px] px-1.5 py-0.5 text-[11px] font-medium"
@@ -46,6 +67,7 @@ function StatusBadge({ embedStatus }: { embedStatus: KBFileStat["embed_status"] 
 
 function FileRow({ file, projectId }: { file: KBFileStat; projectId: number }) {
   const qc = useQueryClient();
+  const effectiveStatus = getEffectiveStatus(file);
   const reindex = useMutation({
     mutationFn: () => reindexProjectFile(projectId, file.id),
     onSuccess: () => {
@@ -73,10 +95,10 @@ function FileRow({ file, projectId }: { file: KBFileStat; projectId: number }) {
           <span>{file.chunk_count} чанков</span>
         </div>
       </div>
-      <StatusBadge embedStatus={file.embed_status} />
+      <StatusBadge status={effectiveStatus} />
       <button
         onClick={() => reindex.mutate()}
-        disabled={reindex.isPending || file.embed_status === "pending"}
+        disabled={reindex.isPending || file.embed_status === "pending" || effectiveStatus === "skipped"}
         className="flex items-center gap-1.5 rounded-[7px] border border-[rgba(13,13,13,0.12)] px-2.5 py-1 text-[12px] text-[rgba(13,13,13,0.55)] transition hover:border-[#0a7cff] hover:text-[#0a7cff] disabled:opacity-40 dark:border-[rgba(255,255,255,0.1)] dark:text-[rgba(236,236,236,0.5)]"
         title="Переиндексировать"
       >
@@ -90,6 +112,7 @@ function FileRow({ file, projectId }: { file: KBFileStat; projectId: number }) {
 export default function ProjectKBPage() {
   const { id } = useParams<{ id: string }>();
   const projectId = parseInt(id, 10);
+  const [filter, setFilter] = useState<FilterKey>("all");
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["project-kb-stats", projectId],
@@ -97,6 +120,16 @@ export default function ProjectKBPage() {
     staleTime: 30 * 1000,
     refetchInterval: 15 * 1000,
   });
+
+  const counts = data?.files.reduce<Record<string, number>>((acc, f) => {
+    const s = getEffectiveStatus(f);
+    acc[s] = (acc[s] ?? 0) + 1;
+    return acc;
+  }, {}) ?? {};
+
+  const filteredFiles = (data?.files ?? []).filter((f) =>
+    filter === "all" ? true : getEffectiveStatus(f) === filter
+  );
 
   return (
     <div className="flex h-full flex-col">
@@ -141,10 +174,10 @@ export default function ProjectKBPage() {
             {/* Summary cards */}
             <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
-                { label: "Файлов", value: data.file_count, icon: <FileText size={16} className="text-[#0a7cff]" /> },
-                { label: "Проиндексировано", value: data.indexed_count, icon: <CheckCircle size={16} className="text-[#16a34a]" /> },
-                { label: "Ошибки", value: data.error_count, icon: <XCircle size={16} className="text-red-500" /> },
-                { label: "Чанков", value: data.total_chunks, icon: <BarChart3 size={16} className="text-[#7c3aed]" /> },
+                { label: "Файлов",          value: data.file_count,    icon: <FileText   size={16} className="text-[#0a7cff]"  /> },
+                { label: "Проиндексировано",value: data.indexed_count, icon: <CheckCircle size={16} className="text-[#16a34a]" /> },
+                { label: "Ошибки",          value: data.error_count,   icon: <XCircle    size={16} className="text-red-500"    /> },
+                { label: "Чанков",          value: data.total_chunks,  icon: <BarChart3  size={16} className="text-[#7c3aed]"  /> },
               ].map((c) => (
                 <div
                   key={c.label}
@@ -185,18 +218,36 @@ export default function ProjectKBPage() {
 
             {/* File list */}
             <div className="rounded-[10px] border border-[rgba(13,13,13,0.08)] dark:border-[rgba(255,255,255,0.07)]">
-              <div className="border-b border-[rgba(13,13,13,0.08)] px-4 py-2.5 dark:border-[rgba(255,255,255,0.07)]">
+              <div className="flex flex-wrap items-center gap-3 border-b border-[rgba(13,13,13,0.08)] px-4 py-2.5 dark:border-[rgba(255,255,255,0.07)]">
                 <span className="text-[12px] font-semibold text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.5)]">
-                  Файлы ({data.files.length})
+                  Файлы ({filteredFiles.length})
                 </span>
+                <div className="flex flex-wrap items-center gap-1">
+                  {FILTERS.filter(({ key }) => key === "all" || (counts[key] ?? 0) > 0).map(({ key, label }) => (
+                    <button
+                      key={key}
+                      onClick={() => setFilter(key)}
+                      className={`rounded-[5px] px-2 py-0.5 text-[11px] font-medium transition ${
+                        filter === key
+                          ? "bg-[#0a7cff] text-white"
+                          : "text-[rgba(13,13,13,0.5)] hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.4)] dark:hover:text-[#ececec]"
+                      }`}
+                    >
+                      {label}
+                      {key !== "all" && (
+                        <span className="ml-1 opacity-70">{counts[key] ?? 0}</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className="px-4">
-                {data.files.length === 0 ? (
+                {filteredFiles.length === 0 ? (
                   <div className="py-6 text-center text-[13px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.4)]">
-                    Нет файлов в базе знаний
+                    {filter === "all" ? "Нет файлов в базе знаний" : "Нет файлов с таким статусом"}
                   </div>
                 ) : (
-                  data.files.map((f) => (
+                  filteredFiles.map((f) => (
                     <FileRow key={f.id} file={f} projectId={projectId} />
                   ))
                 )}
