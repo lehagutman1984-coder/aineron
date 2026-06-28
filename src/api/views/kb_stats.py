@@ -39,6 +39,7 @@ class ProjectKBStatsView(APIView):
             files_data.append({
                 'id': f.id,
                 'filename': f.filename,
+                'repo_path': f.repo_path or '',
                 'file_type': f.file_type,
                 'status': f.status,
                 'embed_status': f.embed_status,

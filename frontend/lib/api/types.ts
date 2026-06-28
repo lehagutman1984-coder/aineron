@@ -247,6 +247,7 @@ export interface WebMessage {
 export interface KBFileStat {
   id: number;
   filename: string;
+  repo_path: string;
   file_type: "pdf" | "doc" | "text" | "code" | "other";
   status: "processing" | "ready" | "error";
   embed_status: "none" | "pending" | "done" | "error";

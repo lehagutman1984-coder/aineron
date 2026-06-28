@@ -190,6 +190,16 @@ function FileRow({ file, projectId }: { file: KBFileStat; projectId: number }) {
             )}
           </div>
           <div className="mt-0.5 flex items-center gap-2 text-[11px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.4)]">
+            {file.repo_path && file.repo_path !== file.filename && (
+              <>
+                <span className="truncate max-w-[260px] text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.3)]" title={file.repo_path}>
+                  {file.repo_path.includes("/")
+                    ? file.repo_path.slice(0, file.repo_path.lastIndexOf("/"))
+                    : file.repo_path}
+                </span>
+                <span>·</span>
+              </>
+            )}
             <span>{formatBytes(file.file_size)}</span>
             <span>·</span>
             <span
