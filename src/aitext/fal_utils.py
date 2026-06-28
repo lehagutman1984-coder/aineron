@@ -480,6 +480,35 @@ def _build_image_params(model_id, prompt, final_args):
     return params
 
 
+# Поддерживаемые размеры для моделей с фиксированными size-значениями.
+# Произвольные размеры (flux, etc.) — не в словаре, принимаются как есть.
+_MODEL_SUPPORTED_SIZES = {
+    'gpt-image-1':    [(1024, 1024), (1536, 1024), (1024, 1536)],
+    'gpt-image-1.5':  [(1024, 1024), (1536, 1024), (1024, 1536)],
+    'gpt-image-2':    [(1024, 1024), (1536, 1024), (1024, 1536)],
+    'dall-e-3':       [(1024, 1024), (1792, 1024), (1024, 1792)],
+    'dall-e-2':       [(256, 256),   (512, 512),   (1024, 1024)],
+}
+
+
+def _snap_size_to_supported(model_id, width, height):
+    """Возвращает (w, h) ближайшего поддерживаемого размера по aspect ratio.
+    Если модель не в списке — возвращает оригинальный размер без изменений.
+    """
+    sizes = _MODEL_SUPPORTED_SIZES.get(model_id)
+    if not sizes:
+        return width, height
+    target_ratio = width / max(1, height)
+    best_w, best_h = sizes[0]
+    best_diff = float('inf')
+    for sw, sh in sizes:
+        diff = abs(sw / sh - target_ratio)
+        if diff < best_diff:
+            best_diff = diff
+            best_w, best_h = sw, sh
+    return best_w, best_h
+
+
 def _prepare_outpaint_canvas(image_bytes, direction, expand_ratio=0.25):
     """Строит расширенный холст для outpaint через PIL (Pillow).
 
@@ -593,8 +622,22 @@ def generate_image_edit(network, user_msg, message, user_settings=None):
             mask_file = _io.BytesIO(mask_bytes)
             mask_file.name = 'mask.png'
             ew, eh = _PILImage.open(_io.BytesIO(exp_bytes)).size
-            size_override = f"{ew}x{eh}"
-            logger.info(f"[outpaint] direction={outpaint_direction} canvas={size_override}")
+            # Приводим к поддерживаемому размеру (GPT Image 1, dall-e-3 и т.д.
+            # не принимают произвольные размеры вроде 1024×1280)
+            sw, sh = _snap_size_to_supported(model_id, ew, eh)
+            if (sw, sh) != (ew, eh):
+                exp_img = _PILImage.open(_io.BytesIO(exp_bytes)).resize((sw, sh), _PILImage.LANCZOS)
+                buf_img = _io.BytesIO()
+                exp_img.save(buf_img, format="PNG")
+                img_file = _io.BytesIO(buf_img.getvalue())
+                img_file.name = 'source.png'
+                mask_img = _PILImage.open(_io.BytesIO(mask_bytes)).resize((sw, sh), _PILImage.NEAREST)
+                buf_mask = _io.BytesIO()
+                mask_img.save(buf_mask, format="PNG")
+                mask_file = _io.BytesIO(buf_mask.getvalue())
+                mask_file.name = 'mask.png'
+            size_override = f"{sw}x{sh}"
+            logger.info(f"[outpaint] direction={outpaint_direction} canvas={ew}x{eh} → size={size_override}")
         except Exception as e:
             logger.warning(f"[outpaint] canvas build failed ({e}); продолжаем без outpaint")
     elif mask_url:
