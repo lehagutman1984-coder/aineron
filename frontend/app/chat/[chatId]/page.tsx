@@ -1596,14 +1596,9 @@ function MessageRow({
                     </button>
                   )}
                   {message.image_generation_id && onUpscaleImage && (
-                    <>
-                      <button onClick={() => onUpscaleImage(message.image_generation_id!, 2)} className={btnCls} style={btnStyle} onMouseEnter={onEnter} onMouseLeave={onLeave} title="Улучшить детализацию и чёткость (2×)">
-                        <Maximize2 size={13} /><span>Улучшить 2×</span>
-                      </button>
-                      <button onClick={() => onUpscaleImage(message.image_generation_id!, 4)} className={btnCls} style={btnStyle} onMouseEnter={onEnter} onMouseLeave={onLeave} title="Улучшить детализацию и чёткость (4×)">
-                        <Maximize2 size={13} /><span>Улучшить 4×</span>
-                      </button>
-                    </>
+                    <button onClick={() => onUpscaleImage(message.image_generation_id!, 2)} className={btnCls} style={btnStyle} onMouseEnter={onEnter} onMouseLeave={onLeave} title="Детализировать — усилить резкость и проработку деталей через flux-kontext-pro">
+                      <Maximize2 size={13} /><span>Детализировать</span>
+                    </button>
                   )}
                   {message.image_generation_id && onVariationsImage && (
                     <button onClick={() => onVariationsImage(message.image_generation_id!)} className={btnCls} style={btnStyle} onMouseEnter={onEnter} onMouseLeave={onLeave} title="Создать 4 вариации">

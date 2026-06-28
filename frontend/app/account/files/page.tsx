@@ -200,8 +200,14 @@ function FileCard({
 
       <div className="p-3">
         <p className="truncate text-[12px] text-[rgba(13,13,13,0.65)]">{file.prompt}</p>
-        {(file.model_name || file.seed != null) && (
+        {(file.model_name || file.seed != null || file.parent_id != null) && (
           <div className="mt-1 flex flex-wrap items-center gap-1">
+            {file.parent_id != null && (
+              <span className="inline-flex items-center gap-0.5 rounded-[5px] bg-[rgba(16,163,127,0.1)] px-1.5 py-0.5 text-[10px] font-medium text-[#10a37f]">
+                <Maximize2 size={9} />
+                Детализировано
+              </span>
+            )}
             {file.model_name && (
               <span className="inline-flex items-center rounded-[5px] bg-[rgba(10,124,255,0.08)] px-1.5 py-0.5 text-[10px] font-medium text-[#0a7cff]">
                 {file.model_name}
@@ -219,20 +225,11 @@ function FileCard({
             <button
               onClick={(e) => { e.stopPropagation(); onUpscale(file, 2); }}
               disabled={upscaling}
-              title="Увеличить разрешение в 2 раза"
+              title="Детализировать — усилить резкость и проработку деталей"
               className="inline-flex items-center gap-1 rounded-[6px] border border-[rgba(13,13,13,0.10)] px-1.5 py-0.5 text-[10px] font-medium text-[rgba(13,13,13,0.6)] hover:bg-[rgba(13,13,13,0.04)] disabled:opacity-50 transition-colors"
             >
               <Maximize2 size={10} className="text-[#0a7cff]" />
-              Апскейл 2×
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); onUpscale(file, 4); }}
-              disabled={upscaling}
-              title="Увеличить разрешение в 4 раза"
-              className="inline-flex items-center gap-1 rounded-[6px] border border-[rgba(13,13,13,0.10)] px-1.5 py-0.5 text-[10px] font-medium text-[rgba(13,13,13,0.6)] hover:bg-[rgba(13,13,13,0.04)] disabled:opacity-50 transition-colors"
-            >
-              <Maximize2 size={10} className="text-[#0a7cff]" />
-              4×
+              Детализировать
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); onVariations(file); }}

@@ -1128,8 +1128,13 @@ def upscale_generation_task(self, generation_id, user_id, factor=2, image_url=No
                     new_msg = Message.objects.create(
                         chat=chat_obj,
                         role='assistant',
-                        content=f"<img src='{img_url}' alt='Улучшенное изображение ×{factor}' style='max-width:100%;border-radius:12px;'>",
-                        plain_text=f"Улучшенное изображение ×{factor}",
+                        content=(
+                            f"<p style='font-size:12px;color:rgba(13,13,13,0.5);margin:0 0 6px'>"
+                            f"Детализированная версия (flux-kontext-pro · enhance)"
+                            f"</p>"
+                            f"<img src='{img_url}' alt='Детализированное изображение' style='max-width:100%;border-radius:12px;'>"
+                        ),
+                        plain_text=f"Детализированная версия изображения (flux-kontext-pro enhance)",
                         status=Message.Status.COMPLETED,
                         fal_ai=True,
                     )
