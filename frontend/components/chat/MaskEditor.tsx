@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Eraser, Check, Loader2, Brush } from "lucide-react";
+import { Eraser, Check, Loader2, Brush, RotateCcw } from "lucide-react";
 import { uploadFile } from "@/lib/api/client";
 
 // Конвенция маски: БЕЛОЕ = область редактирования (что менять / дорисовать),
@@ -11,6 +11,7 @@ import { uploadFile } from "@/lib/api/client";
 // накладываются на сплошной чёрный фон → бинарная маска PNG.
 
 type BrushKey = "small" | "medium" | "large";
+type DrawMode = "draw" | "erase";
 
 const BRUSH_RATIO: Record<BrushKey, number> = {
   small: 0.03,
@@ -36,8 +37,10 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
   const imgRef = useRef<HTMLImageElement>(null);
   const drawingRef = useRef(false);
   const lastRef = useRef<{ x: number; y: number } | null>(null);
+  const historyRef = useRef<ImageData[]>([]);
 
   const [brush, setBrush] = useState<BrushKey>("medium");
+  const [mode, setMode] = useState<DrawMode>("draw");
   const [ready, setReady] = useState(false);
   const [hasStrokes, setHasStrokes] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -61,7 +64,39 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
     setReady(false);
     setHasStrokes(false);
     setError(null);
+    historyRef.current = [];
   }, [imageUrl]);
+
+  const saveSnapshot = useCallback(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+    historyRef.current = [
+      ...historyRef.current.slice(-19),
+      ctx.getImageData(0, 0, canvas.width, canvas.height),
+    ];
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx || historyRef.current.length === 0) return;
+    const prev = historyRef.current[historyRef.current.length - 1];
+    historyRef.current = historyRef.current.slice(0, -1);
+    ctx.putImageData(prev, 0, 0);
+    setHasStrokes(historyRef.current.length > 0);
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "z") {
+        e.preventDefault();
+        handleUndo();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [handleUndo]);
 
   const brushPx = useCallback(() => {
     const canvas = canvasRef.current;
@@ -87,18 +122,21 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
       const ctx = canvasRef.current?.getContext("2d");
       if (!ctx) return;
       const r = brushPx() / 2;
+      ctx.globalCompositeOperation = mode === "erase" ? "destination-out" : "source-over";
       ctx.fillStyle = "#ffffff";
       ctx.beginPath();
       ctx.arc(x, y, r, 0, Math.PI * 2);
       ctx.fill();
+      ctx.globalCompositeOperation = "source-over";
     },
-    [brushPx]
+    [brushPx, mode]
   );
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
       if (!ready) return;
       e.preventDefault();
+      saveSnapshot();
       (e.target as HTMLCanvasElement).setPointerCapture(e.pointerId);
       drawingRef.current = true;
       const p = toCanvasCoords(e);
@@ -106,7 +144,7 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
       drawDot(p.x, p.y);
       setHasStrokes(true);
     },
-    [ready, toCanvasCoords, drawDot]
+    [ready, toCanvasCoords, drawDot, saveSnapshot]
   );
 
   const handlePointerMove = useCallback(
@@ -116,6 +154,7 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
       if (!ctx) return;
       const p = toCanvasCoords(e);
       const last = lastRef.current ?? p;
+      ctx.globalCompositeOperation = mode === "erase" ? "destination-out" : "source-over";
       ctx.strokeStyle = "#ffffff";
       ctx.lineWidth = brushPx();
       ctx.lineCap = "round";
@@ -124,9 +163,10 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
       ctx.moveTo(last.x, last.y);
       ctx.lineTo(p.x, p.y);
       ctx.stroke();
+      ctx.globalCompositeOperation = "source-over";
       lastRef.current = p;
     },
-    [toCanvasCoords, brushPx]
+    [toCanvasCoords, brushPx, mode]
   );
 
   const handlePointerUp = useCallback(() => {
@@ -138,6 +178,7 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (canvas && ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    historyRef.current = [];
     setHasStrokes(false);
   }, []);
 
@@ -215,6 +256,35 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-1 rounded-[8px] border border-[rgba(13,13,13,0.12)] bg-[rgba(13,13,13,0.03)] p-1">
+          <button
+            type="button"
+            onClick={() => setMode("draw")}
+            title="Режим рисования маски"
+            className={`rounded-[6px] px-2.5 py-1 text-[12px] font-medium transition-colors flex items-center gap-1 ${
+              mode === "draw"
+                ? "bg-white text-[#0d0d0d] shadow-sm"
+                : "text-[rgba(13,13,13,0.55)] hover:text-[#0d0d0d]"
+            }`}
+          >
+            <Brush size={12} />
+            Кисть
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("erase")}
+            title="Режим ластика — стереть часть маски"
+            className={`rounded-[6px] px-2.5 py-1 text-[12px] font-medium transition-colors flex items-center gap-1 ${
+              mode === "erase"
+                ? "bg-white text-[#0d0d0d] shadow-sm"
+                : "text-[rgba(13,13,13,0.55)] hover:text-[#0d0d0d]"
+            }`}
+          >
+            <Eraser size={12} />
+            Ластик
+          </button>
+        </div>
+
+        <div className="flex items-center gap-1 rounded-[8px] border border-[rgba(13,13,13,0.12)] bg-[rgba(13,13,13,0.03)] p-1">
           <Brush size={13} className="ml-1 text-[rgba(13,13,13,0.45)]" />
           {(Object.keys(BRUSH_RATIO) as BrushKey[]).map((k) => (
             <button
@@ -231,6 +301,17 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
             </button>
           ))}
         </div>
+
+        <button
+          type="button"
+          onClick={handleUndo}
+          disabled={historyRef.current.length === 0}
+          title="Отменить последний штрих (Ctrl+Z)"
+          className="flex h-9 items-center gap-1.5 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 text-[12px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:bg-[rgba(13,13,13,0.04)] disabled:opacity-40"
+        >
+          <RotateCcw size={14} />
+          Отменить
+        </button>
 
         <button
           type="button"
