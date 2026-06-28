@@ -985,14 +985,17 @@ def generate_video_laozhang(network, user_msg, message, user_settings=None):
             job_id = data.get('id') or data.get('task_id')
             if job_id:
                 logger.info(f"Video async job_id={job_id}, polling /v1/videos/{job_id}")
-                for attempt in range(60):  # до 15 мин (15 сек × 60)
-                    time.sleep(15)
+                MAX_ATTEMPTS = 120
+                for attempt in range(MAX_ATTEMPTS):
+                    # Первые 20 итераций — каждые 3 сек (первая минута),
+                    # затем каждые 8 сек (до 15 мин суммарно)
+                    time.sleep(3 if attempt < 20 else 8)
                     poll = requests.get(f"{base_url}/videos/{job_id}", headers=auth_headers, timeout=30)
                     poll.raise_for_status()
                     pd = poll.json()
                     status = (pd.get('status') or '').lower()
-                    logger.info(f"Video poll {attempt + 1}/60: status={status} progress={pd.get('progress', '?')}")
-                    _bump_video_progress(gen_ph, pd.get('progress'), attempt, 60)
+                    logger.info(f"Video poll {attempt + 1}/{MAX_ATTEMPTS}: status={status} progress={pd.get('progress', '?')}")
+                    _bump_video_progress(gen_ph, pd.get('progress'), attempt, MAX_ATTEMPTS)
 
                     if status == 'completed':
                         logger.info(f"Video completed response: {str(pd)[:600]}")
@@ -1123,8 +1126,9 @@ def generate_seedance_video(network, user_msg, message, user_settings=None):
             raise Exception(f"Нет task id в ответе Seedance: {str(data)[:200]}")
 
         logger.info(f"Seedance polling tasks/{job_id}")
-        for attempt in range(60):
-            time.sleep(15)
+        MAX_ATTEMPTS = 120
+        for attempt in range(MAX_ATTEMPTS):
+            time.sleep(3 if attempt < 20 else 8)
             poll = requests.get(
                 f"{seedance_base}/contents/generations/tasks/{job_id}",
                 headers=auth_headers,
@@ -1133,8 +1137,8 @@ def generate_seedance_video(network, user_msg, message, user_settings=None):
             poll.raise_for_status()
             pd = poll.json()
             status = (pd.get('status') or '').lower()
-            logger.info(f"Seedance poll {attempt + 1}/60: status={status}")
-            _bump_video_progress(gen_ph, pd.get('progress'), attempt, 60)
+            logger.info(f"Seedance poll {attempt + 1}/{MAX_ATTEMPTS}: status={status}")
+            _bump_video_progress(gen_ph, pd.get('progress'), attempt, MAX_ATTEMPTS)
 
             if status == 'succeeded':
                 logger.info(f"Seedance completed: {str(pd)[:600]}")
@@ -1312,8 +1316,9 @@ def generate_video_apimart(network, user_msg, message, user_settings=None):
             except Exception:
                 pass
 
-        for attempt in range(60):
-            time.sleep(15)
+        MAX_ATTEMPTS = 120
+        for attempt in range(MAX_ATTEMPTS):
+            time.sleep(3 if attempt < 20 else 8)
             poll_resp = requests.get(
                 f"{base_url}/tasks/{task_id}",
                 headers={"Authorization": f"Bearer {api_key}"},
@@ -1326,8 +1331,8 @@ def generate_video_apimart(network, user_msg, message, user_settings=None):
             status_obj = pd['data'] if isinstance(pd.get('data'), dict) else pd
             status = (status_obj.get('status') or '').lower()
             progress = status_obj.get('progress', '?')
-            logger.info(f"APIMart poll {attempt + 1}/60: status={status} progress={progress}")
-            _bump_video_progress(gen_ph, status_obj.get('progress'), attempt, 60)
+            logger.info(f"APIMart poll {attempt + 1}/{MAX_ATTEMPTS}: status={status} progress={progress}")
+            _bump_video_progress(gen_ph, status_obj.get('progress'), attempt, MAX_ATTEMPTS)
 
             if status == 'completed':
                 result = status_obj.get('result') or {}

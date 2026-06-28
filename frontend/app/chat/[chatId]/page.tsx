@@ -33,7 +33,13 @@ const detectHTML = (s: string) =>
 // img2img: извлечь URL первого сгенерированного изображения из HTML сообщения
 const extractFirstImageUrl = (html: string): string | null => {
   const m = /<img[^>]+src=["']([^"']+)["']/i.exec(html || "");
-  return m ? m[1] : null;
+  if (!m) return null;
+  const url = m[1];
+  // Относительные URL (/media/...) недоступны для Celery — делаем абсолютными
+  if (typeof window !== "undefined" && url.startsWith("/")) {
+    return window.location.origin + url;
+  }
+  return url;
 };
 
 export default function ChatPage() {
