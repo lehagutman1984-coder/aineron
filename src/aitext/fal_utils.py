@@ -649,11 +649,36 @@ def generate_image_edit(network, user_msg, message, user_settings=None):
             logger.warning(f"[outpaint] canvas build failed ({e}); продолжаем без outpaint")
     elif mask_url:
         try:
+            from PIL import Image as _PILImage
             mresp = _req.get(mask_url, timeout=30)
             mresp.raise_for_status()
-            mask_file = _io.BytesIO(mresp.content)
-            mask_file.name = 'mask.png'
-            logger.info("[mask] ручная маска загружена для inpaint")
+            if model_id in _MODEL_SUPPORTED_SIZES:
+                # OpenAI-семейство: зеркалим подход outpaint (commit 12bf4e6).
+                # Пробиваем alpha=0 прямо в RGBA-исходнике там, где белые пиксели маски.
+                # Отдельный mask-файл НЕ нужен — API читает alpha-канал изображения.
+                src_img = _PILImage.open(_io.BytesIO(img_bytes)).convert("RGBA")
+                mask_img = _PILImage.open(_io.BytesIO(mresp.content)).convert("L")
+                if mask_img.size != src_img.size:
+                    mask_img = mask_img.resize(src_img.size, _PILImage.NEAREST)
+                sw, sh = _snap_size_to_supported(model_id, src_img.width, src_img.height)
+                if (sw, sh) != src_img.size:
+                    src_img = src_img.resize((sw, sh), _PILImage.LANCZOS)
+                    mask_img = mask_img.resize((sw, sh), _PILImage.NEAREST)
+                # MaskEditor: белый (>128) = рисовать → alpha=0; чёрный = сохранить → alpha=255
+                new_alpha = mask_img.point(lambda x: 0 if x > 128 else 255)
+                src_img.putalpha(new_alpha)
+                buf = _io.BytesIO()
+                src_img.save(buf, format="PNG")
+                img_file = _io.BytesIO(buf.getvalue())
+                img_file.name = 'source.png'
+                size_override = f"{sw}x{sh}"
+                # mask_file остаётся None
+                logger.info(f"[inpaint] model={model_id} alpha-channel approach size={size_override}")
+            else:
+                # Flux и др.: отправляем маску явно (провайдер понимает grayscale)
+                mask_file = _io.BytesIO(mresp.content)
+                mask_file.name = 'mask.png'
+                logger.info(f"[inpaint] model={model_id} explicit mask sent")
         except Exception as e:
             logger.warning(f"[mask] download failed ({e}); продолжаем без маски")
 

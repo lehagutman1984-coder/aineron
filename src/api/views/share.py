@@ -83,6 +83,9 @@ class GalleryView(APIView):
             qs = qs.filter(media_type=media_type)
         if model_name:
             qs = qs.filter(model_name=model_name)
+        search = request.query_params.get('search', '').strip()
+        if search:
+            qs = qs.filter(prompt__icontains=search)
 
         paginator = Paginator(qs, per_page)
         total = paginator.count
