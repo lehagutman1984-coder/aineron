@@ -618,27 +618,33 @@ def generate_image_edit(network, user_msg, message, user_settings=None):
         try:
             from PIL import Image as _PILImage
             exp_bytes, mask_bytes = _prepare_outpaint_canvas(img_bytes, outpaint_direction)
-            img_file = _io.BytesIO(exp_bytes)
-            img_file.name = 'source.png'
-            mask_file = _io.BytesIO(mask_bytes)
-            mask_file.name = 'mask.png'
             ew, eh = _PILImage.open(_io.BytesIO(exp_bytes)).size
             # Приводим к поддерживаемому размеру (GPT Image 1, dall-e-3 и т.д.
             # не принимают произвольные размеры вроде 1024×1280)
             sw, sh = _snap_size_to_supported(model_id, ew, eh)
             if (sw, sh) != (ew, eh):
                 exp_img = _PILImage.open(_io.BytesIO(exp_bytes)).resize((sw, sh), _PILImage.LANCZOS)
-                buf_img = _io.BytesIO()
-                exp_img.save(buf_img, format="PNG")
-                img_file = _io.BytesIO(buf_img.getvalue())
-                img_file.name = 'source.png'
-                mask_img = _PILImage.open(_io.BytesIO(mask_bytes)).resize((sw, sh), _PILImage.NEAREST)
-                buf_mask = _io.BytesIO()
-                mask_img.save(buf_mask, format="PNG")
-                mask_file = _io.BytesIO(buf_mask.getvalue())
+                buf = _io.BytesIO()
+                exp_img.save(buf, format="PNG")
+                exp_bytes = buf.getvalue()
+            img_file = _io.BytesIO(exp_bytes)
+            img_file.name = 'source.png'
+            # OpenAI (GPT Image 1, dall-e-*) используют alpha-канал RGBA-изображения
+            # как маску (alpha=0 = рисовать здесь). Отдельная маска не нужна —
+            # и именно её нестандартный размер вызывал 400 "mask size does not match".
+            # Для Flux и др. (не в словаре фиксированных размеров) — отправляем маску явно.
+            if model_id not in _MODEL_SUPPORTED_SIZES:
+                if (sw, sh) != (ew, eh):
+                    mask_img = _PILImage.open(_io.BytesIO(mask_bytes)).resize((sw, sh), _PILImage.NEAREST)
+                    buf_m = _io.BytesIO()
+                    mask_img.save(buf_m, format="PNG")
+                    mask_bytes = buf_m.getvalue()
+                mask_file = _io.BytesIO(mask_bytes)
                 mask_file.name = 'mask.png'
+            # else: mask_file остаётся None — API читает alpha-канал img_file
             size_override = f"{sw}x{sh}"
-            logger.info(f"[outpaint] direction={outpaint_direction} canvas={ew}x{eh} → size={size_override}")
+            mask_mode = 'alpha-channel' if model_id in _MODEL_SUPPORTED_SIZES else 'explicit-mask'
+            logger.info(f"[outpaint] direction={outpaint_direction} canvas={ew}x{eh} → size={size_override} mask={mask_mode}")
         except Exception as e:
             logger.warning(f"[outpaint] canvas build failed ({e}); продолжаем без outpaint")
     elif mask_url:
