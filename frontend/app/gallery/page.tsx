@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { Video, Sparkles, ImageOff, Wand2 } from "lucide-react";
+import { Video, Sparkles, ImageOff, Wand2, Search, Copy, Check } from "lucide-react";
 import { getGallery } from "@/lib/api/client";
 import type { GalleryItem } from "@/lib/api/types";
 
@@ -19,6 +19,8 @@ const TABS: { key: Filter; label: string }[] = [
 const PER_PAGE = 24;
 const PREFILL_KEY = "aineron_prefill_prompt";
 
+const MODEL_CHIPS = ["Flux 2 Pro", "GPT Image 1", "Flux Kontext Pro", "Sora 2", "Kling v2.6"];
+
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("ru-RU", {
     day: "2-digit",
@@ -28,6 +30,7 @@ function formatDate(iso: string) {
 }
 
 function GalleryCard({ item, onTry }: { item: GalleryItem; onTry: (prompt: string) => void }) {
+  const [copied, setCopied] = useState(false);
   return (
     <div className="group relative mb-3 break-inside-avoid overflow-hidden rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white">
       <Link href={item.share_slug ? `/g/${item.share_slug}` : "#"} className="block">
@@ -66,6 +69,20 @@ function GalleryCard({ item, onTry }: { item: GalleryItem; onTry: (prompt: strin
           )}
           <span className="text-[10px] text-[rgba(13,13,13,0.35)]">{item.username}</span>
           <span className="text-[10px] text-[rgba(13,13,13,0.30)]">· {formatDate(item.created_at)}</span>
+          {item.prompt && (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                navigator.clipboard.writeText(item.prompt);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 1500);
+              }}
+              className="ml-auto flex h-6 w-6 items-center justify-center rounded-[5px] text-[rgba(13,13,13,0.35)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#0d0d0d]"
+              title="Скопировать промпт"
+            >
+              {copied ? <Check size={12} /> : <Copy size={12} />}
+            </button>
+          )}
         </div>
         {item.prompt && (
           <button
@@ -85,16 +102,24 @@ export default function GalleryPage() {
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>("all");
   const [model, setModel] = useState<string>("");
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 500);
+    return () => clearTimeout(t);
+  }, [search]);
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({
-      queryKey: ["gallery", filter, model],
+      queryKey: ["gallery", filter, model, debouncedSearch],
       queryFn: ({ pageParam = 1 }) =>
         getGallery({
           page: pageParam as number,
           per_page: PER_PAGE,
           media_type: filter === "all" ? undefined : filter,
           model_name: model || undefined,
+          search: debouncedSearch || undefined,
         }),
       getNextPageParam: (last) => (last.has_next ? last.page + 1 : undefined),
       initialPageParam: 1,
@@ -102,13 +127,6 @@ export default function GalleryPage() {
 
   const items = data?.pages.flatMap((p) => p.items) ?? [];
   const total = data?.pages[0]?.total ?? 0;
-
-  // Уникальные модели из загруженных элементов — для дропдауна фильтра
-  const models = useMemo(() => {
-    const set = new Set<string>();
-    items.forEach((i) => i.model_name && set.add(i.model_name));
-    return Array.from(set).sort();
-  }, [items]);
 
   const handleTry = (prompt: string) => {
     try {
@@ -147,8 +165,20 @@ export default function GalleryPage() {
           </div>
         </div>
 
+        {/* Search */}
+        <div className="relative mb-4 max-w-md">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Поиск по промпту..."
+            className="w-full rounded-[10px] border border-[rgba(13,13,13,0.12)] bg-white px-4 py-2 pl-10 text-[13px] outline-none focus:border-[#0a7cff] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] dark:border-[rgba(255,255,255,0.1)] dark:bg-[rgba(255,255,255,0.06)] dark:text-[#ececec]"
+          />
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[rgba(13,13,13,0.35)]" />
+        </div>
+
         {/* Filter bar */}
-        <div className="mb-5 flex flex-wrap items-center gap-2">
+        <div className="mb-2 flex flex-wrap items-center gap-2">
           <div className="flex gap-1 rounded-[10px] border border-[rgba(13,13,13,0.10)] bg-[rgba(13,13,13,0.03)] p-1">
             {TABS.map((t) => (
               <button
@@ -164,20 +194,33 @@ export default function GalleryPage() {
               </button>
             ))}
           </div>
-          {models.length > 0 && (
-            <select
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              className="h-9 rounded-[8px] border border-[rgba(13,13,13,0.12)] bg-white px-3 text-[13px] text-[rgba(13,13,13,0.65)] outline-none focus:border-[#0a7cff]"
+        </div>
+
+        {/* Model chips */}
+        <div className="mb-5 mt-2 flex flex-wrap gap-1.5">
+          <button
+            onClick={() => setModel("")}
+            className={`h-7 rounded-[6px] border px-2.5 text-[11px] font-medium transition-colors ${
+              !model
+                ? "border-[#0a7cff] bg-[rgba(10,124,255,0.08)] text-[#0a7cff]"
+                : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.55)] hover:border-[rgba(13,13,13,0.25)]"
+            }`}
+          >
+            Все модели
+          </button>
+          {MODEL_CHIPS.map((m) => (
+            <button
+              key={m}
+              onClick={() => setModel(model === m ? "" : m)}
+              className={`h-7 rounded-[6px] border px-2.5 text-[11px] font-medium transition-colors ${
+                model === m
+                  ? "border-[#0a7cff] bg-[rgba(10,124,255,0.08)] text-[#0a7cff]"
+                  : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.55)] hover:border-[rgba(13,13,13,0.25)]"
+              }`}
             >
-              <option value="">Все модели</option>
-              {models.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
-          )}
+              {m}
+            </button>
+          ))}
         </div>
 
         {/* Grid (masonry via CSS columns) */}

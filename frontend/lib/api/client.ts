@@ -566,12 +566,14 @@ export const getGallery = (params: {
   per_page?: number;
   media_type?: "image" | "video";
   model_name?: string;
+  search?: string;
 }): Promise<GalleryResponse> => {
   const q = new URLSearchParams();
   if (params.page) q.set("page", String(params.page));
   if (params.per_page) q.set("per_page", String(params.per_page));
   if (params.media_type) q.set("media_type", params.media_type);
   if (params.model_name) q.set("model_name", params.model_name);
+  if (params.search) q.set("search", params.search);
   return request<GalleryResponse>(`/gallery/?${q}`);
 };
 
