@@ -58,6 +58,12 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
     setMaskMode(false);
   };
 
+  const toggleMaskMode = () => {
+    setMaskMode((v) => !v);
+    // Открытие редактора маски снимает выбор outpaint
+    if (!maskMode) setOutpaint(null);
+  };
+
   const canSubmit = prompt.trim().length > 0 || Boolean(maskUrl) || Boolean(outpaint);
 
   const submitting = false; // отправка управляется родителем (sendMutation), модалка закрывается сразу
@@ -114,29 +120,36 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
           )}
 
           {/* Mask toggle + status */}
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setMaskMode((v) => !v)}
-              className={`flex h-9 items-center gap-1.5 rounded-[8px] border px-3 text-[12px] font-medium transition-colors ${
-                maskMode
-                  ? "border-[#0a7cff] bg-[rgba(10,124,255,0.08)] text-[#0a7cff]"
-                  : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.65)] hover:bg-[rgba(13,13,13,0.04)] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.65)]"
-              }`}
-            >
-              <Brush size={14} />
-              {maskMode ? "Скрыть маску" : "Нарисовать маску"}
-            </button>
-            {maskUrl && !maskMode && (
-              <span className="flex items-center gap-1 text-[12px] font-medium text-[#10a37f]">
-                <Check size={13} />
-                Маска готова
-              </span>
+          <div className={outpaint ? "opacity-40 pointer-events-none select-none" : ""}>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={toggleMaskMode}
+                className={`flex h-9 items-center gap-1.5 rounded-[8px] border px-3 text-[12px] font-medium transition-colors ${
+                  maskMode
+                    ? "border-[#0a7cff] bg-[rgba(10,124,255,0.08)] text-[#0a7cff]"
+                    : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.65)] hover:bg-[rgba(13,13,13,0.04)] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.65)]"
+                }`}
+              >
+                <Brush size={14} />
+                {maskMode ? "Скрыть маску" : "Нарисовать маску"}
+              </button>
+              {maskUrl && !maskMode && (
+                <span className="flex items-center gap-1 text-[12px] font-medium text-[#10a37f]">
+                  <Check size={13} />
+                  Маска готова
+                </span>
+              )}
+            </div>
+            {outpaint && (
+              <p className="mt-1 text-[11px] text-[rgba(13,13,13,0.4)] dark:text-[rgba(236,236,236,0.4)]">
+                Недоступно: выбрано расширение холста
+              </p>
             )}
           </div>
 
           {/* Outpaint */}
-          <div>
+          <div className={(maskMode || maskUrl) ? "opacity-40 pointer-events-none select-none" : ""}>
             <p className="mb-2 text-[12px] font-medium text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.55)]">
               Расширить холст (outpaint)
             </p>
@@ -158,6 +171,11 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
                 </button>
               ))}
             </div>
+            {(maskMode || maskUrl) && (
+              <p className="mt-1 text-[11px] text-[rgba(13,13,13,0.4)] dark:text-[rgba(236,236,236,0.4)]">
+                Недоступно: активна маска редактирования
+              </p>
+            )}
           </div>
 
           {/* Prompt */}
