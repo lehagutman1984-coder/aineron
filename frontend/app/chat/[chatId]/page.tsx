@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw, Paperclip, BookMarked, Globe, Volume2, Square, Loader, ChevronDown, ChevronRight, Settings2, FileText, X, GitCommit, CheckCircle2, XCircle, Download, Layers, BookmarkPlus, GitBranch, Microscope, Brain, ImagePlus, Pencil, Loader2, Film, Maximize2, Images, Palette } from "lucide-react";
+import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw, Paperclip, BookMarked, Globe, Volume2, Square, Loader, ChevronDown, ChevronRight, Settings2, FileText, X, GitCommit, CheckCircle2, XCircle, Download, Layers, BookmarkPlus, GitBranch, Microscope, Brain, ImagePlus, Pencil, Loader2, Film, Maximize2, Images, Palette, FileSearch } from "lucide-react";
 import { MarkdownContent } from "@/components/chat/MarkdownContent";
 import { AttachmentPreview, type AttachmentState } from "@/components/chat/AttachmentPreview";
 import { PromptPicker } from "@/components/chat/PromptPicker";
@@ -20,7 +20,8 @@ import { EditImageModal, type EditImagePayload } from "@/components/chat/EditIma
 import { AnimateImageModal } from "@/components/chat/AnimateImageModal";
 import { GenerationProgress } from "@/components/chat/GenerationProgress";
 import { PromptEnhancer } from "@/components/chat/PromptEnhancer";
-import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, uploadFile, synthesizeSpeech, confirmCommit, exportChat, quickSaveFact, branchChat, startDeepResearch, getResearchStatus, getMemoryToast, upscaleGeneration, createVariations, APIError, BASE_URL, type CommitProposed } from "@/lib/api/client";
+import { BeforeAfterSlider } from "@/components/chat/BeforeAfterSlider";
+import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, uploadFile, synthesizeSpeech, confirmCommit, exportChat, quickSaveFact, branchChat, startDeepResearch, getResearchStatus, getMemoryToast, upscaleGeneration, createVariations, describeGeneration, downloadImageUrl, APIError, BASE_URL, type CommitProposed } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 import { useUIStore } from "@/lib/stores/ui";
 import type { WebMessage, ChatDetail, UiSection, KBSource } from "@/lib/api/types";
@@ -58,6 +59,8 @@ export default function ChatPage() {
   const sourceInputRef = useRef<HTMLInputElement>(null);
   // img2img: модалка редактирования (маска / outpaint) для сгенерированного изображения
   const [editModalUrl, setEditModalUrl] = useState<string | null>(null);
+  const [beforeAfterUrls, setBeforeAfterUrls] = useState<{ before: string; after: string } | null>(null);
+  const [describingId, setDescribingId] = useState<number | null>(null);
   // img2video: модалка "Оживить" — выбор видео-модели для сгенерированного изображения
   const [animateModalUrl, setAnimateModalUrl] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -542,6 +545,22 @@ export default function ChatPage() {
     setAnimateModalUrl(url);
   }, []);
 
+  const handleDescribeImage = useCallback(async (generationId: number) => {
+    if (describingId) return;
+    setDescribingId(generationId);
+    try {
+      const res = await describeGeneration(String(generationId));
+      if (res.prompt) {
+        setText(res.prompt);
+        addToast({ message: 'Промпт описан — проверьте поле ввода', type: 'success' });
+      }
+    } catch (e) {
+      addToast({ message: e instanceof Error ? e.message : 'Ошибка описания изображения', type: 'error' });
+    } finally {
+      setDescribingId(null);
+    }
+  }, [describingId, addToast]);
+
   // Видео готово (SSE) — форсируем перезагрузку статуса сообщения
   const handleVideoComplete = useCallback(() => {
     qc.invalidateQueries({ queryKey: ["message-status"] });
@@ -622,9 +641,11 @@ export default function ChatPage() {
         ws: false,
         settings: falSettings,
       });
+      const beforeUrl = editModalUrl; // сохраняем до сброса
+      void beforeUrl;
       setEditModalUrl(null);
     },
-    [mediaSettings, sendMutation]
+    [mediaSettings, sendMutation, editModalUrl]
   );
 
   // Drag & drop handlers
@@ -989,6 +1010,9 @@ export default function ChatPage() {
                   onUpscaleImage={handleUpscaleImage}
                   onVariationsImage={handleVariationsImage}
                   onStyleImage={handleStyleImage}
+                  onDescribeImage={handleDescribeImage}
+                  onDownloadImage={(url) => downloadImageUrl(url)}
+                  describingId={describingId}
                   onVideoComplete={handleVideoComplete}
                   researchData={
                     msg.id === activeResearchMsgId && researchPoll
@@ -1385,6 +1409,14 @@ export default function ChatPage() {
         onClose={() => setAnimateModalUrl(null)}
       />
     )}
+
+    {beforeAfterUrls && (
+      <BeforeAfterSlider
+        beforeUrl={beforeAfterUrls.before}
+        afterUrl={beforeAfterUrls.after}
+        onClose={() => setBeforeAfterUrls(null)}
+      />
+    )}
     </div>
   );
 }
@@ -1425,6 +1457,9 @@ function MessageRow({
   onUpscaleImage,
   onVariationsImage,
   onStyleImage,
+  onDescribeImage,
+  onDownloadImage,
+  describingId,
   onVideoComplete,
   researchData,
 }: {
@@ -1443,6 +1478,9 @@ function MessageRow({
   onUpscaleImage?: (generationId: number, factor: 2 | 4) => void;
   onVariationsImage?: (generationId: number) => void;
   onStyleImage?: (url: string) => void;
+  onDescribeImage?: (generationId: number) => void;
+  onDownloadImage?: (url: string) => void;
+  describingId?: number | null;
   onVideoComplete?: () => void;
   researchData?: { steps: import("@/lib/api/types").DeepResearchStep[]; status: import("@/lib/api/types").DeepResearchStatus; error: string };
 }) {
@@ -1614,6 +1652,32 @@ function MessageRow({
                   {imgUrl && onStyleImage && (
                     <button onClick={() => onStyleImage(imgUrl)} className={btnCls} style={btnStyle} onMouseEnter={onEnter} onMouseLeave={onLeave} title="Использовать как референс стиля">
                       <Palette size={13} /><span>Стиль</span>
+                    </button>
+                  )}
+                  {imgUrl && onDownloadImage && (
+                    <button
+                      onClick={() => onDownloadImage(imgUrl)}
+                      className={btnCls}
+                      style={btnStyle}
+                      onMouseEnter={onEnter}
+                      onMouseLeave={onLeave}
+                      title="Скачать изображение"
+                    >
+                      <Download size={13} /><span>Скачать</span>
+                    </button>
+                  )}
+                  {message.image_generation_id && onDescribeImage && (
+                    <button
+                      onClick={() => onDescribeImage(message.image_generation_id!)}
+                      className={btnCls}
+                      style={btnStyle}
+                      onMouseEnter={onEnter}
+                      onMouseLeave={onLeave}
+                      title="Получить промпт из этого изображения"
+                      disabled={describingId === message.image_generation_id}
+                    >
+                      <FileSearch size={13} />
+                      <span>{describingId === message.image_generation_id ? 'Анализ...' : 'Промпт'}</span>
                     </button>
                   )}
                 </div>
