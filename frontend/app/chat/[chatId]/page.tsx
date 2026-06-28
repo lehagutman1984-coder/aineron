@@ -1530,132 +1530,59 @@ function MessageRow({
             {message.variants && message.variants.length >= 1 && (
               <ResponseVariants variants={message.variants} />
             )}
-            {/* Hover action bar */}
+            {/* Image action bar — всегда видима для fal-ai сообщений с изображением */}
+            {isFalAi && (() => {
+              const imgUrl = extractFirstImageUrl(message.content || message.plain_text || "");
+              if (!imgUrl && !message.image_generation_id) return null;
+              const btnCls = "flex h-7 items-center gap-1.5 rounded-[6px] px-2 text-[12px] font-medium transition-all";
+              const btnStyle = { color: "rgba(10,124,255,0.9)" };
+              const onEnter = (e: React.MouseEvent<HTMLButtonElement>) => {
+                e.currentTarget.style.background = "rgba(10,124,255,0.08)";
+                e.currentTarget.style.color = "#0a7cff";
+              };
+              const onLeave = (e: React.MouseEvent<HTMLButtonElement>) => {
+                e.currentTarget.style.background = "";
+                e.currentTarget.style.color = "rgba(10,124,255,0.9)";
+              };
+              return (
+                <div className="mt-2 flex flex-wrap items-center gap-1 border-t border-[rgba(13,13,13,0.07)] pt-2 dark:border-[rgba(236,236,236,0.07)]">
+                  {imgUrl && onEditImage && (
+                    <button onClick={() => onEditImage(imgUrl)} className={btnCls} style={btnStyle} onMouseEnter={onEnter} onMouseLeave={onLeave} title="Редактировать изображение (img2img)">
+                      <Pencil size={13} /><span>Редактировать</span>
+                    </button>
+                  )}
+                  {imgUrl && onAnimateImage && (
+                    <button onClick={() => onAnimateImage(imgUrl)} className={btnCls} style={btnStyle} onMouseEnter={onEnter} onMouseLeave={onLeave} title="Оживить изображение в видео">
+                      <Film size={13} /><span>Оживить</span>
+                    </button>
+                  )}
+                  {message.image_generation_id && onUpscaleImage && (
+                    <>
+                      <button onClick={() => onUpscaleImage(message.image_generation_id!, 2)} className={btnCls} style={btnStyle} onMouseEnter={onEnter} onMouseLeave={onLeave} title="Улучшить детализацию и чёткость (2×)">
+                        <Maximize2 size={13} /><span>Улучшить 2×</span>
+                      </button>
+                      <button onClick={() => onUpscaleImage(message.image_generation_id!, 4)} className={btnCls} style={btnStyle} onMouseEnter={onEnter} onMouseLeave={onLeave} title="Улучшить детализацию и чёткость (4×)">
+                        <Maximize2 size={13} /><span>Улучшить 4×</span>
+                      </button>
+                    </>
+                  )}
+                  {message.image_generation_id && onVariationsImage && (
+                    <button onClick={() => onVariationsImage(message.image_generation_id!)} className={btnCls} style={btnStyle} onMouseEnter={onEnter} onMouseLeave={onLeave} title="Создать 4 вариации">
+                      <Images size={13} /><span>Варианты</span>
+                    </button>
+                  )}
+                  {imgUrl && onStyleImage && (
+                    <button onClick={() => onStyleImage(imgUrl)} className={btnCls} style={btnStyle} onMouseEnter={onEnter} onMouseLeave={onLeave} title="Использовать как референс стиля">
+                      <Palette size={13} /><span>Стиль</span>
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Hover action bar — копирование, повтор, озвучка */}
             <div className="mt-1.5 flex items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
               <CopyButton plainText={message.plain_text} htmlContent={message.content} />
-              {(() => {
-                const editUrl = isFalAi ? extractFirstImageUrl(message.content || message.plain_text || "") : null;
-                return editUrl && onEditImage ? (
-                  <button
-                    onClick={() => onEditImage(editUrl)}
-                    className="flex h-7 items-center gap-1.5 rounded-[6px] px-2 text-[12px] font-medium transition-colors"
-                    style={{ color: "rgba(10,124,255,0.8)" }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.background = "rgba(10,124,255,0.08)";
-                      (e.currentTarget as HTMLButtonElement).style.color = "#0a7cff";
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.background = "";
-                      (e.currentTarget as HTMLButtonElement).style.color = "rgba(10,124,255,0.8)";
-                    }}
-                    title="Редактировать это изображение (img2img)"
-                  >
-                    <Pencil size={13} />
-                    <span>Редактировать</span>
-                  </button>
-                ) : null;
-              })()}
-              {(() => {
-                const animateUrl = isFalAi ? extractFirstImageUrl(message.content || message.plain_text || "") : null;
-                return animateUrl && onAnimateImage ? (
-                  <button
-                    onClick={() => onAnimateImage(animateUrl)}
-                    className="flex h-7 items-center gap-1.5 rounded-[6px] px-2 text-[12px] font-medium transition-colors"
-                    style={{ color: "rgba(10,124,255,0.8)" }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.background = "rgba(10,124,255,0.08)";
-                      (e.currentTarget as HTMLButtonElement).style.color = "#0a7cff";
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.background = "";
-                      (e.currentTarget as HTMLButtonElement).style.color = "rgba(10,124,255,0.8)";
-                    }}
-                    title="Оживить это изображение (img2video)"
-                  >
-                    <Film size={13} />
-                    <span>Оживить</span>
-                  </button>
-                ) : null;
-              })()}
-              {isFalAi && message.image_generation_id && onUpscaleImage && (
-                <>
-                  <button
-                    onClick={() => onUpscaleImage(message.image_generation_id!, 2)}
-                    className="flex h-7 items-center gap-1.5 rounded-[6px] px-2 text-[12px] font-medium transition-colors"
-                    style={{ color: "rgba(10,124,255,0.8)" }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.background = "rgba(10,124,255,0.08)";
-                      (e.currentTarget as HTMLButtonElement).style.color = "#0a7cff";
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.background = "";
-                      (e.currentTarget as HTMLButtonElement).style.color = "rgba(10,124,255,0.8)";
-                    }}
-                    title="Увеличить разрешение в 2 раза"
-                  >
-                    <Maximize2 size={13} />
-                    <span>Апскейл 2×</span>
-                  </button>
-                  <button
-                    onClick={() => onUpscaleImage(message.image_generation_id!, 4)}
-                    className="flex h-7 items-center gap-1.5 rounded-[6px] px-2 text-[12px] font-medium transition-colors"
-                    style={{ color: "rgba(10,124,255,0.8)" }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.background = "rgba(10,124,255,0.08)";
-                      (e.currentTarget as HTMLButtonElement).style.color = "#0a7cff";
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.background = "";
-                      (e.currentTarget as HTMLButtonElement).style.color = "rgba(10,124,255,0.8)";
-                    }}
-                    title="Увеличить разрешение в 4 раза"
-                  >
-                    <Maximize2 size={13} />
-                    <span>4×</span>
-                  </button>
-                </>
-              )}
-              {isFalAi && message.image_generation_id && onVariationsImage && (
-                <button
-                  onClick={() => onVariationsImage(message.image_generation_id!)}
-                  className="flex h-7 items-center gap-1.5 rounded-[6px] px-2 text-[12px] font-medium transition-colors"
-                  style={{ color: "rgba(10,124,255,0.8)" }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.background = "rgba(10,124,255,0.08)";
-                    (e.currentTarget as HTMLButtonElement).style.color = "#0a7cff";
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.background = "";
-                    (e.currentTarget as HTMLButtonElement).style.color = "rgba(10,124,255,0.8)";
-                  }}
-                  title="Создать 4 вариации"
-                >
-                  <Images size={13} />
-                  <span>Варианты</span>
-                </button>
-              )}
-              {(() => {
-                const styleUrl = isFalAi ? extractFirstImageUrl(message.content || message.plain_text || "") : null;
-                return styleUrl && onStyleImage ? (
-                  <button
-                    onClick={() => onStyleImage(styleUrl)}
-                    className="flex h-7 items-center gap-1.5 rounded-[6px] px-2 text-[12px] font-medium transition-colors"
-                    style={{ color: "rgba(10,124,255,0.8)" }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.background = "rgba(10,124,255,0.08)";
-                      (e.currentTarget as HTMLButtonElement).style.color = "#0a7cff";
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.background = "";
-                      (e.currentTarget as HTMLButtonElement).style.color = "rgba(10,124,255,0.8)";
-                    }}
-                    title="Использовать как референс стиля"
-                  >
-                    <Palette size={13} />
-                    <span>Стиль</span>
-                  </button>
-                ) : null;
-              })()}
               {(() => {
                 const artifact = onOpenArtifact ? extractArtifact(message.plain_text || message.content) : null;
                 return artifact && onOpenArtifact ? (
