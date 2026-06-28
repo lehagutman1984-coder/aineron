@@ -60,6 +60,17 @@ class ProjectKBStatsView(APIView):
         })
 
 
+class ProjectFileChunksView(APIView):
+    """GET /v1/projects/<pk>/files/<file_id>/chunks/ — список чанков файла."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk, file_id):
+        project = get_object_or_404(Project, id=pk, user=request.user)
+        f = get_object_or_404(ProjectFile, id=file_id, project=project)
+        chunks = f.chunks.order_by('chunk_index').values('id', 'chunk_index', 'content', 'token_count')
+        return Response(list(chunks))
+
+
 class ProjectFileReindexView(APIView):
     """POST /v1/projects/<pk>/files/<file_id>/reindex/ — запускает переиндексацию файла."""
     permission_classes = [IsAuthenticated]

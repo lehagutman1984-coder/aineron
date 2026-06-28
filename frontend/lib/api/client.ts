@@ -871,6 +871,9 @@ export const getProjectKBStats = (projectId: number): Promise<import("./types").
 export const reindexProjectFile = (projectId: number, fileId: number): Promise<{ ok: boolean; embed_status: string }> =>
   request(`/projects/${projectId}/files/${fileId}/reindex/`, { method: "POST" });
 
+export const getFileChunks = (projectId: number, fileId: number): Promise<import("./types").ProjectChunk[]> =>
+  request<import("./types").ProjectChunk[]>(`/projects/${projectId}/files/${fileId}/chunks/`);
+
 // ============ Sprint 7: Conversation Branching ============
 
 export const branchChat = (chatId: number, messageId: number): Promise<{ chat_id: number; title: string }> =>

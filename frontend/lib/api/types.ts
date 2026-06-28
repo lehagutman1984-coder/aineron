@@ -257,6 +257,13 @@ export interface KBFileStat {
   created_at: string;
 }
 
+export interface ProjectChunk {
+  id: number;
+  chunk_index: number;
+  content: string;
+  token_count: number;
+}
+
 export interface ProjectKBStats {
   file_count: number;
   indexed_count: number;

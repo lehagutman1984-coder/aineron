@@ -14,9 +14,12 @@ import {
   XCircle,
   BarChart3,
   MinusCircle,
+  ChevronDown,
+  ChevronRight,
+  Hash,
 } from "lucide-react";
 import Link from "next/link";
-import { getProjectKBStats, reindexProjectFile } from "@/lib/api/client";
+import { getProjectKBStats, reindexProjectFile, getFileChunks } from "@/lib/api/client";
 import type { KBFileStat } from "@/lib/api/types";
 
 type EffectiveStatus = "done" | "pending" | "none" | "error" | "skipped";
@@ -36,11 +39,11 @@ function getEffectiveStatus(file: KBFileStat): EffectiveStatus {
 }
 
 const STATUS_MAP: Record<EffectiveStatus, { label: string; color: string; icon: React.ReactNode }> = {
-  done:    { label: "Проиндексирован",   color: "#16a34a", icon: <CheckCircle  size={12} /> },
-  pending: { label: "В очереди",         color: "#d97706", icon: <Clock        size={12} /> },
-  none:    { label: "Не проиндексирован",color: "#6b7280", icon: <Clock        size={12} /> },
-  error:   { label: "Ошибка",            color: "#dc2626", icon: <XCircle      size={12} /> },
-  skipped: { label: "Пропущен",          color: "#9ca3af", icon: <MinusCircle  size={12} /> },
+  done:    { label: "Проиндексирован",    color: "#16a34a", icon: <CheckCircle size={12} /> },
+  pending: { label: "В очереди",          color: "#d97706", icon: <Clock       size={12} /> },
+  none:    { label: "Не проиндексирован", color: "#6b7280", icon: <Clock       size={12} /> },
+  error:   { label: "Ошибка",             color: "#dc2626", icon: <XCircle     size={12} /> },
+  skipped: { label: "Пропущен",           color: "#9ca3af", icon: <MinusCircle size={12} /> },
 };
 
 const FILTERS: { key: FilterKey; label: string }[] = [
@@ -65,9 +68,87 @@ function StatusBadge({ status }: { status: EffectiveStatus }) {
   );
 }
 
+function ChunkViewer({ projectId, fileId }: { projectId: number; fileId: number }) {
+  const [expanded, setExpanded] = useState<Record<number, boolean>>({});
+
+  const { data: chunks, isLoading } = useQuery({
+    queryKey: ["file-chunks", projectId, fileId],
+    queryFn: () => getFileChunks(projectId, fileId),
+    staleTime: 60 * 1000,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 px-2 py-3 text-[12px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.4)]">
+        <RefreshCw size={11} className="animate-spin" />
+        Загрузка чанков...
+      </div>
+    );
+  }
+
+  if (!chunks || chunks.length === 0) {
+    return (
+      <div className="px-2 py-3 text-[12px] text-[rgba(13,13,13,0.4)] dark:text-[rgba(236,236,236,0.35)]">
+        Нет чанков
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-1.5 pb-3">
+      {chunks.map((chunk) => {
+        const isExpanded = expanded[chunk.chunk_index];
+        const preview = chunk.content.slice(0, 280);
+        const hasMore = chunk.content.length > 280;
+
+        return (
+          <div
+            key={chunk.id}
+            className="rounded-[7px] border border-[rgba(13,13,13,0.07)] bg-[rgba(13,13,13,0.02)] dark:border-[rgba(255,255,255,0.06)] dark:bg-[rgba(255,255,255,0.02)]"
+          >
+            <button
+              className="flex w-full items-center gap-2 px-3 py-2 text-left"
+              onClick={() => setExpanded((p) => ({ ...p, [chunk.chunk_index]: !p[chunk.chunk_index] }))}
+            >
+              <Hash size={11} className="shrink-0 text-[rgba(13,13,13,0.3)] dark:text-[rgba(236,236,236,0.3)]" />
+              <span className="text-[11px] font-semibold text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.5)]">
+                Чанк {chunk.chunk_index + 1}
+              </span>
+              <span className="text-[10px] text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.3)]">
+                {chunk.token_count} токенов
+              </span>
+              <span className="ml-auto text-[rgba(13,13,13,0.3)] dark:text-[rgba(236,236,236,0.3)]">
+                {isExpanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+              </span>
+            </button>
+            <div className="px-3 pb-2 text-[11px] leading-relaxed text-[rgba(13,13,13,0.65)] dark:text-[rgba(236,236,236,0.6)]">
+              <pre className="whitespace-pre-wrap break-words font-mono text-[10.5px]">
+                {isExpanded ? chunk.content : preview}
+                {!isExpanded && hasMore && (
+                  <span className="text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.3)]">…</span>
+                )}
+              </pre>
+              {hasMore && (
+                <button
+                  onClick={() => setExpanded((p) => ({ ...p, [chunk.chunk_index]: !p[chunk.chunk_index] }))}
+                  className="mt-1 text-[10px] text-[#0a7cff] hover:underline"
+                >
+                  {isExpanded ? "Свернуть" : "Показать полностью"}
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function FileRow({ file, projectId }: { file: KBFileStat; projectId: number }) {
   const qc = useQueryClient();
+  const [showChunks, setShowChunks] = useState(false);
   const effectiveStatus = getEffectiveStatus(file);
+
   const reindex = useMutation({
     mutationFn: () => reindexProjectFile(projectId, file.id),
     onSuccess: () => {
@@ -75,36 +156,67 @@ function FileRow({ file, projectId }: { file: KBFileStat; projectId: number }) {
     },
   });
 
+  const canViewChunks = file.chunk_count > 0 && effectiveStatus === "done";
+
   return (
-    <div className="flex items-center gap-3 border-b border-[rgba(13,13,13,0.06)] py-2.5 last:border-0 dark:border-[rgba(255,255,255,0.05)]">
-      <FileText size={15} className="shrink-0 text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.35)]" />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="truncate text-[13px] font-medium text-[#0d0d0d] dark:text-[#ececec]">
-            {file.filename}
-          </span>
-          {!file.enabled && (
-            <span className="text-[11px] text-[rgba(13,13,13,0.4)] dark:text-[rgba(236,236,236,0.4)]">
-              (отключён)
-            </span>
+    <div className="border-b border-[rgba(13,13,13,0.06)] last:border-0 dark:border-[rgba(255,255,255,0.05)]">
+      <div className="flex items-center gap-3 py-2.5">
+        <button
+          onClick={() => canViewChunks && setShowChunks((v) => !v)}
+          disabled={!canViewChunks}
+          className="shrink-0 disabled:cursor-default"
+          title={canViewChunks ? "Показать чанки" : undefined}
+        >
+          {canViewChunks ? (
+            showChunks
+              ? <ChevronDown size={15} className="text-[#0a7cff]" />
+              : <ChevronRight size={15} className="text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.35)]" />
+          ) : (
+            <FileText size={15} className="text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.35)]" />
           )}
+        </button>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span
+              className={`truncate text-[13px] font-medium text-[#0d0d0d] dark:text-[#ececec] ${canViewChunks ? "cursor-pointer hover:text-[#0a7cff]" : ""}`}
+              onClick={() => canViewChunks && setShowChunks((v) => !v)}
+            >
+              {file.filename}
+            </span>
+            {!file.enabled && (
+              <span className="text-[11px] text-[rgba(13,13,13,0.4)] dark:text-[rgba(236,236,236,0.4)]">
+                (отключён)
+              </span>
+            )}
+          </div>
+          <div className="mt-0.5 flex items-center gap-2 text-[11px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.4)]">
+            <span>{formatBytes(file.file_size)}</span>
+            <span>·</span>
+            <span
+              className={canViewChunks ? "cursor-pointer text-[#0a7cff] hover:underline" : ""}
+              onClick={() => canViewChunks && setShowChunks((v) => !v)}
+            >
+              {file.chunk_count} чанков
+            </span>
+          </div>
         </div>
-        <div className="mt-0.5 flex items-center gap-2 text-[11px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.4)]">
-          <span>{formatBytes(file.file_size)}</span>
-          <span>·</span>
-          <span>{file.chunk_count} чанков</span>
-        </div>
+        <StatusBadge status={effectiveStatus} />
+        <button
+          onClick={() => reindex.mutate()}
+          disabled={reindex.isPending || file.embed_status === "pending" || effectiveStatus === "skipped"}
+          className="flex items-center gap-1.5 rounded-[7px] border border-[rgba(13,13,13,0.12)] px-2.5 py-1 text-[12px] text-[rgba(13,13,13,0.55)] transition hover:border-[#0a7cff] hover:text-[#0a7cff] disabled:opacity-40 dark:border-[rgba(255,255,255,0.1)] dark:text-[rgba(236,236,236,0.5)]"
+          title="Переиндексировать"
+        >
+          <RefreshCw size={11} className={reindex.isPending ? "animate-spin" : ""} />
+          Переиндекс.
+        </button>
       </div>
-      <StatusBadge status={effectiveStatus} />
-      <button
-        onClick={() => reindex.mutate()}
-        disabled={reindex.isPending || file.embed_status === "pending" || effectiveStatus === "skipped"}
-        className="flex items-center gap-1.5 rounded-[7px] border border-[rgba(13,13,13,0.12)] px-2.5 py-1 text-[12px] text-[rgba(13,13,13,0.55)] transition hover:border-[#0a7cff] hover:text-[#0a7cff] disabled:opacity-40 dark:border-[rgba(255,255,255,0.1)] dark:text-[rgba(236,236,236,0.5)]"
-        title="Переиндексировать"
-      >
-        <RefreshCw size={11} className={reindex.isPending ? "animate-spin" : ""} />
-        Переиндекс.
-      </button>
+
+      {showChunks && (
+        <div className="pb-1 pl-6">
+          <ChunkViewer projectId={projectId} fileId={file.id} />
+        </div>
+      )}
     </div>
   );
 }
@@ -174,10 +286,10 @@ export default function ProjectKBPage() {
             {/* Summary cards */}
             <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
-                { label: "Файлов",          value: data.file_count,    icon: <FileText   size={16} className="text-[#0a7cff]"  /> },
-                { label: "Проиндексировано",value: data.indexed_count, icon: <CheckCircle size={16} className="text-[#16a34a]" /> },
-                { label: "Ошибки",          value: data.error_count,   icon: <XCircle    size={16} className="text-red-500"    /> },
-                { label: "Чанков",          value: data.total_chunks,  icon: <BarChart3  size={16} className="text-[#7c3aed]"  /> },
+                { label: "Файлов",           value: data.file_count,    icon: <FileText    size={16} className="text-[#0a7cff]"  /> },
+                { label: "Проиндексировано", value: data.indexed_count, icon: <CheckCircle size={16} className="text-[#16a34a]" /> },
+                { label: "Ошибки",           value: data.error_count,   icon: <XCircle     size={16} className="text-red-500"   /> },
+                { label: "Чанков",           value: data.total_chunks,  icon: <BarChart3   size={16} className="text-[#7c3aed]" /> },
               ].map((c) => (
                 <div
                   key={c.label}

@@ -64,7 +64,7 @@ from api.views.memory import (
     QuickSaveFactView, MemoryToastView,
 )
 from api.views.branch import BranchChatView
-from api.views.kb_stats import ProjectKBStatsView, ProjectFileReindexView
+from api.views.kb_stats import ProjectKBStatsView, ProjectFileReindexView, ProjectFileChunksView
 from api.views.deep_research import DeepResearchStartView, DeepResearchStatusView
 from api.views.personas import PersonaListCreateView, PersonaDetailView
 from api.views.arena import ArenaVoteView, ArenaLeaderboardView
@@ -187,6 +187,7 @@ urlpatterns = [
     path('v1/projects/<int:pk>/files/<int:file_id>/', ProjectFileDetailView.as_view(), name='project_file_detail'),
     path('v1/projects/<int:pk>/files/<int:file_id>/versions/', FileVersionListView.as_view(), name='project_file_versions'),
     path('v1/projects/<int:pk>/files/<int:file_id>/reindex/', ProjectFileReindexView.as_view(), name='project_file_reindex'),
+    path('v1/projects/<int:pk>/files/<int:file_id>/chunks/', ProjectFileChunksView.as_view(), name='project_file_chunks'),
     path('v1/projects/<int:pk>/kb/stats/', ProjectKBStatsView.as_view(), name='project_kb_stats'),
     path('v1/projects/<int:pk>/files/<int:file_id>/versions/<int:version_id>/restore/', FileRestoreView.as_view(), name='project_file_restore'),
     path('v1/projects/<int:pk>/collaborators/', CollaboratorListCreateView.as_view(), name='project_collaborators'),
