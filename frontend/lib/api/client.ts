@@ -36,7 +36,15 @@ import type {
   ApplyPromoResponse,
   ReferralData,
   FilesResponse,
+  RerunGenerationResponse,
+  UpscaleGenerationResponse,
+  VariationsResponse,
+  ShareGenerationResponse,
+  GalleryResponse,
+  PublicGeneration,
   CompareResponse,
+  ImageCompareResponse,
+  EnhancePromptResponse,
   PromptTemplate,
   Project,
   ProjectFile,
@@ -505,6 +513,54 @@ export const getUserFiles = (params: {
 export const deleteUserFile = (fileId: string): Promise<void> =>
   request<void>(`/files/${fileId}/`, { method: "DELETE" });
 
+export const rerunGeneration = (genId: string): Promise<RerunGenerationResponse> =>
+  request<RerunGenerationResponse>(`/generations/${genId}/rerun/`, {
+    method: "POST",
+  });
+
+export const upscaleGeneration = (
+  genId: string,
+  factor: 2 | 4
+): Promise<UpscaleGenerationResponse> =>
+  request<UpscaleGenerationResponse>(`/generations/${genId}/upscale/`, {
+    method: "POST",
+    body: JSON.stringify({ factor }),
+  });
+
+export const createVariations = (
+  genId: string,
+  count = 4
+): Promise<VariationsResponse> =>
+  request<VariationsResponse>(`/generations/${genId}/variations/`, {
+    method: "POST",
+    body: JSON.stringify({ count }),
+  });
+
+// ============ Sprint 7: Public gallery & sharing ============
+
+export const shareGeneration = (genId: string): Promise<ShareGenerationResponse> =>
+  request<ShareGenerationResponse>(`/generations/${genId}/share/`, { method: "POST" });
+
+export const unshareGeneration = (genId: string): Promise<ShareGenerationResponse> =>
+  request<ShareGenerationResponse>(`/generations/${genId}/unshare/`, { method: "POST" });
+
+export const getGallery = (params: {
+  page?: number;
+  per_page?: number;
+  media_type?: "image" | "video";
+  model_name?: string;
+}): Promise<GalleryResponse> => {
+  const q = new URLSearchParams();
+  if (params.page) q.set("page", String(params.page));
+  if (params.per_page) q.set("per_page", String(params.per_page));
+  if (params.media_type) q.set("media_type", params.media_type);
+  if (params.model_name) q.set("model_name", params.model_name);
+  return request<GalleryResponse>(`/gallery/?${q}`);
+};
+
+export const getPublicGeneration = (slug: string): Promise<PublicGeneration> =>
+  request<PublicGeneration>(`/generations/${slug}/public/`);
+
 // ============ Prompt Library ============
 
 export const listPrompts = (category?: string): Promise<PromptTemplate[]> =>
@@ -528,6 +584,25 @@ export const compareModels = (body: {
   network_slugs: string[];
 }): Promise<CompareResponse> =>
   request<CompareResponse>("/compare/", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+export const compareImages = (body: {
+  prompt: string;
+  models: string[];
+  settings?: Record<string, unknown>;
+}): Promise<ImageCompareResponse> =>
+  request<ImageCompareResponse>("/images/compare/", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+export const enhanceImagePrompt = (body: {
+  prompt: string;
+  style?: string;
+}): Promise<EnhancePromptResponse> =>
+  request<EnhancePromptResponse>("/images/enhance-prompt/", {
     method: "POST",
     body: JSON.stringify(body),
   });

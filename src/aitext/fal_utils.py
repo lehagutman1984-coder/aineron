@@ -313,10 +313,13 @@ def save_image_from_b64(b64_data, message, prompt):
         return None
 
 
-def save_media_from_url(url, message, prompt, media_type='image', max_retries=3, timeout=60):
+def save_media_from_url(url, message, prompt, media_type='image', max_retries=3, timeout=60, gen=None):
     """
     Скачивает медиа по URL с повторными попытками и сохраняет в GeneratedImage.
     Поддерживает видео (mp4, webm, avi, mov, mkv) и изображения (png, jpg, jpeg, webp, gif, bmp, tiff).
+
+    Если передан ``gen`` — дозаполняет существующую placeholder-строку (для img2video
+    и трекинга прогресса) вместо создания новой.
     """
     for attempt in range(max_retries):
         try:
@@ -386,12 +389,19 @@ def save_media_from_url(url, message, prompt, media_type='image', max_retries=3,
 
             default_storage.save(path, ContentFile(file_data))
             from .models import GeneratedImage  # если ещё не импортирован
-            gen_img = GeneratedImage.objects.create(
-                message=message,
-                image=path,
-                prompt=prompt,
-                media_type=media_type
-            )
+            if gen is not None:
+                # Дозаполняем placeholder-строку (img2video / progress-трекинг)
+                gen.image = path
+                gen.media_type = media_type
+                gen.save(update_fields=['image', 'media_type'])
+                gen_img = gen
+            else:
+                gen_img = GeneratedImage.objects.create(
+                    message=message,
+                    image=path,
+                    prompt=prompt,
+                    media_type=media_type
+                )
             logger.info(f"Медиа сохранено: {path} (тип: {media_type})")
             return gen_img
 
@@ -432,12 +442,355 @@ def _build_image_params(model_id, prompt, final_args):
         params['quality'] = final_args['quality']
     if 'style' in final_args:
         params['style'] = final_args['style']
-    if 'n' in final_args:
+    # num_images — UI-алиас для 'n' (имеет приоритет над api_defaults 'n')
+    if 'num_images' in final_args and final_args['num_images'] is not None:
+        try:
+            params['n'] = int(final_args['num_images'])
+        except (ValueError, TypeError):
+            params['n'] = int(final_args.get('n', 1))
+    elif 'n' in final_args:
         params['n'] = int(final_args['n'])
     else:
         params['n'] = 1
 
+    # Доп. параметры генерации (seed / negative_prompt) НЕ являются стандартными
+    # kwargs у client.images.generate() в openai>=1.x — top-level вызов поднял бы
+    # TypeError. Передаём их через extra_body: openai-SDK сливает его в JSON-тело
+    # запроса, а laozhang-прокси форвардит в провайдера (Flux). Та же конвенция
+    # «provider-shape», что и в video-путях S2/S3.
+    extra_body = {}
+    if 'seed' in final_args and final_args['seed'] is not None:
+        try:
+            extra_body['seed'] = int(final_args['seed'])
+        except (ValueError, TypeError):
+            pass
+    if 'negative_prompt' in final_args and final_args['negative_prompt']:
+        extra_body['negative_prompt'] = final_args['negative_prompt']
+    # Sprint 6: референс стиля для генерации с нуля (без исходника)
+    style_ref = final_args.get('style_image_url')
+    if style_ref:
+        extra_body['style_image_url'] = style_ref
+        extra_body['style_reference'] = style_ref
+    if extra_body:
+        params['extra_body'] = extra_body
+
+    if 'image_url' in final_args and final_args['image_url']:
+        params['image'] = final_args['image_url']  # for edit flow (latent: routed away ранее)
+
     return params
+
+
+def _prepare_outpaint_canvas(image_bytes, direction, expand_ratio=0.25):
+    """Строит расширенный холст для outpaint через PIL (Pillow).
+
+    direction: 'left' | 'right' | 'up' | 'down' | 'all'.
+    expand_ratio: доля расширения относительно исходного размера (0.25 = +25%).
+
+    Возвращает (expanded_png_bytes, mask_png_bytes), где:
+      * expanded — RGBA PNG: оригинал вставлен на прозрачный (alpha=0) фон,
+        новая область прозрачна — это запасной alpha-mask для провайдеров,
+        читающих прозрачность как зону дорисовки.
+      * mask — L (grayscale) PNG: БЕЛЫЙ (255) в новой области (которую модель
+        должна дорисовать), ЧЁРНЫЙ (0) поверх исходного изображения.
+
+    Конвенция «белое = область редактирования» совпадает с MaskEditor на фронте.
+    """
+    from PIL import Image
+    import io as _io
+
+    src = Image.open(_io.BytesIO(image_bytes)).convert("RGBA")
+    w, h = src.size
+    ratio = max(0.0, float(expand_ratio))
+    dx = max(1, int(round(w * ratio)))
+    dy = max(1, int(round(h * ratio)))
+
+    if direction == 'left':
+        new_w, new_h, paste_x, paste_y = w + dx, h, dx, 0
+    elif direction == 'right':
+        new_w, new_h, paste_x, paste_y = w + dx, h, 0, 0
+    elif direction == 'up':
+        new_w, new_h, paste_x, paste_y = w, h + dy, 0, dy
+    elif direction == 'down':
+        new_w, new_h, paste_x, paste_y = w, h + dy, 0, 0
+    else:  # 'all'
+        new_w, new_h, paste_x, paste_y = w + 2 * dx, h + 2 * dy, dx, dy
+
+    # Расширенное изображение: прозрачный холст + оригинал
+    expanded = Image.new("RGBA", (new_w, new_h), (0, 0, 0, 0))
+    expanded.paste(src, (paste_x, paste_y))
+
+    # Маска: белая везде (новая область), чёрная — там, где оригинал
+    mask = Image.new("L", (new_w, new_h), 255)
+    mask.paste(Image.new("L", (w, h), 0), (paste_x, paste_y))
+
+    out_img = _io.BytesIO()
+    expanded.save(out_img, format="PNG")
+    out_mask = _io.BytesIO()
+    mask.save(out_mask, format="PNG")
+    return out_img.getvalue(), out_mask.getvalue()
+
+
+def generate_image_edit(network, user_msg, message, user_settings=None):
+    """Img2img: редактирование изображения через laozhang /images/edits (multipart)
+    с фолбэком на /images/generations + image_url в теле.
+    Возвращает (final_text, saved_media, total_cost)."""
+    config = network.config_json or {}
+    model_id = network.model_name
+    prompt = user_msg.content if user_msg else ""
+    base_cost = network.cost_per_message
+
+    if user_settings:
+        final_args, errors, extra_cost = validate_and_merge_settings(config, user_settings)
+        if errors:
+            raise Exception("Ошибки в настройках: " + "; ".join(errors))
+    else:
+        final_args = config.get('api_defaults', {}).copy()
+        extra_cost = 0
+
+    total_cost = base_cost + extra_cost
+
+    image_url = final_args.get('image_url') or (user_settings or {}).get('image_url', '')
+    if not image_url:
+        raise Exception("image_url обязателен для редактирования изображения")
+
+    # mask_url / outpaint_direction читаем напрямую из user_settings —
+    # их нет в ui_settings.sections, поэтому validate_and_merge_settings их не выдаёт
+    mask_url = final_args.get('mask_url') or (user_settings or {}).get('mask_url', '')
+    outpaint_direction = (
+        final_args.get('outpaint_direction') or (user_settings or {}).get('outpaint_direction', '')
+    )
+    # Sprint 6: style/character reference — референс стиля, проброс провайдеру.
+    # Точное имя параметра провайдер-зависимо, поэтому шлём через extra_body
+    # под несколькими распространёнными ключами.
+    style_image_url = (
+        final_args.get('style_image_url') or (user_settings or {}).get('style_image_url', '')
+    )
+
+    client = get_laozhang_image_client()
+
+    # Скачиваем исходное изображение для multipart /images/edits
+    import io as _io
+    import requests as _req
+    try:
+        resp = _req.get(image_url, timeout=30)
+        resp.raise_for_status()
+        img_bytes = resp.content
+        img_file = _io.BytesIO(img_bytes)
+        img_file.name = 'source.png'
+    except Exception as e:
+        raise Exception(f"Не удалось скачать исходное изображение: {e}")
+
+    # Маска: либо outpaint (PIL строит расширенный холст), либо ручная маска (mask_url).
+    # Outpaint и ручная маска взаимоисключающие — outpaint имеет приоритет.
+    mask_file = None
+    size_override = None
+    if outpaint_direction:
+        try:
+            from PIL import Image as _PILImage
+            exp_bytes, mask_bytes = _prepare_outpaint_canvas(img_bytes, outpaint_direction)
+            img_file = _io.BytesIO(exp_bytes)
+            img_file.name = 'source.png'
+            mask_file = _io.BytesIO(mask_bytes)
+            mask_file.name = 'mask.png'
+            ew, eh = _PILImage.open(_io.BytesIO(exp_bytes)).size
+            size_override = f"{ew}x{eh}"
+            logger.info(f"[outpaint] direction={outpaint_direction} canvas={size_override}")
+        except Exception as e:
+            logger.warning(f"[outpaint] canvas build failed ({e}); продолжаем без outpaint")
+    elif mask_url:
+        try:
+            mresp = _req.get(mask_url, timeout=30)
+            mresp.raise_for_status()
+            mask_file = _io.BytesIO(mresp.content)
+            mask_file.name = 'mask.png'
+            logger.info("[mask] ручная маска загружена для inpaint")
+        except Exception as e:
+            logger.warning(f"[mask] download failed ({e}); продолжаем без маски")
+
+    # Для outpaint размер задаётся расширенным холстом, иначе берём из настроек
+    size_val = size_override or final_args.get('size') or final_args.get('image_size', '1024x1024')
+    if isinstance(size_val, dict):
+        size_val = f"{size_val.get('width', 1024)}x{size_val.get('height', 1024)}"
+
+    params = {'model': model_id, 'prompt': prompt, 'n': 1, 'size': str(size_val)}
+    if 'negative_prompt' in final_args and final_args['negative_prompt']:
+        params['negative_prompt'] = final_args['negative_prompt']
+    if 'seed' in final_args and final_args['seed'] is not None:
+        try:
+            params['seed'] = int(final_args['seed'])
+        except (ValueError, TypeError):
+            pass
+    # Sprint 6: референс стиля — extra_body принимается и images.edit, и images.generate
+    if style_image_url:
+        params['extra_body'] = {
+            'style_image_url': style_image_url,
+            'style_reference': style_image_url,
+            'image_url_2': style_image_url,
+        }
+        logger.info("[style-ref] применён референс стиля для edit")
+
+    try:
+        # OpenAI-клиент images.edit() — laozhang поддерживает для flux-kontext-pro и др.
+        edit_kwargs = dict(params)
+        if mask_file is not None:
+            edit_kwargs['mask'] = mask_file
+        result = client.images.edit(image=img_file, **edit_kwargs)
+        img_url = result.data[0].url if result.data else None
+    except Exception as edit_err:
+        logger.warning(f"[img2img] images.edit failed ({edit_err}), falling back to generate+image_url")
+        # Фолбэк: передаём image_url в теле /images/generations.
+        # ВНИМАНИЕ: фолбэк не поддерживает маску/outpaint — они здесь теряются.
+        gen_params = {**params, 'image_url': image_url}
+        result = client.images.generate(**gen_params)
+        img_url = result.data[0].url if result.data else None
+
+    if not img_url:
+        raise Exception("Провайдер не вернул изображение")
+
+    seed_used = getattr(result.data[0], 'seed', final_args.get('seed'))
+
+    # Сохраняем результат
+    gen = save_media_from_url(img_url, message, prompt)
+    if gen:
+        gen.params = params
+        try:
+            gen.seed = int(seed_used) if seed_used is not None else None
+        except (ValueError, TypeError):
+            gen.seed = None
+        gen.model_name = model_id
+        gen.provider = 'laozhang'
+        gen.source = 'chat'
+        if user_settings and user_settings.get('parent_id'):
+            try:
+                gen.parent_id = int(user_settings['parent_id'])
+            except (ValueError, TypeError):
+                pass
+        gen.save(update_fields=['params', 'seed', 'model_name', 'provider', 'source', 'parent_id'])
+
+    model_name = config.get('name', network.name)
+    saved_media = [gen] if gen else []
+    if saved_media:
+        text_parts = [f"Изображение отредактировано моделью \"{model_name}\"."]
+        for media in saved_media:
+            text_parts.append(
+                f"<img src='{media.image.url}' alt='Отредактированное изображение' style='max-width:100%; border-radius:12px;'>"
+            )
+        final_text = "\n\n".join(text_parts)
+    else:
+        final_text = f"Модель \"{model_name}\" не вернула изображение. Попробуйте изменить промт."
+
+    return final_text, saved_media, total_cost
+
+
+# Апскейл-модели laozhang (img2img). Точные слаги/имя scale-параметра не зафиксированы
+# в репозитории — это deploy-time-verify допущение (проверить по списку моделей провайдера).
+UPSCALE_MODELS = ['clarity-upscaler', 'aura-sr']
+
+
+def generate_upscale(generation_id, user_id=None, factor=2, image_url=None):
+    """Sprint 6: апскейл GeneratedImage в factor раз через upscale-модель провайдера.
+
+    Создаёт placeholder-строку (status='running', image='' — отфильтрована из галереи),
+    скачивает исходник server-side и шлёт его через images.edit (как generate_image_edit),
+    с фолбэком на images.generate + image_url в теле. Возвращает заполненный GeneratedImage.
+
+    image_url — абсолютный URL исходника (вычисляется во view, чтобы не зависеть от SITE_URL).
+    user_id принимается для совместимости с сигнатурой задачи (биллинг — в задаче).
+    """
+    from .models import GeneratedImage
+    original = GeneratedImage.objects.get(id=generation_id)
+
+    # Резолвим URL исходника (приоритет — переданный из view абсолютный URL)
+    if not image_url:
+        image_url = original.image.url if original.image else ''
+        if image_url and not image_url.startswith('http'):
+            site = (getattr(settings, 'SITE_URL', '') or '').rstrip('/')
+            if site:
+                image_url = site + image_url
+    if not image_url:
+        raise Exception("Не удалось определить URL исходного изображения для апскейла")
+
+    try:
+        factor = int(factor)
+    except (ValueError, TypeError):
+        factor = 2
+    if factor not in (2, 4):
+        factor = 2
+
+    # Placeholder — image='' пока генерация идёт (UserFilesView отфильтровывает такие строки)
+    placeholder = GeneratedImage.objects.create(
+        message=original.message,
+        image='',
+        prompt=original.prompt or '',
+        media_type='image',
+        model_name=UPSCALE_MODELS[0],
+        provider='laozhang',
+        source=original.source or 'chat',
+        parent_id=original.id,
+        params={'op': 'upscale', 'factor': factor, 'source_id': original.id},
+        status='running',
+        progress=10,
+    )
+
+    client = get_laozhang_image_client()
+
+    # Скачиваем исходник server-side (проверенный путь generate_image_edit,
+    # не требует от провайдера доступа к публичному URL)
+    import io as _io
+    import requests as _req
+    img_bytes = None
+    try:
+        resp = _req.get(image_url, timeout=30)
+        resp.raise_for_status()
+        img_bytes = resp.content
+    except Exception as e:
+        logger.warning(f"[upscale] не удалось скачать исходник ({e}); пробуем URL-in-body путь")
+
+    img_url = None
+    last_err = None
+    used_model = UPSCALE_MODELS[0]
+    for model_id in UPSCALE_MODELS:
+        try:
+            extra_body = {'scale': factor, 'upscale_factor': factor}
+            if img_bytes is not None:
+                img_file = _io.BytesIO(img_bytes)
+                img_file.name = 'source.png'
+                result = client.images.edit(
+                    image=img_file, model=model_id, prompt='', n=1, extra_body=extra_body,
+                )
+            else:
+                extra_body['image_url'] = image_url
+                result = client.images.generate(
+                    model=model_id, prompt='', n=1, extra_body=extra_body,
+                )
+            img_url = result.data[0].url if result.data else None
+            if img_url:
+                used_model = model_id
+                break
+        except Exception as e:
+            last_err = e
+            logger.warning(f"[upscale] модель {model_id} не сработала: {e}")
+            continue
+
+    if not img_url:
+        _fail_video_gen(placeholder)
+        raise Exception(f"Upscale-провайдер не вернул изображение: {last_err}")
+
+    gen = save_media_from_url(img_url, original.message, original.prompt or '', gen=placeholder)
+    if not gen:
+        _fail_video_gen(placeholder)
+        raise Exception("Не удалось сохранить результат апскейла")
+    gen.params = {'op': 'upscale', 'factor': factor, 'source_id': original.id}
+    gen.model_name = used_model
+    gen.provider = 'laozhang'
+    gen.parent_id = original.id
+    gen.source = original.source or 'chat'
+    gen.status = 'done'
+    gen.progress = 100
+    gen.save(update_fields=[
+        'params', 'model_name', 'provider', 'parent_id', 'source', 'status', 'progress',
+    ])
+    return gen
 
 
 def _size_to_resolution_and_ratio(size_str):
@@ -459,12 +812,92 @@ def _size_to_resolution_and_ratio(size_str):
     return res, ratio
 
 
-def _save_video_binary(content, message, prompt):
-    """Сохраняет бинарные данные как mp4, возвращает GeneratedImage."""
+def _save_video_binary(content, message, prompt, gen=None):
+    """Сохраняет бинарные данные как mp4, возвращает GeneratedImage.
+
+    Если передан ``gen`` — дозаполняет placeholder-строку вместо создания новой.
+    """
     path = f"generated_videos/generated_{uuid.uuid4()}.mp4"
     default_storage.save(path, ContentFile(content))
     from .models import GeneratedImage
+    if gen is not None:
+        gen.image = path
+        gen.media_type = 'video'
+        gen.save(update_fields=['image', 'media_type'])
+        return gen
     return GeneratedImage.objects.create(message=message, image=path, prompt=prompt, media_type='video')
+
+
+def _create_video_placeholder(message, prompt, model_id, provider):
+    """Создаёт placeholder-строку GeneratedImage для видео ДО начала polling.
+
+    Нужно, чтобы SSE-эндпоинт прогресса (в web-процессе) мог читать прогресс,
+    обновляемый Celery-воркером во время генерации. image='' до завершения —
+    UserFilesView отфильтровывает такие строки.
+    """
+    from .models import GeneratedImage
+    try:
+        # Переиспользуем пустой placeholder, если он уже есть (apimart resume после
+        # рестарта воркера) — чтобы не плодить дубли.
+        existing = GeneratedImage.objects.filter(
+            message=message, media_type='video', image=''
+        ).order_by('-created_at').first()
+        if existing is not None:
+            existing.status = 'running'
+            existing.save(update_fields=['status'])
+            return existing
+        return GeneratedImage.objects.create(
+            message=message, image='', prompt=prompt, media_type='video',
+            model_name=model_id or '', provider=provider, source='chat',
+            status='running', progress=0,
+        )
+    except Exception as e:
+        logger.warning(f"Не удалось создать placeholder видео: {e}")
+        return None
+
+
+def _bump_video_progress(gen, provider_progress, attempt, total_attempts):
+    """Обновляет прогресс placeholder-строки.
+
+    Провайдеры почти не отдают честный progress, поэтому синтезируем его по
+    счётчику poll-итераций (потолок 90%), а если провайдер дал больше — берём его.
+    """
+    if gen is None:
+        return
+    try:
+        prov = int(provider_progress or 0)
+    except (ValueError, TypeError):
+        prov = 0
+    synthetic = int((attempt + 1) / max(1, total_attempts) * 90)
+    gen.progress = max(0, min(99, max(prov, synthetic)))
+    try:
+        gen.save(update_fields=['progress'])
+    except Exception:
+        pass
+
+
+def _finalize_video_gen(gen):
+    """Помечает placeholder как готовый (после записи файла)."""
+    if gen is None or not gen.image:
+        return False
+    gen.status = 'done'
+    gen.progress = 100
+    try:
+        gen.save(update_fields=['status', 'progress'])
+    except Exception:
+        pass
+    return True
+
+
+def _fail_video_gen(gen):
+    """Помечает placeholder как ошибочный."""
+    if gen is None:
+        return
+    gen.status = 'error'
+    try:
+        gen.save(update_fields=['status'])
+    except Exception:
+        pass
 
 
 def generate_video_laozhang(network, user_msg, message, user_settings=None):
@@ -495,6 +928,8 @@ def generate_video_laozhang(network, user_msg, message, user_settings=None):
     size = str(final_args.get('size', '1280x720'))
     seconds = str(final_args.get('seconds', '8'))
     resolution, aspect_ratio = _size_to_resolution_and_ratio(size)
+    # img2video: image_url приходит только через user_settings (нет в ui_settings.sections)
+    image_url = final_args.get('image_url') or (user_settings or {}).get('image_url', '')
 
     # multipart/form-data — requests задаёт Content-Type автоматически через files=
     fields = {
@@ -508,75 +943,94 @@ def generate_video_laozhang(network, user_msg, message, user_settings=None):
     }
     if final_args.get('negativePrompt'):
         fields['negativePrompt'] = str(final_args['negativePrompt'])
+    if image_url:
+        fields['image_url'] = image_url
 
-    logger.info(f"Video POST /v1/videos model={model_id} size={size} seconds={seconds}")
-    resp = requests.post(
-        f"{base_url}/videos",
-        headers=auth_headers,
-        files={k: (None, v) for k, v in fields.items()},
-        timeout=120,
-    )
-    resp.raise_for_status()
-    data = resp.json()
-    logger.info(f"Video creation response: {str(data)[:400]}")
+    # Placeholder для трекинга прогресса (SSE) — создаём ДО polling
+    gen_ph = _create_video_placeholder(message, prompt, model_id, 'laozhang')
 
     saved_media_direct = []
     video_urls = []
+    try:
+        logger.info(f"Video POST /v1/videos model={model_id} size={size} seconds={seconds} img2video={bool(image_url)}")
+        resp = requests.post(
+            f"{base_url}/videos",
+            headers=auth_headers,
+            files={k: (None, v) for k, v in fields.items()},
+            timeout=120,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        logger.info(f"Video creation response: {str(data)[:400]}")
 
-    # Синхронный ответ
-    for item in (data.get('data') or []):
-        url = item.get('url') or item.get('video_url')
-        if url and str(url).startswith('http'):
-            video_urls.append(url)
+        # Синхронный ответ
+        for item in (data.get('data') or []):
+            url = item.get('url') or item.get('video_url')
+            if url and str(url).startswith('http'):
+                video_urls.append(url)
 
-    # Асинхронный polling
-    if not video_urls:
-        job_id = data.get('id') or data.get('task_id')
-        if job_id:
-            logger.info(f"Video async job_id={job_id}, polling /v1/videos/{job_id}")
-            for attempt in range(60):  # до 15 мин (15 сек × 60)
-                time.sleep(15)
-                poll = requests.get(f"{base_url}/videos/{job_id}", headers=auth_headers, timeout=30)
-                poll.raise_for_status()
-                pd = poll.json()
-                status = (pd.get('status') or '').lower()
-                logger.info(f"Video poll {attempt + 1}/60: status={status} progress={pd.get('progress', '?')}")
+        # Асинхронный polling
+        if not video_urls:
+            job_id = data.get('id') or data.get('task_id')
+            if job_id:
+                logger.info(f"Video async job_id={job_id}, polling /v1/videos/{job_id}")
+                for attempt in range(60):  # до 15 мин (15 сек × 60)
+                    time.sleep(15)
+                    poll = requests.get(f"{base_url}/videos/{job_id}", headers=auth_headers, timeout=30)
+                    poll.raise_for_status()
+                    pd = poll.json()
+                    status = (pd.get('status') or '').lower()
+                    logger.info(f"Video poll {attempt + 1}/60: status={status} progress={pd.get('progress', '?')}")
+                    _bump_video_progress(gen_ph, pd.get('progress'), attempt, 60)
 
-                if status == 'completed':
-                    logger.info(f"Video completed response: {str(pd)[:600]}")
-                    # Скачиваем бинарный MP4 через /v1/videos/{id}/content
-                    content_url = f"{base_url}/videos/{job_id}/content"
-                    logger.info(f"Downloading video: GET {content_url}")
-                    try:
-                        cr = requests.get(content_url, headers=auth_headers, timeout=180, allow_redirects=True)
-                        cr.raise_for_status()
-                        ct = cr.headers.get('content-type', '')
-                        logger.info(f"Download: status={cr.status_code} content-type={ct} size={len(cr.content)}")
-                        if 'video' in ct or str(cr.url).endswith('.mp4') or len(cr.content) > 100_000:
-                            gen = _save_video_binary(cr.content, message, prompt)
-                            saved_media_direct.append(gen)
-                        elif 'json' in ct:
-                            dj = cr.json()
-                            logger.info(f"Download JSON: {str(dj)[:400]}")
-                            for k in ('url', 'video_url', 'download_url', 'src'):
-                                u = dj.get(k)
-                                if u and str(u).startswith('http'):
-                                    video_urls.append(u)
-                                    break
-                        else:
-                            logger.warning(f"Unexpected content-type: {ct}, bytes: {cr.content[:200]}")
-                    except Exception as ce:
-                        logger.error(f"Video download failed: {ce}")
-                    break
-                elif status in ('failed', 'error', 'cancelled'):
-                    raise Exception(f"Видео завершилось ошибкой: {pd.get('error', status)}")
+                    if status == 'completed':
+                        logger.info(f"Video completed response: {str(pd)[:600]}")
+                        # Скачиваем бинарный MP4 через /v1/videos/{id}/content
+                        content_url = f"{base_url}/videos/{job_id}/content"
+                        logger.info(f"Downloading video: GET {content_url}")
+                        try:
+                            cr = requests.get(content_url, headers=auth_headers, timeout=180, allow_redirects=True)
+                            cr.raise_for_status()
+                            ct = cr.headers.get('content-type', '')
+                            logger.info(f"Download: status={cr.status_code} content-type={ct} size={len(cr.content)}")
+                            if 'video' in ct or str(cr.url).endswith('.mp4') or len(cr.content) > 100_000:
+                                gen = _save_video_binary(cr.content, message, prompt, gen=gen_ph)
+                                saved_media_direct.append(gen)
+                            elif 'json' in ct:
+                                dj = cr.json()
+                                logger.info(f"Download JSON: {str(dj)[:400]}")
+                                for k in ('url', 'video_url', 'download_url', 'src'):
+                                    u = dj.get(k)
+                                    if u and str(u).startswith('http'):
+                                        video_urls.append(u)
+                                        break
+                            else:
+                                logger.warning(f"Unexpected content-type: {ct}, bytes: {cr.content[:200]}")
+                        except Exception as ce:
+                            logger.error(f"Video download failed: {ce}")
+                        break
+                    elif status in ('failed', 'error', 'cancelled'):
+                        raise Exception(f"Видео завершилось ошибкой: {pd.get('error', status)}")
+    except Exception:
+        _fail_video_gen(gen_ph)
+        raise
 
     model_name = config.get('name', network.name)
     saved_media = list(saved_media_direct)
+    # placeholder ещё пуст (видео пришло по URL) — дозаполняем его первым URL
     for url in video_urls:
-        gen = save_media_from_url(url, message, prompt, media_type='video')
+        target = gen_ph if (gen_ph is not None and not gen_ph.image) else None
+        gen = save_media_from_url(url, message, prompt, media_type='video', gen=target)
         if gen:
             saved_media.append(gen)
+
+    if _finalize_video_gen(gen_ph):
+        if gen_ph not in saved_media:
+            saved_media.append(gen_ph)
+    else:
+        # видео так и не получили — помечаем пустой placeholder как error
+        # (image='' отфильтровывается из галереи UserFilesView)
+        _fail_video_gen(gen_ph)
 
     if saved_media:
         text_parts = [f"Сгенерировано {len(saved_media)} видео моделью \"{model_name}\"."]
@@ -620,83 +1074,105 @@ def generate_seedance_video(network, user_msg, message, user_settings=None):
         "Content-Type": "application/json",
     }
 
+    # img2video: image_url приходит только через user_settings
+    image_url = final_args.get('image_url') or (user_settings or {}).get('image_url', '')
+    content = [{"type": "text", "text": prompt}]
+    if image_url:
+        # Seedance принимает кадр-источник как image_url-элемент content-массива.
+        # ВНИМАНИЕ: точная форма провайдер-зависима (OpenAI-vision-подобная); если
+        # seedance img2video не сработает — здесь может потребоваться плоский ключ.
+        content.append({"type": "image_url", "image_url": {"url": image_url}})
+
     body = {
         "model": model_id,
-        "content": [{"type": "text", "text": prompt}],
+        "content": content,
         "ratio": str(final_args.get('ratio', '16:9')),
         "duration": int(final_args.get('duration', 5)),
         "resolution": str(final_args.get('resolution', '720p')),
     }
 
-    logger.info(f"Seedance POST {seedance_base}/contents/generations/tasks model={model_id}")
-    resp = requests.post(
-        f"{seedance_base}/contents/generations/tasks",
-        headers=auth_headers,
-        json=body,
-        timeout=120,
-    )
-    resp.raise_for_status()
-    data = resp.json()
-    logger.info(f"Seedance creation response: {str(data)[:400]}")
-
-    job_id = data.get('id')
-    if not job_id:
-        raise Exception(f"Нет task id в ответе Seedance: {str(data)[:200]}")
+    gen_ph = _create_video_placeholder(message, prompt, model_id, 'seedance')
 
     saved_media_direct = []
     video_urls = []
-
-    logger.info(f"Seedance polling tasks/{job_id}")
-    for attempt in range(60):
-        time.sleep(15)
-        poll = requests.get(
-            f"{seedance_base}/contents/generations/tasks/{job_id}",
+    try:
+        logger.info(f"Seedance POST {seedance_base}/contents/generations/tasks model={model_id} img2video={bool(image_url)}")
+        resp = requests.post(
+            f"{seedance_base}/contents/generations/tasks",
             headers=auth_headers,
-            timeout=30,
+            json=body,
+            timeout=120,
         )
-        poll.raise_for_status()
-        pd = poll.json()
-        status = (pd.get('status') or '').lower()
-        logger.info(f"Seedance poll {attempt + 1}/60: status={status}")
+        resp.raise_for_status()
+        data = resp.json()
+        logger.info(f"Seedance creation response: {str(data)[:400]}")
 
-        if status == 'succeeded':
-            logger.info(f"Seedance completed: {str(pd)[:600]}")
-            # URL в content.video_url
-            content_obj = pd.get('content') or {}
-            video_url = content_obj.get('video_url') if isinstance(content_obj, dict) else None
-            if video_url and str(video_url).startswith('http'):
-                logger.info(f"Seedance video_url: {video_url[:100]}")
-                video_urls.append(video_url)
-            else:
-                # Запасной вариант — /v1/videos/{id}/content
-                dl_url = f"{settings.LAOZHANG_API_URL.rstrip('/')}/videos/{job_id}/content"
-                logger.info(f"Seedance fallback download: GET {dl_url}")
-                try:
-                    cr = requests.get(
-                        dl_url,
-                        headers={"Authorization": f"Bearer {seedance_key}"},
-                        timeout=180,
-                        allow_redirects=True,
-                    )
-                    cr.raise_for_status()
-                    ct = cr.headers.get('content-type', '')
-                    if 'video' in ct or len(cr.content) > 100_000:
-                        gen = _save_video_binary(cr.content, message, prompt)
-                        saved_media_direct.append(gen)
-                    else:
-                        logger.warning(f"Seedance fallback unexpected: {ct} size={len(cr.content)}")
-                except Exception as ce:
-                    logger.error(f"Seedance fallback download failed: {ce}")
-            break
-        elif status in ('failed', 'error', 'expired'):
-            raise Exception(f"Seedance генерация завершилась ошибкой: {pd.get('error', status)}")
+        job_id = data.get('id')
+        if not job_id:
+            raise Exception(f"Нет task id в ответе Seedance: {str(data)[:200]}")
+
+        logger.info(f"Seedance polling tasks/{job_id}")
+        for attempt in range(60):
+            time.sleep(15)
+            poll = requests.get(
+                f"{seedance_base}/contents/generations/tasks/{job_id}",
+                headers=auth_headers,
+                timeout=30,
+            )
+            poll.raise_for_status()
+            pd = poll.json()
+            status = (pd.get('status') or '').lower()
+            logger.info(f"Seedance poll {attempt + 1}/60: status={status}")
+            _bump_video_progress(gen_ph, pd.get('progress'), attempt, 60)
+
+            if status == 'succeeded':
+                logger.info(f"Seedance completed: {str(pd)[:600]}")
+                # URL в content.video_url
+                content_obj = pd.get('content') or {}
+                video_url = content_obj.get('video_url') if isinstance(content_obj, dict) else None
+                if video_url and str(video_url).startswith('http'):
+                    logger.info(f"Seedance video_url: {video_url[:100]}")
+                    video_urls.append(video_url)
+                else:
+                    # Запасной вариант — /v1/videos/{id}/content
+                    dl_url = f"{settings.LAOZHANG_API_URL.rstrip('/')}/videos/{job_id}/content"
+                    logger.info(f"Seedance fallback download: GET {dl_url}")
+                    try:
+                        cr = requests.get(
+                            dl_url,
+                            headers={"Authorization": f"Bearer {seedance_key}"},
+                            timeout=180,
+                            allow_redirects=True,
+                        )
+                        cr.raise_for_status()
+                        ct = cr.headers.get('content-type', '')
+                        if 'video' in ct or len(cr.content) > 100_000:
+                            gen = _save_video_binary(cr.content, message, prompt, gen=gen_ph)
+                            saved_media_direct.append(gen)
+                        else:
+                            logger.warning(f"Seedance fallback unexpected: {ct} size={len(cr.content)}")
+                    except Exception as ce:
+                        logger.error(f"Seedance fallback download failed: {ce}")
+                break
+            elif status in ('failed', 'error', 'expired'):
+                raise Exception(f"Seedance генерация завершилась ошибкой: {pd.get('error', status)}")
+    except Exception:
+        _fail_video_gen(gen_ph)
+        raise
 
     model_name = config.get('name', network.name)
     saved_media = list(saved_media_direct)
     for url in video_urls:
-        gen = save_media_from_url(url, message, prompt, media_type='video')
+        target = gen_ph if (gen_ph is not None and not gen_ph.image) else None
+        gen = save_media_from_url(url, message, prompt, media_type='video', gen=target)
         if gen:
             saved_media.append(gen)
+
+    if _finalize_video_gen(gen_ph):
+        if gen_ph not in saved_media:
+            saved_media.append(gen_ph)
+    else:
+        _fail_video_gen(gen_ph)
 
     if saved_media:
         text_parts = [f"Сгенерировано {len(saved_media)} видео моделью \"{model_name}\"."]
@@ -757,7 +1233,19 @@ def generate_video_apimart(network, user_msg, message, user_settings=None):
     if body.get('audio'):
         body['mode'] = 'pro'
 
-    # Если задача была перезапущена (celery restart), берём сохранённый task_id
+    # img2video: image_url приходит только через user_settings
+    image_url = final_args.get('image_url') or (user_settings or {}).get('image_url', '')
+    if image_url:
+        body['image_url'] = image_url
+
+    # Placeholder для трекинга прогресса (SSE). При рестарте воркера переиспользуется
+    # (reuse по image=''). Краевой случай: если воркер умер ПОСЛЕ записи видео, но ДО
+    # сохранения final_text — reuse не найдёт заполненную строку и создаст второй
+    # placeholder → возможно второе видео. Редко; осознанный компромисс.
+    gen_ph = _create_video_placeholder(message, prompt, model_id, 'apimart')
+
+    # Если задача была перезапущена (celery restart), берём сохранённый task_id.
+    # ВНИМАНИЕ: message.content используется apimart как хранилище task_id до завершения.
     import json as _json
     task_id = None
     try:
@@ -768,78 +1256,113 @@ def generate_video_apimart(network, user_msg, message, user_settings=None):
     except Exception:
         task_id = None
 
-    if not task_id:
-        logger.info(f"APIMart Video POST model={model_id} params={body}")
-        resp = requests.post(
-            f"{base_url}/videos/generations",
-            headers=auth_headers,
-            json=body,
-            timeout=120,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        logger.info(f"APIMart creation response: {str(data)[:400]}")
-
-        # data.data — список [{status, task_id}]
-        items = data.get('data') or []
-        if isinstance(items, list):
-            for item in items:
-                task_id = item.get('task_id')
-                if task_id:
-                    break
-        elif isinstance(items, dict):
-            task_id = items.get('task_id')
-
-        if not task_id:
-            raise Exception(f"Нет task_id в ответе APIMart: {str(data)[:200]}")
-
-        # Сохраняем task_id в message до начала polling — при рестарте воркера не создаём новое видео
-        try:
-            message.content = _json.dumps({'_apimart_task_id': task_id})
-            message.save(update_fields=['content'])
-        except Exception as e:
-            logger.warning(f"Не удалось сохранить apimart task_id: {e}")
-
-    logger.info(f"APIMart task_id={task_id}, polling...")
     video_urls = []
+    try:
+        if not task_id:
+            logger.info(f"APIMart Video POST model={model_id} img2video={bool(image_url)} params={body}")
+            resp = requests.post(
+                f"{base_url}/videos/generations",
+                headers=auth_headers,
+                json=body,
+                timeout=120,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            logger.info(f"APIMart creation response: {str(data)[:400]}")
 
-    for attempt in range(60):
-        time.sleep(15)
-        poll_resp = requests.get(
-            f"{base_url}/tasks/{task_id}",
-            headers={"Authorization": f"Bearer {api_key}"},
-            timeout=30,
-        )
-        poll_resp.raise_for_status()
-        pd = poll_resp.json()
+            # data.data — список [{status, task_id}]
+            items = data.get('data') or []
+            if isinstance(items, list):
+                for item in items:
+                    task_id = item.get('task_id')
+                    if task_id:
+                        break
+            elif isinstance(items, dict):
+                task_id = items.get('task_id')
 
-        # Поддержка как top-level, так и вложенного в data
-        status_obj = pd['data'] if isinstance(pd.get('data'), dict) else pd
-        status = (status_obj.get('status') or '').lower()
-        progress = status_obj.get('progress', '?')
-        logger.info(f"APIMart poll {attempt + 1}/60: status={status} progress={progress}")
+            if not task_id:
+                raise Exception(f"Нет task_id в ответе APIMart: {str(data)[:200]}")
 
-        if status == 'completed':
-            result = status_obj.get('result') or {}
-            videos = result.get('videos', [])
-            for v in videos:
-                url = v.get('url')
-                if isinstance(url, list):
-                    url = url[0] if url else None
-                if url and str(url).startswith('http'):
-                    video_urls.append(url)
-            if not video_urls:
-                logger.warning(f"APIMart completed но нет видео URL. result={str(result)[:400]}")
-            break
-        elif status in ('failed', 'error', 'cancelled'):
-            raise Exception(f"APIMart генерация завершилась ошибкой: {status_obj.get('message', status)}")
+            # Сохраняем task_id в message до начала polling — при рестарте воркера не создаём новое видео
+            try:
+                message.content = _json.dumps({'_apimart_task_id': task_id})
+                message.save(update_fields=['content'])
+            except Exception as e:
+                logger.warning(f"Не удалось сохранить apimart task_id: {e}")
+
+        logger.info(f"APIMart task_id={task_id}, polling...")
+
+        # Sprint 7 (reliability): дублируем task_id в params placeholder-строки —
+        # на случай резюма после краша воркера (основной источник — message.content).
+        if gen_ph is not None and task_id:
+            try:
+                gen_ph.params = {'_apimart_task_id': task_id, 'model': model_id}
+                gen_ph.save(update_fields=['params'])
+            except Exception:
+                pass
+
+        for attempt in range(60):
+            time.sleep(15)
+            poll_resp = requests.get(
+                f"{base_url}/tasks/{task_id}",
+                headers={"Authorization": f"Bearer {api_key}"},
+                timeout=30,
+            )
+            poll_resp.raise_for_status()
+            pd = poll_resp.json()
+
+            # Поддержка как top-level, так и вложенного в data
+            status_obj = pd['data'] if isinstance(pd.get('data'), dict) else pd
+            status = (status_obj.get('status') or '').lower()
+            progress = status_obj.get('progress', '?')
+            logger.info(f"APIMart poll {attempt + 1}/60: status={status} progress={progress}")
+            _bump_video_progress(gen_ph, status_obj.get('progress'), attempt, 60)
+
+            if status == 'completed':
+                result = status_obj.get('result') or {}
+                videos = result.get('videos', [])
+                for v in videos:
+                    url = v.get('url')
+                    if isinstance(url, list):
+                        url = url[0] if url else None
+                    if url and str(url).startswith('http'):
+                        video_urls.append(url)
+                if not video_urls:
+                    logger.warning(f"APIMart completed но нет видео URL. result={str(result)[:400]}")
+                break
+            elif status in ('failed', 'error', 'cancelled'):
+                raise Exception(f"APIMart генерация завершилась ошибкой: {status_obj.get('message', status)}")
+    except Exception:
+        _fail_video_gen(gen_ph)
+        raise
 
     model_name = config.get('name', network.name)
     saved_media = []
     for url in video_urls:
-        gen = save_media_from_url(url, message, prompt, media_type='video')
+        target = gen_ph if (gen_ph is not None and not gen_ph.image) else None
+        # Sprint 7 (reliability): 3 попытки финальной загрузки с паузой 5с.
+        # max_retries=1 у save_media_from_url, чтобы не вкладывать ретраи (3×1=3, а не 9).
+        gen = None
+        for dl_attempt in range(3):
+            gen = save_media_from_url(
+                url, message, prompt, media_type='video', gen=target, max_retries=1
+            )
+            if gen:
+                break
+            if dl_attempt < 2:
+                logger.warning(
+                    f"[apimart] финальная загрузка видео не удалась "
+                    f"(попытка {dl_attempt + 1}/3), повтор через 5с"
+                )
+                time.sleep(5)
         if gen:
             saved_media.append(gen)
+
+    if _finalize_video_gen(gen_ph):
+        if gen_ph not in saved_media:
+            saved_media.append(gen_ph)
+    else:
+        _fail_video_gen(gen_ph)
 
     if saved_media:
         text_parts = [f"Сгенерировано {len(saved_media)} видео моделью \"{model_name}\"."]
@@ -890,6 +1413,17 @@ def generate_with_falai(network, user_msg, message, user_settings=None):
 
     prompt = user_msg.content if user_msg else ""
 
+    # Img2img: если передан image_url — роутим на редактирование изображения.
+    # Если передан только style_image_url (референс стиля без исходника) — остаётся
+    # обычная генерация, style_image_url форвардится через _build_image_params.
+    if user_settings and user_settings.get('image_url'):
+        return generate_image_edit(network, user_msg, message, user_settings)
+
+    # Sprint 6: референс стиля приходит через user_settings (нет в ui_settings.sections),
+    # поэтому validate_and_merge_settings его не выдаёт — прокидываем вручную в final_args.
+    if user_settings and user_settings.get('style_image_url'):
+        final_args['style_image_url'] = user_settings['style_image_url']
+
     image_params = _build_image_params(model_id, prompt, final_args)
 
     logger.info(f"Запуск laozhang.ai images API: model={model_id}, params={image_params}")
@@ -910,6 +1444,21 @@ def generate_with_falai(network, user_msg, message, user_settings=None):
         elif img_data.b64_json:
             gen_img = save_image_from_b64(img_data.b64_json, message, prompt)
         if gen_img:
+            # Храним user-settings-форму (final_args), а не API-форму (image_params):
+            # она ключуется именами ui_settings (size/seed/negative_prompt/num_images)
+            # и точно воспроизводится эндпоинтом rerun.
+            gen_img.params = final_args
+            seed_used = getattr(img_data, 'seed', None)
+            if seed_used is None:
+                seed_used = (image_params.get('extra_body') or {}).get('seed')
+            try:
+                gen_img.seed = int(seed_used) if seed_used is not None else None
+            except (ValueError, TypeError):
+                gen_img.seed = None
+            gen_img.model_name = model_id
+            gen_img.provider = 'laozhang'
+            gen_img.source = 'chat'
+            gen_img.save(update_fields=['params', 'seed', 'model_name', 'provider', 'source'])
             saved_media.append(gen_img)
 
     # Формируем текст ответа

@@ -5,6 +5,8 @@ from api.views.keys import APIKeyListCreateView, APIKeyDeleteView
 from api.views.chat import ChatCompletionsView
 from api.views.anthropic import AnthropicMessagesView
 from api.views.images import ImageGenerationsView
+from api.views.prompt_enhance import ImagePromptEnhanceView
+from api.views.image_compare import ImageCompareView
 from api.views.models_list import ModelsListView
 from api.views.catalog import CategoryListView, NetworkListView, NetworkDetailView
 from api.views.chats import (
@@ -36,7 +38,11 @@ from api.views.audit import AuditLogListView
 from api.views.api_status import APIStatusView
 from api.views.legal import LegalPrivacyView, LegalTermsView
 from api.views.referral import ReferralView, ReferralWithdrawView
-from api.views.files import UserFilesView, UserFileDeleteView
+from api.views.files import UserFilesView, UserFileDeleteView, GenerationRerunView, GenerationUpscaleView, GenerationVariationsView
+from api.views.generations import GenerationProgressView
+from api.views.share import (
+    GalleryView, PublicGenerationView, GenerationShareView, GenerationUnshareView,
+)
 from api.views.compare import CompareView
 from api.views.prompts import PromptListCreateView, PromptDetailView
 from api.views.projects import ProjectListCreateView, ProjectDetailView, ProjectPublishView, ProjectPublicView, ProjectAuditView
@@ -79,6 +85,8 @@ urlpatterns = [
     path('v1/messages', AnthropicMessagesView.as_view(), name='anthropic_messages'),
     path('v1/models', ModelsListView.as_view(), name='models_list'),
     path('v1/images/generations', ImageGenerationsView.as_view(), name='image_generations'),
+    path('v1/images/enhance-prompt/', ImagePromptEnhanceView.as_view(), name='image_enhance_prompt'),
+    path('v1/images/compare/', ImageCompareView.as_view(), name='image_compare'),
 
     # ========== Управление API-ключами ==========
     path('v1/keys/', APIKeyListCreateView.as_view(), name='keys_list_create'),
@@ -164,6 +172,18 @@ urlpatterns = [
     # ========== Файлы пользователя ==========
     path('v1/files/', UserFilesView.as_view(), name='user_files'),
     path('v1/files/<int:file_id>/', UserFileDeleteView.as_view(), name='user_file_delete'),
+
+    # ========== Прогресс генерации медиа (SSE) ==========
+    path('v1/generations/<int:pk>/progress/', GenerationProgressView.as_view(), name='generation_progress'),
+    path('v1/generations/<int:pk>/rerun/', GenerationRerunView.as_view(), name='generation_rerun'),
+    path('v1/generations/<int:pk>/upscale/', GenerationUpscaleView.as_view(), name='generation_upscale'),
+    path('v1/generations/<int:pk>/variations/', GenerationVariationsView.as_view(), name='generation_variations'),
+    path('v1/generations/<int:pk>/share/', GenerationShareView.as_view(), name='generation_share'),
+    path('v1/generations/<int:pk>/unshare/', GenerationUnshareView.as_view(), name='generation_unshare'),
+    path('v1/generations/<str:slug>/public/', PublicGenerationView.as_view(), name='generation_public'),
+
+    # ========== Публичная галерея (Sprint 7) ==========
+    path('v1/gallery/', GalleryView.as_view(), name='gallery'),
 
     # ========== White-label брендинг ==========
     path('v1/branding/', BrandingView.as_view(), name='branding'),

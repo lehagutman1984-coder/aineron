@@ -11,7 +11,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema
 
-from aitext.models import NeuralNetwork
+from aitext.models import NeuralNetwork, GeneratedImage
 from aitext.fal_utils import get_laozhang_image_client, save_media_from_url
 from api.exceptions import InsufficientStarsError
 
@@ -104,6 +104,20 @@ class ImageGenerationsView(APIView):
                     {'error': {'message': 'No images returned from upstream', 'type': 'api_error', 'code': 'no_images'}},
                     status=status.HTTP_502_BAD_GATEWAY,
                 )
+
+            # Sprint 7 (API-to-gallery): сохраняем результат как GeneratedImage с
+            # source='api' и message=null (поле nullable с S1). Ошибки сохранения не
+            # должны ломать ответ API — оборачиваем в try/except, отдаём те же urls.
+            for u in urls:
+                try:
+                    gen = save_media_from_url(u, None, prompt, media_type='image')
+                    if gen:
+                        gen.source = 'api'
+                        gen.model_name = network.model_name
+                        gen.provider = 'laozhang'
+                        gen.save(update_fields=['source', 'model_name', 'provider'])
+                except Exception as save_err:
+                    logger.warning(f'[API] Не удалось сохранить генерацию в галерею: {save_err}')
 
             result_data = [{'url': u} for u in urls]
             return Response({'created': int(__import__('time').time()), 'data': result_data})

@@ -6,11 +6,13 @@ import {
   Layers, Send, RotateCcw, Copy, Check, Code2, Search, X, ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
-import { listNetworks, compareModels, getMessageStatus, voteArena, APIError } from "@/lib/api/client";
+import { listNetworks, compareModels, compareImages, getMessageStatus, voteArena, APIError } from "@/lib/api/client";
 import { MarkdownContent } from "@/components/chat/MarkdownContent";
 import { useAuthStore } from "@/lib/stores/auth";
 import type { NetworkListItem, WebMessage, CompareItem } from "@/lib/api/types";
-import { Trophy } from "lucide-react";
+import { Trophy, Image as ImageIcon, MessageSquareText } from "lucide-react";
+
+type CompareMode = "text" | "image";
 
 const detectHTML = (s: string) =>
   /<(pre|code|div|p|ul|ol|h[1-6]|blockquote|table|img|br)\b/i.test(s);
@@ -18,6 +20,7 @@ const detectHTML = (s: string) =>
 // ── Page root ─────────────────────────────────────────────────────────────────
 export default function ComparePage() {
   const { setStars } = useAuthStore();
+  const [mode, setMode] = useState<CompareMode>("text");
   const [prompt, setPrompt] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [search, setSearch] = useState("");
@@ -25,21 +28,36 @@ export default function ComparePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const isImage = mode === "image";
+  const maxSelect = isImage ? 4 : 3;
+
   const { data: networks = [], isLoading: networksLoading } = useQuery({
     queryKey: ["networks"],
     queryFn: () => listNetworks(),
     staleTime: 5 * 60 * 1000,
   });
 
-  const filtered = networks.filter((n) =>
-    n.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const isImageModel = (n: NetworkListItem) =>
+    n.provider === "fal-ai" && !n.handle_video && n.output_type !== "video";
+
+  const filtered = networks.filter((n) => {
+    if (!n.name.toLowerCase().includes(search.toLowerCase())) return false;
+    return isImage ? isImageModel(n) : n.provider !== "fal-ai";
+  });
+
+  const switchMode = (next: CompareMode) => {
+    if (next === mode) return;
+    setMode(next);
+    setSelected([]);
+    setSearch("");
+    setError(null);
+  };
 
   const toggleModel = (slug: string) => {
     setSelected((prev) =>
       prev.includes(slug)
         ? prev.filter((s) => s !== slug)
-        : prev.length < 3
+        : prev.length < maxSelect
         ? [...prev, slug]
         : prev
     );
@@ -55,9 +73,15 @@ export default function ComparePage() {
     setIsSubmitting(true);
     setError(null);
     try {
-      const res = await compareModels({ message: prompt.trim(), network_slugs: selected });
-      setStars(res.new_balance);
-      setCompareItems(res.items);
+      if (isImage) {
+        const res = await compareImages({ prompt: prompt.trim(), models: selected });
+        setStars(res.new_balance);
+        setCompareItems(res.items);
+      } else {
+        const res = await compareModels({ message: prompt.trim(), network_slugs: selected });
+        setStars(res.new_balance);
+        setCompareItems(res.items);
+      }
     } catch (err) {
       setError(err instanceof APIError ? err.message : "Ошибка соединения. Попробуйте ещё раз.");
     } finally {
@@ -70,6 +94,7 @@ export default function ComparePage() {
       <ResultsView
         prompt={prompt}
         items={compareItems}
+        isImage={isImage}
         onReset={() => { setCompareItems(null); setError(null); }}
       />
     );
@@ -88,8 +113,41 @@ export default function ComparePage() {
           Сравнение моделей
         </h1>
         <p className="mt-1.5 text-[14px] text-[rgba(13,13,13,0.48)] dark:text-[rgba(236,236,236,0.42)]">
-          Один запрос — несколько ответов. Выберите 2–3 нейросети и сравните результат.
+          {isImage
+            ? "Один промпт — несколько изображений. Выберите 2–4 модели и сравните результат."
+            : "Один запрос — несколько ответов. Выберите 2–3 нейросети и сравните результат."}
         </p>
+      </div>
+
+      {/* Mode tabs */}
+      <div className="mb-5 flex justify-center">
+        <div
+          className="inline-flex rounded-[12px] p-1"
+          style={{ background: "rgba(13,13,13,0.05)" }}
+        >
+          {([
+            { key: "text" as const, label: "Текст", icon: MessageSquareText },
+            { key: "image" as const, label: "Изображения", icon: ImageIcon },
+          ]).map((tab) => {
+            const active = mode === tab.key;
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => switchMode(tab.key)}
+                className={[
+                  "flex items-center gap-1.5 rounded-[9px] px-4 py-1.5 text-[13px] font-medium transition-all",
+                  active
+                    ? "bg-white text-[#0d0d0d] shadow-sm dark:bg-[#2a2a2e] dark:text-[#ececec]"
+                    : "text-[rgba(13,13,13,0.5)] hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.45)]",
+                ].join(" ")}
+              >
+                <Icon size={14} />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Prompt */}
@@ -106,7 +164,7 @@ export default function ComparePage() {
           onKeyDown={(e) => {
             if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) handleSubmit();
           }}
-          placeholder="Введите запрос для сравнения..."
+          placeholder={isImage ? "Опишите изображение для генерации..." : "Введите запрос для сравнения..."}
           rows={4}
           className="block w-full resize-none bg-white px-4 py-3.5 text-[14px] leading-relaxed text-[#0d0d0d] outline-none dark:bg-[#18181b] dark:text-[#ececec] dark:placeholder:text-[rgba(236,236,236,0.30)]"
         />
@@ -124,7 +182,7 @@ export default function ComparePage() {
         >
           <span className="text-[13px] font-medium text-[rgba(13,13,13,0.65)] dark:text-[rgba(236,236,236,0.55)]">
             Выберите модели{" "}
-            <span className="text-[#0a7cff]">{selected.length}/3</span>
+            <span className="text-[#0a7cff]">{selected.length}/{maxSelect}</span>
           </span>
           <div className="relative">
             <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[rgba(13,13,13,0.35)]" />
@@ -155,7 +213,7 @@ export default function ComparePage() {
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {filtered.map((network) => {
                 const isSelected = selected.includes(network.slug);
-                const isDisabled = !isSelected && selected.length >= 3;
+                const isDisabled = !isSelected && selected.length >= maxSelect;
                 return (
                   <button
                     key={network.slug}
@@ -194,7 +252,7 @@ export default function ComparePage() {
               })}
               {filtered.length === 0 && (
                 <p className="col-span-3 py-6 text-center text-[13px] text-[rgba(13,13,13,0.4)]">
-                  Модели не найдены
+                  {isImage ? "Image-модели не найдены" : "Модели не найдены"}
                 </p>
               )}
             </div>
@@ -232,6 +290,8 @@ export default function ComparePage() {
         <p className="text-[13px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.38)]">
           {selected.length < 2
             ? "Выберите минимум 2 модели"
+            : isImage
+            ? `~${totalCost} зв. (списывается за каждое изображение)`
             : `Стоимость: ${totalCost} зв.`}
         </p>
         <button
@@ -266,10 +326,12 @@ export default function ComparePage() {
 function ResultsView({
   prompt,
   items,
+  isImage,
   onReset,
 }: {
   prompt: string;
   items: CompareItem[];
+  isImage?: boolean;
   onReset: () => void;
 }) {
   const [doneCount, setDoneCount] = useState(0);
@@ -282,15 +344,23 @@ function ResultsView({
     if (voted) return;
     const loserSlugs = items.map((i) => i.network_slug).filter((s) => s !== winnerSlug);
     const chatIds = items.map((i) => i.chat_id);
-    try {
-      await Promise.all(
-        loserSlugs.map((loserSlug) =>
-          voteArena({ winner_slug: winnerSlug, loser_slug: loserSlug, compare_chat_ids: chatIds })
-        )
-      );
+    // Голосуем последовательно: анти-абьюз арены (compare_chat_ids overlap) допускает
+    // лишь один матч на сессию сравнения, поэтому параллельные запросы при 3-4 моделях
+    // вернули бы 400. Достаточно одного успешного матча, остальные 400 игнорируем.
+    let anySuccess = false;
+    let lastError: unknown = null;
+    for (const loserSlug of loserSlugs) {
+      try {
+        await voteArena({ winner_slug: winnerSlug, loser_slug: loserSlug, compare_chat_ids: chatIds });
+        anySuccess = true;
+      } catch (err) {
+        lastError = err;
+      }
+    }
+    if (anySuccess) {
       setVoted(winnerSlug);
-    } catch (err) {
-      setVoteError(err instanceof APIError ? err.message : "Ошибка голосования");
+    } else {
+      setVoteError(lastError instanceof APIError ? lastError.message : "Ошибка голосования");
     }
   };
 
@@ -324,7 +394,7 @@ function ResultsView({
           <div className="mx-auto mt-3 max-w-7xl">
             <p className="mb-2 flex items-center gap-1.5 text-[12px] font-medium text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.45)]">
               <Trophy size={12} className="text-[#f4a017]" />
-              Какой ответ лучший? Ваш голос влияет на Elo-рейтинг арены.
+              {isImage ? "Какое изображение лучше?" : "Какой ответ лучший?"} Ваш голос влияет на Elo-рейтинг арены.
             </p>
             <div className="flex flex-wrap gap-2">
               {items.map((item) => (

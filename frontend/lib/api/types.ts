@@ -193,6 +193,7 @@ export interface NetworkListItem {
   seo_description: string;
   model_name: string;
   order: number;
+  output_type?: "video" | "image" | null;
 }
 
 export interface FAQ {
@@ -241,6 +242,8 @@ export interface WebMessage {
   is_research?: boolean;
   research_id?: number | null;
   used_memory?: boolean;
+  generation_id?: number | null;
+  image_generation_id?: number | null;
   created_at: string;
 }
 
@@ -701,7 +704,73 @@ export interface GeneratedFile {
   size: string;
   width: number | null;
   height: number | null;
+  params: Record<string, unknown> | null;
+  seed: number | null;
+  model_name: string | null;
+  provider: string | null;
+  parent_id: number | null;
+  source: string | null;
+  is_public: boolean;
+  share_slug: string | null;
   created_at: string;
+}
+
+export interface ShareGenerationResponse {
+  id: number;
+  is_public: boolean;
+  share_slug: string | null;
+  share_url?: string;
+}
+
+export interface GalleryItem {
+  id: number;
+  share_slug: string | null;
+  prompt: string;
+  model_name: string;
+  media_type: "image" | "video";
+  image_url: string;
+  created_at: string;
+  username: string;
+}
+
+export interface GalleryResponse {
+  items: GalleryItem[];
+  has_next: boolean;
+  page: number;
+  total_pages: number;
+  total: number;
+}
+
+export interface PublicGeneration {
+  id: number;
+  share_slug: string | null;
+  prompt: string;
+  model_name: string;
+  media_type: "image" | "video";
+  image_url: string;
+  width: number | null;
+  height: number | null;
+  seed: number | null;
+  created_at: string;
+  username: string;
+}
+
+export interface RerunGenerationResponse {
+  chat_id: number;
+  message_id: number;
+  generation_id: number | null;
+}
+
+export interface UpscaleGenerationResponse {
+  task_id: string;
+  status: string;
+  factor: number;
+}
+
+export interface VariationsResponse {
+  chat_id: number;
+  message_ids: number[];
+  count: number;
 }
 
 export interface FilesResponse {
@@ -741,6 +810,16 @@ export interface CompareResponse {
   items: CompareItem[];
   total_cost: number;
   new_balance: number;
+}
+
+export interface ImageCompareResponse {
+  items: CompareItem[];
+  new_balance: number;
+}
+
+export interface EnhancePromptResponse {
+  enhanced_prompt: string;
+  original_prompt: string;
 }
 
 // ============ Model Arena Elo ============

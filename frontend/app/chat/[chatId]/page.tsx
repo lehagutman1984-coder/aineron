@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw, Paperclip, BookMarked, Globe, Volume2, Square, Loader, ChevronDown, ChevronRight, Settings2, FileText, X, GitCommit, CheckCircle2, XCircle, Download, Layers, BookmarkPlus, GitBranch, Microscope, Brain } from "lucide-react";
+import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw, Paperclip, BookMarked, Globe, Volume2, Square, Loader, ChevronDown, ChevronRight, Settings2, FileText, X, GitCommit, CheckCircle2, XCircle, Download, Layers, BookmarkPlus, GitBranch, Microscope, Brain, ImagePlus, Pencil, Loader2, Film, Maximize2, Images, Palette } from "lucide-react";
 import { MarkdownContent } from "@/components/chat/MarkdownContent";
 import { AttachmentPreview, type AttachmentState } from "@/components/chat/AttachmentPreview";
 import { PromptPicker } from "@/components/chat/PromptPicker";
@@ -16,8 +16,13 @@ import { DeepResearchPanel } from "@/components/chat/DeepResearchPanel";
 import { ResearchReport } from "@/components/chat/ResearchReport";
 import { MemoryToast } from "@/components/chat/MemoryToast";
 import { ForgetMemoryPanel } from "@/components/chat/ForgetMemoryPanel";
-import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, uploadFile, synthesizeSpeech, confirmCommit, exportChat, quickSaveFact, branchChat, startDeepResearch, getResearchStatus, getMemoryToast, APIError, type CommitProposed } from "@/lib/api/client";
+import { EditImageModal, type EditImagePayload } from "@/components/chat/EditImageModal";
+import { AnimateImageModal } from "@/components/chat/AnimateImageModal";
+import { GenerationProgress } from "@/components/chat/GenerationProgress";
+import { PromptEnhancer } from "@/components/chat/PromptEnhancer";
+import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, uploadFile, synthesizeSpeech, confirmCommit, exportChat, quickSaveFact, branchChat, startDeepResearch, getResearchStatus, getMemoryToast, upscaleGeneration, createVariations, APIError, type CommitProposed } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
+import { useUIStore } from "@/lib/stores/ui";
 import type { WebMessage, ChatDetail, UiSection, KBSource } from "@/lib/api/types";
 
 const POLL_INTERVAL = 800;
@@ -25,16 +30,30 @@ const POLL_INTERVAL = 800;
 const detectHTML = (s: string) =>
   /<(pre|code|div|p|ul|ol|h[1-6]|blockquote|table|img|br|video)\b/i.test(s);
 
+// img2img: извлечь URL первого сгенерированного изображения из HTML сообщения
+const extractFirstImageUrl = (html: string): string | null => {
+  const m = /<img[^>]+src=["']([^"']+)["']/i.exec(html || "");
+  return m ? m[1] : null;
+};
+
 export default function ChatPage() {
   const { chatId } = useParams<{ chatId: string }>();
   const id = Number(chatId);
   const qc = useQueryClient();
   const { setStars } = useAuthStore();
+  const addToast = useUIStore((s) => s.addToast);
 
   const [text, setText] = useState("");
   const [showPromptPicker, setShowPromptPicker] = useState(false);
   const [attachments, setAttachments] = useState<AttachmentState[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // img2img: исходное изображение для редактирования (только для fal-ai моделей)
+  const [sourceImage, setSourceImage] = useState<{ url: string; localUrl: string; uploading: boolean; error?: boolean } | null>(null);
+  const sourceInputRef = useRef<HTMLInputElement>(null);
+  // img2img: модалка редактирования (маска / outpaint) для сгенерированного изображения
+  const [editModalUrl, setEditModalUrl] = useState<string | null>(null);
+  // img2video: модалка "Оживить" — выбор видео-модели для сгенерированного изображения
+  const [animateModalUrl, setAnimateModalUrl] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [webSearch, setWebSearch] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
@@ -121,6 +140,19 @@ export default function ChatPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chat?.id]);
 
+  // Sprint 3: запускаем polling для fal-ai сообщения «в работе» при загрузке/навигации.
+  // Нужно для img2video (переход из "Оживить" в новый чат) и для перезагрузки страницы
+  // во время генерации — иначе статус не опрашивается и прогресс/результат не появятся.
+  useEffect(() => {
+    if (!chat?.messages || pendingMessageId !== null) return;
+    if (chat.network.provider !== "fal-ai") return;
+    const pendingMsg = [...chat.messages]
+      .reverse()
+      .find((m) => m.role === "assistant" && m.status === "pending");
+    if (pendingMsg) setPendingMessageId(pendingMsg.id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chat?.id]);
+
   useEffect(() => {
     if (!researchPoll || !activeResearchMsgId) return;
     if (researchPoll.status === "done" && researchPoll.content) {
@@ -154,7 +186,25 @@ export default function ChatPage() {
   }, [chat?.network.id]);
 
   useEffect(() => {
-    if (!polledMessage || polledMessage.status === "pending") return;
+    if (!polledMessage) return;
+    // Пока сообщение ещё в работе — пробрасываем generation_id в данные чата,
+    // чтобы смонтировался прогресс-бар видео (не меняя статус pending).
+    if (polledMessage.status === "pending") {
+      if (polledMessage.generation_id) {
+        qc.setQueryData<ChatDetail>(["chat", id], (prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            messages: prev.messages.map((m) =>
+              m.id === polledMessage.id && m.generation_id !== polledMessage.generation_id
+                ? { ...m, generation_id: polledMessage.generation_id }
+                : m
+            ),
+          };
+        });
+      }
+      return;
+    }
     setPendingMessageId(null);
     if (polledMessage.status === "completed") {
       animatedIds.current.add(polledMessage.id);
@@ -197,6 +247,7 @@ export default function ChatPage() {
       );
       setText("");
       clearAttachments();
+      setSourceImage((prev) => { if (prev?.localUrl?.startsWith("blob:")) URL.revokeObjectURL(prev.localUrl); return null; });
       if (textareaRef.current) textareaRef.current.style.height = "auto";
     },
     onSuccess: (res) => {
@@ -454,6 +505,105 @@ export default function ChatPage() {
     });
   }, []);
 
+  // img2img: загрузка исходного изображения для редактирования
+  const handleSourceImage = useCallback(
+    async (file: File) => {
+      const localUrl = URL.createObjectURL(file);
+      setSourceImage((prev) => { if (prev?.localUrl?.startsWith("blob:")) URL.revokeObjectURL(prev.localUrl); return { url: "", localUrl, uploading: true }; });
+      try {
+        const result = await uploadFile(id, file);
+        setSourceImage({ url: result.url, localUrl, uploading: false });
+      } catch {
+        setSourceImage({ url: "", localUrl, uploading: false, error: true });
+      }
+    },
+    [id]
+  );
+
+  const clearSourceImage = useCallback(() => {
+    setSourceImage((prev) => { if (prev?.localUrl?.startsWith("blob:")) URL.revokeObjectURL(prev.localUrl); return null; });
+  }, []);
+
+  // img2img: "Редактировать" из пузыря сообщения — открывает модалку (маска / outpaint)
+  const handleEditImage = useCallback((url: string) => {
+    setEditModalUrl(url);
+  }, []);
+
+  // img2video: "Оживить" из пузыря сообщения — открывает модалку выбора видео-модели
+  const handleAnimateImage = useCallback((url: string) => {
+    setAnimateModalUrl(url);
+  }, []);
+
+  // Видео готово (SSE) — форсируем перезагрузку статуса сообщения
+  const handleVideoComplete = useCallback(() => {
+    qc.invalidateQueries({ queryKey: ["message-status"] });
+    qc.invalidateQueries({ queryKey: ["chat", id] });
+  }, [qc, id]);
+
+  // Sprint 6: апскейл сгенерированного изображения из пузыря сообщения
+  const handleUpscaleImage = useCallback(
+    async (generationId: number, factor: 2 | 4) => {
+      try {
+        const res = await upscaleGeneration(String(generationId), factor);
+        addToast({
+          type: "success",
+          message: `Апскейл ×${res.factor} запущен. Результат появится в «Мои файлы» через минуту.`,
+        });
+      } catch (err) {
+        addToast({
+          type: "error",
+          message: err instanceof APIError ? err.message : "Не удалось запустить апскейл.",
+        });
+      }
+    },
+    [addToast]
+  );
+
+  // Sprint 6: вариации сгенерированного изображения из пузыря сообщения
+  const handleVariationsImage = useCallback(
+    async (generationId: number) => {
+      try {
+        await createVariations(String(generationId), 4);
+        addToast({ type: "success", message: "Создаём 4 вариации — они появятся в этом чате." });
+        qc.invalidateQueries({ queryKey: ["chat", id] });
+      } catch (err) {
+        addToast({
+          type: "error",
+          message: err instanceof APIError ? err.message : "Не удалось создать вариации.",
+        });
+      }
+    },
+    [addToast, qc, id]
+  );
+
+  // Sprint 6: использовать изображение как референс стиля (переход к выбору модели)
+  const handleStyleImage = useCallback((url: string) => {
+    try {
+      localStorage.setItem("aineron_style_image", url);
+    } catch {}
+    window.location.href = "/models/";
+  }, []);
+
+  // img2img: применить редактирование из модалки — отправляет сообщение с image_url/mask_url/outpaint
+  const handleEditModalSubmit = useCallback(
+    (payload: EditImagePayload) => {
+      const falSettings: Record<string, unknown> = {
+        ...mediaSettings,
+        image_url: payload.image_url,
+      };
+      if (payload.mask_url) falSettings.mask_url = payload.mask_url;
+      if (payload.outpaint_direction) falSettings.outpaint_direction = payload.outpaint_direction;
+      sendMutation.mutate({
+        msg: payload.prompt || " ",
+        attachmentIds: [],
+        ws: false,
+        settings: falSettings,
+      });
+      setEditModalUrl(null);
+    },
+    [mediaSettings, sendMutation]
+  );
+
   // Drag & drop handlers
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -490,8 +640,8 @@ export default function ChatPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const msg = text.trim();
-    const hasUploading = attachments.some((a) => a.uploading);
-    if ((!msg && attachments.filter((a) => !a.error && !a.uploading).length === 0) || isBusy || hasUploading) return;
+    const hasUploading = attachments.some((a) => a.uploading) || sourceImage?.uploading === true;
+    if ((!msg && attachments.filter((a) => !a.error && !a.uploading).length === 0 && !sourceImage) || isBusy || hasUploading) return;
     if (researchMode && msg) {
       setText("");
       setAttachments([]);
@@ -500,7 +650,11 @@ export default function ChatPage() {
     }
     const attachmentIds = attachments.filter((a) => !a.uploading && !a.error).map((a) => a.id);
     if (chat?.network.provider === "fal-ai") {
-      sendMutation.mutate({ msg: msg || " ", attachmentIds, ws: webSearch, settings: Object.keys(mediaSettings).length > 0 ? mediaSettings : undefined });
+      const falSettings: Record<string, unknown> = { ...mediaSettings };
+      if (sourceImage && sourceImage.url && !sourceImage.error) {
+        falSettings.image_url = sourceImage.url;
+      }
+      sendMutation.mutate({ msg: msg || " ", attachmentIds, ws: webSearch, settings: Object.keys(falSettings).length > 0 ? falSettings : undefined });
     } else {
       handleStreamSubmit(msg || " ", attachmentIds);
     }
@@ -802,6 +956,13 @@ export default function ChatPage() {
                   onRegenerate={() => regenerateMutation.mutate()}
                   onOpenArtifact={setActiveArtifact}
                   chatId={id}
+                  isFalAi={chat.network.provider === "fal-ai"}
+                  onEditImage={handleEditImage}
+                  onAnimateImage={handleAnimateImage}
+                  onUpscaleImage={handleUpscaleImage}
+                  onVariationsImage={handleVariationsImage}
+                  onStyleImage={handleStyleImage}
+                  onVideoComplete={handleVideoComplete}
                   researchData={
                     msg.id === activeResearchMsgId && researchPoll
                       ? { steps: researchPoll.steps, status: researchPoll.status, error: researchPoll.error }
@@ -901,6 +1062,46 @@ export default function ChatPage() {
               attachments={attachments}
               onRemove={(removeId) => setAttachments((prev) => prev.filter((a) => a.id !== removeId))}
             />
+            {/* img2img: превью исходного изображения */}
+            {sourceImage && (
+              <div className="flex items-center gap-2.5 px-4 pt-3 pb-1">
+                <div className="relative shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={sourceImage.localUrl || sourceImage.url}
+                    alt="Исходное изображение"
+                    className="h-14 w-14 rounded-[10px] border object-cover"
+                    style={{ borderColor: "var(--chat-input-border)" }}
+                  />
+                  {sourceImage.uploading && (
+                    <div className="absolute inset-0 flex items-center justify-center rounded-[10px] bg-black/40">
+                      <Loader2 size={16} className="animate-spin text-white" />
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={clearSourceImage}
+                    className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-[rgba(13,13,13,0.10)] bg-white shadow-sm transition-colors hover:bg-[rgba(13,13,13,0.06)]"
+                    title="Убрать исходное изображение"
+                  >
+                    <X size={11} className="text-[rgba(13,13,13,0.55)]" />
+                  </button>
+                </div>
+                <div className="min-w-0">
+                  <p className="flex items-center gap-1 text-[12px] font-medium text-[#0d0d0d] dark:text-[#ececec]">
+                    <ImagePlus size={12} className="text-[#0a7cff]" />
+                    Редактирование изображения
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-[rgba(13,13,13,0.42)] dark:text-[rgba(236,236,236,0.4)]">
+                    {sourceImage.uploading
+                      ? "Загрузка..."
+                      : sourceImage.error
+                        ? "Ошибка загрузки"
+                        : "Опишите изменения и отправьте"}
+                  </p>
+                </div>
+              </div>
+            )}
             <textarea
               ref={textareaRef}
               value={text}
@@ -923,17 +1124,36 @@ export default function ChatPage() {
               className="hidden"
               onChange={(e) => { if (e.target.files) { handleFiles(e.target.files); e.target.value = ""; } }}
             />
-            <button
-              type="button"
-              disabled={isBusy}
-              onClick={() => fileInputRef.current?.click()}
-              className="absolute bottom-2.5 right-[50px] flex h-9 w-9 items-center justify-center rounded-[10px] text-[rgba(13,13,13,0.4)] transition-all hover:bg-[rgba(13,13,13,0.06)] hover:text-[#0d0d0d] disabled:cursor-not-allowed disabled:opacity-30 dark:text-[rgba(236,236,236,0.4)] dark:hover:bg-[rgba(255,255,255,0.08)] dark:hover:text-[#ececec]"
-            >
-              <Paperclip size={16} />
-            </button>
+            <input
+              ref={sourceInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => { if (e.target.files?.[0]) { handleSourceImage(e.target.files[0]); e.target.value = ""; } }}
+            />
+            {chat.network.provider === "fal-ai" ? (
+              <button
+                type="button"
+                disabled={isBusy}
+                onClick={() => sourceInputRef.current?.click()}
+                title="Загрузить изображение для редактирования (img2img)"
+                className="absolute bottom-2.5 right-[50px] flex h-9 w-9 items-center justify-center rounded-[10px] text-[rgba(13,13,13,0.4)] transition-all hover:bg-[rgba(13,13,13,0.06)] hover:text-[#0d0d0d] disabled:cursor-not-allowed disabled:opacity-30 dark:text-[rgba(236,236,236,0.4)] dark:hover:bg-[rgba(255,255,255,0.08)] dark:hover:text-[#ececec]"
+              >
+                <ImagePlus size={16} />
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={isBusy}
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute bottom-2.5 right-[50px] flex h-9 w-9 items-center justify-center rounded-[10px] text-[rgba(13,13,13,0.4)] transition-all hover:bg-[rgba(13,13,13,0.06)] hover:text-[#0d0d0d] disabled:cursor-not-allowed disabled:opacity-30 dark:text-[rgba(236,236,236,0.4)] dark:hover:bg-[rgba(255,255,255,0.08)] dark:hover:text-[#ececec]"
+              >
+                <Paperclip size={16} />
+              </button>
+            )}
             <button
               type="submit"
-              disabled={(text.trim() === "" && attachments.filter((a) => !a.error && !a.uploading).length === 0) || isBusy}
+              disabled={(text.trim() === "" && attachments.filter((a) => !a.error && !a.uploading).length === 0 && !sourceImage) || isBusy || sourceImage?.uploading === true}
               className="absolute bottom-2.5 right-2.5 flex h-9 w-9 items-center justify-center rounded-[10px] text-white transition-all disabled:cursor-not-allowed disabled:opacity-25"
               style={{ background: "#0d0d0d" }}
             >
@@ -1011,25 +1231,40 @@ export default function ChatPage() {
             </div>
           )}
 
-          {/* Панель настроек для медиа-моделей (video/image) */}
-          {chat.network.provider === "fal-ai" && chat.network.config_json?.ui_settings && (
+          {/* Тулбар для медиа-моделей (image/video): улучшение промпта + настройки */}
+          {chat.network.provider === "fal-ai" && (
             <div className="mt-1.5 px-1">
-              <button
-                type="button"
-                onClick={() => setShowMediaSettings((v) => !v)}
+              <div className="flex items-center gap-1">
+                {/* AI-улучшение промпта — только для image-моделей */}
+                {!chat.network.handle_video && chat.network.config_json?.metadata?.output_type !== "video" && (
+                  <PromptEnhancer
+                    prompt={text}
+                    disabled={isBusy}
+                    onAccept={(v) => {
+                      setText(v);
+                      requestAnimationFrame(autoResize);
+                    }}
+                  />
+                )}
+                {chat.network.config_json?.ui_settings ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowMediaSettings((v) => !v)}
                 className={[
                   "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all",
                   showMediaSettings
                     ? "bg-[rgba(13,13,13,0.08)] text-[#0d0d0d] dark:bg-[rgba(255,255,255,0.12)] dark:text-[#ececec]"
                     : "text-[rgba(13,13,13,0.45)] hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.38)] dark:hover:text-[#ececec]",
                 ].join(" ")}
-              >
-                <Settings2 size={12} />
-                Настройки
-                <ChevronDown size={11} className={showMediaSettings ? "rotate-180 transition-transform" : "transition-transform"} />
-              </button>
+                  >
+                    <Settings2 size={12} />
+                    Настройки
+                    <ChevronDown size={11} className={showMediaSettings ? "rotate-180 transition-transform" : "transition-transform"} />
+                  </button>
+                ) : null}
+              </div>
 
-              {showMediaSettings && (
+              {showMediaSettings && chat.network.config_json?.ui_settings && (
                 <MediaSettingsPanel
                   sections={chat.network.config_json.ui_settings.sections as UiSection[]}
                   values={mediaSettings}
@@ -1087,6 +1322,24 @@ export default function ChatPage() {
         onDismiss={() => setMemoryToast(null)}
       />
     )}
+
+    {/* Sprint 2: img2img edit modal (маска / outpaint) */}
+    {editModalUrl && (
+      <EditImageModal
+        imageUrl={editModalUrl}
+        chatId={id}
+        onClose={() => setEditModalUrl(null)}
+        onSubmit={handleEditModalSubmit}
+      />
+    )}
+
+    {/* Sprint 3: img2video "Оживить" modal */}
+    {animateModalUrl && (
+      <AnimateImageModal
+        imageUrl={animateModalUrl}
+        onClose={() => setAnimateModalUrl(null)}
+      />
+    )}
     </div>
   );
 }
@@ -1121,6 +1374,13 @@ function MessageRow({
   onRegenerate,
   onOpenArtifact,
   chatId,
+  isFalAi,
+  onEditImage,
+  onAnimateImage,
+  onUpscaleImage,
+  onVariationsImage,
+  onStyleImage,
+  onVideoComplete,
   researchData,
 }: {
   message: WebMessage;
@@ -1132,6 +1392,13 @@ function MessageRow({
   onRegenerate?: () => void;
   onOpenArtifact?: (a: Artifact) => void;
   chatId?: number;
+  isFalAi?: boolean;
+  onEditImage?: (url: string) => void;
+  onAnimateImage?: (url: string) => void;
+  onUpscaleImage?: (generationId: number, factor: 2 | 4) => void;
+  onVariationsImage?: (generationId: number) => void;
+  onStyleImage?: (url: string) => void;
+  onVideoComplete?: () => void;
   researchData?: { steps: import("@/lib/api/types").DeepResearchStep[]; status: import("@/lib/api/types").DeepResearchStatus; error: string };
 }) {
   const isUser = message.role === "user";
@@ -1226,9 +1493,18 @@ function MessageRow({
             <p className="mt-2 text-[13px] text-red-500">Ошибка исследования. Попробуйте ещё раз.</p>
           </>
         ) : message.status === "pending" ? (
-          <div className="flex items-center gap-1 py-2">
-            <BouncingDots />
-          </div>
+          isFalAi && message.generation_id ? (
+            <div className="py-1">
+              <GenerationProgress
+                generationId={message.generation_id}
+                onComplete={onVideoComplete}
+              />
+            </div>
+          ) : (
+            <div className="flex items-center gap-1 py-2">
+              <BouncingDots />
+            </div>
+          )
         ) : message.status === "failed" ? (
           <p className="text-[14px] text-[#e74c3c]">
             {message.error_message ?? "Ошибка генерации. Попробуйте ещё раз."}
@@ -1257,6 +1533,129 @@ function MessageRow({
             {/* Hover action bar */}
             <div className="mt-1.5 flex items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
               <CopyButton plainText={message.plain_text} htmlContent={message.content} />
+              {(() => {
+                const editUrl = isFalAi ? extractFirstImageUrl(message.content || message.plain_text || "") : null;
+                return editUrl && onEditImage ? (
+                  <button
+                    onClick={() => onEditImage(editUrl)}
+                    className="flex h-7 items-center gap-1.5 rounded-[6px] px-2 text-[12px] font-medium transition-colors"
+                    style={{ color: "rgba(10,124,255,0.8)" }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background = "rgba(10,124,255,0.08)";
+                      (e.currentTarget as HTMLButtonElement).style.color = "#0a7cff";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background = "";
+                      (e.currentTarget as HTMLButtonElement).style.color = "rgba(10,124,255,0.8)";
+                    }}
+                    title="Редактировать это изображение (img2img)"
+                  >
+                    <Pencil size={13} />
+                    <span>Редактировать</span>
+                  </button>
+                ) : null;
+              })()}
+              {(() => {
+                const animateUrl = isFalAi ? extractFirstImageUrl(message.content || message.plain_text || "") : null;
+                return animateUrl && onAnimateImage ? (
+                  <button
+                    onClick={() => onAnimateImage(animateUrl)}
+                    className="flex h-7 items-center gap-1.5 rounded-[6px] px-2 text-[12px] font-medium transition-colors"
+                    style={{ color: "rgba(10,124,255,0.8)" }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background = "rgba(10,124,255,0.08)";
+                      (e.currentTarget as HTMLButtonElement).style.color = "#0a7cff";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background = "";
+                      (e.currentTarget as HTMLButtonElement).style.color = "rgba(10,124,255,0.8)";
+                    }}
+                    title="Оживить это изображение (img2video)"
+                  >
+                    <Film size={13} />
+                    <span>Оживить</span>
+                  </button>
+                ) : null;
+              })()}
+              {isFalAi && message.image_generation_id && onUpscaleImage && (
+                <>
+                  <button
+                    onClick={() => onUpscaleImage(message.image_generation_id!, 2)}
+                    className="flex h-7 items-center gap-1.5 rounded-[6px] px-2 text-[12px] font-medium transition-colors"
+                    style={{ color: "rgba(10,124,255,0.8)" }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background = "rgba(10,124,255,0.08)";
+                      (e.currentTarget as HTMLButtonElement).style.color = "#0a7cff";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background = "";
+                      (e.currentTarget as HTMLButtonElement).style.color = "rgba(10,124,255,0.8)";
+                    }}
+                    title="Увеличить разрешение в 2 раза"
+                  >
+                    <Maximize2 size={13} />
+                    <span>Апскейл 2×</span>
+                  </button>
+                  <button
+                    onClick={() => onUpscaleImage(message.image_generation_id!, 4)}
+                    className="flex h-7 items-center gap-1.5 rounded-[6px] px-2 text-[12px] font-medium transition-colors"
+                    style={{ color: "rgba(10,124,255,0.8)" }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background = "rgba(10,124,255,0.08)";
+                      (e.currentTarget as HTMLButtonElement).style.color = "#0a7cff";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background = "";
+                      (e.currentTarget as HTMLButtonElement).style.color = "rgba(10,124,255,0.8)";
+                    }}
+                    title="Увеличить разрешение в 4 раза"
+                  >
+                    <Maximize2 size={13} />
+                    <span>4×</span>
+                  </button>
+                </>
+              )}
+              {isFalAi && message.image_generation_id && onVariationsImage && (
+                <button
+                  onClick={() => onVariationsImage(message.image_generation_id!)}
+                  className="flex h-7 items-center gap-1.5 rounded-[6px] px-2 text-[12px] font-medium transition-colors"
+                  style={{ color: "rgba(10,124,255,0.8)" }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.background = "rgba(10,124,255,0.08)";
+                    (e.currentTarget as HTMLButtonElement).style.color = "#0a7cff";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.background = "";
+                    (e.currentTarget as HTMLButtonElement).style.color = "rgba(10,124,255,0.8)";
+                  }}
+                  title="Создать 4 вариации"
+                >
+                  <Images size={13} />
+                  <span>Варианты</span>
+                </button>
+              )}
+              {(() => {
+                const styleUrl = isFalAi ? extractFirstImageUrl(message.content || message.plain_text || "") : null;
+                return styleUrl && onStyleImage ? (
+                  <button
+                    onClick={() => onStyleImage(styleUrl)}
+                    className="flex h-7 items-center gap-1.5 rounded-[6px] px-2 text-[12px] font-medium transition-colors"
+                    style={{ color: "rgba(10,124,255,0.8)" }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background = "rgba(10,124,255,0.08)";
+                      (e.currentTarget as HTMLButtonElement).style.color = "#0a7cff";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background = "";
+                      (e.currentTarget as HTMLButtonElement).style.color = "rgba(10,124,255,0.8)";
+                    }}
+                    title="Использовать как референс стиля"
+                  >
+                    <Palette size={13} />
+                    <span>Стиль</span>
+                  </button>
+                ) : null;
+              })()}
               {(() => {
                 const artifact = onOpenArtifact ? extractArtifact(message.plain_text || message.content) : null;
                 return artifact && onOpenArtifact ? (

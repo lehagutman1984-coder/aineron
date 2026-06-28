@@ -102,6 +102,37 @@ IMAGE_CONFIG = {
                             {"value": "512x512", "label": "512×512 (маленькое)", "extra_cost": 0},
                         ]
                     },
+                    # Sprint 4: Creative Controls (только Flux — seed/negative_prompt безопасны
+                    # для fal-ai/Flux, но НЕ для OpenAI-бэкенда dall-e/gpt_image).
+                    {
+                        "name": "seed",
+                        "type": "number",
+                        "label": "Seed",
+                        "min": 0,
+                        "max": 9999999999,
+                        "default": None,
+                        "extra_cost": 0,
+                    },
+                    {
+                        "name": "negative_prompt",
+                        "type": "textarea",
+                        "label": "Негативный промт",
+                        "max_length": 1000,
+                        "extra_cost": 0,
+                    },
+                    {
+                        "name": "num_images",
+                        "type": "select",
+                        "label": "Кол-во",
+                        "extra_cost": 0,
+                        # num_images=N множит стоимость провайдера в N раз — берём
+                        # доплату, иначе revenue leak (1× за 4 картинки).
+                        "options": [
+                            {"value": "1", "label": "1", "extra_cost": 0},
+                            {"value": "2", "label": "2", "extra_cost": 20},
+                            {"value": "4", "label": "4", "extra_cost": 60},
+                        ]
+                    },
                 ]
             }]
         },
@@ -109,6 +140,44 @@ IMAGE_CONFIG = {
         "metadata": {"requires_input_images": False}
     },
 }
+
+# Sprint 4: поля Creative Controls для миграции уже задеплоенных строк
+# (см. management-команду update_image_model_settings). Должны совпадать с
+# полями, добавленными выше в IMAGE_CONFIG['flux'].
+CREATIVE_CONTROL_FIELDS = [
+    {
+        "name": "seed",
+        "type": "number",
+        "label": "Seed",
+        "min": 0,
+        "max": 9999999999,
+        "default": None,
+        "extra_cost": 0,
+    },
+    {
+        "name": "negative_prompt",
+        "type": "textarea",
+        "label": "Негативный промт",
+        "max_length": 1000,
+        "extra_cost": 0,
+    },
+    {
+        "name": "num_images",
+        "type": "select",
+        "label": "Кол-во",
+        "extra_cost": 0,
+        "options": [
+            {"value": "1", "label": "1", "extra_cost": 0},
+            {"value": "2", "label": "2", "extra_cost": 20},
+            {"value": "4", "label": "4", "extra_cost": 60},
+        ]
+    },
+]
+
+# Слаги моделей, для которых Creative Controls безопасны (config_key == 'flux').
+FLUX_MODEL_SLUGS = [
+    'flux-2-pro', 'flux-2-max', 'flux-kontext-pro', 'flux-kontext-max', 'flux-2-flex',
+]
 
 
 TEXT_MODELS = [

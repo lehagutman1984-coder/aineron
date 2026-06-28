@@ -1,6 +1,145 @@
 "use client";
 
-import type { UiSection } from "@/lib/api/types";
+import { useState } from "react";
+import { Dices, Lock, Unlock, ChevronDown, ChevronRight } from "lucide-react";
+import type { UiField, UiSection } from "@/lib/api/types";
+
+function randomSeed(max?: number): number {
+  const cap = max && max > 0 ? Math.min(max, 9_999_999_999) : 9_999_999_999;
+  return Math.floor(Math.random() * (cap + 1));
+}
+
+// Seed: число + "Случайный" (кубик) + замок (закрепить). Замок выключен →
+// seed не отправляется (провайдер рандомит каждую генерацию).
+function SeedField({
+  field,
+  value,
+  onSet,
+}: {
+  field: UiField;
+  value: unknown;
+  onSet: (v: unknown) => void;
+}) {
+  const locked = value !== undefined && value !== null && value !== "";
+
+  return (
+    <div className="flex flex-col gap-1" style={{ minWidth: "200px" }}>
+      <label className="text-[11px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">
+        {field.label}
+      </label>
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          title={locked ? "Seed закреплён" : "Seed случайный"}
+          aria-pressed={locked}
+          onClick={() => onSet(locked ? null : randomSeed(field.max))}
+          className={[
+            "flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] border transition-colors",
+            locked
+              ? "border-[#0a7cff] bg-[rgba(10,124,255,0.10)] text-[#0a7cff]"
+              : "border-[rgba(13,13,13,0.15)] text-[rgba(13,13,13,0.5)] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.5)]",
+          ].join(" ")}
+        >
+          {locked ? <Lock size={13} /> : <Unlock size={13} />}
+        </button>
+        <input
+          type="number"
+          min={field.min ?? 0}
+          max={field.max ?? undefined}
+          disabled={!locked}
+          value={locked ? String(value) : ""}
+          placeholder="случайный"
+          onChange={(e) => {
+            const raw = e.target.value;
+            onSet(raw === "" ? null : Math.floor(Number(raw)));
+          }}
+          className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-2 py-1 text-[12px] text-[#0d0d0d] focus:outline-none disabled:bg-[rgba(13,13,13,0.04)] disabled:text-[rgba(13,13,13,0.35)] dark:border-[rgba(255,255,255,0.12)] dark:bg-[rgba(255,255,255,0.08)] dark:text-[#ececec]"
+        />
+        <button
+          type="button"
+          title="Случайный seed"
+          onClick={() => onSet(randomSeed(field.max))}
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] border border-[rgba(13,13,13,0.15)] text-[rgba(13,13,13,0.5)] hover:text-[#0a7cff] transition-colors dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.5)]"
+        >
+          <Dices size={13} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Обычное число (не seed).
+function NumberField({
+  field,
+  value,
+  onSet,
+}: {
+  field: UiField;
+  value: unknown;
+  onSet: (v: unknown) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1" style={{ minWidth: "140px" }}>
+      <label className="text-[11px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">
+        {field.label}
+      </label>
+      <input
+        type="number"
+        min={field.min ?? undefined}
+        max={field.max ?? undefined}
+        step={field.step ?? 1}
+        value={value === undefined || value === null ? "" : String(value)}
+        onChange={(e) => {
+          const raw = e.target.value;
+          onSet(raw === "" ? null : Number(raw));
+        }}
+        className="rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-2 py-1 text-[12px] text-[#0d0d0d] focus:outline-none dark:border-[rgba(255,255,255,0.12)] dark:bg-[rgba(255,255,255,0.08)] dark:text-[#ececec]"
+      />
+    </div>
+  );
+}
+
+// Свёртываемая textarea (например, негативный промт).
+function CollapsibleTextarea({
+  field,
+  value,
+  onSet,
+}: {
+  field: UiField;
+  value: unknown;
+  onSet: (v: unknown) => void;
+}) {
+  const text = typeof value === "string" ? value : "";
+  const [open, setOpen] = useState(Boolean(text));
+
+  return (
+    <div className="flex w-full flex-col gap-1">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-1 text-[11px] text-[rgba(13,13,13,0.5)] hover:text-[#0d0d0d] transition-colors dark:text-[rgba(236,236,236,0.45)] dark:hover:text-[#ececec]"
+      >
+        {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+        <span>{field.label}</span>
+        {!open && text ? (
+          <span className="ml-1 truncate text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.3)]">
+            — {text.slice(0, 40)}
+          </span>
+        ) : null}
+      </button>
+      {open && (
+        <textarea
+          value={text}
+          maxLength={field.max_length}
+          rows={3}
+          onChange={(e) => onSet(e.target.value)}
+          placeholder={field.label}
+          className="w-full resize-y rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-2 py-1.5 text-[12px] text-[#0d0d0d] focus:outline-none dark:border-[rgba(255,255,255,0.12)] dark:bg-[rgba(255,255,255,0.08)] dark:text-[#ececec]"
+        />
+      )}
+    </div>
+  );
+}
 
 export function MediaSettingsPanel({
   sections,
@@ -100,7 +239,36 @@ export function MediaSettingsPanel({
                 );
               }
 
-              if (field.type === "text" || field.type === "textarea") {
+              if (field.type === "number") {
+                return field.name === "seed" ? (
+                  <SeedField
+                    key={field.name}
+                    field={field}
+                    value={val}
+                    onSet={(v) => set(field.name, v)}
+                  />
+                ) : (
+                  <NumberField
+                    key={field.name}
+                    field={field}
+                    value={val}
+                    onSet={(v) => set(field.name, v)}
+                  />
+                );
+              }
+
+              if (field.type === "textarea") {
+                return (
+                  <CollapsibleTextarea
+                    key={field.name}
+                    field={field}
+                    value={val}
+                    onSet={(v) => set(field.name, v)}
+                  />
+                );
+              }
+
+              if (field.type === "text") {
                 return (
                   <div key={field.name} className="flex w-full flex-col gap-1">
                     <label className="text-[11px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">

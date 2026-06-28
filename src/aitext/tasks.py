@@ -1081,6 +1081,51 @@ def generate_ai_response(self, message_id, web_search=False):
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Sprint 6 — Upscale
+# ──────────────────────────────────────────────────────────────────────────────
+
+@shared_task(bind=True, max_retries=1)
+def upscale_generation_task(self, generation_id, user_id, factor=2, image_url=None, cost=0):
+    """Sprint 6: апскейл существующей генерации через upscale-модель провайдера.
+
+    Биллинг со списанием/возвратом звёзд выполняется здесь (как в generate_ai_response).
+    Возвращает id новой GeneratedImage.
+    """
+    from .fal_utils import generate_upscale
+    from users.models import CustomUser
+
+    stars_deducted = False
+    user = None
+    try:
+        try:
+            user = CustomUser.objects.get(id=user_id)
+        except CustomUser.DoesNotExist:
+            user = None
+
+        if user and cost:
+            if user.pages_count < cost:
+                raise Exception(f"Недостаточно звёзд. Нужно {cost} зв., у вас {user.pages_count} зв.")
+            user.spend_pages(cost)
+            stars_deducted = True
+            UserSpending.objects.create(
+                user=user,
+                amount=cost,
+                description=f"Апскейл изображения ×{factor}",
+            )
+            logger.info(f"[upscale] списано {cost} зв. у пользователя {user.email}")
+
+        gen = generate_upscale(generation_id, user_id=user_id, factor=factor, image_url=image_url)
+        logger.info(f"[upscale] генерация {generation_id} апскейлнута ×{factor} → {gen.id if gen else None}")
+        return gen.id if gen else None
+    except Exception as e:
+        logger.error(f"[upscale] ошибка апскейла генерации {generation_id}: {e}")
+        if stars_deducted and user:
+            user.add_pages(cost)
+            logger.info(f"[upscale] возвращено {cost} зв. пользователю {user.email} из-за ошибки")
+        raise
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Persistent Memory Tasks
 # ──────────────────────────────────────────────────────────────────────────────
 

@@ -7,14 +7,37 @@ class MessageSerializer(serializers.ModelSerializer):
     is_research = serializers.SerializerMethodField()
     research_id = serializers.SerializerMethodField()
     used_memory = serializers.SerializerMethodField()
+    generation_id = serializers.SerializerMethodField()
+    image_generation_id = serializers.SerializerMethodField()
 
     class Meta:
         model = Message
         fields = [
             'id', 'role', 'content', 'plain_text', 'files', 'status',
             'error_message', 'search_context', 'kb_sources', 'variants', 'created_at',
-            'is_research', 'research_id', 'used_memory',
+            'is_research', 'research_id', 'used_memory', 'generation_id',
+            'image_generation_id',
         ]
+
+    def get_generation_id(self, obj):
+        """ID placeholder-строки видео-генерации (для SSE-прогресса), если ещё идёт."""
+        try:
+            gen = obj.generated_images.filter(media_type='video').order_by('-created_at').first()
+            return gen.id if gen is not None else None
+        except Exception:
+            return None
+
+    def get_image_generation_id(self, obj):
+        """Sprint 6: ID последней готовой image-генерации (для апскейла/вариаций в чате)."""
+        try:
+            gen = (
+                obj.generated_images
+                .filter(media_type='image').exclude(image='')
+                .order_by('-created_at').first()
+            )
+            return gen.id if gen is not None else None
+        except Exception:
+            return None
 
     def get_is_research(self, obj):
         try:

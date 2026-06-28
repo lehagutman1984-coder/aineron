@@ -743,9 +743,16 @@ class GeneratedImage(models.Model):
         ('image', 'Изображение'),
         ('video', 'Видео'),
     ]
+    GEN_STATUS = [
+        ('pending', 'В очереди'),
+        ('running', 'Генерируется'),
+        ('done', 'Готово'),
+        ('error', 'Ошибка'),
+    ]
     message = models.ForeignKey(
         'Message',
         on_delete=models.CASCADE,
+        null=True, blank=True,
         related_name='generated_images',
         verbose_name='Сообщение'
     )
@@ -757,6 +764,28 @@ class GeneratedImage(models.Model):
     width = models.IntegerField(null=True, blank=True, verbose_name='Ширина')
     height = models.IntegerField(null=True, blank=True, verbose_name='Высота')
     media_type = models.CharField(max_length=10, choices=MEDIA_TYPES, default='image', verbose_name='Тип медиа')
+    params = models.JSONField(null=True, blank=True, verbose_name='Параметры генерации')
+    seed = models.BigIntegerField(null=True, blank=True, verbose_name='Seed')
+    model_name = models.CharField(max_length=200, blank=True, default='', verbose_name='Модель')
+    provider = models.CharField(max_length=50, blank=True, default='', verbose_name='Провайдер')
+    parent = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='children',
+        verbose_name='Исходное медиа (для img2img)'
+    )
+    source = models.CharField(max_length=20, blank=True, default='chat', verbose_name='Источник')
+    # Прогресс генерации (для видео — обновляется в polling-цикле, читается SSE-эндпоинтом).
+    # Дефолт 'done'/100 — чтобы существующие строки и синхронные пути (изображения)
+    # не выглядели как «в процессе».
+    status = models.CharField(max_length=20, choices=GEN_STATUS, blank=True, default='done', verbose_name='Статус генерации')
+    progress = models.IntegerField(default=100, verbose_name='Прогресс (%)')
+    # Sprint 7: публичная галерея / шеринг
+    is_public = models.BooleanField(default=False, verbose_name='Публичное (в галерее)')
+    share_slug = models.CharField(
+        max_length=12, unique=True, null=True, blank=True, verbose_name='Slug для шеринга'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -764,7 +793,18 @@ class GeneratedImage(models.Model):
         verbose_name_plural = 'Сгенерированные изображения'
 
     def __str__(self):
-        return f"{self.get_media_type_display()} для сообщения {self.message.id}"
+        msg_id = self.message_id if self.message_id else '—'
+        return f"{self.get_media_type_display()} для сообщения {msg_id}"
+
+    def generate_share_slug(self):
+        """Sprint 7: генерирует уникальный slug для публичной ссылки /g/<slug>."""
+        import secrets
+        slug = secrets.token_urlsafe(8)[:10]
+        while GeneratedImage.objects.filter(share_slug=slug).exists():
+            slug = secrets.token_urlsafe(8)[:10]
+        self.share_slug = slug
+        self.save(update_fields=['share_slug'])
+        return slug
 
 
 class PromptTemplate(models.Model):

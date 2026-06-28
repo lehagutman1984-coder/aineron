@@ -17,6 +17,7 @@ class CategorySerializer(serializers.ModelSerializer):
 class NeuralNetworkListSerializer(serializers.ModelSerializer):
     category = CategorySerializer(read_only=True)
     avatar = serializers.SerializerMethodField()
+    output_type = serializers.SerializerMethodField()
 
     class Meta:
         model = NeuralNetwork
@@ -25,11 +26,21 @@ class NeuralNetworkListSerializer(serializers.ModelSerializer):
             'description', 'cost_per_message', 'provider',
             'is_popular', 'unlimited', 'messages_limit',
             'handle_photo', 'handle_video', 'handle_archive', 'handle_text_files',
-            'seo_title', 'seo_description', 'model_name', 'order',
+            'seo_title', 'seo_description', 'model_name', 'order', 'output_type',
         ]
 
     def get_avatar(self, obj):
         return obj.get_avatar()
+
+    def get_output_type(self, obj):
+        """'video' | 'image' | None — из config_json.metadata.output_type.
+
+        Используется фронтом для каталога img2video-моделей ("Оживить").
+        """
+        try:
+            return (obj.config_json or {}).get('metadata', {}).get('output_type')
+        except Exception:
+            return None
 
 
 class NeuralNetworkDetailSerializer(NeuralNetworkListSerializer):
