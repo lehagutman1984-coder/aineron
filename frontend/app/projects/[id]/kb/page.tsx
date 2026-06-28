@@ -221,10 +221,13 @@ function FileRow({ file, projectId }: { file: KBFileStat; projectId: number }) {
   );
 }
 
+const PAGE_SIZE = 20;
+
 export default function ProjectKBPage() {
   const { id } = useParams<{ id: string }>();
   const projectId = parseInt(id, 10);
   const [filter, setFilter] = useState<FilterKey>("all");
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["project-kb-stats", projectId],
@@ -242,6 +245,10 @@ export default function ProjectKBPage() {
   const filteredFiles = (data?.files ?? []).filter((f) =>
     filter === "all" ? true : getEffectiveStatus(f) === filter
   );
+
+  const visibleFiles = filteredFiles.slice(0, visibleCount);
+  const hasMore = visibleCount < filteredFiles.length;
+  const isExpanded = visibleCount > PAGE_SIZE;
 
   return (
     <div className="flex h-full flex-col">
@@ -338,7 +345,7 @@ export default function ProjectKBPage() {
                   {FILTERS.filter(({ key }) => key === "all" || (counts[key] ?? 0) > 0).map(({ key, label }) => (
                     <button
                       key={key}
-                      onClick={() => setFilter(key)}
+                      onClick={() => { setFilter(key); setVisibleCount(PAGE_SIZE); }}
                       className={`rounded-[5px] px-2 py-0.5 text-[11px] font-medium transition ${
                         filter === key
                           ? "bg-[#0a7cff] text-white"
@@ -359,11 +366,38 @@ export default function ProjectKBPage() {
                     {filter === "all" ? "Нет файлов в базе знаний" : "Нет файлов с таким статусом"}
                   </div>
                 ) : (
-                  filteredFiles.map((f) => (
+                  visibleFiles.map((f) => (
                     <FileRow key={f.id} file={f} projectId={projectId} />
                   ))
                 )}
               </div>
+
+              {/* Pagination controls */}
+              {filteredFiles.length > PAGE_SIZE && (
+                <div className="flex items-center justify-between border-t border-[rgba(13,13,13,0.06)] px-4 py-2.5 dark:border-[rgba(255,255,255,0.05)]">
+                  <span className="text-[11px] text-[rgba(13,13,13,0.4)] dark:text-[rgba(236,236,236,0.35)]">
+                    Показано {visibleFiles.length} из {filteredFiles.length}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {hasMore && (
+                      <button
+                        onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}
+                        className="rounded-[6px] border border-[rgba(13,13,13,0.12)] px-3 py-1 text-[12px] text-[rgba(13,13,13,0.6)] transition hover:border-[#0a7cff] hover:text-[#0a7cff] dark:border-[rgba(255,255,255,0.1)] dark:text-[rgba(236,236,236,0.5)]"
+                      >
+                        Показать ещё {Math.min(PAGE_SIZE, filteredFiles.length - visibleCount)}
+                      </button>
+                    )}
+                    {isExpanded && (
+                      <button
+                        onClick={() => setVisibleCount(PAGE_SIZE)}
+                        className="rounded-[6px] border border-[rgba(13,13,13,0.12)] px-3 py-1 text-[12px] text-[rgba(13,13,13,0.6)] transition hover:border-[rgba(13,13,13,0.3)] dark:border-[rgba(255,255,255,0.1)] dark:text-[rgba(236,236,236,0.5)]"
+                      >
+                        Свернуть
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </>
         )}
