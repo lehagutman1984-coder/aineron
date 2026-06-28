@@ -115,7 +115,8 @@ class ImageGenerationsView(APIView):
                         gen.source = 'api'
                         gen.model_name = network.model_name
                         gen.provider = 'laozhang'
-                        gen.save(update_fields=['source', 'model_name', 'provider'])
+                        gen.user = request.user
+                        gen.save(update_fields=['source', 'model_name', 'provider', 'user'])
                 except Exception as save_err:
                     logger.warning(f'[API] Не удалось сохранить генерацию в галерею: {save_err}')
 

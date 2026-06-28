@@ -1,5 +1,6 @@
 from django.core.files.storage import default_storage
 from django.core.paginator import Paginator
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework.views import APIView
@@ -12,6 +13,11 @@ from aitext.models import GeneratedImage, Message
 from aitext.tasks import generate_ai_response
 
 
+def _user_gens_q(user):
+    """Q-фильтр для генераций пользователя: чат-генерации + API-генерации (message=null)."""
+    return Q(message__chat__user=user) | Q(user=user)
+
+
 class UserFilesView(APIView):
     authentication_classes = [CsrfExemptSessionAuthentication]
     permission_classes = [IsAuthenticated]
@@ -22,7 +28,7 @@ class UserFilesView(APIView):
         category = request.query_params.get('category', 'all')
 
         qs = GeneratedImage.objects.filter(
-            message__chat__user=request.user
+            _user_gens_q(request.user)
         ).exclude(image='').order_by('-created_at')
 
         if category == 'images':
@@ -92,7 +98,7 @@ class UserFileDeleteView(APIView):
 
     def delete(self, request, file_id):
         file_obj = get_object_or_404(
-            GeneratedImage, id=file_id, message__chat__user=request.user
+            GeneratedImage, _user_gens_q(request.user), id=file_id
         )
         if file_obj.image and default_storage.exists(file_obj.image.name):
             default_storage.delete(file_obj.image.name)
@@ -114,7 +120,7 @@ class GenerationRerunView(APIView):
 
     def post(self, request, pk):
         gen = get_object_or_404(
-            GeneratedImage, id=pk, message__chat__user=request.user
+            GeneratedImage, _user_gens_q(request.user), id=pk
         )
         chat = gen.message.chat if gen.message_id else None
         if chat is None:
@@ -195,7 +201,7 @@ class GenerationUpscaleView(APIView):
 
     def post(self, request, pk):
         gen = get_object_or_404(
-            GeneratedImage, id=pk, message__chat__user=request.user
+            GeneratedImage, _user_gens_q(request.user), id=pk
         )
         if gen.media_type != 'image' or not gen.image:
             return Response({
@@ -260,7 +266,7 @@ class GenerationVariationsView(APIView):
 
     def post(self, request, pk):
         gen = get_object_or_404(
-            GeneratedImage, id=pk, message__chat__user=request.user
+            GeneratedImage, _user_gens_q(request.user), id=pk
         )
         chat = gen.message.chat if gen.message_id else None
         if chat is None:

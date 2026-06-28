@@ -6,6 +6,7 @@
 - POST /v1/generations/<int:pk>/unshare/  — сделать приватной (владелец)
 """
 from django.core.paginator import Paginator
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -14,6 +15,10 @@ from rest_framework import status
 
 from api.authentication import CsrfExemptSessionAuthentication
 from aitext.models import GeneratedImage
+
+
+def _user_gens_q(user):
+    return Q(message__chat__user=user) | Q(user=user)
 
 
 def _anon_username(gen):
@@ -141,7 +146,7 @@ class GenerationShareView(APIView):
 
     def post(self, request, pk):
         gen = get_object_or_404(
-            GeneratedImage, id=pk, message__chat__user=request.user
+            GeneratedImage, _user_gens_q(request.user), id=pk
         )
         if not gen.image:
             return Response(
@@ -168,7 +173,7 @@ class GenerationUnshareView(APIView):
 
     def post(self, request, pk):
         gen = get_object_or_404(
-            GeneratedImage, id=pk, message__chat__user=request.user
+            GeneratedImage, _user_gens_q(request.user), id=pk
         )
         gen.is_public = False
         gen.save(update_fields=['is_public'])

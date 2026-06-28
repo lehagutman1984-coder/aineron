@@ -776,6 +776,13 @@ class GeneratedImage(models.Model):
         verbose_name='Исходное медиа (для img2img)'
     )
     source = models.CharField(max_length=20, blank=True, default='chat', verbose_name='Источник')
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='generated_images',
+        verbose_name='Владелец (API-генерации)',
+    )
     # Прогресс генерации (для видео — обновляется в polling-цикле, читается SSE-эндпоинтом).
     # Дефолт 'done'/100 — чтобы существующие строки и синхронные пути (изображения)
     # не выглядели как «в процессе».

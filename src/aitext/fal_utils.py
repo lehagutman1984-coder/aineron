@@ -613,21 +613,26 @@ def generate_image_edit(network, user_msg, message, user_settings=None):
         size_val = f"{size_val.get('width', 1024)}x{size_val.get('height', 1024)}"
 
     params = {'model': model_id, 'prompt': prompt, 'n': 1, 'size': str(size_val)}
+    # Нестандартные параметры (seed, negative_prompt, style refs) НЕ принимаются
+    # openai SDK как прямые kwargs — поднимают TypeError. Передаём через extra_body,
+    # который SDK сливает в JSON-тело; laozhang-прокси форвардит провайдеру.
+    extra_body = {}
     if 'negative_prompt' in final_args and final_args['negative_prompt']:
-        params['negative_prompt'] = final_args['negative_prompt']
+        extra_body['negative_prompt'] = final_args['negative_prompt']
     if 'seed' in final_args and final_args['seed'] is not None:
         try:
-            params['seed'] = int(final_args['seed'])
+            extra_body['seed'] = int(final_args['seed'])
         except (ValueError, TypeError):
             pass
-    # Sprint 6: референс стиля — extra_body принимается и images.edit, и images.generate
     if style_image_url:
-        params['extra_body'] = {
+        extra_body.update({
             'style_image_url': style_image_url,
             'style_reference': style_image_url,
             'image_url_2': style_image_url,
-        }
+        })
         logger.info("[style-ref] применён референс стиля для edit")
+    if extra_body:
+        params['extra_body'] = extra_body
 
     try:
         # OpenAI-клиент images.edit() — laozhang поддерживает для flux-kontext-pro и др.
@@ -638,9 +643,12 @@ def generate_image_edit(network, user_msg, message, user_settings=None):
         img_url = result.data[0].url if result.data else None
     except Exception as edit_err:
         logger.warning(f"[img2img] images.edit failed ({edit_err}), falling back to generate+image_url")
-        # Фолбэк: передаём image_url в теле /images/generations.
+        # Фолбэк: image_url передаём через extra_body (прямой kwarg → TypeError в SDK).
         # ВНИМАНИЕ: фолбэк не поддерживает маску/outpaint — они здесь теряются.
-        gen_params = {**params, 'image_url': image_url}
+        fb_extra = dict(params.get('extra_body') or {})
+        fb_extra['image_url'] = image_url
+        gen_params = {k: v for k, v in params.items() if k != 'extra_body'}
+        gen_params['extra_body'] = fb_extra
         result = client.images.generate(**gen_params)
         img_url = result.data[0].url if result.data else None
 
@@ -682,9 +690,13 @@ def generate_image_edit(network, user_msg, message, user_settings=None):
     return final_text, saved_media, total_cost
 
 
-# Апскейл-модели laozhang (img2img). Точные слаги/имя scale-параметра не зафиксированы
-# в репозитории — это deploy-time-verify допущение (проверить по списку моделей провайдера).
-UPSCALE_MODELS = ['clarity-upscaler', 'aura-sr']
+# Апскейл-модели laozhang (img2img). Проверено 2026-06-28: провайдер не публикует
+# отдельных upscale-моделей. flux-kontext-pro используется как fallback через
+# images.edit() с enhance-промтом — не истинный upscaler, но даёт визуальное улучшение.
+UPSCALE_MODELS = ['clarity-upscaler', 'aura-sr', 'flux-kontext-pro']
+UPSCALE_FALLBACK_PROMPTS = {
+    'flux-kontext-pro': 'enhance image quality, increase sharpness and detail, high resolution',
+}
 
 
 def generate_upscale(generation_id, user_id=None, factor=2, image_url=None):
@@ -751,17 +763,18 @@ def generate_upscale(generation_id, user_id=None, factor=2, image_url=None):
     used_model = UPSCALE_MODELS[0]
     for model_id in UPSCALE_MODELS:
         try:
+            upscale_prompt = UPSCALE_FALLBACK_PROMPTS.get(model_id, '')
             extra_body = {'scale': factor, 'upscale_factor': factor}
             if img_bytes is not None:
                 img_file = _io.BytesIO(img_bytes)
                 img_file.name = 'source.png'
                 result = client.images.edit(
-                    image=img_file, model=model_id, prompt='', n=1, extra_body=extra_body,
+                    image=img_file, model=model_id, prompt=upscale_prompt, n=1, extra_body=extra_body,
                 )
             else:
                 extra_body['image_url'] = image_url
                 result = client.images.generate(
-                    model=model_id, prompt='', n=1, extra_body=extra_body,
+                    model=model_id, prompt=upscale_prompt, n=1, extra_body=extra_body,
                 )
             img_url = result.data[0].url if result.data else None
             if img_url:

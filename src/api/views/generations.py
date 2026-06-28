@@ -8,12 +8,17 @@ web-процессе читает свежие значения из БД (Djang
 import json
 import time
 
+from django.db.models import Q
 from django.http import StreamingHttpResponse, JsonResponse
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 
 from api.authentication import CsrfExemptSessionAuthentication
 from aitext.models import GeneratedImage
+
+
+def _user_gens_q(user):
+    return Q(message__chat__user=user) | Q(user=user)
 
 # Опрашиваем БД каждые 2 сек; максимум 20 минут (600 итераций) на одно видео.
 POLL_SECONDS = 2
@@ -29,14 +34,14 @@ class GenerationProgressView(APIView):
         # Проверяем владение до открытия стрима (404/403 нельзя отдать после старта SSE).
         gen = (
             GeneratedImage.objects
-            .filter(pk=pk, message__chat__user=request.user)
+            .filter(_user_gens_q(request.user), pk=pk)
             .values('id', 'status', 'progress', 'image')
             .first()
         )
         if gen is None:
             return JsonResponse({'error': 'not found'}, status=404)
 
-        user_id = request.user.id
+        user = request.user
 
         def event_stream():
             def _sse(payload):
@@ -56,7 +61,7 @@ class GenerationProgressView(APIView):
                 time.sleep(POLL_SECONDS)
                 row = (
                     GeneratedImage.objects
-                    .filter(pk=pk, message__chat__user_id=user_id)
+                    .filter(_user_gens_q(user), pk=pk)
                     .values('id', 'status', 'progress', 'image')
                     .first()
                 )
