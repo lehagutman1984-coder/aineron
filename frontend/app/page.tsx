@@ -22,7 +22,7 @@ export default async function HomePage() {
     <>
       {/* ── Hero ──────────────────────────────────────────────────────────────── */}
       <section className="mx-auto max-w-4xl px-4 pb-16 pt-24 text-center sm:px-6">
-        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[rgba(10,124,255,0.25)] bg-[rgba(10,124,255,0.06)] px-3.5 py-1 text-[13px] text-[#0a7cff]">
+        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[rgba(10,124,255,0.25)] bg-[rgba(10,124,255,0.06)] px-3.5 py-1 text-[13px] text-[#f0a38a]">
           <ShieldCheck size={13} />
           Российский сервис — без VPN и зарубежных карт
         </div>
@@ -41,7 +41,7 @@ export default async function HomePage() {
         <div className="flex flex-wrap items-center justify-center gap-3">
           <Link
             href="/register/"
-            className="inline-flex items-center gap-2 rounded-[10px] bg-[#0a7cff] px-7 py-3 text-[15px] font-medium text-white hover:bg-[#0066cc] transition-colors"
+            className="inline-flex items-center gap-2 rounded-[10px] bg-[#f0a38a] px-7 py-3 text-[15px] font-medium text-white hover:bg-[#0066cc] transition-colors"
           >
             Начать бесплатно
             <ArrowRight size={16} />
@@ -62,7 +62,7 @@ export default async function HomePage() {
             const Icon = s.icon;
             return (
               <div key={s.label} className="flex items-center gap-2.5">
-                <Icon size={16} className="text-[#0a7cff]" />
+                <Icon size={16} className="text-[#f0a38a]" />
                 <span className="text-[14px] font-semibold text-[#0d0d0d]">{s.value}</span>
                 <span className="text-[13px] text-[rgba(13,13,13,0.50)]">{s.label}</span>
               </div>
@@ -83,7 +83,7 @@ export default async function HomePage() {
             </div>
             <Link
               href="/models/"
-              className="flex items-center gap-1 text-[13px] text-[#0a7cff] hover:text-[#0066cc] transition-colors"
+              className="flex items-center gap-1 text-[13px] text-[#f0a38a] hover:text-[#0066cc] transition-colors"
             >
               Все модели
               <ArrowRight size={14} />
@@ -126,7 +126,7 @@ export default async function HomePage() {
                 <th className="px-5 py-3.5 text-left font-medium text-[rgba(13,13,13,0.50)]">
                   Возможность
                 </th>
-                <th className="px-4 py-3.5 text-center font-bold text-[#0a7cff]">aineron.ru</th>
+                <th className="px-4 py-3.5 text-center font-bold text-[#f0a38a]">aineron.ru</th>
                 <th className="px-4 py-3.5 text-center font-medium text-[rgba(13,13,13,0.55)]">ChatGPT</th>
                 <th className="px-4 py-3.5 text-center font-medium text-[rgba(13,13,13,0.55)]">RouterAI</th>
               </tr>
@@ -167,7 +167,7 @@ export default async function HomePage() {
         <div className="overflow-hidden rounded-[20px] border border-[rgba(13,13,13,0.10)] bg-white">
           <div className="px-8 py-8 text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-[14px] bg-[rgba(10,124,255,0.10)]">
-              <Star size={22} className="text-[#0a7cff]" />
+              <Star size={22} className="text-[#f0a38a]" />
             </div>
             <h2 className="text-[24px] font-bold text-[#0d0d0d]">Звёзды — простая оплата</h2>
             <p className="mt-2 text-[15px] text-[rgba(13,13,13,0.55)]">
@@ -186,7 +186,7 @@ export default async function HomePage() {
           <div className="border-t border-[rgba(13,13,13,0.08)] px-8 py-5 text-center">
             <Link
               href="/register/"
-              className="inline-flex items-center gap-2 rounded-[10px] bg-[#0a7cff] px-8 py-3 text-[14px] font-medium text-white hover:bg-[#0066cc] transition-colors"
+              className="inline-flex items-center gap-2 rounded-[10px] bg-[#f0a38a] px-8 py-3 text-[14px] font-medium text-white hover:bg-[#0066cc] transition-colors"
             >
               Начать с 10 бесплатными звёздами
               <ArrowRight size={15} />
@@ -248,7 +248,7 @@ function NetworkCard({ network }: { network: NetworkListItem }) {
   return (
     <Link
       href={`/models/${network.slug}/`}
-      className="group flex flex-col gap-3 rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white p-5 hover:border-[#0a7cff] hover:shadow-sm transition-all duration-150"
+      className="group flex flex-col gap-3 rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white p-5 hover:border-[#f0a38a] hover:shadow-sm transition-all duration-150"
     >
       <div className="flex items-center gap-3">
         {network.avatar ? (
@@ -261,7 +261,7 @@ function NetworkCard({ network }: { network: NetworkListItem }) {
             className="rounded-[8px] object-cover"
           />
         ) : (
-          <div className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[rgba(10,124,255,0.10)] text-[#0a7cff]">
+          <div className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[rgba(10,124,255,0.10)] text-[#f0a38a]">
             {network.handle_photo || network.handle_video ? (
               <ImageIcon size={18} />
             ) : (
@@ -270,7 +270,7 @@ function NetworkCard({ network }: { network: NetworkListItem }) {
           </div>
         )}
         <div>
-          <p className="text-[14px] font-semibold text-[#0d0d0d] group-hover:text-[#0a7cff] transition-colors">
+          <p className="text-[14px] font-semibold text-[#0d0d0d] group-hover:text-[#f0a38a] transition-colors">
             {network.name}
           </p>
           <p className="text-[12px] text-[rgba(13,13,13,0.5)]">{network.category.name}</p>
@@ -287,7 +287,7 @@ function NetworkCard({ network }: { network: NetworkListItem }) {
         </span>
         <ArrowRight
           size={14}
-          className="text-[rgba(13,13,13,0.3)] group-hover:text-[#0a7cff] transition-colors"
+          className="text-[rgba(13,13,13,0.3)] group-hover:text-[#f0a38a] transition-colors"
         />
       </div>
     </Link>
@@ -298,7 +298,7 @@ function NetworkCard({ network }: { network: NetworkListItem }) {
 function FeatureCard({ icon: Icon, title, text }: { icon: React.ElementType; title: string; text: string }) {
   return (
     <div className="rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white p-5">
-      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-[10px] bg-[rgba(10,124,255,0.10)] text-[#0a7cff]">
+      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-[10px] bg-[rgba(10,124,255,0.10)] text-[#f0a38a]">
         <Icon size={20} />
       </div>
       <p className="mb-1.5 text-[14px] font-semibold text-[#0d0d0d]">{title}</p>
