@@ -277,16 +277,18 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
         {/* Курсор-превью: кольцо нужного размера следует за указателем */}
         {cursor && ready && (
           <div
-            className="pointer-events-none absolute rounded-full border-2 border-white"
+            className="pointer-events-none absolute rounded-full border-2"
             style={{
               left: cursor.x,
               top: cursor.y,
               width: cursor.d,
               height: cursor.d,
               transform: "translate(-50%, -50%)",
-              boxShadow: "0 0 0 1px rgba(0,0,0,0.6)",
-              opacity: mode === "erase" ? 0.6 : 0.9,
-              borderStyle: mode === "erase" ? "dashed" : "solid",
+              borderColor: mode === "erase" ? "#ff4444" : "white",
+              boxShadow: mode === "erase"
+                ? "0 0 0 1px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,68,68,0.3)"
+                : "0 0 0 1px rgba(0,0,0,0.6)",
+              opacity: 0.9,
             }}
           />
         )}
@@ -298,12 +300,24 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
         )}
       </div>
 
-      <p className="text-[12px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.5)]">
-        Закрасьте белым области, которые нужно изменить
-        <span className="ml-1 text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.3)]">
-          — маска работает только с GPT Image 1
-        </span>
-      </p>
+      <div className="space-y-0.5">
+        <p className="text-[12px] text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.55)]">
+          {mode === "draw" ? (
+            <>
+              <span className="font-medium text-[#0d0d0d] dark:text-white">Кисть:</span>
+              {" "}закрасьте область, которую нужно изменить — белая подсветка показывает выделение
+            </>
+          ) : (
+            <>
+              <span className="font-medium text-[#e74c3c]">Ластик:</span>
+              {" "}стирает уже закрашенные области — водите по белым пятнам чтобы убрать выделение
+            </>
+          )}
+        </p>
+        <p className="text-[11px] text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.3)]">
+          Маска работает только с GPT Image 1
+        </p>
+      </div>
 
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-2">
