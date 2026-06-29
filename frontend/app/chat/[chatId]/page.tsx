@@ -1609,7 +1609,7 @@ function MessageRow({
         </div>
         {/* User message quick actions */}
         {message.content && (
-          <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+          <div className="flex items-center gap-0.5">
             <button
               onClick={async () => {
                 if (savedFact) return;
@@ -1720,7 +1720,7 @@ function MessageRow({
                       {falImgUrls.map((url, i) => (
                         <div key={i} className="group relative overflow-hidden rounded-[8px] bg-[rgba(13,13,13,0.04)] dark:bg-[rgba(236,236,236,0.04)]">
                           <ZoomableImage src={url} className="w-full" />
-                          <div className="absolute bottom-1.5 right-1.5 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                          <div className="absolute bottom-1.5 right-1.5 flex gap-1">
                             {onDownloadImage && (
                               <button
                                 onClick={() => onDownloadImage(url)}
@@ -1855,8 +1855,8 @@ function MessageRow({
               );
             })()}
 
-            {/* Hover action bar — копирование, повтор, озвучка */}
-            <div className="mt-1.5 flex items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+            {/* Action bar — копирование, повтор, озвучка */}
+            <div className="mt-1.5 flex items-center gap-0.5">
               <CopyButton plainText={message.plain_text} htmlContent={message.content} />
               {(() => {
                 const artifact = onOpenArtifact ? extractArtifact(message.plain_text || message.content) : null;

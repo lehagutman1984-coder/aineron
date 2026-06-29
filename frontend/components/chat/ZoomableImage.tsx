@@ -103,7 +103,7 @@ function FullscreenOverlay({ src, alt, onClose }: { src: string; alt: string; on
       {/* Controls */}
       <div className="pointer-events-none absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-[10px] bg-black/60 p-1.5 backdrop-blur-md">
         {[
-          { icon: ZoomOut, onClick: () => setScale((s) => { const n = Math.max(1, +(s / 1.3).toFixed(2)); if (n === 1) setOffset({ x: 0, y: 0 }); return n; }), title: "Уменьшить", cls: "pointer-events-auto" },
+          { icon: ZoomOut, onClick: () => setScale((s) => { const n = Math.max(0.4, +(s / 1.3).toFixed(2)); if (n <= 1) setOffset({ x: 0, y: 0 }); return n; }), title: "Уменьшить", cls: "pointer-events-auto" },
           { icon: ZoomIn, onClick: () => setScale((s) => Math.min(8, +(s * 1.3).toFixed(2))), title: "Увеличить", cls: "pointer-events-auto" },
           { icon: RotateCcw, onClick: reset, title: "Сбросить", cls: `pointer-events-auto transition-opacity ${scale > 1.05 ? "opacity-100" : "opacity-30"}` },
           { icon: Download, onClick: handleDownload, title: "Скачать", cls: "pointer-events-auto" },
@@ -177,12 +177,13 @@ export function ZoomableImage({ src, alt = "", className = "", maxZoom = 4 }: Pr
   };
 
   const stopDrag = (e: React.MouseEvent) => {
-    if (dragging && dragStart.current && !dragStart.current.moved && scale <= 1) {
-      e.stopPropagation();
-      setFullscreen(true);
-    }
+    // Capture ref before clearing — state (dragging) can lag behind mouseUp in React
+    const ds = dragStart.current;
     setDragging(false);
     dragStart.current = null;
+    if (ds && !ds.moved && scale <= 1) {
+      setFullscreen(true);
+    }
   };
 
   const reset = () => {
@@ -217,7 +218,7 @@ export function ZoomableImage({ src, alt = "", className = "", maxZoom = 4 }: Pr
           }}
         />
 
-        <div className="absolute bottom-2 right-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="absolute bottom-2 right-2 flex gap-1">
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); setFullscreen(true); }}
@@ -236,13 +237,13 @@ export function ZoomableImage({ src, alt = "", className = "", maxZoom = 4 }: Pr
           </button>
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); setScale((s) => { const n = Math.max(1, +(s / 1.3).toFixed(2)); if (n === 1) setOffset({ x: 0, y: 0 }); return n; }); }}
+            onClick={(e) => { e.stopPropagation(); setScale((s) => { const n = Math.max(0.4, +(s / 1.3).toFixed(2)); if (n <= 1) setOffset({ x: 0, y: 0 }); return n; }); }}
             className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-black/55 text-white backdrop-blur-sm hover:bg-black/75 transition-colors"
             title="Уменьшить"
           >
             <ZoomOut size={13} />
           </button>
-          {scale > 1.05 && (
+          {scale !== 1 && (
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); reset(); }}
