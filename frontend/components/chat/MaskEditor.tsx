@@ -251,6 +251,9 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
 
       <p className="text-[12px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.5)]">
         Закрасьте белым области, которые нужно изменить
+        <span className="ml-1 text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.3)]">
+          — маска работает только с GPT Image 1
+        </span>
       </p>
 
       {/* Controls */}
