@@ -4,11 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Eraser, Check, Loader2, Brush, RotateCcw } from "lucide-react";
 import { uploadFile } from "@/lib/api/client";
 
-// Конвенция маски: БЕЛОЕ = область редактирования (что менять / дорисовать),
-// ЧЁРНОЕ = сохранить. Совпадает с _prepare_outpaint_canvas на бэкенде.
-// Кисть рисуется непрозрачным белым в полном разрешении исходника; на экране
-// полотно затемнено через CSS (display-only), а на экспорте белые штрихи
-// накладываются на сплошной чёрный фон → бинарная маска PNG.
+// Конвенция маски: БЕЛОЕ = область редактирования, ЧЁРНОЕ = сохранить.
+// На экспорте белые штрихи накладываются на чёрный фон → бинарная PNG-маска.
 
 type BrushKey = "small" | "medium" | "large";
 type DrawMode = "draw" | "erase";
@@ -35,6 +32,7 @@ interface Props {
 export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const drawingRef = useRef(false);
   const lastRef = useRef<{ x: number; y: number } | null>(null);
   const historyRef = useRef<ImageData[]>([]);
@@ -46,7 +44,9 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Синхронизируем разрешение полотна с натуральным размером изображения
+  // Превью курсора: позиция в px относительно контейнера + диаметр в display-px
+  const [cursor, setCursor] = useState<{ x: number; y: number; d: number } | null>(null);
+
   const syncCanvasSize = useCallback(() => {
     const img = imgRef.current;
     const canvas = canvasRef.current;
@@ -65,6 +65,7 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
     setHasStrokes(false);
     setError(null);
     historyRef.current = [];
+    setCursor(null);
   }, [imageUrl]);
 
   const saveSnapshot = useCallback(() => {
@@ -105,7 +106,7 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
     return Math.max(4, Math.round(base * BRUSH_RATIO[brush]));
   }, [brush]);
 
-  // Переводим координаты указателя в систему координат полотна (натуральный размер)
+  // Координаты в системе canvas (натуральный размер)
   const toCanvasCoords = useCallback((e: React.PointerEvent) => {
     const canvas = canvasRef.current!;
     const rect = canvas.getBoundingClientRect();
@@ -116,6 +117,23 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
       y: (e.clientY - rect.top) * sy,
     };
   }, []);
+
+  // Обновить позицию курсора-превью (display-координаты относительно canvas)
+  const updateCursor = useCallback(
+    (e: React.PointerEvent) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const scale = rect.width / canvas.width;
+      const d = Math.max(4, brushPx() * scale);
+      setCursor({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+        d,
+      });
+    },
+    [brushPx]
+  );
 
   const drawDot = useCallback(
     (x: number, y: number) => {
@@ -149,6 +167,7 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
+      updateCursor(e);
       if (!drawingRef.current) return;
       const ctx = canvasRef.current?.getContext("2d");
       if (!ctx) return;
@@ -166,12 +185,18 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
       ctx.globalCompositeOperation = "source-over";
       lastRef.current = p;
     },
-    [toCanvasCoords, brushPx, mode]
+    [updateCursor, toCanvasCoords, brushPx, mode]
   );
 
   const handlePointerUp = useCallback(() => {
     drawingRef.current = false;
     lastRef.current = null;
+  }, []);
+
+  const handlePointerLeave = useCallback(() => {
+    drawingRef.current = false;
+    lastRef.current = null;
+    setCursor(null);
   }, []);
 
   const handleClear = useCallback(() => {
@@ -182,7 +207,7 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
     setHasStrokes(false);
   }, []);
 
-  // Экспорт: белые штрихи поверх сплошного чёрного фона → бинарная PNG-маска
+  // Экспорт: белые штрихи на чёрном фоне → бинарная PNG-маска
   const handleApply = useCallback(async () => {
     const canvas = canvasRef.current;
     if (!canvas || !hasStrokes) return;
@@ -219,11 +244,12 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
 
   return (
     <div className="space-y-3">
-      {/* Canvas overlay поверх изображения.
-          Контейнер ужимается до отрисованного размера картинки (w-fit + max-w-full),
-          а холст с inset-0 точно совпадает с ним — иначе для не-квадратных изображений
-          object-contain создаёт поля и штрихи смещаются. */}
-      <div className="relative mx-auto w-fit overflow-hidden rounded-[10px] border border-[rgba(13,13,13,0.12)] bg-[rgba(13,13,13,0.04)]">
+      {/* Контейнер: изображение + canvas-маска + курсор-превью */}
+      <div
+        ref={containerRef}
+        className="relative mx-auto w-fit overflow-hidden rounded-[10px] border border-[rgba(13,13,13,0.12)] bg-[rgba(13,13,13,0.04)]"
+      >
+        {/* Исходное изображение — видно через полупрозрачный оверлей */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           ref={imgRef}
@@ -233,15 +259,38 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
           className="block max-h-[55vh] w-auto max-w-full select-none"
           draggable={false}
         />
+
+        {/* Canvas маски: полупрозрачный тёмный фон, белые штрихи = выделение */}
         <canvas
           ref={canvasRef}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
-          onPointerLeave={handlePointerUp}
-          className="absolute inset-0 h-full w-full cursor-crosshair touch-none"
-          style={{ background: "rgba(0,0,0,0.45)" }}
+          onPointerLeave={handlePointerLeave}
+          className="absolute inset-0 h-full w-full touch-none"
+          style={{
+            background: "rgba(0,0,0,0.38)",
+            cursor: "none",
+          }}
         />
+
+        {/* Курсор-превью: кольцо нужного размера следует за указателем */}
+        {cursor && ready && (
+          <div
+            className="pointer-events-none absolute rounded-full border-2 border-white"
+            style={{
+              left: cursor.x,
+              top: cursor.y,
+              width: cursor.d,
+              height: cursor.d,
+              transform: "translate(-50%, -50%)",
+              boxShadow: "0 0 0 1px rgba(0,0,0,0.6)",
+              opacity: mode === "erase" ? 0.6 : 0.9,
+              borderStyle: mode === "erase" ? "dashed" : "solid",
+            }}
+          />
+        )}
+
         {!ready && (
           <div className="absolute inset-0 flex items-center justify-center">
             <Loader2 size={20} className="animate-spin text-white" />
@@ -258,15 +307,16 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
 
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-2">
+        {/* Кисть / Ластик */}
         <div className="flex items-center gap-1 rounded-[8px] border border-[rgba(13,13,13,0.12)] bg-[rgba(13,13,13,0.03)] p-1">
           <button
             type="button"
             onClick={() => setMode("draw")}
-            title="Режим рисования маски"
+            title="Рисовать маску"
             className={`rounded-[6px] px-2.5 py-1 text-[12px] font-medium transition-colors flex items-center gap-1 ${
               mode === "draw"
-                ? "bg-white text-[#0d0d0d] shadow-sm"
-                : "text-[rgba(13,13,13,0.55)] hover:text-[#0d0d0d]"
+                ? "bg-white text-[#0d0d0d] shadow-sm dark:bg-[rgba(255,255,255,0.12)] dark:text-white"
+                : "text-[rgba(13,13,13,0.55)] hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.5)] dark:hover:text-white"
             }`}
           >
             <Brush size={12} />
@@ -275,11 +325,11 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
           <button
             type="button"
             onClick={() => setMode("erase")}
-            title="Режим ластика — стереть часть маски"
+            title="Стереть часть маски"
             className={`rounded-[6px] px-2.5 py-1 text-[12px] font-medium transition-colors flex items-center gap-1 ${
               mode === "erase"
-                ? "bg-white text-[#0d0d0d] shadow-sm"
-                : "text-[rgba(13,13,13,0.55)] hover:text-[#0d0d0d]"
+                ? "bg-white text-[#0d0d0d] shadow-sm dark:bg-[rgba(255,255,255,0.12)] dark:text-white"
+                : "text-[rgba(13,13,13,0.55)] hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.5)] dark:hover:text-white"
             }`}
           >
             <Eraser size={12} />
@@ -287,8 +337,9 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
           </button>
         </div>
 
+        {/* Размер кисти */}
         <div className="flex items-center gap-1 rounded-[8px] border border-[rgba(13,13,13,0.12)] bg-[rgba(13,13,13,0.03)] p-1">
-          <Brush size={13} className="ml-1 text-[rgba(13,13,13,0.45)]" />
+          <Brush size={13} className="ml-1 text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.4)]" />
           {(Object.keys(BRUSH_RATIO) as BrushKey[]).map((k) => (
             <button
               key={k}
@@ -296,8 +347,8 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
               onClick={() => setBrush(k)}
               className={`rounded-[6px] px-2.5 py-1 text-[12px] font-medium transition-colors ${
                 brush === k
-                  ? "bg-white text-[#0d0d0d] shadow-sm"
-                  : "text-[rgba(13,13,13,0.55)] hover:text-[#0d0d0d]"
+                  ? "bg-white text-[#0d0d0d] shadow-sm dark:bg-[rgba(255,255,255,0.12)] dark:text-white"
+                  : "text-[rgba(13,13,13,0.55)] hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.5)] dark:hover:text-white"
               }`}
             >
               {BRUSH_LABEL[k]}
@@ -305,27 +356,30 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
           ))}
         </div>
 
+        {/* Отменить */}
         <button
           type="button"
           onClick={handleUndo}
           disabled={historyRef.current.length === 0}
           title="Отменить последний штрих (Ctrl+Z)"
-          className="flex h-9 items-center gap-1.5 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 text-[12px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:bg-[rgba(13,13,13,0.04)] disabled:opacity-40"
+          className="flex h-9 items-center gap-1.5 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 text-[12px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:bg-[rgba(13,13,13,0.04)] disabled:opacity-40 dark:border-[rgba(236,236,236,0.12)] dark:text-[rgba(236,236,236,0.65)] dark:hover:bg-[rgba(236,236,236,0.06)]"
         >
           <RotateCcw size={14} />
           Отменить
         </button>
 
+        {/* Очистить */}
         <button
           type="button"
           onClick={handleClear}
           disabled={!hasStrokes}
-          className="flex h-9 items-center gap-1.5 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 text-[12px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:bg-[rgba(13,13,13,0.04)] disabled:opacity-40"
+          className="flex h-9 items-center gap-1.5 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 text-[12px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:bg-[rgba(13,13,13,0.04)] disabled:opacity-40 dark:border-[rgba(236,236,236,0.12)] dark:text-[rgba(236,236,236,0.65)] dark:hover:bg-[rgba(236,236,236,0.06)]"
         >
           <Eraser size={14} />
           Очистить
         </button>
 
+        {/* Применить */}
         <button
           type="button"
           onClick={handleApply}
