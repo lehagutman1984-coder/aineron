@@ -17,7 +17,7 @@ const INTERESTS = [
     label: "Написать код",
     description: "Отладка, рефакторинг, объяснение алгоритмов",
     icon: Code2,
-    color: "#0a7cff",
+    color: "#f0a38a",
     bg: "rgba(10,124,255,0.08)",
     prompts: [
       "Напиши функцию на Python для валидации email",
@@ -133,7 +133,7 @@ export default function WelcomePage() {
                 s < step
                   ? "bg-[#0d0d0d] text-white"
                   : s === step
-                  ? "bg-[#0a7cff] text-white"
+                  ? "bg-[#f0a38a] text-white"
                   : "bg-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.40)]",
               ].join(" ")}
             >
@@ -197,7 +197,7 @@ function Step1({ onSelect }: { onSelect: (key: InterestKey) => void }) {
     <>
       <div className="mb-6 text-center">
         <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-[12px] bg-[rgba(10,124,255,0.08)]">
-          <Star size={20} className="text-[#0a7cff]" />
+          <Star size={20} className="text-[#f0a38a]" />
         </div>
         <h1 className="text-[22px] font-bold text-[#0d0d0d]">Добро пожаловать!</h1>
         <p className="mt-1 text-[14px] text-[rgba(13,13,13,0.52)]">
@@ -278,15 +278,15 @@ function Step2({
             className={[
               "flex items-center gap-3 rounded-[10px] border px-4 py-3 text-left text-[13px] transition-all",
               pickedPrompt === prompt
-                ? "border-[#0a7cff] bg-[rgba(10,124,255,0.06)] text-[#0d0d0d]"
+                ? "border-[#f0a38a] bg-[rgba(10,124,255,0.06)] text-[#0d0d0d]"
                 : "border-[rgba(13,13,13,0.10)] text-[rgba(13,13,13,0.70)] hover:border-[rgba(13,13,13,0.20)] hover:text-[#0d0d0d]",
             ].join(" ")}
           >
             <div
               className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all"
               style={{
-                borderColor: pickedPrompt === prompt ? "#0a7cff" : "rgba(13,13,13,0.18)",
-                background: pickedPrompt === prompt ? "#0a7cff" : "transparent",
+                borderColor: pickedPrompt === prompt ? "#f0a38a" : "rgba(13,13,13,0.18)",
+                background: pickedPrompt === prompt ? "#f0a38a" : "transparent",
               }}
             >
               {pickedPrompt === prompt && <Check size={10} className="text-white" />}
@@ -306,7 +306,7 @@ function Step2({
         </Link>
         <button
           onClick={onNext}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-[10px] bg-[#0a7cff] py-2.5 text-[13px] font-medium text-white transition-colors hover:bg-[#0066cc]"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-[10px] bg-[#f0a38a] py-2.5 text-[13px] font-medium text-white transition-colors hover:bg-[#0066cc]"
         >
           Продолжить
           <ArrowRight size={14} />
@@ -343,16 +343,16 @@ function Step3({
         <Link
           href={`${interest.catalog}`}
           onClick={() => localStorage.setItem(ONBOARDING_KEY, "1")}
-          className="mb-4 flex items-start gap-3 rounded-[12px] border border-[#0a7cff] bg-[rgba(10,124,255,0.05)] p-4 text-[13px] transition-all hover:bg-[rgba(10,124,255,0.08)]"
+          className="mb-4 flex items-start gap-3 rounded-[12px] border border-[#f0a38a] bg-[rgba(10,124,255,0.05)] p-4 text-[13px] transition-all hover:bg-[rgba(10,124,255,0.08)]"
         >
-          <div className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#0a7cff]" />
+          <div className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#f0a38a]" />
           <div>
-            <p className="mb-0.5 text-[11px] font-medium uppercase tracking-wide text-[#0a7cff]">
+            <p className="mb-0.5 text-[11px] font-medium uppercase tracking-wide text-[#f0a38a]">
               Ваш первый запрос
             </p>
             <p className="text-[#0d0d0d]">{prompt}</p>
           </div>
-          <ArrowRight size={14} className="ml-auto mt-0.5 shrink-0 text-[#0a7cff]" />
+          <ArrowRight size={14} className="ml-auto mt-0.5 shrink-0 text-[#f0a38a]" />
         </Link>
       )}
 

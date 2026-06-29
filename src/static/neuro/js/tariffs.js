@@ -27,7 +27,7 @@
         const note = document.createElement('div');
         note.className = 'tariff-notification';
         let icon = 'fa-info-circle';
-        let color = '#0a7cff';
+        let color = '#f0a38a';
         if (type === 'success') { icon = 'fa-check-circle'; color = '#21be19'; }
         else if (type === 'error') { icon = 'fa-exclamation-circle'; color = '#e53e3e'; }
         note.innerHTML = `<i class="fas ${icon}"></i><span>${message}</span>`;

@@ -25,7 +25,7 @@ export default function ArenaPage() {
         </div>
         <p className="text-[14px] text-[rgba(13,13,13,0.50)] dark:text-[rgba(236,236,236,0.45)]">
           Elo-рейтинг моделей на основе сравнительных поединков. Голосуйте на странице{" "}
-          <Link href="/compare" className="text-[#0a7cff] hover:underline">
+          <Link href="/compare" className="text-[#f0a38a] hover:underline">
             сравнения
           </Link>{" "}
           — рейтинг обновляется автоматически.
@@ -49,7 +49,7 @@ export default function ArenaPage() {
           <Swords size={32} className="mx-auto mb-3 text-[rgba(13,13,13,0.25)] dark:text-[rgba(236,236,236,0.25)]" />
           <p className="text-[14px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.40)]">
             Арена пуста. Сыграйте первый матч на странице{" "}
-            <Link href="/compare" className="text-[#0a7cff] hover:underline">
+            <Link href="/compare" className="text-[#f0a38a] hover:underline">
               сравнения моделей
             </Link>
             .
@@ -135,7 +135,7 @@ function ArenaRow({ entry, rank }: { entry: ArenaEntry; rank: number }) {
             />
           ) : (
             <div className="h-7 w-7 shrink-0 rounded-[6px] bg-[rgba(10,124,255,0.12)] flex items-center justify-center">
-              <TrendingUp size={12} className="text-[#0a7cff]" />
+              <TrendingUp size={12} className="text-[#f0a38a]" />
             </div>
           )}
           <div>

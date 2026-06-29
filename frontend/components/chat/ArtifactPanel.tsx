@@ -144,7 +144,7 @@ export function ArtifactPanel({ artifact, onClose }: ArtifactPanelProps) {
     <div className="flex h-full flex-col" style={{ borderLeft: "1px solid var(--border-color, rgba(13,13,13,0.10))" }}>
       {/* Header */}
       <div className="flex shrink-0 items-center gap-2 border-b border-[rgba(13,13,13,0.08)] px-3 py-2.5 dark:border-[rgba(255,255,255,0.08)]">
-        <Code2 size={14} className="shrink-0 text-[#0a7cff]" />
+        <Code2 size={14} className="shrink-0 text-[#f0a38a]" />
         <span className="flex-1 truncate text-[13px] font-semibold text-[#0d0d0d] dark:text-[#ececec]">
           {artifact.title || "Артефакт"}
         </span>

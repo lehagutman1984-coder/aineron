@@ -64,7 +64,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #0a7cff;
+    color: #f0a38a;
     font-size: 20px;
     flex-shrink: 0;
     box-shadow: 0 2px 6px rgba(0,0,0,0.05);
@@ -156,7 +156,7 @@
 }
 
 .menu-row.active .menu-icon {
-    color: #0a7cff;
+    color: #f0a38a;
 }
 
 .menu-row:hover:not(.active) {
@@ -254,7 +254,7 @@
 
 .chat-row .fa-comment { color: #e53e3e; }
 .chat-row .fa-image { color: #ff8a00; }
-.chat-row .fa-video { color: #0a7cff; }
+.chat-row .fa-video { color: #f0a38a; }
 .chat-row .fa-graduation-cap { color: #8a4fe5; }
 .chat-row .fa-dice { color: #e53e99; }
 
@@ -522,7 +522,7 @@
     border-radius: 3px;
 }
 .chats-section::-webkit-scrollbar-thumb {
-    background: #0a7cff;
+    background: #f0a38a;
     border-radius: 3px;
 }
 .chats-section::-webkit-scrollbar-thumb:hover {
@@ -530,7 +530,7 @@
 }
 .chats-section {
     scrollbar-width: thin;
-    scrollbar-color: #0a7cff rgba(13, 13, 13, 0.05);
+    scrollbar-color: #f0a38a rgba(13, 13, 13, 0.05);
 }
 
 .login-btn-sidebar {

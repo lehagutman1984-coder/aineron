@@ -16,7 +16,7 @@ class Migration(migrations.Migration):
                 ('subdomain', models.SlugField(max_length=63, unique=True, verbose_name='Субдомен')),
                 ('custom_domain', models.CharField(blank=True, max_length=253, verbose_name='Кастомный домен')),
                 ('logo_url', models.URLField(blank=True, verbose_name='URL логотипа')),
-                ('primary_color', models.CharField(default='#0a7cff', max_length=7, verbose_name='Основной цвет')),
+                ('primary_color', models.CharField(default='#f0a38a', max_length=7, verbose_name='Основной цвет')),
                 ('company_name', models.CharField(blank=True, max_length=100, verbose_name='Название компании')),
                 ('support_email', models.EmailField(blank=True, verbose_name='Email поддержки')),
                 ('is_active', models.BooleanField(default=True, verbose_name='Активен')),

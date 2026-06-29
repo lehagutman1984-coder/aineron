@@ -56,7 +56,7 @@ export default function UsagePage() {
               className={[
                 "rounded-[6px] px-3 py-1.5 text-[13px] font-medium transition-all",
                 days === opt.value
-                  ? "bg-[#0a7cff] text-white"
+                  ? "bg-[#f0a38a] text-white"
                   : "text-[rgba(13,13,13,0.6)] hover:text-[#0d0d0d]",
               ].join(" ")}
             >
@@ -69,7 +69,7 @@ export default function UsagePage() {
           <select
             value={orgId ?? ""}
             onChange={(e) => setOrgId(e.target.value ? Number(e.target.value) : undefined)}
-            className="rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-3 py-2 text-[13px] text-[rgba(13,13,13,0.7)] outline-none focus:border-[#0a7cff]"
+            className="rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-3 py-2 text-[13px] text-[rgba(13,13,13,0.7)] outline-none focus:border-[#f0a38a]"
           >
             <option value="">Мои запросы</option>
             {orgs.map((o) => (
@@ -126,7 +126,7 @@ export default function UsagePage() {
                       style={{ height: "100px" }}
                     >
                       <div
-                        className="absolute bottom-0 left-0 right-0 rounded-t-[2px] bg-[#0a7cff] transition-all group-hover:bg-[#0066cc]"
+                        className="absolute bottom-0 left-0 right-0 rounded-t-[2px] bg-[#f0a38a] transition-all group-hover:bg-[#0066cc]"
                         style={{ height: `${Math.max(pct, 2)}%` }}
                       />
                       <div className="absolute bottom-full left-1/2 mb-1 hidden -translate-x-1/2 rounded-[4px] bg-[#0d0d0d] px-2 py-1 text-[10px] text-white group-hover:block whitespace-nowrap">
@@ -168,7 +168,7 @@ export default function UsagePage() {
                         <td className="py-2 pr-4 font-medium text-[#0d0d0d]">
                           <Link
                             href={`/models/${row.model_slug}/`}
-                            className="hover:text-[#0a7cff] transition-colors"
+                            className="hover:text-[#f0a38a] transition-colors"
                           >
                             {row.model_name}
                           </Link>
@@ -206,7 +206,7 @@ function TotalCard({
 }) {
   return (
     <div className="rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white p-5">
-      <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-[10px] bg-[rgba(10,124,255,0.10)] text-[#0a7cff]">
+      <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-[10px] bg-[rgba(10,124,255,0.10)] text-[#f0a38a]">
         {icon}
       </div>
       <p className="mb-0.5 text-[24px] font-bold text-[#0d0d0d]">{value}</p>

@@ -46,7 +46,7 @@ function RegisterForm() {
       <h1 className="mb-1 text-[22px] font-bold text-[#0d0d0d]">Создать аккаунт</h1>
       <p className="mb-6 text-[14px] text-[rgba(13,13,13,0.55)]">
         Уже есть аккаунт?{" "}
-        <Link href="/login/" className="text-[#0a7cff] hover:underline underline-offset-2">
+        <Link href="/login/" className="text-[#f0a38a] hover:underline underline-offset-2">
           Войти
         </Link>
       </p>
@@ -68,7 +68,7 @@ function RegisterForm() {
             required
             autoComplete="email"
             placeholder="you@example.com"
-            className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3.5 py-2.5 text-[14px] text-[#0d0d0d] placeholder-[rgba(13,13,13,0.38)] outline-none focus:border-[#0a7cff] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all"
+            className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3.5 py-2.5 text-[14px] text-[#0d0d0d] placeholder-[rgba(13,13,13,0.38)] outline-none focus:border-[#f0a38a] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all"
           />
         </div>
         <div>
@@ -82,7 +82,7 @@ function RegisterForm() {
             required
             autoComplete="new-password"
             placeholder="Минимум 8 символов"
-            className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3.5 py-2.5 text-[14px] text-[#0d0d0d] placeholder-[rgba(13,13,13,0.38)] outline-none focus:border-[#0a7cff] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all"
+            className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3.5 py-2.5 text-[14px] text-[#0d0d0d] placeholder-[rgba(13,13,13,0.38)] outline-none focus:border-[#f0a38a] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all"
           />
         </div>
 
@@ -95,7 +95,7 @@ function RegisterForm() {
         <button
           type="submit"
           disabled={loading}
-          className="mt-1 h-10 w-full rounded-[8px] bg-[#0a7cff] text-[14px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="mt-1 h-10 w-full rounded-[8px] bg-[#f0a38a] text-[14px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {loading ? "Создаём аккаунт..." : "Создать аккаунт"}
         </button>

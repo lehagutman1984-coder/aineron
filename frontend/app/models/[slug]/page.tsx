@@ -140,7 +140,7 @@ export default async function ModelDetailPage({ params, searchParams }: Props) {
               className="rounded-[14px] object-cover shrink-0"
             />
           ) : (
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[14px] bg-[rgba(10,124,255,0.10)] text-[#0a7cff]">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[14px] bg-[rgba(10,124,255,0.10)] text-[#f0a38a]">
               {isMedia ? <ImageIcon size={28} /> : <Code2 size={28} />}
             </div>
           )}
@@ -238,7 +238,7 @@ export default async function ModelDetailPage({ params, searchParams }: Props) {
                   {n.avatar ? (
                     <img src={n.avatar} alt={n.name} width={36} height={36} className="rounded-[8px]" />
                   ) : (
-                    <div className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[rgba(10,124,255,0.08)] text-[#0a7cff]">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[rgba(10,124,255,0.08)] text-[#f0a38a]">
                       <Code2 size={16} />
                     </div>
                   )}
@@ -264,7 +264,7 @@ function StatChip({
 }) {
   return (
     <div className="flex items-center gap-1.5 rounded-full border border-[rgba(13,13,13,0.12)] px-3 py-1.5 text-[13px] text-[rgba(13,13,13,0.65)]">
-      <span className="text-[#0a7cff]">{icon}</span>
+      <span className="text-[#f0a38a]">{icon}</span>
       {label}
     </div>
   );

@@ -112,7 +112,7 @@ export default function ReferralPage() {
             <div className="mb-1 text-[12px] text-[rgba(13,13,13,0.45)]">Вывод средств</div>
             <button
               onClick={() => setShowWithdrawModal(true)}
-              className="flex items-center gap-2 rounded-[8px] bg-[#0a7cff] px-3 py-2 text-[13px] font-medium text-white hover:bg-[#0066cc] transition-colors"
+              className="flex items-center gap-2 rounded-[8px] bg-[#f0a38a] px-3 py-2 text-[13px] font-medium text-white hover:bg-[#0066cc] transition-colors"
             >
               <ArrowDownToLine size={14} />
               Запросить
@@ -224,7 +224,7 @@ export default function ReferralPage() {
                 value={withdrawAmount}
                 onChange={(e) => setWithdrawAmount(e.target.value)}
                 placeholder="0.00"
-                className="h-10 w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[14px] text-[#0d0d0d] outline-none focus:border-[#0a7cff] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all"
+                className="h-10 w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[14px] text-[#0d0d0d] outline-none focus:border-[#f0a38a] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all"
               />
             </div>
 
@@ -238,7 +238,7 @@ export default function ReferralPage() {
                 onChange={(e) => setWithdrawCard(e.target.value)}
                 placeholder="0000 0000 0000 0000"
                 maxLength={19}
-                className="h-10 w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[14px] text-[#0d0d0d] outline-none focus:border-[#0a7cff] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all"
+                className="h-10 w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[14px] text-[#0d0d0d] outline-none focus:border-[#f0a38a] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all"
               />
             </div>
 
@@ -263,7 +263,7 @@ export default function ReferralPage() {
                   !withdrawCard ||
                   parseFloat(withdrawAmount) <= 0
                 }
-                className="flex-1 h-10 rounded-[8px] bg-[#0a7cff] text-[14px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 h-10 rounded-[8px] bg-[#f0a38a] text-[14px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {withdrawMutation.isPending ? "Отправка..." : "Запросить"}
               </button>

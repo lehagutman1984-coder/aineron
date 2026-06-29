@@ -77,14 +77,14 @@ export default function PromptsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Поиск промтов..."
-            className="h-9 w-full rounded-[9px] border border-[rgba(13,13,13,0.12)] bg-white pl-8 pr-3 text-[13px] text-[#0d0d0d] outline-none focus:border-[#0a7cff] dark:border-[rgba(255,255,255,0.10)] dark:bg-[#1c1c1f] dark:text-[#ececec]"
+            className="h-9 w-full rounded-[9px] border border-[rgba(13,13,13,0.12)] bg-white pl-8 pr-3 text-[13px] text-[#0d0d0d] outline-none focus:border-[#f0a38a] dark:border-[rgba(255,255,255,0.10)] dark:bg-[#1c1c1f] dark:text-[#ececec]"
           />
         </div>
 
         {user && (
           <button
             onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1.5 rounded-[9px] bg-[#0a7cff] px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#0066cc]"
+            className="flex items-center gap-1.5 rounded-[9px] bg-[#f0a38a] px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#0066cc]"
           >
             <Plus size={14} />
             Добавить промт
@@ -188,12 +188,12 @@ function PromptCard({
           onClick={onCopy}
           className="flex items-center gap-1.5 rounded-[7px] border border-[rgba(13,13,13,0.10)] px-2.5 py-1.5 text-[12px] font-medium text-[rgba(13,13,13,0.60)] transition-colors hover:border-[rgba(13,13,13,0.20)] hover:text-[#0d0d0d] dark:border-[rgba(255,255,255,0.10)] dark:text-[rgba(236,236,236,0.50)]"
         >
-          {copied ? <Check size={12} className="text-[#0a7cff]" /> : <Copy size={12} />}
+          {copied ? <Check size={12} className="text-[#f0a38a]" /> : <Copy size={12} />}
           {copied ? "Скопировано" : "Копировать"}
         </button>
         <Link
           href={`/models/`}
-          className="flex items-center gap-1.5 rounded-[7px] bg-[rgba(10,124,255,0.08)] px-2.5 py-1.5 text-[12px] font-medium text-[#0a7cff] transition-colors hover:bg-[rgba(10,124,255,0.14)]"
+          className="flex items-center gap-1.5 rounded-[7px] bg-[rgba(10,124,255,0.08)] px-2.5 py-1.5 text-[12px] font-medium text-[#f0a38a] transition-colors hover:bg-[rgba(10,124,255,0.14)]"
         >
           Использовать
         </Link>
@@ -248,7 +248,7 @@ function AddPromptModal({ onClose }: { onClose: () => void }) {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Например: Анализ резюме"
-              className="h-9 w-full rounded-[9px] border border-[rgba(13,13,13,0.12)] bg-transparent px-3 text-[13px] text-[#0d0d0d] outline-none focus:border-[#0a7cff] dark:border-[rgba(255,255,255,0.12)] dark:text-[#ececec]"
+              className="h-9 w-full rounded-[9px] border border-[rgba(13,13,13,0.12)] bg-transparent px-3 text-[13px] text-[#0d0d0d] outline-none focus:border-[#f0a38a] dark:border-[rgba(255,255,255,0.12)] dark:text-[#ececec]"
             />
           </div>
 
@@ -259,7 +259,7 @@ function AddPromptModal({ onClose }: { onClose: () => void }) {
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="h-9 w-full rounded-[9px] border border-[rgba(13,13,13,0.12)] bg-white px-3 text-[13px] text-[#0d0d0d] outline-none focus:border-[#0a7cff] dark:border-[rgba(255,255,255,0.12)] dark:bg-[#1c1c1f] dark:text-[#ececec]"
+              className="h-9 w-full rounded-[9px] border border-[rgba(13,13,13,0.12)] bg-white px-3 text-[13px] text-[#0d0d0d] outline-none focus:border-[#f0a38a] dark:border-[rgba(255,255,255,0.12)] dark:bg-[#1c1c1f] dark:text-[#ececec]"
             >
               {CATEGORIES.filter((c) => c.key !== "all").map((c) => (
                 <option key={c.key} value={c.key}>{c.label}</option>
@@ -276,7 +276,7 @@ function AddPromptModal({ onClose }: { onClose: () => void }) {
               onChange={(e) => setContent(e.target.value)}
               placeholder="Введите шаблон промта..."
               rows={5}
-              className="w-full resize-none rounded-[9px] border border-[rgba(13,13,13,0.12)] bg-transparent px-3 py-2 text-[13px] leading-relaxed text-[#0d0d0d] outline-none focus:border-[#0a7cff] dark:border-[rgba(255,255,255,0.12)] dark:text-[#ececec]"
+              className="w-full resize-none rounded-[9px] border border-[rgba(13,13,13,0.12)] bg-transparent px-3 py-2 text-[13px] leading-relaxed text-[#0d0d0d] outline-none focus:border-[#f0a38a] dark:border-[rgba(255,255,255,0.12)] dark:text-[#ececec]"
             />
           </div>
 
@@ -295,7 +295,7 @@ function AddPromptModal({ onClose }: { onClose: () => void }) {
             <button
               type="submit"
               disabled={!title.trim() || !content.trim() || mutation.isPending}
-              className="rounded-[8px] bg-[#0a7cff] px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#0066cc] disabled:opacity-40"
+              className="rounded-[8px] bg-[#f0a38a] px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#0066cc] disabled:opacity-40"
             >
               {mutation.isPending ? "Сохранение..." : "Сохранить"}
             </button>
@@ -308,7 +308,7 @@ function AddPromptModal({ onClose }: { onClose: () => void }) {
 
 // ── Category icon helper ───────────────────────────────────────────────────────
 function CategoryIcon({ category }: { category: string }) {
-  const cls = "shrink-0 text-[#0a7cff]";
+  const cls = "shrink-0 text-[#f0a38a]";
   const size = 14;
   switch (category) {
     case "code": return <Code2 size={size} className={cls} />;

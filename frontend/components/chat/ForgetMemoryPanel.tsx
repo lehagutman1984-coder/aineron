@@ -73,7 +73,7 @@ export function ForgetMemoryPanel({ onClose }: Props) {
         ))}
       </div>
       <div className="border-t border-[rgba(13,13,13,0.07)] px-3 py-2 dark:border-[rgba(255,255,255,0.07)]">
-        <a href="/account/memory/" className="text-[11px] text-[rgba(10,124,255,0.8)] hover:text-[#0a7cff]">Управление памятью →</a>
+        <a href="/account/memory/" className="text-[11px] text-[rgba(10,124,255,0.8)] hover:text-[#f0a38a]">Управление памятью →</a>
       </div>
     </div>
   );

@@ -140,7 +140,7 @@ export default function PersonasPage() {
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   placeholder="Например: Дружелюбный ментор"
-                  className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-transparent px-3 py-2 text-[13px] outline-none focus:border-[#0a7cff]"
+                  className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-transparent px-3 py-2 text-[13px] outline-none focus:border-[#f0a38a]"
                 />
               </div>
               <div>
@@ -151,7 +151,7 @@ export default function PersonasPage() {
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                   placeholder="Одна строка о персоне"
-                  className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-transparent px-3 py-2 text-[13px] outline-none focus:border-[#0a7cff]"
+                  className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-transparent px-3 py-2 text-[13px] outline-none focus:border-[#f0a38a]"
                 />
               </div>
               <div>
@@ -163,7 +163,7 @@ export default function PersonasPage() {
                   onChange={(e) => setForm({ ...form, system_prompt: e.target.value })}
                   rows={5}
                   placeholder="Ты — дружелюбный ментор по программированию..."
-                  className="w-full resize-none rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-transparent px-3 py-2 text-[13px] outline-none focus:border-[#0a7cff]"
+                  className="w-full resize-none rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-transparent px-3 py-2 text-[13px] outline-none focus:border-[#f0a38a]"
                 />
               </div>
               {formErr && (
@@ -213,7 +213,7 @@ function PersonaCard({ persona, onDelete }: { persona: Persona; onDelete?: () =>
             className="shrink-0 rounded-[8px] object-cover"
           />
         ) : (
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] bg-[rgba(10,124,255,0.10)] text-[#0a7cff]">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] bg-[rgba(10,124,255,0.10)] text-[#f0a38a]">
             <Bot size={18} />
           </div>
         )}

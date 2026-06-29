@@ -34,7 +34,7 @@ export default function ProjectGraphPage() {
         </Link>
         <span className="text-[rgba(13,13,13,0.20)]">/</span>
         <div className="flex items-center gap-2">
-          <Network size={16} className="text-[#0a7cff]" />
+          <Network size={16} className="text-[#f0a38a]" />
           <span className="text-[14px] font-semibold text-[#0d0d0d] dark:text-[#ececec]">
             Граф знаний
           </span>
@@ -64,7 +64,7 @@ export default function ProjectGraphPage() {
             </p>
             <Link
               href={`/projects/${id}`}
-              className="text-[13px] font-medium text-[#0a7cff] hover:underline"
+              className="text-[13px] font-medium text-[#f0a38a] hover:underline"
             >
               Перейти к базе знаний
             </Link>
@@ -166,7 +166,7 @@ function GraphCanvas({ nodes, edges }: { nodes: GraphNode[]; edges: GraphEdge[] 
         if (!a || !b) continue;
         const alpha = Math.min(1, e.weight * 0.8 + 0.15);
         ctx.globalAlpha = alpha;
-        ctx.strokeStyle = "#0a7cff";
+        ctx.strokeStyle = "#f0a38a";
         ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
       }
 
@@ -177,7 +177,7 @@ function GraphCanvas({ nodes, edges }: { nodes: GraphNode[]; edges: GraphEdge[] 
         ctx.arc(n.x, n.y, 18, 0, Math.PI * 2);
         ctx.fillStyle = "rgba(10,124,255,0.12)";
         ctx.fill();
-        ctx.strokeStyle = "#0a7cff";
+        ctx.strokeStyle = "#f0a38a";
         ctx.lineWidth = 1.5;
         ctx.stroke();
 

@@ -118,7 +118,7 @@ export default async function BlogPostPage({ params }: Props) {
         {/* Header */}
         <header className="mb-8">
           {post.category && (
-            <span className="mb-3 inline-block text-[12px] font-semibold uppercase tracking-wide text-[#0a7cff]">
+            <span className="mb-3 inline-block text-[12px] font-semibold uppercase tracking-wide text-[#f0a38a]">
               {post.category.name}
             </span>
           )}
@@ -166,8 +166,8 @@ export default async function BlogPostPage({ params }: Props) {
             [&_li]:mb-1
             [&_pre]:overflow-x-auto [&_pre]:rounded-[8px] [&_pre]:bg-[#f5f5f5] [&_pre]:p-4 [&_pre]:text-[13px]
             [&_code]:rounded [&_code]:bg-[#f5f5f5] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-[13px] [&_code]:font-mono
-            [&_a]:text-[#0a7cff] [&_a]:underline hover:[&_a]:no-underline
-            [&_blockquote]:border-l-4 [&_blockquote]:border-[#0a7cff] [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-[rgba(13,13,13,0.6)]"
+            [&_a]:text-[#f0a38a] [&_a]:underline hover:[&_a]:no-underline
+            [&_blockquote]:border-l-4 [&_blockquote]:border-[#f0a38a] [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-[rgba(13,13,13,0.6)]"
           dangerouslySetInnerHTML={{ __html: post.content }}
         />
 
@@ -183,7 +183,7 @@ export default async function BlogPostPage({ params }: Props) {
                 <Link
                   key={slug}
                   href={`/models/${slug}/`}
-                  className="rounded-full border border-[rgba(13,13,13,0.15)] px-3 py-1 text-[12px] text-[rgba(13,13,13,0.7)] transition-all hover:border-[#0a7cff] hover:text-[#0a7cff]"
+                  className="rounded-full border border-[rgba(13,13,13,0.15)] px-3 py-1 text-[12px] text-[rgba(13,13,13,0.7)] transition-all hover:border-[#f0a38a] hover:text-[#f0a38a]"
                 >
                   {slug}
                 </Link>

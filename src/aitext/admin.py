@@ -61,7 +61,7 @@ class NeuralNetworkAdmin(admin.ModelAdmin):
         elif obj.avatar_url:
             return format_html('<img src="{}" width="40" height="40" style="border-radius: 8px; object-fit: cover;" />', obj.avatar_url)
         else:
-            return format_html('<img src="https://placehold.co/40x40/0a7cff/white?text={}" width="40" height="40" style="border-radius: 8px;" />', obj.name[0])
+            return format_html('<img src="https://placehold.co/40x40/f0a38a/white?text={}" width="40" height="40" style="border-radius: 8px;" />', obj.name[0])
     avatar_image.short_description = 'Аватар'
 
     def get_readonly_fields(self, request, obj=None):

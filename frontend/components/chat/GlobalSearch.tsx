@@ -103,7 +103,7 @@ export function GlobalSearch() {
             className="flex-1 bg-transparent text-sm outline-none text-[#0d0d0d] placeholder:text-[rgba(13,13,13,0.32)]"
           />
           {loading && (
-            <div className="w-4 h-4 border-2 border-[#0a7cff] border-t-transparent rounded-full animate-spin flex-shrink-0" />
+            <div className="w-4 h-4 border-2 border-[#f0a38a] border-t-transparent rounded-full animate-spin flex-shrink-0" />
           )}
           <button onClick={() => setOpen(false)} className="text-[rgba(13,13,13,0.35)] hover:text-[#0d0d0d]">
             <X size={16} />
@@ -123,7 +123,7 @@ export function GlobalSearch() {
                 >
                   <div className="flex-shrink-0 mt-0.5">
                     {r.role === "user"
-                      ? <MessageSquare size={14} className="text-[#0a7cff]" />
+                      ? <MessageSquare size={14} className="text-[#f0a38a]" />
                       : <Bot size={14} className="text-[rgba(13,13,13,0.40)]" />}
                   </div>
                   <div className="min-w-0 flex-1">

@@ -110,8 +110,8 @@ function FileTypeIcon({ mime }: { mime: string }) {
     mime.includes("javascript") ||
     mime.includes("typescript")
   )
-    return <FileCode size={17} style={{ color: "#0a7cff" }} />;
-  return <File size={17} style={{ color: "#0a7cff" }} />;
+    return <FileCode size={17} style={{ color: "#f0a38a" }} />;
+  return <File size={17} style={{ color: "#f0a38a" }} />;
 }
 
 function formatBytes(bytes: number): string {

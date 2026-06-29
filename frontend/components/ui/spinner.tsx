@@ -10,7 +10,7 @@ export function Spinner({ size = 20, className }: SpinnerProps) {
   return (
     <Loader2
       size={size}
-      className={cn("animate-spin text-[#0a7cff]", className)}
+      className={cn("animate-spin text-[#f0a38a]", className)}
     />
   );
 }

@@ -19,4 +19,4 @@ class UserSerializer(serializers.Serializer):
             return ''
 
     def get_avatar(self, user):
-        return f"https://ui-avatars.com/api/?name={user.email[0].upper()}&background=0a7cff&color=fff&size=64"
+        return f"https://ui-avatars.com/api/?name={user.email[0].upper()}&background=f0a38a&color=fff&size=64"

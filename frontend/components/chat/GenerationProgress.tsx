@@ -60,7 +60,7 @@ export function GenerationProgress({ generationId, onComplete }: Props) {
         {done ? (
           <CheckCircle2 size={15} className="text-[#10a37f]" />
         ) : (
-          <Loader2 size={15} className="animate-spin text-[#0a7cff]" />
+          <Loader2 size={15} className="animate-spin text-[#f0a38a]" />
         )}
         <span className="flex items-center gap-1.5 text-[13px] font-medium text-[rgba(13,13,13,0.7)] dark:text-[rgba(236,236,236,0.7)]">
           <Film size={13} className="opacity-60" />
@@ -73,7 +73,7 @@ export function GenerationProgress({ generationId, onComplete }: Props) {
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-[rgba(13,13,13,0.08)] dark:bg-[rgba(255,255,255,0.1)]">
         <div
           className={`h-full rounded-full transition-all duration-500 ease-out ${
-            done ? "bg-[#10a37f]" : "bg-[#0a7cff]"
+            done ? "bg-[#10a37f]" : "bg-[#f0a38a]"
           }`}
           style={{ width: `${pct}%` }}
         />

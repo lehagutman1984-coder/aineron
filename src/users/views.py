@@ -1345,7 +1345,7 @@ def profile_data(request):
             'days': days_with_us,
             'tariff': user.tariff.display_name if user.tariff else 'Бесплатный',
             'stars': user.pages_count,
-            'avatar_url': f"https://ui-avatars.com/api/?name={user.username}&background=0a7cff&color=fff&size=128"
+            'avatar_url': f"https://ui-avatars.com/api/?name={user.username}&background=f0a38a&color=fff&size=128"
         },
         'trial_tariff': trial_tariff_data,
         'history': history,  # пополнения

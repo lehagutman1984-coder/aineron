@@ -431,9 +431,9 @@
 
 /* Ссылки */
 .message-text a {
-    color: #0a7cff;
+    color: #f0a38a;
     text-decoration: none;
-    border-bottom: 1px dotted #0a7cff;
+    border-bottom: 1px dotted #f0a38a;
 }
 .message-text a:hover {
     text-decoration: underline;
@@ -466,7 +466,7 @@
     transition: color 0.2s;
 }
 .message-text .media-actions button:hover {
-    color: #0a7cff;
+    color: #f0a38a;
 }
 .message-text .media-content {
     padding: 12px;
@@ -602,7 +602,7 @@
 
 /* Кнопка подписки — без изменений (как ты просил) */
 .timer-subscribe-link {
-    background: #0a7cff;
+    background: #f0a38a;
     border: none;
     border-radius: 40px;
     padding: 8px 20px;

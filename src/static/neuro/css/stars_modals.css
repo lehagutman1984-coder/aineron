@@ -84,7 +84,7 @@
 .balance-value {
     font-size: 24px;
     font-weight: 600;
-    color: #0a7cff;
+    color: #f0a38a;
 }
 .balance-value span:first-child {
     font-size: 28px;
@@ -114,7 +114,7 @@
     font-weight: 500;
 }
 .pages-preset-btn.active {
-    background: #0a7cff;
+    background: #f0a38a;
     color: white;
 }
 .custom-input-group {
@@ -186,7 +186,7 @@
     color: #333;
 }
 .pages-modal-btn.buy {
-    background: #0a7cff;
+    background: #f0a38a;
     color: white;
 }
 .pages-modal-btn.buy:disabled {

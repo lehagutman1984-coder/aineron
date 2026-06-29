@@ -64,7 +64,7 @@ export default async function PrivacyPolicyPage() {
           ) : (
             <p className="text-[14px] text-[rgba(13,13,13,0.55)]">
               Документ находится в разработке. Свяжитесь с нами по адресу{" "}
-              <a href="mailto:support@aineron.ru" className="text-[#0a7cff] hover:underline">
+              <a href="mailto:support@aineron.ru" className="text-[#f0a38a] hover:underline">
                 support@aineron.ru
               </a>
             </p>

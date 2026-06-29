@@ -66,7 +66,7 @@ export default async function PublicGenerationPage({ params }: { params: { slug:
           <p className="mt-1 text-[13px] text-[rgba(13,13,13,0.45)]">
             Ссылка недействительна или публикация снята
           </p>
-          <Link href="/gallery/" className="mt-4 inline-block text-[13px] text-[#0a7cff] hover:underline">
+          <Link href="/gallery/" className="mt-4 inline-block text-[13px] text-[#f0a38a] hover:underline">
             В галерею
           </Link>
         </div>
@@ -121,7 +121,7 @@ export default async function PublicGenerationPage({ params }: { params: { slug:
           )}
           <div className="mt-4 flex flex-wrap items-center gap-3 text-[12px] text-[rgba(13,13,13,0.45)]">
             {gen.model_name && (
-              <span className="inline-flex items-center gap-1.5 rounded-[6px] bg-[rgba(10,124,255,0.08)] px-2 py-1 font-medium text-[#0a7cff]">
+              <span className="inline-flex items-center gap-1.5 rounded-[6px] bg-[rgba(10,124,255,0.08)] px-2 py-1 font-medium text-[#f0a38a]">
                 <Cpu size={12} />
                 {gen.model_name}
               </span>
@@ -146,7 +146,7 @@ export default async function PublicGenerationPage({ params }: { params: { slug:
         {/* CTA */}
         <div className="mt-5 flex items-center gap-4 rounded-[14px] border border-[rgba(10,124,255,0.15)] bg-[rgba(10,124,255,0.04)] p-5">
           <div className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-[12px] bg-[rgba(10,124,255,0.10)] sm:flex">
-            <Sparkles size={22} className="text-[#0a7cff]" />
+            <Sparkles size={22} className="text-[#f0a38a]" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[13px] font-medium text-[#0d0d0d]">
@@ -158,7 +158,7 @@ export default async function PublicGenerationPage({ params }: { params: { slug:
           </div>
           <Link
             href="/login/"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-[8px] bg-[#0a7cff] px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#0068e0]"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-[8px] bg-[#f0a38a] px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#0068e0]"
           >
             <LogIn size={14} />
             Войти, чтобы создать

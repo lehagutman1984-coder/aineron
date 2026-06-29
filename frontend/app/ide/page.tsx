@@ -201,7 +201,7 @@ export default function IdePage() {
                 href={ide.href}
                 className="group rounded-[12px] border border-[rgba(13,13,13,0.10)] p-4 hover:border-[rgba(13,13,13,0.20)] hover:bg-[rgba(13,13,13,0.02)] transition-all"
               >
-                <p className="mb-1.5 font-semibold text-[#0d0d0d] group-hover:text-[#0a7cff] transition-colors">
+                <p className="mb-1.5 font-semibold text-[#0d0d0d] group-hover:text-[#f0a38a] transition-colors">
                   {ide.name}
                 </p>
                 <p className="text-[13px] text-[rgba(13,13,13,0.55)]">{ide.desc}</p>

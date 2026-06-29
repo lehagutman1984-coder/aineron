@@ -98,7 +98,7 @@ function VerifyEmailForm() {
   return (
     <div className="rounded-[16px] border border-[rgba(13,13,13,0.10)] bg-white p-8 shadow-sm text-center">
       <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(10,124,255,0.08)]">
-        <Mail size={24} className="text-[#0a7cff]" />
+        <Mail size={24} className="text-[#f0a38a]" />
       </div>
       <h1 className="mb-1 text-[22px] font-bold text-[#0d0d0d]">Подтвердите email</h1>
       <p className="mb-6 text-[14px] text-[rgba(13,13,13,0.55)]">
@@ -118,7 +118,7 @@ function VerifyEmailForm() {
             onChange={(e) => handleChange(i, e.target.value)}
             onKeyDown={(e) => handleKeyDown(i, e)}
             disabled={loading}
-            className="h-12 w-10 rounded-[8px] border border-[rgba(13,13,13,0.15)] text-center text-[20px] font-bold text-[#0d0d0d] outline-none focus:border-[#0a7cff] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all disabled:opacity-50"
+            className="h-12 w-10 rounded-[8px] border border-[rgba(13,13,13,0.15)] text-center text-[20px] font-bold text-[#0d0d0d] outline-none focus:border-[#f0a38a] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all disabled:opacity-50"
           />
         ))}
       </div>
@@ -138,7 +138,7 @@ function VerifyEmailForm() {
       <button
         onClick={() => handleSubmit(digits.join(""))}
         disabled={loading || digits.some((d) => !d)}
-        className="mb-4 h-10 w-full rounded-[8px] bg-[#0a7cff] text-[14px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="mb-4 h-10 w-full rounded-[8px] bg-[#f0a38a] text-[14px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {loading ? "Проверяем..." : "Подтвердить"}
       </button>
@@ -146,7 +146,7 @@ function VerifyEmailForm() {
       <button
         onClick={handleResend}
         disabled={resendCountdown > 0 || resendLoading}
-        className="text-[13px] text-[rgba(13,13,13,0.55)] hover:text-[#0a7cff] disabled:cursor-not-allowed transition-colors"
+        className="text-[13px] text-[rgba(13,13,13,0.55)] hover:text-[#f0a38a] disabled:cursor-not-allowed transition-colors"
       >
         {resendCountdown > 0
           ? `Отправить повторно через ${resendCountdown} сек.`

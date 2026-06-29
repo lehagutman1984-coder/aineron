@@ -19,7 +19,7 @@ const CATS = [
 type CatKey = (typeof CATS)[number]["key"];
 
 function CatIcon({ category, size = 13 }: { category: string; size?: number }) {
-  const cls = "shrink-0 text-[#0a7cff]";
+  const cls = "shrink-0 text-[#f0a38a]";
   switch (category) {
     case "code": return <Code2 size={size} className={cls} />;
     case "translate": return <Globe size={size} className={cls} />;
@@ -78,7 +78,7 @@ export function PromptPicker({
           style={{ borderBottom: "1px solid rgba(13,13,13,0.08)" }}
         >
           <div className="flex items-center gap-2">
-            <BookMarked size={15} className="text-[#0a7cff]" />
+            <BookMarked size={15} className="text-[#f0a38a]" />
             <span className="text-[14px] font-semibold text-[#0d0d0d] dark:text-[#ececec]">
               Шаблоны промтов
             </span>
@@ -99,7 +99,7 @@ export function PromptPicker({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Поиск..."
-              className="h-8 w-full rounded-[8px] border border-[rgba(13,13,13,0.12)] bg-transparent pl-7 pr-3 text-[12px] text-[#0d0d0d] outline-none focus:border-[#0a7cff] dark:border-[rgba(255,255,255,0.12)] dark:text-[#ececec]"
+              className="h-8 w-full rounded-[8px] border border-[rgba(13,13,13,0.12)] bg-transparent pl-7 pr-3 text-[12px] text-[#0d0d0d] outline-none focus:border-[#f0a38a] dark:border-[rgba(255,255,255,0.12)] dark:text-[#ececec]"
             />
           </div>
         </div>

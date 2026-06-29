@@ -59,14 +59,14 @@ export default function AccountPage() {
         {/* Balance card */}
         <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-6">
           <div className="mb-4 flex items-center gap-2 text-[13px] font-medium text-[rgba(13,13,13,0.55)] uppercase tracking-wide">
-            <Star size={14} className="text-[#0a7cff]" />
+            <Star size={14} className="text-[#f0a38a]" />
             Баланс
           </div>
           <p className="mb-1 text-[36px] font-bold text-[#0d0d0d]">{profile.pages_count}</p>
           <p className="mb-4 text-[13px] text-[rgba(13,13,13,0.5)]">звёзд</p>
           <Link
             href="/account/billing/"
-            className="inline-flex h-9 items-center gap-2 rounded-[8px] bg-[#0a7cff] px-4 text-[13px] font-medium text-white hover:bg-[#0066cc] transition-colors"
+            className="inline-flex h-9 items-center gap-2 rounded-[8px] bg-[#f0a38a] px-4 text-[13px] font-medium text-white hover:bg-[#0066cc] transition-colors"
           >
             Пополнить
           </Link>
@@ -125,7 +125,7 @@ export default function AccountPage() {
         {/* Memory card */}
         <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-6">
           <div className="mb-4 flex items-center gap-2 text-[13px] font-medium text-[rgba(13,13,13,0.55)] uppercase tracking-wide">
-            <Brain size={14} className="text-[#0a7cff]" />
+            <Brain size={14} className="text-[#f0a38a]" />
             Память
           </div>
           <p className="mb-4 text-[13px] text-[rgba(13,13,13,0.6)]">
@@ -182,7 +182,7 @@ export default function AccountPage() {
                 {chat.network.avatar ? (
                   <img src={chat.network.avatar} alt={chat.network.name} width={28} height={28} className="rounded-[6px]" />
                 ) : (
-                  <div className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-[rgba(10,124,255,0.10)] text-[#0a7cff]">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-[rgba(10,124,255,0.10)] text-[#f0a38a]">
                     <MessageSquare size={13} />
                   </div>
                 )}

@@ -92,7 +92,7 @@
 }
 
 .tariffs-hero h1 span {
-    background: linear-gradient(135deg, #0a7cff, #6f4ef0);
+    background: linear-gradient(135deg, #f0a38a, #6f4ef0);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -143,7 +143,7 @@
     left: 0;
     right: 0;
     height: 4px;
-    background: linear-gradient(90deg, #0a7cff, #6f4ef0);
+    background: linear-gradient(90deg, #f0a38a, #6f4ef0);
 }
 
 /* Бейджи */
@@ -164,7 +164,7 @@
 
 .tariff-badge.popular {
     background: #e8f2ff;
-    color: #0a7cff;
+    color: #f0a38a;
 }
 
 .tariff-badge.optimal {
@@ -173,7 +173,7 @@
 }
 
 .tariff-badge.featured {
-    background: linear-gradient(135deg, #0a7cff, #6f4ef0);
+    background: linear-gradient(135deg, #f0a38a, #6f4ef0);
     color: white;
     position: absolute;
     right: 20px;
@@ -205,7 +205,7 @@
 .tariff-price {
     font-size: 32px;
     font-weight: 700;
-    color: #0a7cff;
+    color: #f0a38a;
 }
 
 .tariff-period {
@@ -219,7 +219,7 @@
     width: 100%;
     padding: 12px 16px;
     border: none;
-    background: #0a7cff;
+    background: #f0a38a;
     color: white;
     font-size: 16px;
     font-weight: 600;
@@ -255,7 +255,7 @@
 }
 
 .tariff-features li i {
-    color: #0a7cff;
+    color: #f0a38a;
     font-size: 14px;
     margin-top: 2px;
     flex-shrink: 0;
@@ -290,7 +290,7 @@
 }
 
 .tariffs-footer a {
-    color: #0a7cff;
+    color: #f0a38a;
     text-decoration: none;
 }
 
@@ -473,7 +473,7 @@
 }
 
 .confirm-checkbox a {
-    color: #0a7cff;
+    color: #f0a38a;
     text-decoration: none;
 }
 
@@ -510,7 +510,7 @@
 }
 
 .tariff-confirm-btn.pay {
-    background: #0a7cff;
+    background: #f0a38a;
     color: white;
 }
 

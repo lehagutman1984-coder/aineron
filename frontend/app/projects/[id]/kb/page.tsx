@@ -131,7 +131,7 @@ function ChunkViewer({ projectId, fileId }: { projectId: number; fileId: number 
               {hasMore && (
                 <button
                   onClick={() => setExpanded((p) => ({ ...p, [chunk.chunk_index]: !p[chunk.chunk_index] }))}
-                  className="mt-1 text-[10px] text-[#0a7cff] hover:underline"
+                  className="mt-1 text-[10px] text-[#f0a38a] hover:underline"
                 >
                   {isExpanded ? "Свернуть" : "Показать полностью"}
                 </button>
@@ -169,7 +169,7 @@ function FileRow({ file, projectId }: { file: KBFileStat; projectId: number }) {
         >
           {canViewChunks ? (
             showChunks
-              ? <ChevronDown size={15} className="text-[#0a7cff]" />
+              ? <ChevronDown size={15} className="text-[#f0a38a]" />
               : <ChevronRight size={15} className="text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.35)]" />
           ) : (
             <FileText size={15} className="text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.35)]" />
@@ -178,7 +178,7 @@ function FileRow({ file, projectId }: { file: KBFileStat; projectId: number }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span
-              className={`truncate text-[13px] font-medium text-[#0d0d0d] dark:text-[#ececec] ${canViewChunks ? "cursor-pointer hover:text-[#0a7cff]" : ""}`}
+              className={`truncate text-[13px] font-medium text-[#0d0d0d] dark:text-[#ececec] ${canViewChunks ? "cursor-pointer hover:text-[#f0a38a]" : ""}`}
               onClick={() => canViewChunks && setShowChunks((v) => !v)}
             >
               {file.filename}
@@ -203,7 +203,7 @@ function FileRow({ file, projectId }: { file: KBFileStat; projectId: number }) {
             <span>{formatBytes(file.file_size)}</span>
             <span>·</span>
             <span
-              className={canViewChunks ? "cursor-pointer text-[#0a7cff] hover:underline" : ""}
+              className={canViewChunks ? "cursor-pointer text-[#f0a38a] hover:underline" : ""}
               onClick={() => canViewChunks && setShowChunks((v) => !v)}
             >
               {file.chunk_count} чанков
@@ -214,7 +214,7 @@ function FileRow({ file, projectId }: { file: KBFileStat; projectId: number }) {
         <button
           onClick={() => reindex.mutate()}
           disabled={reindex.isPending || file.embed_status === "pending" || effectiveStatus === "skipped"}
-          className="flex items-center gap-1.5 rounded-[7px] border border-[rgba(13,13,13,0.12)] px-2.5 py-1 text-[12px] text-[rgba(13,13,13,0.55)] transition hover:border-[#0a7cff] hover:text-[#0a7cff] disabled:opacity-40 dark:border-[rgba(255,255,255,0.1)] dark:text-[rgba(236,236,236,0.5)]"
+          className="flex items-center gap-1.5 rounded-[7px] border border-[rgba(13,13,13,0.12)] px-2.5 py-1 text-[12px] text-[rgba(13,13,13,0.55)] transition hover:border-[#f0a38a] hover:text-[#f0a38a] disabled:opacity-40 dark:border-[rgba(255,255,255,0.1)] dark:text-[rgba(236,236,236,0.5)]"
           title="Переиндексировать"
         >
           <RefreshCw size={11} className={reindex.isPending ? "animate-spin" : ""} />
@@ -276,7 +276,7 @@ export default function ProjectKBPage() {
         </Link>
         <span className="text-[rgba(13,13,13,0.25)] dark:text-[rgba(236,236,236,0.2)]">/</span>
         <div className="flex items-center gap-1.5">
-          <Database size={14} className="text-[#0a7cff]" />
+          <Database size={14} className="text-[#f0a38a]" />
           <span className="text-[13px] font-semibold text-[#0d0d0d] dark:text-[#ececec]">
             База знаний
           </span>
@@ -303,7 +303,7 @@ export default function ProjectKBPage() {
             {/* Summary cards */}
             <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
-                { label: "Файлов",           value: data.file_count,    icon: <FileText    size={16} className="text-[#0a7cff]"  /> },
+                { label: "Файлов",           value: data.file_count,    icon: <FileText    size={16} className="text-[#f0a38a]"  /> },
                 { label: "Проиндексировано", value: data.indexed_count, icon: <CheckCircle size={16} className="text-[#16a34a]" /> },
                 { label: "Ошибки",           value: data.error_count,   icon: <XCircle     size={16} className="text-red-500"   /> },
                 { label: "Чанков",           value: data.total_chunks,  icon: <BarChart3   size={16} className="text-[#7c3aed]" /> },
@@ -338,7 +338,7 @@ export default function ProjectKBPage() {
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-[rgba(13,13,13,0.08)] dark:bg-[rgba(255,255,255,0.08)]">
                   <div
-                    className="h-full rounded-full bg-[#0a7cff] transition-all"
+                    className="h-full rounded-full bg-[#f0a38a] transition-all"
                     style={{ width: `${(data.indexed_count / data.file_count) * 100}%` }}
                   />
                 </div>
@@ -358,7 +358,7 @@ export default function ProjectKBPage() {
                       onClick={() => { setFilter(key); setVisibleCount(PAGE_SIZE); }}
                       className={`rounded-[5px] px-2 py-0.5 text-[11px] font-medium transition ${
                         filter === key
-                          ? "bg-[#0a7cff] text-white"
+                          ? "bg-[#f0a38a] text-white"
                           : "text-[rgba(13,13,13,0.5)] hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.4)] dark:hover:text-[#ececec]"
                       }`}
                     >
@@ -392,7 +392,7 @@ export default function ProjectKBPage() {
                     {hasMore && (
                       <button
                         onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}
-                        className="rounded-[6px] border border-[rgba(13,13,13,0.12)] px-3 py-1 text-[12px] text-[rgba(13,13,13,0.6)] transition hover:border-[#0a7cff] hover:text-[#0a7cff] dark:border-[rgba(255,255,255,0.1)] dark:text-[rgba(236,236,236,0.5)]"
+                        className="rounded-[6px] border border-[rgba(13,13,13,0.12)] px-3 py-1 text-[12px] text-[rgba(13,13,13,0.6)] transition hover:border-[#f0a38a] hover:text-[#f0a38a] dark:border-[rgba(255,255,255,0.1)] dark:text-[rgba(236,236,236,0.5)]"
                       >
                         Показать ещё {Math.min(PAGE_SIZE, filteredFiles.length - visibleCount)}
                       </button>

@@ -126,7 +126,7 @@ export default function TelegramPage() {
         <div className="rounded-2xl border border-[rgba(13,13,13,0.10)] bg-white p-6">
           <div className="flex items-start gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[rgba(10,124,255,0.1)]">
-              <CheckCircle size={24} className="text-[#0a7cff]" />
+              <CheckCircle size={24} className="text-[#f0a38a]" />
             </div>
             <div className="flex-1">
               <p className="text-[15px] font-semibold text-[#0d0d0d]">Telegram привязан</p>
@@ -149,7 +149,7 @@ export default function TelegramPage() {
               href="https://t.me/aineron_bot"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-[10px] bg-[#0a7cff] px-4 py-2.5 text-[13px] font-medium text-white hover:opacity-90 transition-opacity"
+              className="inline-flex items-center gap-2 rounded-[10px] bg-[#f0a38a] px-4 py-2.5 text-[13px] font-medium text-white hover:opacity-90 transition-opacity"
             >
               <MessageCircle size={15} />
               Открыть бота
@@ -189,7 +189,7 @@ export default function TelegramPage() {
               href={linkData.link}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-[10px] bg-[#0a7cff] px-4 py-2.5 text-[13px] font-medium text-white hover:opacity-90 transition-opacity"
+              className="inline-flex items-center gap-2 rounded-[10px] bg-[#f0a38a] px-4 py-2.5 text-[13px] font-medium text-white hover:opacity-90 transition-opacity"
             >
               <MessageCircle size={15} />
               Открыть Telegram
@@ -232,7 +232,7 @@ export default function TelegramPage() {
               "Уведомления о балансе и подписке",
             ].map((f) => (
               <li key={f} className="flex items-center gap-2 text-[13px] text-[rgba(13,13,13,0.65)]">
-                <CheckCircle size={14} className="shrink-0 text-[#0a7cff]" />
+                <CheckCircle size={14} className="shrink-0 text-[#f0a38a]" />
                 {f}
               </li>
             ))}
@@ -241,7 +241,7 @@ export default function TelegramPage() {
           <button
             onClick={generateLink}
             disabled={generating}
-            className="inline-flex items-center gap-2 rounded-[10px] bg-[#0a7cff] px-5 py-2.5 text-[13px] font-medium text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-[10px] bg-[#f0a38a] px-5 py-2.5 text-[13px] font-medium text-white hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             <Link size={15} />
             {generating ? "Генерирую ссылку..." : "Подключить Telegram"}

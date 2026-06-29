@@ -86,7 +86,7 @@ export default function OrganizationPage() {
                 onChange={(e) => setOrgName(e.target.value)}
                 required
                 autoFocus
-                className="w-full rounded-[6px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] outline-none focus:border-[#0a7cff] focus:ring-1 focus:ring-[rgba(10,124,255,0.15)]"
+                className="w-full rounded-[6px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] outline-none focus:border-[#f0a38a] focus:ring-1 focus:ring-[rgba(10,124,255,0.15)]"
               />
               <input
                 type="text"
@@ -94,7 +94,7 @@ export default function OrganizationPage() {
                 value={orgInn}
                 onChange={(e) => setOrgInn(e.target.value)}
                 maxLength={12}
-                className="w-full rounded-[6px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] outline-none focus:border-[#0a7cff] focus:ring-1 focus:ring-[rgba(10,124,255,0.15)]"
+                className="w-full rounded-[6px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] outline-none focus:border-[#f0a38a] focus:ring-1 focus:ring-[rgba(10,124,255,0.15)]"
               />
               {createError && (
                 <p className="text-[12px] text-[#e74c3c]">{createError}</p>
@@ -103,7 +103,7 @@ export default function OrganizationPage() {
                 <button
                   type="submit"
                   disabled={!orgName.trim() || createOrgMutation.isPending}
-                  className="flex-1 h-8 rounded-[6px] bg-[#0a7cff] text-[12px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 transition-colors"
+                  className="flex-1 h-8 rounded-[6px] bg-[#f0a38a] text-[12px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 transition-colors"
                 >
                   {createOrgMutation.isPending ? "..." : "Создать"}
                 </button>
@@ -136,7 +136,7 @@ export default function OrganizationPage() {
                   className={[
                     "flex w-full items-center gap-2 rounded-[8px] px-3 py-2.5 text-left transition-all",
                     selectedOrgId === org.id
-                      ? "bg-[rgba(10,124,255,0.08)] text-[#0a7cff]"
+                      ? "bg-[rgba(10,124,255,0.08)] text-[#f0a38a]"
                       : "text-[rgba(13,13,13,0.7)] hover:bg-[rgba(13,13,13,0.05)] hover:text-[#0d0d0d]",
                   ].join(" ")}
                 >
@@ -226,7 +226,7 @@ function OrgDetail({ org }: { org: Organization }) {
       {/* Header */}
       <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-5">
         <div className="mb-1 flex items-center gap-2">
-          <Building2 size={18} className="text-[#0a7cff]" />
+          <Building2 size={18} className="text-[#f0a38a]" />
           <h2 className="text-[17px] font-bold text-[#0d0d0d]">{org.name}</h2>
           <span className="rounded-full bg-[rgba(13,13,13,0.07)] px-2 py-0.5 text-[11px] text-[rgba(13,13,13,0.55)]">
             {org.user_role}
@@ -257,7 +257,7 @@ function OrgDetail({ org }: { org: Organization }) {
               key={m.id}
               className="flex items-center gap-3 rounded-[8px] border border-[rgba(13,13,13,0.10)] bg-white px-3.5 py-2.5"
             >
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[rgba(10,124,255,0.10)] text-[11px] font-semibold text-[#0a7cff]">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[rgba(10,124,255,0.10)] text-[11px] font-semibold text-[#f0a38a]">
                 {m.email[0].toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
@@ -286,12 +286,12 @@ function OrgDetail({ org }: { org: Organization }) {
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
               required
-              className="flex-1 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] outline-none focus:border-[#0a7cff] focus:ring-1 focus:ring-[rgba(10,124,255,0.15)]"
+              className="flex-1 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] outline-none focus:border-[#f0a38a] focus:ring-1 focus:ring-[rgba(10,124,255,0.15)]"
             />
             <button
               type="submit"
               disabled={inviteMutation.isPending}
-              className="flex h-9 items-center gap-1.5 rounded-[8px] bg-[#0a7cff] px-3 text-[13px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 transition-colors"
+              className="flex h-9 items-center gap-1.5 rounded-[8px] bg-[#f0a38a] px-3 text-[13px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 transition-colors"
             >
               <Mail size={13} />
               Пригласить
@@ -359,12 +359,12 @@ function OrgDetail({ org }: { org: Organization }) {
               min="100"
               step="100"
               required
-              className="flex-1 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] outline-none focus:border-[#0a7cff] focus:ring-1 focus:ring-[rgba(10,124,255,0.15)]"
+              className="flex-1 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] outline-none focus:border-[#f0a38a] focus:ring-1 focus:ring-[rgba(10,124,255,0.15)]"
             />
             <button
               type="submit"
               disabled={invoiceMutation.isPending}
-              className="h-9 rounded-[8px] bg-[#0a7cff] px-3 text-[13px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 transition-colors"
+              className="h-9 rounded-[8px] bg-[#f0a38a] px-3 text-[13px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 transition-colors"
             >
               Выставить счёт
             </button>
@@ -434,7 +434,7 @@ function TelegramSection({ orgId }: { orgId: number }) {
           <button
             onClick={() => genTokenMutation.mutate()}
             disabled={genTokenMutation.isPending}
-            className="flex items-center gap-1.5 rounded-[8px] bg-[#0a7cff] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 transition-colors"
+            className="flex items-center gap-1.5 rounded-[8px] bg-[#f0a38a] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 transition-colors"
           >
             <RefreshCw size={12} className={genTokenMutation.isPending ? "animate-spin" : ""} />
             {token ? "Обновить токен" : "Создать токен"}
@@ -486,7 +486,7 @@ function Section({
   return (
     <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-[rgba(13,13,13,0.02)] p-5">
       <div className="mb-4 flex items-center gap-2 text-[12px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.5)]">
-        <span className="text-[#0a7cff]">{icon}</span>
+        <span className="text-[#f0a38a]">{icon}</span>
         {title}
       </div>
       {children}

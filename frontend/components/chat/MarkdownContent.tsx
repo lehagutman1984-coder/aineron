@@ -162,7 +162,7 @@ const components: Components = {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-[#0a7cff] underline underline-offset-2 transition-opacity hover:opacity-75"
+      className="text-[#f0a38a] underline underline-offset-2 transition-opacity hover:opacity-75"
       {...props}
     >
       {children}
@@ -230,7 +230,7 @@ const components: Components = {
           type="checkbox"
           checked={checked}
           readOnly
-          className="mr-1.5 accent-[#0a7cff]"
+          className="mr-1.5 accent-[#f0a38a]"
           {...props}
         />
       );
@@ -283,8 +283,8 @@ function FileBlock({ filePath, code, truncated }: { filePath: string; code: stri
         className="flex cursor-pointer items-center gap-2.5 px-4 py-2.5 transition-colors hover:bg-[rgba(0,122,255,0.06)]"
         onClick={() => setExpanded((v) => !v)}
       >
-        <FileCode size={14} className="shrink-0 text-[#0a7cff]" />
-        <span className="flex-1 font-mono text-[13px] font-medium text-[#0a7cff]">
+        <FileCode size={14} className="shrink-0 text-[#f0a38a]" />
+        <span className="flex-1 font-mono text-[13px] font-medium text-[#f0a38a]">
           {filePath}
         </span>
         <span className="text-[11px] text-[rgba(0,0,0,0.38)]">

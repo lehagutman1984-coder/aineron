@@ -87,7 +87,7 @@ export default function OAuthAppsPage() {
         </div>
         <button
           onClick={() => setFormOpen(!formOpen)}
-          className="flex items-center gap-2 rounded-lg bg-[#0a7cff] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#0060df]"
+          className="flex items-center gap-2 rounded-lg bg-[#f0a38a] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#0060df]"
         >
           <Plus size={14} />
           Создать
@@ -105,7 +105,7 @@ export default function OAuthAppsPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="My App"
-                className="w-full rounded-lg border border-[rgba(13,13,13,0.12)] bg-white px-3 py-2 text-[13px] outline-none focus:border-[#0a7cff] dark:border-[rgba(255,255,255,0.10)] dark:bg-[rgba(255,255,255,0.05)] dark:text-[#ececec]"
+                className="w-full rounded-lg border border-[rgba(13,13,13,0.12)] bg-white px-3 py-2 text-[13px] outline-none focus:border-[#f0a38a] dark:border-[rgba(255,255,255,0.10)] dark:bg-[rgba(255,255,255,0.05)] dark:text-[#ececec]"
               />
             </div>
             <div>
@@ -117,7 +117,7 @@ export default function OAuthAppsPage() {
                 onChange={(e) => setRedirectUris(e.target.value)}
                 placeholder="https://myapp.com/auth/callback"
                 rows={3}
-                className="w-full rounded-lg border border-[rgba(13,13,13,0.12)] bg-white px-3 py-2 text-[13px] outline-none focus:border-[#0a7cff] dark:border-[rgba(255,255,255,0.10)] dark:bg-[rgba(255,255,255,0.05)] dark:text-[#ececec]"
+                className="w-full rounded-lg border border-[rgba(13,13,13,0.12)] bg-white px-3 py-2 text-[13px] outline-none focus:border-[#f0a38a] dark:border-[rgba(255,255,255,0.10)] dark:bg-[rgba(255,255,255,0.05)] dark:text-[#ececec]"
               />
             </div>
             {error && <p className="text-[12px] text-[#e74c3c]">{error}</p>}
@@ -125,7 +125,7 @@ export default function OAuthAppsPage() {
               <button
                 onClick={() => create.mutate({ name, redirect_uris: redirectUris })}
                 disabled={!name.trim() || !redirectUris.trim() || create.isPending}
-                className="rounded-lg bg-[#0a7cff] px-4 py-2 text-[13px] font-medium text-white disabled:opacity-50 hover:bg-[#0060df]"
+                className="rounded-lg bg-[#f0a38a] px-4 py-2 text-[13px] font-medium text-white disabled:opacity-50 hover:bg-[#0060df]"
               >
                 {create.isPending ? "Создание..." : "Создать"}
               </button>
@@ -198,7 +198,7 @@ export default function OAuthAppsPage() {
                 <a
                   href={`/oauth/authorize/?client_id=${app.client_id}&response_type=code&scope=profile`}
                   target="_blank"
-                  className="flex items-center gap-1 text-[12px] text-[#0a7cff] hover:underline"
+                  className="flex items-center gap-1 text-[12px] text-[#f0a38a] hover:underline"
                 >
                   <ExternalLink size={12} />
                   Тест авторизации
@@ -242,7 +242,7 @@ function CredentialRow({
             {show ? <span className="text-[11px]">скрыть</span> : <span className="text-[11px]">показать</span>}
           </button>
         )}
-        <button onClick={onCopy} className="text-[rgba(13,13,13,0.35)] hover:text-[#0a7cff]">
+        <button onClick={onCopy} className="text-[rgba(13,13,13,0.35)] hover:text-[#f0a38a]">
           {copied ? (
             <span className="text-[11px] text-[#22c55e]">скопировано</span>
           ) : (

@@ -20,7 +20,7 @@ export default function BlockedPage() {
         </p>
         <a
           href="mailto:support@aineron.ru"
-          className="mb-4 flex h-10 w-full items-center justify-center rounded-[8px] bg-[#0a7cff] text-[14px] font-medium text-white hover:bg-[#0066cc] transition-colors"
+          className="mb-4 flex h-10 w-full items-center justify-center rounded-[8px] bg-[#f0a38a] text-[14px] font-medium text-white hover:bg-[#0066cc] transition-colors"
         >
           Написать в поддержку
         </a>

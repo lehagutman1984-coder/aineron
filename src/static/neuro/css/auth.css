@@ -156,11 +156,11 @@
     gap: 10px;
     width: 100%;
     padding: 14px 20px;
-    border: 1px solid #0a7cff;
+    border: 1px solid #f0a38a;
     background: transparent;
     font-size: 16px;
     font-weight: 500;
-    color: #0a7cff;
+    color: #f0a38a;
     cursor: pointer;
     border-radius: 12px;
     transition: background 0.1s ease, color 0.1s ease;
@@ -171,7 +171,7 @@
 }
 
 .auth-email-btn:hover {
-    background: #0a7cff;
+    background: #f0a38a;
     color: white;
 }
 
@@ -197,7 +197,7 @@
 }
 
 .auth-tab.active {
-    color: #0a7cff;
+    color: #f0a38a;
 }
 
 .auth-tab.active::after {
@@ -207,7 +207,7 @@
     left: 0;
     right: 0;
     height: 2px;
-    background: #0a7cff;
+    background: #f0a38a;
 }
 
 /* Формы */
@@ -248,7 +248,7 @@
 
 .auth-field input:focus {
     outline: none;
-    border-color: #0a7cff;
+    border-color: #f0a38a;
     background: white;
 }
 
@@ -280,7 +280,7 @@
 }
 
 .password-toggle:hover {
-    color: #0a7cff;
+    color: #f0a38a;
 }
 
 /* Индикатор сложности пароля */
@@ -311,7 +311,7 @@
 .auth-submit-btn {
     padding: 14px 20px;
     border: none;
-    background: #0a7cff;
+    background: #f0a38a;
     color: white;
     font-size: 16px;
     font-weight: 600;
@@ -328,7 +328,7 @@
 .auth-forgot-link {
     background: none;
     border: none;
-    color: #0a7cff;
+    color: #f0a38a;
     font-size: 14px;
     text-align: center;
     cursor: pointer;
@@ -377,7 +377,7 @@
 }
 
 .auth-footer a {
-    color: #0a7cff;
+    color: #f0a38a;
     text-decoration: none;
     transition: color 0.1s ease;
 }
@@ -455,7 +455,7 @@
 }
 
 .auth-hero h1 span {
-    background: linear-gradient(135deg, #0a7cff, #6f4ef0);
+    background: linear-gradient(135deg, #f0a38a, #6f4ef0);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;

@@ -68,20 +68,20 @@ export default function AnalyticsPage() {
           label="Звёзд потрачено"
           value={data?.totals.total_stars ?? 0}
           delta={delta}
-          icon={<Star size={15} className="text-[#0a7cff]" />}
+          icon={<Star size={15} className="text-[#f0a38a]" />}
           loading={isLoading}
         />
         <StatCard
           label="Запросов отправлено"
           value={data?.totals.total_requests ?? 0}
-          icon={<Zap size={15} className="text-[#0a7cff]" />}
+          icon={<Zap size={15} className="text-[#f0a38a]" />}
           loading={isLoading}
         />
         <StatCard
           label="Среднее в день"
           value={data?.totals.avg_per_day ?? 0}
           suffix=" зв."
-          icon={<BarChart2 size={15} className="text-[#0a7cff]" />}
+          icon={<BarChart2 size={15} className="text-[#f0a38a]" />}
           loading={isLoading}
         />
       </div>
@@ -290,7 +290,7 @@ function ModelList({ models }: { models: StarsUsageModel[] }) {
               <div className="h-[5px] w-full overflow-hidden rounded-full bg-[rgba(13,13,13,0.07)] dark:bg-[rgba(255,255,255,0.07)]">
                 <div
                   className="h-full rounded-full transition-all duration-500"
-                  style={{ width: `${pct}%`, background: "#0a7cff" }}
+                  style={{ width: `${pct}%`, background: "#f0a38a" }}
                 />
               </div>
             </div>

@@ -61,7 +61,7 @@ export default async function PublicSpacePage({ params }: { params: { slug: stri
         <div className="text-center">
           <p className="text-[15px] font-medium text-[#0d0d0d]">Space не найден</p>
           <p className="mt-1 text-[13px] text-[rgba(13,13,13,0.45)]">Ссылка недействительна или доступ ограничен</p>
-          <Link href="/" className="mt-4 inline-block text-[13px] text-[#0a7cff] hover:underline">
+          <Link href="/" className="mt-4 inline-block text-[13px] text-[#f0a38a] hover:underline">
             На главную
           </Link>
         </div>
@@ -179,7 +179,7 @@ export default async function PublicSpacePage({ params }: { params: { slug: stri
           </p>
           <Link
             href="/"
-            className="mt-3 inline-flex items-center gap-1.5 rounded-[8px] bg-[#0a7cff] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#0068e0] transition-colors"
+            className="mt-3 inline-flex items-center gap-1.5 rounded-[8px] bg-[#f0a38a] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#0068e0] transition-colors"
           >
             Попробовать бесплатно
           </Link>

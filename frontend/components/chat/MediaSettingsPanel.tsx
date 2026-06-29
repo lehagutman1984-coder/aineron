@@ -60,7 +60,7 @@ function AspectRatioPresets({
             title={label}
             className={`flex flex-col items-center justify-center gap-0.5 rounded-[6px] border px-1.5 py-1 transition-colors ${
               isActive
-                ? "border-[#0a7cff] bg-[rgba(10,124,255,0.08)] text-[#0a7cff]"
+                ? "border-[#f0a38a] bg-[rgba(10,124,255,0.08)] text-[#f0a38a]"
                 : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.04)] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.5)]"
             }`}
           >
@@ -111,7 +111,7 @@ function SeedField({
           className={[
             "flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] border transition-colors",
             locked
-              ? "border-[#0a7cff] bg-[rgba(10,124,255,0.10)] text-[#0a7cff]"
+              ? "border-[#f0a38a] bg-[rgba(10,124,255,0.10)] text-[#f0a38a]"
               : "border-[rgba(13,13,13,0.15)] text-[rgba(13,13,13,0.5)] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.5)]",
           ].join(" ")}
         >
@@ -134,7 +134,7 @@ function SeedField({
           type="button"
           title="Случайный seed"
           onClick={() => onSet(randomSeed(field.max))}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] border border-[rgba(13,13,13,0.15)] text-[rgba(13,13,13,0.5)] hover:text-[#0a7cff] transition-colors dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.5)]"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] border border-[rgba(13,13,13,0.15)] text-[rgba(13,13,13,0.5)] hover:text-[#f0a38a] transition-colors dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.5)]"
         >
           <Dices size={13} />
         </button>
@@ -282,7 +282,7 @@ export function MediaSettingsPanel({
                       onClick={() => set(field.name, !checked)}
                       className={[
                         "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-none",
-                        checked ? "bg-[#0a7cff]" : "bg-[rgba(13,13,13,0.15)] dark:bg-[rgba(255,255,255,0.15)]",
+                        checked ? "bg-[#f0a38a]" : "bg-[rgba(13,13,13,0.15)] dark:bg-[rgba(255,255,255,0.15)]",
                       ].join(" ")}
                     >
                       <span
@@ -318,7 +318,7 @@ export function MediaSettingsPanel({
                       step={field.step ?? 1}
                       value={Number(val ?? field.min ?? 0)}
                       onChange={(e) => set(field.name, Number(e.target.value))}
-                      className="w-full accent-[#0a7cff]"
+                      className="w-full accent-[#f0a38a]"
                     />
                   </div>
                 );

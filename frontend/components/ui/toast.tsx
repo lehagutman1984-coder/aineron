@@ -13,13 +13,13 @@ const ICONS = {
 const COLORS = {
   success: "border-[#1abc9c] bg-[rgba(26,188,156,0.06)]",
   error:   "border-[#e74c3c] bg-[rgba(231,76,60,0.06)]",
-  info:    "border-[#0a7cff] bg-[rgba(10,124,255,0.06)]",
+  info:    "border-[#f0a38a] bg-[rgba(10,124,255,0.06)]",
 };
 
 const ICON_COLORS = {
   success: "text-[#1abc9c]",
   error:   "text-[#e74c3c]",
-  info:    "text-[#0a7cff]",
+  info:    "text-[#f0a38a]",
 };
 
 export function ToastContainer() {

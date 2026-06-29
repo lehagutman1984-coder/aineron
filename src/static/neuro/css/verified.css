@@ -37,7 +37,7 @@
 .verified-icon {
     width: 80px;
     height: 80px;
-    background: linear-gradient(135deg, #0a7cff 0%, #1dd6c1 100%);
+    background: linear-gradient(135deg, #f0a38a 0%, #1dd6c1 100%);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -75,7 +75,7 @@
 }
 
 .verified-subtitle strong {
-    color: #0a7cff;
+    color: #f0a38a;
     font-weight: 600;
 }
 
@@ -102,7 +102,7 @@
 }
 
 .code-digit:focus {
-    border-color: #0a7cff;
+    border-color: #f0a38a;
     box-shadow: 0 0 0 3px rgba(10, 124, 255, 0.15);
     transform: scale(1.02);
 }
@@ -114,7 +114,7 @@
 .verified-submit-btn {
     width: 100%;
     padding: 16px;
-    background: #0a7cff;
+    background: #f0a38a;
     border: none;
     border-radius: 60px;
     color: white;
@@ -128,13 +128,13 @@
 .verified-submit-btn:hover:not(:disabled) {
     background: #248aff;
     transform: scale(1.02);
-    box-shadow: 0 15px 30px -10px #0a7cff;
+    box-shadow: 0 15px 30px -10px #f0a38a;
 }
 
 .verified-submit-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
-    background: #0a7cff;
+    background: #f0a38a;
     transform: none;
     box-shadow: none;
 }
@@ -157,7 +157,7 @@
 .resend-timer {
     font-size: 24px;
     font-weight: 600;
-    color: #0a7cff;
+    color: #f0a38a;
     font-variant-numeric: tabular-nums;
     animation: timerPulse 1s infinite;
 }
@@ -169,18 +169,18 @@
 
 .resend-btn {
     background: transparent;
-    border: 1px solid #0a7cff;
+    border: 1px solid #f0a38a;
     border-radius: 40px;
     padding: 8px 24px;
     font-size: 15px;
     font-weight: 500;
-    color: #0a7cff;
+    color: #f0a38a;
     cursor: pointer;
     transition: all 0.2s;
 }
 
 .resend-btn:enabled {
-    background: #0a7cff;
+    background: #f0a38a;
     color: white;
 }
 
@@ -209,7 +209,7 @@
 }
 
 .back-link:hover {
-    color: #0a7cff;
+    color: #f0a38a;
 }
 
 /* Уведомления */
@@ -228,7 +228,7 @@
     font-size: 14px;
     font-weight: 500;
     color: #0d0d0d;
-    border-left: 4px solid #0a7cff;
+    border-left: 4px solid #f0a38a;
     animation: slideInRight 0.3s ease;
 }
 

@@ -110,7 +110,7 @@ function ShareControls({
             : "border-[rgba(13,13,13,0.10)] text-[rgba(13,13,13,0.6)] hover:bg-[rgba(13,13,13,0.04)]"
         }`}
       >
-        <Share2 size={10} className={isPublic ? "text-[#1a9d4b]" : "text-[#0a7cff]"} />
+        <Share2 size={10} className={isPublic ? "text-[#1a9d4b]" : "text-[#f0a38a]"} />
         {isPublic ? "Публичное" : "Сделать публичным"}
       </button>
       {isPublic && shareSlug && (
@@ -119,7 +119,7 @@ function ShareControls({
           title="Скопировать публичную ссылку"
           className="inline-flex items-center gap-1 rounded-[6px] border border-[rgba(13,13,13,0.10)] px-1.5 py-0.5 text-[10px] font-medium text-[rgba(13,13,13,0.6)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
         >
-          {copied ? <Check size={10} className="text-[#1a9d4b]" /> : <Link2 size={10} className="text-[#0a7cff]" />}
+          {copied ? <Check size={10} className="text-[#1a9d4b]" /> : <Link2 size={10} className="text-[#f0a38a]" />}
           {copied ? "Скопировано" : "Скопировать ссылку"}
         </button>
       )}
@@ -206,7 +206,7 @@ function FileCard({
               </span>
             )}
             {file.model_name && (
-              <span className="inline-flex items-center rounded-[5px] bg-[rgba(10,124,255,0.08)] px-1.5 py-0.5 text-[10px] font-medium text-[#0a7cff]">
+              <span className="inline-flex items-center rounded-[5px] bg-[rgba(10,124,255,0.08)] px-1.5 py-0.5 text-[10px] font-medium text-[#f0a38a]">
                 {file.model_name}
               </span>
             )}
@@ -225,7 +225,7 @@ function FileCard({
               title="Детализировать — усилить резкость и проработку деталей"
               className="inline-flex items-center gap-1 rounded-[6px] border border-[rgba(13,13,13,0.10)] px-1.5 py-0.5 text-[10px] font-medium text-[rgba(13,13,13,0.6)] hover:bg-[rgba(13,13,13,0.04)] disabled:opacity-50 transition-colors"
             >
-              <Maximize2 size={10} className="text-[#0a7cff]" />
+              <Maximize2 size={10} className="text-[#f0a38a]" />
               Детализировать
             </button>
             <button
@@ -234,7 +234,7 @@ function FileCard({
               title="Создать 4 вариации"
               className="inline-flex items-center gap-1 rounded-[6px] border border-[rgba(13,13,13,0.10)] px-1.5 py-0.5 text-[10px] font-medium text-[rgba(13,13,13,0.6)] hover:bg-[rgba(13,13,13,0.04)] disabled:opacity-50 transition-colors"
             >
-              <Images size={10} className="text-[#0a7cff]" />
+              <Images size={10} className="text-[#f0a38a]" />
               Варианты
             </button>
             <button
@@ -242,7 +242,7 @@ function FileCard({
               title="Использовать как референс стиля"
               className="inline-flex items-center gap-1 rounded-[6px] border border-[rgba(13,13,13,0.10)] px-1.5 py-0.5 text-[10px] font-medium text-[rgba(13,13,13,0.6)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
             >
-              <Palette size={10} className="text-[#0a7cff]" />
+              <Palette size={10} className="text-[#f0a38a]" />
               Стиль
             </button>
           </div>
@@ -263,7 +263,7 @@ function FileCard({
           title="Повторить генерацию (те же параметры)"
           className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-white/90 shadow-sm hover:bg-white disabled:opacity-50 transition-colors"
         >
-          <RotateCcw size={13} className={rerunning ? "animate-spin text-[#0a7cff]" : "text-[#0a7cff]"} />
+          <RotateCcw size={13} className={rerunning ? "animate-spin text-[#f0a38a]" : "text-[#f0a38a]"} />
         </button>
         {file.media_type === "image" && (
           <>
@@ -272,14 +272,14 @@ function FileCard({
               title="Редактировать изображение (img2img)"
               className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-white/90 shadow-sm hover:bg-white transition-colors"
             >
-              <Pencil size={13} className="text-[#0a7cff]" />
+              <Pencil size={13} className="text-[#f0a38a]" />
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); onAnimate(file); }}
               title="Оживить изображение (img2video)"
               className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-white/90 shadow-sm hover:bg-white transition-colors"
             >
-              <Film size={13} className="text-[#0a7cff]" />
+              <Film size={13} className="text-[#f0a38a]" />
             </button>
           </>
         )}

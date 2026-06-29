@@ -96,13 +96,13 @@ export default function KeysPage() {
               onChange={(e) => setNewKeyName(e.target.value)}
               placeholder="Например: VS Code, Cursor, Prod"
               autoFocus
-              className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[14px] text-[#0d0d0d] placeholder-[rgba(13,13,13,0.38)] outline-none focus:border-[#0a7cff] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all"
+              className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[14px] text-[#0d0d0d] placeholder-[rgba(13,13,13,0.38)] outline-none focus:border-[#f0a38a] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all"
             />
           </div>
           <button
             type="submit"
             disabled={!newKeyName.trim() || createMutation.isPending}
-            className="h-9 rounded-[8px] bg-[#0a7cff] px-4 text-[13px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 transition-colors"
+            className="h-9 rounded-[8px] bg-[#f0a38a] px-4 text-[13px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 transition-colors"
           >
             {createMutation.isPending ? "Создание..." : "Создать"}
           </button>
@@ -167,7 +167,7 @@ export default function KeysPage() {
             Authorization: Bearer ak_...
           </code>
         </p>
-        <Link href="/api-docs/" className="mt-2 inline-block text-[#0a7cff] hover:underline underline-offset-2">
+        <Link href="/api-docs/" className="mt-2 inline-block text-[#f0a38a] hover:underline underline-offset-2">
           Полная документация
         </Link>
       </div>

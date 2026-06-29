@@ -41,7 +41,7 @@
         const note = document.createElement('div');
         note.className = 'verified-notification';
         let icon = 'fa-info-circle';
-        let color = '#0a7cff';
+        let color = '#f0a38a';
         if (type === 'success') {
             icon = 'fa-check-circle';
             color = '#21be19';

@@ -24,7 +24,7 @@ export function Card({
     <div
       className={cn(
         "rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-[rgba(13,13,13,0.04)]",
-        hover && "transition-colors hover:border-[#0a7cff] cursor-pointer",
+        hover && "transition-colors hover:border-[#f0a38a] cursor-pointer",
         PADDING[padding],
         className
       )}

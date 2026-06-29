@@ -195,7 +195,7 @@ class NeuralNetwork(models.Model):
             return self.avatar.url
         if self.avatar_url:
             return self.avatar_url
-        return f"https://ui-avatars.com/api/?name={self.name}&background=0a7cff&color=fff&size=64"
+        return f"https://ui-avatars.com/api/?name={self.name}&background=f0a38a&color=fff&size=64"
 
 class NeuralNetworkDailyUsage(models.Model):
     user = models.ForeignKey(
@@ -230,7 +230,7 @@ class Project(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='projects')
     name = models.CharField(max_length=100, verbose_name='Название')
     system_prompt = models.TextField(blank=True, verbose_name='Системный промт')
-    color = models.CharField(max_length=7, default='#0a7cff', verbose_name='Цвет (hex)')
+    color = models.CharField(max_length=7, default='#f0a38a', verbose_name='Цвет (hex)')
     icon = models.CharField(max_length=30, default='Folder', verbose_name='Иконка (Lucide)')
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='active', verbose_name='Статус')
     created_at = models.DateTimeField(auto_now_add=True)

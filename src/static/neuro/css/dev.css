@@ -13,7 +13,7 @@
 .dev-header h1 {
     font-size: 32px;
     font-weight: 700;
-    background: linear-gradient(135deg, #0a7cff, #1dd6c1);
+    background: linear-gradient(135deg, #f0a38a, #1dd6c1);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -132,8 +132,8 @@
 .code-tab-btn:hover { color: var(--text-primary); }
 
 .code-tab-btn.active {
-    color: #0a7cff;
-    border-bottom-color: #0a7cff;
+    color: #f0a38a;
+    border-bottom-color: #f0a38a;
 }
 
 .code-tab-panel {
@@ -242,7 +242,7 @@
 }
 
 .method-get  { background: rgba(26, 188, 156, 0.15); color: #1abc9c; }
-.method-post { background: rgba(10, 124, 255, 0.15); color: #0a7cff; }
+.method-post { background: rgba(10, 124, 255, 0.15); color: #f0a38a; }
 .method-delete { background: rgba(231, 76, 60, 0.15); color: #e74c3c; }
 
 .endpoint-path {
@@ -273,7 +273,7 @@
     height: 28px;
     border-radius: 50%;
     background: rgba(10, 124, 255, 0.15);
-    color: #0a7cff;
+    color: #f0a38a;
     font-size: 13px;
     font-weight: 700;
     display: flex;
@@ -303,7 +303,7 @@
     cursor: default;
 }
 
-.ide-card:hover { border-color: #0a7cff; }
+.ide-card:hover { border-color: #f0a38a; }
 
 .ide-card__name {
     font-size: 18px;
@@ -322,7 +322,7 @@
 .ide-card__link {
     font-size: 13px;
     font-weight: 500;
-    color: #0a7cff;
+    color: #f0a38a;
     text-decoration: none;
 }
 
@@ -339,7 +339,7 @@
 
 .dev-alert--info {
     background: rgba(10, 124, 255, 0.1);
-    border-left: 3px solid #0a7cff;
+    border-left: 3px solid #f0a38a;
     color: var(--text-secondary);
 }
 
@@ -372,7 +372,7 @@
 }
 
 .dev-nav-link--primary {
-    background: #0a7cff;
+    background: #f0a38a;
     color: #fff;
 }
 .dev-nav-link--primary:hover { background: #0066cc; color: #fff; }
@@ -383,7 +383,7 @@
     color: var(--text-secondary);
 }
 .dev-nav-link--secondary:hover {
-    border-color: #0a7cff;
+    border-color: #f0a38a;
     color: var(--text-primary);
 }
 

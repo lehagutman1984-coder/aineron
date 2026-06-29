@@ -218,7 +218,7 @@
         popular.forEach(net => {
             html += `
                 <div class="model-card" data-slug="${net.slug}">
-                    <img src="${net.avatar}" alt="${net.name}" onerror="this.src='https://placehold.co/80x80/0a7cff/white?text=${net.name.charAt(0)}'">
+                    <img src="${net.avatar}" alt="${net.name}" onerror="this.src='https://placehold.co/80x80/f0a38a/white?text=${net.name.charAt(0)}'">
                     <span>${net.name}</span>
                 </div>
             `;
@@ -305,7 +305,7 @@
         if (desktopModelList) {
             desktopModelList.innerHTML = filtered.map(net => `
                 <div class="model-item ${net.slug === selectedSlug ? 'selected' : ''}" data-slug="${net.slug}" data-name="${net.name}" data-avatar="${net.avatar}">
-                    <img src="${net.avatar}" alt="${net.name}" onerror="this.src='https://placehold.co/40x40/0a7cff/white?text=${net.name.charAt(0)}'">
+                    <img src="${net.avatar}" alt="${net.name}" onerror="this.src='https://placehold.co/40x40/f0a38a/white?text=${net.name.charAt(0)}'">
                     <div class="model-info">
                         <h4>
                             ${net.name}
@@ -333,7 +333,7 @@
         if (mobileModelList) {
             mobileModelList.innerHTML = filtered.map(net => `
                 <div class="model-item ${net.slug === selectedSlug ? 'selected' : ''}" data-slug="${net.slug}" data-name="${net.name}" data-avatar="${net.avatar}">
-                    <img src="${net.avatar}" alt="${net.name}" onerror="this.src='https://placehold.co/40x40/0a7cff/white?text=${net.name.charAt(0)}'">
+                    <img src="${net.avatar}" alt="${net.name}" onerror="this.src='https://placehold.co/40x40/f0a38a/white?text=${net.name.charAt(0)}'">
                     <div class="model-info">
                         <h4>
                             ${net.name}

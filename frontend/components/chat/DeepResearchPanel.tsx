@@ -7,7 +7,7 @@ import type { DeepResearchStep, DeepResearchStatus } from "@/lib/api/types";
 const STEP_ICONS: Record<string, React.ReactNode> = {
   plan:       <Loader2 size={13} className="animate-spin text-[#7c3aed]" />,
   plan_done:  <CheckCircle size={13} className="text-[#16a34a]" />,
-  search:     <Search size={13} className="text-[#0a7cff]" />,
+  search:     <Search size={13} className="text-[#f0a38a]" />,
   dedup:      <CheckCircle size={13} className="text-[#16a34a]" />,
   synthesize: <Loader2 size={13} className="animate-spin text-[#7c3aed]" />,
   done:       <CheckCircle size={13} className="text-[#16a34a]" />,

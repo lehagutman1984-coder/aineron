@@ -67,7 +67,7 @@ export function Navbar() {
           {user ? (
             <>
               <div className="flex items-center gap-1.5 rounded-full border border-[rgba(13,13,13,0.12)] px-3 py-1.5 text-[13px] text-[#0d0d0d] dark:border-[rgba(255,255,255,0.12)] dark:text-[#ececec]">
-                <Star size={13} className="text-[#0a7cff]" />
+                <Star size={13} className="text-[#f0a38a]" />
                 <span className="font-medium">{stars}</span>
               </div>
               <Link
@@ -94,7 +94,7 @@ export function Navbar() {
               </Link>
               <Link
                 href="/register/"
-                className="rounded-[8px] bg-[#0a7cff] px-3 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-[#0066cc]"
+                className="rounded-[8px] bg-[#f0a38a] px-3 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-[#0066cc]"
               >
                 Начать бесплатно
               </Link>
@@ -133,7 +133,7 @@ export function Navbar() {
             {user ? (
               <>
                 <div className="flex items-center gap-2 py-2 text-[13px] text-[rgba(13,13,13,0.7)] dark:text-[rgba(236,236,236,0.6)]">
-                  <Star size={13} className="text-[#0a7cff]" />
+                  <Star size={13} className="text-[#f0a38a]" />
                   <span>{stars} звёзд</span>
                 </div>
                 <MobileNavLink href="/account/" onClick={() => setMobileOpen(false)}>Личный кабинет</MobileNavLink>
@@ -150,7 +150,7 @@ export function Navbar() {
                 <Link
                   href="/register/"
                   onClick={() => setMobileOpen(false)}
-                  className="mt-1 block rounded-[8px] bg-[#0a7cff] px-3 py-2 text-center text-[14px] font-medium text-white"
+                  className="mt-1 block rounded-[8px] bg-[#f0a38a] px-3 py-2 text-center text-[14px] font-medium text-white"
                 >
                   Начать бесплатно
                 </Link>

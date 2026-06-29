@@ -27,7 +27,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   Folder, Code2, BookOpen, Briefcase, Zap, Globe, Palette, MessageSquare,
 };
 const ICONS = Object.keys(ICON_MAP) as (keyof typeof ICON_MAP)[];
-const COLORS = ["#0a7cff", "#22a85a", "#e67e22", "#9b59b6", "#e74c3c", "#1dd6c1", "#0d0d0d", "#6366f1"];
+const COLORS = ["#f0a38a", "#22a85a", "#e67e22", "#9b59b6", "#e74c3c", "#1dd6c1", "#0d0d0d", "#6366f1"];
 
 function ProjectIcon({ name, size = 16 }: { name: string; size?: number }) {
   const Icon = ICON_MAP[name] ?? Folder;
@@ -37,7 +37,7 @@ function ProjectIcon({ name, size = 16 }: { name: string; size?: number }) {
 // ── Kanban columns config ──────────────────────────────────────
 type Status = "active" | "paused" | "done";
 const COLUMNS: { id: Status; label: string; color: string }[] = [
-  { id: "active", label: "Активные", color: "#0a7cff" },
+  { id: "active", label: "Активные", color: "#f0a38a" },
   { id: "paused", label: "Пауза", color: "#e67e22" },
   { id: "done",   label: "Завершённые", color: "#22a85a" },
 ];
@@ -81,7 +81,7 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
             <input
               autoFocus value={name} onChange={(e) => setName(e.target.value)}
               placeholder="Мой проект" maxLength={100}
-              className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[14px] text-[#0d0d0d] outline-none focus:border-[#0a7cff] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all"
+              className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[14px] text-[#0d0d0d] outline-none focus:border-[#f0a38a] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -90,7 +90,7 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
               <div className="flex flex-wrap gap-1.5">
                 {ICONS.map((ic) => (
                   <button key={ic} type="button" onClick={() => setIcon(ic)}
-                    className={["flex h-8 w-8 items-center justify-center rounded-[7px] transition-colors", icon === ic ? "ring-2 ring-[#0a7cff] ring-offset-1" : "border border-[rgba(13,13,13,0.12)] hover:bg-[rgba(13,13,13,0.05)]"].join(" ")}
+                    className={["flex h-8 w-8 items-center justify-center rounded-[7px] transition-colors", icon === ic ? "ring-2 ring-[#f0a38a] ring-offset-1" : "border border-[rgba(13,13,13,0.12)] hover:bg-[rgba(13,13,13,0.05)]"].join(" ")}
                     style={{ color: icon === ic ? color : "rgba(13,13,13,0.45)" }}>
                     <ProjectIcon name={ic} size={15} />
                   </button>
@@ -114,13 +114,13 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
             </label>
             <textarea value={systemPrompt} onChange={(e) => setSystemPrompt(e.target.value)}
               placeholder="Ты — помощник-программист, отвечай только на русском..." rows={3}
-              className="w-full resize-none rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] text-[#0d0d0d] outline-none focus:border-[#0a7cff] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all" />
+              className="w-full resize-none rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] text-[#0d0d0d] outline-none focus:border-[#f0a38a] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all" />
             <p className="mt-1 text-[11px] text-[rgba(13,13,13,0.38)]">Применяется ко всем чатам в проекте автоматически</p>
           </div>
           {error && <div className="rounded-[8px] bg-[rgba(231,76,60,0.08)] px-3 py-2 text-[13px] text-[#e74c3c]">{error}</div>}
           <div className="flex justify-end gap-2">
             <button type="button" onClick={onClose} className="rounded-[8px] px-4 py-2 text-[13px] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.06)] transition-colors">Отмена</button>
-            <button type="submit" disabled={!name.trim() || loading} className="rounded-[8px] bg-[#0a7cff] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 transition-colors">
+            <button type="submit" disabled={!name.trim() || loading} className="rounded-[8px] bg-[#f0a38a] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 transition-colors">
               {loading ? "Создание..." : "Создать"}
             </button>
           </div>
@@ -167,7 +167,7 @@ function ProjectCard({
           <MessageSquare size={12} />
           {project.chat_count} чатов
         </span>
-        <Link href={`/projects/${project.id}/`} className="flex items-center gap-0.5 text-[12px] font-medium text-[#0a7cff] hover:text-[#0066cc] transition-colors">
+        <Link href={`/projects/${project.id}/`} className="flex items-center gap-0.5 text-[12px] font-medium text-[#f0a38a] hover:text-[#0066cc] transition-colors">
           Открыть <ChevronRight size={13} />
         </Link>
       </div>
@@ -252,7 +252,7 @@ function GridCard({ project, onDelete }: { project: Project; onDelete: (id: numb
       )}
       <div className="flex items-center justify-between">
         <span className="flex items-center gap-1 text-[12px] text-[rgba(13,13,13,0.45)]"><MessageSquare size={12} />{project.chat_count} чатов</span>
-        <Link href={`/projects/${project.id}/`} className="flex items-center gap-0.5 text-[12px] font-medium text-[#0a7cff] hover:text-[#0066cc] transition-colors">
+        <Link href={`/projects/${project.id}/`} className="flex items-center gap-0.5 text-[12px] font-medium text-[#f0a38a] hover:text-[#0066cc] transition-colors">
           Открыть <ChevronRight size={13} />
         </Link>
       </div>
@@ -350,7 +350,7 @@ export default function ProjectsPage() {
           </div>
           <button
             onClick={() => setShowModal(true)}
-            className="flex items-center gap-1.5 rounded-[9px] bg-[#0a7cff] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#0066cc] transition-colors"
+            className="flex items-center gap-1.5 rounded-[9px] bg-[#f0a38a] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#0066cc] transition-colors"
           >
             <Plus size={15} />
             Новый проект
@@ -368,11 +368,11 @@ export default function ProjectsPage() {
       ) : projects.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-[16px] border border-dashed border-[rgba(13,13,13,0.15)] py-16 text-center">
           <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(10,124,255,0.08)]">
-            <Folder size={22} className="text-[#0a7cff]" />
+            <Folder size={22} className="text-[#f0a38a]" />
           </div>
           <p className="mb-1 text-[15px] font-medium text-[#0d0d0d]">Нет проектов</p>
           <p className="mb-4 text-[13px] text-[rgba(13,13,13,0.45)]">Создайте первый проект, чтобы группировать чаты</p>
-          <button onClick={() => setShowModal(true)} className="flex items-center gap-1.5 rounded-[9px] bg-[#0a7cff] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#0066cc] transition-colors">
+          <button onClick={() => setShowModal(true)} className="flex items-center gap-1.5 rounded-[9px] bg-[#f0a38a] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#0066cc] transition-colors">
             <Plus size={15} />
             Создать проект
           </button>

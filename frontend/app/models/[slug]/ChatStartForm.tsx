@@ -158,7 +158,7 @@ export function ChatStartForm({ networkSlug, isMedia, configJson, projectId }: P
           </div>
           <div className="min-w-0">
             <p className="flex items-center gap-1 text-[13px] font-medium text-[#0d0d0d]">
-              <ImagePlus size={13} className="text-[#0a7cff]" />
+              <ImagePlus size={13} className="text-[#f0a38a]" />
               Редактирование изображения
             </p>
             <p className="mt-0.5 text-[12px] text-[rgba(13,13,13,0.5)]">
@@ -214,12 +214,12 @@ export function ChatStartForm({ networkSlug, isMedia, configJson, projectId }: P
                 : "Введите сообщение... (Enter — отправить, Shift+Enter — новая строка)"
           }
           rows={4}
-          className="w-full resize-none rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-4 py-3 pr-12 text-[14px] text-[#0d0d0d] placeholder-[rgba(13,13,13,0.38)] outline-none focus:border-[#0a7cff] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all"
+          className="w-full resize-none rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-4 py-3 pr-12 text-[14px] text-[#0d0d0d] placeholder-[rgba(13,13,13,0.38)] outline-none focus:border-[#f0a38a] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all"
         />
         <button
           type="submit"
           disabled={!text.trim() || loading}
-          className="absolute bottom-3 right-3 flex h-8 w-8 items-center justify-center rounded-[8px] bg-[#0a7cff] text-white hover:bg-[#0066cc] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+          className="absolute bottom-3 right-3 flex h-8 w-8 items-center justify-center rounded-[8px] bg-[#f0a38a] text-white hover:bg-[#0066cc] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
         >
           <Send size={15} />
         </button>
@@ -231,7 +231,7 @@ export function ChatStartForm({ networkSlug, isMedia, configJson, projectId }: P
       {!user && (
         <p className="text-[13px] text-[rgba(13,13,13,0.5)]">
           Нужна{" "}
-          <a href="/login/" className="text-[#0a7cff] hover:underline">
+          <a href="/login/" className="text-[#f0a38a] hover:underline">
             авторизация
           </a>{" "}
           для отправки сообщения

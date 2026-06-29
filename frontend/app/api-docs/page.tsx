@@ -320,7 +320,7 @@ export default function ApiDocsPage() {
               <>
                 <strong className="text-[#0d0d0d]">Создайте API-ключ</strong> в личном кабинете
                 — раздел{" "}
-                <Link href="/account/keys/" className="text-[#0a7cff] hover:underline">
+                <Link href="/account/keys/" className="text-[#f0a38a] hover:underline">
                   API-ключи
                 </Link>
                 . Ключ показывается один раз, сохраните его сразу.
@@ -449,7 +449,7 @@ export default function ApiDocsPage() {
         <div className="flex flex-wrap gap-3 pb-4">
           <Link
             href="/api-docs/playground/"
-            className="inline-flex items-center gap-2 rounded-[10px] bg-[#0a7cff] px-5 py-2.5 text-[14px] font-medium text-white hover:bg-[#0066cc] transition-colors"
+            className="inline-flex items-center gap-2 rounded-[10px] bg-[#f0a38a] px-5 py-2.5 text-[14px] font-medium text-white hover:bg-[#0066cc] transition-colors"
           >
             <Play size={14} />
             Playground

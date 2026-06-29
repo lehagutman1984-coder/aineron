@@ -8,11 +8,11 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         {children}
         <p className="mt-8 text-center text-[12px] text-[rgba(13,13,13,0.4)]">
           Продолжая, вы соглашаетесь с{" "}
-          <Link href="/legal/terms/" className="hover:text-[#0a7cff] underline-offset-2 hover:underline">
+          <Link href="/legal/terms/" className="hover:text-[#f0a38a] underline-offset-2 hover:underline">
             условиями
           </Link>{" "}
           и{" "}
-          <Link href="/legal/privacy/" className="hover:text-[#0a7cff] underline-offset-2 hover:underline">
+          <Link href="/legal/privacy/" className="hover:text-[#f0a38a] underline-offset-2 hover:underline">
             политикой конфиденциальности
           </Link>
         </p>

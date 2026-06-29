@@ -48,7 +48,7 @@ function RoleTag({ role, onChange }: { role: Role; onChange: () => void }) {
       className={[
         "shrink-0 rounded-[5px] px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide transition-colors",
         role === "user"
-          ? "bg-[rgba(10,124,255,0.10)] text-[#0a7cff]"
+          ? "bg-[rgba(10,124,255,0.10)] text-[#f0a38a]"
           : "bg-[rgba(13,13,13,0.06)] text-[rgba(13,13,13,0.55)]",
       ].join(" ")}
     >
@@ -261,7 +261,7 @@ export default function PlaygroundPage() {
                 className={[
                   "flex flex-1 items-center justify-center gap-1.5 rounded-[8px] border py-2 text-[13px] font-medium transition-colors",
                   authMode === "session"
-                    ? "border-[#0a7cff] bg-[rgba(10,124,255,0.06)] text-[#0a7cff]"
+                    ? "border-[#f0a38a] bg-[rgba(10,124,255,0.06)] text-[#f0a38a]"
                     : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.55)] hover:border-[rgba(13,13,13,0.25)]",
                 ].join(" ")}
               >
@@ -273,7 +273,7 @@ export default function PlaygroundPage() {
                 className={[
                   "flex flex-1 items-center justify-center gap-1.5 rounded-[8px] border py-2 text-[13px] font-medium transition-colors",
                   authMode === "apikey"
-                    ? "border-[#0a7cff] bg-[rgba(10,124,255,0.06)] text-[#0a7cff]"
+                    ? "border-[#f0a38a] bg-[rgba(10,124,255,0.06)] text-[#f0a38a]"
                     : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.55)] hover:border-[rgba(13,13,13,0.25)]",
                 ].join(" ")}
               >
@@ -288,7 +288,7 @@ export default function PlaygroundPage() {
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder="ak_ВАШ_КЛЮЧ"
                 spellCheck={false}
-                className="mt-3 w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-3 py-2 font-mono text-[13px] text-[#0d0d0d] placeholder:text-[rgba(13,13,13,0.35)] focus:border-[#0a7cff] focus:outline-none"
+                className="mt-3 w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-3 py-2 font-mono text-[13px] text-[#0d0d0d] placeholder:text-[rgba(13,13,13,0.35)] focus:border-[#f0a38a] focus:outline-none"
               />
             )}
             {authMode === "session" && (
@@ -307,7 +307,7 @@ export default function PlaygroundPage() {
             <select
               value={model}
               onChange={(e) => setModel(e.target.value)}
-              className="mb-3 w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-3 py-2 text-[13px] text-[#0d0d0d] focus:border-[#0a7cff] focus:outline-none"
+              className="mb-3 w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-3 py-2 text-[13px] text-[#0d0d0d] focus:border-[#f0a38a] focus:outline-none"
             >
               {PRESET_MODELS.map((m) => (
                 <option key={m.id} value={m.id}>
@@ -322,7 +322,7 @@ export default function PlaygroundPage() {
                 value={customModel}
                 onChange={(e) => setCustomModel(e.target.value)}
                 placeholder="gpt-4o-2024-11-20"
-                className="mb-3 w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-3 py-2 font-mono text-[13px] text-[#0d0d0d] placeholder:text-[rgba(13,13,13,0.35)] focus:border-[#0a7cff] focus:outline-none"
+                className="mb-3 w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-3 py-2 font-mono text-[13px] text-[#0d0d0d] placeholder:text-[rgba(13,13,13,0.35)] focus:border-[#f0a38a] focus:outline-none"
               />
             )}
 
@@ -343,7 +343,7 @@ export default function PlaygroundPage() {
                   step={0.1}
                   value={temperature}
                   onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                  className="w-full accent-[#0a7cff]"
+                  className="w-full accent-[#f0a38a]"
                 />
               </div>
               <div>
@@ -358,7 +358,7 @@ export default function PlaygroundPage() {
                   onChange={(e) =>
                     setMaxTokens(Math.max(1, parseInt(e.target.value) || 1))
                   }
-                  className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-3 py-2 text-[13px] text-[#0d0d0d] focus:border-[#0a7cff] focus:outline-none"
+                  className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-3 py-2 text-[13px] text-[#0d0d0d] focus:border-[#f0a38a] focus:outline-none"
                 />
               </div>
             </div>
@@ -368,7 +368,7 @@ export default function PlaygroundPage() {
                 type="checkbox"
                 checked={streamMode}
                 onChange={(e) => setStreamMode(e.target.checked)}
-                className="accent-[#0a7cff]"
+                className="accent-[#f0a38a]"
               />
               <span className="text-[13px] text-[rgba(13,13,13,0.65)]">
                 Streaming (SSE)
@@ -398,7 +398,7 @@ export default function PlaygroundPage() {
                   onChange={(e) => setSystemPrompt(e.target.value)}
                   rows={4}
                   placeholder="Ты — полезный ассистент..."
-                  className="mt-3 w-full resize-none rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-3 py-2 text-[13px] text-[#0d0d0d] placeholder:text-[rgba(13,13,13,0.35)] focus:border-[#0a7cff] focus:outline-none"
+                  className="mt-3 w-full resize-none rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-3 py-2 text-[13px] text-[#0d0d0d] placeholder:text-[rgba(13,13,13,0.35)] focus:border-[#f0a38a] focus:outline-none"
                 />
               </div>
             )}
@@ -429,7 +429,7 @@ export default function PlaygroundPage() {
                         ? "Напиши Hello World на Python"
                         : "Ответ ассистента..."
                     }
-                    className="flex-1 resize-none rounded-[8px] border border-[rgba(13,13,13,0.12)] bg-[rgba(13,13,13,0.02)] px-3 py-2 text-[13px] text-[#0d0d0d] placeholder:text-[rgba(13,13,13,0.30)] focus:border-[#0a7cff] focus:outline-none"
+                    className="flex-1 resize-none rounded-[8px] border border-[rgba(13,13,13,0.12)] bg-[rgba(13,13,13,0.02)] px-3 py-2 text-[13px] text-[#0d0d0d] placeholder:text-[rgba(13,13,13,0.30)] focus:border-[#f0a38a] focus:outline-none"
                   />
                   <button
                     onClick={() => removeMessage(msg.id)}
@@ -443,7 +443,7 @@ export default function PlaygroundPage() {
             </div>
             <button
               onClick={addMessage}
-              className="mt-3 flex items-center gap-1.5 text-[12px] text-[rgba(13,13,13,0.45)] hover:text-[#0a7cff] transition-colors"
+              className="mt-3 flex items-center gap-1.5 text-[12px] text-[rgba(13,13,13,0.45)] hover:text-[#f0a38a] transition-colors"
             >
               <Plus size={13} />
               Добавить сообщение
@@ -457,7 +457,7 @@ export default function PlaygroundPage() {
               "flex h-11 w-full items-center justify-center gap-2 rounded-[10px] text-[14px] font-semibold text-white transition-colors",
               loading
                 ? "bg-[#dc2626] hover:bg-[#b91c1c]"
-                : "bg-[#0a7cff] hover:bg-[#0066cc]",
+                : "bg-[#f0a38a] hover:bg-[#0066cc]",
             ].join(" ")}
           >
             {loading ? (
@@ -517,7 +517,7 @@ export default function PlaygroundPage() {
                     className={[
                       "mr-4 border-b-2 py-2 text-[12px] font-medium transition-colors",
                       resTab === tab
-                        ? "border-[#0a7cff] text-[#0a7cff]"
+                        ? "border-[#f0a38a] text-[#f0a38a]"
                         : "border-transparent text-[rgba(13,13,13,0.45)] hover:text-[#0d0d0d]",
                     ].join(" ")}
                   >
@@ -539,7 +539,7 @@ export default function PlaygroundPage() {
               {!loading && resText === null && resJson === null && (
                 <div className="flex h-full min-h-[260px] flex-col items-center justify-center text-center">
                   <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-[12px] bg-[rgba(10,124,255,0.08)]">
-                    <Play size={20} className="text-[#0a7cff]" />
+                    <Play size={20} className="text-[#f0a38a]" />
                   </div>
                   <p className="text-[13px] text-[rgba(13,13,13,0.45)]">
                     Заполните запрос и нажмите «Выполнить»

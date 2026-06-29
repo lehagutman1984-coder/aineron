@@ -17,7 +17,7 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('name', models.CharField(max_length=100, verbose_name='Название')),
                 ('system_prompt', models.TextField(blank=True, verbose_name='Системный промт')),
-                ('color', models.CharField(default='#0a7cff', max_length=7, verbose_name='Цвет (hex)')),
+                ('color', models.CharField(default='#f0a38a', max_length=7, verbose_name='Цвет (hex)')),
                 ('icon', models.CharField(default='Folder', max_length=30, verbose_name='Иконка (Lucide)')),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('user', models.ForeignKey(

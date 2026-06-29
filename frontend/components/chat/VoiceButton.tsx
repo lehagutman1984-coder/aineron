@@ -131,7 +131,7 @@ export function VoiceButton({
           state === "recording"
             ? "bg-[rgba(231,76,60,0.12)] text-[#e74c3c]"
             : state === "transcribing"
-            ? "text-[#0a7cff]"
+            ? "text-[#f0a38a]"
             : "text-[rgba(13,13,13,0.45)] hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.38)] dark:hover:text-[#ececec]",
           disabled || state === "transcribing" ? "cursor-not-allowed opacity-40" : "",
         ].join(" ")}

@@ -100,7 +100,7 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[rgba(13,13,13,0.08)] px-4 py-3 dark:border-[rgba(255,255,255,0.08)]">
           <p className="flex items-center gap-2 text-[14px] font-semibold text-[#0d0d0d] dark:text-[#ececec]">
-            <Film size={16} className="text-[#0a7cff]" />
+            <Film size={16} className="text-[#f0a38a]" />
             Оживить изображение
           </p>
           <button
@@ -147,7 +147,7 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
                     onClick={() => setSlug(m.slug)}
                     className={`flex flex-col items-start gap-0.5 rounded-[8px] border px-3 py-2 text-left transition-colors ${
                       selectedSlug === m.slug
-                        ? "border-[#0a7cff] bg-[rgba(10,124,255,0.08)]"
+                        ? "border-[#f0a38a] bg-[rgba(10,124,255,0.08)]"
                         : "border-[rgba(13,13,13,0.12)] hover:bg-[rgba(13,13,13,0.04)] dark:border-[rgba(255,255,255,0.12)]"
                     }`}
                   >
@@ -176,7 +176,7 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
                   onClick={() => setDuration(d)}
                   className={`h-9 flex-1 rounded-[8px] border text-[13px] font-medium transition-colors ${
                     duration === d
-                      ? "border-[#0a7cff] bg-[rgba(10,124,255,0.08)] text-[#0a7cff]"
+                      ? "border-[#f0a38a] bg-[rgba(10,124,255,0.08)] text-[#f0a38a]"
                       : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.65)] hover:bg-[rgba(13,13,13,0.04)] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.65)]"
                   }`}
                 >
@@ -204,7 +204,7 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
                           onClick={() => setCameraType(ct.value)}
                           className={`flex-1 h-8 rounded-[8px] border text-[11px] font-medium transition-colors ${
                             cameraType === ct.value
-                              ? "border-[#0a7cff] bg-[rgba(10,124,255,0.08)] text-[#0a7cff]"
+                              ? "border-[#f0a38a] bg-[rgba(10,124,255,0.08)] text-[#f0a38a]"
                               : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.65)] hover:bg-[rgba(13,13,13,0.04)] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.65)]"
                           }`}
                         >
@@ -225,7 +225,7 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
                       step={0.1}
                       value={motionStrength}
                       onChange={(e) => setMotionStrength(Number(e.target.value))}
-                      className="w-full accent-[#0a7cff]"
+                      className="w-full accent-[#f0a38a]"
                     />
                   </div>
                 </>
@@ -242,7 +242,7 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
                           onClick={() => setSoraDuration(d as 5 | 10 | 20)}
                           className={`h-8 flex-1 rounded-[8px] border text-[12px] font-medium transition-colors ${
                             soraDuration === d
-                              ? "border-[#0a7cff] bg-[rgba(10,124,255,0.08)] text-[#0a7cff]"
+                              ? "border-[#f0a38a] bg-[rgba(10,124,255,0.08)] text-[#f0a38a]"
                               : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.65)] hover:bg-[rgba(13,13,13,0.04)] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.65)]"
                           }`}
                         >
@@ -261,7 +261,7 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
                           onClick={() => setSoraAspect(r)}
                           className={`h-8 flex-1 rounded-[8px] border text-[12px] font-medium transition-colors ${
                             soraAspect === r
-                              ? "border-[#0a7cff] bg-[rgba(10,124,255,0.08)] text-[#0a7cff]"
+                              ? "border-[#f0a38a] bg-[rgba(10,124,255,0.08)] text-[#f0a38a]"
                               : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.65)] hover:bg-[rgba(13,13,13,0.04)] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.65)]"
                           }`}
                         >
@@ -281,7 +281,7 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
                         role="switch"
                         aria-checked={cameraFixed}
                         onClick={() => setCameraFixed((v) => !v)}
-                        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${cameraFixed ? "bg-[#0a7cff]" : "bg-[rgba(13,13,13,0.15)] dark:bg-[rgba(255,255,255,0.15)]"}`}
+                        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${cameraFixed ? "bg-[#f0a38a]" : "bg-[rgba(13,13,13,0.15)] dark:bg-[rgba(255,255,255,0.15)]"}`}
                       >
                         <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${cameraFixed ? "translate-x-4" : "translate-x-0.5"}`} />
                       </button>
@@ -294,7 +294,7 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
                       role="switch"
                       aria-checked={generateAudio}
                       onClick={() => setGenerateAudio((v) => !v)}
-                      className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${generateAudio ? "bg-[#0a7cff]" : "bg-[rgba(13,13,13,0.15)] dark:bg-[rgba(255,255,255,0.15)]"}`}
+                      className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${generateAudio ? "bg-[#f0a38a]" : "bg-[rgba(13,13,13,0.15)] dark:bg-[rgba(255,255,255,0.15)]"}`}
                     >
                       <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${generateAudio ? "translate-x-4" : "translate-x-0.5"}`} />
                     </button>
@@ -315,7 +315,7 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
               onChange={(e) => setPrompt(e.target.value)}
               rows={3}
               placeholder="Например: плавный наезд камеры, лёгкий ветер, движение облаков..."
-              className="w-full resize-none rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-3 py-2.5 text-[13px] text-[#0d0d0d] outline-none transition-all focus:border-[#0a7cff] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] dark:border-[rgba(255,255,255,0.12)] dark:bg-[rgba(255,255,255,0.04)] dark:text-[#ececec]"
+              className="w-full resize-none rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-3 py-2.5 text-[13px] text-[#0d0d0d] outline-none transition-all focus:border-[#f0a38a] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] dark:border-[rgba(255,255,255,0.12)] dark:bg-[rgba(255,255,255,0.04)] dark:text-[#ececec]"
             />
           </div>
 
@@ -341,7 +341,7 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
             type="button"
             onClick={() => canSubmit && createMutation.mutate()}
             disabled={!canSubmit}
-            className="flex h-9 items-center gap-1.5 rounded-[8px] bg-[#0a7cff] px-4 text-[13px] font-medium text-white transition-colors hover:bg-[#0066cc] disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex h-9 items-center gap-1.5 rounded-[8px] bg-[#f0a38a] px-4 text-[13px] font-medium text-white transition-colors hover:bg-[#0066cc] disabled:cursor-not-allowed disabled:opacity-40"
           >
             {createMutation.isPending ? (
               <Loader2 size={14} className="animate-spin" />

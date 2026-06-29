@@ -102,11 +102,11 @@ export default async function BlogListPage({
                 )}
                 <div className="flex flex-1 flex-col p-5">
                   {post.category && (
-                    <span className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#0a7cff]">
+                    <span className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#f0a38a]">
                       {post.category.name}
                     </span>
                   )}
-                  <h2 className="mb-2 text-[15px] font-semibold leading-snug text-[#0d0d0d] group-hover:text-[#0a7cff] transition-colors">
+                  <h2 className="mb-2 text-[15px] font-semibold leading-snug text-[#0d0d0d] group-hover:text-[#f0a38a] transition-colors">
                     {post.title}
                   </h2>
                   <p className="mb-4 flex-1 text-[13px] leading-relaxed text-[rgba(13,13,13,0.6)]">

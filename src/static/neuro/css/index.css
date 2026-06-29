@@ -6,14 +6,14 @@
     --text-static-white: #ffffff;
     --icon-primary: #0d0d0d;
     --icon-secondary: rgba(13,13,13,0.58);
-    --icon-accent: #0a7cff;
+    --icon-accent: #f0a38a;
     --background-primary: #ffffff;
     --background-secondary: rgba(13,13,13,0.06);
     --background-tertiary: rgba(13,13,13,0.03);
     --background-static-dark: #202020;
     --border-primary: rgba(13,13,13,0.12);
     --border-tertiary: rgba(13,13,13,0.06);
-    --btn-primary: #0a7cff;
+    --btn-primary: #f0a38a;
     --font-primary: 'Inter', sans-serif;
     --z-popup: 1060;
     --z-modal: 2000;
@@ -250,9 +250,9 @@ body {
     display: inline-block;
     padding: 6px 16px;
     background-color: transparent;
-    border: 1px solid #0a7cff;
+    border: 1px solid #f0a38a;
     border-radius: 30px;
-    color: #0a7cff;
+    color: #f0a38a;
     font-size: 12px;
     font-weight: 500;
     cursor: pointer;
@@ -262,9 +262,9 @@ body {
 }
 
 .news-popup .news-button:hover {
-    background-color: #0a7cff !important;
+    background-color: #f0a38a !important;
     color: white !important;
-    border-color: #0a7cff !important;
+    border-color: #f0a38a !important;
 }
 
 .login-btn {
@@ -543,7 +543,7 @@ body {
 }
 
 .hero h1 span {
-    background: linear-gradient(135deg, #0a7cff, #1dd6c1, #0a7cff);
+    background: linear-gradient(135deg, #f0a38a, #1dd6c1, #f0a38a);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-size: 200% 200%;
@@ -1532,7 +1532,7 @@ body {
 
 .unlimited-info {
     font-size: 14px;
-    color: #0a7cff;
+    color: #f0a38a;
     background: rgba(10,124,255,0.1);
     display: inline-block;
     padding: 6px 16px;

@@ -147,7 +147,7 @@ class OrganizationBranding(models.Model):
     subdomain = models.SlugField(max_length=63, unique=True, verbose_name='Субдомен')
     custom_domain = models.CharField(max_length=253, blank=True, verbose_name='Кастомный домен')
     logo_url = models.URLField(blank=True, verbose_name='URL логотипа')
-    primary_color = models.CharField(max_length=7, default='#0a7cff', verbose_name='Основной цвет')
+    primary_color = models.CharField(max_length=7, default='#f0a38a', verbose_name='Основной цвет')
     company_name = models.CharField(max_length=100, blank=True, verbose_name='Название компании')
     support_email = models.EmailField(blank=True, verbose_name='Email поддержки')
     is_active = models.BooleanField(default=True, verbose_name='Активен')
