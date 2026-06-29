@@ -44,6 +44,21 @@ const extractFirstImageUrl = (html: string): string | null => {
   return url;
 };
 
+// Batch: извлечь все URL изображений из HTML сообщения
+const extractAllImageUrls = (html: string): string[] => {
+  const urls: string[] = [];
+  const re = /<img[^>]+src=["']([^"']+)["']/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html || "")) !== null) {
+    let url = m[1];
+    if (typeof window !== "undefined" && url.startsWith("/")) {
+      url = window.location.origin + url;
+    }
+    urls.push(url);
+  }
+  return urls;
+};
+
 export default function ChatPage() {
   const { chatId } = useParams<{ chatId: string }>();
   const id = Number(chatId);
@@ -80,6 +95,8 @@ export default function ChatPage() {
   const [showMediaSettings, setShowMediaSettings] = useState(false);
   // Референс стиля для следующей генерации (кнопка «Стиль»)
   const [styleReferenceUrl, setStyleReferenceUrl] = useState<string | null>(null);
+  // Batch: количество вариантов при генерации изображений
+  const [batchCount, setBatchCount] = useState<1 | 2 | 4>(1);
 
   // Polling state (used for fal-ai image models)
   const [pendingMessageId, setPendingMessageId] = useState<number | null>(null);
@@ -716,6 +733,7 @@ export default function ChatPage() {
         falSettings.style_image_url = styleReferenceUrl;
         setStyleReferenceUrl(null);
       }
+      if (batchCount > 1) falSettings.num_images = batchCount;
       sendMutation.mutate({ msg: msg || " ", attachmentIds, ws: webSearch, settings: Object.keys(falSettings).length > 0 ? falSettings : undefined });
     } else {
       handleStreamSubmit(msg || " ", attachmentIds);
@@ -1297,6 +1315,35 @@ export default function ChatPage() {
             </div>
           )}
 
+          {/* Toolbar: batch count для fal-ai (генерация изображений) */}
+          {chat.network.provider === "fal-ai" && (
+            <div className="mt-1.5 flex items-center gap-1 px-1">
+              <span className="mr-0.5 text-[11px] font-medium text-[rgba(13,13,13,0.38)] dark:text-[rgba(236,236,236,0.33)]">
+                Количество:
+              </span>
+              {([1, 2, 4] as const).map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setBatchCount(n)}
+                  className={[
+                    "flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium transition-all",
+                    batchCount === n
+                      ? "bg-[rgba(10,124,255,0.12)] text-[#0a7cff] ring-1 ring-[rgba(10,124,255,0.35)]"
+                      : "text-[rgba(13,13,13,0.45)] hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.38)] dark:hover:text-[#ececec]",
+                  ].join(" ")}
+                >
+                  {n === 1 ? "×1" : `×${n}`}
+                </button>
+              ))}
+              {batchCount > 1 && (
+                <span className="ml-1 text-[10px] text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.3)]">
+                  — будет сгенерировано {batchCount} варианта
+                </span>
+              )}
+            </div>
+          )}
+
           {/* Баннер «Стиль задан» — показываем если есть styleReferenceUrl */}
           {styleReferenceUrl && (
             <div className="mx-1 mt-1.5 flex items-center gap-2 rounded-[8px] border border-[rgba(10,124,255,0.2)] bg-[rgba(10,124,255,0.06)] px-3 py-1.5">
@@ -1618,9 +1665,41 @@ function MessageRow({
               <ResearchReport html={message.content} plainText={message.plain_text ?? undefined} />
             ) : (
               (() => {
-                const falImgUrl = isFalAi
-                  ? extractFirstImageUrl(message.content || message.plain_text || "")
-                  : null;
+                const falImgUrls = isFalAi
+                  ? extractAllImageUrls(message.content || message.plain_text || "")
+                  : [];
+                const falImgUrl = falImgUrls[0] || null;
+                if (falImgUrls.length > 1) {
+                  return (
+                    <div className="mt-1 grid grid-cols-2 gap-2">
+                      {falImgUrls.map((url, i) => (
+                        <div key={i} className="group relative overflow-hidden rounded-[8px] bg-[rgba(13,13,13,0.04)] dark:bg-[rgba(236,236,236,0.04)]">
+                          <ZoomableImage src={url} className="w-full" />
+                          <div className="absolute bottom-1.5 right-1.5 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                            {onDownloadImage && (
+                              <button
+                                onClick={() => onDownloadImage(url)}
+                                title="Скачать"
+                                className="flex h-6 w-6 items-center justify-center rounded-[5px] bg-white/80 text-[#0d0d0d] shadow-sm backdrop-blur-sm hover:bg-white dark:bg-black/60 dark:text-white dark:hover:bg-black/80"
+                              >
+                                <Download size={11} />
+                              </button>
+                            )}
+                            {onEditImage && (
+                              <button
+                                onClick={() => onEditImage(url)}
+                                title="Редактировать"
+                                className="flex h-6 w-6 items-center justify-center rounded-[5px] bg-white/80 text-[#0d0d0d] shadow-sm backdrop-blur-sm hover:bg-white dark:bg-black/60 dark:text-white dark:hover:bg-black/80"
+                              >
+                                <Pencil size={11} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                }
                 return falImgUrl ? (
                   <ZoomableImage
                     src={falImgUrl}

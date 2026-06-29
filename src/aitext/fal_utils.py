@@ -292,10 +292,51 @@ def validate_and_merge_settings(config, user_settings):
     return final_args, errors, extra_cost
 
 
+def _apply_watermark(image_bytes: bytes, text: str = "aineron.ru") -> bytes:
+    """Накладывает водяной знак в правый нижний угол (для бесплатных тарифов)."""
+    try:
+        from PIL import Image, ImageDraw, ImageFont
+        import io
+        img = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
+        overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        draw = ImageDraw.Draw(overlay)
+        font_size = max(14, min(img.width, img.height) // 28)
+        try:
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", font_size)
+        except Exception:
+            font = ImageFont.load_default()
+        padding = max(10, font_size // 2)
+        bbox = draw.textbbox((0, 0), text, font=font)
+        tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+        x, y = img.width - tw - padding, img.height - th - padding
+        draw.text((x + 1, y + 1), text, font=font, fill=(0, 0, 0, 140))
+        draw.text((x, y), text, font=font, fill=(255, 255, 255, 180))
+        watermarked = Image.alpha_composite(img, overlay)
+        out = io.BytesIO()
+        watermarked.convert("RGB").save(out, format="PNG")
+        return out.getvalue()
+    except Exception as e:
+        logger.warning(f"[watermark] Ошибка наложения: {e}")
+        return image_bytes
+
+
+def _is_free_user(message) -> bool:
+    """True если сообщение принадлежит пользователю на бесплатном тарифе."""
+    try:
+        if message and getattr(message, 'chat_id', None):
+            tariff = message.chat.user.tariff
+            return tariff is not None and getattr(tariff, 'is_free', False)
+    except Exception:
+        pass
+    return False
+
+
 def save_image_from_b64(b64_data, message, prompt):
     """Сохраняет изображение из base64 строки"""
     try:
         img_data = base64.b64decode(b64_data)
+        if _is_free_user(message):
+            img_data = _apply_watermark(img_data)
         filename = f"generated_{uuid.uuid4()}.png"
         path = f"generated_images/{filename}"
         default_storage.save(path, ContentFile(img_data))
@@ -387,6 +428,8 @@ def save_media_from_url(url, message, prompt, media_type='image', max_retries=3,
                 logger.warning(f"Неизвестный тип медиа: {content_type}")
                 return None
 
+            if media_type == 'image' and _is_free_user(message):
+                file_data = _apply_watermark(file_data)
             default_storage.save(path, ContentFile(file_data))
             from .models import GeneratedImage  # если ещё не импортирован
             if gen is not None:
