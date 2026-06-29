@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   X,
   Brush,
@@ -52,6 +52,7 @@ const OUTPAINT_BTNS: { dir: Direction; icon: typeof ArrowLeft; label: string }[]
 
 export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
   const [prompt, setPrompt] = useState("");
+  const promptRef = useRef<HTMLTextAreaElement>(null);
   const [maskMode, setMaskMode] = useState(false);
   const [maskUrl, setMaskUrl] = useState<string | null>(null);
   const [outpaint, setOutpaint] = useState<Direction | null>(null);
@@ -144,19 +145,35 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
             {/* Quick presets */}
             <div className="flex flex-wrap gap-1.5 mb-3">
               {[
-                { label: "Убрать фон", prompt: "Remove background, make it transparent or white", icon: "bg" },
-                { label: "Ярче и чётче", prompt: "Enhance sharpness, increase brightness and contrast, professional photo editing", icon: "enhance" },
-                { label: "Добавить текст", prompt: "", icon: "text", placeholder: "Добавить текст..." },
-              ].map(({ label, prompt }) => (
+                { label: "Убрать фон", prompt: "Remove background, make it transparent or white" },
+                { label: "Ярче и чётче", prompt: "Enhance sharpness, increase brightness and contrast, professional photo editing" },
+              ].map(({ label, prompt: p }) => (
                 <button
                   key={label}
                   type="button"
-                  onClick={() => { if (prompt) setPrompt(prompt); }}
+                  onClick={() => setPrompt(p)}
                   className="h-8 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 text-[12px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:bg-[rgba(13,13,13,0.04)] hover:border-[rgba(13,13,13,0.25)] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.65)]"
                 >
                   {label}
                 </button>
               ))}
+              {/* Добавить текст — особый пресет: фокусирует поле с подсказкой */}
+              <button
+                type="button"
+                onClick={() => {
+                  const prefix = 'Добавь надпись "';
+                  if (!prompt.startsWith(prefix)) setPrompt(prefix);
+                  setTimeout(() => {
+                    const el = promptRef.current;
+                    if (!el) return;
+                    el.focus();
+                    el.selectionStart = el.selectionEnd = el.value.length;
+                  }, 0);
+                }}
+                className="h-8 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 text-[12px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:bg-[rgba(13,13,13,0.04)] hover:border-[rgba(13,13,13,0.25)] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.65)]"
+              >
+                Добавить текст
+              </button>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <button
@@ -245,6 +262,7 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
           {/* Prompt */}
           <div>
             <textarea
+              ref={promptRef}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               rows={3}
