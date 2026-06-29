@@ -2005,7 +2005,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
   const hasInstructions = Boolean(project?.system_prompt?.trim());
 
   return (
-    <div className="mx-auto max-w-[760px] px-4 py-8">
+    <div className="mx-auto max-w-[1200px] px-4 py-8">
       {/* Back */}
       <Link
         href="/projects/"
