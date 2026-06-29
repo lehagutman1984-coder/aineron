@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw, Paperclip, BookMarked, Globe, Volume2, Square, Loader, ChevronDown, ChevronRight, Settings2, FileText, X, GitCommit, CheckCircle2, XCircle, Download, Layers, BookmarkPlus, GitBranch, Microscope, Brain, ImagePlus, Pencil, Loader2, Film, Maximize2, Images, Palette, FileSearch } from "lucide-react";
+import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw, Paperclip, BookMarked, Globe, Volume2, Square, Loader, ChevronDown, ChevronRight, Settings2, FileText, X, GitCommit, CheckCircle2, XCircle, Download, Layers, BookmarkPlus, GitBranch, Microscope, Brain, ImagePlus, Pencil, Loader2, Film, Maximize2, Images, Palette, FileSearch, Eraser } from "lucide-react";
 import { MarkdownContent } from "@/components/chat/MarkdownContent";
 import { AttachmentPreview, type AttachmentState } from "@/components/chat/AttachmentPreview";
 import { PromptPicker } from "@/components/chat/PromptPicker";
@@ -21,6 +21,7 @@ import { AnimateImageModal } from "@/components/chat/AnimateImageModal";
 import { GenerationProgress } from "@/components/chat/GenerationProgress";
 import { PromptEnhancer } from "@/components/chat/PromptEnhancer";
 import { BeforeAfterSlider } from "@/components/chat/BeforeAfterSlider";
+import { ZoomableImage } from "@/components/chat/ZoomableImage";
 import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, uploadFile, synthesizeSpeech, confirmCommit, exportChat, quickSaveFact, branchChat, startDeepResearch, getResearchStatus, getMemoryToast, upscaleGeneration, createVariations, describeGeneration, downloadImageUrl, APIError, BASE_URL, type CommitProposed } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 import { useUIStore } from "@/lib/stores/ui";
@@ -561,6 +562,19 @@ export default function ChatPage() {
     }
   }, [describingId, addToast]);
 
+  // Убрать фон через img2img — отправляет edit с фиксированным промптом
+  const handleRemoveBg = useCallback(
+    (imageUrl: string) => {
+      sendMutation.mutate({
+        msg: "Remove background completely, make it transparent or clean white background",
+        attachmentIds: [],
+        ws: false,
+        settings: { ...mediaSettings, image_url: imageUrl },
+      });
+    },
+    [sendMutation, mediaSettings]
+  );
+
   // Видео готово (SSE) — форсируем перезагрузку статуса сообщения
   const handleVideoComplete = useCallback(() => {
     qc.invalidateQueries({ queryKey: ["message-status"] });
@@ -1012,6 +1026,7 @@ export default function ChatPage() {
                   onStyleImage={handleStyleImage}
                   onDescribeImage={handleDescribeImage}
                   onDownloadImage={(url) => downloadImageUrl(url)}
+                  onRemoveBg={handleRemoveBg}
                   describingId={describingId}
                   onVideoComplete={handleVideoComplete}
                   researchData={
@@ -1459,6 +1474,7 @@ function MessageRow({
   onStyleImage,
   onDescribeImage,
   onDownloadImage,
+  onRemoveBg,
   describingId,
   onVideoComplete,
   researchData,
@@ -1480,6 +1496,7 @@ function MessageRow({
   onStyleImage?: (url: string) => void;
   onDescribeImage?: (generationId: number) => void;
   onDownloadImage?: (url: string) => void;
+  onRemoveBg?: (url: string) => void;
   describingId?: number | null;
   onVideoComplete?: () => void;
   researchData?: { steps: import("@/lib/api/types").DeepResearchStep[]; status: import("@/lib/api/types").DeepResearchStatus; error: string };
@@ -1600,12 +1617,24 @@ function MessageRow({
             {message.is_research && message.content ? (
               <ResearchReport html={message.content} plainText={message.plain_text ?? undefined} />
             ) : (
-              <AssistantContent
-                content={message.content}
-                plain_text={message.plain_text ?? null}
-                shouldAnimate={shouldAnimate}
-                sources={message.kb_sources}
-              />
+              (() => {
+                const falImgUrl = isFalAi
+                  ? extractFirstImageUrl(message.content || message.plain_text || "")
+                  : null;
+                return falImgUrl ? (
+                  <ZoomableImage
+                    src={falImgUrl}
+                    className="max-h-[500px] w-full rounded-[8px] bg-[rgba(13,13,13,0.04)] dark:bg-[rgba(236,236,236,0.04)]"
+                  />
+                ) : (
+                  <AssistantContent
+                    content={message.content}
+                    plain_text={message.plain_text ?? null}
+                    shouldAnimate={shouldAnimate}
+                    sources={message.kb_sources}
+                  />
+                );
+              })()
             )}
             {message.kb_sources && message.kb_sources.length > 0 && (
               <SourcesBlock sources={message.kb_sources} />
@@ -1632,6 +1661,11 @@ function MessageRow({
                   {imgUrl && onEditImage && (
                     <button onClick={() => onEditImage(imgUrl)} className={btnCls} style={btnStyle} onMouseEnter={onEnter} onMouseLeave={onLeave} title="Редактировать изображение (img2img)">
                       <Pencil size={13} /><span>Редактировать</span>
+                    </button>
+                  )}
+                  {imgUrl && onRemoveBg && (
+                    <button onClick={() => onRemoveBg(imgUrl)} className={btnCls} style={btnStyle} onMouseEnter={onEnter} onMouseLeave={onLeave} title="Убрать фон (img2img через GPT Image)">
+                      <Eraser size={13} /><span>Убрать фон</span>
                     </button>
                   )}
                   {imgUrl && onAnimateImage && (

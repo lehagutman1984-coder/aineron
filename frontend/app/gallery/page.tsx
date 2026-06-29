@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { Video, Sparkles, ImageOff, Wand2, Search, Copy, Check } from "lucide-react";
-import { getGallery } from "@/lib/api/client";
+import { Video, Sparkles, ImageOff, Wand2, Search, Copy, Check, Heart } from "lucide-react";
+import { getGallery, likeGeneration } from "@/lib/api/client";
 import type { GalleryItem } from "@/lib/api/types";
 
 type Filter = "all" | "image" | "video";
@@ -31,6 +31,19 @@ function formatDate(iso: string) {
 
 function GalleryCard({ item, onTry }: { item: GalleryItem; onTry: (prompt: string) => void }) {
   const [copied, setCopied] = useState(false);
+  const [likes, setLikes] = useState(item.likes ?? 0);
+  const [liked, setLiked] = useState(false);
+
+  const handleLike = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (liked) return;
+    try {
+      const res = await likeGeneration(item.id);
+      setLikes(res.likes);
+      setLiked(true);
+    } catch {}
+  };
+
   return (
     <div className="group relative mb-3 break-inside-avoid overflow-hidden rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white">
       <Link href={item.share_slug ? `/g/${item.share_slug}` : "#"} className="block">
@@ -84,15 +97,27 @@ function GalleryCard({ item, onTry }: { item: GalleryItem; onTry: (prompt: strin
             </button>
           )}
         </div>
-        {item.prompt && (
+        <div className="mt-2 flex items-center gap-2">
+          {item.prompt && (
+            <button
+              onClick={() => onTry(item.prompt)}
+              className="inline-flex items-center gap-1.5 rounded-[7px] bg-[rgba(10,124,255,0.08)] px-2.5 py-1.5 text-[12px] font-medium text-[#0a7cff] transition-colors hover:bg-[rgba(10,124,255,0.14)]"
+            >
+              <Wand2 size={12} />
+              Попробовать
+            </button>
+          )}
           <button
-            onClick={() => onTry(item.prompt)}
-            className="mt-2 inline-flex items-center gap-1.5 rounded-[7px] bg-[rgba(10,124,255,0.08)] px-2.5 py-1.5 text-[12px] font-medium text-[#0a7cff] transition-colors hover:bg-[rgba(10,124,255,0.14)]"
+            onClick={handleLike}
+            title={liked ? "Уже лайкнуто" : "Нравится"}
+            className={`ml-auto flex items-center gap-1 rounded-[7px] px-2 py-1.5 text-[12px] font-medium transition-colors ${
+              liked ? "text-[#e74c3c]" : "text-[rgba(13,13,13,0.38)] hover:text-[#e74c3c]"
+            }`}
           >
-            <Wand2 size={12} />
-            Попробовать
+            <Heart size={12} fill={liked ? "currentColor" : "none"} />
+            {likes > 0 && <span>{likes}</span>}
           </button>
-        )}
+        </div>
       </div>
     </div>
   );

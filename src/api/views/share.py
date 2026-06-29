@@ -57,6 +57,7 @@ def _serialize_gallery_item(gen, request):
         'image_url': image_url,
         'created_at': gen.created_at.isoformat(),
         'username': _anon_username(gen),
+        'likes': gen.likes,
     }
 
 
@@ -185,3 +186,14 @@ class GenerationUnshareView(APIView):
             'is_public': False,
             'share_slug': gen.share_slug,
         })
+
+
+class GenerationLikeView(APIView):
+    """POST /v1/generations/<int:pk>/like/ — анонимный лайк публичной генерации."""
+    authentication_classes = [CsrfExemptSessionAuthentication]
+    permission_classes = [AllowAny]
+
+    def post(self, request, pk):
+        gen = get_object_or_404(GeneratedImage, id=pk, is_public=True)
+        GeneratedImage.objects.filter(id=pk).update(likes=gen.likes + 1)
+        return Response({'id': gen.id, 'likes': gen.likes + 1})

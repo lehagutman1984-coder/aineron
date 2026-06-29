@@ -13,17 +13,30 @@ interface Props {
 }
 
 const DURATIONS = [5, 8, 10];
+const SORA_DURATIONS = [5, 10];
 
 /**
  * "Оживить" (img2video): выбор видео-модели + motion-промт + длительность.
  * Создаёт новый чат с выбранной видео-моделью и image_url в settings,
  * затем переходит в этот чат (генерация идёт через обычный fal-ai pipeline).
  */
+const CAMERA_TYPES = [
+  { value: "close_up", label: "Крупный план" },
+  { value: "medium", label: "Средний" },
+  { value: "wide_angle", label: "Широкий" },
+];
+
 export function AnimateImageModal({ imageUrl, onClose }: Props) {
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
   const [duration, setDuration] = useState<number>(5);
   const [slug, setSlug] = useState<string>("");
+  // Per-model settings
+  const [cameraType, setCameraType] = useState("medium");
+  const [motionStrength, setMotionStrength] = useState(0.6);
+  const [cameraFixed, setCameraFixed] = useState(false);
+  const [generateAudio, setGenerateAudio] = useState(false);
+  const [soraDuration, setSoraDuration] = useState<5 | 10>(5);
 
   const { data: networks, isLoading } = useQuery({
     queryKey: ["networks", "fal-ai"],
@@ -39,17 +52,31 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
   // авто-выбор первой модели
   const selectedSlug = slug || videoModels[0]?.slug || "";
 
+  const selectedModel = videoModels.find((m) => m.slug === selectedSlug);
+  const modelName = (selectedModel?.name ?? "").toLowerCase();
+  const isKling = modelName.includes("kling");
+  const isSeedance = modelName.includes("seedance");
+  const isSora = modelName.includes("sora");
+  const isVeo = modelName.includes("veo");
+
   const createMutation = useMutation({
-    mutationFn: () =>
-      createChat({
+    mutationFn: () => {
+      const extra: Record<string, unknown> = {};
+      if (isKling) { extra.camera_type = cameraType; extra.motion_strength = motionStrength; }
+      if (isSeedance) { extra.camerafixed = cameraFixed; extra.audio = generateAudio; }
+      if (isVeo) { extra.audio_response = generateAudio; }
+      const activeDuration = isSora ? soraDuration : duration;
+      return createChat({
         network_slug: selectedSlug,
         message: prompt.trim() || " ",
         settings: {
           image_url: imageUrl,
-          duration,
-          seconds: String(duration),
+          duration: activeDuration,
+          seconds: String(activeDuration),
+          ...extra,
         },
-      }),
+      });
+    },
     onSuccess: (res) => {
       onClose();
       router.push(`/chat/${res.chat_id}`);
@@ -133,8 +160,8 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
             )}
           </div>
 
-          {/* Duration */}
-          <div>
+          {/* Duration (hidden for Sora — uses its own duration in per-model settings) */}
+          {!isSora && <div>
             <p className="mb-2 text-[12px] font-medium text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.55)]">
               Длительность
             </p>
@@ -154,7 +181,105 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
                 </button>
               ))}
             </div>
-          </div>
+          </div>}
+
+          {/* Per-model settings */}
+          {(isKling || isSeedance || isSora || isVeo) && (
+            <div className="space-y-3 rounded-[10px] border border-[rgba(13,13,13,0.08)] bg-[rgba(13,13,13,0.02)] p-3 dark:border-[rgba(255,255,255,0.08)] dark:bg-[rgba(255,255,255,0.03)]">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-[rgba(13,13,13,0.38)] dark:text-[rgba(236,236,236,0.35)]">
+                Настройки модели
+              </p>
+              {isKling && (
+                <>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[11px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">Камера</label>
+                    <div className="flex gap-1.5">
+                      {CAMERA_TYPES.map((ct) => (
+                        <button
+                          key={ct.value}
+                          type="button"
+                          onClick={() => setCameraType(ct.value)}
+                          className={`flex-1 h-8 rounded-[8px] border text-[11px] font-medium transition-colors ${
+                            cameraType === ct.value
+                              ? "border-[#0a7cff] bg-[rgba(10,124,255,0.08)] text-[#0a7cff]"
+                              : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.65)] hover:bg-[rgba(13,13,13,0.04)] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.65)]"
+                          }`}
+                        >
+                          {ct.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="flex items-center justify-between text-[11px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">
+                      <span>Интенсивность движения</span>
+                      <span className="font-medium text-[#0d0d0d] dark:text-[#ececec]">{motionStrength.toFixed(1)}</span>
+                    </label>
+                    <input
+                      type="range"
+                      min={0}
+                      max={1}
+                      step={0.1}
+                      value={motionStrength}
+                      onChange={(e) => setMotionStrength(Number(e.target.value))}
+                      className="w-full accent-[#0a7cff]"
+                    />
+                  </div>
+                </>
+              )}
+              {isSora && (
+                <div className="flex flex-col gap-1">
+                  <label className="text-[11px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">Длительность</label>
+                  <div className="flex gap-1.5">
+                    {SORA_DURATIONS.map((d) => (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => setSoraDuration(d as 5 | 10)}
+                        className={`h-8 flex-1 rounded-[8px] border text-[12px] font-medium transition-colors ${
+                          soraDuration === d
+                            ? "border-[#0a7cff] bg-[rgba(10,124,255,0.08)] text-[#0a7cff]"
+                            : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.65)] hover:bg-[rgba(13,13,13,0.04)] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.65)]"
+                        }`}
+                      >
+                        {d} сек
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {(isSeedance || isVeo) && (
+                <div className="flex flex-wrap gap-4">
+                  {isSeedance && (
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={cameraFixed}
+                        onClick={() => setCameraFixed((v) => !v)}
+                        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${cameraFixed ? "bg-[#0a7cff]" : "bg-[rgba(13,13,13,0.15)] dark:bg-[rgba(255,255,255,0.15)]"}`}
+                      >
+                        <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${cameraFixed ? "translate-x-4" : "translate-x-0.5"}`} />
+                      </button>
+                      <span className="text-[12px] text-[rgba(13,13,13,0.65)] dark:text-[rgba(236,236,236,0.6)]">Камера фиксирована</span>
+                    </label>
+                  )}
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={generateAudio}
+                      onClick={() => setGenerateAudio((v) => !v)}
+                      className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${generateAudio ? "bg-[#0a7cff]" : "bg-[rgba(13,13,13,0.15)] dark:bg-[rgba(255,255,255,0.15)]"}`}
+                    >
+                      <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${generateAudio ? "translate-x-4" : "translate-x-0.5"}`} />
+                    </button>
+                    <span className="text-[12px] text-[rgba(13,13,13,0.65)] dark:text-[rgba(236,236,236,0.6)]">Генерировать аудио</span>
+                  </label>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Motion prompt */}
           <div>

@@ -4,6 +4,81 @@ import { useState } from "react";
 import { Dices, Lock, Unlock, ChevronDown, ChevronRight } from "lucide-react";
 import type { UiField, UiSection } from "@/lib/api/types";
 
+// Aspect ratio visual presets for the "size" select field.
+const RATIO_PRESETS = [
+  { label: "1:1", w: 1, h: 1 },
+  { label: "4:3", w: 4, h: 3 },
+  { label: "3:4", w: 3, h: 4 },
+  { label: "16:9", w: 16, h: 9 },
+  { label: "9:16", w: 9, h: 16 },
+];
+
+function parseSize(val: string): { w: number; h: number } | null {
+  const m = String(val).match(/^(\d+)[x×:](\d+)$/i);
+  return m ? { w: Number(m[1]), h: Number(m[2]) } : null;
+}
+
+function closestOption(options: { value: string }[], targetW: number, targetH: number): string | null {
+  let best: string | null = null;
+  let bestDiff = Infinity;
+  for (const opt of options) {
+    const s = parseSize(opt.value);
+    if (!s) continue;
+    const optRatio = s.w / s.h;
+    const targetRatio = targetW / targetH;
+    const diff = Math.abs(optRatio - targetRatio);
+    if (diff < bestDiff) { bestDiff = diff; best = opt.value; }
+  }
+  return best;
+}
+
+function AspectRatioPresets({
+  options,
+  currentValue,
+  onSet,
+}: {
+  options: { value: string }[];
+  currentValue: unknown;
+  onSet: (v: unknown) => void;
+}) {
+  const currentSize = parseSize(String(currentValue ?? ""));
+  const currentRatio = currentSize ? currentSize.w / currentSize.h : null;
+
+  return (
+    <div className="flex flex-wrap gap-1 mb-1.5">
+      {RATIO_PRESETS.map(({ label, w, h }) => {
+        const targetRatio = w / h;
+        const isActive = currentRatio !== null && Math.abs(currentRatio - targetRatio) < 0.05;
+        return (
+          <button
+            key={label}
+            type="button"
+            onClick={() => {
+              const best = closestOption(options, w, h);
+              if (best) onSet(best);
+            }}
+            title={label}
+            className={`flex flex-col items-center justify-center gap-0.5 rounded-[6px] border px-1.5 py-1 transition-colors ${
+              isActive
+                ? "border-[#0a7cff] bg-[rgba(10,124,255,0.08)] text-[#0a7cff]"
+                : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.04)] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.5)]"
+            }`}
+          >
+            <span
+              className="block border border-current"
+              style={{
+                width: `${Math.round(20 * Math.min(1, w / h))}px`,
+                height: `${Math.round(20 * Math.min(1, h / w))}px`,
+              }}
+            />
+            <span className="text-[9px] font-medium leading-none">{label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function randomSeed(max?: number): number {
   const cap = max && max > 0 ? Math.min(max, 9_999_999_999) : 9_999_999_999;
   return Math.floor(Math.random() * (cap + 1));
@@ -164,11 +239,21 @@ export function MediaSettingsPanel({
               const val = values[field.name];
 
               if (field.type === "select") {
+                const isSizeField =
+                  field.name === "size" &&
+                  (field.options ?? []).some((o) => parseSize(o.value) !== null);
                 return (
                   <div key={field.name} className="flex flex-col gap-1">
                     <label className="text-[11px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">
                       {field.label}
                     </label>
+                    {isSizeField && (
+                      <AspectRatioPresets
+                        options={field.options ?? []}
+                        currentValue={val}
+                        onSet={(v) => set(field.name, v)}
+                      />
+                    )}
                     <select
                       value={String(val ?? "")}
                       onChange={(e) => set(field.name, e.target.value)}

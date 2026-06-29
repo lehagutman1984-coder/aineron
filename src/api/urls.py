@@ -41,7 +41,7 @@ from api.views.referral import ReferralView, ReferralWithdrawView
 from api.views.files import UserFilesView, UserFileDeleteView, GenerationRerunView, GenerationUpscaleView, GenerationVariationsView, GenerationDescribeView
 from api.views.generations import GenerationProgressView
 from api.views.share import (
-    GalleryView, PublicGenerationView, GenerationShareView, GenerationUnshareView,
+    GalleryView, PublicGenerationView, GenerationShareView, GenerationUnshareView, GenerationLikeView,
 )
 from api.views.compare import CompareView
 from api.views.prompts import PromptListCreateView, PromptDetailView
@@ -181,6 +181,7 @@ urlpatterns = [
     path('v1/generations/<int:pk>/describe/', GenerationDescribeView.as_view(), name='generation_describe'),
     path('v1/generations/<int:pk>/share/', GenerationShareView.as_view(), name='generation_share'),
     path('v1/generations/<int:pk>/unshare/', GenerationUnshareView.as_view(), name='generation_unshare'),
+    path('v1/generations/<int:pk>/like/', GenerationLikeView.as_view(), name='generation_like'),
     path('v1/generations/<str:slug>/public/', PublicGenerationView.as_view(), name='generation_public'),
 
     # ========== Публичная галерея (Sprint 7) ==========

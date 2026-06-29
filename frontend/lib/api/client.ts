@@ -553,6 +553,9 @@ export const downloadImageUrl = (url: string, filename?: string): void => {
   document.body.removeChild(a);
 };
 
+export const likeGeneration = (genId: number): Promise<{ id: number; likes: number }> =>
+  request<{ id: number; likes: number }>(`/generations/${genId}/like/`, { method: "POST" });
+
 // ============ Sprint 7: Public gallery & sharing ============
 
 export const shareGeneration = (genId: string): Promise<ShareGenerationResponse> =>

@@ -731,6 +731,7 @@ export interface GalleryItem {
   image_url: string;
   created_at: string;
   username: string;
+  likes: number;
 }
 
 export interface GalleryResponse {
