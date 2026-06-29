@@ -226,7 +226,7 @@ function BarChart({ days, period }: { days: StarsUsageDay[]; period: number }) {
               style={{
                 height: `${pct}%`,
                 background: entry.stars > 0
-                  ? "rgba(10,124,255,0.75)"
+                  ? "rgba(217,119,87,0.75)"
                   : "rgba(13,13,13,0.07)",
                 minHeight: "2px",
               }}

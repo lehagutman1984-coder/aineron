@@ -27,11 +27,11 @@ export function MemoryToast({ count, facts, onDismiss }: Props) {
   return (
     <div
       className={[
-        "fixed bottom-24 right-5 z-50 flex max-w-[280px] items-start gap-2.5 rounded-[12px] border border-[rgba(124,58,237,0.2)] bg-white px-3.5 py-3 shadow-lg transition-all duration-300 dark:bg-[#1a1a1a]",
+        "fixed bottom-24 right-5 z-50 flex max-w-[280px] items-start gap-2.5 rounded-[12px] border border-[rgba(217,119,87,0.2)] bg-white px-3.5 py-3 shadow-lg transition-all duration-300 dark:bg-[#1a1a1a]",
         visible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
       ].join(" ")}
     >
-      <Brain size={15} className="mt-0.5 shrink-0 text-[#7c3aed]" />
+      <Brain size={15} className="mt-0.5 shrink-0 text-[#D97757]" />
       <div className="min-w-0 flex-1">
         <div className="text-[12px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
           Запомнено: {count} {count === 1 ? "факт" : count < 5 ? "факта" : "фактов"}

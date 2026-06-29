@@ -94,7 +94,7 @@ export default function FavoritesPage() {
             </p>
             <Link
               href="/models/"
-              className="mt-4 inline-flex items-center gap-1.5 rounded-[8px] bg-[#D97757] px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#0068e0]"
+              className="mt-4 inline-flex items-center gap-1.5 rounded-[8px] bg-[#D97757] px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#C4623E]"
             >
               <Wand2 size={14} />
               Создать изображение
@@ -149,7 +149,7 @@ export default function FavoritesPage() {
                     )}
                     <div className="mt-1 flex flex-wrap items-center gap-1">
                       {item.model_name && (
-                        <span className="inline-flex items-center rounded-[4px] bg-[rgba(10,124,255,0.08)] px-1.5 py-0.5 text-[10px] font-medium text-[#D97757]">
+                        <span className="inline-flex items-center rounded-[4px] bg-[rgba(217,119,87,0.08)] px-1.5 py-0.5 text-[10px] font-medium text-[#D97757]">
                           {item.model_name}
                         </span>
                       )}

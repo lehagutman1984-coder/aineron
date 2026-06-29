@@ -94,7 +94,7 @@ export function Navbar() {
               </Link>
               <Link
                 href="/register/"
-                className="rounded-[8px] bg-[#D97757] px-3 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-[#0066cc]"
+                className="rounded-[8px] bg-[#D97757] px-3 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-[#C4623E]"
               >
                 Начать бесплатно
               </Link>

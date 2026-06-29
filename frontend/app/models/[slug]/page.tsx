@@ -140,7 +140,7 @@ export default async function ModelDetailPage({ params, searchParams }: Props) {
               className="rounded-[14px] object-cover shrink-0"
             />
           ) : (
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[14px] bg-[rgba(10,124,255,0.10)] text-[#D97757]">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[14px] bg-[rgba(217,119,87,0.10)] text-[#D97757]">
               {isMedia ? <ImageIcon size={28} /> : <Code2 size={28} />}
             </div>
           )}
@@ -238,7 +238,7 @@ export default async function ModelDetailPage({ params, searchParams }: Props) {
                   {n.avatar ? (
                     <img src={n.avatar} alt={n.name} width={36} height={36} className="rounded-[8px]" />
                   ) : (
-                    <div className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[rgba(10,124,255,0.08)] text-[#D97757]">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[rgba(217,119,87,0.08)] text-[#D97757]">
                       <Code2 size={16} />
                     </div>
                   )}

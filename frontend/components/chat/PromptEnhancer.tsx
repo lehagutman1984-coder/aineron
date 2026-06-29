@@ -74,7 +74,7 @@ export function PromptEnhancer({ prompt, onAccept, disabled }: PromptEnhancerPro
         className={[
           "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all disabled:cursor-not-allowed disabled:opacity-40",
           open
-            ? "bg-[rgba(124,58,237,0.12)] text-[#7c3aed] ring-1 ring-[rgba(124,58,237,0.35)]"
+            ? "bg-[rgba(217,119,87,0.12)] text-[#D97757] ring-1 ring-[rgba(217,119,87,0.35)]"
             : "text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.38)] dark:hover:text-[#EDE8E3]",
         ].join(" ")}
       >
@@ -89,7 +89,7 @@ export function PromptEnhancer({ prompt, onAccept, disabled }: PromptEnhancerPro
         >
           <div className="mb-2.5 flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-[12px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
-              <Wand2 size={13} className="text-[#7c3aed]" />
+              <Wand2 size={13} className="text-[#D97757]" />
               Улучшенный промпт
             </span>
             <button
@@ -115,7 +115,7 @@ export function PromptEnhancer({ prompt, onAccept, disabled }: PromptEnhancerPro
                 className={[
                   "rounded-full px-2.5 py-1 text-[11px] font-medium transition-all disabled:opacity-50",
                   style === s.value
-                    ? "bg-[#7c3aed] text-white"
+                    ? "bg-[#D97757] text-white"
                     : "bg-[rgba(13,13,13,0.05)] text-[rgba(13,13,13,0.6)] hover:bg-[rgba(13,13,13,0.09)] dark:bg-[rgba(255,255,255,0.07)] dark:text-[rgba(236,236,236,0.6)]",
                 ].join(" ")}
               >
@@ -142,10 +142,10 @@ export function PromptEnhancer({ prompt, onAccept, disabled }: PromptEnhancerPro
                 </p>
               </div>
               <div className="mb-3">
-                <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-[#7c3aed]">
+                <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-[#D97757]">
                   Стало
                 </p>
-                <p className="max-h-[180px] overflow-y-auto rounded-[8px] bg-[rgba(124,58,237,0.06)] px-2.5 py-1.5 text-[12px] leading-relaxed text-[#1A1A1A] ring-1 ring-[rgba(124,58,237,0.18)] dark:text-[#EDE8E3]">
+                <p className="max-h-[180px] overflow-y-auto rounded-[8px] bg-[rgba(217,119,87,0.06)] px-2.5 py-1.5 text-[12px] leading-relaxed text-[#1A1A1A] ring-1 ring-[rgba(217,119,87,0.18)] dark:text-[#EDE8E3]">
                   {enhanced}
                 </p>
               </div>
@@ -170,7 +170,7 @@ export function PromptEnhancer({ prompt, onAccept, disabled }: PromptEnhancerPro
                   type="button"
                   disabled={!enhanced}
                   onClick={accept}
-                  className="flex items-center gap-1.5 rounded-[8px] bg-[#7c3aed] px-3 py-1.5 text-[12px] font-medium text-white transition-all hover:bg-[#6d28d9] disabled:opacity-40"
+                  className="flex items-center gap-1.5 rounded-[8px] bg-[#D97757] px-3 py-1.5 text-[12px] font-medium text-white transition-all hover:bg-[#C4623E] disabled:opacity-40"
                 >
                   <Check size={12} />
                   Применить

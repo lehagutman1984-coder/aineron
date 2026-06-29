@@ -41,7 +41,7 @@ export function CatalogClient({ networks, categories, initialCategory, projectId
           placeholder="Поиск по моделям..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-4 py-2.5 text-[14px] text-[#1A1A1A] placeholder-[rgba(13,13,13,0.38)] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all"
+          className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-4 py-2.5 text-[14px] text-[#1A1A1A] placeholder-[rgba(13,13,13,0.38)] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
         />
       </div>
 
@@ -121,7 +121,7 @@ function NetworkCard({ network, projectId }: { network: NetworkListItem; project
             className="rounded-[10px] object-cover shrink-0"
           />
         ) : (
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-[rgba(10,124,255,0.10)] text-[#D97757]">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-[rgba(217,119,87,0.10)] text-[#D97757]">
             {network.handle_photo || network.handle_video ? (
               <ImageIcon size={20} />
             ) : (

@@ -16,7 +16,7 @@ export function TryPromptButton({ prompt }: { prompt: string }) {
   return (
     <button
       onClick={onClick}
-      className="inline-flex items-center gap-1.5 rounded-[8px] bg-[#D97757] px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#0068e0]"
+      className="inline-flex items-center gap-1.5 rounded-[8px] bg-[#D97757] px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#C4623E]"
     >
       <Wand2 size={14} />
       Попробовать этот промт

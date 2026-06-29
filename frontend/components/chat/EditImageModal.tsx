@@ -183,7 +183,7 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
                 onClick={toggleMaskMode}
                 className={`flex h-9 items-center gap-1.5 rounded-[8px] border px-3 text-[12px] font-medium transition-colors ${
                   maskMode
-                    ? "border-[#D97757] bg-[rgba(10,124,255,0.08)] text-[#D97757]"
+                    ? "border-[#D97757] bg-[rgba(217,119,87,0.08)] text-[#D97757]"
                     : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.65)] hover:bg-[rgba(13,13,13,0.04)] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.65)]"
                 }`}
               >
@@ -191,7 +191,7 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
                 {maskMode ? "Скрыть маску" : "Нарисовать маску"}
               </button>
               {maskUrl && !maskMode && (
-                <span className="flex items-center gap-1 text-[12px] font-medium text-[#10a37f]">
+                <span className="flex items-center gap-1 text-[12px] font-medium text-[#D97757]">
                   <Check size={13} />
                   Маска готова
                 </span>
@@ -218,7 +218,7 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
                   title={label}
                   className={`flex h-9 items-center gap-1.5 rounded-[8px] border px-2.5 text-[12px] font-medium transition-colors ${
                     outpaint === dir
-                      ? "border-[#D97757] bg-[rgba(10,124,255,0.08)] text-[#D97757]"
+                      ? "border-[#D97757] bg-[rgba(217,119,87,0.08)] text-[#D97757]"
                       : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.65)] hover:bg-[rgba(13,13,13,0.04)] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.65)]"
                   }`}
                 >
@@ -248,7 +248,7 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
                   onClick={() => toggleTargetRatio(r)}
                   className={`h-9 rounded-[8px] border px-3 text-[12px] font-medium transition-colors ${
                     targetRatio === r
-                      ? "border-[#7c3aed] bg-[rgba(124,58,237,0.08)] text-[#7c3aed]"
+                      ? "border-[#D97757] bg-[rgba(217,119,87,0.08)] text-[#D97757]"
                       : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.65)] hover:bg-[rgba(13,13,13,0.04)] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.65)]"
                   }`}
                 >
@@ -275,7 +275,7 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
                     ? "Опишите, что разместить в закрашенной области..."
                     : "Опишите, что изменить на изображении..."
               }
-              className="w-full resize-none rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-3 py-2.5 text-[13px] text-[#1A1A1A] outline-none transition-all focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] dark:border-[rgba(255,255,255,0.12)] dark:bg-[rgba(255,255,255,0.04)] dark:text-[#EDE8E3]"
+              className="w-full resize-none rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-3 py-2.5 text-[13px] text-[#1A1A1A] outline-none transition-all focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] dark:border-[rgba(255,255,255,0.12)] dark:bg-[rgba(255,255,255,0.04)] dark:text-[#EDE8E3]"
             />
             {outpaint && (
               <p className="mt-1 text-[11px] text-[rgba(13,13,13,0.4)] dark:text-[rgba(236,236,236,0.4)]">
@@ -298,7 +298,7 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
             type="button"
             onClick={handleSubmit}
             disabled={!canSubmit}
-            className="flex h-9 items-center gap-1.5 rounded-[8px] bg-[#D97757] px-4 text-[13px] font-medium text-white transition-colors hover:bg-[#0066cc] disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex h-9 items-center gap-1.5 rounded-[8px] bg-[#D97757] px-4 text-[13px] font-medium text-white transition-colors hover:bg-[#C4623E] disabled:cursor-not-allowed disabled:opacity-40"
           >
             {submitting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
             Сгенерировать

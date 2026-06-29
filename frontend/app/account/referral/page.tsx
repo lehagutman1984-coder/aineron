@@ -112,7 +112,7 @@ export default function ReferralPage() {
             <div className="mb-1 text-[12px] text-[rgba(13,13,13,0.45)]">Вывод средств</div>
             <button
               onClick={() => setShowWithdrawModal(true)}
-              className="flex items-center gap-2 rounded-[8px] bg-[#D97757] px-3 py-2 text-[13px] font-medium text-white hover:bg-[#0066cc] transition-colors"
+              className="flex items-center gap-2 rounded-[8px] bg-[#D97757] px-3 py-2 text-[13px] font-medium text-white hover:bg-[#C4623E] transition-colors"
             >
               <ArrowDownToLine size={14} />
               Запросить
@@ -133,7 +133,7 @@ export default function ReferralPage() {
             className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[8px] border border-[rgba(13,13,13,0.12)] bg-white hover:bg-[rgba(13,13,13,0.04)] transition-colors"
           >
             {copied ? (
-              <Check size={16} className="text-[#1dd6c1]" />
+              <Check size={16} className="text-[#D97757]" />
             ) : (
               <Copy size={16} className="text-[rgba(13,13,13,0.55)]" />
             )}
@@ -224,7 +224,7 @@ export default function ReferralPage() {
                 value={withdrawAmount}
                 onChange={(e) => setWithdrawAmount(e.target.value)}
                 placeholder="0.00"
-                className="h-10 w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[14px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all"
+                className="h-10 w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[14px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
               />
             </div>
 
@@ -238,7 +238,7 @@ export default function ReferralPage() {
                 onChange={(e) => setWithdrawCard(e.target.value)}
                 placeholder="0000 0000 0000 0000"
                 maxLength={19}
-                className="h-10 w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[14px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all"
+                className="h-10 w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[14px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
               />
             </div>
 
@@ -263,7 +263,7 @@ export default function ReferralPage() {
                   !withdrawCard ||
                   parseFloat(withdrawAmount) <= 0
                 }
-                className="flex-1 h-10 rounded-[8px] bg-[#D97757] text-[14px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 h-10 rounded-[8px] bg-[#D97757] text-[14px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {withdrawMutation.isPending ? "Отправка..." : "Запросить"}
               </button>

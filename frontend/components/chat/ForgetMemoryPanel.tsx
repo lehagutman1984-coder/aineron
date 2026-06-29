@@ -49,7 +49,7 @@ export function ForgetMemoryPanel({ onClose }: Props) {
       className="absolute bottom-full mb-1 right-0 z-50 w-[280px] rounded-[12px] border border-[rgba(13,13,13,0.1)] bg-white shadow-xl dark:bg-[#1a1a1a] dark:border-[rgba(255,255,255,0.1)]"
     >
       <div className="flex items-center gap-2 border-b border-[rgba(13,13,13,0.07)] px-3 py-2.5 dark:border-[rgba(255,255,255,0.07)]">
-        <Brain size={13} className="text-[#7c3aed]" />
+        <Brain size={13} className="text-[#D97757]" />
         <span className="flex-1 text-[12px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">Забыть из памяти</span>
         <button onClick={onClose} className="text-[rgba(13,13,13,0.35)] hover:text-[#1A1A1A]"><X size={12} /></button>
       </div>
@@ -59,7 +59,7 @@ export function ForgetMemoryPanel({ onClose }: Props) {
           <p className="py-3 text-center text-[12px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.4)]">Нет сохранённых фактов</p>
         )}
         {facts.map((f) => (
-          <div key={f.id} className="group flex items-start gap-2 rounded-[7px] px-2 py-1.5 hover:bg-[rgba(124,58,237,0.05)]">
+          <div key={f.id} className="group flex items-start gap-2 rounded-[7px] px-2 py-1.5 hover:bg-[rgba(217,119,87,0.05)]">
             <span className="flex-1 text-[12px] leading-relaxed text-[rgba(13,13,13,0.75)] dark:text-[rgba(236,236,236,0.7)] line-clamp-2">{f.content}</span>
             <button
               onClick={() => handleDeactivate(f.id)}
@@ -73,7 +73,7 @@ export function ForgetMemoryPanel({ onClose }: Props) {
         ))}
       </div>
       <div className="border-t border-[rgba(13,13,13,0.07)] px-3 py-2 dark:border-[rgba(255,255,255,0.07)]">
-        <a href="/account/memory/" className="text-[11px] text-[rgba(10,124,255,0.8)] hover:text-[#D97757]">Управление памятью →</a>
+        <a href="/account/memory/" className="text-[11px] text-[rgba(217,119,87,0.8)] hover:text-[#D97757]">Управление памятью →</a>
       </div>
     </div>
   );

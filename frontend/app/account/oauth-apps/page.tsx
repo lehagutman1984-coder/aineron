@@ -87,7 +87,7 @@ export default function OAuthAppsPage() {
         </div>
         <button
           onClick={() => setFormOpen(!formOpen)}
-          className="flex items-center gap-2 rounded-lg bg-[#D97757] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#0060df]"
+          className="flex items-center gap-2 rounded-lg bg-[#D97757] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#C4623E]"
         >
           <Plus size={14} />
           Создать
@@ -125,7 +125,7 @@ export default function OAuthAppsPage() {
               <button
                 onClick={() => create.mutate({ name, redirect_uris: redirectUris })}
                 disabled={!name.trim() || !redirectUris.trim() || create.isPending}
-                className="rounded-lg bg-[#D97757] px-4 py-2 text-[13px] font-medium text-white disabled:opacity-50 hover:bg-[#0060df]"
+                className="rounded-lg bg-[#D97757] px-4 py-2 text-[13px] font-medium text-white disabled:opacity-50 hover:bg-[#C4623E]"
               >
                 {create.isPending ? "Создание..." : "Создать"}
               </button>

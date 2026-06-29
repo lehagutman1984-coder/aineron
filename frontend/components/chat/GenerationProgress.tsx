@@ -58,7 +58,7 @@ export function GenerationProgress({ generationId, onComplete }: Props) {
     <div className="w-full max-w-sm py-1">
       <div className="mb-1.5 flex items-center gap-2">
         {done ? (
-          <CheckCircle2 size={15} className="text-[#10a37f]" />
+          <CheckCircle2 size={15} className="text-[#D97757]" />
         ) : (
           <Loader2 size={15} className="animate-spin text-[#D97757]" />
         )}
@@ -73,7 +73,7 @@ export function GenerationProgress({ generationId, onComplete }: Props) {
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-[rgba(13,13,13,0.08)] dark:bg-[rgba(255,255,255,0.1)]">
         <div
           className={`h-full rounded-full transition-all duration-500 ease-out ${
-            done ? "bg-[#10a37f]" : "bg-[#D97757]"
+            done ? "bg-[#D97757]" : "bg-[#D97757]"
           }`}
           style={{ width: `${pct}%` }}
         />

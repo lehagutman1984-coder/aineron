@@ -68,7 +68,7 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
                 href={item.href}
                 className={`flex shrink-0 items-center gap-1.5 rounded-[7px] px-3 py-2 text-[12px] font-medium whitespace-nowrap transition-all ${
                   active
-                    ? "bg-[rgba(10,124,255,0.08)] text-[#D97757]"
+                    ? "bg-[rgba(217,119,87,0.08)] text-[#D97757]"
                     : "text-[rgba(13,13,13,0.55)] hover:text-[#1A1A1A]"
                 }`}
               >
@@ -109,7 +109,7 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
                     href={item.href}
                     className={`flex items-center gap-3 border-b border-[rgba(13,13,13,0.06)] px-4 py-3 text-[13px] last:border-0 transition-colors ${
                       active
-                        ? "bg-[rgba(10,124,255,0.06)] font-medium text-[#D97757]"
+                        ? "bg-[rgba(217,119,87,0.06)] font-medium text-[#D97757]"
                         : "text-[rgba(13,13,13,0.65)] hover:bg-[rgba(13,13,13,0.03)] hover:text-[#1A1A1A]"
                     }`}
                   >

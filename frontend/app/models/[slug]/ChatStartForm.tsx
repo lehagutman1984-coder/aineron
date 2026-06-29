@@ -139,7 +139,7 @@ export function ChatStartForm({ networkSlug, isMedia, configJson, projectId }: P
 
       {/* img2img: исходное изображение из галереи */}
       {editImageUrl && (
-        <div className="flex items-center gap-2.5 rounded-[10px] border border-[rgba(10,124,255,0.20)] bg-[rgba(10,124,255,0.04)] p-2.5">
+        <div className="flex items-center gap-2.5 rounded-[10px] border border-[rgba(217,119,87,0.20)] bg-[rgba(217,119,87,0.04)] p-2.5">
           <div className="relative shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -189,7 +189,7 @@ export function ChatStartForm({ networkSlug, isMedia, configJson, projectId }: P
           </div>
           <div className="min-w-0">
             <p className="flex items-center gap-1 text-[13px] font-medium text-[#1A1A1A]">
-              <Palette size={13} className="text-[#9b59b6]" />
+              <Palette size={13} className="text-[#D97757]" />
               Референс стиля
             </p>
             <p className="mt-0.5 text-[12px] text-[rgba(13,13,13,0.5)]">
@@ -214,12 +214,12 @@ export function ChatStartForm({ networkSlug, isMedia, configJson, projectId }: P
                 : "Введите сообщение... (Enter — отправить, Shift+Enter — новая строка)"
           }
           rows={4}
-          className="w-full resize-none rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-4 py-3 pr-12 text-[14px] text-[#1A1A1A] placeholder-[rgba(13,13,13,0.38)] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all"
+          className="w-full resize-none rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-4 py-3 pr-12 text-[14px] text-[#1A1A1A] placeholder-[rgba(13,13,13,0.38)] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
         />
         <button
           type="submit"
           disabled={!text.trim() || loading}
-          className="absolute bottom-3 right-3 flex h-8 w-8 items-center justify-center rounded-[8px] bg-[#D97757] text-white hover:bg-[#0066cc] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+          className="absolute bottom-3 right-3 flex h-8 w-8 items-center justify-center rounded-[8px] bg-[#D97757] text-white hover:bg-[#C4623E] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
         >
           <Send size={15} />
         </button>

@@ -200,13 +200,13 @@ function FileCard({
         {(file.model_name || file.seed != null || file.parent_id != null) && (
           <div className="mt-1 flex flex-wrap items-center gap-1">
             {file.parent_id != null && (
-              <span className="inline-flex items-center gap-0.5 rounded-[5px] bg-[rgba(16,163,127,0.1)] px-1.5 py-0.5 text-[10px] font-medium text-[#10a37f]">
+              <span className="inline-flex items-center gap-0.5 rounded-[5px] bg-[rgba(217,119,87,0.1)] px-1.5 py-0.5 text-[10px] font-medium text-[#D97757]">
                 <Maximize2 size={9} />
                 Детализировано
               </span>
             )}
             {file.model_name && (
-              <span className="inline-flex items-center rounded-[5px] bg-[rgba(10,124,255,0.08)] px-1.5 py-0.5 text-[10px] font-medium text-[#D97757]">
+              <span className="inline-flex items-center rounded-[5px] bg-[rgba(217,119,87,0.08)] px-1.5 py-0.5 text-[10px] font-medium text-[#D97757]">
                 {file.model_name}
               </span>
             )}

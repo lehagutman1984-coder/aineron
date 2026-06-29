@@ -84,7 +84,7 @@ export default function PromptsPage() {
         {user && (
           <button
             onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1.5 rounded-[9px] bg-[#D97757] px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#0066cc]"
+            className="flex items-center gap-1.5 rounded-[9px] bg-[#D97757] px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#C4623E]"
           >
             <Plus size={14} />
             Добавить промт
@@ -193,7 +193,7 @@ function PromptCard({
         </button>
         <Link
           href={`/models/`}
-          className="flex items-center gap-1.5 rounded-[7px] bg-[rgba(10,124,255,0.08)] px-2.5 py-1.5 text-[12px] font-medium text-[#D97757] transition-colors hover:bg-[rgba(10,124,255,0.14)]"
+          className="flex items-center gap-1.5 rounded-[7px] bg-[rgba(217,119,87,0.08)] px-2.5 py-1.5 text-[12px] font-medium text-[#D97757] transition-colors hover:bg-[rgba(217,119,87,0.14)]"
         >
           Использовать
         </Link>
@@ -295,7 +295,7 @@ function AddPromptModal({ onClose }: { onClose: () => void }) {
             <button
               type="submit"
               disabled={!title.trim() || !content.trim() || mutation.isPending}
-              className="rounded-[8px] bg-[#D97757] px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#0066cc] disabled:opacity-40"
+              className="rounded-[8px] bg-[#D97757] px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#C4623E] disabled:opacity-40"
             >
               {mutation.isPending ? "Сохранение..." : "Сохранить"}
             </button>

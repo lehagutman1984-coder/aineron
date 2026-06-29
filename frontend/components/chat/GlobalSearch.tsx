@@ -118,7 +118,7 @@ export function GlobalSearch() {
                 <button
                   onClick={() => navigate(r)}
                   className={`w-full text-left px-4 py-3 flex gap-3 items-start transition-colors ${
-                    i === selected ? "bg-[rgba(10,124,255,0.06)]" : "hover:bg-[rgba(13,13,13,0.03)]"
+                    i === selected ? "bg-[rgba(217,119,87,0.06)]" : "hover:bg-[rgba(13,13,13,0.03)]"
                   }`}
                 >
                   <div className="flex-shrink-0 mt-0.5">

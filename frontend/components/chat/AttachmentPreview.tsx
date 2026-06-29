@@ -61,7 +61,7 @@ function AttachmentChip({
       ) : (
         <div
           className="flex h-10 w-10 shrink-0 items-center justify-center"
-          style={{ background: "rgba(10,124,255,0.07)", borderRadius: "10px 0 0 10px" }}
+          style={{ background: "rgba(217,119,87,0.07)", borderRadius: "10px 0 0 10px" }}
         >
           <FileTypeIcon mime={attachment.mime_type} />
         </div>

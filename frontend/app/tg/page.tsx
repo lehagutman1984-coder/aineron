@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 
@@ -11,7 +11,7 @@ interface UserInfo {
 const linkStyle: React.CSSProperties = {
   display: 'block',
   padding: '14px 16px',
-  background: 'var(--tg-theme-button-color, #2481cc)',
+  background: 'var(--tg-theme-button-color, #C4623E)',
   color: 'var(--tg-theme-button-text-color, #fff)',
   borderRadius: 10,
   textDecoration: 'none',

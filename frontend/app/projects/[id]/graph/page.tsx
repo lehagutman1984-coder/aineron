@@ -175,7 +175,7 @@ function GraphCanvas({ nodes, edges }: { nodes: GraphNode[]; edges: GraphEdge[] 
       for (const n of sim) {
         ctx.beginPath();
         ctx.arc(n.x, n.y, 18, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(10,124,255,0.12)";
+        ctx.fillStyle = "rgba(217,119,87,0.12)";
         ctx.fill();
         ctx.strokeStyle = "#D97757";
         ctx.lineWidth = 1.5;

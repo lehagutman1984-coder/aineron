@@ -5,11 +5,11 @@ import { Search, CheckCircle, AlertCircle, Loader2, BookOpen } from "lucide-reac
 import type { DeepResearchStep, DeepResearchStatus } from "@/lib/api/types";
 
 const STEP_ICONS: Record<string, React.ReactNode> = {
-  plan:       <Loader2 size={13} className="animate-spin text-[#7c3aed]" />,
+  plan:       <Loader2 size={13} className="animate-spin text-[#D97757]" />,
   plan_done:  <CheckCircle size={13} className="text-[#16a34a]" />,
   search:     <Search size={13} className="text-[#D97757]" />,
   dedup:      <CheckCircle size={13} className="text-[#16a34a]" />,
-  synthesize: <Loader2 size={13} className="animate-spin text-[#7c3aed]" />,
+  synthesize: <Loader2 size={13} className="animate-spin text-[#D97757]" />,
   done:       <CheckCircle size={13} className="text-[#16a34a]" />,
   error:      <AlertCircle size={13} className="text-red-500" />,
 };
@@ -30,15 +30,15 @@ export function DeepResearchPanel({ steps, status, error }: Props) {
   const isRunning = status === "pending" || status === "running";
 
   return (
-    <div className="my-3 rounded-[12px] border border-[rgba(124,58,237,0.2)] bg-[rgba(124,58,237,0.03)]">
+    <div className="my-3 rounded-[12px] border border-[rgba(217,119,87,0.2)] bg-[rgba(217,119,87,0.03)]">
       {/* Header */}
-      <div className="flex items-center gap-2 border-b border-[rgba(124,58,237,0.12)] px-3 py-2.5">
-        <BookOpen size={13} className="text-[#7c3aed]" />
-        <span className="text-[12px] font-semibold uppercase tracking-wide text-[#7c3aed]">
+      <div className="flex items-center gap-2 border-b border-[rgba(217,119,87,0.12)] px-3 py-2.5">
+        <BookOpen size={13} className="text-[#D97757]" />
+        <span className="text-[12px] font-semibold uppercase tracking-wide text-[#D97757]">
           Глубокое исследование
         </span>
         {isRunning && (
-          <Loader2 size={11} className="ml-auto animate-spin text-[#7c3aed]" />
+          <Loader2 size={11} className="ml-auto animate-spin text-[#D97757]" />
         )}
         {status === "done" && (
           <CheckCircle size={11} className="ml-auto text-[#16a34a]" />

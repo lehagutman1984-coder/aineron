@@ -847,7 +847,7 @@ export default function ChatPage() {
     <div className="flex h-full min-w-0 flex-1 flex-col">
       {/* Drag overlay */}
       {isDragOver && (
-        <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center rounded-[14px] border-2 border-dashed border-[#D97757] bg-[rgba(10,124,255,0.06)]">
+        <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center rounded-[14px] border-2 border-dashed border-[#D97757] bg-[rgba(217,119,87,0.06)]">
           <p className="text-[15px] font-medium text-[#D97757]">Отпустите для загрузки</p>
         </div>
       )}
@@ -869,7 +869,7 @@ export default function ChatPage() {
               className="shrink-0 rounded-[5px]"
             />
           ) : (
-            <div className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[5px] bg-[rgba(10,124,255,0.12)] text-[#D97757]">
+            <div className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[5px] bg-[rgba(217,119,87,0.12)] text-[#D97757]">
               <Code2 size={12} />
             </div>
           )}
@@ -1003,7 +1003,7 @@ export default function ChatPage() {
               ) : (
                 <div
                   className="flex h-[56px] w-[56px] items-center justify-center rounded-[14px] text-[#D97757]"
-                  style={{ background: "rgba(10,124,255,0.10)" }}
+                  style={{ background: "rgba(217,119,87,0.10)" }}
                 >
                   <Code2 size={26} />
                 </div>
@@ -1118,7 +1118,7 @@ export default function ChatPage() {
       {/* AI-proposed commit card (Sprint 4.3) */}
       {pendingCommit && (
         <div className="shrink-0 px-4 pb-1 pt-1" style={{ background: "var(--chat-page-bg)" }}>
-          <div className="mx-auto max-w-2xl rounded-[12px] border border-[rgba(10,124,255,0.20)] bg-[rgba(10,124,255,0.05)] px-4 py-3">
+          <div className="mx-auto max-w-2xl rounded-[12px] border border-[rgba(217,119,87,0.20)] bg-[rgba(217,119,87,0.05)] px-4 py-3">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5 min-w-0">
                 <GitCommit size={15} className="shrink-0 text-[#D97757]" />
@@ -1302,7 +1302,7 @@ export default function ChatPage() {
                 className={[
                   "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all",
                   webSearch
-                    ? "bg-[rgba(10,124,255,0.12)] text-[#D97757] ring-1 ring-[rgba(10,124,255,0.35)]"
+                    ? "bg-[rgba(217,119,87,0.12)] text-[#D97757] ring-1 ring-[rgba(217,119,87,0.35)]"
                     : "text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.38)] dark:hover:text-[#EDE8E3]",
                 ].join(" ")}
               >
@@ -1320,14 +1320,14 @@ export default function ChatPage() {
                 className={[
                   "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all",
                   variantsMode
-                    ? "bg-[rgba(124,58,237,0.12)] text-[#7c3aed] ring-1 ring-[rgba(124,58,237,0.35)]"
+                    ? "bg-[rgba(217,119,87,0.12)] text-[#D97757] ring-1 ring-[rgba(217,119,87,0.35)]"
                     : "text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.38)] dark:hover:text-[#EDE8E3]",
                 ].join(" ")}
               >
                 <Layers size={12} />
                 Варианты
                 {variantsMode && (
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#7c3aed]" />
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#D97757]" />
                 )}
               </button>
 
@@ -1372,7 +1372,7 @@ export default function ChatPage() {
                   className={[
                     "flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium transition-all",
                     batchCount === n
-                      ? "bg-[rgba(10,124,255,0.12)] text-[#D97757] ring-1 ring-[rgba(10,124,255,0.35)]"
+                      ? "bg-[rgba(217,119,87,0.12)] text-[#D97757] ring-1 ring-[rgba(217,119,87,0.35)]"
                       : "text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.38)] dark:hover:text-[#EDE8E3]",
                   ].join(" ")}
                 >
@@ -1389,7 +1389,7 @@ export default function ChatPage() {
 
           {/* Баннер «Стиль задан» — показываем если есть styleReferenceUrl */}
           {styleReferenceUrl && (
-            <div className="mx-1 mt-1.5 flex items-center gap-2 rounded-[8px] border border-[rgba(10,124,255,0.2)] bg-[rgba(10,124,255,0.06)] px-3 py-1.5">
+            <div className="mx-1 mt-1.5 flex items-center gap-2 rounded-[8px] border border-[rgba(217,119,87,0.2)] bg-[rgba(217,119,87,0.06)] px-3 py-1.5">
               <img src={styleReferenceUrl} alt="стиль" className="h-8 w-8 rounded-[4px] object-cover" />
               <span className="flex-1 text-[12px] text-[rgba(13,13,13,0.7)] dark:text-[rgba(236,236,236,0.7)]">
                 Следующая генерация будет в стиле этого изображения
@@ -1665,7 +1665,7 @@ function MessageRow({
         ) : (
           <div
             className="flex h-[26px] w-[26px] items-center justify-center rounded-[6px] text-[#D97757]"
-            style={{ background: "rgba(10,124,255,0.12)" }}
+            style={{ background: "rgba(217,119,87,0.12)" }}
           >
             <Code2 size={13} />
           </div>
@@ -1771,14 +1771,14 @@ function MessageRow({
               const imgUrl = extractFirstImageUrl(message.content || message.plain_text || "");
               if (!imgUrl && !message.image_generation_id) return null;
               const btnCls = "flex h-7 items-center gap-1.5 rounded-[6px] px-2 text-[12px] font-medium transition-all";
-              const btnStyle = { color: "rgba(10,124,255,0.9)" };
+              const btnStyle = { color: "rgba(217,119,87,0.9)" };
               const onEnter = (e: React.MouseEvent<HTMLButtonElement>) => {
-                e.currentTarget.style.background = "rgba(10,124,255,0.08)";
+                e.currentTarget.style.background = "rgba(217,119,87,0.08)";
                 e.currentTarget.style.color = "#D97757";
               };
               const onLeave = (e: React.MouseEvent<HTMLButtonElement>) => {
                 e.currentTarget.style.background = "";
-                e.currentTarget.style.color = "rgba(10,124,255,0.9)";
+                e.currentTarget.style.color = "rgba(217,119,87,0.9)";
               };
               return (
                 <div className="mt-2 flex flex-wrap items-center gap-1 border-t border-[rgba(13,13,13,0.07)] pt-2 dark:border-[rgba(236,236,236,0.07)]">
@@ -1818,7 +1818,7 @@ function MessageRow({
                       className={btnCls}
                       style={message.image_is_favorite ? { color: "#e74c3c" } : btnStyle}
                       onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(231,76,60,0.08)"; e.currentTarget.style.color = "#e74c3c"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = ""; e.currentTarget.style.color = message.image_is_favorite ? "#e74c3c" : "rgba(10,124,255,0.9)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = ""; e.currentTarget.style.color = message.image_is_favorite ? "#e74c3c" : "rgba(217,119,87,0.9)"; }}
                       title={message.image_is_favorite ? "Убрать из избранного" : "Добавить в избранное"}
                     >
                       <Heart size={13} fill={message.image_is_favorite ? "currentColor" : "none"} />
@@ -1869,14 +1869,14 @@ function MessageRow({
                   <button
                     onClick={() => onOpenArtifact(artifact)}
                     className="flex h-7 items-center gap-1.5 rounded-[6px] px-2 text-[12px] font-medium transition-colors"
-                    style={{ color: "rgba(10,124,255,0.8)" }}
+                    style={{ color: "rgba(217,119,87,0.8)" }}
                     onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.background = "rgba(10,124,255,0.08)";
+                      (e.currentTarget as HTMLButtonElement).style.background = "rgba(217,119,87,0.08)";
                       (e.currentTarget as HTMLButtonElement).style.color = "#D97757";
                     }}
                     onMouseLeave={(e) => {
                       (e.currentTarget as HTMLButtonElement).style.background = "";
-                      (e.currentTarget as HTMLButtonElement).style.color = "rgba(10,124,255,0.8)";
+                      (e.currentTarget as HTMLButtonElement).style.color = "rgba(217,119,87,0.8)";
                     }}
                     title="Открыть превью артефакта"
                   >
@@ -1916,7 +1916,7 @@ function MessageRow({
                 <div className="relative">
                   <button
                     onClick={() => setForgetPanelMsgId((v) => v === message.id ? null : message.id)}
-                    className="flex items-center gap-1 rounded-[6px] px-1.5 py-1 text-[11px] text-[rgba(124,58,237,0.6)] hover:bg-[rgba(124,58,237,0.07)] hover:text-[#7c3aed] transition-colors"
+                    className="flex items-center gap-1 rounded-[6px] px-1.5 py-1 text-[11px] text-[rgba(217,119,87,0.6)] hover:bg-[rgba(217,119,87,0.07)] hover:text-[#D97757] transition-colors"
                     title="Забыть из памяти"
                   >
                     <Brain size={12} />
@@ -2227,7 +2227,7 @@ function SearchContextBlock({ context }: { context: string }) {
   const preview = lines.slice(0, 3).join("\n");
 
   return (
-    <div className="mb-3 rounded-[10px] border border-[rgba(10,124,255,0.18)] bg-[rgba(10,124,255,0.04)]">
+    <div className="mb-3 rounded-[10px] border border-[rgba(217,119,87,0.18)] bg-[rgba(217,119,87,0.04)]">
       <button
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center gap-2 px-3 py-2 text-left"
@@ -2237,19 +2237,19 @@ function SearchContextBlock({ context }: { context: string }) {
           Результаты поиска
         </span>
         {open ? (
-          <ChevronDown size={13} className="shrink-0 text-[rgba(10,124,255,0.6)]" />
+          <ChevronDown size={13} className="shrink-0 text-[rgba(217,119,87,0.6)]" />
         ) : (
-          <ChevronRight size={13} className="shrink-0 text-[rgba(10,124,255,0.6)]" />
+          <ChevronRight size={13} className="shrink-0 text-[rgba(217,119,87,0.6)]" />
         )}
       </button>
-      <div className="border-t border-[rgba(10,124,255,0.12)] px-3 pb-3 pt-2">
+      <div className="border-t border-[rgba(217,119,87,0.12)] px-3 pb-3 pt-2">
         <pre className="whitespace-pre-wrap font-sans text-[12px] leading-relaxed text-[rgba(13,13,13,0.65)] dark:text-[rgba(236,236,236,0.55)]">
           {open ? context : preview + (lines.length > 3 ? "\n..." : "")}
         </pre>
         {!open && lines.length > 3 && (
           <button
             onClick={() => setOpen(true)}
-            className="mt-1 text-[11px] text-[rgba(10,124,255,0.7)] hover:text-[#D97757]"
+            className="mt-1 text-[11px] text-[rgba(217,119,87,0.7)] hover:text-[#D97757]"
           >
             Показать всё ({lines.length} строк)
           </button>
@@ -2263,7 +2263,7 @@ function SearchContextBlock({ context }: { context: string }) {
 function SourcesBlock({ sources }: { sources: KBSource[] }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="mt-2.5 rounded-[10px] border border-[rgba(10,124,255,0.14)] bg-[rgba(10,124,255,0.03)]">
+    <div className="mt-2.5 rounded-[10px] border border-[rgba(217,119,87,0.14)] bg-[rgba(217,119,87,0.03)]">
       <button
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center gap-2 px-3 py-2 text-left"
@@ -2273,20 +2273,20 @@ function SourcesBlock({ sources }: { sources: KBSource[] }) {
           Источники ({sources.length})
         </span>
         {open ? (
-          <ChevronDown size={13} className="shrink-0 text-[rgba(10,124,255,0.6)]" />
+          <ChevronDown size={13} className="shrink-0 text-[rgba(217,119,87,0.6)]" />
         ) : (
-          <ChevronRight size={13} className="shrink-0 text-[rgba(10,124,255,0.6)]" />
+          <ChevronRight size={13} className="shrink-0 text-[rgba(217,119,87,0.6)]" />
         )}
       </button>
       {open && (
-        <div className="border-t border-[rgba(10,124,255,0.1)] px-3 pb-2 pt-1.5 flex flex-col gap-1">
+        <div className="border-t border-[rgba(217,119,87,0.1)] px-3 pb-2 pt-1.5 flex flex-col gap-1">
           {sources.map((s) => (
             <div
               key={s.id}
-              className="group/src relative flex flex-col gap-0.5 rounded-[6px] px-2 py-1.5 text-[12px] text-[rgba(13,13,13,0.7)] dark:text-[rgba(236,236,236,0.6)] hover:bg-[rgba(10,124,255,0.06)] transition-colors"
+              className="group/src relative flex flex-col gap-0.5 rounded-[6px] px-2 py-1.5 text-[12px] text-[rgba(13,13,13,0.7)] dark:text-[rgba(236,236,236,0.6)] hover:bg-[rgba(217,119,87,0.06)] transition-colors"
             >
               <div className="flex items-center gap-2">
-                <FileText size={11} className="shrink-0 text-[rgba(10,124,255,0.5)]" />
+                <FileText size={11} className="shrink-0 text-[rgba(217,119,87,0.5)]" />
                 <span className="font-mono truncate" title={s.path}>{s.filename}</span>
                 {s.path !== s.filename && (
                   <span className="ml-auto shrink-0 text-[10px] text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.3)] font-mono truncate max-w-[180px]" title={s.path}>

@@ -60,7 +60,7 @@ function AspectRatioPresets({
             title={label}
             className={`flex flex-col items-center justify-center gap-0.5 rounded-[6px] border px-1.5 py-1 transition-colors ${
               isActive
-                ? "border-[#D97757] bg-[rgba(10,124,255,0.08)] text-[#D97757]"
+                ? "border-[#D97757] bg-[rgba(217,119,87,0.08)] text-[#D97757]"
                 : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.04)] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.5)]"
             }`}
           >
@@ -111,7 +111,7 @@ function SeedField({
           className={[
             "flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] border transition-colors",
             locked
-              ? "border-[#D97757] bg-[rgba(10,124,255,0.10)] text-[#D97757]"
+              ? "border-[#D97757] bg-[rgba(217,119,87,0.10)] text-[#D97757]"
               : "border-[rgba(13,13,13,0.15)] text-[rgba(13,13,13,0.5)] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.5)]",
           ].join(" ")}
         >

@@ -48,7 +48,7 @@ function RoleTag({ role, onChange }: { role: Role; onChange: () => void }) {
       className={[
         "shrink-0 rounded-[5px] px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide transition-colors",
         role === "user"
-          ? "bg-[rgba(10,124,255,0.10)] text-[#D97757]"
+          ? "bg-[rgba(217,119,87,0.10)] text-[#D97757]"
           : "bg-[rgba(13,13,13,0.06)] text-[rgba(13,13,13,0.55)]",
       ].join(" ")}
     >
@@ -261,7 +261,7 @@ export default function PlaygroundPage() {
                 className={[
                   "flex flex-1 items-center justify-center gap-1.5 rounded-[8px] border py-2 text-[13px] font-medium transition-colors",
                   authMode === "session"
-                    ? "border-[#D97757] bg-[rgba(10,124,255,0.06)] text-[#D97757]"
+                    ? "border-[#D97757] bg-[rgba(217,119,87,0.06)] text-[#D97757]"
                     : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.55)] hover:border-[rgba(13,13,13,0.25)]",
                 ].join(" ")}
               >
@@ -273,7 +273,7 @@ export default function PlaygroundPage() {
                 className={[
                   "flex flex-1 items-center justify-center gap-1.5 rounded-[8px] border py-2 text-[13px] font-medium transition-colors",
                   authMode === "apikey"
-                    ? "border-[#D97757] bg-[rgba(10,124,255,0.06)] text-[#D97757]"
+                    ? "border-[#D97757] bg-[rgba(217,119,87,0.06)] text-[#D97757]"
                     : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.55)] hover:border-[rgba(13,13,13,0.25)]",
                 ].join(" ")}
               >
@@ -457,7 +457,7 @@ export default function PlaygroundPage() {
               "flex h-11 w-full items-center justify-center gap-2 rounded-[10px] text-[14px] font-semibold text-white transition-colors",
               loading
                 ? "bg-[#dc2626] hover:bg-[#b91c1c]"
-                : "bg-[#D97757] hover:bg-[#0066cc]",
+                : "bg-[#D97757] hover:bg-[#C4623E]",
             ].join(" ")}
           >
             {loading ? (
@@ -538,7 +538,7 @@ export default function PlaygroundPage() {
 
               {!loading && resText === null && resJson === null && (
                 <div className="flex h-full min-h-[260px] flex-col items-center justify-center text-center">
-                  <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-[12px] bg-[rgba(10,124,255,0.08)]">
+                  <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-[12px] bg-[rgba(217,119,87,0.08)]">
                     <Play size={20} className="text-[#D97757]" />
                   </div>
                   <p className="text-[13px] text-[rgba(13,13,13,0.45)]">

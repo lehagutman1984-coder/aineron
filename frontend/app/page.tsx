@@ -22,7 +22,7 @@ export default async function HomePage() {
     <>
       {/* ── Hero ──────────────────────────────────────────────────────────────── */}
       <section className="mx-auto max-w-4xl px-4 pb-16 pt-24 text-center sm:px-6">
-        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[rgba(10,124,255,0.25)] bg-[rgba(10,124,255,0.06)] px-3.5 py-1 text-[13px] text-[#D97757]">
+        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[rgba(217,119,87,0.25)] bg-[rgba(217,119,87,0.06)] px-3.5 py-1 text-[13px] text-[#D97757]">
           <ShieldCheck size={13} />
           Российский сервис — без VPN и зарубежных карт
         </div>
@@ -41,7 +41,7 @@ export default async function HomePage() {
         <div className="flex flex-wrap items-center justify-center gap-3">
           <Link
             href="/register/"
-            className="inline-flex items-center gap-2 rounded-[10px] bg-[#D97757] px-7 py-3 text-[15px] font-medium text-white hover:bg-[#0066cc] transition-colors"
+            className="inline-flex items-center gap-2 rounded-[10px] bg-[#D97757] px-7 py-3 text-[15px] font-medium text-white hover:bg-[#C4623E] transition-colors"
           >
             Начать бесплатно
             <ArrowRight size={16} />
@@ -83,7 +83,7 @@ export default async function HomePage() {
             </div>
             <Link
               href="/models/"
-              className="flex items-center gap-1 text-[13px] text-[#D97757] hover:text-[#0066cc] transition-colors"
+              className="flex items-center gap-1 text-[13px] text-[#D97757] hover:text-[#C4623E] transition-colors"
             >
               Все модели
               <ArrowRight size={14} />
@@ -166,7 +166,7 @@ export default async function HomePage() {
       <section className="mx-auto max-w-4xl px-4 py-16 sm:px-6">
         <div className="overflow-hidden rounded-[20px] border border-[rgba(13,13,13,0.10)] bg-white">
           <div className="px-8 py-8 text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-[14px] bg-[rgba(10,124,255,0.10)]">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-[14px] bg-[rgba(217,119,87,0.10)]">
               <Star size={22} className="text-[#D97757]" />
             </div>
             <h2 className="text-[24px] font-bold text-[#1A1A1A]">Звёзды — простая оплата</h2>
@@ -186,7 +186,7 @@ export default async function HomePage() {
           <div className="border-t border-[rgba(13,13,13,0.08)] px-8 py-5 text-center">
             <Link
               href="/register/"
-              className="inline-flex items-center gap-2 rounded-[10px] bg-[#D97757] px-8 py-3 text-[14px] font-medium text-white hover:bg-[#0066cc] transition-colors"
+              className="inline-flex items-center gap-2 rounded-[10px] bg-[#D97757] px-8 py-3 text-[14px] font-medium text-white hover:bg-[#C4623E] transition-colors"
             >
               Начать с 10 бесплатными звёздами
               <ArrowRight size={15} />
@@ -261,7 +261,7 @@ function NetworkCard({ network }: { network: NetworkListItem }) {
             className="rounded-[8px] object-cover"
           />
         ) : (
-          <div className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[rgba(10,124,255,0.10)] text-[#D97757]">
+          <div className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[rgba(217,119,87,0.10)] text-[#D97757]">
             {network.handle_photo || network.handle_video ? (
               <ImageIcon size={18} />
             ) : (
@@ -298,7 +298,7 @@ function NetworkCard({ network }: { network: NetworkListItem }) {
 function FeatureCard({ icon: Icon, title, text }: { icon: React.ElementType; title: string; text: string }) {
   return (
     <div className="rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white p-5">
-      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-[10px] bg-[rgba(10,124,255,0.10)] text-[#D97757]">
+      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-[10px] bg-[rgba(217,119,87,0.10)] text-[#D97757]">
         <Icon size={20} />
       </div>
       <p className="mb-1.5 text-[14px] font-semibold text-[#1A1A1A]">{title}</p>

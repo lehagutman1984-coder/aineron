@@ -18,7 +18,7 @@ const INTERESTS = [
     description: "Отладка, рефакторинг, объяснение алгоритмов",
     icon: Code2,
     color: "#D97757",
-    bg: "rgba(10,124,255,0.08)",
+    bg: "rgba(217,119,87,0.08)",
     prompts: [
       "Напиши функцию на Python для валидации email",
       "Объясни разницу между async/await и Promise",
@@ -45,7 +45,7 @@ const INTERESTS = [
     label: "Творчество",
     description: "Тексты, идеи, контент для соцсетей",
     icon: Pencil,
-    color: "#9b59b6",
+    color: "#D97757",
     bg: "rgba(155,89,182,0.08)",
     prompts: [
       "Придумай 10 идей для поста в Instagram",
@@ -73,7 +73,7 @@ const INTERESTS = [
     label: "Бизнес",
     description: "Анализ, письма, презентации",
     icon: Briefcase,
-    color: "#0d9e8c",
+    color: "#D97757",
     bg: "rgba(13,158,140,0.08)",
     prompts: [
       "Напиши коммерческое предложение для клиента",
@@ -196,7 +196,7 @@ function Step1({ onSelect }: { onSelect: (key: InterestKey) => void }) {
   return (
     <>
       <div className="mb-6 text-center">
-        <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-[12px] bg-[rgba(10,124,255,0.08)]">
+        <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-[12px] bg-[rgba(217,119,87,0.08)]">
           <Star size={20} className="text-[#D97757]" />
         </div>
         <h1 className="text-[22px] font-bold text-[#1A1A1A]">Добро пожаловать!</h1>
@@ -278,7 +278,7 @@ function Step2({
             className={[
               "flex items-center gap-3 rounded-[10px] border px-4 py-3 text-left text-[13px] transition-all",
               pickedPrompt === prompt
-                ? "border-[#D97757] bg-[rgba(10,124,255,0.06)] text-[#1A1A1A]"
+                ? "border-[#D97757] bg-[rgba(217,119,87,0.06)] text-[#1A1A1A]"
                 : "border-[rgba(13,13,13,0.10)] text-[rgba(13,13,13,0.70)] hover:border-[rgba(13,13,13,0.20)] hover:text-[#1A1A1A]",
             ].join(" ")}
           >
@@ -306,7 +306,7 @@ function Step2({
         </Link>
         <button
           onClick={onNext}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-[10px] bg-[#D97757] py-2.5 text-[13px] font-medium text-white transition-colors hover:bg-[#0066cc]"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-[10px] bg-[#D97757] py-2.5 text-[13px] font-medium text-white transition-colors hover:bg-[#C4623E]"
         >
           Продолжить
           <ArrowRight size={14} />
@@ -343,7 +343,7 @@ function Step3({
         <Link
           href={`${interest.catalog}`}
           onClick={() => localStorage.setItem(ONBOARDING_KEY, "1")}
-          className="mb-4 flex items-start gap-3 rounded-[12px] border border-[#D97757] bg-[rgba(10,124,255,0.05)] p-4 text-[13px] transition-all hover:bg-[rgba(10,124,255,0.08)]"
+          className="mb-4 flex items-start gap-3 rounded-[12px] border border-[#D97757] bg-[rgba(217,119,87,0.05)] p-4 text-[13px] transition-all hover:bg-[rgba(217,119,87,0.08)]"
         >
           <div className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#D97757]" />
           <div>

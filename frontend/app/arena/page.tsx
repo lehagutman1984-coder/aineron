@@ -134,7 +134,7 @@ function ArenaRow({ entry, rank }: { entry: ArenaEntry; rank: number }) {
               className="rounded-[6px] object-cover shrink-0"
             />
           ) : (
-            <div className="h-7 w-7 shrink-0 rounded-[6px] bg-[rgba(10,124,255,0.12)] flex items-center justify-center">
+            <div className="h-7 w-7 shrink-0 rounded-[6px] bg-[rgba(217,119,87,0.12)] flex items-center justify-center">
               <TrendingUp size={12} className="text-[#D97757]" />
             </div>
           )}

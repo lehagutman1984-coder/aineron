@@ -306,7 +306,7 @@ export default function ProjectKBPage() {
                 { label: "Файлов",           value: data.file_count,    icon: <FileText    size={16} className="text-[#D97757]"  /> },
                 { label: "Проиндексировано", value: data.indexed_count, icon: <CheckCircle size={16} className="text-[#16a34a]" /> },
                 { label: "Ошибки",           value: data.error_count,   icon: <XCircle     size={16} className="text-red-500"   /> },
-                { label: "Чанков",           value: data.total_chunks,  icon: <BarChart3   size={16} className="text-[#7c3aed]" /> },
+                { label: "Чанков",           value: data.total_chunks,  icon: <BarChart3   size={16} className="text-[#D97757]" /> },
               ].map((c) => (
                 <div
                   key={c.label}

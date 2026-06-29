@@ -36,7 +36,7 @@ const PROJECT_ICON_MAP: Record<string, React.ElementType> = {
   Folder, Code2, BookOpen, Briefcase, Zap, Globe, Palette, MessageSquare,
 };
 const PROJECT_ICONS = Object.keys(PROJECT_ICON_MAP);
-const PROJECT_COLORS = ["#D97757", "#22a85a", "#e67e22", "#9b59b6", "#e74c3c", "#1dd6c1", "#1A1A1A", "#6366f1"];
+const PROJECT_COLORS = ["#D97757", "#22a85a", "#e67e22", "#E8C9A0", "#e74c3c", "#C4623E", "#1A1A1A", "#8B7E77"];
 
 function ProjectIcon({ name, size = 12 }: { name: string; size?: number }) {
   const Icon = PROJECT_ICON_MAP[name] ?? Folder;
@@ -99,7 +99,7 @@ function ProjectModal({
               onChange={(e) => setName(e.target.value)}
               placeholder="Мой проект"
               maxLength={100}
-              className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all"
+              className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -140,7 +140,7 @@ function ProjectModal({
               onChange={(e) => setSystemPrompt(e.target.value)}
               placeholder="Ты — помощник-программист..."
               rows={3}
-              className="w-full resize-none rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[12px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all"
+              className="w-full resize-none rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[12px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
             />
           </div>
           {error && (
@@ -152,7 +152,7 @@ function ProjectModal({
               Отмена
             </button>
             <button type="submit" disabled={!name.trim() || loading}
-              className="rounded-[8px] bg-[#D97757] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 transition-colors">
+              className="rounded-[8px] bg-[#D97757] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 transition-colors">
               {loading ? (mode === "create" ? "Создание..." : "Сохранение...") : (mode === "create" ? "Создать" : "Сохранить")}
             </button>
           </div>
@@ -282,7 +282,7 @@ function ProjectSidebarRow({
                   className={[
                     "flex items-center rounded-[6px] px-2 py-1 text-[12px] transition-colors",
                     active
-                      ? "bg-[rgba(10,124,255,0.08)] text-[#D97757]"
+                      ? "bg-[rgba(217,119,87,0.08)] text-[#D97757]"
                       : "text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#1A1A1A]",
                   ].join(" ")}
                 >
@@ -392,7 +392,7 @@ function PreviewCard({
             // eslint-disable-next-line @next/next/no-img-element
             <img src={chat.network.avatar} alt="" width={28} height={28} className="rounded-[6px] object-cover" />
           ) : (
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] bg-[rgba(10,124,255,0.10)]">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] bg-[rgba(217,119,87,0.10)]">
               {chat.network.handle_photo || chat.network.handle_video ? (
                 <ImageIcon size={14} className="text-[#D97757]" />
               ) : (
@@ -424,7 +424,7 @@ function PreviewCard({
               </div>
             ) : (
               <div className="flex gap-2">
-                <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[rgba(10,124,255,0.10)]">
+                <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[rgba(217,119,87,0.10)]">
                   <MessageSquare size={10} className="text-[#D97757]" />
                 </div>
                 <p className="text-[11px] leading-[1.6] text-[rgba(13,13,13,0.72)]">
@@ -439,7 +439,7 @@ function PreviewCard({
 
         {/* CTA */}
         <div className="border-t border-[rgba(13,13,13,0.06)] px-3 py-2">
-          <p className="text-[10px] font-medium text-[rgba(10,124,255,0.75)]">
+          <p className="text-[10px] font-medium text-[rgba(217,119,87,0.75)]">
             Нажмите, чтобы продолжить
           </p>
         </div>
@@ -646,7 +646,7 @@ export function ChatSidebar() {
           <Link
             href="/models/"
             title="Новый чат"
-            className="flex h-8 w-8 items-center justify-center rounded-[7px] bg-[#D97757] text-white transition-colors hover:bg-[#0066cc]"
+            className="flex h-8 w-8 items-center justify-center rounded-[7px] bg-[#D97757] text-white transition-colors hover:bg-[#C4623E]"
           >
             <PenSquare size={14} />
           </Link>
@@ -669,7 +669,7 @@ export function ChatSidebar() {
                 title={chat.title || chat.network.name}
                 className={[
                   "mx-1 my-0.5 flex h-8 w-8 items-center justify-center rounded-[6px] transition-colors",
-                  active ? "bg-[rgba(10,124,255,0.10)]" : "hover:bg-[rgba(13,13,13,0.05)]",
+                  active ? "bg-[rgba(217,119,87,0.10)]" : "hover:bg-[rgba(13,13,13,0.05)]",
                 ].join(" ")}
               >
                 {chat.network.avatar ? (
@@ -695,7 +695,7 @@ export function ChatSidebar() {
         <div className="flex items-center gap-1.5 px-2.5 pb-2 pt-2.5">
           <Link
             href="/models/"
-            className="flex h-8 flex-1 items-center gap-1.5 rounded-[7px] bg-[#D97757] px-3 text-[12px] font-medium text-white transition-colors hover:bg-[#0066cc]"
+            className="flex h-8 flex-1 items-center gap-1.5 rounded-[7px] bg-[#D97757] px-3 text-[12px] font-medium text-white transition-colors hover:bg-[#C4623E]"
           >
             <PenSquare size={13} />
             Новый чат
@@ -728,7 +728,7 @@ export function ChatSidebar() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Поиск чатов…"
-              className="w-full rounded-[8px] border border-[rgba(13,13,13,0.11)] bg-[rgba(13,13,13,0.03)] py-[6px] pl-7 pr-7 text-[12px] text-[#1A1A1A] outline-none placeholder:text-[rgba(13,13,13,0.32)] focus:border-[rgba(10,124,255,0.4)] focus:bg-white"
+              className="w-full rounded-[8px] border border-[rgba(13,13,13,0.11)] bg-[rgba(13,13,13,0.03)] py-[6px] pl-7 pr-7 text-[12px] text-[#1A1A1A] outline-none placeholder:text-[rgba(13,13,13,0.32)] focus:border-[rgba(217,119,87,0.4)] focus:bg-white"
             />
             {search ? (
               <button
@@ -740,7 +740,7 @@ export function ChatSidebar() {
             ) : (
               <button
                 onClick={() => window.dispatchEvent(new Event("open-global-search"))}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-medium text-[rgba(13,13,13,0.25)] hover:text-[rgba(10,124,255,0.7)] transition-colors"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-medium text-[rgba(13,13,13,0.25)] hover:text-[rgba(217,119,87,0.7)] transition-colors"
                 title="Поиск по истории (Ctrl+K)"
               >
                 ⌘K
@@ -838,7 +838,7 @@ export function ChatSidebar() {
                     onMouseLeave={handleItemMouseLeave}
                     className={[
                       "group relative mx-1 my-0.5 flex items-start gap-2 rounded-[8px] px-2.5 py-2 transition-colors",
-                      active ? "bg-[rgba(10,124,255,0.07)]" : "hover:bg-[rgba(13,13,13,0.04)]",
+                      active ? "bg-[rgba(217,119,87,0.07)]" : "hover:bg-[rgba(13,13,13,0.04)]",
                     ].join(" ")}
                   >
                     {/* Active indicator */}
@@ -860,7 +860,7 @@ export function ChatSidebar() {
                           className="rounded-[5px] object-cover"
                         />
                       ) : (
-                        <div className="flex h-[22px] w-[22px] items-center justify-center rounded-[5px] bg-[rgba(10,124,255,0.10)]">
+                        <div className="flex h-[22px] w-[22px] items-center justify-center rounded-[5px] bg-[rgba(217,119,87,0.10)]">
                           {chat.network.handle_photo || chat.network.handle_video ? (
                             <ImageIcon size={12} className="text-[#D97757]" />
                           ) : (
@@ -906,11 +906,11 @@ export function ChatSidebar() {
                             }}
                             onBlur={() => submitRename(chat.id)}
                             onClick={(e) => e.stopPropagation()}
-                            className="min-w-0 flex-1 rounded-[5px] border border-[rgba(10,124,255,0.45)] bg-white px-1.5 py-0.5 text-[12px] text-[#1A1A1A] outline-none"
+                            className="min-w-0 flex-1 rounded-[5px] border border-[rgba(217,119,87,0.45)] bg-white px-1.5 py-0.5 text-[12px] text-[#1A1A1A] outline-none"
                           />
                           <button
                             onClick={() => submitRename(chat.id)}
-                            className="shrink-0 text-[#D97757] transition-colors hover:text-[#0066cc]"
+                            className="shrink-0 text-[#D97757] transition-colors hover:text-[#C4623E]"
                           >
                             <Check size={13} />
                           </button>

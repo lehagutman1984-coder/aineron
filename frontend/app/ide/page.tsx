@@ -98,8 +98,8 @@ function H3({ children }: { children: React.ReactNode }) {
 
 function AlertInfo({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mt-4 flex gap-3 rounded-[10px] border border-[rgba(37,99,235,0.15)] bg-[rgba(37,99,235,0.05)] p-4 text-[13px] text-[rgba(13,13,13,0.70)]">
-      <Info size={16} className="mt-0.5 flex-shrink-0 text-[#2563eb]" />
+    <div className="mt-4 flex gap-3 rounded-[10px] border border-[rgba(217,119,87,0.15)] bg-[rgba(217,119,87,0.05)] p-4 text-[13px] text-[rgba(13,13,13,0.70)]">
+      <Info size={16} className="mt-0.5 flex-shrink-0 text-[#D97757]" />
       <span>{children}</span>
     </div>
   );

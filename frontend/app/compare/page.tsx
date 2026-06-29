@@ -105,7 +105,7 @@ export default function ComparePage() {
       {/* Header */}
       <div className="mb-8 text-center">
         <div className="mb-3 flex justify-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-[14px] bg-[rgba(10,124,255,0.10)] text-[#D97757]">
+          <div className="flex h-12 w-12 items-center justify-center rounded-[14px] bg-[rgba(217,119,87,0.10)] text-[#D97757]">
             <Layers size={24} />
           </div>
         </div>
@@ -221,7 +221,7 @@ export default function ComparePage() {
                     className={[
                       "flex items-center gap-2.5 rounded-[10px] border px-3 py-2.5 text-left transition-all",
                       isSelected
-                        ? "border-[#D97757] bg-[rgba(10,124,255,0.06)]"
+                        ? "border-[#D97757] bg-[rgba(217,119,87,0.06)]"
                         : "border-[rgba(13,13,13,0.10)] bg-white hover:border-[rgba(13,13,13,0.22)] dark:border-[rgba(255,255,255,0.08)] dark:bg-[#1c1c1f] dark:hover:border-[rgba(255,255,255,0.18)]",
                       isDisabled ? "cursor-not-allowed opacity-35" : "cursor-pointer",
                     ].join(" ")}
@@ -231,7 +231,7 @@ export default function ComparePage() {
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={network.avatar} alt="" width={28} height={28} className="object-cover" />
                       ) : (
-                        <div className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-[rgba(10,124,255,0.10)] text-[#D97757]">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-[rgba(217,119,87,0.10)] text-[#D97757]">
                           <Code2 size={13} />
                         </div>
                       )}
@@ -268,7 +268,7 @@ export default function ComparePage() {
             return (
               <span
                 key={slug}
-                className="flex items-center gap-1.5 rounded-full border border-[#D97757] bg-[rgba(10,124,255,0.08)] px-3 py-1 text-[12px] font-medium text-[#D97757]"
+                className="flex items-center gap-1.5 rounded-full border border-[#D97757] bg-[rgba(217,119,87,0.08)] px-3 py-1 text-[12px] font-medium text-[#D97757]"
               >
                 {n?.name ?? slug}
                 <button onClick={() => toggleModel(slug)}>
@@ -590,7 +590,7 @@ function ModelAvatar({ avatar, name, size }: { avatar: string | null; name: stri
   }
   return (
     <div
-      className="flex shrink-0 items-center justify-center rounded-[5px] bg-[rgba(10,124,255,0.10)] text-[#D97757]"
+      className="flex shrink-0 items-center justify-center rounded-[5px] bg-[rgba(217,119,87,0.10)] text-[#D97757]"
       style={{ width: size, height: size }}
     >
       <Code2 size={Math.round(size * 0.55)} />

@@ -115,7 +115,7 @@ function PreBlock({ children, ...props }: ComponentPropsWithoutRef<"pre">) {
           </pre>
         </FullscreenModal>
       )}
-      <div className="my-4 overflow-hidden rounded-[10px] border border-[#413c69] bg-[#1e2034]">
+      <div className="my-4 overflow-hidden rounded-[10px] border border-[#2E2925] bg-[#1C1917]">
         <div className="flex items-center justify-between border-b border-[rgba(255, 255, 255, 0.06)] bg-[rgba(37, 41, 68, 0.04)] px-4 py-2">
           <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.38)]">
             {lang || "code"}
@@ -413,8 +413,8 @@ function EditBlock({ filePath, hunks }: { filePath: string; hunks: EditHunk[] })
         className="flex cursor-pointer items-center gap-2.5 px-4 py-2.5 transition-colors hover:bg-[rgba(0,200,100,0.07)]"
         onClick={() => setExpanded((v) => !v)}
       >
-        <Pencil size={14} className="shrink-0 text-[#00c864]" />
-        <span className="flex-1 font-mono text-[13px] font-medium text-[#00c864]">
+        <Pencil size={14} className="shrink-0 text-[#D97757]" />
+        <span className="flex-1 font-mono text-[13px] font-medium text-[#D97757]">
           {filePath}
         </span>
         <span className="text-[11px] text-[rgba(0,0,0,0.38)]">
@@ -422,7 +422,7 @@ function EditBlock({ filePath, hunks }: { filePath: string; hunks: EditHunk[] })
         </span>
         <button
           onClick={(e) => { e.stopPropagation(); setFullscreen(true); }}
-          className="rounded-[4px] p-1 text-[rgba(0,0,0,0.30)] transition-colors hover:bg-[rgba(0,200,100,0.12)] hover:text-[#00c864]"
+          className="rounded-[4px] p-1 text-[rgba(0,0,0,0.30)] transition-colors hover:bg-[rgba(0,200,100,0.12)] hover:text-[#D97757]"
           title="Развернуть"
         >
           <Maximize2 size={13} />

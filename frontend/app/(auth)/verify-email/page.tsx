@@ -97,7 +97,7 @@ function VerifyEmailForm() {
 
   return (
     <div className="rounded-[16px] border border-[rgba(13,13,13,0.10)] bg-white p-8 shadow-sm text-center">
-      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(10,124,255,0.08)]">
+      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(217,119,87,0.08)]">
         <Mail size={24} className="text-[#D97757]" />
       </div>
       <h1 className="mb-1 text-[22px] font-bold text-[#1A1A1A]">Подтвердите email</h1>
@@ -118,7 +118,7 @@ function VerifyEmailForm() {
             onChange={(e) => handleChange(i, e.target.value)}
             onKeyDown={(e) => handleKeyDown(i, e)}
             disabled={loading}
-            className="h-12 w-10 rounded-[8px] border border-[rgba(13,13,13,0.15)] text-center text-[20px] font-bold text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all disabled:opacity-50"
+            className="h-12 w-10 rounded-[8px] border border-[rgba(13,13,13,0.15)] text-center text-[20px] font-bold text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all disabled:opacity-50"
           />
         ))}
       </div>
@@ -130,7 +130,7 @@ function VerifyEmailForm() {
       )}
 
       {resendSuccess && (
-        <div className="mb-4 rounded-[8px] bg-[rgba(29,214,193,0.10)] px-3.5 py-2.5 text-[13px] text-[#0d9e8c]">
+        <div className="mb-4 rounded-[8px] bg-[rgba(217,119,87,0.10)] px-3.5 py-2.5 text-[13px] text-[#D97757]">
           Письмо отправлено повторно
         </div>
       )}
@@ -138,7 +138,7 @@ function VerifyEmailForm() {
       <button
         onClick={() => handleSubmit(digits.join(""))}
         disabled={loading || digits.some((d) => !d)}
-        className="mb-4 h-10 w-full rounded-[8px] bg-[#D97757] text-[14px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="mb-4 h-10 w-full rounded-[8px] bg-[#D97757] text-[14px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {loading ? "Проверяем..." : "Подтвердить"}
       </button>

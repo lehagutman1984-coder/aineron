@@ -66,7 +66,7 @@ export default function AccountPage() {
           <p className="mb-4 text-[13px] text-[rgba(13,13,13,0.5)]">звёзд</p>
           <Link
             href="/account/billing/"
-            className="inline-flex h-9 items-center gap-2 rounded-[8px] bg-[#D97757] px-4 text-[13px] font-medium text-white hover:bg-[#0066cc] transition-colors"
+            className="inline-flex h-9 items-center gap-2 rounded-[8px] bg-[#D97757] px-4 text-[13px] font-medium text-white hover:bg-[#C4623E] transition-colors"
           >
             Пополнить
           </Link>
@@ -177,12 +177,12 @@ export default function AccountPage() {
               <Link
                 key={chat.id}
                 href={`/chat/${chat.id}/`}
-                className="flex items-center gap-3 rounded-[10px] border border-[rgba(13,13,13,0.10)] bg-white px-4 py-3 hover:border-[rgba(10,124,255,0.4)] hover:bg-[rgba(10,124,255,0.02)] transition-all"
+                className="flex items-center gap-3 rounded-[10px] border border-[rgba(13,13,13,0.10)] bg-white px-4 py-3 hover:border-[rgba(217,119,87,0.4)] hover:bg-[rgba(217,119,87,0.02)] transition-all"
               >
                 {chat.network.avatar ? (
                   <img src={chat.network.avatar} alt={chat.network.name} width={28} height={28} className="rounded-[6px]" />
                 ) : (
-                  <div className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-[rgba(10,124,255,0.10)] text-[#D97757]">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-[rgba(217,119,87,0.10)] text-[#D97757]">
                     <MessageSquare size={13} />
                   </div>
                 )}

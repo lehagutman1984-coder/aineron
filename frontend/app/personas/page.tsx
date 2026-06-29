@@ -213,7 +213,7 @@ function PersonaCard({ persona, onDelete }: { persona: Persona; onDelete?: () =>
             className="shrink-0 rounded-[8px] object-cover"
           />
         ) : (
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] bg-[rgba(10,124,255,0.10)] text-[#D97757]">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] bg-[rgba(217,119,87,0.10)] text-[#D97757]">
             <Bot size={18} />
           </div>
         )}

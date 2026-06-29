@@ -125,7 +125,7 @@ export default function TelegramPage() {
         /* Привязан */
         <div className="rounded-2xl border border-[rgba(13,13,13,0.10)] bg-white p-6">
           <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[rgba(10,124,255,0.1)]">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[rgba(217,119,87,0.1)]">
               <CheckCircle size={24} className="text-[#D97757]" />
             </div>
             <div className="flex-1">

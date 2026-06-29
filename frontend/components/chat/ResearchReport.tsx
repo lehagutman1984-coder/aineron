@@ -64,16 +64,16 @@ export function ResearchReport({ html, plainText }: Props) {
 
   if (sections.length <= 1) {
     return (
-      <div className="mt-3 rounded-[12px] border border-[rgba(124,58,237,0.15)] bg-[rgba(124,58,237,0.02)]">
-        <div className="flex items-center gap-2 border-b border-[rgba(124,58,237,0.1)] px-4 py-2.5">
-          <BookOpen size={13} className="text-[#7c3aed]" />
-          <span className="flex-1 text-[11px] font-semibold uppercase tracking-wide text-[#7c3aed]">
+      <div className="mt-3 rounded-[12px] border border-[rgba(217,119,87,0.15)] bg-[rgba(217,119,87,0.02)]">
+        <div className="flex items-center gap-2 border-b border-[rgba(217,119,87,0.1)] px-4 py-2.5">
+          <BookOpen size={13} className="text-[#D97757]" />
+          <span className="flex-1 text-[11px] font-semibold uppercase tracking-wide text-[#D97757]">
             Отчёт исследования
           </span>
           <button
             onClick={handleExport}
             title="Скачать как Markdown"
-            className="flex items-center gap-1 rounded-[5px] px-2 py-1 text-[11px] text-[rgba(13,13,13,0.45)] transition hover:bg-[rgba(124,58,237,0.08)] hover:text-[#7c3aed] dark:text-[rgba(236,236,236,0.4)]"
+            className="flex items-center gap-1 rounded-[5px] px-2 py-1 text-[11px] text-[rgba(13,13,13,0.45)] transition hover:bg-[rgba(217,119,87,0.08)] hover:text-[#D97757] dark:text-[rgba(236,236,236,0.4)]"
           >
             <Download size={11} />
             MD
@@ -88,16 +88,16 @@ export function ResearchReport({ html, plainText }: Props) {
   }
 
   return (
-    <div className="mt-3 rounded-[12px] border border-[rgba(124,58,237,0.15)] bg-[rgba(124,58,237,0.02)]">
-      <div className="flex items-center gap-2 border-b border-[rgba(124,58,237,0.1)] px-4 py-2.5">
-        <BookOpen size={13} className="text-[#7c3aed]" />
-        <span className="flex-1 text-[11px] font-semibold uppercase tracking-wide text-[#7c3aed]">
+    <div className="mt-3 rounded-[12px] border border-[rgba(217,119,87,0.15)] bg-[rgba(217,119,87,0.02)]">
+      <div className="flex items-center gap-2 border-b border-[rgba(217,119,87,0.1)] px-4 py-2.5">
+        <BookOpen size={13} className="text-[#D97757]" />
+        <span className="flex-1 text-[11px] font-semibold uppercase tracking-wide text-[#D97757]">
           Отчёт исследования
         </span>
         <button
           onClick={handleExport}
           title="Скачать как Markdown"
-          className="flex items-center gap-1 rounded-[5px] px-2 py-1 text-[11px] text-[rgba(13,13,13,0.45)] transition hover:bg-[rgba(124,58,237,0.08)] hover:text-[#7c3aed] dark:text-[rgba(236,236,236,0.4)]"
+          className="flex items-center gap-1 rounded-[5px] px-2 py-1 text-[11px] text-[rgba(13,13,13,0.45)] transition hover:bg-[rgba(217,119,87,0.08)] hover:text-[#D97757] dark:text-[rgba(236,236,236,0.4)]"
         >
           <Download size={11} />
           MD

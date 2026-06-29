@@ -398,7 +398,7 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
           type="button"
           onClick={handleApply}
           disabled={!hasStrokes || uploading || applying}
-          className="flex h-9 items-center gap-1.5 rounded-[8px] bg-[#D97757] px-4 text-[12px] font-medium text-white transition-colors hover:bg-[#0066cc] disabled:opacity-40"
+          className="flex h-9 items-center gap-1.5 rounded-[8px] bg-[#D97757] px-4 text-[12px] font-medium text-white transition-colors hover:bg-[#C4623E] disabled:opacity-40"
         >
           {uploading ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
           Применить маску

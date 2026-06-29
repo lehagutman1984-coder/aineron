@@ -126,7 +126,7 @@ export default function UsagePage() {
                       style={{ height: "100px" }}
                     >
                       <div
-                        className="absolute bottom-0 left-0 right-0 rounded-t-[2px] bg-[#D97757] transition-all group-hover:bg-[#0066cc]"
+                        className="absolute bottom-0 left-0 right-0 rounded-t-[2px] bg-[#D97757] transition-all group-hover:bg-[#C4623E]"
                         style={{ height: `${Math.max(pct, 2)}%` }}
                       />
                       <div className="absolute bottom-full left-1/2 mb-1 hidden -translate-x-1/2 rounded-[4px] bg-[#1A1A1A] px-2 py-1 text-[10px] text-white group-hover:block whitespace-nowrap">
@@ -206,7 +206,7 @@ function TotalCard({
 }) {
   return (
     <div className="rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white p-5">
-      <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-[10px] bg-[rgba(10,124,255,0.10)] text-[#D97757]">
+      <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-[10px] bg-[rgba(217,119,87,0.10)] text-[#D97757]">
         {icon}
       </div>
       <p className="mb-0.5 text-[24px] font-bold text-[#1A1A1A]">{value}</p>

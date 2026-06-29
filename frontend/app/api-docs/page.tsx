@@ -239,7 +239,7 @@ function Section({
 function MethodBadge({ method }: { method: "GET" | "POST" | "DELETE" }) {
   const cls = {
     GET: "bg-[rgba(22,163,74,0.10)] text-[#16a34a]",
-    POST: "bg-[rgba(37,99,235,0.10)] text-[#2563eb]",
+    POST: "bg-[rgba(217,119,87,0.10)] text-[#D97757]",
     DELETE: "bg-[rgba(220,38,38,0.10)] text-[#dc2626]",
   }[method];
   return (
@@ -449,7 +449,7 @@ export default function ApiDocsPage() {
         <div className="flex flex-wrap gap-3 pb-4">
           <Link
             href="/api-docs/playground/"
-            className="inline-flex items-center gap-2 rounded-[10px] bg-[#D97757] px-5 py-2.5 text-[14px] font-medium text-white hover:bg-[#0066cc] transition-colors"
+            className="inline-flex items-center gap-2 rounded-[10px] bg-[#D97757] px-5 py-2.5 text-[14px] font-medium text-white hover:bg-[#C4623E] transition-colors"
           >
             <Play size={14} />
             Playground

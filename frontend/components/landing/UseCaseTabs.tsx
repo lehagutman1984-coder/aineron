@@ -100,7 +100,7 @@ export function UseCaseTabs() {
           {/* Left — feature list */}
           <div className="p-7">
             <div className="mb-4 flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-[9px] bg-[rgba(10,124,255,0.10)]">
+              <div className="flex h-9 w-9 items-center justify-center rounded-[9px] bg-[rgba(217,119,87,0.10)]">
                 <Icon size={17} className="text-[#D97757]" />
               </div>
               <p className="text-[16px] font-semibold text-[#1A1A1A]">{current.heading}</p>
@@ -123,7 +123,7 @@ export function UseCaseTabs() {
             <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.38)]">
               Пример запроса
             </p>
-            <div className="mb-4 rounded-[12px] bg-[rgba(10,124,255,0.07)] px-4 py-3 text-[13px] text-[#1A1A1A]">
+            <div className="mb-4 rounded-[12px] bg-[rgba(217,119,87,0.07)] px-4 py-3 text-[13px] text-[#1A1A1A]">
               {current.prompt}
             </div>
             <div className="rounded-[12px] border border-[rgba(13,13,13,0.08)] bg-white px-4 py-3">
@@ -139,7 +139,7 @@ export function UseCaseTabs() {
             </div>
             <a
               href="/register/"
-              className="mt-5 flex items-center justify-center gap-1.5 rounded-[9px] bg-[#D97757] px-4 py-2.5 text-[13px] font-medium text-white transition-colors hover:bg-[#0066cc]"
+              className="mt-5 flex items-center justify-center gap-1.5 rounded-[9px] bg-[#D97757] px-4 py-2.5 text-[13px] font-medium text-white transition-colors hover:bg-[#C4623E]"
             >
               Попробовать
             </a>

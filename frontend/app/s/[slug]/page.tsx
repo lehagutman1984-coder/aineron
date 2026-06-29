@@ -170,7 +170,7 @@ export default async function PublicSpacePage({ params }: { params: { slug: stri
         )}
 
         {/* CTA */}
-        <div className="rounded-[14px] border border-[rgba(10,124,255,0.15)] bg-[rgba(10,124,255,0.04)] p-5">
+        <div className="rounded-[14px] border border-[rgba(217,119,87,0.15)] bg-[rgba(217,119,87,0.04)] p-5">
           <p className="text-[13px] font-medium text-[#1A1A1A]">
             Создайте свой Project Space на Aineron.ru
           </p>
@@ -179,7 +179,7 @@ export default async function PublicSpacePage({ params }: { params: { slug: stri
           </p>
           <Link
             href="/"
-            className="mt-3 inline-flex items-center gap-1.5 rounded-[8px] bg-[#D97757] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#0068e0] transition-colors"
+            className="mt-3 inline-flex items-center gap-1.5 rounded-[8px] bg-[#D97757] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#C4623E] transition-colors"
           >
             Попробовать бесплатно
           </Link>
