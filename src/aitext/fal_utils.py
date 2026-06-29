@@ -726,6 +726,8 @@ def generate_image_edit(network, user_msg, message, user_settings=None):
             edit_kwargs['mask'] = mask_file
         result = client.images.edit(image=img_file, **edit_kwargs)
         img_url = result.data[0].url if result.data else None
+        b64_data = result.data[0].b64_json if result.data else None
+        logger.info(f"[img2img] edit response: data_len={len(result.data) if result.data else 0} url={bool(img_url)} b64={bool(b64_data)}")
     except Exception as edit_err:
         logger.warning(f"[img2img] images.edit failed ({edit_err}), falling back to generate+image_url")
         # Фолбэк: image_url передаём через extra_body (прямой kwarg → TypeError в SDK).
@@ -736,6 +738,26 @@ def generate_image_edit(network, user_msg, message, user_settings=None):
         gen_params['extra_body'] = fb_extra
         result = client.images.generate(**gen_params)
         img_url = result.data[0].url if result.data else None
+        b64_data = result.data[0].b64_json if result.data else None
+
+    # laozhang.ai может вернуть b64_json вместо url — сохраняем напрямую
+    if not img_url and b64_data:
+        import base64 as _b64, io as _io2
+        raw = _b64.b64decode(b64_data)
+        from django.core.files.base import ContentFile
+        from aitext.models import GeneratedImage
+        import uuid, os
+        fname = f"generated_images/{uuid.uuid4().hex}.png"
+        gen = GeneratedImage(
+            message=message,
+            prompt=prompt,
+            model_name=model_id,
+            provider='laozhang',
+            media_type='image',
+        )
+        gen.image.save(fname, ContentFile(raw), save=True)
+        logger.info(f"[img2img] сохранено из b64_json: {fname}")
+        return gen
 
     if not img_url:
         raise Exception("Провайдер не вернул изображение")
