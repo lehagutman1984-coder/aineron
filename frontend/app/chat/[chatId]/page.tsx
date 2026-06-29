@@ -1782,6 +1782,11 @@ function MessageRow({
               };
               return (
                 <div className="mt-2 flex flex-wrap items-center gap-1 border-t border-[rgba(13,13,13,0.07)] pt-2 dark:border-[rgba(236,236,236,0.07)]">
+                  {canRegenerate && onRegenerate && (
+                    <button onClick={onRegenerate} className={btnCls} style={btnStyle} onMouseEnter={onEnter} onMouseLeave={onLeave} title="Сгенерировать ещё раз">
+                      <RotateCcw size={13} /><span>Ещё раз</span>
+                    </button>
+                  )}
                   {imgUrl && onEditImage && (
                     <button onClick={() => onEditImage(imgUrl)} className={btnCls} style={btnStyle} onMouseEnter={onEnter} onMouseLeave={onLeave} title="Редактировать изображение (img2img)">
                       <Pencil size={13} /><span>Редактировать</span>
