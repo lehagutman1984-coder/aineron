@@ -177,14 +177,11 @@ function FileCard({
             <video
               src={file.url}
               className="h-full w-full object-cover"
-              preload="metadata"
+              autoPlay
               muted
+              loop
+              playsInline
             />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-black/50">
-                <Video size={16} className="text-white" />
-              </div>
-            </div>
           </div>
         ) : (
           // eslint-disable-next-line @next/next/no-img-element

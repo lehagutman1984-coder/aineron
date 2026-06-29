@@ -48,16 +48,16 @@ function GalleryCard({ item, onTry }: { item: GalleryItem; onTry: (prompt: strin
     <div className="group relative mb-3 break-inside-avoid overflow-hidden rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white">
       <Link href={item.share_slug ? `/g/${item.share_slug}` : "#"} className="block">
         <div className="relative w-full overflow-hidden bg-[rgba(13,13,13,0.04)]">
-          {item.media_type === "video" ? (
-            <div className="relative bg-black">
-              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-              <video src={item.image_url} className="w-full object-cover" preload="metadata" muted />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-black/50">
-                  <Video size={16} className="text-white" />
-                </div>
-              </div>
-            </div>
+          {item.media_type === "video" || item.video_url ? (
+            // eslint-disable-next-line jsx-a11y/media-has-caption
+            <video
+              src={item.video_url || item.image_url}
+              className="w-full object-cover"
+              autoPlay
+              muted
+              loop
+              playsInline
+            />
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
             <img

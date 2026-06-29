@@ -48,6 +48,7 @@ def _serialize_gallery_item(gen, request):
     except Exception:
         image_url = ''
     prompt = gen.prompt or ''
+    video_url = image_url if gen.media_type == 'video' else None
     return {
         'id': gen.id,
         'share_slug': gen.share_slug,
@@ -55,6 +56,7 @@ def _serialize_gallery_item(gen, request):
         'model_name': gen.model_name or '',
         'media_type': gen.media_type,
         'image_url': image_url,
+        'video_url': video_url,
         'created_at': gen.created_at.isoformat(),
         'username': _anon_username(gen),
         'likes': gen.likes,

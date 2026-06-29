@@ -729,6 +729,7 @@ export interface GalleryItem {
   model_name: string;
   media_type: "image" | "video";
   image_url: string;
+  video_url: string | null;
   created_at: string;
   username: string;
   likes: number;
