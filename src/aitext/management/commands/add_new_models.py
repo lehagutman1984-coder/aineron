@@ -9,71 +9,23 @@ from aitext.models import Category, NeuralNetwork
 
 IMAGE_CONFIG = {
     # Seedream — ByteDance, высокое художественное качество, конкурент Midjourney
-    # size передаётся как соотношение сторон ("1:1"), не в пикселях
+    # minimal_params=True: Seedream не принимает size/n — только model+prompt
     'seedream': {
         "name": "Seedream",
-        "api_defaults": {"size": "1:1", "n": 1},
-        "ui_settings": {
-            "sections": [{
-                "title": "Настройки изображения",
-                "fields": [
-                    {
-                        "name": "size",
-                        "type": "select",
-                        "label": "Формат",
-                        "extra_cost": 0,
-                        "options": [
-                            {"value": "1:1",  "label": "1:1 (квадрат)",      "extra_cost": 0},
-                            {"value": "16:9", "label": "16:9 (горизонталь)", "extra_cost": 0},
-                            {"value": "9:16", "label": "9:16 (вертикаль)",   "extra_cost": 0},
-                            {"value": "4:3",  "label": "4:3 (горизонталь)",  "extra_cost": 0},
-                            {"value": "3:4",  "label": "3:4 (вертикаль)",    "extra_cost": 0},
-                            {"value": "21:9", "label": "21:9 (сверхширокий)","extra_cost": 0},
-                        ]
-                    },
-                    {
-                        "name": "seed",
-                        "type": "number",
-                        "label": "Seed",
-                        "min": 0,
-                        "max": 9999999999,
-                        "default": None,
-                        "extra_cost": 0,
-                    },
-                ]
-            }]
-        },
+        "api_defaults": {},
+        "ui_settings": {"sections": []},
         "constraints": {},
-        "metadata": {"requires_input_images": False}
+        "metadata": {"requires_input_images": False, "minimal_params": True}
     },
 
     # Gemini Image — Google Imagen, фотореализм и художественный стиль
-    # laozhang.ai принимает aspect_ratio как "1:1" для Gemini image моделей
+    # minimal_params=True: тестируем без size/n — уточним после первого теста
     'gemini_image': {
         "name": "Gemini Image",
-        "api_defaults": {"size": "1:1", "n": 1},
-        "ui_settings": {
-            "sections": [{
-                "title": "Настройки изображения",
-                "fields": [
-                    {
-                        "name": "size",
-                        "type": "select",
-                        "label": "Формат",
-                        "extra_cost": 0,
-                        "options": [
-                            {"value": "1:1",  "label": "1:1 (квадрат)",      "extra_cost": 0},
-                            {"value": "16:9", "label": "16:9 (горизонталь)", "extra_cost": 0},
-                            {"value": "9:16", "label": "9:16 (вертикаль)",   "extra_cost": 0},
-                            {"value": "4:3",  "label": "4:3 (горизонталь)",  "extra_cost": 0},
-                            {"value": "3:4",  "label": "3:4 (вертикаль)",    "extra_cost": 0},
-                        ]
-                    },
-                ]
-            }]
-        },
+        "api_defaults": {},
+        "ui_settings": {"sections": []},
         "constraints": {},
-        "metadata": {"requires_input_images": False}
+        "metadata": {"requires_input_images": False, "minimal_params": True}
     },
 
     # GPT Image — OpenAI, используем существующий конфиг

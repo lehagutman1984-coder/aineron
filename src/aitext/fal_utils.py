@@ -462,11 +462,19 @@ def save_media_from_url(url, message, prompt, media_type='image', max_retries=3,
 
 
 def _build_image_params(model_id, prompt, final_args):
-    """Формирует параметры для client.images.generate() из config api_defaults."""
+    """Формирует параметры для client.images.generate() из config api_defaults.
+
+    Если final_args содержит '_minimal_params': True — отправляем только model+prompt
+    (нужно для моделей вроде Seedream, которые не принимают size/n).
+    """
     params = {
         'model': model_id,
         'prompt': prompt,
     }
+
+    if final_args.get('_minimal_params'):
+        # Только model + prompt, никаких стандартных параметров
+        return params
 
     # size: приоритет — прямой 'size', затем 'image_size', затем width+height
     if 'size' in final_args:
@@ -1669,6 +1677,10 @@ def generate_with_falai(network, user_msg, message, user_settings=None):
     # поэтому validate_and_merge_settings его не выдаёт — прокидываем вручную в final_args.
     if user_settings and user_settings.get('style_image_url'):
         final_args['style_image_url'] = user_settings['style_image_url']
+
+    # Некоторые модели (Seedream, Gemini image) не принимают size/n — используем minimal_params.
+    if config.get('metadata', {}).get('minimal_params'):
+        final_args['_minimal_params'] = True
 
     image_params = _build_image_params(model_id, prompt, final_args)
 
