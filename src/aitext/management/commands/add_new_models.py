@@ -9,9 +9,10 @@ from aitext.models import Category, NeuralNetwork
 
 IMAGE_CONFIG = {
     # Seedream — ByteDance, высокое художественное качество, конкурент Midjourney
+    # size передаётся как соотношение сторон ("1:1"), не в пикселях
     'seedream': {
         "name": "Seedream",
-        "api_defaults": {"size": "1024x1024", "n": 1},
+        "api_defaults": {"size": "1:1", "n": 1},
         "ui_settings": {
             "sections": [{
                 "title": "Настройки изображения",
@@ -22,12 +23,12 @@ IMAGE_CONFIG = {
                         "label": "Формат",
                         "extra_cost": 0,
                         "options": [
-                            {"value": "1024x1024", "label": "1:1 (квадрат)", "extra_cost": 0},
-                            {"value": "1280x720", "label": "16:9 (горизонталь)", "extra_cost": 0},
-                            {"value": "720x1280", "label": "9:16 (вертикаль)", "extra_cost": 0},
-                            {"value": "1365x1024", "label": "4:3 (горизонталь)", "extra_cost": 0},
-                            {"value": "1024x1365", "label": "3:4 (вертикаль)", "extra_cost": 0},
-                            {"value": "1024x576", "label": "16:9 HD (широкий)", "extra_cost": 0},
+                            {"value": "1:1",  "label": "1:1 (квадрат)",      "extra_cost": 0},
+                            {"value": "16:9", "label": "16:9 (горизонталь)", "extra_cost": 0},
+                            {"value": "9:16", "label": "9:16 (вертикаль)",   "extra_cost": 0},
+                            {"value": "4:3",  "label": "4:3 (горизонталь)",  "extra_cost": 0},
+                            {"value": "3:4",  "label": "3:4 (вертикаль)",    "extra_cost": 0},
+                            {"value": "21:9", "label": "21:9 (сверхширокий)","extra_cost": 0},
                         ]
                     },
                     {
@@ -47,9 +48,10 @@ IMAGE_CONFIG = {
     },
 
     # Gemini Image — Google Imagen, фотореализм и художественный стиль
+    # laozhang.ai принимает aspect_ratio как "1:1" для Gemini image моделей
     'gemini_image': {
         "name": "Gemini Image",
-        "api_defaults": {"size": "1024x1024", "n": 1},
+        "api_defaults": {"size": "1:1", "n": 1},
         "ui_settings": {
             "sections": [{
                 "title": "Настройки изображения",
@@ -57,14 +59,14 @@ IMAGE_CONFIG = {
                     {
                         "name": "size",
                         "type": "select",
-                        "label": "Размер",
+                        "label": "Формат",
                         "extra_cost": 0,
                         "options": [
-                            {"value": "1024x1024", "label": "1024×1024 (квадрат)", "extra_cost": 0},
-                            {"value": "1024x1792", "label": "1024×1792 (вертикаль)", "extra_cost": 0},
-                            {"value": "1792x1024", "label": "1792×1024 (горизонталь)", "extra_cost": 0},
-                            {"value": "1024x1536", "label": "1024×1536 (вертикаль 2:3)", "extra_cost": 0},
-                            {"value": "1536x1024", "label": "1536×1024 (горизонталь 3:2)", "extra_cost": 0},
+                            {"value": "1:1",  "label": "1:1 (квадрат)",      "extra_cost": 0},
+                            {"value": "16:9", "label": "16:9 (горизонталь)", "extra_cost": 0},
+                            {"value": "9:16", "label": "9:16 (вертикаль)",   "extra_cost": 0},
+                            {"value": "4:3",  "label": "4:3 (горизонталь)",  "extra_cost": 0},
+                            {"value": "3:4",  "label": "3:4 (вертикаль)",    "extra_cost": 0},
                         ]
                     },
                 ]
