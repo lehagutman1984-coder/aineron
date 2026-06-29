@@ -57,6 +57,39 @@ SLUG_TO_LOGO_URL = {
     'flux-kontext-pro':  'https://github.com/black-forest-labs.png?size=200',
     'flux-kontext-max':  'https://github.com/black-forest-labs.png?size=200',
     'flux-2-flex':       'https://github.com/black-forest-labs.png?size=200',
+    # Seedream / ByteDance
+    'seedream-5-0':      'https://github.com/bytedance.png?size=200',
+    'seedream-4-5':      'https://github.com/bytedance.png?size=200',
+    'seedream-4-0':      'https://github.com/bytedance.png?size=200',
+    # Google Gemini Image
+    'gemini-3-1-flash-image': 'https://github.com/google-deepmind.png?size=200',
+    'gemini-3-pro-image':     'https://github.com/google-deepmind.png?size=200',
+    'gemini-2-5-flash-image': 'https://github.com/google-deepmind.png?size=200',
+    'gemini-3-5-flash':       'https://github.com/google-deepmind.png?size=200',
+    'gemini-3-1-pro':         'https://github.com/google-deepmind.png?size=200',
+    # OpenAI новые
+    'gpt-image-1-5':     'https://github.com/openai.png?size=200',
+    'gpt-5-mini':        'https://github.com/openai.png?size=200',
+    'gpt-5-pro':         'https://github.com/openai.png?size=200',
+    'gpt-5-1':           'https://github.com/openai.png?size=200',
+    # DeepSeek новые
+    'deepseek-v3-2':     'https://github.com/deepseek-ai.png?size=200',
+    'deepseek-v4-flash': 'https://github.com/deepseek-ai.png?size=200',
+    'deepseek-v4-pro':   'https://github.com/deepseek-ai.png?size=200',
+    # GLM новые
+    'glm-5':             'https://github.com/THUDM.png?size=200',
+    'glm-4-6':           'https://github.com/THUDM.png?size=200',
+    # Grok новый
+    'grok-4-3':          'https://github.com/xai-org.png?size=200',
+    # Kimi новые
+    'kimi-k2-5':         'https://github.com/MoonshotAI.png?size=200',
+    'kimi-k2-6':         'https://github.com/MoonshotAI.png?size=200',
+    # Qwen новые
+    'qwen3-5-flash':     'https://github.com/QwenLM.png?size=200',
+    'qwen3-5-plus':      'https://github.com/QwenLM.png?size=200',
+    # MiniMax
+    'minimax-m2-7':      'https://github.com/MiniMaxAI.png?size=200',
+    'minimax-m2-5':      'https://github.com/MiniMaxAI.png?size=200',
 }
 
 # Цвет фона для fallback аватара (если URL не работает)
@@ -76,6 +109,8 @@ FALLBACK_COLORS = {
     'kimi': '#7c3aed',       # Moonshot фиолетовый
     'glm': '#06b6d4',        # Zhipu голубой
     'flux': '#8b5cf6',       # BFL фиолетовый
+    'seedream': '#ff4d00',   # ByteDance оранжевый
+    'minimax': '#0ea5e9',    # MiniMax голубой
 }
 
 
