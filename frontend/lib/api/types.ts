@@ -244,6 +244,7 @@ export interface WebMessage {
   used_memory?: boolean;
   generation_id?: number | null;
   image_generation_id?: number | null;
+  image_is_favorite?: boolean;
   created_at: string;
 }
 

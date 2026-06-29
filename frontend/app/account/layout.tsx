@@ -13,6 +13,7 @@ import {
   BarChart2,
   MessageCircle,
   AppWindow,
+  Heart,
 } from "lucide-react";
 import { useAuthStore } from "@/lib/stores/auth";
 import { authLogout } from "@/lib/api/client";
@@ -25,6 +26,7 @@ const NAV = [
   { href: "/account/keys/", label: "API-ключи", icon: Key },
   { href: "/account/referral/", label: "Партнёрская программа", icon: Users },
   { href: "/account/files/", label: "Мои файлы", icon: FolderOpen },
+  { href: "/account/favorites/", label: "Избранное", icon: Heart },
   { href: "/account/telegram/", label: "Telegram", icon: MessageCircle },
   { href: "/account/oauth-apps/", label: "OAuth-приложения", icon: AppWindow },
 ];

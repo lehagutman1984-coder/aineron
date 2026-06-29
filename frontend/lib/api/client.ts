@@ -556,6 +556,22 @@ export const downloadImageUrl = (url: string, filename?: string): void => {
 export const likeGeneration = (genId: number): Promise<{ id: number; likes: number }> =>
   request<{ id: number; likes: number }>(`/generations/${genId}/like/`, { method: "POST" });
 
+export const favoriteGeneration = (genId: number): Promise<{ id: number; is_favorite: boolean }> =>
+  request<{ id: number; is_favorite: boolean }>(`/generations/${genId}/favorite/`, { method: "POST" });
+
+export const getFavorites = (params?: { page?: number; per_page?: number; media_type?: string }): Promise<{
+  items: Array<{ id: number; image_url: string; prompt: string; model_name: string; media_type: string; is_favorite: boolean; created_at: string }>;
+  has_next: boolean;
+  page: number;
+  total: number;
+}> => {
+  const q = new URLSearchParams();
+  if (params?.page) q.set("page", String(params.page));
+  if (params?.per_page) q.set("per_page", String(params.per_page));
+  if (params?.media_type) q.set("media_type", params.media_type);
+  return request(`/favorites/${q.toString() ? "?" + q.toString() : ""}`);
+};
+
 // ============ Sprint 7: Public gallery & sharing ============
 
 export const shareGeneration = (genId: string): Promise<ShareGenerationResponse> =>

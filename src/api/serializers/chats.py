@@ -9,6 +9,7 @@ class MessageSerializer(serializers.ModelSerializer):
     used_memory = serializers.SerializerMethodField()
     generation_id = serializers.SerializerMethodField()
     image_generation_id = serializers.SerializerMethodField()
+    image_is_favorite = serializers.SerializerMethodField()
 
     class Meta:
         model = Message
@@ -16,7 +17,7 @@ class MessageSerializer(serializers.ModelSerializer):
             'id', 'role', 'content', 'plain_text', 'files', 'status',
             'error_message', 'search_context', 'kb_sources', 'variants', 'created_at',
             'is_research', 'research_id', 'used_memory', 'generation_id',
-            'image_generation_id',
+            'image_generation_id', 'image_is_favorite',
         ]
 
     def get_generation_id(self, obj):
@@ -38,6 +39,18 @@ class MessageSerializer(serializers.ModelSerializer):
             return gen.id if gen is not None else None
         except Exception:
             return None
+
+    def get_image_is_favorite(self, obj):
+        """Sprint 8: является ли последняя image-генерация избранной."""
+        try:
+            gen = (
+                obj.generated_images
+                .filter(media_type='image').exclude(image='')
+                .order_by('-created_at').first()
+            )
+            return gen.is_favorite if gen is not None else False
+        except Exception:
+            return False
 
     def get_is_research(self, obj):
         try:

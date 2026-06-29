@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw, Paperclip, BookMarked, Globe, Volume2, Square, Loader, ChevronDown, ChevronRight, Settings2, FileText, X, GitCommit, CheckCircle2, XCircle, Download, Layers, BookmarkPlus, GitBranch, Microscope, Brain, ImagePlus, Pencil, Loader2, Film, Maximize2, Images, Palette, FileSearch, Eraser } from "lucide-react";
+import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw, Paperclip, BookMarked, Globe, Volume2, Square, Loader, ChevronDown, ChevronRight, Settings2, FileText, X, GitCommit, CheckCircle2, XCircle, Download, Layers, BookmarkPlus, GitBranch, Microscope, Brain, ImagePlus, Pencil, Loader2, Film, Maximize2, Images, Palette, FileSearch, Eraser, Heart } from "lucide-react";
 import { MarkdownContent } from "@/components/chat/MarkdownContent";
 import { AttachmentPreview, type AttachmentState } from "@/components/chat/AttachmentPreview";
 import { PromptPicker } from "@/components/chat/PromptPicker";
@@ -22,7 +22,7 @@ import { GenerationProgress } from "@/components/chat/GenerationProgress";
 import { PromptEnhancer } from "@/components/chat/PromptEnhancer";
 import { BeforeAfterSlider } from "@/components/chat/BeforeAfterSlider";
 import { ZoomableImage } from "@/components/chat/ZoomableImage";
-import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, uploadFile, synthesizeSpeech, confirmCommit, exportChat, quickSaveFact, branchChat, startDeepResearch, getResearchStatus, getMemoryToast, upscaleGeneration, createVariations, describeGeneration, downloadImageUrl, APIError, BASE_URL, type CommitProposed } from "@/lib/api/client";
+import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, uploadFile, synthesizeSpeech, confirmCommit, exportChat, quickSaveFact, branchChat, startDeepResearch, getResearchStatus, getMemoryToast, upscaleGeneration, createVariations, describeGeneration, downloadImageUrl, favoriteGeneration, APIError, BASE_URL, type CommitProposed } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 import { useUIStore } from "@/lib/stores/ui";
 import type { WebMessage, ChatDetail, UiSection, KBSource } from "@/lib/api/types";
@@ -634,6 +634,26 @@ export default function ChatPage() {
     [addToast, qc, id]
   );
 
+  // Sprint 8: избранное — toggle is_favorite, optimistic update через invalidateQueries
+  const handleFavoriteImage = useCallback(
+    async (generationId: number) => {
+      try {
+        const res = await favoriteGeneration(generationId);
+        addToast({
+          type: res.is_favorite ? "success" : "info",
+          message: res.is_favorite ? "Сохранено в избранном." : "Удалено из избранного.",
+        });
+        qc.invalidateQueries({ queryKey: ["chat", id] });
+      } catch (err) {
+        addToast({
+          type: "error",
+          message: err instanceof APIError ? err.message : "Не удалось обновить избранное.",
+        });
+      }
+    },
+    [addToast, qc, id]
+  );
+
   // Sprint 6: вариации сгенерированного изображения из пузыря сообщения
   const handleVariationsImage = useCallback(
     async (generationId: number) => {
@@ -1041,6 +1061,7 @@ export default function ChatPage() {
                   onAnimateImage={handleAnimateImage}
                   onUpscaleImage={handleUpscaleImage}
                   onVariationsImage={handleVariationsImage}
+                  onFavoriteImage={handleFavoriteImage}
                   onStyleImage={handleStyleImage}
                   onDescribeImage={handleDescribeImage}
                   onDownloadImage={(url) => downloadImageUrl(url)}
@@ -1518,6 +1539,7 @@ function MessageRow({
   onAnimateImage,
   onUpscaleImage,
   onVariationsImage,
+  onFavoriteImage,
   onStyleImage,
   onDescribeImage,
   onDownloadImage,
@@ -1540,6 +1562,7 @@ function MessageRow({
   onAnimateImage?: (url: string) => void;
   onUpscaleImage?: (generationId: number, factor: 2 | 4) => void;
   onVariationsImage?: (generationId: number) => void;
+  onFavoriteImage?: (generationId: number) => void;
   onStyleImage?: (url: string) => void;
   onDescribeImage?: (generationId: number) => void;
   onDownloadImage?: (url: string) => void;
@@ -1760,6 +1783,19 @@ function MessageRow({
                   {message.image_generation_id && onVariationsImage && (
                     <button onClick={() => onVariationsImage(message.image_generation_id!)} className={btnCls} style={btnStyle} onMouseEnter={onEnter} onMouseLeave={onLeave} title="Создать 4 вариации">
                       <Images size={13} /><span>Варианты</span>
+                    </button>
+                  )}
+                  {message.image_generation_id && onFavoriteImage && (
+                    <button
+                      onClick={() => onFavoriteImage(message.image_generation_id!)}
+                      className={btnCls}
+                      style={message.image_is_favorite ? { color: "#e74c3c" } : btnStyle}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(231,76,60,0.08)"; e.currentTarget.style.color = "#e74c3c"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = ""; e.currentTarget.style.color = message.image_is_favorite ? "#e74c3c" : "rgba(10,124,255,0.9)"; }}
+                      title={message.image_is_favorite ? "Убрать из избранного" : "Добавить в избранное"}
+                    >
+                      <Heart size={13} fill={message.image_is_favorite ? "currentColor" : "none"} />
+                      <span>{message.image_is_favorite ? "Сохранено" : "Сохранить"}</span>
                     </button>
                   )}
                   {imgUrl && onStyleImage && (

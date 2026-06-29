@@ -411,3 +411,64 @@ class GenerationDescribeView(APIView):
             return Response({'prompt': prompt_text})
         except Exception as e:
             return Response({'error': {'message': str(e), 'type': 'api_error', 'code': None}}, status=500)
+
+
+class GenerationFavoriteToggleView(APIView):
+    """POST /v1/generations/<pk>/favorite/ — добавить/убрать из избранного."""
+    authentication_classes = [CsrfExemptSessionAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        gen = get_object_or_404(GeneratedImage, _user_gens_q(request.user), id=pk)
+        gen.is_favorite = not gen.is_favorite
+        gen.save(update_fields=['is_favorite'])
+        return Response({'id': gen.id, 'is_favorite': gen.is_favorite})
+
+
+class FavoritesListView(APIView):
+    """GET /v1/favorites/ — список избранных генераций текущего пользователя."""
+    authentication_classes = [CsrfExemptSessionAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        page = int(request.query_params.get('page', 1) or 1)
+        per_page = int(request.query_params.get('per_page', 24) or 24)
+        per_page = max(1, min(per_page, 60))
+        media_type = request.query_params.get('media_type', '')
+
+        qs = (
+            GeneratedImage.objects
+            .filter(_user_gens_q(request.user), is_favorite=True)
+            .exclude(image='')
+            .order_by('-created_at')
+        )
+        if media_type in ('image', 'video'):
+            qs = qs.filter(media_type=media_type)
+
+        from django.core.paginator import Paginator as _Pager
+        pager = _Pager(qs, per_page)
+        total = pager.count
+        items = []
+        if total > 0 and page <= pager.num_pages:
+            for gen in pager.page(page):
+                image_url = ''
+                try:
+                    if gen.image:
+                        image_url = request.build_absolute_uri(gen.image.url)
+                except Exception:
+                    pass
+                items.append({
+                    'id': gen.id,
+                    'image_url': image_url,
+                    'prompt': (gen.prompt or '')[:120],
+                    'model_name': gen.model_name or '',
+                    'media_type': gen.media_type,
+                    'is_favorite': True,
+                    'created_at': gen.created_at.isoformat(),
+                })
+        return Response({
+            'items': items,
+            'has_next': page < pager.num_pages,
+            'page': page,
+            'total': total,
+        })

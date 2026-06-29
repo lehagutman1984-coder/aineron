@@ -794,6 +794,8 @@ class GeneratedImage(models.Model):
         max_length=12, unique=True, null=True, blank=True, verbose_name='Slug для шеринга'
     )
     likes = models.IntegerField(default=0, verbose_name='Лайки')
+    # Sprint 8: избранное
+    is_favorite = models.BooleanField(default=False, verbose_name='В избранном')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
