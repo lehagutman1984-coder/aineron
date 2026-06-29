@@ -1124,60 +1124,63 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
         <div className="flex flex-col gap-3">
           {connectors.map((conn) => (
             <div key={conn.id} className="rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white p-4">
-              <div className="flex items-center gap-3">
-                {conn.connector_type === "github"
-                  ? <Github size={16} className="shrink-0 text-[#1A1A1A]" />
-                  : <GitBranch size={16} className="shrink-0 text-[#e67e22]" />
-                }
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="text-[16px] font-semibold text-[#1A1A1A]">{conn.owner}/{conn.repo}</p>
-                    {conn.sync_status === "ok" && (
-                      <span className="rounded-full bg-[rgba(34,168,90,0.12)] px-2 py-0.5 text-[12px] font-medium text-[#22a85a]">
-                        синк OK{conn.last_sync_report?.created ? ` · +${conn.last_sync_report.created}` : ""}
-                      </span>
-                    )}
-                    {conn.sync_status === "error" && (
-                      <span
-                        className="rounded-full bg-[rgba(231,76,60,0.10)] px-2 py-0.5 text-[12px] font-medium text-[#e74c3c] cursor-help"
-                        title={conn.last_sync_report?.error_detail || conn.last_sync_report?.error || "Ошибка синхронизации"}
-                      >
-                        синк ошибка: {conn.last_sync_report?.error || "неизвестно"}
-                      </span>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                <div className="flex items-start gap-3 min-w-0 flex-1">
+                  {conn.connector_type === "github"
+                    ? <Github size={16} className="mt-0.5 shrink-0 text-[#1A1A1A]" />
+                    : <GitBranch size={16} className="mt-0.5 shrink-0 text-[#e67e22]" />
+                  }
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-[16px] font-semibold text-[#1A1A1A] break-all">{conn.owner}/{conn.repo}</p>
+                      {conn.sync_status === "ok" && (
+                        <span className="rounded-full bg-[rgba(34,168,90,0.12)] px-2 py-0.5 text-[12px] font-medium text-[#22a85a] whitespace-nowrap">
+                          синк OK{conn.last_sync_report?.created ? ` · +${conn.last_sync_report.created}` : ""}
+                        </span>
+                      )}
+                      {conn.sync_status === "error" && (
+                        <span
+                          className="rounded-full bg-[rgba(231,76,60,0.10)] px-2 py-0.5 text-[12px] font-medium text-[#e74c3c] cursor-help whitespace-nowrap"
+                          title={conn.last_sync_report?.error_detail || conn.last_sync_report?.error || "Ошибка синхронизации"}
+                        >
+                          синк ошибка
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-0.5 text-[13px] leading-relaxed text-[rgba(13,13,13,0.45)]">
+                      {conn.connector_type === "github" ? "GitHub" : "Gitea"} · ветка {conn.branch}
+                      {conn.last_synced_at && <> · синхронизировано {new Date(conn.last_synced_at).toLocaleString("ru")}</>}
+                      {conn.last_sync_report?.created != null && conn.last_sync_report.created > 0 && (
+                        <> · <span className="text-[#22a85a]">{conn.last_sync_report.created} новых файлов</span></>
+                      )}
+                      {conn.last_sync_report?.updated != null && conn.last_sync_report.updated > 0 && (
+                        <> · {conn.last_sync_report.updated} обновлено</>
+                      )}
+                      {conn.last_sync_report?.errors != null && conn.last_sync_report.errors > 0 && (
+                        <> · <span className="text-[#e74c3c]">{conn.last_sync_report.errors} ошибок</span></>
+                      )}
+                    </p>
+                    {conn.webhook_url && (
+                      <div className="mt-1.5 flex items-center gap-1.5">
+                        <span className="text-[12px] text-[rgba(13,13,13,0.40)]">Webhook:</span>
+                        <code className="max-w-[200px] truncate rounded-[4px] bg-[rgba(13,13,13,0.05)] px-1.5 py-0.5 text-[12px] text-[rgba(13,13,13,0.55)]">{conn.webhook_url}</code>
+                        <button
+                          onClick={() => { navigator.clipboard.writeText(conn.webhook_url); setCopiedWebhook(conn.id); setTimeout(() => setCopiedWebhook(null), 1800); }}
+                          className="text-[rgba(13,13,13,0.35)] hover:text-[#D97757]"
+                          title="Скопировать webhook URL"
+                        >
+                          {copiedWebhook === conn.id ? <CheckCircle2 size={11} /> : <Copy size={11} />}
+                        </button>
+                      </div>
                     )}
                   </div>
-                  <p className="text-[13px] text-[rgba(13,13,13,0.45)]">
-                    {conn.connector_type === "github" ? "GitHub" : "Gitea"} · ветка {conn.branch}
-                    {conn.last_synced_at && <> · синхронизировано {new Date(conn.last_synced_at).toLocaleString("ru")}</>}
-                    {conn.last_sync_report && conn.last_sync_report.created != null && conn.last_sync_report.created > 0 && (
-                      <> · <span className="text-[#22a85a]">{conn.last_sync_report.created} новых файлов в базе знаний</span></>
-                    )}
-                    {conn.last_sync_report && conn.last_sync_report.updated != null && conn.last_sync_report.updated > 0 && (
-                      <> · {conn.last_sync_report.updated} обновлено</>
-                    )}
-                    {conn.last_sync_report && conn.last_sync_report.errors != null && conn.last_sync_report.errors > 0 && (
-                      <> · <span className="text-[#e74c3c]">{conn.last_sync_report.errors} ошибок</span></>
-                    )}
-                  </p>
-                  {conn.webhook_url && (
-                    <div className="mt-1.5 flex items-center gap-1.5">
-                      <span className="text-[12px] text-[rgba(13,13,13,0.40)]">Webhook:</span>
-                      <code className="max-w-[260px] truncate rounded-[4px] bg-[rgba(13,13,13,0.05)] px-1.5 py-0.5 text-[12px] text-[rgba(13,13,13,0.55)]">{conn.webhook_url}</code>
-                      <button
-                        onClick={() => { navigator.clipboard.writeText(conn.webhook_url); setCopiedWebhook(conn.id); setTimeout(() => setCopiedWebhook(null), 1800); }}
-                        className="text-[rgba(13,13,13,0.35)] hover:text-[#D97757]"
-                        title="Скопировать webhook URL"
-                      >
-                        {copiedWebhook === conn.id ? <CheckCircle2 size={11} /> : <Copy size={11} />}
-                      </button>
-                    </div>
-                  )}
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
+                {/* Кнопки — переносятся на новую строку на мобильном */}
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     onClick={() => handleSync(conn.id)}
                     disabled={syncingId === conn.id}
-                    className="flex items-center gap-1.5 rounded-[7px] border border-[rgba(13,13,13,0.14)] px-3 py-1.5 text-[14px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:border-[#D97757] hover:text-[#D97757] disabled:opacity-50"
+                    className="flex items-center gap-1.5 rounded-[7px] border border-[rgba(13,13,13,0.14)] px-3 py-1.5 text-[14px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:border-[#D97757] hover:text-[#D97757] disabled:opacity-50 whitespace-nowrap"
                     title="Синхронизировать файлы из репозитория в базу знаний"
                   >
                     <RefreshCw size={11} className={syncingId === conn.id ? "animate-spin" : ""} />
@@ -1186,7 +1189,7 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                   <button
                     onClick={() => { setBrowsingId(conn.id === browsingId ? null : conn.id); setSelectedFile(null); setFileContent(null); setOpenDirs(new Set()); }}
                     className={[
-                      "flex items-center gap-1.5 rounded-[7px] px-3 py-1.5 text-[14px] font-medium transition-colors",
+                      "flex items-center gap-1.5 rounded-[7px] px-3 py-1.5 text-[14px] font-medium transition-colors whitespace-nowrap",
                       browsingId === conn.id
                         ? "bg-[rgba(217,119,87,0.12)] text-[#D97757]"
                         : "border border-[rgba(13,13,13,0.14)] text-[rgba(13,13,13,0.65)] hover:border-[#D97757] hover:text-[#D97757]",
@@ -1197,17 +1200,16 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                   </button>
                   <button
                     onClick={() => { setCommitConnId(conn.id); setShowCommitModal(true); }}
-                    className="flex items-center gap-1.5 rounded-[7px] border border-[rgba(13,13,13,0.14)] px-3 py-1.5 text-[14px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:border-[#22a85a] hover:text-[#22a85a]"
+                    className="flex items-center gap-1.5 rounded-[7px] border border-[rgba(13,13,13,0.14)] px-3 py-1.5 text-[14px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:border-[#22a85a] hover:text-[#22a85a] whitespace-nowrap"
                   >
                     <Send size={11} />
                     Коммит
                   </button>
-                  {/* Sprint 7.2: Deploy button */}
                   {conn.deploy_webhook_url && (
                     <button
                       onClick={() => handleDeploy(conn.id)}
                       disabled={deployingId === conn.id}
-                      className="flex items-center gap-1.5 rounded-[7px] border border-[rgba(13,13,13,0.14)] px-3 py-1.5 text-[14px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:border-[#D97757] hover:text-[#D97757] disabled:opacity-50"
+                      className="flex items-center gap-1.5 rounded-[7px] border border-[rgba(13,13,13,0.14)] px-3 py-1.5 text-[14px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:border-[#D97757] hover:text-[#D97757] disabled:opacity-50 whitespace-nowrap"
                       title="Запустить деплой"
                     >
                       {deployingId === conn.id ? (
@@ -1233,7 +1235,7 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                         ? "bg-[rgba(217,119,87,0.10)] text-[#D97757]"
                         : "border border-[rgba(13,13,13,0.14)] text-[rgba(13,13,13,0.40)]",
                     ].join(" ")}
-                    title={conn.auto_sync ? "Авто-синк включён (нажмите чтобы отключить)" : "Авто-синк отключён (нажмите чтобы включить)"}
+                    title={conn.auto_sync ? "Авто-синк включён" : "Авто-синк отключён"}
                   >
                     <RefreshCw size={10} />
                     Авто
@@ -1252,9 +1254,9 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
               {/* File browser inline */}
               {browsingId === conn.id && (
                 <div className="mt-4 rounded-[8px] border border-[rgba(13,13,13,0.09)] overflow-hidden">
-                  <div className="flex min-h-[200px]">
-                    {/* Tree panel */}
-                    <div className="w-[200px] shrink-0 overflow-y-auto border-r border-[rgba(13,13,13,0.08)] py-1">
+                  <div className="flex flex-col md:flex-row" style={{ minHeight: 400 }}>
+                    {/* Tree panel — полная ширина на мобильном, фиксированная на десктопе */}
+                    <div className="w-full md:w-[240px] shrink-0 overflow-y-auto border-b border-[rgba(13,13,13,0.08)] md:border-b-0 md:border-r py-1 max-h-[260px] md:max-h-none">
                       {treeLoading ? (
                         <div className="flex items-center justify-center py-8 text-[14px] text-[rgba(13,13,13,0.40)]">
                           <Loader2 size={14} className="mr-1.5 animate-spin" />
@@ -1271,8 +1273,8 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                         <p className="px-3 py-6 text-center text-[14px] text-[rgba(13,13,13,0.38)]">Репозиторий пуст</p>
                       )}
                     </div>
-                    {/* Content panel — Sprint 7.1: CodeEditor */}
-                    <div className="flex flex-col flex-1 overflow-hidden" style={{ minHeight: 300, maxHeight: 460 }}>
+                    {/* Content panel */}
+                    <div className="flex flex-col flex-1 overflow-hidden min-h-[320px] md:min-h-[500px]">
                       {selectedFile && editorConnId === conn.id ? (
                         fileLoading ? (
                           <div className="flex items-center justify-center py-10 text-[14px] text-[rgba(13,13,13,0.40)]">
@@ -1296,7 +1298,7 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                         )
                       ) : (
                         <div className="flex h-full items-center justify-center py-10 text-[14px] text-[rgba(13,13,13,0.35)]">
-                          Выберите файл
+                          Выберите файл в дереве слева
                         </div>
                       )}
                     </div>
@@ -2059,63 +2061,65 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
         </button>
       </div>
 
-      {/* Tabs */}
-      <div className="mb-5 flex items-center gap-1 border-b border-[rgba(13,13,13,0.09)]">
-        <TabButton
-          active={tab === "chats"}
-          icon={<MessageSquare size={13} />}
-          label="Чаты"
-          onClick={() => setTab("chats")}
-        />
-        <TabButton
-          active={tab === "instructions"}
-          icon={<FileText size={13} />}
-          label="Инструкции"
-          onClick={() => setTab("instructions")}
-          badge={hasInstructions}
-        />
-        <TabButton
-          active={tab === "files"}
-          icon={<Upload size={13} />}
-          label="Файлы"
-          onClick={() => setTab("files")}
-        />
-        <Link
-          href={`/projects/${projectId}/kb/`}
-          className="relative flex items-center gap-1.5 border-b-2 -mb-px px-3 py-2.5 text-[15px] font-medium transition-colors border-transparent text-[rgba(13,13,13,0.52)] hover:text-[#1A1A1A]"
-        >
-          <Database size={13} />
-          База знаний
-        </Link>
-        <TabButton
-          active={tab === "connectors"}
-          icon={<GitBranch size={13} />}
-          label="Git"
-          onClick={() => setTab("connectors")}
-        />
-        <TabButton
-          active={tab === "access"}
-          icon={<Share2 size={13} />}
-          label="Доступ"
-          onClick={() => setTab("access")}
-          badge={project?.is_public}
-        />
-        {project?.user_role === "owner" && (
+      {/* Tabs — горизонтальный скролл на мобильном */}
+      <div className="mb-5 overflow-x-auto border-b border-[rgba(13,13,13,0.09)] scrollbar-hide">
+        <div className="flex min-w-max items-center gap-0.5">
           <TabButton
-            active={tab === "team"}
-            icon={<Users size={13} />}
-            label="Команда"
-            onClick={() => setTab("team")}
+            active={tab === "chats"}
+            icon={<MessageSquare size={13} />}
+            label="Чаты"
+            onClick={() => setTab("chats")}
           />
-        )}
-        {project?.user_role === "owner" && (
           <TabButton
-            active={tab === "audit"}
-            icon={<History size={13} />}
-            label="Журнал"
-            onClick={() => setTab("audit")}
+            active={tab === "instructions"}
+            icon={<FileText size={13} />}
+            label="Инструкции"
+            onClick={() => setTab("instructions")}
+            badge={hasInstructions}
           />
-        )}
+          <TabButton
+            active={tab === "files"}
+            icon={<Upload size={13} />}
+            label="Файлы"
+            onClick={() => setTab("files")}
+          />
+          <Link
+            href={`/projects/${projectId}/kb/`}
+            className="relative flex items-center gap-1.5 border-b-2 -mb-px px-3 py-2.5 text-[15px] font-medium transition-colors border-transparent text-[rgba(13,13,13,0.52)] hover:text-[#1A1A1A] whitespace-nowrap"
+          >
+            <Database size={13} />
+            База знаний
+          </Link>
+          <TabButton
+            active={tab === "connectors"}
+            icon={<GitBranch size={13} />}
+            label="Git"
+            onClick={() => setTab("connectors")}
+          />
+          <TabButton
+            active={tab === "access"}
+            icon={<Share2 size={13} />}
+            label="Доступ"
+            onClick={() => setTab("access")}
+            badge={project?.is_public}
+          />
+          {project?.user_role === "owner" && (
+            <TabButton
+              active={tab === "team"}
+              icon={<Users size={13} />}
+              label="Команда"
+              onClick={() => setTab("team")}
+            />
+          )}
+          {project?.user_role === "owner" && (
+            <TabButton
+              active={tab === "audit"}
+              icon={<History size={13} />}
+              label="Журнал"
+              onClick={() => setTab("audit")}
+            />
+          )}
+        </div>
       </div>
 
       {/* Tab actions row */}
