@@ -742,22 +742,35 @@ def generate_image_edit(network, user_msg, message, user_settings=None):
 
     # laozhang.ai может вернуть b64_json вместо url — сохраняем напрямую
     if not img_url and b64_data:
-        import base64 as _b64, io as _io2
+        import base64 as _b64
         raw = _b64.b64decode(b64_data)
         from django.core.files.base import ContentFile
-        from aitext.models import GeneratedImage
-        import uuid, os
+        from aitext.models import GeneratedImage as _GenImage
+        import uuid
         fname = f"generated_images/{uuid.uuid4().hex}.png"
-        gen = GeneratedImage(
+        gen = _GenImage(
             message=message,
             prompt=prompt,
             model_name=model_id,
             provider='laozhang',
             media_type='image',
+            source='chat',
         )
         gen.image.save(fname, ContentFile(raw), save=True)
+        if user_settings and user_settings.get('parent_id'):
+            try:
+                gen.parent_id = int(user_settings['parent_id'])
+                gen.save(update_fields=['parent_id'])
+            except (ValueError, TypeError):
+                pass
         logger.info(f"[img2img] сохранено из b64_json: {fname}")
-        return gen
+        saved_media = [gen]
+        model_name = config.get('name', network.name)
+        text_parts = [f"Изображение отредактировано моделью \"{model_name}\"."]
+        text_parts.append(
+            f"<img src='{gen.image.url}' alt='Отредактированное изображение' style='max-width:100%; border-radius:12px;'>"
+        )
+        return "\n\n".join(text_parts), saved_media, total_cost
 
     if not img_url:
         raise Exception("Провайдер не вернул изображение")
