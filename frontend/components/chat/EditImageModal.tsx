@@ -157,10 +157,12 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
                   {label}
                 </button>
               ))}
-              {/* Добавить текст — особый пресет: фокусирует поле с подсказкой */}
+              {/* Добавить текст — несовместимо с outpaint: сбрасываем его */}
               <button
                 type="button"
                 onClick={() => {
+                  setOutpaint(null);
+                  setTargetRatio(null);
                   const prefix = 'Добавь надпись "';
                   if (!prompt.startsWith(prefix)) setPrompt(prefix);
                   setTimeout(() => {
@@ -277,7 +279,7 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
             />
             {outpaint && (
               <p className="mt-1 text-[11px] text-[rgba(13,13,13,0.4)] dark:text-[rgba(236,236,236,0.4)]">
-                Холст расширяется на 25% в выбранном направлении. GPT Image / Flux — наилучшие результаты.
+                Холст расширяется на 25% в выбранном направлении. Промпт описывает чем заполнить новую область — не добавляет текст на изображение.
               </p>
             )}
           </div>
