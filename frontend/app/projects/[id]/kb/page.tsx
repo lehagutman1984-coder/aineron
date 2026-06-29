@@ -59,7 +59,7 @@ function StatusBadge({ status }: { status: EffectiveStatus }) {
   const s = STATUS_MAP[status] ?? STATUS_MAP.none;
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-[5px] px-1.5 py-0.5 text-[11px] font-medium"
+      className="inline-flex items-center gap-1 rounded-[5px] px-1.5 py-0.5 text-[13px] font-medium"
       style={{ color: s.color, background: `${s.color}18` }}
     >
       {s.icon}
@@ -79,7 +79,7 @@ function ChunkViewer({ projectId, fileId }: { projectId: number; fileId: number 
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 px-2 py-3 text-[12px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.4)]">
+      <div className="flex items-center gap-2 px-2 py-3 text-[14px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.4)]">
         <RefreshCw size={11} className="animate-spin" />
         Загрузка чанков...
       </div>
@@ -88,7 +88,7 @@ function ChunkViewer({ projectId, fileId }: { projectId: number; fileId: number 
 
   if (!chunks || chunks.length === 0) {
     return (
-      <div className="px-2 py-3 text-[12px] text-[rgba(13,13,13,0.4)] dark:text-[rgba(236,236,236,0.35)]">
+      <div className="px-2 py-3 text-[14px] text-[rgba(13,13,13,0.4)] dark:text-[rgba(236,236,236,0.35)]">
         Нет чанков
       </div>
     );
@@ -111,17 +111,17 @@ function ChunkViewer({ projectId, fileId }: { projectId: number; fileId: number 
               onClick={() => setExpanded((p) => ({ ...p, [chunk.chunk_index]: !p[chunk.chunk_index] }))}
             >
               <Hash size={11} className="shrink-0 text-[rgba(13,13,13,0.3)] dark:text-[rgba(236,236,236,0.3)]" />
-              <span className="text-[11px] font-semibold text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.5)]">
+              <span className="text-[13px] font-semibold text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.5)]">
                 Чанк {chunk.chunk_index + 1}
               </span>
-              <span className="text-[10px] text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.3)]">
+              <span className="text-[12px] text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.3)]">
                 {chunk.token_count} токенов
               </span>
               <span className="ml-auto text-[rgba(13,13,13,0.3)] dark:text-[rgba(236,236,236,0.3)]">
                 {isExpanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
               </span>
             </button>
-            <div className="px-3 pb-2 text-[11px] leading-relaxed text-[rgba(13,13,13,0.65)] dark:text-[rgba(236,236,236,0.6)]">
+            <div className="px-3 pb-2 text-[13px] leading-relaxed text-[rgba(13,13,13,0.65)] dark:text-[rgba(236,236,236,0.6)]">
               <pre className="whitespace-pre-wrap break-words font-mono text-[10.5px]">
                 {isExpanded ? chunk.content : preview}
                 {!isExpanded && hasMore && (
@@ -131,7 +131,7 @@ function ChunkViewer({ projectId, fileId }: { projectId: number; fileId: number 
               {hasMore && (
                 <button
                   onClick={() => setExpanded((p) => ({ ...p, [chunk.chunk_index]: !p[chunk.chunk_index] }))}
-                  className="mt-1 text-[10px] text-[#D97757] hover:underline"
+                  className="mt-1 text-[12px] text-[#D97757] hover:underline"
                 >
                   {isExpanded ? "Свернуть" : "Показать полностью"}
                 </button>
@@ -178,18 +178,18 @@ function FileRow({ file, projectId }: { file: KBFileStat; projectId: number }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span
-              className={`truncate text-[13px] font-medium text-[#1A1A1A] dark:text-[#EDE8E3] ${canViewChunks ? "cursor-pointer hover:text-[#D97757]" : ""}`}
+              className={`truncate text-[15px] font-medium text-[#1A1A1A] dark:text-[#EDE8E3] ${canViewChunks ? "cursor-pointer hover:text-[#D97757]" : ""}`}
               onClick={() => canViewChunks && setShowChunks((v) => !v)}
             >
               {file.filename}
             </span>
             {!file.enabled && (
-              <span className="text-[11px] text-[rgba(13,13,13,0.4)] dark:text-[rgba(236,236,236,0.4)]">
+              <span className="text-[13px] text-[rgba(13,13,13,0.4)] dark:text-[rgba(236,236,236,0.4)]">
                 (отключён)
               </span>
             )}
           </div>
-          <div className="mt-0.5 flex items-center gap-2 text-[11px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.4)]">
+          <div className="mt-0.5 flex items-center gap-2 text-[13px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.4)]">
             {file.repo_path && file.repo_path !== file.filename && (
               <>
                 <span className="truncate max-w-[260px] text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.3)]" title={file.repo_path}>
@@ -214,7 +214,7 @@ function FileRow({ file, projectId }: { file: KBFileStat; projectId: number }) {
         <button
           onClick={() => reindex.mutate()}
           disabled={reindex.isPending || file.embed_status === "pending" || effectiveStatus === "skipped"}
-          className="flex items-center gap-1.5 rounded-[7px] border border-[rgba(13,13,13,0.12)] px-2.5 py-1 text-[12px] text-[rgba(13,13,13,0.55)] transition hover:border-[#D97757] hover:text-[#D97757] disabled:opacity-40 dark:border-[rgba(255,255,255,0.1)] dark:text-[rgba(236,236,236,0.5)]"
+          className="flex items-center gap-1.5 rounded-[7px] border border-[rgba(13,13,13,0.12)] px-2.5 py-1 text-[14px] text-[rgba(13,13,13,0.55)] transition hover:border-[#D97757] hover:text-[#D97757] disabled:opacity-40 dark:border-[rgba(255,255,255,0.1)] dark:text-[rgba(236,236,236,0.5)]"
           title="Переиндексировать"
         >
           <RefreshCw size={11} className={reindex.isPending ? "animate-spin" : ""} />
@@ -269,7 +269,7 @@ export default function ProjectKBPage() {
       >
         <Link
           href={`/projects/${id}`}
-          className="flex items-center gap-1.5 text-[12px] text-[rgba(13,13,13,0.50)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.45)]"
+          className="flex items-center gap-1.5 text-[14px] text-[rgba(13,13,13,0.50)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.45)]"
         >
           <ArrowLeft size={13} />
           Проект
@@ -277,7 +277,7 @@ export default function ProjectKBPage() {
         <span className="text-[rgba(13,13,13,0.25)] dark:text-[rgba(236,236,236,0.2)]">/</span>
         <div className="flex items-center gap-1.5">
           <Database size={14} className="text-[#D97757]" />
-          <span className="text-[13px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
+          <span className="text-[15px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
             База знаний
           </span>
         </div>
@@ -285,14 +285,14 @@ export default function ProjectKBPage() {
 
       <div className="flex-1 overflow-y-auto px-5 py-5">
         {isLoading && (
-          <div className="flex items-center gap-2 text-[13px] text-[rgba(13,13,13,0.45)]">
+          <div className="flex items-center gap-2 text-[15px] text-[rgba(13,13,13,0.45)]">
             <RefreshCw size={13} className="animate-spin" />
             Загрузка статистики...
           </div>
         )}
 
         {error && (
-          <div className="flex items-center gap-2 text-[13px] text-red-500">
+          <div className="flex items-center gap-2 text-[15px] text-red-500">
             <AlertCircle size={13} />
             Не удалось загрузить данные
           </div>
@@ -314,7 +314,7 @@ export default function ProjectKBPage() {
                 >
                   <div className="mb-1 flex items-center gap-1.5">
                     {c.icon}
-                    <span className="text-[11px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">
+                    <span className="text-[13px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">
                       {c.label}
                     </span>
                   </div>
@@ -328,7 +328,7 @@ export default function ProjectKBPage() {
             {/* Coverage bar */}
             {data.file_count > 0 && (
               <div className="mb-5 rounded-[10px] border border-[rgba(13,13,13,0.08)] bg-[rgba(13,13,13,0.02)] p-4 dark:border-[rgba(255,255,255,0.07)] dark:bg-[rgba(255,255,255,0.03)]">
-                <div className="mb-2 flex items-center justify-between text-[12px]">
+                <div className="mb-2 flex items-center justify-between text-[14px]">
                   <span className="font-medium text-[rgba(13,13,13,0.65)] dark:text-[rgba(236,236,236,0.6)]">
                     Покрытие индексом
                   </span>
@@ -348,7 +348,7 @@ export default function ProjectKBPage() {
             {/* File list */}
             <div className="rounded-[10px] border border-[rgba(13,13,13,0.08)] dark:border-[rgba(255,255,255,0.07)]">
               <div className="flex flex-wrap items-center gap-3 border-b border-[rgba(13,13,13,0.08)] px-4 py-2.5 dark:border-[rgba(255,255,255,0.07)]">
-                <span className="text-[12px] font-semibold text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.5)]">
+                <span className="text-[14px] font-semibold text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.5)]">
                   Файлы ({filteredFiles.length})
                 </span>
                 <div className="flex flex-wrap items-center gap-1">
@@ -356,7 +356,7 @@ export default function ProjectKBPage() {
                     <button
                       key={key}
                       onClick={() => { setFilter(key); setVisibleCount(PAGE_SIZE); }}
-                      className={`rounded-[5px] px-2 py-0.5 text-[11px] font-medium transition ${
+                      className={`rounded-[5px] px-2 py-0.5 text-[13px] font-medium transition ${
                         filter === key
                           ? "bg-[#D97757] text-white"
                           : "text-[rgba(13,13,13,0.5)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.4)] dark:hover:text-[#EDE8E3]"
@@ -372,7 +372,7 @@ export default function ProjectKBPage() {
               </div>
               <div className="px-4">
                 {filteredFiles.length === 0 ? (
-                  <div className="py-6 text-center text-[13px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.4)]">
+                  <div className="py-6 text-center text-[15px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.4)]">
                     {filter === "all" ? "Нет файлов в базе знаний" : "Нет файлов с таким статусом"}
                   </div>
                 ) : (
@@ -385,14 +385,14 @@ export default function ProjectKBPage() {
               {/* Pagination controls */}
               {filteredFiles.length > PAGE_SIZE && (
                 <div className="flex items-center justify-between border-t border-[rgba(13,13,13,0.06)] px-4 py-2.5 dark:border-[rgba(255,255,255,0.05)]">
-                  <span className="text-[11px] text-[rgba(13,13,13,0.4)] dark:text-[rgba(236,236,236,0.35)]">
+                  <span className="text-[13px] text-[rgba(13,13,13,0.4)] dark:text-[rgba(236,236,236,0.35)]">
                     Показано {visibleFiles.length} из {filteredFiles.length}
                   </span>
                   <div className="flex items-center gap-2">
                     {hasMore && (
                       <button
                         onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}
-                        className="rounded-[6px] border border-[rgba(13,13,13,0.12)] px-3 py-1 text-[12px] text-[rgba(13,13,13,0.6)] transition hover:border-[#D97757] hover:text-[#D97757] dark:border-[rgba(255,255,255,0.1)] dark:text-[rgba(236,236,236,0.5)]"
+                        className="rounded-[6px] border border-[rgba(13,13,13,0.12)] px-3 py-1 text-[14px] text-[rgba(13,13,13,0.6)] transition hover:border-[#D97757] hover:text-[#D97757] dark:border-[rgba(255,255,255,0.1)] dark:text-[rgba(236,236,236,0.5)]"
                       >
                         Показать ещё {Math.min(PAGE_SIZE, filteredFiles.length - visibleCount)}
                       </button>
@@ -400,7 +400,7 @@ export default function ProjectKBPage() {
                     {isExpanded && (
                       <button
                         onClick={() => setVisibleCount(PAGE_SIZE)}
-                        className="rounded-[6px] border border-[rgba(13,13,13,0.12)] px-3 py-1 text-[12px] text-[rgba(13,13,13,0.6)] transition hover:border-[rgba(13,13,13,0.3)] dark:border-[rgba(255,255,255,0.1)] dark:text-[rgba(236,236,236,0.5)]"
+                        className="rounded-[6px] border border-[rgba(13,13,13,0.12)] px-3 py-1 text-[14px] text-[rgba(13,13,13,0.6)] transition hover:border-[rgba(13,13,13,0.3)] dark:border-[rgba(255,255,255,0.1)] dark:text-[rgba(236,236,236,0.5)]"
                       >
                         Свернуть
                       </button>

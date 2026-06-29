@@ -27,7 +27,7 @@ export default function ProjectGraphPage() {
       >
         <Link
           href={`/projects/${id}`}
-          className="flex items-center gap-1.5 text-[12px] text-[rgba(13,13,13,0.50)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.45)]"
+          className="flex items-center gap-1.5 text-[14px] text-[rgba(13,13,13,0.50)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.45)]"
         >
           <ArrowLeft size={13} />
           Проект
@@ -35,7 +35,7 @@ export default function ProjectGraphPage() {
         <span className="text-[rgba(13,13,13,0.20)]">/</span>
         <div className="flex items-center gap-2">
           <Network size={16} className="text-[#D97757]" />
-          <span className="text-[14px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
+          <span className="text-[16px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
             Граф знаний
           </span>
         </div>
@@ -50,7 +50,7 @@ export default function ProjectGraphPage() {
         )}
 
         {error && (
-          <div className="p-6 text-[13px] text-[#e74c3c]">
+          <div className="p-6 text-[15px] text-[#e74c3c]">
             Не удалось загрузить граф. Убедитесь, что база знаний содержит проиндексированные файлы.
           </div>
         )}
@@ -58,13 +58,13 @@ export default function ProjectGraphPage() {
         {data && data.nodes.length === 0 && (
           <div className="flex h-full flex-col items-center justify-center gap-3 px-8 text-center">
             <Network size={36} className="text-[rgba(13,13,13,0.20)] dark:text-[rgba(236,236,236,0.18)]" />
-            <p className="text-[14px] text-[rgba(13,13,13,0.50)] dark:text-[rgba(236,236,236,0.42)]">
+            <p className="text-[16px] text-[rgba(13,13,13,0.50)] dark:text-[rgba(236,236,236,0.42)]">
               Нет проиндексированных файлов. Загрузите файлы в базу знаний и дождитесь
               завершения индексации.
             </p>
             <Link
               href={`/projects/${id}`}
-              className="text-[13px] font-medium text-[#D97757] hover:underline"
+              className="text-[15px] font-medium text-[#D97757] hover:underline"
             >
               Перейти к базе знаний
             </Link>
@@ -78,7 +78,7 @@ export default function ProjectGraphPage() {
 
       {data && (
         <div
-          className="shrink-0 border-t border-[rgba(13,13,13,0.06)] px-5 py-2 text-[11px] text-[rgba(13,13,13,0.40)] dark:border-[rgba(255,255,255,0.06)]"
+          className="shrink-0 border-t border-[rgba(13,13,13,0.06)] px-5 py-2 text-[13px] text-[rgba(13,13,13,0.40)] dark:border-[rgba(255,255,255,0.06)]"
           style={{ background: "var(--surface, #fff)" }}
         >
           {data.nodes.length} файлов · {data.edges.length} связей ·

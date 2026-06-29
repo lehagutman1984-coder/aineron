@@ -78,7 +78,7 @@ export function UseCaseTabs() {
               key={c.key}
               onClick={() => setActive(c.key)}
               className={[
-                "flex items-center gap-1.5 rounded-[9px] px-4 py-2 text-[13px] font-medium transition-all",
+                "flex items-center gap-1.5 rounded-[9px] px-4 py-2 text-[15px] font-medium transition-all",
                 active === c.key
                   ? "bg-[#1A1A1A] text-white dark:bg-[#EDE8E3] dark:text-[#1A1A1A]"
                   : "border border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.60)] hover:border-[rgba(13,13,13,0.25)] hover:text-[#1A1A1A]",
@@ -107,7 +107,7 @@ export function UseCaseTabs() {
             </div>
             <ul className="flex flex-col gap-2.5">
               {current.items.map((item) => (
-                <li key={item} className="flex items-start gap-2.5 text-[14px] text-[rgba(13,13,13,0.70)]">
+                <li key={item} className="flex items-start gap-2.5 text-[16px] text-[rgba(13,13,13,0.70)]">
                   <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#D97757]" />
                   {item}
                 </li>
@@ -120,16 +120,16 @@ export function UseCaseTabs() {
             className="flex flex-col justify-between border-l p-7"
             style={{ borderColor: "rgba(13,13,13,0.08)", background: "rgba(13,13,13,0.01)" }}
           >
-            <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.38)]">
+            <p className="mb-3 text-[13px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.38)]">
               Пример запроса
             </p>
-            <div className="mb-4 rounded-[12px] bg-[rgba(217,119,87,0.07)] px-4 py-3 text-[13px] text-[#1A1A1A]">
+            <div className="mb-4 rounded-[12px] bg-[rgba(217,119,87,0.07)] px-4 py-3 text-[15px] text-[#1A1A1A]">
               {current.prompt}
             </div>
             <div className="rounded-[12px] border border-[rgba(13,13,13,0.08)] bg-white px-4 py-3">
               <div className="mb-2 flex items-center gap-1.5">
                 <div className="h-2 w-2 rounded-full bg-[#D97757]" />
-                <span className="text-[11px] font-medium text-[rgba(13,13,13,0.50)]">AI отвечает</span>
+                <span className="text-[13px] font-medium text-[rgba(13,13,13,0.50)]">AI отвечает</span>
               </div>
               <div className="space-y-1.5">
                 <div className="h-2.5 w-full rounded-full bg-[rgba(13,13,13,0.08)]" />
@@ -139,7 +139,7 @@ export function UseCaseTabs() {
             </div>
             <a
               href="/register/"
-              className="mt-5 flex items-center justify-center gap-1.5 rounded-[9px] bg-[#D97757] px-4 py-2.5 text-[13px] font-medium text-white transition-colors hover:bg-[#C4623E]"
+              className="mt-5 flex items-center justify-center gap-1.5 rounded-[9px] bg-[#D97757] px-4 py-2.5 text-[15px] font-medium text-white transition-colors hover:bg-[#C4623E]"
             >
               Попробовать
             </a>

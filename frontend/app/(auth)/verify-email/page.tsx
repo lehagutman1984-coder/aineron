@@ -101,7 +101,7 @@ function VerifyEmailForm() {
         <Mail size={24} className="text-[#D97757]" />
       </div>
       <h1 className="mb-1 text-[22px] font-bold text-[#1A1A1A]">Подтвердите email</h1>
-      <p className="mb-6 text-[14px] text-[rgba(13,13,13,0.55)]">
+      <p className="mb-6 text-[16px] text-[rgba(13,13,13,0.55)]">
         Мы отправили 6-значный код на{" "}
         <span className="font-medium text-[#1A1A1A]">{user?.email ?? "вашу почту"}</span>
       </p>
@@ -124,13 +124,13 @@ function VerifyEmailForm() {
       </div>
 
       {error && (
-        <div className="mb-4 rounded-[8px] bg-[rgba(231,76,60,0.08)] px-3.5 py-2.5 text-[13px] text-[#e74c3c]">
+        <div className="mb-4 rounded-[8px] bg-[rgba(231,76,60,0.08)] px-3.5 py-2.5 text-[15px] text-[#e74c3c]">
           {error}
         </div>
       )}
 
       {resendSuccess && (
-        <div className="mb-4 rounded-[8px] bg-[rgba(217,119,87,0.10)] px-3.5 py-2.5 text-[13px] text-[#D97757]">
+        <div className="mb-4 rounded-[8px] bg-[rgba(217,119,87,0.10)] px-3.5 py-2.5 text-[15px] text-[#D97757]">
           Письмо отправлено повторно
         </div>
       )}
@@ -138,7 +138,7 @@ function VerifyEmailForm() {
       <button
         onClick={() => handleSubmit(digits.join(""))}
         disabled={loading || digits.some((d) => !d)}
-        className="mb-4 h-10 w-full rounded-[8px] bg-[#D97757] text-[14px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="mb-4 h-10 w-full rounded-[8px] bg-[#D97757] text-[16px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {loading ? "Проверяем..." : "Подтвердить"}
       </button>
@@ -146,7 +146,7 @@ function VerifyEmailForm() {
       <button
         onClick={handleResend}
         disabled={resendCountdown > 0 || resendLoading}
-        className="text-[13px] text-[rgba(13,13,13,0.55)] hover:text-[#D97757] disabled:cursor-not-allowed transition-colors"
+        className="text-[15px] text-[rgba(13,13,13,0.55)] hover:text-[#D97757] disabled:cursor-not-allowed transition-colors"
       >
         {resendCountdown > 0
           ? `Отправить повторно через ${resendCountdown} сек.`
@@ -156,7 +156,7 @@ function VerifyEmailForm() {
       </button>
 
       <div className="mt-6 border-t border-[rgba(13,13,13,0.08)] pt-4">
-        <Link href="/" className="text-[13px] text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A] transition-colors">
+        <Link href="/" className="text-[15px] text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A] transition-colors">
           На главную
         </Link>
       </div>

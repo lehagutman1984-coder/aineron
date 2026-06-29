@@ -54,14 +54,14 @@ export default function PersonasPage() {
           <h1 className="text-[24px] font-bold text-[#1A1A1A] dark:text-[#EDE8E3]">
             AI-персоны
           </h1>
-          <p className="mt-1 text-[14px] text-[rgba(13,13,13,0.50)] dark:text-[rgba(236,236,236,0.45)]">
+          <p className="mt-1 text-[16px] text-[rgba(13,13,13,0.50)] dark:text-[rgba(236,236,236,0.45)]">
             Выберите персонажа — бот возьмёт его роль и стиль общения
           </p>
         </div>
         {user && (
           <button
             onClick={() => setShowCreate(true)}
-            className="flex items-center gap-2 rounded-[10px] px-4 py-2 text-[13px] font-semibold text-white transition-all hover:opacity-90"
+            className="flex items-center gap-2 rounded-[10px] px-4 py-2 text-[15px] font-semibold text-white transition-all hover:opacity-90"
             style={{ background: "#1A1A1A" }}
           >
             <Plus size={14} />
@@ -77,7 +77,7 @@ export default function PersonasPage() {
       {/* System personas */}
       {systemPersonas.length > 0 && (
         <section className="mb-8">
-          <h2 className="mb-3 text-[13px] font-semibold uppercase tracking-wide text-[rgba(13,13,13,0.42)] dark:text-[rgba(236,236,236,0.40)]">
+          <h2 className="mb-3 text-[15px] font-semibold uppercase tracking-wide text-[rgba(13,13,13,0.42)] dark:text-[rgba(236,236,236,0.40)]">
             Системные персоны
           </h2>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -91,13 +91,13 @@ export default function PersonasPage() {
       {/* My personas */}
       {user && (
         <section>
-          <h2 className="mb-3 text-[13px] font-semibold uppercase tracking-wide text-[rgba(13,13,13,0.42)] dark:text-[rgba(236,236,236,0.40)]">
+          <h2 className="mb-3 text-[15px] font-semibold uppercase tracking-wide text-[rgba(13,13,13,0.42)] dark:text-[rgba(236,236,236,0.40)]">
             Мои персоны
           </h2>
           {myPersonas.length === 0 ? (
             <div className="rounded-[12px] border border-dashed border-[rgba(13,13,13,0.15)] px-6 py-8 text-center dark:border-[rgba(255,255,255,0.10)]">
               <Bot size={28} className="mx-auto mb-2 text-[rgba(13,13,13,0.25)] dark:text-[rgba(236,236,236,0.25)]" />
-              <p className="text-[13px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.40)]">
+              <p className="text-[15px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.40)]">
                 У вас нет персональных персон. Создайте первую!
               </p>
             </div>
@@ -133,29 +133,29 @@ export default function PersonasPage() {
             </h2>
             <form onSubmit={handleCreate} className="space-y-3">
               <div>
-                <label className="mb-1 block text-[12px] font-medium text-[rgba(13,13,13,0.60)]">
+                <label className="mb-1 block text-[14px] font-medium text-[rgba(13,13,13,0.60)]">
                   Имя
                 </label>
                 <input
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   placeholder="Например: Дружелюбный ментор"
-                  className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-transparent px-3 py-2 text-[13px] outline-none focus:border-[#D97757]"
+                  className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-transparent px-3 py-2 text-[15px] outline-none focus:border-[#D97757]"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-[12px] font-medium text-[rgba(13,13,13,0.60)]">
+                <label className="mb-1 block text-[14px] font-medium text-[rgba(13,13,13,0.60)]">
                   Описание (опционально)
                 </label>
                 <input
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                   placeholder="Одна строка о персоне"
-                  className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-transparent px-3 py-2 text-[13px] outline-none focus:border-[#D97757]"
+                  className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-transparent px-3 py-2 text-[15px] outline-none focus:border-[#D97757]"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-[12px] font-medium text-[rgba(13,13,13,0.60)]">
+                <label className="mb-1 block text-[14px] font-medium text-[rgba(13,13,13,0.60)]">
                   Системный промт
                 </label>
                 <textarea
@@ -163,24 +163,24 @@ export default function PersonasPage() {
                   onChange={(e) => setForm({ ...form, system_prompt: e.target.value })}
                   rows={5}
                   placeholder="Ты — дружелюбный ментор по программированию..."
-                  className="w-full resize-none rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-transparent px-3 py-2 text-[13px] outline-none focus:border-[#D97757]"
+                  className="w-full resize-none rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-transparent px-3 py-2 text-[15px] outline-none focus:border-[#D97757]"
                 />
               </div>
               {formErr && (
-                <p className="text-[12px] text-[#e74c3c]">{formErr}</p>
+                <p className="text-[14px] text-[#e74c3c]">{formErr}</p>
               )}
               <div className="flex justify-end gap-2 pt-1">
                 <button
                   type="button"
                   onClick={() => setShowCreate(false)}
-                  className="rounded-[8px] border border-[rgba(13,13,13,0.15)] px-4 py-2 text-[13px] text-[rgba(13,13,13,0.60)] hover:bg-[rgba(13,13,13,0.04)]"
+                  className="rounded-[8px] border border-[rgba(13,13,13,0.15)] px-4 py-2 text-[15px] text-[rgba(13,13,13,0.60)] hover:bg-[rgba(13,13,13,0.04)]"
                 >
                   Отмена
                 </button>
                 <button
                   type="submit"
                   disabled={createMutation.isPending}
-                  className="rounded-[8px] px-4 py-2 text-[13px] font-semibold text-white transition-opacity disabled:opacity-60"
+                  className="rounded-[8px] px-4 py-2 text-[15px] font-semibold text-white transition-opacity disabled:opacity-60"
                   style={{ background: "#1A1A1A" }}
                 >
                   {createMutation.isPending ? "Создание..." : "Создать"}
@@ -218,18 +218,18 @@ function PersonaCard({ persona, onDelete }: { persona: Persona; onDelete?: () =>
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <p className="truncate font-semibold text-[14px] text-[#1A1A1A] dark:text-[#EDE8E3]">
+          <p className="truncate font-semibold text-[16px] text-[#1A1A1A] dark:text-[#EDE8E3]">
             {persona.name}
           </p>
           {persona.description && (
-            <p className="mt-0.5 text-[12px] text-[rgba(13,13,13,0.52)] dark:text-[rgba(236,236,236,0.45)] line-clamp-2">
+            <p className="mt-0.5 text-[14px] text-[rgba(13,13,13,0.52)] dark:text-[rgba(236,236,236,0.45)] line-clamp-2">
               {persona.description}
             </p>
           )}
         </div>
       </div>
 
-      <p className="line-clamp-3 text-[11px] leading-relaxed text-[rgba(13,13,13,0.42)] dark:text-[rgba(236,236,236,0.38)] font-mono border-t border-[rgba(13,13,13,0.06)] pt-2 mt-1">
+      <p className="line-clamp-3 text-[13px] leading-relaxed text-[rgba(13,13,13,0.42)] dark:text-[rgba(236,236,236,0.38)] font-mono border-t border-[rgba(13,13,13,0.06)] pt-2 mt-1">
         {persona.system_prompt}
       </p>
 

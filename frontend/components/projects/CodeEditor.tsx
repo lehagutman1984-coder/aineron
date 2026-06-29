@@ -14,7 +14,7 @@ const CodeMirrorEditor = dynamic(
     const { default: CodeMirror } = await import("@uiw/react-codemirror");
     return CodeMirror;
   },
-  { ssr: false, loading: () => <div className="flex items-center justify-center py-10 text-[12px] text-[rgba(13,13,13,0.38)]"><Loader2 size={14} className="animate-spin mr-1.5" />Загрузка редактора...</div> }
+  { ssr: false, loading: () => <div className="flex items-center justify-center py-10 text-[14px] text-[rgba(13,13,13,0.38)]"><Loader2 size={14} className="animate-spin mr-1.5" />Загрузка редактора...</div> }
 );
 
 function detectLanguage(path: string): string {
@@ -101,11 +101,11 @@ export default function CodeEditor({
     <div className="flex flex-col h-full">
       {/* Toolbar */}
       <div className="flex items-center gap-2 border-b border-[rgba(13,13,13,0.08)] bg-[rgba(13,13,13,0.02)] px-3 py-1.5 shrink-0">
-        <span className="flex-1 truncate text-[11px] text-[rgba(13,13,13,0.55)]">{filePath}</span>
+        <span className="flex-1 truncate text-[13px] text-[rgba(13,13,13,0.55)]">{filePath}</span>
         {!readOnly && (
           <button
             onClick={handleToggleEdit}
-            className={`flex items-center gap-1 rounded px-2 py-0.5 text-[11px] transition-colors ${
+            className={`flex items-center gap-1 rounded px-2 py-0.5 text-[13px] transition-colors ${
               editMode
                 ? "bg-[rgba(13,13,13,0.08)] text-[#1A1A1A]"
                 : "text-[rgba(13,13,13,0.50)] hover:text-[#D97757]"
@@ -150,20 +150,20 @@ export default function CodeEditor({
               value={commitMsg}
               onChange={(e) => setCommitMsg(e.target.value)}
               placeholder="Сообщение коммита..."
-              className="flex-1 rounded-[6px] border border-[rgba(13,13,13,0.16)] px-2.5 py-1.5 text-[12px] outline-none focus:border-[#D97757]"
+              className="flex-1 rounded-[6px] border border-[rgba(13,13,13,0.16)] px-2.5 py-1.5 text-[14px] outline-none focus:border-[#D97757]"
               onKeyDown={(e) => { if (e.key === "Enter") handleCommit(); }}
             />
             <button
               onClick={handleCommit}
               disabled={!commitMsg.trim() || committing}
-              className="flex items-center gap-1.5 rounded-[6px] bg-[#D97757] px-3 py-1.5 text-[12px] font-medium text-white disabled:opacity-50 hover:bg-[#0066ee] transition-colors"
+              className="flex items-center gap-1.5 rounded-[6px] bg-[#D97757] px-3 py-1.5 text-[14px] font-medium text-white disabled:opacity-50 hover:bg-[#0066ee] transition-colors"
             >
               {committing ? <Loader2 size={12} className="animate-spin" /> : <GitCommit size={12} />}
               Commit
             </button>
           </div>
           {commitErr && (
-            <p className="mt-1.5 text-[11px] text-red-500">{commitErr}</p>
+            <p className="mt-1.5 text-[13px] text-red-500">{commitErr}</p>
           )}
         </div>
       )}

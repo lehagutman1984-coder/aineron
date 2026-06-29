@@ -43,7 +43,7 @@ export function ToastContainer() {
               size={18}
               className={cn("mt-0.5 shrink-0", ICON_COLORS[toast.type])}
             />
-            <p className="flex-1 text-[13px] text-[#1A1A1A] leading-snug">
+            <p className="flex-1 text-[15px] text-[#1A1A1A] leading-snug">
               {toast.message}
             </p>
             <button

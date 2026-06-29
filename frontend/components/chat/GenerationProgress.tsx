@@ -62,11 +62,11 @@ export function GenerationProgress({ generationId, onComplete }: Props) {
         ) : (
           <Loader2 size={15} className="animate-spin text-[#D97757]" />
         )}
-        <span className="flex items-center gap-1.5 text-[13px] font-medium text-[rgba(13,13,13,0.7)] dark:text-[rgba(236,236,236,0.7)]">
+        <span className="flex items-center gap-1.5 text-[15px] font-medium text-[rgba(13,13,13,0.7)] dark:text-[rgba(236,236,236,0.7)]">
           <Film size={13} className="opacity-60" />
           {done ? "Готово!" : "Генерация видео"}
         </span>
-        <span className="ml-auto text-[12px] tabular-nums text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.45)]">
+        <span className="ml-auto text-[14px] tabular-nums text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.45)]">
           {pct}%
         </span>
       </div>
@@ -79,7 +79,7 @@ export function GenerationProgress({ generationId, onComplete }: Props) {
         />
       </div>
       {!done && (
-        <p className="mt-1.5 text-[11px] text-[rgba(13,13,13,0.4)] dark:text-[rgba(236,236,236,0.4)]">
+        <p className="mt-1.5 text-[13px] text-[rgba(13,13,13,0.4)] dark:text-[rgba(236,236,236,0.4)]">
           Это может занять несколько минут. Можно не закрывать вкладку.
         </p>
       )}

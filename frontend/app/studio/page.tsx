@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -354,13 +354,13 @@ export default function StudioPage() {
                               <div className="flex items-center justify-between">
                                 <div>
                                   <span className="text-xs font-medium">{agent.label}</span>
-                                  <p className="text-[10px] text-[var(--text-secondary)]">{agent.recommendedReason}</p>
+                                  <p className="text-[12px] text-[var(--text-secondary)]">{agent.recommendedReason}</p>
                                 </div>
                                 {isCustom && (
                                   <button
                                     type="button"
                                     onClick={() => setAgentModels(prev => ({ ...prev, [agent.key]: agent.recommended }))}
-                                    className="text-[10px] text-[var(--text-secondary)] hover:text-[var(--text)] underline shrink-0 ml-2"
+                                    className="text-[12px] text-[var(--text-secondary)] hover:text-[var(--text)] underline shrink-0 ml-2"
                                   >
                                     Сбросить
                                   </button>

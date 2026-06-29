@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { Play, Pause, X, RotateCcw, Files, Code2, Monitor, CheckCircle, Download, ArrowLeft, Rocket, Share2, HelpCircle, Settings, GitBranch, Loader2 } from 'lucide-react';
@@ -322,7 +322,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
           </span>
         )}
         {isCompleted && (
-          <span className="md:hidden flex items-center gap-1 text-[11px] text-green-500 shrink-0">
+          <span className="md:hidden flex items-center gap-1 text-[13px] text-green-500 shrink-0">
             <CheckCircle size={11} />
             {project.stars_spent ? `${project.stars_spent}★` : 'Готово'}
           </span>
@@ -727,7 +727,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
           <button
             key={tab.key}
             onClick={() => setMobileTab(tab.key)}
-            className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors ${
+            className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[13px] font-medium transition-colors ${
               mobileTab === tab.key
                 ? 'text-blue-500'
                 : 'text-[var(--text-secondary)]'

@@ -14,20 +14,20 @@ export default function BlockedPage() {
           <ShieldOff size={24} className="text-[#e74c3c]" />
         </div>
         <h1 className="mb-2 text-[22px] font-bold text-[#1A1A1A]">Аккаунт заблокирован</h1>
-        <p className="mb-6 text-[14px] text-[rgba(13,13,13,0.55)] leading-relaxed">
+        <p className="mb-6 text-[16px] text-[rgba(13,13,13,0.55)] leading-relaxed">
           Ваш аккаунт заблокирован в связи с нарушением правил использования сервиса.
           Если вы считаете, что это ошибка, свяжитесь с поддержкой.
         </p>
         <a
           href="mailto:support@aineron.ru"
-          className="mb-4 flex h-10 w-full items-center justify-center rounded-[8px] bg-[#D97757] text-[14px] font-medium text-white hover:bg-[#C4623E] transition-colors"
+          className="mb-4 flex h-10 w-full items-center justify-center rounded-[8px] bg-[#D97757] text-[16px] font-medium text-white hover:bg-[#C4623E] transition-colors"
         >
           Написать в поддержку
         </a>
         <div className="border-t border-[rgba(13,13,13,0.08)] pt-4">
           <Link
             href="/"
-            className="text-[13px] text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A] transition-colors"
+            className="text-[15px] text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A] transition-colors"
           >
             На главную
           </Link>

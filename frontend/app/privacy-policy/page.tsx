@@ -38,12 +38,12 @@ export default async function PrivacyPolicyPage() {
           <FileText size={20} className="text-[rgba(13,13,13,0.45)]" />
           <Link
             href="/"
-            className="text-[13px] text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A] transition-colors"
+            className="text-[15px] text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A] transition-colors"
           >
             Главная
           </Link>
-          <span className="text-[13px] text-[rgba(13,13,13,0.25)]">/</span>
-          <span className="text-[13px] text-[rgba(13,13,13,0.65)]">Политика конфиденциальности</span>
+          <span className="text-[15px] text-[rgba(13,13,13,0.25)]">/</span>
+          <span className="text-[15px] text-[rgba(13,13,13,0.65)]">Политика конфиденциальности</span>
         </div>
 
         <div className="rounded-[16px] border border-[rgba(13,13,13,0.10)] bg-white p-8 shadow-sm">
@@ -51,7 +51,7 @@ export default async function PrivacyPolicyPage() {
             {doc?.title ?? "Политика конфиденциальности"}
           </h1>
           {date && (
-            <p className="mb-8 text-[13px] text-[rgba(13,13,13,0.45)]">
+            <p className="mb-8 text-[15px] text-[rgba(13,13,13,0.45)]">
               Обновлено: {date}
             </p>
           )}
@@ -62,7 +62,7 @@ export default async function PrivacyPolicyPage() {
               dangerouslySetInnerHTML={{ __html: doc.content }}
             />
           ) : (
-            <p className="text-[14px] text-[rgba(13,13,13,0.55)]">
+            <p className="text-[16px] text-[rgba(13,13,13,0.55)]">
               Документ находится в разработке. Свяжитесь с нами по адресу{" "}
               <a href="mailto:support@aineron.ru" className="text-[#D97757] hover:underline">
                 support@aineron.ru

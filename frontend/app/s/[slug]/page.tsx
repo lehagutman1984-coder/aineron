@@ -59,9 +59,9 @@ export default async function PublicSpacePage({ params }: { params: { slug: stri
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f7f7f8]">
         <div className="text-center">
-          <p className="text-[15px] font-medium text-[#1A1A1A]">Space не найден</p>
-          <p className="mt-1 text-[13px] text-[rgba(13,13,13,0.45)]">Ссылка недействительна или доступ ограничен</p>
-          <Link href="/" className="mt-4 inline-block text-[13px] text-[#D97757] hover:underline">
+          <p className="text-[17px] font-medium text-[#1A1A1A]">Space не найден</p>
+          <p className="mt-1 text-[15px] text-[rgba(13,13,13,0.45)]">Ссылка недействительна или доступ ограничен</p>
+          <Link href="/" className="mt-4 inline-block text-[15px] text-[#D97757] hover:underline">
             На главную
           </Link>
         </div>
@@ -76,10 +76,10 @@ export default async function PublicSpacePage({ params }: { params: { slug: stri
       {/* Header */}
       <header className="border-b border-[rgba(13,13,13,0.08)] bg-white">
         <div className="mx-auto flex max-w-[760px] items-center justify-between px-4 py-3">
-          <Link href="/" className="text-[13px] font-semibold text-[#1A1A1A] tracking-tight">
+          <Link href="/" className="text-[15px] font-semibold text-[#1A1A1A] tracking-tight">
             Aineron.ru
           </Link>
-          <span className="text-[11px] text-[rgba(13,13,13,0.40)]">Project Space</span>
+          <span className="text-[13px] text-[rgba(13,13,13,0.40)]">Project Space</span>
         </div>
       </header>
 
@@ -94,7 +94,7 @@ export default async function PublicSpacePage({ params }: { params: { slug: stri
           </div>
           <div>
             <h1 className="text-[22px] font-bold text-[#1A1A1A] leading-tight">{space.name}</h1>
-            <p className="mt-0.5 flex items-center gap-1.5 text-[12px] text-[rgba(13,13,13,0.40)]">
+            <p className="mt-0.5 flex items-center gap-1.5 text-[14px] text-[rgba(13,13,13,0.40)]">
               <Clock size={11} />
               Создан {formatDate(space.created_at)}
             </p>
@@ -106,11 +106,11 @@ export default async function PublicSpacePage({ params }: { params: { slug: stri
           <section className="mb-6 rounded-[14px] border border-[rgba(13,13,13,0.09)] bg-white p-5">
             <div className="mb-3 flex items-center gap-2">
               <FileText size={14} className="text-[rgba(13,13,13,0.40)]" />
-              <h2 className="text-[13px] font-semibold text-[rgba(13,13,13,0.55)] uppercase tracking-wide">
+              <h2 className="text-[15px] font-semibold text-[rgba(13,13,13,0.55)] uppercase tracking-wide">
                 Инструкции
               </h2>
             </div>
-            <p className="whitespace-pre-wrap text-[14px] leading-relaxed text-[rgba(13,13,13,0.80)]">
+            <p className="whitespace-pre-wrap text-[16px] leading-relaxed text-[rgba(13,13,13,0.80)]">
               {space.system_prompt}
             </p>
           </section>
@@ -121,10 +121,10 @@ export default async function PublicSpacePage({ params }: { params: { slug: stri
           <section className="mb-6 rounded-[14px] border border-[rgba(13,13,13,0.09)] bg-white p-5">
             <div className="mb-3 flex items-center gap-2">
               <BookOpen size={14} className="text-[rgba(13,13,13,0.40)]" />
-              <h2 className="text-[13px] font-semibold text-[rgba(13,13,13,0.55)] uppercase tracking-wide">
+              <h2 className="text-[15px] font-semibold text-[rgba(13,13,13,0.55)] uppercase tracking-wide">
                 База знаний
               </h2>
-              <span className="ml-auto rounded-full bg-[rgba(13,13,13,0.07)] px-2 py-0.5 text-[11px] font-medium text-[rgba(13,13,13,0.50)]">
+              <span className="ml-auto rounded-full bg-[rgba(13,13,13,0.07)] px-2 py-0.5 text-[13px] font-medium text-[rgba(13,13,13,0.50)]">
                 {space.files.length} {space.files.length === 1 ? "файл" : space.files.length < 5 ? "файла" : "файлов"}
               </span>
             </div>
@@ -133,12 +133,12 @@ export default async function PublicSpacePage({ params }: { params: { slug: stri
                 <div key={f.id} className="flex items-center justify-between py-2.5">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <FileText size={14} className="shrink-0 text-[rgba(13,13,13,0.35)]" />
-                    <span className="truncate text-[13px] text-[#1A1A1A]">{f.filename}</span>
-                    <span className="shrink-0 rounded-[4px] bg-[rgba(13,13,13,0.07)] px-1.5 py-0.5 text-[10px] text-[rgba(13,13,13,0.45)]">
+                    <span className="truncate text-[15px] text-[#1A1A1A]">{f.filename}</span>
+                    <span className="shrink-0 rounded-[4px] bg-[rgba(13,13,13,0.07)] px-1.5 py-0.5 text-[12px] text-[rgba(13,13,13,0.45)]">
                       {FILE_TYPE_LABEL[f.file_type] ?? "Файл"}
                     </span>
                   </div>
-                  <span className="ml-3 shrink-0 text-[12px] text-[rgba(13,13,13,0.40)]">
+                  <span className="ml-3 shrink-0 text-[14px] text-[rgba(13,13,13,0.40)]">
                     {formatSize(f.file_size)}
                   </span>
                 </div>
@@ -152,15 +152,15 @@ export default async function PublicSpacePage({ params }: { params: { slug: stri
           <section className="mb-6 rounded-[14px] border border-[rgba(13,13,13,0.09)] bg-white p-5">
             <div className="mb-3 flex items-center gap-2">
               <MessageSquare size={14} className="text-[rgba(13,13,13,0.40)]" />
-              <h2 className="text-[13px] font-semibold text-[rgba(13,13,13,0.55)] uppercase tracking-wide">
+              <h2 className="text-[15px] font-semibold text-[rgba(13,13,13,0.55)] uppercase tracking-wide">
                 Чаты
               </h2>
             </div>
             <div className="divide-y divide-[rgba(13,13,13,0.07)]">
               {space.chats.map((c) => (
                 <div key={c.id} className="flex items-center justify-between py-2.5">
-                  <span className="truncate text-[13px] text-[#1A1A1A]">{c.title || "Без названия"}</span>
-                  <span className="ml-3 shrink-0 text-[12px] text-[rgba(13,13,13,0.40)]">
+                  <span className="truncate text-[15px] text-[#1A1A1A]">{c.title || "Без названия"}</span>
+                  <span className="ml-3 shrink-0 text-[14px] text-[rgba(13,13,13,0.40)]">
                     {new Date(c.updated_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
                   </span>
                 </div>
@@ -171,15 +171,15 @@ export default async function PublicSpacePage({ params }: { params: { slug: stri
 
         {/* CTA */}
         <div className="rounded-[14px] border border-[rgba(217,119,87,0.15)] bg-[rgba(217,119,87,0.04)] p-5">
-          <p className="text-[13px] font-medium text-[#1A1A1A]">
+          <p className="text-[15px] font-medium text-[#1A1A1A]">
             Создайте свой Project Space на Aineron.ru
           </p>
-          <p className="mt-1 text-[12px] leading-relaxed text-[rgba(13,13,13,0.55)]">
+          <p className="mt-1 text-[14px] leading-relaxed text-[rgba(13,13,13,0.55)]">
             Организуйте чаты, загружайте документы в базу знаний и подключайте git-репозитории.
           </p>
           <Link
             href="/"
-            className="mt-3 inline-flex items-center gap-1.5 rounded-[8px] bg-[#D97757] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#C4623E] transition-colors"
+            className="mt-3 inline-flex items-center gap-1.5 rounded-[8px] bg-[#D97757] px-4 py-2 text-[15px] font-medium text-white hover:bg-[#C4623E] transition-colors"
           >
             Попробовать бесплатно
           </Link>

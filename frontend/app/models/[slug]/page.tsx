@@ -112,7 +112,7 @@ export default async function ModelDetailPage({ params, searchParams }: Props) {
 
       <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
         {/* Breadcrumbs */}
-        <nav className="mb-4 flex items-center gap-2 text-[13px] text-[rgba(13,13,13,0.45)]">
+        <nav className="mb-4 flex items-center gap-2 text-[15px] text-[rgba(13,13,13,0.45)]">
           <Link href="/" className="hover:text-[#1A1A1A] transition-colors">Главная</Link>
           <span>/</span>
           <Link href="/models/" className="hover:text-[#1A1A1A] transition-colors">Каталог</Link>
@@ -123,7 +123,7 @@ export default async function ModelDetailPage({ params, searchParams }: Props) {
         {/* Back */}
         <Link
           href="/models/"
-          className="mb-6 inline-flex items-center gap-1.5 text-[13px] text-[rgba(13,13,13,0.55)] hover:text-[#1A1A1A] transition-colors"
+          className="mb-6 inline-flex items-center gap-1.5 text-[15px] text-[rgba(13,13,13,0.55)] hover:text-[#1A1A1A] transition-colors"
         >
           <ArrowLeft size={14} />
           Каталог
@@ -147,11 +147,11 @@ export default async function ModelDetailPage({ params, searchParams }: Props) {
           <div className="min-w-0 flex-1">
             <div className="mb-1 flex flex-wrap items-center gap-2">
               <h1 className="text-[26px] font-bold text-[#1A1A1A]">{network.name}</h1>
-              <span className="rounded-full bg-[rgba(13,13,13,0.07)] px-2.5 py-0.5 text-[12px] text-[rgba(13,13,13,0.55)]">
+              <span className="rounded-full bg-[rgba(13,13,13,0.07)] px-2.5 py-0.5 text-[14px] text-[rgba(13,13,13,0.55)]">
                 {network.category.name}
               </span>
             </div>
-            <p className="text-[15px] leading-relaxed text-[rgba(13,13,13,0.65)]">
+            <p className="text-[17px] leading-relaxed text-[rgba(13,13,13,0.65)]">
               {network.description}
             </p>
           </div>
@@ -206,14 +206,14 @@ export default async function ModelDetailPage({ params, searchParams }: Props) {
                   key={faq.id}
                   className="group rounded-[10px] border border-[rgba(13,13,13,0.10)] bg-white"
                 >
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-[14px] font-medium text-[#1A1A1A]">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-[16px] font-medium text-[#1A1A1A]">
                     {faq.question}
                     <ChevronDown
                       size={16}
                       className="shrink-0 text-[rgba(13,13,13,0.4)] transition-transform group-open:rotate-180"
                     />
                   </summary>
-                  <div className="px-5 pb-4 text-[14px] leading-relaxed text-[rgba(13,13,13,0.65)]">
+                  <div className="px-5 pb-4 text-[16px] leading-relaxed text-[rgba(13,13,13,0.65)]">
                     {faq.answer}
                   </div>
                 </details>
@@ -242,7 +242,7 @@ export default async function ModelDetailPage({ params, searchParams }: Props) {
                       <Code2 size={16} />
                     </div>
                   )}
-                  <span className="text-[12px] font-medium leading-tight text-[#1A1A1A]">
+                  <span className="text-[14px] font-medium leading-tight text-[#1A1A1A]">
                     {n.name}
                   </span>
                 </Link>
@@ -263,7 +263,7 @@ function StatChip({
   label: string;
 }) {
   return (
-    <div className="flex items-center gap-1.5 rounded-full border border-[rgba(13,13,13,0.12)] px-3 py-1.5 text-[13px] text-[rgba(13,13,13,0.65)]">
+    <div className="flex items-center gap-1.5 rounded-full border border-[rgba(13,13,13,0.12)] px-3 py-1.5 text-[15px] text-[rgba(13,13,13,0.65)]">
       <span className="text-[#D97757]">{icon}</span>
       {label}
     </div>

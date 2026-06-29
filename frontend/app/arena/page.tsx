@@ -23,7 +23,7 @@ export default function ArenaPage() {
             Model Arena
           </h1>
         </div>
-        <p className="text-[14px] text-[rgba(13,13,13,0.50)] dark:text-[rgba(236,236,236,0.45)]">
+        <p className="text-[16px] text-[rgba(13,13,13,0.50)] dark:text-[rgba(236,236,236,0.45)]">
           Elo-рейтинг моделей на основе сравнительных поединков. Голосуйте на странице{" "}
           <Link href="/compare" className="text-[#D97757] hover:underline">
             сравнения
@@ -39,7 +39,7 @@ export default function ArenaPage() {
       )}
 
       {error && (
-        <div className="rounded-[12px] border border-[rgba(231,76,60,0.25)] bg-[rgba(231,76,60,0.06)] p-4 text-[13px] text-[#e74c3c]">
+        <div className="rounded-[12px] border border-[rgba(231,76,60,0.25)] bg-[rgba(231,76,60,0.06)] p-4 text-[15px] text-[#e74c3c]">
           Не удалось загрузить рейтинг. Попробуйте позже.
         </div>
       )}
@@ -47,7 +47,7 @@ export default function ArenaPage() {
       {!isLoading && entries.length === 0 && !error && (
         <div className="rounded-[12px] border border-dashed border-[rgba(13,13,13,0.15)] px-6 py-12 text-center dark:border-[rgba(255,255,255,0.10)]">
           <Swords size={32} className="mx-auto mb-3 text-[rgba(13,13,13,0.25)] dark:text-[rgba(236,236,236,0.25)]" />
-          <p className="text-[14px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.40)]">
+          <p className="text-[16px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.40)]">
             Арена пуста. Сыграйте первый матч на странице{" "}
             <Link href="/compare" className="text-[#D97757] hover:underline">
               сравнения моделей
@@ -59,7 +59,7 @@ export default function ArenaPage() {
 
       {entries.length > 0 && (
         <div className="overflow-hidden rounded-[14px] border border-[rgba(13,13,13,0.09)] dark:border-[rgba(255,255,255,0.08)]">
-          <table className="w-full text-[13px]">
+          <table className="w-full text-[15px]">
             <thead>
               <tr
                 className="border-b border-[rgba(13,13,13,0.08)] text-left dark:border-[rgba(255,255,255,0.07)]"
@@ -92,7 +92,7 @@ export default function ArenaPage() {
         <div className="mt-6 flex justify-center">
           <Link
             href="/compare"
-            className="flex items-center gap-2 rounded-[10px] px-5 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
+            className="flex items-center gap-2 rounded-[10px] px-5 py-2.5 text-[15px] font-semibold text-white transition-opacity hover:opacity-90"
             style={{ background: "#1A1A1A" }}
           >
             <Swords size={14} />
@@ -141,7 +141,7 @@ function ArenaRow({ entry, rank }: { entry: ArenaEntry; rank: number }) {
           <div>
             <p className="font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">{entry.name}</p>
             {entry.description && (
-              <p className="text-[11px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.38)] line-clamp-1">
+              <p className="text-[13px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.38)] line-clamp-1">
                 {entry.description}
               </p>
             )}

@@ -38,7 +38,7 @@ export default function AnalyticsPage() {
           <h1 className="text-[22px] font-bold text-[#1A1A1A] dark:text-[#EDE8E3]">
             Аналитика
           </h1>
-          <p className="mt-0.5 text-[13px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.40)]">
+          <p className="mt-0.5 text-[15px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.40)]">
             Расходы звёзд по времени и моделям
           </p>
         </div>
@@ -50,7 +50,7 @@ export default function AnalyticsPage() {
               key={p.value}
               onClick={() => setDays(p.value)}
               className={[
-                "rounded-[7px] px-3 py-1.5 text-[12px] font-medium transition-all",
+                "rounded-[7px] px-3 py-1.5 text-[14px] font-medium transition-all",
                 days === p.value
                   ? "bg-[#1A1A1A] text-white dark:bg-[#EDE8E3] dark:text-[#1A1A1A]"
                   : "text-[rgba(13,13,13,0.55)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.45)]",
@@ -91,7 +91,7 @@ export default function AnalyticsPage() {
         className="mb-6 rounded-[14px] border bg-white p-5 dark:bg-[#1C1917]"
         style={{ borderColor: "rgba(13,13,13,0.10)" }}
       >
-        <h2 className="mb-4 text-[14px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
+        <h2 className="mb-4 text-[16px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
           Расход звёзд по дням
         </h2>
         {isLoading ? (
@@ -108,7 +108,7 @@ export default function AnalyticsPage() {
         className="rounded-[14px] border bg-white p-5 dark:bg-[#1C1917]"
         style={{ borderColor: "rgba(13,13,13,0.10)" }}
       >
-        <h2 className="mb-4 text-[14px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
+        <h2 className="mb-4 text-[16px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
           Топ моделей по расходу
         </h2>
         {isLoading ? (
@@ -118,7 +118,7 @@ export default function AnalyticsPage() {
             ))}
           </div>
         ) : !data || data.by_model.length === 0 ? (
-          <p className="py-6 text-center text-[13px] text-[rgba(13,13,13,0.40)]">
+          <p className="py-6 text-center text-[15px] text-[rgba(13,13,13,0.40)]">
             Нет данных за выбранный период
           </p>
         ) : (
@@ -147,7 +147,7 @@ function StatCard({
     >
       <div className="mb-2 flex items-center gap-2">
         {icon}
-        <span className="text-[12px] text-[rgba(13,13,13,0.50)] dark:text-[rgba(236,236,236,0.40)]">
+        <span className="text-[14px] text-[rgba(13,13,13,0.50)] dark:text-[rgba(236,236,236,0.40)]">
           {label}
         </span>
       </div>
@@ -171,18 +171,18 @@ function StatCard({
 function DeltaBadge({ delta }: { delta: number }) {
   if (delta === 0)
     return (
-      <span className="mb-0.5 flex items-center gap-0.5 text-[11px] text-[rgba(13,13,13,0.40)]">
+      <span className="mb-0.5 flex items-center gap-0.5 text-[13px] text-[rgba(13,13,13,0.40)]">
         <Minus size={10} /> 0%
       </span>
     );
   if (delta > 0)
     return (
-      <span className="mb-0.5 flex items-center gap-0.5 text-[11px] text-[#22a85a]">
+      <span className="mb-0.5 flex items-center gap-0.5 text-[13px] text-[#22a85a]">
         <TrendingUp size={10} /> +{delta}%
       </span>
     );
   return (
-    <span className="mb-0.5 flex items-center gap-0.5 text-[11px] text-[#e74c3c]">
+    <span className="mb-0.5 flex items-center gap-0.5 text-[13px] text-[#e74c3c]">
       <TrendingDown size={10} /> {delta}%
     </span>
   );
@@ -233,7 +233,7 @@ function BarChart({ days, period }: { days: StarsUsageDay[]; period: number }) {
             />
             {/* Tooltip */}
             {entry.stars > 0 && (
-              <div className="pointer-events-none absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 z-10 hidden rounded-[7px] bg-[#1A1A1A] px-2 py-1 text-[10px] text-white whitespace-nowrap group-hover:block">
+              <div className="pointer-events-none absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 z-10 hidden rounded-[7px] bg-[#1A1A1A] px-2 py-1 text-[12px] text-white whitespace-nowrap group-hover:block">
                 {label}<br />{entry.stars} зв.
               </div>
             )}
@@ -275,15 +275,15 @@ function ModelList({ models }: { models: StarsUsageModel[] }) {
         const pct = (m.stars / maxStars) * 100;
         return (
           <div key={m.name} className="flex items-center gap-3">
-            <span className="w-4 shrink-0 text-right text-[11px] font-medium text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.28)]">
+            <span className="w-4 shrink-0 text-right text-[13px] font-medium text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.28)]">
               {i + 1}
             </span>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2 mb-1">
-                <span className="truncate text-[13px] text-[#1A1A1A] dark:text-[#EDE8E3]">
+                <span className="truncate text-[15px] text-[#1A1A1A] dark:text-[#EDE8E3]">
                   {m.name}
                 </span>
-                <span className="shrink-0 text-[12px] font-medium text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.45)]">
+                <span className="shrink-0 text-[14px] font-medium text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.45)]">
                   {m.stars} зв.
                 </span>
               </div>
@@ -294,7 +294,7 @@ function ModelList({ models }: { models: StarsUsageModel[] }) {
                 />
               </div>
             </div>
-            <span className="w-12 shrink-0 text-right text-[11px] text-[rgba(13,13,13,0.38)] dark:text-[rgba(236,236,236,0.30)]">
+            <span className="w-12 shrink-0 text-right text-[13px] text-[rgba(13,13,13,0.38)] dark:text-[rgba(236,236,236,0.30)]">
               {m.requests} запр.
             </span>
           </div>
@@ -307,7 +307,7 @@ function ModelList({ models }: { models: StarsUsageModel[] }) {
 function EmptyChart() {
   return (
     <div className="flex h-40 items-center justify-center">
-      <p className="text-[13px] text-[rgba(13,13,13,0.40)]">
+      <p className="text-[15px] text-[rgba(13,13,13,0.40)]">
         Нет данных за выбранный период
       </p>
     </div>

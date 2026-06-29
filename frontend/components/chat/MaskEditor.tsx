@@ -301,7 +301,7 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
       </div>
 
       <div className="space-y-0.5">
-        <p className="text-[12px] text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.55)]">
+        <p className="text-[14px] text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.55)]">
           {mode === "draw" ? (
             <>
               <span className="font-medium text-[#1A1A1A] dark:text-white">Кисть:</span>
@@ -314,7 +314,7 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
             </>
           )}
         </p>
-        <p className="text-[11px] text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.3)]">
+        <p className="text-[13px] text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.3)]">
           Маска работает только с GPT Image 1
         </p>
       </div>
@@ -327,7 +327,7 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
             type="button"
             onClick={() => setMode("draw")}
             title="Рисовать маску"
-            className={`rounded-[6px] px-2.5 py-1 text-[12px] font-medium transition-colors flex items-center gap-1 ${
+            className={`rounded-[6px] px-2.5 py-1 text-[14px] font-medium transition-colors flex items-center gap-1 ${
               mode === "draw"
                 ? "bg-white text-[#1A1A1A] shadow-sm dark:bg-[rgba(255,255,255,0.12)] dark:text-white"
                 : "text-[rgba(13,13,13,0.55)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.5)] dark:hover:text-white"
@@ -340,7 +340,7 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
             type="button"
             onClick={() => setMode("erase")}
             title="Стереть часть маски"
-            className={`rounded-[6px] px-2.5 py-1 text-[12px] font-medium transition-colors flex items-center gap-1 ${
+            className={`rounded-[6px] px-2.5 py-1 text-[14px] font-medium transition-colors flex items-center gap-1 ${
               mode === "erase"
                 ? "bg-white text-[#1A1A1A] shadow-sm dark:bg-[rgba(255,255,255,0.12)] dark:text-white"
                 : "text-[rgba(13,13,13,0.55)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.5)] dark:hover:text-white"
@@ -359,7 +359,7 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
               key={k}
               type="button"
               onClick={() => setBrush(k)}
-              className={`rounded-[6px] px-2.5 py-1 text-[12px] font-medium transition-colors ${
+              className={`rounded-[6px] px-2.5 py-1 text-[14px] font-medium transition-colors ${
                 brush === k
                   ? "bg-white text-[#1A1A1A] shadow-sm dark:bg-[rgba(255,255,255,0.12)] dark:text-white"
                   : "text-[rgba(13,13,13,0.55)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.5)] dark:hover:text-white"
@@ -376,7 +376,7 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
           onClick={handleUndo}
           disabled={historyRef.current.length === 0}
           title="Отменить последний штрих (Ctrl+Z)"
-          className="flex h-9 items-center gap-1.5 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 text-[12px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:bg-[rgba(13,13,13,0.04)] disabled:opacity-40 dark:border-[rgba(236,236,236,0.12)] dark:text-[rgba(236,236,236,0.65)] dark:hover:bg-[rgba(236,236,236,0.06)]"
+          className="flex h-9 items-center gap-1.5 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 text-[14px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:bg-[rgba(13,13,13,0.04)] disabled:opacity-40 dark:border-[rgba(236,236,236,0.12)] dark:text-[rgba(236,236,236,0.65)] dark:hover:bg-[rgba(236,236,236,0.06)]"
         >
           <RotateCcw size={14} />
           Отменить
@@ -387,7 +387,7 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
           type="button"
           onClick={handleClear}
           disabled={!hasStrokes}
-          className="flex h-9 items-center gap-1.5 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 text-[12px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:bg-[rgba(13,13,13,0.04)] disabled:opacity-40 dark:border-[rgba(236,236,236,0.12)] dark:text-[rgba(236,236,236,0.65)] dark:hover:bg-[rgba(236,236,236,0.06)]"
+          className="flex h-9 items-center gap-1.5 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 text-[14px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:bg-[rgba(13,13,13,0.04)] disabled:opacity-40 dark:border-[rgba(236,236,236,0.12)] dark:text-[rgba(236,236,236,0.65)] dark:hover:bg-[rgba(236,236,236,0.06)]"
         >
           <Eraser size={14} />
           Очистить
@@ -398,14 +398,14 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
           type="button"
           onClick={handleApply}
           disabled={!hasStrokes || uploading || applying}
-          className="flex h-9 items-center gap-1.5 rounded-[8px] bg-[#D97757] px-4 text-[12px] font-medium text-white transition-colors hover:bg-[#C4623E] disabled:opacity-40"
+          className="flex h-9 items-center gap-1.5 rounded-[8px] bg-[#D97757] px-4 text-[14px] font-medium text-white transition-colors hover:bg-[#C4623E] disabled:opacity-40"
         >
           {uploading ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
           Применить маску
         </button>
       </div>
 
-      {error && <p className="text-[12px] text-[#e74c3c]">{error}</p>}
+      {error && <p className="text-[14px] text-[#e74c3c]">{error}</p>}
     </div>
   );
 }

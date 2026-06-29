@@ -79,7 +79,7 @@ export function PromptPicker({
         >
           <div className="flex items-center gap-2">
             <BookMarked size={15} className="text-[#D97757]" />
-            <span className="text-[14px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
+            <span className="text-[16px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
               Шаблоны промтов
             </span>
           </div>
@@ -99,7 +99,7 @@ export function PromptPicker({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Поиск..."
-              className="h-8 w-full rounded-[8px] border border-[rgba(13,13,13,0.12)] bg-transparent pl-7 pr-3 text-[12px] text-[#1A1A1A] outline-none focus:border-[#D97757] dark:border-[rgba(255,255,255,0.12)] dark:text-[#EDE8E3]"
+              className="h-8 w-full rounded-[8px] border border-[rgba(13,13,13,0.12)] bg-transparent pl-7 pr-3 text-[14px] text-[#1A1A1A] outline-none focus:border-[#D97757] dark:border-[rgba(255,255,255,0.12)] dark:text-[#EDE8E3]"
             />
           </div>
         </div>
@@ -111,7 +111,7 @@ export function PromptPicker({
               key={key}
               onClick={() => setCat(key)}
               className={[
-                "shrink-0 rounded-full px-3 py-1 text-[11px] font-medium transition-all",
+                "shrink-0 rounded-full px-3 py-1 text-[13px] font-medium transition-all",
                 cat === key
                   ? "bg-[#1A1A1A] text-white dark:bg-[#EDE8E3] dark:text-[#1A1A1A]"
                   : "border border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.60)] hover:border-[rgba(13,13,13,0.25)] dark:border-[rgba(255,255,255,0.10)] dark:text-[rgba(236,236,236,0.55)]",
@@ -131,7 +131,7 @@ export function PromptPicker({
               ))}
             </div>
           ) : filtered.length === 0 ? (
-            <p className="py-8 text-center text-[13px] text-[rgba(13,13,13,0.40)]">
+            <p className="py-8 text-center text-[15px] text-[rgba(13,13,13,0.40)]">
               Ничего не найдено
             </p>
           ) : (
@@ -146,10 +146,10 @@ export function PromptPicker({
                     <CatIcon category={p.category} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-medium text-[#1A1A1A] dark:text-[#EDE8E3]">
+                    <p className="text-[15px] font-medium text-[#1A1A1A] dark:text-[#EDE8E3]">
                       {p.title}
                     </p>
-                    <p className="mt-0.5 line-clamp-1 text-[11px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.38)]">
+                    <p className="mt-0.5 line-clamp-1 text-[13px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.38)]">
                       {p.content}
                     </p>
                   </div>

@@ -128,14 +128,14 @@ export function GlobalSearch() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-[12px] font-medium text-[#1A1A1A] truncate">{r.chat_title}</span>
-                      <span className="text-[10px] text-[rgba(13,13,13,0.40)] flex-shrink-0">{r.network_name}</span>
+                      <span className="text-[14px] font-medium text-[#1A1A1A] truncate">{r.chat_title}</span>
+                      <span className="text-[12px] text-[rgba(13,13,13,0.40)] flex-shrink-0">{r.network_name}</span>
                     </div>
-                    <p className="text-[11px] text-[rgba(13,13,13,0.60)] line-clamp-2 leading-relaxed">{r.snippet}</p>
+                    <p className="text-[13px] text-[rgba(13,13,13,0.60)] line-clamp-2 leading-relaxed">{r.snippet}</p>
                   </div>
                   <div className="flex-shrink-0 flex items-center gap-0.5 text-[rgba(13,13,13,0.30)]">
                     <Clock size={10} />
-                    <span className="text-[10px]">
+                    <span className="text-[12px]">
                       {new Date(r.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
                     </span>
                   </div>
@@ -152,15 +152,15 @@ export function GlobalSearch() {
         )}
 
         {!query && (
-          <div className="px-4 py-5 text-[12px] text-[rgba(13,13,13,0.40)] text-center">
+          <div className="px-4 py-5 text-[14px] text-[rgba(13,13,13,0.40)] text-center">
             Введите запрос для поиска по истории всех чатов
           </div>
         )}
 
-        <div className="px-4 py-2 border-t border-[rgba(13,13,13,0.06)] flex items-center gap-3 text-[10px] text-[rgba(13,13,13,0.30)]">
-          <span><kbd className="bg-[rgba(13,13,13,0.07)] px-1 py-0.5 rounded text-[9px]">↑↓</kbd> навигация</span>
-          <span><kbd className="bg-[rgba(13,13,13,0.07)] px-1 py-0.5 rounded text-[9px]">Enter</kbd> открыть</span>
-          <span><kbd className="bg-[rgba(13,13,13,0.07)] px-1 py-0.5 rounded text-[9px]">Esc</kbd> закрыть</span>
+        <div className="px-4 py-2 border-t border-[rgba(13,13,13,0.06)] flex items-center gap-3 text-[12px] text-[rgba(13,13,13,0.30)]">
+          <span><kbd className="bg-[rgba(13,13,13,0.07)] px-1 py-0.5 rounded text-[11px]">↑↓</kbd> навигация</span>
+          <span><kbd className="bg-[rgba(13,13,13,0.07)] px-1 py-0.5 rounded text-[11px]">Enter</kbd> открыть</span>
+          <span><kbd className="bg-[rgba(13,13,13,0.07)] px-1 py-0.5 rounded text-[11px]">Esc</kbd> закрыть</span>
         </div>
       </div>
     </div>

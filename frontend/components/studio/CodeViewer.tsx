@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { Copy, Check, Save, Sparkles, X } from 'lucide-react';
@@ -108,7 +108,7 @@ export function CodeViewer({ content, language: _language, path, editable, onSav
           onKeyDown={(e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); handleSave(); }
           }}
-          style={{ height: '100%', fontSize: '12px' }}
+          style={{ height: '100%', fontSize: '14px' }}
         />
       </div>
 

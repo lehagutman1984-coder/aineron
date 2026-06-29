@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -46,7 +46,7 @@ export function ReviewerMode({ projectId, stepIndex, plannedText }: ReviewerMode
         {/* Left: planned */}
         <div>
           <div className={text.mutedLabelMd}>Плановый шаг</div>
-          <pre className="whitespace-pre-wrap font-mono text-[11px] bg-[var(--hover)] rounded p-2 max-h-48 overflow-auto">
+          <pre className="whitespace-pre-wrap font-mono text-[13px] bg-[var(--hover)] rounded p-2 max-h-48 overflow-auto">
             {plannedText || '—'}
           </pre>
         </div>
@@ -55,17 +55,17 @@ export function ReviewerMode({ projectId, stepIndex, plannedText }: ReviewerMode
         <div>
           <div className={text.mutedLabelMd}>Отклонения</div>
           {!enabled && (
-            <div className="flex items-center justify-center h-20 text-[11px] text-[var(--text-secondary)] opacity-60">
+            <div className="flex items-center justify-center h-20 text-[13px] text-[var(--text-secondary)] opacity-60">
               Нажмите «Проверить отклонения»
             </div>
           )}
           {enabled && isLoading && (
-            <div className="flex items-center gap-1.5 text-[11px] text-[var(--text-secondary)] p-2">
+            <div className="flex items-center gap-1.5 text-[13px] text-[var(--text-secondary)] p-2">
               <Loader2 size={12} className="animate-spin" /> Анализирую…
             </div>
           )}
           {enabled && error && (
-            <div className="text-[11px] text-red-400 p-2">Ошибка анализа</div>
+            <div className="text-[13px] text-red-400 p-2">Ошибка анализа</div>
           )}
           {data && (
             <div className="space-y-1.5 max-h-48 overflow-auto">
@@ -80,7 +80,7 @@ export function ReviewerMode({ projectId, stepIndex, plannedText }: ReviewerMode
               {data.deviations.map((d, i) => (
                 <div
                   key={i}
-                  className={`border rounded p-2 text-[11px] space-y-0.5 ${SEVERITY_STYLE[d.severity]}`}
+                  className={`border rounded p-2 text-[13px] space-y-0.5 ${SEVERITY_STYLE[d.severity]}`}
                 >
                   <div className="flex items-center gap-1 font-medium">
                     <AlertTriangle size={10} />

@@ -81,11 +81,11 @@ export function PWAProvider() {
         <Download size={18} />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-[13px] font-semibold text-[#1A1A1A]">
+        <p className="text-[15px] font-semibold text-[#1A1A1A]">
           Установить приложение
         </p>
         {ios ? (
-          <p className="mt-0.5 text-[12px] text-[rgba(13,13,13,0.55)] leading-relaxed">
+          <p className="mt-0.5 text-[14px] text-[rgba(13,13,13,0.55)] leading-relaxed">
             Нажмите{" "}
             <span className="font-medium text-[#1A1A1A]">«Поделиться»</span> в
             Safari, затем{" "}
@@ -94,14 +94,14 @@ export function PWAProvider() {
             </span>
           </p>
         ) : (
-          <p className="mt-0.5 text-[12px] text-[rgba(13,13,13,0.55)]">
+          <p className="mt-0.5 text-[14px] text-[rgba(13,13,13,0.55)]">
             Работает без браузера, быстрее загружается
           </p>
         )}
         {!ios && (
           <button
             onClick={install}
-            className="mt-2 rounded-[7px] bg-[#D97757] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[#C4623E] transition-colors"
+            className="mt-2 rounded-[7px] bg-[#D97757] px-3 py-1.5 text-[14px] font-medium text-white hover:bg-[#C4623E] transition-colors"
           >
             Установить
           </button>

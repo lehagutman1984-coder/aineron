@@ -41,7 +41,7 @@ export function CatalogClient({ networks, categories, initialCategory, projectId
           placeholder="Поиск по моделям..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-4 py-2.5 text-[14px] text-[#1A1A1A] placeholder-[rgba(13,13,13,0.38)] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
+          className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-4 py-2.5 text-[16px] text-[#1A1A1A] placeholder-[rgba(13,13,13,0.38)] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
         />
       </div>
 
@@ -64,7 +64,7 @@ export function CatalogClient({ networks, categories, initialCategory, projectId
 
       {/* Grid */}
       {filtered.length === 0 ? (
-        <div className="py-16 text-center text-[15px] text-[rgba(13,13,13,0.45)]">
+        <div className="py-16 text-center text-[17px] text-[rgba(13,13,13,0.45)]">
           Ничего не найдено
         </div>
       ) : (
@@ -91,7 +91,7 @@ function CategoryTab({
     <button
       onClick={onClick}
       className={[
-        "rounded-full px-4 py-1.5 text-[13px] font-medium transition-all",
+        "rounded-full px-4 py-1.5 text-[15px] font-medium transition-all",
         active
           ? "bg-[#D97757] text-white"
           : "border border-[rgba(13,13,13,0.15)] bg-white text-[rgba(13,13,13,0.65)] hover:border-[rgba(13,13,13,0.25)] hover:text-[#1A1A1A]",
@@ -130,21 +130,21 @@ function NetworkCard({ network, projectId }: { network: NetworkListItem; project
           </div>
         )}
         <div className="min-w-0">
-          <p className="truncate text-[14px] font-semibold text-[#1A1A1A] group-hover:text-[#D97757] transition-colors">
+          <p className="truncate text-[16px] font-semibold text-[#1A1A1A] group-hover:text-[#D97757] transition-colors">
             {network.name}
           </p>
-          <p className="text-[12px] text-[rgba(13,13,13,0.5)]">
+          <p className="text-[14px] text-[rgba(13,13,13,0.5)]">
             {network.category.name}
           </p>
         </div>
       </div>
       {network.description && (
-        <p className="line-clamp-2 text-[13px] leading-relaxed text-[rgba(13,13,13,0.65)]">
+        <p className="line-clamp-2 text-[15px] leading-relaxed text-[rgba(13,13,13,0.65)]">
           {network.description}
         </p>
       )}
       <div className="mt-auto flex items-center justify-between pt-1">
-        <span className="text-[12px] text-[rgba(13,13,13,0.45)]">
+        <span className="text-[14px] text-[rgba(13,13,13,0.45)]">
           {network.unlimited ? "Безлимит" : `${network.cost_per_message} зв.`}
         </span>
         <ArrowRight

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { X, Zap, Code2, Compass, ShieldCheck, ChevronDown, Database } from 'lucide-react';
@@ -157,16 +157,16 @@ export function ProjectSettingsModal({ project, onClose, onSaved }: Props) {
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-medium">{agent.label}</span>
                           {isOverridden && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400">
+                            <span className="text-[12px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400">
                               переопределено
                             </span>
                           )}
                         </div>
-                        <p className="text-[10px] text-[var(--text-secondary)] truncate">{agent.desc}</p>
+                        <p className="text-[12px] text-[var(--text-secondary)] truncate">{agent.desc}</p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         {currentMeta && (
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded ${TIER_BADGE[currentMeta.tier] ?? ''}`}>
+                          <span className={`text-[12px] px-1.5 py-0.5 rounded ${TIER_BADGE[currentMeta.tier] ?? ''}`}>
                             {currentMeta.label}
                           </span>
                         )}
@@ -180,7 +180,7 @@ export function ProjectSettingsModal({ project, onClose, onSaved }: Props) {
                     {isExpanded && (
                       <div className="px-3 pb-3 space-y-2 border-t border-[var(--border)] pt-2">
                         {/* Recommendation */}
-                        <div className="flex items-start gap-2 p-2 rounded bg-[var(--hover)] text-[10px]">
+                        <div className="flex items-start gap-2 p-2 rounded bg-[var(--hover)] text-[12px]">
                           <Zap size={11} className="text-amber-400 shrink-0 mt-0.5" />
                           <div>
                             <span className="text-amber-400 font-medium">
@@ -202,7 +202,7 @@ export function ProjectSettingsModal({ project, onClose, onSaved }: Props) {
                           <button
                             type="button"
                             onClick={() => setAgentModel(agent.key, aiModel)}
-                            className="text-[10px] text-[var(--text-secondary)] hover:text-[var(--text)] underline"
+                            className="text-[12px] text-[var(--text-secondary)] hover:text-[var(--text)] underline"
                           >
                             Сбросить к умолчанию ({modelById[aiModel]?.label ?? aiModel})
                           </button>
@@ -316,7 +316,7 @@ function ModelSelect({
         ))}
       </select>
       {modelById[value] && (
-        <span className={`absolute right-7 top-1/2 -translate-y-1/2 text-[10px] px-1.5 py-0.5 rounded ${TIER_BADGE[modelById[value].tier] ?? ''}`}>
+        <span className={`absolute right-7 top-1/2 -translate-y-1/2 text-[12px] px-1.5 py-0.5 rounded ${TIER_BADGE[modelById[value].tier] ?? ''}`}>
           {modelById[value].tier}
         </span>
       )}

@@ -40,7 +40,7 @@ export function Navbar() {
     <header className="sticky top-0 z-50 border-b border-[rgba(13,13,13,0.10)] bg-white/90 backdrop-blur-sm dark:border-[rgba(255,255,255,0.08)] dark:bg-[#1C1917]/90">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 font-semibold text-[15px] text-[#1A1A1A] dark:text-[#EDE8E3]">
+        <Link href="/" className="flex items-center gap-2 font-semibold text-[17px] text-[#1A1A1A] dark:text-[#EDE8E3]">
           aineron.ru
         </Link>
 
@@ -66,20 +66,20 @@ export function Navbar() {
 
           {user ? (
             <>
-              <div className="flex items-center gap-1.5 rounded-full border border-[rgba(13,13,13,0.12)] px-3 py-1.5 text-[13px] text-[#1A1A1A] dark:border-[rgba(255,255,255,0.12)] dark:text-[#EDE8E3]">
+              <div className="flex items-center gap-1.5 rounded-full border border-[rgba(13,13,13,0.12)] px-3 py-1.5 text-[15px] text-[#1A1A1A] dark:border-[rgba(255,255,255,0.12)] dark:text-[#EDE8E3]">
                 <Star size={13} className="text-[#D97757]" />
                 <span className="font-medium">{stars}</span>
               </div>
               <Link
                 href="/account/"
-                className="flex items-center gap-1.5 rounded-[8px] px-3 py-1.5 text-[13px] text-[rgba(13,13,13,0.7)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.65)] dark:hover:bg-[rgba(255,255,255,0.07)] dark:hover:text-[#EDE8E3]"
+                className="flex items-center gap-1.5 rounded-[8px] px-3 py-1.5 text-[15px] text-[rgba(13,13,13,0.7)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.65)] dark:hover:bg-[rgba(255,255,255,0.07)] dark:hover:text-[#EDE8E3]"
               >
                 <User size={15} />
                 Кабинет
               </Link>
               <button
                 onClick={handleLogout}
-                className="px-2 py-1.5 text-[13px] text-[rgba(13,13,13,0.5)] transition-colors hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.4)] dark:hover:text-[#EDE8E3]"
+                className="px-2 py-1.5 text-[15px] text-[rgba(13,13,13,0.5)] transition-colors hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.4)] dark:hover:text-[#EDE8E3]"
               >
                 Выйти
               </button>
@@ -88,13 +88,13 @@ export function Navbar() {
             <>
               <Link
                 href="/login/"
-                className="rounded-[8px] px-3 py-1.5 text-[13px] text-[rgba(13,13,13,0.7)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.65)] dark:hover:bg-[rgba(255,255,255,0.07)] dark:hover:text-[#EDE8E3]"
+                className="rounded-[8px] px-3 py-1.5 text-[15px] text-[rgba(13,13,13,0.7)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.65)] dark:hover:bg-[rgba(255,255,255,0.07)] dark:hover:text-[#EDE8E3]"
               >
                 Войти
               </Link>
               <Link
                 href="/register/"
-                className="rounded-[8px] bg-[#D97757] px-3 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-[#C4623E]"
+                className="rounded-[8px] bg-[#D97757] px-3 py-1.5 text-[15px] font-medium text-white transition-colors hover:bg-[#C4623E]"
               >
                 Начать бесплатно
               </Link>
@@ -132,14 +132,14 @@ export function Navbar() {
             <div className="my-2 border-t border-[rgba(13,13,13,0.08)] dark:border-[rgba(255,255,255,0.06)]" />
             {user ? (
               <>
-                <div className="flex items-center gap-2 py-2 text-[13px] text-[rgba(13,13,13,0.7)] dark:text-[rgba(236,236,236,0.6)]">
+                <div className="flex items-center gap-2 py-2 text-[15px] text-[rgba(13,13,13,0.7)] dark:text-[rgba(236,236,236,0.6)]">
                   <Star size={13} className="text-[#D97757]" />
                   <span>{stars} звёзд</span>
                 </div>
                 <MobileNavLink href="/account/" onClick={() => setMobileOpen(false)}>Личный кабинет</MobileNavLink>
                 <button
                   onClick={() => { setMobileOpen(false); handleLogout(); }}
-                  className="py-2 text-left text-[14px] text-[rgba(13,13,13,0.6)] dark:text-[rgba(236,236,236,0.5)]"
+                  className="py-2 text-left text-[16px] text-[rgba(13,13,13,0.6)] dark:text-[rgba(236,236,236,0.5)]"
                 >
                   Выйти
                 </button>
@@ -150,7 +150,7 @@ export function Navbar() {
                 <Link
                   href="/register/"
                   onClick={() => setMobileOpen(false)}
-                  className="mt-1 block rounded-[8px] bg-[#D97757] px-3 py-2 text-center text-[14px] font-medium text-white"
+                  className="mt-1 block rounded-[8px] bg-[#D97757] px-3 py-2 text-center text-[16px] font-medium text-white"
                 >
                   Начать бесплатно
                 </Link>
@@ -167,7 +167,7 @@ function NavLink({ href, children }: { href: string; children: React.ReactNode }
   return (
     <Link
       href={href}
-      className="rounded-[8px] px-3 py-1.5 text-[13px] text-[rgba(13,13,13,0.7)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.65)] dark:hover:bg-[rgba(255,255,255,0.07)] dark:hover:text-[#EDE8E3]"
+      className="rounded-[8px] px-3 py-1.5 text-[15px] text-[rgba(13,13,13,0.7)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.65)] dark:hover:bg-[rgba(255,255,255,0.07)] dark:hover:text-[#EDE8E3]"
     >
       {children}
     </Link>
@@ -187,7 +187,7 @@ function MobileNavLink({
     <Link
       href={href}
       onClick={onClick}
-      className="py-2 text-[14px] text-[rgba(13,13,13,0.8)] transition-colors hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.75)] dark:hover:text-[#EDE8E3]"
+      className="py-2 text-[16px] text-[rgba(13,13,13,0.8)] transition-colors hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.75)] dark:hover:text-[#EDE8E3]"
     >
       {children}
     </Link>

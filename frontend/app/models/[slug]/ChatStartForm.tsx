@@ -118,7 +118,7 @@ export function ChatStartForm({ networkSlug, isMedia, configJson, projectId }: P
           <button
             type="button"
             onClick={() => setShowSettings((v) => !v)}
-            className="mb-2 flex items-center gap-1.5 text-[12px] font-medium text-[rgba(13,13,13,0.5)] hover:text-[#1A1A1A] transition-colors"
+            className="mb-2 flex items-center gap-1.5 text-[14px] font-medium text-[rgba(13,13,13,0.5)] hover:text-[#1A1A1A] transition-colors"
           >
             <Settings2 size={13} />
             Настройки генерации
@@ -157,11 +157,11 @@ export function ChatStartForm({ networkSlug, isMedia, configJson, projectId }: P
             </button>
           </div>
           <div className="min-w-0">
-            <p className="flex items-center gap-1 text-[13px] font-medium text-[#1A1A1A]">
+            <p className="flex items-center gap-1 text-[15px] font-medium text-[#1A1A1A]">
               <ImagePlus size={13} className="text-[#D97757]" />
               Редактирование изображения
             </p>
-            <p className="mt-0.5 text-[12px] text-[rgba(13,13,13,0.5)]">
+            <p className="mt-0.5 text-[14px] text-[rgba(13,13,13,0.5)]">
               Опишите изменения — модель применит их к этому изображению
             </p>
           </div>
@@ -188,11 +188,11 @@ export function ChatStartForm({ networkSlug, isMedia, configJson, projectId }: P
             </button>
           </div>
           <div className="min-w-0">
-            <p className="flex items-center gap-1 text-[13px] font-medium text-[#1A1A1A]">
+            <p className="flex items-center gap-1 text-[15px] font-medium text-[#1A1A1A]">
               <Palette size={13} className="text-[#D97757]" />
               Референс стиля
             </p>
-            <p className="mt-0.5 text-[12px] text-[rgba(13,13,13,0.5)]">
+            <p className="mt-0.5 text-[14px] text-[rgba(13,13,13,0.5)]">
               Новые изображения переймут стиль этого референса
             </p>
           </div>
@@ -214,7 +214,7 @@ export function ChatStartForm({ networkSlug, isMedia, configJson, projectId }: P
                 : "Введите сообщение... (Enter — отправить, Shift+Enter — новая строка)"
           }
           rows={4}
-          className="w-full resize-none rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-4 py-3 pr-12 text-[14px] text-[#1A1A1A] placeholder-[rgba(13,13,13,0.38)] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
+          className="w-full resize-none rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-4 py-3 pr-12 text-[16px] text-[#1A1A1A] placeholder-[rgba(13,13,13,0.38)] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
         />
         <button
           type="submit"
@@ -226,10 +226,10 @@ export function ChatStartForm({ networkSlug, isMedia, configJson, projectId }: P
       </div>
 
       {error && (
-        <p className="text-[13px] text-[#e74c3c]">{error}</p>
+        <p className="text-[15px] text-[#e74c3c]">{error}</p>
       )}
       {!user && (
-        <p className="text-[13px] text-[rgba(13,13,13,0.5)]">
+        <p className="text-[15px] text-[rgba(13,13,13,0.5)]">
           Нужна{" "}
           <a href="/login/" className="text-[#D97757] hover:underline">
             авторизация

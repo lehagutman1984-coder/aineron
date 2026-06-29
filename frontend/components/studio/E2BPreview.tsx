@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useRef, useState } from 'react';
 import { Coins, ExternalLink, Loader2, Monitor, RefreshCw, Smartphone, StopCircle, Tablet, Terminal, XCircle, Zap } from 'lucide-react';
@@ -288,7 +288,7 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
             />
           </div>
 
-          <p className="text-[10px] text-[var(--text-secondary)] font-mono">
+          <p className="text-[12px] text-[var(--text-secondary)] font-mono">
             {elapsedSeconds}s{etaSeconds > 0 ? ` / ~${etaSeconds}s` : ''}
           </p>
         </div>
@@ -359,7 +359,7 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
         </div>
         {showLogs && logs.length > 0 && (
           <div className="border-t border-[var(--border)] bg-[#0d1117] max-h-48 overflow-y-auto">
-            <pre className="text-[11px] font-mono text-green-300 p-3 whitespace-pre-wrap break-all leading-relaxed">
+            <pre className="text-[13px] font-mono text-green-300 p-3 whitespace-pre-wrap break-all leading-relaxed">
               {logs.join('\n')}
             </pre>
           </div>
@@ -395,7 +395,7 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
 
         {/* Stack badge */}
         {stack && STACK_LABELS[stack] && (
-          <span className="text-[10px] font-mono px-1.5 py-0.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded">
+          <span className="text-[12px] font-mono px-1.5 py-0.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded">
             {STACK_LABELS[stack]}
           </span>
         )}
@@ -403,7 +403,7 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
         {/* Sprint 12: claim source badge — shows prewarm/resume path to user */}
         {claimSource !== 'cold' && (
           <span
-            className="text-[10px] font-mono px-1.5 py-0.5 bg-green-500/10 text-green-400 border border-green-500/20 rounded flex items-center gap-1"
+            className="text-[12px] font-mono px-1.5 py-0.5 bg-green-500/10 text-green-400 border border-green-500/20 rounded flex items-center gap-1"
             title={`Запущено через: ${claimSource}`}
           >
             <Zap size={9} />
@@ -417,7 +417,7 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
 
         {/* Cost indicator */}
         {costStars > 0 && (
-          <span className="flex items-center gap-1 text-[10px] text-[var(--text-secondary)]" title="Потрачено звёзд за сессию">
+          <span className="flex items-center gap-1 text-[12px] text-[var(--text-secondary)]" title="Потрачено звёзд за сессию">
             <Coins size={11} />
             {costStars}
           </span>
@@ -479,14 +479,14 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
         <div className="border-b border-[var(--border)] bg-[#0d1117] overflow-y-auto shrink-0" style={{ maxHeight: '40%' }}>
           <div className="flex items-center justify-between px-3 py-1.5 border-b border-[var(--border)]">
             <span className="text-xs text-[var(--text-secondary)]">Логи sandbox (/tmp/preview.log)</span>
-            <span className="flex items-center gap-1 text-[10px] text-[var(--text-secondary)]">
+            <span className="flex items-center gap-1 text-[12px] text-[var(--text-secondary)]">
               {logsLoading
                 ? <Loader2 size={10} className="animate-spin" />
                 : <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />}
               {state === 'running' ? 'авто' : 'стоп'}
             </span>
           </div>
-          <pre className="text-[11px] font-mono text-green-300 p-3 whitespace-pre-wrap break-all leading-relaxed">
+          <pre className="text-[13px] font-mono text-green-300 p-3 whitespace-pre-wrap break-all leading-relaxed">
             {logs.length === 0
               ? (logsLoading ? 'Загрузка…' : 'Логи недоступны или файл пуст')
               : logs.join('\n')}

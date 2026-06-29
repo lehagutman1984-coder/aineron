@@ -63,7 +63,7 @@ export default function PromptsPage() {
         <h1 className="text-[24px] font-bold text-[#1A1A1A] dark:text-[#EDE8E3]">
           Библиотека промтов
         </h1>
-        <p className="mt-1 text-[14px] text-[rgba(13,13,13,0.48)] dark:text-[rgba(236,236,236,0.42)]">
+        <p className="mt-1 text-[16px] text-[rgba(13,13,13,0.48)] dark:text-[rgba(236,236,236,0.42)]">
           {prompts.length} готовых шаблонов для быстрого старта
         </p>
       </div>
@@ -77,14 +77,14 @@ export default function PromptsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Поиск промтов..."
-            className="h-9 w-full rounded-[9px] border border-[rgba(13,13,13,0.12)] bg-white pl-8 pr-3 text-[13px] text-[#1A1A1A] outline-none focus:border-[#D97757] dark:border-[rgba(255,255,255,0.10)] dark:bg-[#1c1c1f] dark:text-[#EDE8E3]"
+            className="h-9 w-full rounded-[9px] border border-[rgba(13,13,13,0.12)] bg-white pl-8 pr-3 text-[15px] text-[#1A1A1A] outline-none focus:border-[#D97757] dark:border-[rgba(255,255,255,0.10)] dark:bg-[#1c1c1f] dark:text-[#EDE8E3]"
           />
         </div>
 
         {user && (
           <button
             onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1.5 rounded-[9px] bg-[#D97757] px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#C4623E]"
+            className="flex items-center gap-1.5 rounded-[9px] bg-[#D97757] px-4 py-2 text-[15px] font-medium text-white transition-colors hover:bg-[#C4623E]"
           >
             <Plus size={14} />
             Добавить промт
@@ -99,7 +99,7 @@ export default function PromptsPage() {
             key={key}
             onClick={() => setActiveCategory(key)}
             className={[
-              "flex shrink-0 items-center gap-1.5 rounded-[8px] px-3.5 py-1.5 text-[13px] font-medium transition-all",
+              "flex shrink-0 items-center gap-1.5 rounded-[8px] px-3.5 py-1.5 text-[15px] font-medium transition-all",
               activeCategory === key
                 ? "bg-[#1A1A1A] text-white dark:bg-[#EDE8E3] dark:text-[#1A1A1A]"
                 : "text-[rgba(13,13,13,0.60)] hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.55)] dark:hover:bg-[rgba(255,255,255,0.07)]",
@@ -121,7 +121,7 @@ export default function PromptsPage() {
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center py-20 text-center">
           <BookMarked size={40} className="mb-3 text-[rgba(13,13,13,0.15)] dark:text-[rgba(236,236,236,0.12)]" />
-          <p className="text-[14px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.38)]">
+          <p className="text-[16px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.38)]">
             {search ? "Ничего не найдено" : "В этой категории пока нет промтов"}
           </p>
         </div>
@@ -163,7 +163,7 @@ function PromptCard({
       <div className="mb-2 flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
           <CategoryIcon category={prompt.category} />
-          <p className="text-[13px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
+          <p className="text-[15px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
             {prompt.title}
           </p>
         </div>
@@ -178,7 +178,7 @@ function PromptCard({
       </div>
 
       {/* Preview */}
-      <p className="mb-4 line-clamp-3 flex-1 text-[12px] leading-relaxed text-[rgba(13,13,13,0.50)] dark:text-[rgba(236,236,236,0.40)]">
+      <p className="mb-4 line-clamp-3 flex-1 text-[14px] leading-relaxed text-[rgba(13,13,13,0.50)] dark:text-[rgba(236,236,236,0.40)]">
         {prompt.content}
       </p>
 
@@ -186,14 +186,14 @@ function PromptCard({
       <div className="flex gap-2">
         <button
           onClick={onCopy}
-          className="flex items-center gap-1.5 rounded-[7px] border border-[rgba(13,13,13,0.10)] px-2.5 py-1.5 text-[12px] font-medium text-[rgba(13,13,13,0.60)] transition-colors hover:border-[rgba(13,13,13,0.20)] hover:text-[#1A1A1A] dark:border-[rgba(255,255,255,0.10)] dark:text-[rgba(236,236,236,0.50)]"
+          className="flex items-center gap-1.5 rounded-[7px] border border-[rgba(13,13,13,0.10)] px-2.5 py-1.5 text-[14px] font-medium text-[rgba(13,13,13,0.60)] transition-colors hover:border-[rgba(13,13,13,0.20)] hover:text-[#1A1A1A] dark:border-[rgba(255,255,255,0.10)] dark:text-[rgba(236,236,236,0.50)]"
         >
           {copied ? <Check size={12} className="text-[#D97757]" /> : <Copy size={12} />}
           {copied ? "Скопировано" : "Копировать"}
         </button>
         <Link
           href={`/models/`}
-          className="flex items-center gap-1.5 rounded-[7px] bg-[rgba(217,119,87,0.08)] px-2.5 py-1.5 text-[12px] font-medium text-[#D97757] transition-colors hover:bg-[rgba(217,119,87,0.14)]"
+          className="flex items-center gap-1.5 rounded-[7px] bg-[rgba(217,119,87,0.08)] px-2.5 py-1.5 text-[14px] font-medium text-[#D97757] transition-colors hover:bg-[rgba(217,119,87,0.14)]"
         >
           Использовать
         </Link>
@@ -241,25 +241,25 @@ function AddPromptModal({ onClose }: { onClose: () => void }) {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-[rgba(13,13,13,0.60)] dark:text-[rgba(236,236,236,0.50)]">
+            <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.60)] dark:text-[rgba(236,236,236,0.50)]">
               Название
             </label>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Например: Анализ резюме"
-              className="h-9 w-full rounded-[9px] border border-[rgba(13,13,13,0.12)] bg-transparent px-3 text-[13px] text-[#1A1A1A] outline-none focus:border-[#D97757] dark:border-[rgba(255,255,255,0.12)] dark:text-[#EDE8E3]"
+              className="h-9 w-full rounded-[9px] border border-[rgba(13,13,13,0.12)] bg-transparent px-3 text-[15px] text-[#1A1A1A] outline-none focus:border-[#D97757] dark:border-[rgba(255,255,255,0.12)] dark:text-[#EDE8E3]"
             />
           </div>
 
           <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-[rgba(13,13,13,0.60)] dark:text-[rgba(236,236,236,0.50)]">
+            <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.60)] dark:text-[rgba(236,236,236,0.50)]">
               Категория
             </label>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="h-9 w-full rounded-[9px] border border-[rgba(13,13,13,0.12)] bg-white px-3 text-[13px] text-[#1A1A1A] outline-none focus:border-[#D97757] dark:border-[rgba(255,255,255,0.12)] dark:bg-[#1c1c1f] dark:text-[#EDE8E3]"
+              className="h-9 w-full rounded-[9px] border border-[rgba(13,13,13,0.12)] bg-white px-3 text-[15px] text-[#1A1A1A] outline-none focus:border-[#D97757] dark:border-[rgba(255,255,255,0.12)] dark:bg-[#1c1c1f] dark:text-[#EDE8E3]"
             >
               {CATEGORIES.filter((c) => c.key !== "all").map((c) => (
                 <option key={c.key} value={c.key}>{c.label}</option>
@@ -268,7 +268,7 @@ function AddPromptModal({ onClose }: { onClose: () => void }) {
           </div>
 
           <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-[rgba(13,13,13,0.60)] dark:text-[rgba(236,236,236,0.50)]">
+            <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.60)] dark:text-[rgba(236,236,236,0.50)]">
               Текст промта
             </label>
             <textarea
@@ -276,26 +276,26 @@ function AddPromptModal({ onClose }: { onClose: () => void }) {
               onChange={(e) => setContent(e.target.value)}
               placeholder="Введите шаблон промта..."
               rows={5}
-              className="w-full resize-none rounded-[9px] border border-[rgba(13,13,13,0.12)] bg-transparent px-3 py-2 text-[13px] leading-relaxed text-[#1A1A1A] outline-none focus:border-[#D97757] dark:border-[rgba(255,255,255,0.12)] dark:text-[#EDE8E3]"
+              className="w-full resize-none rounded-[9px] border border-[rgba(13,13,13,0.12)] bg-transparent px-3 py-2 text-[15px] leading-relaxed text-[#1A1A1A] outline-none focus:border-[#D97757] dark:border-[rgba(255,255,255,0.12)] dark:text-[#EDE8E3]"
             />
           </div>
 
           {mutation.isError && (
-            <p className="text-[12px] text-[#e74c3c]">Ошибка сохранения. Попробуйте ещё раз.</p>
+            <p className="text-[14px] text-[#e74c3c]">Ошибка сохранения. Попробуйте ещё раз.</p>
           )}
 
           <div className="flex justify-end gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-[8px] px-4 py-2 text-[13px] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.05)] dark:text-[rgba(236,236,236,0.45)]"
+              className="rounded-[8px] px-4 py-2 text-[15px] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.05)] dark:text-[rgba(236,236,236,0.45)]"
             >
               Отмена
             </button>
             <button
               type="submit"
               disabled={!title.trim() || !content.trim() || mutation.isPending}
-              className="rounded-[8px] bg-[#D97757] px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#C4623E] disabled:opacity-40"
+              className="rounded-[8px] bg-[#D97757] px-4 py-2 text-[15px] font-medium text-white transition-colors hover:bg-[#C4623E] disabled:opacity-40"
             >
               {mutation.isPending ? "Сохранение..." : "Сохранить"}
             </button>

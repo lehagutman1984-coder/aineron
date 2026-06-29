@@ -46,7 +46,7 @@ function RoleTag({ role, onChange }: { role: Role; onChange: () => void }) {
       onClick={onChange}
       title="Переключить роль"
       className={[
-        "shrink-0 rounded-[5px] px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide transition-colors",
+        "shrink-0 rounded-[5px] px-2 py-0.5 text-[13px] font-medium uppercase tracking-wide transition-colors",
         role === "user"
           ? "bg-[rgba(217,119,87,0.10)] text-[#D97757]"
           : "bg-[rgba(13,13,13,0.06)] text-[rgba(13,13,13,0.55)]",
@@ -229,13 +229,13 @@ export default function PlaygroundPage() {
       <div className="mb-6 flex items-center gap-3">
         <Link
           href="/api-docs/"
-          className="flex items-center gap-1.5 text-[13px] text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A] transition-colors"
+          className="flex items-center gap-1.5 text-[15px] text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A] transition-colors"
         >
           <ArrowLeft size={14} />
           Документация
         </Link>
         <span className="text-[rgba(13,13,13,0.25)]">/</span>
-        <span className="text-[13px] font-medium text-[#1A1A1A]">
+        <span className="text-[15px] font-medium text-[#1A1A1A]">
           API Playground
         </span>
       </div>
@@ -243,7 +243,7 @@ export default function PlaygroundPage() {
       <h1 className="mb-1 text-[24px] font-bold text-[#1A1A1A]">
         API Playground
       </h1>
-      <p className="mb-8 text-[14px] text-[rgba(13,13,13,0.55)]">
+      <p className="mb-8 text-[16px] text-[rgba(13,13,13,0.55)]">
         Тестируйте запросы к API прямо в браузере — без curl и Postman
       </p>
 
@@ -252,14 +252,14 @@ export default function PlaygroundPage() {
         <div className="flex flex-col gap-4">
           {/* Auth */}
           <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-4">
-            <p className="mb-3 text-[12px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.45)]">
+            <p className="mb-3 text-[14px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.45)]">
               Авторизация
             </p>
             <div className="flex gap-2">
               <button
                 onClick={() => setAuthMode("session")}
                 className={[
-                  "flex flex-1 items-center justify-center gap-1.5 rounded-[8px] border py-2 text-[13px] font-medium transition-colors",
+                  "flex flex-1 items-center justify-center gap-1.5 rounded-[8px] border py-2 text-[15px] font-medium transition-colors",
                   authMode === "session"
                     ? "border-[#D97757] bg-[rgba(217,119,87,0.06)] text-[#D97757]"
                     : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.55)] hover:border-[rgba(13,13,13,0.25)]",
@@ -271,7 +271,7 @@ export default function PlaygroundPage() {
               <button
                 onClick={() => setAuthMode("apikey")}
                 className={[
-                  "flex flex-1 items-center justify-center gap-1.5 rounded-[8px] border py-2 text-[13px] font-medium transition-colors",
+                  "flex flex-1 items-center justify-center gap-1.5 rounded-[8px] border py-2 text-[15px] font-medium transition-colors",
                   authMode === "apikey"
                     ? "border-[#D97757] bg-[rgba(217,119,87,0.06)] text-[#D97757]"
                     : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.55)] hover:border-[rgba(13,13,13,0.25)]",
@@ -288,11 +288,11 @@ export default function PlaygroundPage() {
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder="ak_ВАШ_КЛЮЧ"
                 spellCheck={false}
-                className="mt-3 w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-3 py-2 font-mono text-[13px] text-[#1A1A1A] placeholder:text-[rgba(13,13,13,0.35)] focus:border-[#D97757] focus:outline-none"
+                className="mt-3 w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-3 py-2 font-mono text-[15px] text-[#1A1A1A] placeholder:text-[rgba(13,13,13,0.35)] focus:border-[#D97757] focus:outline-none"
               />
             )}
             {authMode === "session" && (
-              <p className="mt-2 text-[12px] text-[rgba(13,13,13,0.45)]">
+              <p className="mt-2 text-[14px] text-[rgba(13,13,13,0.45)]">
                 Используется текущая сессия браузера
               </p>
             )}
@@ -300,14 +300,14 @@ export default function PlaygroundPage() {
 
           {/* Model + params */}
           <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-4">
-            <p className="mb-3 text-[12px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.45)]">
+            <p className="mb-3 text-[14px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.45)]">
               Модель и параметры
             </p>
 
             <select
               value={model}
               onChange={(e) => setModel(e.target.value)}
-              className="mb-3 w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-3 py-2 text-[13px] text-[#1A1A1A] focus:border-[#D97757] focus:outline-none"
+              className="mb-3 w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-3 py-2 text-[15px] text-[#1A1A1A] focus:border-[#D97757] focus:outline-none"
             >
               {PRESET_MODELS.map((m) => (
                 <option key={m.id} value={m.id}>
@@ -322,17 +322,17 @@ export default function PlaygroundPage() {
                 value={customModel}
                 onChange={(e) => setCustomModel(e.target.value)}
                 placeholder="gpt-4o-2024-11-20"
-                className="mb-3 w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-3 py-2 font-mono text-[13px] text-[#1A1A1A] placeholder:text-[rgba(13,13,13,0.35)] focus:border-[#D97757] focus:outline-none"
+                className="mb-3 w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-3 py-2 font-mono text-[15px] text-[#1A1A1A] placeholder:text-[rgba(13,13,13,0.35)] focus:border-[#D97757] focus:outline-none"
               />
             )}
 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <div className="mb-1.5 flex items-center justify-between">
-                  <label className="text-[12px] text-[rgba(13,13,13,0.55)]">
+                  <label className="text-[14px] text-[rgba(13,13,13,0.55)]">
                     Temperature
                   </label>
-                  <span className="text-[12px] font-mono font-medium text-[#1A1A1A]">
+                  <span className="text-[14px] font-mono font-medium text-[#1A1A1A]">
                     {temperature.toFixed(1)}
                   </span>
                 </div>
@@ -347,7 +347,7 @@ export default function PlaygroundPage() {
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-[12px] text-[rgba(13,13,13,0.55)]">
+                <label className="mb-1.5 block text-[14px] text-[rgba(13,13,13,0.55)]">
                   Max tokens
                 </label>
                 <input
@@ -358,7 +358,7 @@ export default function PlaygroundPage() {
                   onChange={(e) =>
                     setMaxTokens(Math.max(1, parseInt(e.target.value) || 1))
                   }
-                  className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-3 py-2 text-[13px] text-[#1A1A1A] focus:border-[#D97757] focus:outline-none"
+                  className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-3 py-2 text-[15px] text-[#1A1A1A] focus:border-[#D97757] focus:outline-none"
                 />
               </div>
             </div>
@@ -370,7 +370,7 @@ export default function PlaygroundPage() {
                 onChange={(e) => setStreamMode(e.target.checked)}
                 className="accent-[#D97757]"
               />
-              <span className="text-[13px] text-[rgba(13,13,13,0.65)]">
+              <span className="text-[15px] text-[rgba(13,13,13,0.65)]">
                 Streaming (SSE)
               </span>
             </label>
@@ -382,7 +382,7 @@ export default function PlaygroundPage() {
               onClick={() => setSysOpen((o) => !o)}
               className="flex w-full items-center justify-between px-4 py-3 text-left"
             >
-              <span className="text-[12px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.45)]">
+              <span className="text-[14px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.45)]">
                 System prompt
               </span>
               {sysOpen ? (
@@ -398,7 +398,7 @@ export default function PlaygroundPage() {
                   onChange={(e) => setSystemPrompt(e.target.value)}
                   rows={4}
                   placeholder="Ты — полезный ассистент..."
-                  className="mt-3 w-full resize-none rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-3 py-2 text-[13px] text-[#1A1A1A] placeholder:text-[rgba(13,13,13,0.35)] focus:border-[#D97757] focus:outline-none"
+                  className="mt-3 w-full resize-none rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-3 py-2 text-[15px] text-[#1A1A1A] placeholder:text-[rgba(13,13,13,0.35)] focus:border-[#D97757] focus:outline-none"
                 />
               </div>
             )}
@@ -406,7 +406,7 @@ export default function PlaygroundPage() {
 
           {/* Messages */}
           <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-4">
-            <p className="mb-3 text-[12px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.45)]">
+            <p className="mb-3 text-[14px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.45)]">
               Messages
             </p>
             <div className="flex flex-col gap-2">
@@ -429,7 +429,7 @@ export default function PlaygroundPage() {
                         ? "Напиши Hello World на Python"
                         : "Ответ ассистента..."
                     }
-                    className="flex-1 resize-none rounded-[8px] border border-[rgba(13,13,13,0.12)] bg-[rgba(13,13,13,0.02)] px-3 py-2 text-[13px] text-[#1A1A1A] placeholder:text-[rgba(13,13,13,0.30)] focus:border-[#D97757] focus:outline-none"
+                    className="flex-1 resize-none rounded-[8px] border border-[rgba(13,13,13,0.12)] bg-[rgba(13,13,13,0.02)] px-3 py-2 text-[15px] text-[#1A1A1A] placeholder:text-[rgba(13,13,13,0.30)] focus:border-[#D97757] focus:outline-none"
                   />
                   <button
                     onClick={() => removeMessage(msg.id)}
@@ -443,7 +443,7 @@ export default function PlaygroundPage() {
             </div>
             <button
               onClick={addMessage}
-              className="mt-3 flex items-center gap-1.5 text-[12px] text-[rgba(13,13,13,0.45)] hover:text-[#D97757] transition-colors"
+              className="mt-3 flex items-center gap-1.5 text-[14px] text-[rgba(13,13,13,0.45)] hover:text-[#D97757] transition-colors"
             >
               <Plus size={13} />
               Добавить сообщение
@@ -454,7 +454,7 @@ export default function PlaygroundPage() {
           <button
             onClick={() => void execute()}
             className={[
-              "flex h-11 w-full items-center justify-center gap-2 rounded-[10px] text-[14px] font-semibold text-white transition-colors",
+              "flex h-11 w-full items-center justify-center gap-2 rounded-[10px] text-[16px] font-semibold text-white transition-colors",
               loading
                 ? "bg-[#dc2626] hover:bg-[#b91c1c]"
                 : "bg-[#D97757] hover:bg-[#C4623E]",
@@ -480,18 +480,18 @@ export default function PlaygroundPage() {
             {/* Response header */}
             <div className="flex items-center justify-between border-b border-[rgba(13,13,13,0.08)] px-4 py-3">
               <div className="flex items-center gap-3">
-                <span className="text-[12px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.45)]">
+                <span className="text-[14px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.45)]">
                   Response
                 </span>
                 {resStatus != null && (
                   <span
-                    className={`text-[12px] font-semibold font-mono ${statusColor}`}
+                    className={`text-[14px] font-semibold font-mono ${statusColor}`}
                   >
                     {resStatus}
                   </span>
                 )}
                 {resTime != null && (
-                  <span className="text-[12px] text-[rgba(13,13,13,0.35)]">
+                  <span className="text-[14px] text-[rgba(13,13,13,0.35)]">
                     {resTime}ms
                   </span>
                 )}
@@ -499,7 +499,7 @@ export default function PlaygroundPage() {
               {(resText || resJson) && (
                 <button
                   onClick={copyRes}
-                  className="flex items-center gap-1 text-[12px] text-[rgba(13,13,13,0.40)] hover:text-[#1A1A1A] transition-colors"
+                  className="flex items-center gap-1 text-[14px] text-[rgba(13,13,13,0.40)] hover:text-[#1A1A1A] transition-colors"
                 >
                   {copied ? <Check size={13} /> : <Copy size={13} />}
                   {copied ? "Скопировано" : "Копировать"}
@@ -515,7 +515,7 @@ export default function PlaygroundPage() {
                     key={tab}
                     onClick={() => setResTab(tab)}
                     className={[
-                      "mr-4 border-b-2 py-2 text-[12px] font-medium transition-colors",
+                      "mr-4 border-b-2 py-2 text-[14px] font-medium transition-colors",
                       resTab === tab
                         ? "border-[#D97757] text-[#D97757]"
                         : "border-transparent text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A]",
@@ -530,7 +530,7 @@ export default function PlaygroundPage() {
             {/* Content */}
             <div className="min-h-[300px] p-4">
               {loading && resText === null && (
-                <div className="flex items-center gap-2 text-[13px] text-[rgba(13,13,13,0.45)]">
+                <div className="flex items-center gap-2 text-[15px] text-[rgba(13,13,13,0.45)]">
                   <Loader size={14} className="animate-spin" />
                   Ожидание ответа...
                 </div>
@@ -541,14 +541,14 @@ export default function PlaygroundPage() {
                   <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-[12px] bg-[rgba(217,119,87,0.08)]">
                     <Play size={20} className="text-[#D97757]" />
                   </div>
-                  <p className="text-[13px] text-[rgba(13,13,13,0.45)]">
+                  <p className="text-[15px] text-[rgba(13,13,13,0.45)]">
                     Заполните запрос и нажмите «Выполнить»
                   </p>
                 </div>
               )}
 
               {resTab === "formatted" && resText !== null && (
-                <pre className="whitespace-pre-wrap break-words font-sans text-[13px] leading-relaxed text-[#1A1A1A]">
+                <pre className="whitespace-pre-wrap break-words font-sans text-[15px] leading-relaxed text-[#1A1A1A]">
                   {resText}
                 </pre>
               )}
@@ -563,11 +563,11 @@ export default function PlaygroundPage() {
 
           {/* Request preview */}
           <details className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white">
-            <summary className="cursor-pointer px-4 py-3 text-[12px] font-medium text-[rgba(13,13,13,0.45)] uppercase tracking-wide hover:text-[#1A1A1A] transition-colors select-none">
+            <summary className="cursor-pointer px-4 py-3 text-[14px] font-medium text-[rgba(13,13,13,0.45)] uppercase tracking-wide hover:text-[#1A1A1A] transition-colors select-none">
               curl-команда
             </summary>
             <div className="border-t border-[rgba(13,13,13,0.06)] px-4 pb-4">
-              <pre className="mt-3 overflow-x-auto rounded-[8px] bg-[#1A1A1A] p-3 font-mono text-[11px] leading-relaxed text-[#e4e4e4]">
+              <pre className="mt-3 overflow-x-auto rounded-[8px] bg-[#1A1A1A] p-3 font-mono text-[13px] leading-relaxed text-[#e4e4e4]">
                 {[
                   `curl https://aineron.ru/api/v1/chat/completions \\`,
                   authMode === "apikey"
@@ -604,7 +604,7 @@ export default function PlaygroundPage() {
           <div className="flex flex-wrap gap-2">
             <Link
               href="/account/keys/"
-              className="inline-flex items-center gap-1.5 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 py-1.5 text-[12px] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#1A1A1A] transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 py-1.5 text-[14px] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#1A1A1A] transition-colors"
             >
               <Key size={12} />
               Получить API-ключ
@@ -613,7 +613,7 @@ export default function PlaygroundPage() {
               href="/api/v1/docs/"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 py-1.5 text-[12px] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#1A1A1A] transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 py-1.5 text-[14px] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#1A1A1A] transition-colors"
             >
               Swagger UI
             </a>

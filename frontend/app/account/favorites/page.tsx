@@ -53,7 +53,7 @@ export default function FavoritesPage() {
           </div>
           <div>
             <h1 className="text-[20px] font-bold leading-tight text-[#1A1A1A] dark:text-[#EDE8E3]">Избранное</h1>
-            <p className="text-[13px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.4)]">
+            <p className="text-[15px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.4)]">
               Сохранённые изображения и видео{total > 0 ? ` · ${total}` : ""}
             </p>
           </div>
@@ -65,7 +65,7 @@ export default function FavoritesPage() {
             <button
               key={t.key}
               onClick={() => setFilter(t.key)}
-              className={`rounded-[7px] px-4 py-1.5 text-[13px] font-medium transition-all ${
+              className={`rounded-[7px] px-4 py-1.5 text-[15px] font-medium transition-all ${
                 filter === t.key
                   ? "bg-white text-[#1A1A1A] shadow-sm dark:bg-[rgba(255,255,255,0.12)] dark:text-[#EDE8E3]"
                   : "text-[rgba(13,13,13,0.55)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.5)] dark:hover:text-[#EDE8E3]"
@@ -88,13 +88,13 @@ export default function FavoritesPage() {
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[rgba(13,13,13,0.05)]">
               <ImageOff size={28} className="text-[rgba(13,13,13,0.25)]" />
             </div>
-            <p className="text-[15px] font-medium text-[#1A1A1A] dark:text-[#EDE8E3]">Пусто</p>
-            <p className="mt-1 text-[13px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.4)]">
+            <p className="text-[17px] font-medium text-[#1A1A1A] dark:text-[#EDE8E3]">Пусто</p>
+            <p className="mt-1 text-[15px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.4)]">
               Нажмите «Сохранить» под изображением в чате, чтобы добавить его сюда
             </p>
             <Link
               href="/models/"
-              className="mt-4 inline-flex items-center gap-1.5 rounded-[8px] bg-[#D97757] px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#C4623E]"
+              className="mt-4 inline-flex items-center gap-1.5 rounded-[8px] bg-[#D97757] px-4 py-2 text-[15px] font-medium text-white transition-colors hover:bg-[#C4623E]"
             >
               <Wand2 size={14} />
               Создать изображение
@@ -115,7 +115,7 @@ export default function FavoritesPage() {
                     )}
                     {item.media_type === "video" && (
                       <div className="absolute top-2 left-2">
-                        <span className="flex items-center gap-1 rounded-[5px] bg-black/50 px-1.5 py-0.5 text-[10px] text-white">
+                        <span className="flex items-center gap-1 rounded-[5px] bg-black/50 px-1.5 py-0.5 text-[12px] text-white">
                           <Video size={9} />
                           Видео
                         </span>
@@ -143,17 +143,17 @@ export default function FavoritesPage() {
 
                   <div className="p-2.5">
                     {item.prompt && (
-                      <p className="line-clamp-2 text-[11px] leading-relaxed text-[rgba(13,13,13,0.6)] dark:text-[rgba(236,236,236,0.55)]">
+                      <p className="line-clamp-2 text-[13px] leading-relaxed text-[rgba(13,13,13,0.6)] dark:text-[rgba(236,236,236,0.55)]">
                         {item.prompt}
                       </p>
                     )}
                     <div className="mt-1 flex flex-wrap items-center gap-1">
                       {item.model_name && (
-                        <span className="inline-flex items-center rounded-[4px] bg-[rgba(217,119,87,0.08)] px-1.5 py-0.5 text-[10px] font-medium text-[#D97757]">
+                        <span className="inline-flex items-center rounded-[4px] bg-[rgba(217,119,87,0.08)] px-1.5 py-0.5 text-[12px] font-medium text-[#D97757]">
                           {item.model_name}
                         </span>
                       )}
-                      <span className="ml-auto text-[10px] text-[rgba(13,13,13,0.30)] dark:text-[rgba(236,236,236,0.25)]">
+                      <span className="ml-auto text-[12px] text-[rgba(13,13,13,0.30)] dark:text-[rgba(236,236,236,0.25)]">
                         {formatDate(item.created_at)}
                       </span>
                     </div>
@@ -167,7 +167,7 @@ export default function FavoritesPage() {
                 <button
                   onClick={() => fetchNextPage()}
                   disabled={isFetchingNextPage}
-                  className="h-10 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-6 text-[13px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:bg-[rgba(13,13,13,0.04)] disabled:opacity-50 dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.65)]"
+                  className="h-10 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-6 text-[15px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:bg-[rgba(13,13,13,0.04)] disabled:opacity-50 dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.65)]"
                 >
                   {isFetchingNextPage ? "Загрузка..." : "Загрузить ещё"}
                 </button>

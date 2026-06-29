@@ -1,4 +1,4 @@
-// ─────────────────────────────────────────────────────────
+﻿// ─────────────────────────────────────────────────────────
 // Studio Design Tokens
 // Все Tailwind-классы студии собраны здесь.
 // Импортируй нужную группу: import { btn, card, form } from './styles'
@@ -150,8 +150,8 @@ export const text = {
   muted: 'text-[var(--text-secondary)]',
   mutedXs: 'text-xs text-[var(--text-secondary)]',
   mutedSm: 'text-sm text-[var(--text-secondary)]',
-  mutedLabel: 'text-[11px] text-[var(--text-secondary)]',
-  mutedLabelMd: 'text-[11px] text-[var(--text-secondary)] font-medium mb-1',
+  mutedLabel: 'text-[13px] text-[var(--text-secondary)]',
+  mutedLabelMd: 'text-[13px] text-[var(--text-secondary)] font-medium mb-1',
   heading: 'text-sm font-medium',
   headingMd: 'text-base font-medium',
   headingLg: 'text-lg font-semibold',
@@ -159,14 +159,14 @@ export const text = {
   mono: 'font-mono',
   monoXs: 'font-mono text-xs',
   // Блоки кода
-  codeBlock: 'whitespace-pre-wrap font-mono text-[11px] bg-[var(--hover)] rounded p-2',
-  codeBlockError: 'whitespace-pre-wrap font-mono text-[11px] bg-red-950/30 text-red-300 rounded p-2',
+  codeBlock: 'whitespace-pre-wrap font-mono text-[13px] bg-[var(--hover)] rounded p-2',
+  codeBlockError: 'whitespace-pre-wrap font-mono text-[13px] bg-red-950/30 text-red-300 rounded p-2',
   // Цвета статусов
   error: 'text-red-400',
   errorSm: 'text-sm text-red-500',
-  errorXs: 'text-[11px] text-red-400',
+  errorXs: 'text-[13px] text-red-400',
   success: 'text-green-500',
-  successXs: 'text-[11px] text-green-500',
+  successXs: 'text-[13px] text-green-500',
   warning: 'text-amber-400',
   blue: 'text-blue-500',
   blueXs: 'text-xs text-blue-500',

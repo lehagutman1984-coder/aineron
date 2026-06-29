@@ -62,7 +62,7 @@ function SeedBadge({ seed }: { seed: number }) {
         );
       }}
       title="Скопировать seed"
-      className="inline-flex items-center gap-1 rounded-[5px] bg-[rgba(13,13,13,0.05)] px-1.5 py-0.5 text-[10px] font-medium text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.09)] transition-colors"
+      className="inline-flex items-center gap-1 rounded-[5px] bg-[rgba(13,13,13,0.05)] px-1.5 py-0.5 text-[12px] font-medium text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.09)] transition-colors"
     >
       <span>seed {seed}</span>
       {copied ? (
@@ -104,7 +104,7 @@ function ShareControls({
         onClick={(e) => { e.stopPropagation(); onToggle(); }}
         disabled={sharing}
         title={isPublic ? "Убрать из публичной галереи" : "Опубликовать в галерее"}
-        className={`inline-flex items-center gap-1 rounded-[6px] border px-1.5 py-0.5 text-[10px] font-medium transition-colors disabled:opacity-50 ${
+        className={`inline-flex items-center gap-1 rounded-[6px] border px-1.5 py-0.5 text-[12px] font-medium transition-colors disabled:opacity-50 ${
           isPublic
             ? "border-[rgba(26,157,75,0.25)] bg-[rgba(26,157,75,0.08)] text-[#1a9d4b]"
             : "border-[rgba(13,13,13,0.10)] text-[rgba(13,13,13,0.6)] hover:bg-[rgba(13,13,13,0.04)]"
@@ -117,7 +117,7 @@ function ShareControls({
         <button
           onClick={copyLink}
           title="Скопировать публичную ссылку"
-          className="inline-flex items-center gap-1 rounded-[6px] border border-[rgba(13,13,13,0.10)] px-1.5 py-0.5 text-[10px] font-medium text-[rgba(13,13,13,0.6)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
+          className="inline-flex items-center gap-1 rounded-[6px] border border-[rgba(13,13,13,0.10)] px-1.5 py-0.5 text-[12px] font-medium text-[rgba(13,13,13,0.6)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
         >
           {copied ? <Check size={10} className="text-[#1a9d4b]" /> : <Link2 size={10} className="text-[#D97757]" />}
           {copied ? "Скопировано" : "Скопировать ссылку"}
@@ -196,24 +196,24 @@ function FileCard({
       </button>
 
       <div className="p-3">
-        <p className="truncate text-[12px] text-[rgba(13,13,13,0.65)]">{file.prompt}</p>
+        <p className="truncate text-[14px] text-[rgba(13,13,13,0.65)]">{file.prompt}</p>
         {(file.model_name || file.seed != null || file.parent_id != null) && (
           <div className="mt-1 flex flex-wrap items-center gap-1">
             {file.parent_id != null && (
-              <span className="inline-flex items-center gap-0.5 rounded-[5px] bg-[rgba(217,119,87,0.1)] px-1.5 py-0.5 text-[10px] font-medium text-[#D97757]">
+              <span className="inline-flex items-center gap-0.5 rounded-[5px] bg-[rgba(217,119,87,0.1)] px-1.5 py-0.5 text-[12px] font-medium text-[#D97757]">
                 <Maximize2 size={9} />
                 Детализировано
               </span>
             )}
             {file.model_name && (
-              <span className="inline-flex items-center rounded-[5px] bg-[rgba(217,119,87,0.08)] px-1.5 py-0.5 text-[10px] font-medium text-[#D97757]">
+              <span className="inline-flex items-center rounded-[5px] bg-[rgba(217,119,87,0.08)] px-1.5 py-0.5 text-[12px] font-medium text-[#D97757]">
                 {file.model_name}
               </span>
             )}
             {file.seed != null && <SeedBadge seed={file.seed} />}
           </div>
         )}
-        <p className="mt-0.5 text-[11px] text-[rgba(13,13,13,0.35)]">
+        <p className="mt-0.5 text-[13px] text-[rgba(13,13,13,0.35)]">
           {formatDate(file.created_at)} · {file.size}
         </p>
 
@@ -223,7 +223,7 @@ function FileCard({
               onClick={(e) => { e.stopPropagation(); onUpscale(file, 2); }}
               disabled={upscaling}
               title="Детализировать — усилить резкость и проработку деталей"
-              className="inline-flex items-center gap-1 rounded-[6px] border border-[rgba(13,13,13,0.10)] px-1.5 py-0.5 text-[10px] font-medium text-[rgba(13,13,13,0.6)] hover:bg-[rgba(13,13,13,0.04)] disabled:opacity-50 transition-colors"
+              className="inline-flex items-center gap-1 rounded-[6px] border border-[rgba(13,13,13,0.10)] px-1.5 py-0.5 text-[12px] font-medium text-[rgba(13,13,13,0.6)] hover:bg-[rgba(13,13,13,0.04)] disabled:opacity-50 transition-colors"
             >
               <Maximize2 size={10} className="text-[#D97757]" />
               Детализировать
@@ -232,7 +232,7 @@ function FileCard({
               onClick={(e) => { e.stopPropagation(); onVariations(file); }}
               disabled={varying}
               title="Создать 4 вариации"
-              className="inline-flex items-center gap-1 rounded-[6px] border border-[rgba(13,13,13,0.10)] px-1.5 py-0.5 text-[10px] font-medium text-[rgba(13,13,13,0.6)] hover:bg-[rgba(13,13,13,0.04)] disabled:opacity-50 transition-colors"
+              className="inline-flex items-center gap-1 rounded-[6px] border border-[rgba(13,13,13,0.10)] px-1.5 py-0.5 text-[12px] font-medium text-[rgba(13,13,13,0.6)] hover:bg-[rgba(13,13,13,0.04)] disabled:opacity-50 transition-colors"
             >
               <Images size={10} className="text-[#D97757]" />
               Варианты
@@ -240,7 +240,7 @@ function FileCard({
             <button
               onClick={(e) => { e.stopPropagation(); onStyle(file); }}
               title="Использовать как референс стиля"
-              className="inline-flex items-center gap-1 rounded-[6px] border border-[rgba(13,13,13,0.10)] px-1.5 py-0.5 text-[10px] font-medium text-[rgba(13,13,13,0.6)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
+              className="inline-flex items-center gap-1 rounded-[6px] border border-[rgba(13,13,13,0.10)] px-1.5 py-0.5 text-[12px] font-medium text-[rgba(13,13,13,0.6)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
             >
               <Palette size={10} className="text-[#D97757]" />
               Стиль
@@ -349,7 +349,7 @@ function PreviewModal({
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3">
-          <p className="truncate text-[13px] text-[rgba(255,255,255,0.65)] max-w-md">{file.prompt}</p>
+          <p className="truncate text-[15px] text-[rgba(255,255,255,0.65)] max-w-md">{file.prompt}</p>
           <div className="flex items-center gap-2 flex-shrink-0 ml-3">
             <button
               onClick={() => onRerun(file)}
@@ -358,7 +358,7 @@ function PreviewModal({
               className="flex h-8 items-center gap-1.5 rounded-[8px] bg-[rgba(255,255,255,0.08)] px-3 hover:bg-[rgba(255,255,255,0.14)] disabled:opacity-50 transition-colors"
             >
               <RotateCcw size={14} className={rerunning ? "animate-spin text-white" : "text-white"} />
-              <span className="text-[12px] font-medium text-white">Повторить</span>
+              <span className="text-[14px] font-medium text-white">Повторить</span>
             </button>
             {file.media_type === "image" && (
               <>
@@ -368,7 +368,7 @@ function PreviewModal({
                   className="flex h-8 items-center gap-1.5 rounded-[8px] bg-[rgba(255,255,255,0.08)] px-3 hover:bg-[rgba(255,255,255,0.14)] transition-colors"
                 >
                   <Pencil size={14} className="text-white" />
-                  <span className="text-[12px] font-medium text-white">Редактировать</span>
+                  <span className="text-[14px] font-medium text-white">Редактировать</span>
                 </button>
                 <button
                   onClick={() => onAnimate(file)}
@@ -376,7 +376,7 @@ function PreviewModal({
                   className="flex h-8 items-center gap-1.5 rounded-[8px] bg-[rgba(255,255,255,0.08)] px-3 hover:bg-[rgba(255,255,255,0.14)] transition-colors"
                 >
                   <Film size={14} className="text-white" />
-                  <span className="text-[12px] font-medium text-white">Оживить</span>
+                  <span className="text-[14px] font-medium text-white">Оживить</span>
                 </button>
               </>
             )}
@@ -413,7 +413,7 @@ function PreviewModal({
               className="flex h-8 items-center gap-1.5 rounded-[8px] bg-[rgba(255,255,255,0.08)] px-3 hover:bg-[rgba(255,255,255,0.14)] disabled:opacity-50 transition-colors"
             >
               <Maximize2 size={14} className="text-white" />
-              <span className="text-[12px] font-medium text-white">Апскейл 2×</span>
+              <span className="text-[14px] font-medium text-white">Апскейл 2×</span>
             </button>
             <button
               onClick={() => onUpscale(file, 4)}
@@ -422,7 +422,7 @@ function PreviewModal({
               className="flex h-8 items-center gap-1.5 rounded-[8px] bg-[rgba(255,255,255,0.08)] px-3 hover:bg-[rgba(255,255,255,0.14)] disabled:opacity-50 transition-colors"
             >
               <Maximize2 size={14} className="text-white" />
-              <span className="text-[12px] font-medium text-white">4×</span>
+              <span className="text-[14px] font-medium text-white">4×</span>
             </button>
             <button
               onClick={() => onVariations(file)}
@@ -431,7 +431,7 @@ function PreviewModal({
               className="flex h-8 items-center gap-1.5 rounded-[8px] bg-[rgba(255,255,255,0.08)] px-3 hover:bg-[rgba(255,255,255,0.14)] disabled:opacity-50 transition-colors"
             >
               <Images size={14} className="text-white" />
-              <span className="text-[12px] font-medium text-white">Варианты</span>
+              <span className="text-[14px] font-medium text-white">Варианты</span>
             </button>
             <button
               onClick={() => onStyle(file)}
@@ -439,7 +439,7 @@ function PreviewModal({
               className="flex h-8 items-center gap-1.5 rounded-[8px] bg-[rgba(255,255,255,0.08)] px-3 hover:bg-[rgba(255,255,255,0.14)] transition-colors"
             >
               <Palette size={14} className="text-white" />
-              <span className="text-[12px] font-medium text-white">Стиль</span>
+              <span className="text-[14px] font-medium text-white">Стиль</span>
             </button>
           </div>
         )}
@@ -481,7 +481,7 @@ function PreviewModal({
         </div>
 
         {/* Footer */}
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-4 py-2.5 text-[11px] text-[rgba(255,255,255,0.35)]">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-4 py-2.5 text-[13px] text-[rgba(255,255,255,0.35)]">
           <span>{formatDate(file.created_at)} · {file.size}</span>
           {file.width && file.height ? <span>· {file.width}×{file.height}</span> : null}
           {file.model_name ? (
@@ -707,7 +707,7 @@ export default function FilesPage() {
         <div>
           <h1 className="text-[22px] font-bold text-[#1A1A1A]">Мои файлы</h1>
           {total > 0 && (
-            <p className="mt-0.5 text-[13px] text-[rgba(13,13,13,0.45)]">
+            <p className="mt-0.5 text-[15px] text-[rgba(13,13,13,0.45)]">
               {total} {total === 1 ? "файл" : total < 5 ? "файла" : "файлов"}
             </p>
           )}
@@ -720,7 +720,7 @@ export default function FilesPage() {
           <button
             key={t.key}
             onClick={() => handleCategoryChange(t.key)}
-            className={`rounded-[7px] px-4 py-1.5 text-[13px] font-medium transition-all ${
+            className={`rounded-[7px] px-4 py-1.5 text-[15px] font-medium transition-all ${
               category === t.key
                 ? "bg-white text-[#1A1A1A] shadow-sm"
                 : "text-[rgba(13,13,13,0.55)] hover:text-[#1A1A1A]"
@@ -747,8 +747,8 @@ export default function FilesPage() {
           <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[rgba(13,13,13,0.05)]">
             <FolderOpen size={28} className="text-[rgba(13,13,13,0.25)]" />
           </div>
-          <p className="text-[15px] font-medium text-[#1A1A1A]">Файлов пока нет</p>
-          <p className="mt-1 text-[13px] text-[rgba(13,13,13,0.45)]">
+          <p className="text-[17px] font-medium text-[#1A1A1A]">Файлов пока нет</p>
+          <p className="mt-1 text-[15px] text-[rgba(13,13,13,0.45)]">
             Сгенерированные изображения и видео будут здесь
           </p>
         </div>
@@ -784,7 +784,7 @@ export default function FilesPage() {
               <button
                 onClick={() => fetchNextPage()}
                 disabled={isFetchingNextPage}
-                className="h-10 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-6 text-[13px] font-medium text-[rgba(13,13,13,0.65)] hover:bg-[rgba(13,13,13,0.04)] disabled:opacity-50 transition-colors"
+                className="h-10 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-6 text-[15px] font-medium text-[rgba(13,13,13,0.65)] hover:bg-[rgba(13,13,13,0.04)] disabled:opacity-50 transition-colors"
               >
                 {isFetchingNextPage ? "Загрузка..." : "Загрузить ещё"}
               </button>

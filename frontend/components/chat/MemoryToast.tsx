@@ -33,7 +33,7 @@ export function MemoryToast({ count, facts, onDismiss }: Props) {
     >
       <Brain size={15} className="mt-0.5 shrink-0 text-[#D97757]" />
       <div className="min-w-0 flex-1">
-        <div className="text-[12px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
+        <div className="text-[14px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
           Запомнено: {count} {count === 1 ? "факт" : count < 5 ? "факта" : "фактов"}
         </div>
         {facts.length > 0 && (
@@ -41,7 +41,7 @@ export function MemoryToast({ count, facts, onDismiss }: Props) {
             {facts.slice(0, 3).map((f, i) => (
               <div
                 key={i}
-                className="truncate text-[11px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]"
+                className="truncate text-[13px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]"
               >
                 — {f}
               </div>

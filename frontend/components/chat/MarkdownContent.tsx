@@ -18,10 +18,10 @@ function FullscreenModal({ title, onClose, children }: { title: string; onClose:
     >
       <div className="flex h-[95vh] w-[95vw] flex-col overflow-hidden rounded-[12px] border border-[rgba(255,255,255,0.10)] bg-[#0f0f0f] shadow-2xl">
         <div className="flex shrink-0 items-center justify-between border-b border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-4 py-2.5">
-          <span className="font-mono text-[12px] font-semibold text-[rgba(255,255,255,0.55)]">{title}</span>
+          <span className="font-mono text-[14px] font-semibold text-[rgba(255,255,255,0.55)]">{title}</span>
           <button
             onClick={onClose}
-            className="flex items-center gap-1.5 rounded-[5px] border border-[rgba(255,255,255,0.10)] px-2.5 py-1 text-[11px] text-[rgba(255,255,255,0.45)] transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-white"
+            className="flex items-center gap-1.5 rounded-[5px] border border-[rgba(255,255,255,0.10)] px-2.5 py-1 text-[13px] text-[rgba(255,255,255,0.45)] transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-white"
           >
             <X size={12} /> Закрыть
           </button>
@@ -84,20 +84,20 @@ function PreBlock({ children, ...props }: ComponentPropsWithoutRef<"pre">) {
     <div className="flex items-center gap-1.5">
       <button
         onClick={download}
-        className="flex items-center gap-1.5 rounded-[5px] border border-[rgba(255,255,255,0.10)] px-2 py-1 text-[11px] font-medium text-[rgba(255,255,255,0.45)] transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-[rgba(255,255,255,0.82)]"
+        className="flex items-center gap-1.5 rounded-[5px] border border-[rgba(255,255,255,0.10)] px-2 py-1 text-[13px] font-medium text-[rgba(255,255,255,0.45)] transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-[rgba(255,255,255,0.82)]"
       >
         <Download size={11} /> Скачать
       </button>
       <button
         onClick={copy}
-        className="flex items-center gap-1.5 rounded-[5px] border border-[rgba(255,255,255,0.10)] px-2 py-1 text-[11px] font-medium text-[rgba(255,255,255,0.45)] transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-[rgba(255,255,255,0.82)]"
+        className="flex items-center gap-1.5 rounded-[5px] border border-[rgba(255,255,255,0.10)] px-2 py-1 text-[13px] font-medium text-[rgba(255,255,255,0.45)] transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-[rgba(255,255,255,0.82)]"
       >
         {copied ? <Check size={11} /> : <Copy size={11} />}
         {copied ? "Скопировано" : "Копировать"}
       </button>
       <button
         onClick={() => setFullscreen(true)}
-        className="flex items-center gap-1.5 rounded-[5px] border border-[rgba(255,255,255,0.10)] px-2 py-1 text-[11px] font-medium text-[rgba(255,255,255,0.45)] transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-[rgba(255,255,255,0.82)]"
+        className="flex items-center gap-1.5 rounded-[5px] border border-[rgba(255,255,255,0.10)] px-2 py-1 text-[13px] font-medium text-[rgba(255,255,255,0.45)] transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-[rgba(255,255,255,0.82)]"
       >
         <Maximize2 size={11} /> Развернуть
       </button>
@@ -109,7 +109,7 @@ function PreBlock({ children, ...props }: ComponentPropsWithoutRef<"pre">) {
       {fullscreen && (
         <FullscreenModal title={lang || "code"} onClose={() => setFullscreen(false)}>
           <pre
-            className="m-0 h-full overflow-auto px-6 py-5 font-mono text-[13px] leading-relaxed text-[#e0e0e0]"
+            className="m-0 h-full overflow-auto px-6 py-5 font-mono text-[15px] leading-relaxed text-[#e0e0e0]"
           >
             {children}
           </pre>
@@ -117,14 +117,14 @@ function PreBlock({ children, ...props }: ComponentPropsWithoutRef<"pre">) {
       )}
       <div className="my-4 overflow-hidden rounded-[10px] border border-[#2E2925] bg-[#1C1917]">
         <div className="flex items-center justify-between border-b border-[rgba(255, 255, 255, 0.06)] bg-[rgba(37, 41, 68, 0.04)] px-4 py-2">
-          <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.38)]">
+          <span className="font-mono text-[12px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.38)]">
             {lang || "code"}
           </span>
           {toolbar}
         </div>
         <pre
           ref={ref}
-          className="m-0 overflow-x-auto px-4 py-3.5 font-mono text-[13px] leading-relaxed text-[#e0e0e0]"
+          className="m-0 overflow-x-auto px-4 py-3.5 font-mono text-[15px] leading-relaxed text-[#e0e0e0]"
           {...props}
         >
           {children}
@@ -171,7 +171,7 @@ const components: Components = {
 
   table: ({ children, ...props }) => (
     <div className="my-4 overflow-x-auto rounded-[8px] border border-[rgba(13,13,13,0.10)]">
-      <table className="w-full border-collapse text-[14px]" {...props}>
+      <table className="w-full border-collapse text-[16px]" {...props}>
         {children}
       </table>
     </div>
@@ -275,7 +275,7 @@ function FileBlock({ filePath, code, truncated }: { filePath: string; code: stri
     <div className="my-3 overflow-hidden rounded-[10px] border border-[rgba(0,122,255,0.25)] bg-[rgba(0,122,255,0.04)]">
       {truncated && (
         <div className="px-4 py-1.5 bg-[rgba(255,149,0,0.08)] border-b border-[rgba(255,149,0,0.20)]">
-          <span className="text-[11px] text-[#ff9500]">Файл обрезан API (лимит ~55K симв.) — кнопка коммита недоступна. Запросите конкретную функцию.</span>
+          <span className="text-[13px] text-[#ff9500]">Файл обрезан API (лимит ~55K симв.) — кнопка коммита недоступна. Запросите конкретную функцию.</span>
         </div>
       )}
       {/* Header — always visible */}
@@ -284,10 +284,10 @@ function FileBlock({ filePath, code, truncated }: { filePath: string; code: stri
         onClick={() => setExpanded((v) => !v)}
       >
         <FileCode size={14} className="shrink-0 text-[#D97757]" />
-        <span className="flex-1 font-mono text-[13px] font-medium text-[#D97757]">
+        <span className="flex-1 font-mono text-[15px] font-medium text-[#D97757]">
           {filePath}
         </span>
-        <span className="text-[11px] text-[rgba(0,0,0,0.38)]">
+        <span className="text-[13px] text-[rgba(0,0,0,0.38)]">
           {lineCount} строк
         </span>
         {expanded ? (
@@ -301,27 +301,27 @@ function FileBlock({ filePath, code, truncated }: { filePath: string; code: stri
       {expanded && (
         <div className="border-t border-[rgba(0,122,255,0.15)] bg-[#0f0f0f]">
           <div className="flex items-center justify-between px-4 py-2">
-            <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.38)]">
+            <span className="font-mono text-[12px] font-semibold uppercase tracking-widest text-[rgba(255,255,255,0.38)]">
               {lang || "code"}
             </span>
             <div className="flex items-center gap-1.5">
               <button
                 onClick={download}
-                className="flex items-center gap-1.5 rounded-[5px] border border-[rgba(255,255,255,0.10)] px-2 py-1 text-[11px] font-medium text-[rgba(255,255,255,0.45)] transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-[rgba(255,255,255,0.82)]"
+                className="flex items-center gap-1.5 rounded-[5px] border border-[rgba(255,255,255,0.10)] px-2 py-1 text-[13px] font-medium text-[rgba(255,255,255,0.45)] transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-[rgba(255,255,255,0.82)]"
               >
                 <Download size={11} />
                 Скачать
               </button>
               <button
                 onClick={copy}
-                className="flex items-center gap-1.5 rounded-[5px] border border-[rgba(255,255,255,0.10)] px-2 py-1 text-[11px] font-medium text-[rgba(255,255,255,0.45)] transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-[rgba(255,255,255,0.82)]"
+                className="flex items-center gap-1.5 rounded-[5px] border border-[rgba(255,255,255,0.10)] px-2 py-1 text-[13px] font-medium text-[rgba(255,255,255,0.45)] transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-[rgba(255,255,255,0.82)]"
               >
                 {copied ? <Check size={11} /> : <Copy size={11} />}
                 {copied ? "Скопировано" : "Копировать"}
               </button>
             </div>
           </div>
-          <pre className="m-0 overflow-x-auto px-4 pb-4 font-mono text-[13px] leading-relaxed text-[#e0e0e0]">
+          <pre className="m-0 overflow-x-auto px-4 pb-4 font-mono text-[15px] leading-relaxed text-[#e0e0e0]">
             <code className={lang ? `language-${lang}` : ""}>{code}</code>
           </pre>
         </div>
@@ -353,33 +353,33 @@ function DiffHunk({ hunk, dark }: { hunk: EditHunk; dark: boolean }) {
   };
 
   const btnCls = dark
-    ? "flex items-center gap-1 rounded-[4px] border border-[rgba(255,255,255,0.12)] px-1.5 py-0.5 text-[10px] text-[rgba(255,255,255,0.40)] transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-[rgba(255,255,255,0.80)]"
-    : "flex items-center gap-1 rounded-[4px] border border-[rgba(0,0,0,0.10)] px-1.5 py-0.5 text-[10px] text-[rgba(0,0,0,0.35)] transition-colors hover:bg-[rgba(0,0,0,0.06)] hover:text-[rgba(0,0,0,0.65)]";
+    ? "flex items-center gap-1 rounded-[4px] border border-[rgba(255,255,255,0.12)] px-1.5 py-0.5 text-[12px] text-[rgba(255,255,255,0.40)] transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-[rgba(255,255,255,0.80)]"
+    : "flex items-center gap-1 rounded-[4px] border border-[rgba(0,0,0,0.10)] px-1.5 py-0.5 text-[12px] text-[rgba(0,0,0,0.35)] transition-colors hover:bg-[rgba(0,0,0,0.06)] hover:text-[rgba(0,0,0,0.65)]";
 
   return (
     <div className={`border-b last:border-b-0 ${dark ? "border-[rgba(255,255,255,0.06)]" : "border-[rgba(0,200,100,0.10)]"}`}>
       <div className="grid grid-cols-2">
         <div className={`border-r ${dark ? "border-[rgba(255,255,255,0.08)] bg-[rgba(255,60,60,0.12)]" : "border-[rgba(0,200,100,0.15)] bg-[rgba(255,60,60,0.05)]"}`}>
           <div className={`flex items-center justify-between border-b px-3 py-1 ${dark ? "border-[rgba(255,60,60,0.20)]" : "border-[rgba(255,60,60,0.12)]"}`}>
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-[rgba(220,80,80,0.9)]">Было</span>
+            <span className="text-[12px] font-semibold uppercase tracking-wider text-[rgba(220,80,80,0.9)]">Было</span>
             <button onClick={copySearch} className={btnCls}>
               {copiedSearch ? <Check size={10} /> : <Copy size={10} />}
               {copiedSearch ? "Скопировано" : "Копировать"}
             </button>
           </div>
-          <pre className={`m-0 overflow-x-auto px-3 py-2.5 font-mono text-[12px] leading-relaxed ${dark ? "text-[rgba(255,255,255,0.82)]" : "text-[rgba(0,0,0,0.75)]"}`}>
+          <pre className={`m-0 overflow-x-auto px-3 py-2.5 font-mono text-[14px] leading-relaxed ${dark ? "text-[rgba(255,255,255,0.82)]" : "text-[rgba(0,0,0,0.75)]"}`}>
             {hunk.search.trimEnd()}
           </pre>
         </div>
         <div className={dark ? "bg-[rgba(0,200,100,0.12)]" : "bg-[rgba(0,200,100,0.05)]"}>
           <div className={`flex items-center justify-between border-b px-3 py-1 ${dark ? "border-[rgba(0,200,100,0.20)]" : "border-[rgba(0,200,100,0.12)]"}`}>
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-[rgba(0,200,100,0.9)]">Стало</span>
+            <span className="text-[12px] font-semibold uppercase tracking-wider text-[rgba(0,200,100,0.9)]">Стало</span>
             <button onClick={copyReplace} className={btnCls}>
               {copiedReplace ? <Check size={10} /> : <Copy size={10} />}
               {copiedReplace ? "Скопировано" : "Копировать"}
             </button>
           </div>
-          <pre className={`m-0 overflow-x-auto px-3 py-2.5 font-mono text-[12px] leading-relaxed ${dark ? "text-[rgba(255,255,255,0.82)]" : "text-[rgba(0,0,0,0.75)]"}`}>
+          <pre className={`m-0 overflow-x-auto px-3 py-2.5 font-mono text-[14px] leading-relaxed ${dark ? "text-[rgba(255,255,255,0.82)]" : "text-[rgba(0,0,0,0.75)]"}`}>
             {hunk.replace.trimEnd() || "(удалено)"}
           </pre>
         </div>
@@ -414,10 +414,10 @@ function EditBlock({ filePath, hunks }: { filePath: string; hunks: EditHunk[] })
         onClick={() => setExpanded((v) => !v)}
       >
         <Pencil size={14} className="shrink-0 text-[#D97757]" />
-        <span className="flex-1 font-mono text-[13px] font-medium text-[#D97757]">
+        <span className="flex-1 font-mono text-[15px] font-medium text-[#D97757]">
           {filePath}
         </span>
-        <span className="text-[11px] text-[rgba(0,0,0,0.38)]">
+        <span className="text-[13px] text-[rgba(0,0,0,0.38)]">
           {hunks.length} {hunks.length === 1 ? "правка" : "правок"}
         </span>
         <button

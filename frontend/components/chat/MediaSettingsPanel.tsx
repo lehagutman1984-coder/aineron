@@ -71,7 +71,7 @@ function AspectRatioPresets({
                 height: `${Math.round(20 * Math.min(1, h / w))}px`,
               }}
             />
-            <span className="text-[9px] font-medium leading-none">{label}</span>
+            <span className="text-[11px] font-medium leading-none">{label}</span>
           </button>
         );
       })}
@@ -99,7 +99,7 @@ function SeedField({
 
   return (
     <div className="flex flex-col gap-1" style={{ minWidth: "200px" }}>
-      <label className="text-[11px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">
+      <label className="text-[13px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">
         {field.label}
       </label>
       <div className="flex items-center gap-1.5">
@@ -128,7 +128,7 @@ function SeedField({
             const raw = e.target.value;
             onSet(raw === "" ? null : Math.floor(Number(raw)));
           }}
-          className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-2 py-1 text-[12px] text-[#1A1A1A] focus:outline-none disabled:bg-[rgba(13,13,13,0.04)] disabled:text-[rgba(13,13,13,0.35)] dark:border-[rgba(255,255,255,0.12)] dark:bg-[rgba(255,255,255,0.08)] dark:text-[#EDE8E3]"
+          className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-2 py-1 text-[14px] text-[#1A1A1A] focus:outline-none disabled:bg-[rgba(13,13,13,0.04)] disabled:text-[rgba(13,13,13,0.35)] dark:border-[rgba(255,255,255,0.12)] dark:bg-[rgba(255,255,255,0.08)] dark:text-[#EDE8E3]"
         />
         <button
           type="button"
@@ -155,7 +155,7 @@ function NumberField({
 }) {
   return (
     <div className="flex flex-col gap-1" style={{ minWidth: "140px" }}>
-      <label className="text-[11px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">
+      <label className="text-[13px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">
         {field.label}
       </label>
       <input
@@ -168,7 +168,7 @@ function NumberField({
           const raw = e.target.value;
           onSet(raw === "" ? null : Number(raw));
         }}
-        className="rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-2 py-1 text-[12px] text-[#1A1A1A] focus:outline-none dark:border-[rgba(255,255,255,0.12)] dark:bg-[rgba(255,255,255,0.08)] dark:text-[#EDE8E3]"
+        className="rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-2 py-1 text-[14px] text-[#1A1A1A] focus:outline-none dark:border-[rgba(255,255,255,0.12)] dark:bg-[rgba(255,255,255,0.08)] dark:text-[#EDE8E3]"
       />
     </div>
   );
@@ -192,7 +192,7 @@ function CollapsibleTextarea({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1 text-[11px] text-[rgba(13,13,13,0.5)] hover:text-[#1A1A1A] transition-colors dark:text-[rgba(236,236,236,0.45)] dark:hover:text-[#EDE8E3]"
+        className="flex items-center gap-1 text-[13px] text-[rgba(13,13,13,0.5)] hover:text-[#1A1A1A] transition-colors dark:text-[rgba(236,236,236,0.45)] dark:hover:text-[#EDE8E3]"
       >
         {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
         <span>{field.label}</span>
@@ -209,7 +209,7 @@ function CollapsibleTextarea({
           rows={3}
           onChange={(e) => onSet(e.target.value)}
           placeholder={field.label}
-          className="w-full resize-y rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-2 py-1.5 text-[12px] text-[#1A1A1A] focus:outline-none dark:border-[rgba(255,255,255,0.12)] dark:bg-[rgba(255,255,255,0.08)] dark:text-[#EDE8E3]"
+          className="w-full resize-y rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-2 py-1.5 text-[14px] text-[#1A1A1A] focus:outline-none dark:border-[rgba(255,255,255,0.12)] dark:bg-[rgba(255,255,255,0.08)] dark:text-[#EDE8E3]"
         />
       )}
     </div>
@@ -231,7 +231,7 @@ export function MediaSettingsPanel({
     <div className="rounded-[12px] border border-[rgba(13,13,13,0.12)] bg-[rgba(13,13,13,0.02)] p-3 dark:border-[rgba(255,255,255,0.10)] dark:bg-[rgba(255,255,255,0.04)]">
       {sections.map((section) => (
         <div key={section.title} className="mb-3 last:mb-0">
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[rgba(13,13,13,0.38)] dark:text-[rgba(236,236,236,0.35)]">
+          <p className="mb-2 text-[13px] font-semibold uppercase tracking-wide text-[rgba(13,13,13,0.38)] dark:text-[rgba(236,236,236,0.35)]">
             {section.title}
           </p>
           <div className="flex flex-wrap gap-3">
@@ -244,7 +244,7 @@ export function MediaSettingsPanel({
                   (field.options ?? []).some((o) => parseSize(o.value) !== null);
                 return (
                   <div key={field.name} className="flex flex-col gap-1">
-                    <label className="text-[11px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">
+                    <label className="text-[13px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">
                       {field.label}
                     </label>
                     {isSizeField && (
@@ -257,7 +257,7 @@ export function MediaSettingsPanel({
                     <select
                       value={String(val ?? "")}
                       onChange={(e) => set(field.name, e.target.value)}
-                      className="rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-2 py-1 text-[12px] font-medium text-[#1A1A1A] focus:outline-none dark:border-[rgba(255,255,255,0.12)] dark:bg-[rgba(255,255,255,0.08)] dark:text-[#EDE8E3]"
+                      className="rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-2 py-1 text-[14px] font-medium text-[#1A1A1A] focus:outline-none dark:border-[rgba(255,255,255,0.12)] dark:bg-[rgba(255,255,255,0.08)] dark:text-[#EDE8E3]"
                       style={{ minWidth: "120px" }}
                     >
                       {(field.options ?? []).map((opt) => (
@@ -293,7 +293,7 @@ export function MediaSettingsPanel({
                       />
                     </button>
                     <label
-                      className="cursor-pointer text-[12px] text-[rgba(13,13,13,0.65)] dark:text-[rgba(236,236,236,0.6)]"
+                      className="cursor-pointer text-[14px] text-[rgba(13,13,13,0.65)] dark:text-[rgba(236,236,236,0.6)]"
                       onClick={() => set(field.name, !checked)}
                     >
                       {field.label}
@@ -305,7 +305,7 @@ export function MediaSettingsPanel({
               if (field.type === "slider") {
                 return (
                   <div key={field.name} className="flex flex-col gap-1" style={{ minWidth: "160px" }}>
-                    <label className="flex items-center justify-between text-[11px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">
+                    <label className="flex items-center justify-between text-[13px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">
                       <span>{field.label}</span>
                       <span className="font-medium text-[#1A1A1A] dark:text-[#EDE8E3]">
                         {String(val ?? field.min ?? 0)}
@@ -356,7 +356,7 @@ export function MediaSettingsPanel({
               if (field.type === "text") {
                 return (
                   <div key={field.name} className="flex w-full flex-col gap-1">
-                    <label className="text-[11px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">
+                    <label className="text-[13px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">
                       {field.label}
                     </label>
                     <input
@@ -365,7 +365,7 @@ export function MediaSettingsPanel({
                       maxLength={field.max_length}
                       onChange={(e) => set(field.name, e.target.value)}
                       placeholder={field.label}
-                      className="rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-2 py-1 text-[12px] text-[#1A1A1A] focus:outline-none dark:border-[rgba(255,255,255,0.12)] dark:bg-[rgba(255,255,255,0.08)] dark:text-[#EDE8E3]"
+                      className="rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-2 py-1 text-[14px] text-[#1A1A1A] focus:outline-none dark:border-[rgba(255,255,255,0.12)] dark:bg-[rgba(255,255,255,0.08)] dark:text-[#EDE8E3]"
                       style={{ width: "100%" }}
                     />
                   </div>

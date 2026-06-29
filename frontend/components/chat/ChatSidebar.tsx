@@ -83,7 +83,7 @@ function ProjectModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-[15px] font-semibold text-[#1A1A1A]">
+          <h2 className="text-[17px] font-semibold text-[#1A1A1A]">
             {mode === "create" ? "Новый проект" : "Настройки проекта"}
           </h2>
           <button onClick={onClose} className="rounded-[7px] p-1 text-[rgba(13,13,13,0.4)] hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A] transition-colors">
@@ -92,19 +92,19 @@ function ProjectModal({
         </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
-            <label className="mb-1.5 block text-[11px] font-medium text-[rgba(13,13,13,0.55)]">Название</label>
+            <label className="mb-1.5 block text-[13px] font-medium text-[rgba(13,13,13,0.55)]">Название</label>
             <input
               autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Мой проект"
               maxLength={100}
-              className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
+              className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[15px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="mb-1.5 block text-[11px] font-medium text-[rgba(13,13,13,0.55)]">Иконка</label>
+              <label className="mb-1.5 block text-[13px] font-medium text-[rgba(13,13,13,0.55)]">Иконка</label>
               <div className="flex flex-wrap gap-1.5">
                 {PROJECT_ICONS.map((ic) => {
                   const Icon = PROJECT_ICON_MAP[ic];
@@ -120,7 +120,7 @@ function ProjectModal({
               </div>
             </div>
             <div>
-              <label className="mb-1.5 block text-[11px] font-medium text-[rgba(13,13,13,0.55)]">Цвет</label>
+              <label className="mb-1.5 block text-[13px] font-medium text-[rgba(13,13,13,0.55)]">Цвет</label>
               <div className="flex flex-wrap gap-1.5">
                 {PROJECT_COLORS.map((c) => (
                   <button key={c} type="button" onClick={() => setColor(c)}
@@ -132,7 +132,7 @@ function ProjectModal({
             </div>
           </div>
           <div>
-            <label className="mb-1.5 block text-[11px] font-medium text-[rgba(13,13,13,0.55)]">
+            <label className="mb-1.5 block text-[13px] font-medium text-[rgba(13,13,13,0.55)]">
               Системный промт <span className="text-[rgba(13,13,13,0.35)]">(необязательно)</span>
             </label>
             <textarea
@@ -140,19 +140,19 @@ function ProjectModal({
               onChange={(e) => setSystemPrompt(e.target.value)}
               placeholder="Ты — помощник-программист..."
               rows={3}
-              className="w-full resize-none rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[12px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
+              className="w-full resize-none rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[14px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
             />
           </div>
           {error && (
-            <div className="rounded-[8px] bg-[rgba(231,76,60,0.08)] px-3 py-2 text-[12px] text-[#e74c3c]">{error}</div>
+            <div className="rounded-[8px] bg-[rgba(231,76,60,0.08)] px-3 py-2 text-[14px] text-[#e74c3c]">{error}</div>
           )}
           <div className="flex justify-end gap-2">
             <button type="button" onClick={onClose}
-              className="rounded-[8px] px-3 py-1.5 text-[12px] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.06)] transition-colors">
+              className="rounded-[8px] px-3 py-1.5 text-[14px] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.06)] transition-colors">
               Отмена
             </button>
             <button type="submit" disabled={!name.trim() || loading}
-              className="rounded-[8px] bg-[#D97757] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 transition-colors">
+              className="rounded-[8px] bg-[#D97757] px-3 py-1.5 text-[14px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 transition-colors">
               {loading ? (mode === "create" ? "Создание..." : "Сохранение...") : (mode === "create" ? "Создать" : "Сохранить")}
             </button>
           </div>
@@ -202,10 +202,10 @@ function ProjectSidebarRow({
           >
             <ProjectIcon name={project.icon} size={10} />
           </span>
-          <span className="truncate text-[12px] text-[rgba(13,13,13,0.65)] group-hover:text-[#1A1A1A]">
+          <span className="truncate text-[14px] text-[rgba(13,13,13,0.65)] group-hover:text-[#1A1A1A]">
             {project.name}
           </span>
-          <span className="ml-auto shrink-0 text-[10px] text-[rgba(13,13,13,0.28)]">
+          <span className="ml-auto shrink-0 text-[12px] text-[rgba(13,13,13,0.28)]">
             {project.chat_count}
           </span>
           <ChevronDown
@@ -229,7 +229,7 @@ function ProjectSidebarRow({
               <div className="absolute right-0 top-6 z-50 w-36 overflow-hidden rounded-[8px] border border-[rgba(13,13,13,0.10)] bg-white shadow-lg">
                 <button
                   onClick={() => { setMenuOpen(false); onEdit(); }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-[rgba(13,13,13,0.70)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-[14px] text-[rgba(13,13,13,0.70)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
                 >
                   <Edit3 size={12} />
                   Переименовать
@@ -237,23 +237,23 @@ function ProjectSidebarRow({
                 {!confirmDelete ? (
                   <button
                     onClick={() => setConfirmDelete(true)}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-[#e74c3c] hover:bg-[rgba(231,76,60,0.05)] transition-colors"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-[14px] text-[#e74c3c] hover:bg-[rgba(231,76,60,0.05)] transition-colors"
                   >
                     <Trash2 size={12} />
                     Удалить
                   </button>
                 ) : (
                   <div className="flex items-center gap-1 px-2 py-1.5">
-                    <span className="flex-1 text-[11px] text-[rgba(13,13,13,0.55)]">Удалить?</span>
+                    <span className="flex-1 text-[13px] text-[rgba(13,13,13,0.55)]">Удалить?</span>
                     <button
                       onClick={() => { setMenuOpen(false); onDelete(); }}
-                      className="rounded-[4px] bg-[#e74c3c] px-2 py-0.5 text-[11px] font-medium text-white hover:bg-[#c0392b] transition-colors"
+                      className="rounded-[4px] bg-[#e74c3c] px-2 py-0.5 text-[13px] font-medium text-white hover:bg-[#c0392b] transition-colors"
                     >
                       Да
                     </button>
                     <button
                       onClick={() => setConfirmDelete(false)}
-                      className="rounded-[4px] px-1.5 py-0.5 text-[11px] text-[rgba(13,13,13,0.45)] hover:bg-[rgba(13,13,13,0.07)] transition-colors"
+                      className="rounded-[4px] px-1.5 py-0.5 text-[13px] text-[rgba(13,13,13,0.45)] hover:bg-[rgba(13,13,13,0.07)] transition-colors"
                     >
                       Нет
                     </button>
@@ -269,9 +269,9 @@ function ProjectSidebarRow({
       {isExpanded && (
         <div className="ml-6 pb-0.5 pt-0.5">
           {isLoading ? (
-            <div className="px-2 py-1.5 text-[11px] text-[rgba(13,13,13,0.35)]">Загрузка...</div>
+            <div className="px-2 py-1.5 text-[13px] text-[rgba(13,13,13,0.35)]">Загрузка...</div>
           ) : projectChats.length === 0 ? (
-            <p className="px-2 py-1 text-[11px] text-[rgba(13,13,13,0.35)]">Нет чатов</p>
+            <p className="px-2 py-1 text-[13px] text-[rgba(13,13,13,0.35)]">Нет чатов</p>
           ) : (
             projectChats.slice(0, 6).map((chat) => {
               const active = currentPath === `/chat/${chat.id}/` || currentPath === `/chat/${chat.id}`;
@@ -280,7 +280,7 @@ function ProjectSidebarRow({
                   key={chat.id}
                   href={`/chat/${chat.id}/`}
                   className={[
-                    "flex items-center rounded-[6px] px-2 py-1 text-[12px] transition-colors",
+                    "flex items-center rounded-[6px] px-2 py-1 text-[14px] transition-colors",
                     active
                       ? "bg-[rgba(217,119,87,0.08)] text-[#D97757]"
                       : "text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#1A1A1A]",
@@ -294,7 +294,7 @@ function ProjectSidebarRow({
           {projectChats.length > 6 && (
             <Link
               href={`/projects/${project.id}/`}
-              className="flex items-center gap-1 rounded-[6px] px-2 py-1 text-[11px] text-[rgba(13,13,13,0.40)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#D97757] transition-colors"
+              className="flex items-center gap-1 rounded-[6px] px-2 py-1 text-[13px] text-[rgba(13,13,13,0.40)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#D97757] transition-colors"
             >
               Все {projectChats.length} чатов
               <ChevronRight size={10} />
@@ -302,7 +302,7 @@ function ProjectSidebarRow({
           )}
           <Link
             href={`/models/?project_id=${project.id}`}
-            className="flex items-center gap-1.5 rounded-[6px] px-2 py-1.5 text-[11px] text-[rgba(13,13,13,0.38)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#D97757] transition-colors"
+            className="flex items-center gap-1.5 rounded-[6px] px-2 py-1.5 text-[13px] text-[rgba(13,13,13,0.38)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#D97757] transition-colors"
           >
             <Plus size={10} />
             Новый чат
@@ -401,10 +401,10 @@ function PreviewCard({
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[12px] font-semibold text-[#1A1A1A]">
+            <p className="truncate text-[14px] font-semibold text-[#1A1A1A]">
               {chat.title || chat.network.name}
             </p>
-            <p className="text-[10px] text-[rgba(13,13,13,0.42)]">
+            <p className="text-[12px] text-[rgba(13,13,13,0.42)]">
               {chat.network.name} · {timeAgo(chat.updated_at)}
             </p>
           </div>
@@ -416,7 +416,7 @@ function PreviewCard({
             chat.last_message.role === "user" ? (
               <div className="flex justify-end">
                 <div
-                  className="max-w-[85%] rounded-[10px] rounded-br-[3px] px-3 py-2 text-[11px] leading-[1.5] text-white"
+                  className="max-w-[85%] rounded-[10px] rounded-br-[3px] px-3 py-2 text-[13px] leading-[1.5] text-white"
                   style={{ background: "#1A1A1A" }}
                 >
                   {chat.last_message.preview}
@@ -427,19 +427,19 @@ function PreviewCard({
                 <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[rgba(217,119,87,0.10)]">
                   <MessageSquare size={10} className="text-[#D97757]" />
                 </div>
-                <p className="text-[11px] leading-[1.6] text-[rgba(13,13,13,0.72)]">
+                <p className="text-[13px] leading-[1.6] text-[rgba(13,13,13,0.72)]">
                   {chat.last_message.preview}
                 </p>
               </div>
             )
           ) : (
-            <p className="text-[11px] text-[rgba(13,13,13,0.35)]">Чат пустой</p>
+            <p className="text-[13px] text-[rgba(13,13,13,0.35)]">Чат пустой</p>
           )}
         </div>
 
         {/* CTA */}
         <div className="border-t border-[rgba(13,13,13,0.06)] px-3 py-2">
-          <p className="text-[10px] font-medium text-[rgba(217,119,87,0.75)]">
+          <p className="text-[12px] font-medium text-[rgba(217,119,87,0.75)]">
             Нажмите, чтобы продолжить
           </p>
         </div>
@@ -695,7 +695,7 @@ export function ChatSidebar() {
         <div className="flex items-center gap-1.5 px-2.5 pb-2 pt-2.5">
           <Link
             href="/models/"
-            className="flex h-8 flex-1 items-center gap-1.5 rounded-[7px] bg-[#D97757] px-3 text-[12px] font-medium text-white transition-colors hover:bg-[#C4623E]"
+            className="flex h-8 flex-1 items-center gap-1.5 rounded-[7px] bg-[#D97757] px-3 text-[14px] font-medium text-white transition-colors hover:bg-[#C4623E]"
           >
             <PenSquare size={13} />
             Новый чат
@@ -728,7 +728,7 @@ export function ChatSidebar() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Поиск чатов…"
-              className="w-full rounded-[8px] border border-[rgba(13,13,13,0.11)] bg-[rgba(13,13,13,0.03)] py-[6px] pl-7 pr-7 text-[12px] text-[#1A1A1A] outline-none placeholder:text-[rgba(13,13,13,0.32)] focus:border-[rgba(217,119,87,0.4)] focus:bg-white"
+              className="w-full rounded-[8px] border border-[rgba(13,13,13,0.11)] bg-[rgba(13,13,13,0.03)] py-[6px] pl-7 pr-7 text-[14px] text-[#1A1A1A] outline-none placeholder:text-[rgba(13,13,13,0.32)] focus:border-[rgba(217,119,87,0.4)] focus:bg-white"
             />
             {search ? (
               <button
@@ -740,7 +740,7 @@ export function ChatSidebar() {
             ) : (
               <button
                 onClick={() => window.dispatchEvent(new Event("open-global-search"))}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-medium text-[rgba(13,13,13,0.25)] hover:text-[rgba(217,119,87,0.7)] transition-colors"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-[12px] font-medium text-[rgba(13,13,13,0.25)] hover:text-[rgba(217,119,87,0.7)] transition-colors"
                 title="Поиск по истории (Ctrl+K)"
               >
                 ⌘K
@@ -754,7 +754,7 @@ export function ChatSidebar() {
           <div className="flex items-center justify-between px-3 pb-1 pt-2.5">
             <button
               onClick={() => setProjectsOpen((v) => !v)}
-              className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[rgba(13,13,13,0.28)] hover:text-[rgba(13,13,13,0.5)] transition-colors"
+              className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wider text-[rgba(13,13,13,0.28)] hover:text-[rgba(13,13,13,0.5)] transition-colors"
             >
               Проекты
               <ChevronDown
@@ -776,7 +776,7 @@ export function ChatSidebar() {
               {projects.length === 0 ? (
                 <button
                   onClick={() => setShowProjectModal("create")}
-                  className="mx-1 flex w-[calc(100%-8px)] items-center gap-2 rounded-[7px] px-2.5 py-1.5 text-[11px] text-[rgba(13,13,13,0.38)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#D97757] transition-colors"
+                  className="mx-1 flex w-[calc(100%-8px)] items-center gap-2 rounded-[7px] px-2.5 py-1.5 text-[13px] text-[rgba(13,13,13,0.38)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#D97757] transition-colors"
                 >
                   <Plus size={11} />
                   Создать проект
@@ -801,7 +801,7 @@ export function ChatSidebar() {
         {/* Chat list */}
         <div className="flex-1 overflow-y-auto">
           {filtered.length === 0 && (
-            <div className="px-4 py-10 text-center text-[12px] text-[rgba(13,13,13,0.38)]">
+            <div className="px-4 py-10 text-center text-[14px] text-[rgba(13,13,13,0.38)]">
               {search ? (
                 "Ничего не найдено"
               ) : (
@@ -818,7 +818,7 @@ export function ChatSidebar() {
 
           {grouped.map(({ group, items }) => (
             <div key={group}>
-              <p className="px-3 pb-0.5 pt-3 text-[10px] font-semibold uppercase tracking-wider text-[rgba(13,13,13,0.28)]">
+              <p className="px-3 pb-0.5 pt-3 text-[12px] font-semibold uppercase tracking-wider text-[rgba(13,13,13,0.28)]">
                 {group}
               </p>
 
@@ -874,21 +874,21 @@ export function ChatSidebar() {
                     <div className="min-w-0 flex-1">
                       {isDeleting ? (
                         <div className="py-0.5">
-                          <p className="mb-1.5 text-[11px] font-medium text-[rgba(13,13,13,0.65)]">
+                          <p className="mb-1.5 text-[13px] font-medium text-[rgba(13,13,13,0.65)]">
                             Удалить чат?
                           </p>
                           <div className="flex gap-1.5">
                             <button
                               onClick={() => deleteMutation.mutate(chat.id)}
                               disabled={deleteMutation.isPending}
-                              className="flex h-[22px] items-center gap-1 rounded-[5px] bg-[#e74c3c] px-2 text-[11px] font-medium text-white transition-colors hover:bg-[#c0392b] disabled:opacity-50"
+                              className="flex h-[22px] items-center gap-1 rounded-[5px] bg-[#e74c3c] px-2 text-[13px] font-medium text-white transition-colors hover:bg-[#c0392b] disabled:opacity-50"
                             >
                               <Trash2 size={10} />
                               Удалить
                             </button>
                             <button
                               onClick={() => setDeletingId(null)}
-                              className="flex h-[22px] items-center rounded-[5px] px-2 text-[11px] text-[rgba(13,13,13,0.5)] transition-colors hover:bg-[rgba(13,13,13,0.06)]"
+                              className="flex h-[22px] items-center rounded-[5px] px-2 text-[13px] text-[rgba(13,13,13,0.5)] transition-colors hover:bg-[rgba(13,13,13,0.06)]"
                             >
                               Отмена
                             </button>
@@ -906,7 +906,7 @@ export function ChatSidebar() {
                             }}
                             onBlur={() => submitRename(chat.id)}
                             onClick={(e) => e.stopPropagation()}
-                            className="min-w-0 flex-1 rounded-[5px] border border-[rgba(217,119,87,0.45)] bg-white px-1.5 py-0.5 text-[12px] text-[#1A1A1A] outline-none"
+                            className="min-w-0 flex-1 rounded-[5px] border border-[rgba(217,119,87,0.45)] bg-white px-1.5 py-0.5 text-[14px] text-[#1A1A1A] outline-none"
                           />
                           <button
                             onClick={() => submitRename(chat.id)}
@@ -920,24 +920,24 @@ export function ChatSidebar() {
                           <div className="flex items-baseline justify-between gap-1">
                             <p
                               className={[
-                                "truncate text-[12px] font-medium leading-[1.35]",
+                                "truncate text-[14px] font-medium leading-[1.35]",
                                 active ? "text-[#D97757]" : "text-[#1A1A1A]",
                               ].join(" ")}
                             >
                               {chat.title || chat.network.name}
                             </p>
-                            <span className="shrink-0 text-[10px] text-[rgba(13,13,13,0.28)]">
+                            <span className="shrink-0 text-[12px] text-[rgba(13,13,13,0.28)]">
                               {timeAgo(chat.updated_at)}
                             </span>
                           </div>
 
                           {chat.last_message ? (
-                            <p className="mt-0.5 truncate text-[11px] leading-[1.4] text-[rgba(13,13,13,0.42)]">
+                            <p className="mt-0.5 truncate text-[13px] leading-[1.4] text-[rgba(13,13,13,0.42)]">
                               {chat.last_message.role === "user" ? "Вы: " : ""}
                               {chat.last_message.preview}
                             </p>
                           ) : (
-                            <p className="mt-0.5 text-[11px] leading-[1.4] text-[rgba(13,13,13,0.27)]">
+                            <p className="mt-0.5 text-[13px] leading-[1.4] text-[rgba(13,13,13,0.27)]">
                               Пустой чат
                             </p>
                           )}

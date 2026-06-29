@@ -15,7 +15,7 @@ function CopyButton({ code }: { code: string }) {
   return (
     <button
       onClick={handle}
-      className="flex items-center gap-1.5 rounded-[6px] px-2.5 py-1 text-[11px] font-medium text-[rgba(255,255,255,0.4)] hover:text-[rgba(255,255,255,0.75)] transition-colors"
+      className="flex items-center gap-1.5 rounded-[6px] px-2.5 py-1 text-[13px] font-medium text-[rgba(255,255,255,0.4)] hover:text-[rgba(255,255,255,0.75)] transition-colors"
     >
       {copied ? <Check size={11} /> : <Copy size={11} />}
       {copied ? "Скопировано" : "Копировать"}
@@ -29,7 +29,7 @@ function CodeBlock({ code }: { code: string }) {
       <div className="flex items-center justify-end px-4 py-2 border-b border-[rgba(255,255,255,0.05)]">
         <CopyButton code={code} />
       </div>
-      <pre className="overflow-x-auto px-5 py-4 text-[13px] leading-relaxed font-mono text-[rgba(255,255,255,0.82)]">
+      <pre className="overflow-x-auto px-5 py-4 text-[15px] leading-relaxed font-mono text-[rgba(255,255,255,0.82)]">
         <code>{code}</code>
       </pre>
     </div>
@@ -58,7 +58,7 @@ export function CodeTabs({ tabs }: { tabs: CodeTabItem[] }) {
           <button
             key={t.key}
             onClick={() => setActive(t.key)}
-            className={`rounded-[7px] px-3 py-1 text-[12px] font-medium transition-all ${
+            className={`rounded-[7px] px-3 py-1 text-[14px] font-medium transition-all ${
               t.key === active
                 ? "bg-white text-[#1A1A1A] shadow-sm"
                 : "text-[rgba(13,13,13,0.5)] hover:text-[#1A1A1A]"

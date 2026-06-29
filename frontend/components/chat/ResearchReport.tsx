@@ -14,7 +14,7 @@ function CollapsibleSection({ title, html }: { title: string; html: string }) {
     <div className="border-b border-[rgba(13,13,13,0.06)] last:border-0 dark:border-[rgba(255,255,255,0.05)]">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 py-2 text-left text-[13px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]"
+        className="flex w-full items-center gap-2 py-2 text-left text-[15px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]"
       >
         {open ? (
           <ChevronDown size={13} className="shrink-0 text-[rgba(13,13,13,0.4)]" />
@@ -25,7 +25,7 @@ function CollapsibleSection({ title, html }: { title: string; html: string }) {
       </button>
       {open && (
         <div
-          className="pb-3 pl-5 text-[13px] leading-relaxed text-[rgba(13,13,13,0.8)] dark:text-[rgba(236,236,236,0.75)]"
+          className="pb-3 pl-5 text-[15px] leading-relaxed text-[rgba(13,13,13,0.8)] dark:text-[rgba(236,236,236,0.75)]"
           dangerouslySetInnerHTML={{ __html: html }}
         />
       )}
@@ -67,20 +67,20 @@ export function ResearchReport({ html, plainText }: Props) {
       <div className="mt-3 rounded-[12px] border border-[rgba(217,119,87,0.15)] bg-[rgba(217,119,87,0.02)]">
         <div className="flex items-center gap-2 border-b border-[rgba(217,119,87,0.1)] px-4 py-2.5">
           <BookOpen size={13} className="text-[#D97757]" />
-          <span className="flex-1 text-[11px] font-semibold uppercase tracking-wide text-[#D97757]">
+          <span className="flex-1 text-[13px] font-semibold uppercase tracking-wide text-[#D97757]">
             Отчёт исследования
           </span>
           <button
             onClick={handleExport}
             title="Скачать как Markdown"
-            className="flex items-center gap-1 rounded-[5px] px-2 py-1 text-[11px] text-[rgba(13,13,13,0.45)] transition hover:bg-[rgba(217,119,87,0.08)] hover:text-[#D97757] dark:text-[rgba(236,236,236,0.4)]"
+            className="flex items-center gap-1 rounded-[5px] px-2 py-1 text-[13px] text-[rgba(13,13,13,0.45)] transition hover:bg-[rgba(217,119,87,0.08)] hover:text-[#D97757] dark:text-[rgba(236,236,236,0.4)]"
           >
             <Download size={11} />
             MD
           </button>
         </div>
         <div
-          className="px-4 py-3 text-[14px] leading-relaxed"
+          className="px-4 py-3 text-[16px] leading-relaxed"
           dangerouslySetInnerHTML={{ __html: html }}
         />
       </div>
@@ -91,13 +91,13 @@ export function ResearchReport({ html, plainText }: Props) {
     <div className="mt-3 rounded-[12px] border border-[rgba(217,119,87,0.15)] bg-[rgba(217,119,87,0.02)]">
       <div className="flex items-center gap-2 border-b border-[rgba(217,119,87,0.1)] px-4 py-2.5">
         <BookOpen size={13} className="text-[#D97757]" />
-        <span className="flex-1 text-[11px] font-semibold uppercase tracking-wide text-[#D97757]">
+        <span className="flex-1 text-[13px] font-semibold uppercase tracking-wide text-[#D97757]">
           Отчёт исследования
         </span>
         <button
           onClick={handleExport}
           title="Скачать как Markdown"
-          className="flex items-center gap-1 rounded-[5px] px-2 py-1 text-[11px] text-[rgba(13,13,13,0.45)] transition hover:bg-[rgba(217,119,87,0.08)] hover:text-[#D97757] dark:text-[rgba(236,236,236,0.4)]"
+          className="flex items-center gap-1 rounded-[5px] px-2 py-1 text-[13px] text-[rgba(13,13,13,0.45)] transition hover:bg-[rgba(217,119,87,0.08)] hover:text-[#D97757] dark:text-[rgba(236,236,236,0.4)]"
         >
           <Download size={11} />
           MD

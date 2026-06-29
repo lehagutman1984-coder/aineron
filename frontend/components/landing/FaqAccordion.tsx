@@ -41,7 +41,7 @@ export function FaqAccordion() {
             onClick={() => setOpen(open === i ? null : i)}
             className="flex w-full items-center justify-between gap-4 py-4 text-left"
           >
-            <span className="text-[14px] font-medium text-[#1A1A1A]">{faq.q}</span>
+            <span className="text-[16px] font-medium text-[#1A1A1A]">{faq.q}</span>
             <ChevronDown
               size={16}
               className="shrink-0 text-[rgba(13,13,13,0.40)] transition-transform duration-200"
@@ -49,7 +49,7 @@ export function FaqAccordion() {
             />
           </button>
           {open === i && (
-            <p className="pb-4 text-[14px] leading-relaxed text-[rgba(13,13,13,0.60)]">
+            <p className="pb-4 text-[16px] leading-relaxed text-[rgba(13,13,13,0.60)]">
               {faq.a}
             </p>
           )}

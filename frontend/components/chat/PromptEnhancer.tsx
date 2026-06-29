@@ -72,7 +72,7 @@ export function PromptEnhancer({ prompt, onAccept, disabled }: PromptEnhancerPro
         onClick={() => (open ? close() : run())}
         title="Улучшить промпт с помощью ИИ"
         className={[
-          "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all disabled:cursor-not-allowed disabled:opacity-40",
+          "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[13px] font-medium transition-all disabled:cursor-not-allowed disabled:opacity-40",
           open
             ? "bg-[rgba(217,119,87,0.12)] text-[#D97757] ring-1 ring-[rgba(217,119,87,0.35)]"
             : "text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.38)] dark:hover:text-[#EDE8E3]",
@@ -88,7 +88,7 @@ export function PromptEnhancer({ prompt, onAccept, disabled }: PromptEnhancerPro
           style={{ border: "1px solid rgba(13,13,13,0.12)" }}
         >
           <div className="mb-2.5 flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-[12px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
+            <span className="flex items-center gap-1.5 text-[14px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
               <Wand2 size={13} className="text-[#D97757]" />
               Улучшенный промпт
             </span>
@@ -113,7 +113,7 @@ export function PromptEnhancer({ prompt, onAccept, disabled }: PromptEnhancerPro
                   run(s.value);
                 }}
                 className={[
-                  "rounded-full px-2.5 py-1 text-[11px] font-medium transition-all disabled:opacity-50",
+                  "rounded-full px-2.5 py-1 text-[13px] font-medium transition-all disabled:opacity-50",
                   style === s.value
                     ? "bg-[#D97757] text-white"
                     : "bg-[rgba(13,13,13,0.05)] text-[rgba(13,13,13,0.6)] hover:bg-[rgba(13,13,13,0.09)] dark:bg-[rgba(255,255,255,0.07)] dark:text-[rgba(236,236,236,0.6)]",
@@ -125,27 +125,27 @@ export function PromptEnhancer({ prompt, onAccept, disabled }: PromptEnhancerPro
           </div>
 
           {error ? (
-            <p className="py-2 text-[13px] text-[#e74c3c]">{error}</p>
+            <p className="py-2 text-[15px] text-[#e74c3c]">{error}</p>
           ) : loading ? (
-            <div className="flex items-center gap-2 py-3 text-[13px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">
+            <div className="flex items-center gap-2 py-3 text-[15px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">
               <Loader2 size={14} className="animate-spin" />
               Генерируем улучшенный промпт...
             </div>
           ) : (
             <>
               <div className="mb-2">
-                <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.38)] dark:text-[rgba(236,236,236,0.35)]">
+                <p className="mb-1 text-[12px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.38)] dark:text-[rgba(236,236,236,0.35)]">
                   Было
                 </p>
-                <p className="rounded-[8px] bg-[rgba(13,13,13,0.04)] px-2.5 py-1.5 text-[12px] leading-relaxed text-[rgba(13,13,13,0.6)] dark:bg-[rgba(255,255,255,0.05)] dark:text-[rgba(236,236,236,0.55)]">
+                <p className="rounded-[8px] bg-[rgba(13,13,13,0.04)] px-2.5 py-1.5 text-[14px] leading-relaxed text-[rgba(13,13,13,0.6)] dark:bg-[rgba(255,255,255,0.05)] dark:text-[rgba(236,236,236,0.55)]">
                   {original}
                 </p>
               </div>
               <div className="mb-3">
-                <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-[#D97757]">
+                <p className="mb-1 text-[12px] font-medium uppercase tracking-wide text-[#D97757]">
                   Стало
                 </p>
-                <p className="max-h-[180px] overflow-y-auto rounded-[8px] bg-[rgba(217,119,87,0.06)] px-2.5 py-1.5 text-[12px] leading-relaxed text-[#1A1A1A] ring-1 ring-[rgba(217,119,87,0.18)] dark:text-[#EDE8E3]">
+                <p className="max-h-[180px] overflow-y-auto rounded-[8px] bg-[rgba(217,119,87,0.06)] px-2.5 py-1.5 text-[14px] leading-relaxed text-[#1A1A1A] ring-1 ring-[rgba(217,119,87,0.18)] dark:text-[#EDE8E3]">
                   {enhanced}
                 </p>
               </div>
@@ -154,7 +154,7 @@ export function PromptEnhancer({ prompt, onAccept, disabled }: PromptEnhancerPro
                 <button
                   type="button"
                   onClick={() => run()}
-                  className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium text-[rgba(13,13,13,0.55)] transition-colors hover:bg-[rgba(13,13,13,0.05)] dark:text-[rgba(236,236,236,0.5)] dark:hover:bg-[rgba(255,255,255,0.08)]"
+                  className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[14px] font-medium text-[rgba(13,13,13,0.55)] transition-colors hover:bg-[rgba(13,13,13,0.05)] dark:text-[rgba(236,236,236,0.5)] dark:hover:bg-[rgba(255,255,255,0.08)]"
                 >
                   <RefreshCw size={12} />
                   Ещё раз
@@ -162,7 +162,7 @@ export function PromptEnhancer({ prompt, onAccept, disabled }: PromptEnhancerPro
                 <button
                   type="button"
                   onClick={close}
-                  className="rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium text-[rgba(13,13,13,0.55)] transition-colors hover:bg-[rgba(13,13,13,0.05)] dark:text-[rgba(236,236,236,0.5)] dark:hover:bg-[rgba(255,255,255,0.08)]"
+                  className="rounded-[8px] px-2.5 py-1.5 text-[14px] font-medium text-[rgba(13,13,13,0.55)] transition-colors hover:bg-[rgba(13,13,13,0.05)] dark:text-[rgba(236,236,236,0.5)] dark:hover:bg-[rgba(255,255,255,0.08)]"
                 >
                   Отмена
                 </button>
@@ -170,7 +170,7 @@ export function PromptEnhancer({ prompt, onAccept, disabled }: PromptEnhancerPro
                   type="button"
                   disabled={!enhanced}
                   onClick={accept}
-                  className="flex items-center gap-1.5 rounded-[8px] bg-[#D97757] px-3 py-1.5 text-[12px] font-medium text-white transition-all hover:bg-[#C4623E] disabled:opacity-40"
+                  className="flex items-center gap-1.5 rounded-[8px] bg-[#D97757] px-3 py-1.5 text-[14px] font-medium text-white transition-all hover:bg-[#C4623E] disabled:opacity-40"
                 >
                   <Check size={12} />
                   Применить

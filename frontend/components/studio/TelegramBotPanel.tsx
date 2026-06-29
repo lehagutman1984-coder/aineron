@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Bot, ExternalLink, Loader2, RefreshCw, StopCircle, Terminal } from 'lucide-react';
@@ -242,7 +242,7 @@ export function TelegramBotPanel({ projectId, refreshKey }: Props) {
                   {botState === 'starting' ? 'Запускаю бота в E2B…' : 'Бот работает в изолированной среде'}
                 </span>
                 {botState === 'running' && expiresAt > 0 && (
-                  <span className="ml-auto flex items-center gap-1 text-[10px] text-[var(--text-secondary)]">
+                  <span className="ml-auto flex items-center gap-1 text-[12px] text-[var(--text-secondary)]">
                     до: <SessionTimer expiresAt={expiresAt} onExpired={stopBot} />
                   </span>
                 )}
@@ -297,7 +297,7 @@ export function TelegramBotPanel({ projectId, refreshKey }: Props) {
                       Обновить
                     </button>
                   </div>
-                  <pre className="text-[11px] font-mono text-green-300 p-3 max-h-48 overflow-y-auto whitespace-pre-wrap break-all leading-relaxed">
+                  <pre className="text-[13px] font-mono text-green-300 p-3 max-h-48 overflow-y-auto whitespace-pre-wrap break-all leading-relaxed">
                     {logs.length === 0
                       ? (logsLoading ? 'Загрузка…' : 'Логи ещё не появились')
                       : logs.join('\n')}

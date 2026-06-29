@@ -70,7 +70,7 @@ export default function ReferralPage() {
 
   if (error || !data) {
     return (
-      <div className="rounded-[12px] border border-[rgba(231,76,60,0.2)] bg-[rgba(231,76,60,0.05)] p-6 text-[14px] text-[#e74c3c]">
+      <div className="rounded-[12px] border border-[rgba(231,76,60,0.2)] bg-[rgba(231,76,60,0.05)] p-6 text-[16px] text-[#e74c3c]">
         Не удалось загрузить данные реферальной программы
       </div>
     );
@@ -80,7 +80,7 @@ export default function ReferralPage() {
     <div className="px-4 py-10 sm:px-6 space-y-6">
       <div>
         <h1 className="text-[22px] font-bold text-[#1A1A1A]">Партнёрская программа</h1>
-        <p className="mt-1 text-[13px] text-[rgba(13,13,13,0.55)]">
+        <p className="mt-1 text-[15px] text-[rgba(13,13,13,0.55)]">
           Приглашайте друзей и получайте бонусы за каждую их покупку
         </p>
       </div>
@@ -88,7 +88,7 @@ export default function ReferralPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <div className="rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white p-4">
-          <div className="mb-1 flex items-center gap-2 text-[12px] text-[rgba(13,13,13,0.45)]">
+          <div className="mb-1 flex items-center gap-2 text-[14px] text-[rgba(13,13,13,0.45)]">
             <Users size={14} />
             Переходов
           </div>
@@ -96,7 +96,7 @@ export default function ReferralPage() {
         </div>
 
         <div className="rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white p-4">
-          <div className="mb-1 flex items-center gap-2 text-[12px] text-[rgba(13,13,13,0.45)]">
+          <div className="mb-1 flex items-center gap-2 text-[14px] text-[rgba(13,13,13,0.45)]">
             {data.balance_type === "rub" ? <Banknote size={14} /> : <Star size={14} />}
             {data.balance_type === "rub" ? "Баланс (руб.)" : "Баланс (звёзды)"}
           </div>
@@ -109,10 +109,10 @@ export default function ReferralPage() {
 
         {data.can_withdraw && (
           <div className="rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white p-4 flex flex-col justify-between">
-            <div className="mb-1 text-[12px] text-[rgba(13,13,13,0.45)]">Вывод средств</div>
+            <div className="mb-1 text-[14px] text-[rgba(13,13,13,0.45)]">Вывод средств</div>
             <button
               onClick={() => setShowWithdrawModal(true)}
-              className="flex items-center gap-2 rounded-[8px] bg-[#D97757] px-3 py-2 text-[13px] font-medium text-white hover:bg-[#C4623E] transition-colors"
+              className="flex items-center gap-2 rounded-[8px] bg-[#D97757] px-3 py-2 text-[15px] font-medium text-white hover:bg-[#C4623E] transition-colors"
             >
               <ArrowDownToLine size={14} />
               Запросить
@@ -123,9 +123,9 @@ export default function ReferralPage() {
 
       {/* Referral link */}
       <div className="rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white p-5">
-        <div className="mb-3 text-[13px] font-medium text-[rgba(13,13,13,0.65)]">Ваша реферальная ссылка</div>
+        <div className="mb-3 text-[15px] font-medium text-[rgba(13,13,13,0.65)]">Ваша реферальная ссылка</div>
         <div className="flex items-center gap-2">
-          <div className="flex-1 truncate rounded-[8px] border border-[rgba(13,13,13,0.12)] bg-[rgba(13,13,13,0.03)] px-3 py-2 text-[13px] font-mono text-[#1A1A1A]">
+          <div className="flex-1 truncate rounded-[8px] border border-[rgba(13,13,13,0.12)] bg-[rgba(13,13,13,0.03)] px-3 py-2 text-[15px] font-mono text-[#1A1A1A]">
             {data.referral_link}
           </div>
           <button
@@ -144,19 +144,19 @@ export default function ReferralPage() {
       {/* Earnings */}
       {data.earnings.length > 0 && (
         <div className="rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white">
-          <div className="border-b border-[rgba(13,13,13,0.08)] px-5 py-4 text-[14px] font-medium text-[#1A1A1A]">
+          <div className="border-b border-[rgba(13,13,13,0.08)] px-5 py-4 text-[16px] font-medium text-[#1A1A1A]">
             Начисления
           </div>
           <div className="divide-y divide-[rgba(13,13,13,0.06)]">
             {data.earnings.map((e) => (
               <div key={e.id} className="flex items-center justify-between px-5 py-3">
                 <div>
-                  <div className="text-[13px] text-[#1A1A1A]">
+                  <div className="text-[15px] text-[#1A1A1A]">
                     {e.description || e.tariff || "Реферальный бонус"}
                   </div>
-                  <div className="text-[11px] text-[rgba(13,13,13,0.45)]">{formatDate(e.created_at)}</div>
+                  <div className="text-[13px] text-[rgba(13,13,13,0.45)]">{formatDate(e.created_at)}</div>
                 </div>
-                <div className="text-right text-[13px] font-medium text-[#1A1A1A]">
+                <div className="text-right text-[15px] font-medium text-[#1A1A1A]">
                   {e.amount_rub > 0 && <div>+{e.amount_rub.toFixed(2)} ₽</div>}
                   {e.amount_stars > 0 && <div>+{e.amount_stars} звёзд</div>}
                 </div>
@@ -169,19 +169,19 @@ export default function ReferralPage() {
       {/* Withdrawals */}
       {data.withdrawals.length > 0 && (
         <div className="rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white">
-          <div className="border-b border-[rgba(13,13,13,0.08)] px-5 py-4 text-[14px] font-medium text-[#1A1A1A]">
+          <div className="border-b border-[rgba(13,13,13,0.08)] px-5 py-4 text-[16px] font-medium text-[#1A1A1A]">
             Запросы на вывод
           </div>
           <div className="divide-y divide-[rgba(13,13,13,0.06)]">
             {data.withdrawals.map((w) => (
               <div key={w.id} className="flex items-center justify-between px-5 py-3">
                 <div>
-                  <div className="text-[13px] text-[#1A1A1A]">Карта {w.card_number}</div>
-                  <div className="text-[11px] text-[rgba(13,13,13,0.45)]">{formatDate(w.created_at)}</div>
+                  <div className="text-[15px] text-[#1A1A1A]">Карта {w.card_number}</div>
+                  <div className="text-[13px] text-[rgba(13,13,13,0.45)]">{formatDate(w.created_at)}</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-[13px] font-medium text-[#1A1A1A]">{w.amount.toFixed(2)} ₽</div>
-                  <div className="text-[11px] text-[rgba(13,13,13,0.45)]">
+                  <div className="text-[15px] font-medium text-[#1A1A1A]">{w.amount.toFixed(2)} ₽</div>
+                  <div className="text-[13px] text-[rgba(13,13,13,0.45)]">
                     {STATUS_LABELS[w.status] ?? w.status}
                   </div>
                 </div>
@@ -194,8 +194,8 @@ export default function ReferralPage() {
       {data.earnings.length === 0 && (
         <div className="rounded-[12px] border border-[rgba(13,13,13,0.08)] bg-white p-8 text-center">
           <Users size={32} className="mx-auto mb-3 text-[rgba(13,13,13,0.20)]" />
-          <p className="text-[14px] font-medium text-[#1A1A1A]">Пока нет начислений</p>
-          <p className="mt-1 text-[13px] text-[rgba(13,13,13,0.45)]">
+          <p className="text-[16px] font-medium text-[#1A1A1A]">Пока нет начислений</p>
+          <p className="mt-1 text-[15px] text-[rgba(13,13,13,0.45)]">
             Поделитесь реферальной ссылкой, чтобы начать зарабатывать
           </p>
         </div>
@@ -214,7 +214,7 @@ export default function ReferralPage() {
             <h2 className="mb-4 text-[18px] font-bold text-[#1A1A1A]">Запросить вывод</h2>
 
             <div className="mb-3">
-              <label className="mb-1.5 block text-[12px] font-medium text-[rgba(13,13,13,0.65)]">
+              <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.65)]">
                 Сумма (₽)
               </label>
               <input
@@ -224,12 +224,12 @@ export default function ReferralPage() {
                 value={withdrawAmount}
                 onChange={(e) => setWithdrawAmount(e.target.value)}
                 placeholder="0.00"
-                className="h-10 w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[14px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
+                className="h-10 w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[16px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
               />
             </div>
 
             <div className="mb-4">
-              <label className="mb-1.5 block text-[12px] font-medium text-[rgba(13,13,13,0.65)]">
+              <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.65)]">
                 Номер карты
               </label>
               <input
@@ -238,12 +238,12 @@ export default function ReferralPage() {
                 onChange={(e) => setWithdrawCard(e.target.value)}
                 placeholder="0000 0000 0000 0000"
                 maxLength={19}
-                className="h-10 w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[14px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
+                className="h-10 w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[16px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
               />
             </div>
 
             {withdrawError && (
-              <div className="mb-3 rounded-[8px] bg-[rgba(231,76,60,0.08)] px-3 py-2.5 text-[13px] text-[#e74c3c]">
+              <div className="mb-3 rounded-[8px] bg-[rgba(231,76,60,0.08)] px-3 py-2.5 text-[15px] text-[#e74c3c]">
                 {withdrawError}
               </div>
             )}
@@ -251,7 +251,7 @@ export default function ReferralPage() {
             <div className="flex gap-2">
               <button
                 onClick={() => setShowWithdrawModal(false)}
-                className="flex-1 h-10 rounded-[8px] border border-[rgba(13,13,13,0.12)] text-[14px] text-[rgba(13,13,13,0.65)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
+                className="flex-1 h-10 rounded-[8px] border border-[rgba(13,13,13,0.12)] text-[16px] text-[rgba(13,13,13,0.65)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
               >
                 Отмена
               </button>
@@ -263,7 +263,7 @@ export default function ReferralPage() {
                   !withdrawCard ||
                   parseFloat(withdrawAmount) <= 0
                 }
-                className="flex-1 h-10 rounded-[8px] bg-[#D97757] text-[14px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 h-10 rounded-[8px] bg-[#D97757] text-[16px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {withdrawMutation.isPending ? "Отправка..." : "Запросить"}
               </button>

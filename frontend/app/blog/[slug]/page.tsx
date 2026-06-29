@@ -89,7 +89,7 @@ export default async function BlogPostPage({ params }: Props) {
 
       <article className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
         {/* Breadcrumbs */}
-        <nav className="mb-6 flex items-center gap-2 text-[13px] text-[rgba(13,13,13,0.45)]">
+        <nav className="mb-6 flex items-center gap-2 text-[15px] text-[rgba(13,13,13,0.45)]">
           <Link href="/" className="hover:text-[#1A1A1A] transition-colors">Главная</Link>
           <span>/</span>
           <Link href="/blog/" className="hover:text-[#1A1A1A] transition-colors">Блог</Link>
@@ -109,7 +109,7 @@ export default async function BlogPostPage({ params }: Props) {
         {/* Back */}
         <Link
           href="/blog/"
-          className="mb-6 inline-flex items-center gap-1.5 text-[13px] text-[rgba(13,13,13,0.55)] hover:text-[#1A1A1A] transition-colors"
+          className="mb-6 inline-flex items-center gap-1.5 text-[15px] text-[rgba(13,13,13,0.55)] hover:text-[#1A1A1A] transition-colors"
         >
           <ArrowLeft size={14} />
           Все статьи
@@ -118,14 +118,14 @@ export default async function BlogPostPage({ params }: Props) {
         {/* Header */}
         <header className="mb-8">
           {post.category && (
-            <span className="mb-3 inline-block text-[12px] font-semibold uppercase tracking-wide text-[#D97757]">
+            <span className="mb-3 inline-block text-[14px] font-semibold uppercase tracking-wide text-[#D97757]">
               {post.category.name}
             </span>
           )}
           <h1 className="mb-4 text-[30px] font-bold leading-tight text-[#1A1A1A] sm:text-[34px]">
             {post.title}
           </h1>
-          <div className="flex flex-wrap items-center gap-4 text-[13px] text-[rgba(13,13,13,0.5)]">
+          <div className="flex flex-wrap items-center gap-4 text-[15px] text-[rgba(13,13,13,0.5)]">
             <span className="flex items-center gap-1.5">
               <CalendarDays size={13} />
               {new Date(post.published_at).toLocaleDateString("ru-RU", {
@@ -157,15 +157,15 @@ export default async function BlogPostPage({ params }: Props) {
 
         {/* Content */}
         <div
-          className="prose prose-neutral max-w-none text-[15px] leading-relaxed text-[rgba(13,13,13,0.8)]
+          className="prose prose-neutral max-w-none text-[17px] leading-relaxed text-[rgba(13,13,13,0.8)]
             [&_h2]:mt-8 [&_h2]:text-[20px] [&_h2]:font-bold [&_h2]:text-[#1A1A1A]
             [&_h3]:mt-6 [&_h3]:text-[17px] [&_h3]:font-semibold [&_h3]:text-[#1A1A1A]
             [&_p]:mb-4
             [&_ul]:mb-4 [&_ul]:list-disc [&_ul]:pl-5
             [&_ol]:mb-4 [&_ol]:list-decimal [&_ol]:pl-5
             [&_li]:mb-1
-            [&_pre]:overflow-x-auto [&_pre]:rounded-[8px] [&_pre]:bg-[#f5f5f5] [&_pre]:p-4 [&_pre]:text-[13px]
-            [&_code]:rounded [&_code]:bg-[#f5f5f5] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-[13px] [&_code]:font-mono
+            [&_pre]:overflow-x-auto [&_pre]:rounded-[8px] [&_pre]:bg-[#f5f5f5] [&_pre]:p-4 [&_pre]:text-[15px]
+            [&_code]:rounded [&_code]:bg-[#f5f5f5] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-[15px] [&_code]:font-mono
             [&_a]:text-[#D97757] [&_a]:underline hover:[&_a]:no-underline
             [&_blockquote]:border-l-4 [&_blockquote]:border-[#D97757] [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-[rgba(13,13,13,0.6)]"
           dangerouslySetInnerHTML={{ __html: post.content }}
@@ -174,7 +174,7 @@ export default async function BlogPostPage({ params }: Props) {
         {/* Related networks */}
         {post.network_slugs.length > 0 && (
           <div className="mt-10 border-t border-[rgba(13,13,13,0.08)] pt-8">
-            <p className="mb-3 flex items-center gap-2 text-[13px] font-semibold text-[#1A1A1A]">
+            <p className="mb-3 flex items-center gap-2 text-[15px] font-semibold text-[#1A1A1A]">
               <Tag size={14} />
               Связанные нейросети
             </p>
@@ -183,7 +183,7 @@ export default async function BlogPostPage({ params }: Props) {
                 <Link
                   key={slug}
                   href={`/models/${slug}/`}
-                  className="rounded-full border border-[rgba(13,13,13,0.15)] px-3 py-1 text-[12px] text-[rgba(13,13,13,0.7)] transition-all hover:border-[#D97757] hover:text-[#D97757]"
+                  className="rounded-full border border-[rgba(13,13,13,0.15)] px-3 py-1 text-[14px] text-[rgba(13,13,13,0.7)] transition-all hover:border-[#D97757] hover:text-[#D97757]"
                 >
                   {slug}
                 </Link>

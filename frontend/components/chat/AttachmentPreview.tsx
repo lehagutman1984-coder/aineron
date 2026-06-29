@@ -70,21 +70,21 @@ function AttachmentChip({
       {/* Name + size */}
       <div className="min-w-0 flex-1 py-1.5">
         {attachment.uploading ? (
-          <div className="flex items-center gap-1.5 text-[11px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">
+          <div className="flex items-center gap-1.5 text-[13px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">
             <Loader2 size={11} className="animate-spin" />
             Загрузка...
           </div>
         ) : attachment.error ? (
-          <div className="flex items-center gap-1 text-[11px] text-[#e74c3c]">
+          <div className="flex items-center gap-1 text-[13px] text-[#e74c3c]">
             <AlertCircle size={11} />
             Ошибка
           </div>
         ) : (
-          <p className="truncate text-[11px] font-medium text-[#1A1A1A] dark:text-[#EDE8E3]">
+          <p className="truncate text-[13px] font-medium text-[#1A1A1A] dark:text-[#EDE8E3]">
             {attachment.filename}
           </p>
         )}
-        <p className="text-[10px] text-[rgba(13,13,13,0.38)] dark:text-[rgba(236,236,236,0.32)]">
+        <p className="text-[12px] text-[rgba(13,13,13,0.38)] dark:text-[rgba(236,236,236,0.32)]">
           {formatBytes(attachment.file_size)}
         </p>
       </div>

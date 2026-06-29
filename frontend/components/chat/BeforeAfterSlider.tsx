@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
@@ -61,10 +61,10 @@ export function BeforeAfterSlider({ beforeUrl, afterUrl, onClose }: Props) {
         </button>
 
         {/* Labels */}
-        <div className="absolute left-3 top-3 z-10 rounded-[6px] bg-black/60 px-2 py-1 text-[11px] font-medium text-white">
+        <div className="absolute left-3 top-3 z-10 rounded-[6px] bg-black/60 px-2 py-1 text-[13px] font-medium text-white">
           До
         </div>
-        <div className="absolute right-3 top-3 z-10 rounded-[6px] bg-black/60 px-2 py-1 text-[11px] font-medium text-white">
+        <div className="absolute right-3 top-3 z-10 rounded-[6px] bg-black/60 px-2 py-1 text-[13px] font-medium text-white">
           После
         </div>
 
@@ -107,7 +107,7 @@ export function BeforeAfterSlider({ beforeUrl, afterUrl, onClose }: Props) {
           </div>
         </div>
 
-        <p className="mt-2 text-center text-[12px] text-white/60">
+        <p className="mt-2 text-center text-[14px] text-white/60">
           Перетащите разделитель для сравнения
         </p>
       </div>

@@ -170,7 +170,7 @@ function EditProjectModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-[15px] font-semibold text-[#1A1A1A]">Настройки проекта</h2>
+          <h2 className="text-[17px] font-semibold text-[#1A1A1A]">Настройки проекта</h2>
           <button onClick={onClose} className="rounded-[7px] p-1 text-[rgba(13,13,13,0.4)] hover:bg-[rgba(13,13,13,0.06)] transition-colors">
             <X size={15} />
           </button>
@@ -178,19 +178,19 @@ function EditProjectModal({
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-[rgba(13,13,13,0.55)]">Название</label>
+            <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.55)]">Название</label>
             <input
               autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={100}
-              className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[14px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
+              className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[16px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-[rgba(13,13,13,0.55)]">Иконка</label>
+              <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.55)]">Иконка</label>
               <div className="flex flex-wrap gap-1.5">
                 {ICONS.map((ic) => {
                   const Icon = ICON_MAP[ic];
@@ -206,7 +206,7 @@ function EditProjectModal({
               </div>
             </div>
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-[rgba(13,13,13,0.55)]">Цвет</label>
+              <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.55)]">Цвет</label>
               <div className="flex flex-wrap gap-1.5">
                 {COLORS.map((c) => (
                   <button key={c} type="button" onClick={() => setColor(c)}
@@ -219,16 +219,16 @@ function EditProjectModal({
           </div>
 
           {error && (
-            <div className="rounded-[8px] bg-[rgba(231,76,60,0.08)] px-3 py-2 text-[13px] text-[#e74c3c]">{error}</div>
+            <div className="rounded-[8px] bg-[rgba(231,76,60,0.08)] px-3 py-2 text-[15px] text-[#e74c3c]">{error}</div>
           )}
 
           <div className="flex justify-end gap-2">
             <button type="button" onClick={onClose}
-              className="rounded-[8px] px-4 py-2 text-[13px] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.06)] transition-colors">
+              className="rounded-[8px] px-4 py-2 text-[15px] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.06)] transition-colors">
               Отмена
             </button>
             <button type="submit" disabled={!name.trim() || loading}
-              className="rounded-[8px] bg-[#D97757] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 transition-colors">
+              className="rounded-[8px] bg-[#D97757] px-4 py-2 text-[15px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 transition-colors">
               {loading ? "Сохранение..." : "Сохранить"}
             </button>
           </div>
@@ -274,8 +274,8 @@ function ChatsTab({ projectId, project }: { projectId: number; project: Project 
     return (
       <div className="flex flex-col items-center justify-center rounded-[16px] border border-dashed border-[rgba(13,13,13,0.15)] py-14 text-center">
         <MessageSquare size={28} className="mb-3 text-[rgba(13,13,13,0.22)]" />
-        <p className="mb-1 text-[14px] font-semibold text-[#1A1A1A]">Нет чатов</p>
-        <p className="text-[13px] text-[rgba(13,13,13,0.45)]">
+        <p className="mb-1 text-[16px] font-semibold text-[#1A1A1A]">Нет чатов</p>
+        <p className="text-[15px] text-[rgba(13,13,13,0.45)]">
           Нажмите «Новый чат» выше, чтобы начать
         </p>
       </div>
@@ -293,17 +293,17 @@ function ChatsTab({ projectId, project }: { projectId: number; project: Project 
           >
             {isDeleting ? (
               <div className="flex items-center gap-2">
-                <p className="flex-1 text-[13px] text-[rgba(13,13,13,0.65)]">Удалить этот чат?</p>
+                <p className="flex-1 text-[15px] text-[rgba(13,13,13,0.65)]">Удалить этот чат?</p>
                 <button
                   onClick={() => deleteMutation.mutate(chat.id)}
                   disabled={deleteMutation.isPending}
-                  className="rounded-[6px] bg-[#e74c3c] px-2.5 py-1 text-[12px] font-medium text-white hover:bg-[#c0392b] disabled:opacity-50 transition-colors"
+                  className="rounded-[6px] bg-[#e74c3c] px-2.5 py-1 text-[14px] font-medium text-white hover:bg-[#c0392b] disabled:opacity-50 transition-colors"
                 >
                   Удалить
                 </button>
                 <button
                   onClick={() => setDeletingId(null)}
-                  className="rounded-[6px] px-2.5 py-1 text-[12px] text-[rgba(13,13,13,0.50)] hover:bg-[rgba(13,13,13,0.06)] transition-colors"
+                  className="rounded-[6px] px-2.5 py-1 text-[14px] text-[rgba(13,13,13,0.50)] hover:bg-[rgba(13,13,13,0.06)] transition-colors"
                 >
                   Отмена
                 </button>
@@ -326,16 +326,16 @@ function ChatsTab({ projectId, project }: { projectId: number; project: Project 
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-2">
-                    <p className="truncate text-[14px] font-medium text-[#1A1A1A]">
+                    <p className="truncate text-[16px] font-medium text-[#1A1A1A]">
                       {chat.title || chat.network.name}
                     </p>
-                    <span className="shrink-0 text-[11px] text-[rgba(13,13,13,0.35)]">
+                    <span className="shrink-0 text-[13px] text-[rgba(13,13,13,0.35)]">
                       {timeAgo(chat.updated_at)}
                     </span>
                   </div>
-                  <p className="mt-0.5 text-[12px] text-[rgba(13,13,13,0.45)]">{chat.network.name}</p>
+                  <p className="mt-0.5 text-[14px] text-[rgba(13,13,13,0.45)]">{chat.network.name}</p>
                   {chat.last_message && (
-                    <p className="mt-1 truncate text-[12px] text-[rgba(13,13,13,0.40)]">
+                    <p className="mt-1 truncate text-[14px] text-[rgba(13,13,13,0.40)]">
                       {chat.last_message.role === "user" ? "Вы: " : ""}
                       {chat.last_message.preview}
                     </p>
@@ -401,7 +401,7 @@ function InstructionsTab({ project, onSaved }: { project: Project; onSaved: (p: 
       {/* Description */}
       <div className="flex items-start gap-2.5 rounded-[10px] bg-[rgba(217,119,87,0.06)] px-4 py-3">
         <Info size={14} className="mt-0.5 shrink-0 text-[#D97757]" />
-        <p className="text-[13px] leading-relaxed text-[rgba(13,13,13,0.65)]">
+        <p className="text-[15px] leading-relaxed text-[rgba(13,13,13,0.65)]">
           Инструкции применяются ко всем чатам в этом проекте как системный промт.
           AI будет следовать им автоматически при каждом ответе.
         </p>
@@ -409,7 +409,7 @@ function InstructionsTab({ project, onSaved }: { project: Project; onSaved: (p: 
 
       {/* Template chips */}
       <div>
-        <p className="mb-2 text-[12px] font-medium text-[rgba(13,13,13,0.45)] uppercase tracking-wide">
+        <p className="mb-2 text-[14px] font-medium text-[rgba(13,13,13,0.45)] uppercase tracking-wide">
           Шаблоны
         </p>
         <div className="flex flex-wrap gap-2">
@@ -417,7 +417,7 @@ function InstructionsTab({ project, onSaved }: { project: Project; onSaved: (p: 
             <button
               key={tpl.label}
               onClick={() => applyTemplate(tpl.text)}
-              className="rounded-full border border-[rgba(13,13,13,0.14)] bg-white px-3 py-1.5 text-[12px] font-medium text-[rgba(13,13,13,0.65)] transition-all hover:border-[#D97757] hover:bg-[rgba(217,119,87,0.05)] hover:text-[#D97757]"
+              className="rounded-full border border-[rgba(13,13,13,0.14)] bg-white px-3 py-1.5 text-[14px] font-medium text-[rgba(13,13,13,0.65)] transition-all hover:border-[#D97757] hover:bg-[rgba(217,119,87,0.05)] hover:text-[#D97757]"
             >
               {tpl.label}
             </button>
@@ -428,20 +428,20 @@ function InstructionsTab({ project, onSaved }: { project: Project; onSaved: (p: 
       {/* Editor / Preview toggle */}
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <p className="text-[12px] font-medium text-[rgba(13,13,13,0.45)] uppercase tracking-wide">
+          <p className="text-[14px] font-medium text-[rgba(13,13,13,0.45)] uppercase tracking-wide">
             Инструкции
           </p>
           <div className="flex items-center gap-1">
             <button
               onClick={() => setPreview(false)}
-              className={["flex items-center gap-1 rounded-[6px] px-2.5 py-1 text-[12px] font-medium transition-colors", !preview ? "bg-[rgba(13,13,13,0.07)] text-[#1A1A1A]" : "text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A]"].join(" ")}
+              className={["flex items-center gap-1 rounded-[6px] px-2.5 py-1 text-[14px] font-medium transition-colors", !preview ? "bg-[rgba(13,13,13,0.07)] text-[#1A1A1A]" : "text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A]"].join(" ")}
             >
               <Pencil size={11} />
               Редактор
             </button>
             <button
               onClick={() => setPreview(true)}
-              className={["flex items-center gap-1 rounded-[6px] px-2.5 py-1 text-[12px] font-medium transition-colors", preview ? "bg-[rgba(13,13,13,0.07)] text-[#1A1A1A]" : "text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A]"].join(" ")}
+              className={["flex items-center gap-1 rounded-[6px] px-2.5 py-1 text-[14px] font-medium transition-colors", preview ? "bg-[rgba(13,13,13,0.07)] text-[#1A1A1A]" : "text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A]"].join(" ")}
             >
               <Eye size={11} />
               Предпросмотр
@@ -452,11 +452,11 @@ function InstructionsTab({ project, onSaved }: { project: Project; onSaved: (p: 
         {preview ? (
           <div className="min-h-[220px] rounded-[10px] border border-[rgba(13,13,13,0.12)] bg-[rgba(13,13,13,0.02)] px-4 py-3">
             {value.trim() ? (
-              <div className="prose prose-sm max-w-none text-[13px] text-[#1A1A1A]">
+              <div className="prose prose-sm max-w-none text-[15px] text-[#1A1A1A]">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{value}</ReactMarkdown>
               </div>
             ) : (
-              <p className="text-[13px] text-[rgba(13,13,13,0.35)] italic">Инструкции не заданы</p>
+              <p className="text-[15px] text-[rgba(13,13,13,0.35)] italic">Инструкции не заданы</p>
             )}
           </div>
         ) : (
@@ -467,11 +467,11 @@ function InstructionsTab({ project, onSaved }: { project: Project; onSaved: (p: 
               onChange={(e) => setValue(e.target.value)}
               placeholder={`Ты — опытный программист. Отвечай на русском языке, приводи примеры кода...\n\nМожно описать:\n• Роль и стиль ответов AI\n• Предпочтительный формат вывода\n• Язык, тональность, ограничения`}
               rows={10}
-              className="w-full resize-none rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-white px-4 py-3 text-[13px] leading-relaxed text-[#1A1A1A] outline-none placeholder-[rgba(13,13,13,0.32)] focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
+              className="w-full resize-none rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-white px-4 py-3 text-[15px] leading-relaxed text-[#1A1A1A] outline-none placeholder-[rgba(13,13,13,0.32)] focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
             />
             <span
               className={[
-                "absolute bottom-3 right-3 text-[11px] tabular-nums transition-colors",
+                "absolute bottom-3 right-3 text-[13px] tabular-nums transition-colors",
                 isOverLimit ? "text-[#e74c3c] font-medium" : "text-[rgba(13,13,13,0.32)]",
               ].join(" ")}
             >
@@ -485,25 +485,25 @@ function InstructionsTab({ project, onSaved }: { project: Project; onSaved: (p: 
       {isOverLimit && (
         <div className="flex items-start gap-2 rounded-[8px] bg-[rgba(231,76,60,0.07)] px-3 py-2.5">
           <Info size={13} className="mt-0.5 shrink-0 text-[#e74c3c]" />
-          <p className="text-[12px] text-[#e74c3c]">
+          <p className="text-[14px] text-[#e74c3c]">
             Инструкция превышает рекомендуемый лимит 4 000 символов. Длинный промт уменьшает доступный контекст для диалога.
           </p>
         </div>
       )}
 
       {error && (
-        <div className="rounded-[8px] bg-[rgba(231,76,60,0.08)] px-3 py-2 text-[13px] text-[#e74c3c]">{error}</div>
+        <div className="rounded-[8px] bg-[rgba(231,76,60,0.08)] px-3 py-2 text-[15px] text-[#e74c3c]">{error}</div>
       )}
 
       {/* Save button */}
       <div className="flex items-center justify-between">
-        <p className="text-[12px] text-[rgba(13,13,13,0.40)]">
+        <p className="text-[14px] text-[rgba(13,13,13,0.40)]">
           Применяется ко всем чатам в проекте автоматически
         </p>
         <button
           onClick={handleSave}
           disabled={saving}
-          className="inline-flex items-center gap-1.5 rounded-[8px] bg-[#D97757] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 transition-colors"
+          className="inline-flex items-center gap-1.5 rounded-[8px] bg-[#D97757] px-4 py-2 text-[15px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 transition-colors"
         >
           {saved ? (
             <>
@@ -619,7 +619,7 @@ function FilesTab({ projectId }: { projectId: number }) {
       {/* Description */}
       <div className="flex items-start gap-2.5 rounded-[10px] bg-[rgba(217,119,87,0.06)] px-4 py-3">
         <Info size={14} className="mt-0.5 shrink-0 text-[#D97757]" />
-        <p className="text-[13px] leading-relaxed text-[rgba(13,13,13,0.65)]">
+        <p className="text-[15px] leading-relaxed text-[rgba(13,13,13,0.65)]">
           Загруженные файлы автоматически читаются AI в каждом чате проекта как база знаний.
           Поддерживаются PDF, Word, текст, код (до 20 МБ, макс. 20 файлов).
         </p>
@@ -635,7 +635,7 @@ function FilesTab({ projectId }: { projectId: number }) {
             value={searchQuery}
             onChange={(e) => { setSearchQuery(e.target.value); setSearchActive(true); }}
             onBlur={() => { if (!searchQuery.trim()) setSearchActive(false); }}
-            className="w-full rounded-[8px] border border-[rgba(13,13,13,0.1)] bg-white py-2 pl-8 pr-3 text-[13px] text-[#1A1A1A] placeholder:text-[rgba(13,13,13,0.35)] focus:border-[rgba(13,13,13,0.25)] focus:outline-none"
+            className="w-full rounded-[8px] border border-[rgba(13,13,13,0.1)] bg-white py-2 pl-8 pr-3 text-[15px] text-[#1A1A1A] placeholder:text-[rgba(13,13,13,0.35)] focus:border-[rgba(13,13,13,0.25)] focus:outline-none"
           />
           {isSearching && (
             <Loader2 size={12} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-[rgba(13,13,13,0.35)]" />
@@ -657,10 +657,10 @@ function FilesTab({ projectId }: { projectId: number }) {
         ].join(" ")}
       >
         <Upload size={22} className={dragOver ? "text-[#D97757]" : "text-[rgba(13,13,13,0.30)]"} />
-        <p className="text-[13px] font-medium text-[rgba(13,13,13,0.65)]">
+        <p className="text-[15px] font-medium text-[rgba(13,13,13,0.65)]">
           {dragOver ? "Отпустите для загрузки" : "Перетащите файлы или нажмите для выбора"}
         </p>
-        <p className="text-[11px] text-[rgba(13,13,13,0.35)]">
+        <p className="text-[13px] text-[rgba(13,13,13,0.35)]">
           PDF, DOCX, TXT, MD, PY, JS, TS, JSON и другие — до 20 МБ
         </p>
         <input
@@ -675,7 +675,7 @@ function FilesTab({ projectId }: { projectId: number }) {
 
       {/* Upload error */}
       {uploadMutation.error && (
-        <div className="flex items-center gap-2 rounded-[8px] bg-[rgba(231,76,60,0.08)] px-3 py-2 text-[13px] text-[#e74c3c]">
+        <div className="flex items-center gap-2 rounded-[8px] bg-[rgba(231,76,60,0.08)] px-3 py-2 text-[15px] text-[#e74c3c]">
           <AlertCircle size={14} />
           {(uploadMutation.error as Error).message ?? "Ошибка загрузки"}
         </div>
@@ -689,7 +689,7 @@ function FilesTab({ projectId }: { projectId: number }) {
           ))}
         </div>
       ) : displayedFiles.length === 0 ? (
-        <p className="py-4 text-center text-[13px] text-[rgba(13,13,13,0.38)]">
+        <p className="py-4 text-center text-[15px] text-[rgba(13,13,13,0.38)]">
           {searchActive && searchQuery.trim() ? "Ничего не найдено" : "Файлы не загружены"}
         </p>
       ) : (
@@ -710,35 +710,35 @@ function FilesTab({ projectId }: { projectId: number }) {
                   <FileTypeIcon type={f.file_type} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-medium text-[#1A1A1A]">{f.filename}</p>
+                  <p className="truncate text-[15px] font-medium text-[#1A1A1A]">{f.filename}</p>
                   <div className="mt-0.5 flex items-center gap-2">
-                    <span className="text-[11px] text-[rgba(13,13,13,0.40)]">{formatBytes(f.file_size)}</span>
+                    <span className="text-[13px] text-[rgba(13,13,13,0.40)]">{formatBytes(f.file_size)}</span>
                     {f.status === "processing" && (
-                      <span className="flex items-center gap-1 text-[11px] text-[rgba(13,13,13,0.45)]">
+                      <span className="flex items-center gap-1 text-[13px] text-[rgba(13,13,13,0.45)]">
                         <Loader2 size={10} className="animate-spin" />
                         Обработка...
                       </span>
                     )}
                     {f.status === "ready" && (
-                      <span className="flex items-center gap-1 text-[11px] text-[#22a85a]">
+                      <span className="flex items-center gap-1 text-[13px] text-[#22a85a]">
                         <Check size={10} />
                         Готов
                       </span>
                     )}
                     {f.status === "error" && (
-                      <span className="flex items-center gap-1 text-[11px] text-[#e74c3c]">
+                      <span className="flex items-center gap-1 text-[13px] text-[#e74c3c]">
                         <AlertCircle size={10} />
                         Ошибка
                       </span>
                     )}
                     {f.embed_status === "error" && (
-                      <span className="flex items-center gap-1 text-[11px] text-[rgba(231,76,60,0.7)]">
+                      <span className="flex items-center gap-1 text-[13px] text-[rgba(231,76,60,0.7)]">
                         <AlertCircle size={10} />
                         Индекс: ошибка
                       </span>
                     )}
                     {f.usage_hits > 0 && (
-                      <span className="text-[11px] text-[rgba(13,13,13,0.35)]">
+                      <span className="text-[13px] text-[rgba(13,13,13,0.35)]">
                         {f.usage_hits} {f.usage_hits === 1 ? "использование" : f.usage_hits < 5 ? "использования" : "использований"}
                       </span>
                     )}
@@ -750,13 +750,13 @@ function FilesTab({ projectId }: { projectId: number }) {
                     <button
                       onClick={() => deleteMutation.mutate(f.id)}
                       disabled={deleteMutation.isPending}
-                      className="rounded-[6px] bg-[#e74c3c] px-2.5 py-1 text-[11px] font-medium text-white hover:bg-[#c0392b] disabled:opacity-50 transition-colors"
+                      className="rounded-[6px] bg-[#e74c3c] px-2.5 py-1 text-[13px] font-medium text-white hover:bg-[#c0392b] disabled:opacity-50 transition-colors"
                     >
                       Удалить
                     </button>
                     <button
                       onClick={() => setDeletingId(null)}
-                      className="rounded-[6px] px-2 py-1 text-[11px] text-[rgba(13,13,13,0.45)] hover:bg-[rgba(13,13,13,0.06)] transition-colors"
+                      className="rounded-[6px] px-2 py-1 text-[13px] text-[rgba(13,13,13,0.45)] hover:bg-[rgba(13,13,13,0.06)] transition-colors"
                     >
                       Отмена
                     </button>
@@ -804,23 +804,23 @@ function FilesTab({ projectId }: { projectId: number }) {
               {/* Inline version history panel */}
               {versionFileId === f.id && (
                 <div className="mt-1 rounded-[8px] border border-[rgba(13,13,13,0.09)] bg-[rgba(13,13,13,0.02)] p-3">
-                  <p className="mb-2 text-[11px] font-semibold text-[rgba(13,13,13,0.6)]">История версий</p>
+                  <p className="mb-2 text-[13px] font-semibold text-[rgba(13,13,13,0.6)]">История версий</p>
                   {versionsLoading ? (
                     <div className="h-10 animate-pulse rounded-[6px] bg-[rgba(13,13,13,0.06)]" />
                   ) : fileVersions.length === 0 ? (
-                    <p className="text-[11px] text-[rgba(13,13,13,0.40)]">Снапшотов нет</p>
+                    <p className="text-[13px] text-[rgba(13,13,13,0.40)]">Снапшотов нет</p>
                   ) : (
                     <div className="flex flex-col gap-1.5">
                       {fileVersions.map((v) => (
                         <div key={v.id} className="flex items-center gap-3 rounded-[6px] bg-white px-2.5 py-1.5">
                           <div className="min-w-0 flex-1">
-                            <p className="text-[11px] font-medium text-[#1A1A1A]">
+                            <p className="text-[13px] font-medium text-[#1A1A1A]">
                               {new Date(v.created_at).toLocaleString("ru")}
                               {v.repo_sha && <span className="ml-1.5 text-[rgba(13,13,13,0.40)]">· {v.repo_sha.slice(0, 7)}</span>}
                             </p>
-                            <p className="truncate text-[10px] text-[rgba(13,13,13,0.40)]">{v.content_preview}</p>
+                            <p className="truncate text-[12px] text-[rgba(13,13,13,0.40)]">{v.content_preview}</p>
                           </div>
-                          <span className="shrink-0 text-[10px] text-[rgba(13,13,13,0.35)]">{(v.size / 1024).toFixed(1)} KB</span>
+                          <span className="shrink-0 text-[12px] text-[rgba(13,13,13,0.35)]">{(v.size / 1024).toFixed(1)} KB</span>
                           <button
                             onClick={async () => {
                               setRestoringVersionId(v.id);
@@ -834,7 +834,7 @@ function FilesTab({ projectId }: { projectId: number }) {
                               }
                             }}
                             disabled={restoringVersionId === v.id}
-                            className="shrink-0 rounded-[5px] border border-[rgba(13,13,13,0.14)] px-2 py-0.5 text-[10px] font-medium text-[rgba(13,13,13,0.55)] transition-colors hover:border-[#D97757] hover:text-[#D97757] disabled:opacity-50"
+                            className="shrink-0 rounded-[5px] border border-[rgba(13,13,13,0.14)] px-2 py-0.5 text-[12px] font-medium text-[rgba(13,13,13,0.55)] transition-colors hover:border-[#D97757] hover:text-[#D97757] disabled:opacity-50"
                           >
                             {restoringVersionId === v.id ? "..." : "Восстановить"}
                           </button>
@@ -855,10 +855,10 @@ function FilesTab({ projectId }: { projectId: number }) {
 
 /* ── Компоненты браузера файлов (вне ConnectorsTab, иначе React ремаунтит при каждом рендере) ── */
 function CommitStatusBadge({ status }: { status: ProjectCommit["status"] }) {
-  if (status === "pending") return <span className="flex items-center gap-1 text-[11px] text-[rgba(13,13,13,0.55)]"><Clock size={10} />Ожидает</span>;
-  if (status === "pushed") return <span className="flex items-center gap-1 text-[11px] text-[#22a85a]"><CheckCircle2 size={10} />Запушен</span>;
-  if (status === "rejected") return <span className="flex items-center gap-1 text-[11px] text-[rgba(13,13,13,0.40)]"><XCircle size={10} />Отклонён</span>;
-  if (status === "failed") return <span className="flex items-center gap-1 text-[11px] text-[#e74c3c]"><XCircle size={10} />Ошибка</span>;
+  if (status === "pending") return <span className="flex items-center gap-1 text-[13px] text-[rgba(13,13,13,0.55)]"><Clock size={10} />Ожидает</span>;
+  if (status === "pushed") return <span className="flex items-center gap-1 text-[13px] text-[#22a85a]"><CheckCircle2 size={10} />Запушен</span>;
+  if (status === "rejected") return <span className="flex items-center gap-1 text-[13px] text-[rgba(13,13,13,0.40)]"><XCircle size={10} />Отклонён</span>;
+  if (status === "failed") return <span className="flex items-center gap-1 text-[13px] text-[#e74c3c]"><XCircle size={10} />Ошибка</span>;
   return null;
 }
 
@@ -881,7 +881,7 @@ function TreeNode({ item, depth, childrenMap, connId, openDirs, selectedFile, on
       <button
         onClick={() => isDir ? onToggleDir(item.path) : onSelectFile(item.path, connId)}
         className={[
-          "flex w-full items-center gap-1.5 rounded-[5px] px-2 py-1 text-left text-[12px] transition-colors",
+          "flex w-full items-center gap-1.5 rounded-[5px] px-2 py-1 text-left text-[14px] transition-colors",
           isSelected ? "bg-[rgba(217,119,87,0.10)] text-[#D97757]" : "text-[rgba(13,13,13,0.75)] hover:bg-[rgba(13,13,13,0.05)]",
         ].join(" ")}
         style={{ paddingLeft: `${8 + depth * 14}px` }}
@@ -1112,7 +1112,7 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
       {/* Description */}
       <div className="flex items-start gap-2.5 rounded-[10px] bg-[rgba(217,119,87,0.06)] px-4 py-3">
         <Info size={14} className="mt-0.5 shrink-0 text-[#D97757]" />
-        <p className="text-[13px] leading-relaxed text-[rgba(13,13,13,0.65)]">
+        <p className="text-[15px] leading-relaxed text-[rgba(13,13,13,0.65)]">
           Подключите GitHub или Gitea-репозиторий: просматривайте файлы и пушьте изменения прямо из проекта.
         </p>
       </div>
@@ -1131,22 +1131,22 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                 }
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <p className="text-[14px] font-semibold text-[#1A1A1A]">{conn.owner}/{conn.repo}</p>
+                    <p className="text-[16px] font-semibold text-[#1A1A1A]">{conn.owner}/{conn.repo}</p>
                     {conn.sync_status === "ok" && (
-                      <span className="rounded-full bg-[rgba(34,168,90,0.12)] px-2 py-0.5 text-[10px] font-medium text-[#22a85a]">
+                      <span className="rounded-full bg-[rgba(34,168,90,0.12)] px-2 py-0.5 text-[12px] font-medium text-[#22a85a]">
                         синк OK{conn.last_sync_report?.created ? ` · +${conn.last_sync_report.created}` : ""}
                       </span>
                     )}
                     {conn.sync_status === "error" && (
                       <span
-                        className="rounded-full bg-[rgba(231,76,60,0.10)] px-2 py-0.5 text-[10px] font-medium text-[#e74c3c] cursor-help"
+                        className="rounded-full bg-[rgba(231,76,60,0.10)] px-2 py-0.5 text-[12px] font-medium text-[#e74c3c] cursor-help"
                         title={conn.last_sync_report?.error_detail || conn.last_sync_report?.error || "Ошибка синхронизации"}
                       >
                         синк ошибка: {conn.last_sync_report?.error || "неизвестно"}
                       </span>
                     )}
                   </div>
-                  <p className="text-[11px] text-[rgba(13,13,13,0.45)]">
+                  <p className="text-[13px] text-[rgba(13,13,13,0.45)]">
                     {conn.connector_type === "github" ? "GitHub" : "Gitea"} · ветка {conn.branch}
                     {conn.last_synced_at && <> · синхронизировано {new Date(conn.last_synced_at).toLocaleString("ru")}</>}
                     {conn.last_sync_report && conn.last_sync_report.created != null && conn.last_sync_report.created > 0 && (
@@ -1161,8 +1161,8 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                   </p>
                   {conn.webhook_url && (
                     <div className="mt-1.5 flex items-center gap-1.5">
-                      <span className="text-[10px] text-[rgba(13,13,13,0.40)]">Webhook:</span>
-                      <code className="max-w-[260px] truncate rounded-[4px] bg-[rgba(13,13,13,0.05)] px-1.5 py-0.5 text-[10px] text-[rgba(13,13,13,0.55)]">{conn.webhook_url}</code>
+                      <span className="text-[12px] text-[rgba(13,13,13,0.40)]">Webhook:</span>
+                      <code className="max-w-[260px] truncate rounded-[4px] bg-[rgba(13,13,13,0.05)] px-1.5 py-0.5 text-[12px] text-[rgba(13,13,13,0.55)]">{conn.webhook_url}</code>
                       <button
                         onClick={() => { navigator.clipboard.writeText(conn.webhook_url); setCopiedWebhook(conn.id); setTimeout(() => setCopiedWebhook(null), 1800); }}
                         className="text-[rgba(13,13,13,0.35)] hover:text-[#D97757]"
@@ -1177,7 +1177,7 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                   <button
                     onClick={() => handleSync(conn.id)}
                     disabled={syncingId === conn.id}
-                    className="flex items-center gap-1.5 rounded-[7px] border border-[rgba(13,13,13,0.14)] px-3 py-1.5 text-[12px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:border-[#D97757] hover:text-[#D97757] disabled:opacity-50"
+                    className="flex items-center gap-1.5 rounded-[7px] border border-[rgba(13,13,13,0.14)] px-3 py-1.5 text-[14px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:border-[#D97757] hover:text-[#D97757] disabled:opacity-50"
                     title="Синхронизировать файлы из репозитория в базу знаний"
                   >
                     <RefreshCw size={11} className={syncingId === conn.id ? "animate-spin" : ""} />
@@ -1186,7 +1186,7 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                   <button
                     onClick={() => { setBrowsingId(conn.id === browsingId ? null : conn.id); setSelectedFile(null); setFileContent(null); setOpenDirs(new Set()); }}
                     className={[
-                      "flex items-center gap-1.5 rounded-[7px] px-3 py-1.5 text-[12px] font-medium transition-colors",
+                      "flex items-center gap-1.5 rounded-[7px] px-3 py-1.5 text-[14px] font-medium transition-colors",
                       browsingId === conn.id
                         ? "bg-[rgba(217,119,87,0.12)] text-[#D97757]"
                         : "border border-[rgba(13,13,13,0.14)] text-[rgba(13,13,13,0.65)] hover:border-[#D97757] hover:text-[#D97757]",
@@ -1197,7 +1197,7 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                   </button>
                   <button
                     onClick={() => { setCommitConnId(conn.id); setShowCommitModal(true); }}
-                    className="flex items-center gap-1.5 rounded-[7px] border border-[rgba(13,13,13,0.14)] px-3 py-1.5 text-[12px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:border-[#22a85a] hover:text-[#22a85a]"
+                    className="flex items-center gap-1.5 rounded-[7px] border border-[rgba(13,13,13,0.14)] px-3 py-1.5 text-[14px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:border-[#22a85a] hover:text-[#22a85a]"
                   >
                     <Send size={11} />
                     Коммит
@@ -1207,7 +1207,7 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                     <button
                       onClick={() => handleDeploy(conn.id)}
                       disabled={deployingId === conn.id}
-                      className="flex items-center gap-1.5 rounded-[7px] border border-[rgba(13,13,13,0.14)] px-3 py-1.5 text-[12px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:border-[#D97757] hover:text-[#D97757] disabled:opacity-50"
+                      className="flex items-center gap-1.5 rounded-[7px] border border-[rgba(13,13,13,0.14)] px-3 py-1.5 text-[14px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:border-[#D97757] hover:text-[#D97757] disabled:opacity-50"
                       title="Запустить деплой"
                     >
                       {deployingId === conn.id ? (
@@ -1228,7 +1228,7 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                       qc.invalidateQueries({ queryKey: ["connectors", projectId] });
                     }}
                     className={[
-                      "flex items-center gap-1.5 rounded-[7px] px-2.5 py-1.5 text-[11px] font-medium transition-colors",
+                      "flex items-center gap-1.5 rounded-[7px] px-2.5 py-1.5 text-[13px] font-medium transition-colors",
                       conn.auto_sync
                         ? "bg-[rgba(217,119,87,0.10)] text-[#D97757]"
                         : "border border-[rgba(13,13,13,0.14)] text-[rgba(13,13,13,0.40)]",
@@ -1256,7 +1256,7 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                     {/* Tree panel */}
                     <div className="w-[200px] shrink-0 overflow-y-auto border-r border-[rgba(13,13,13,0.08)] py-1">
                       {treeLoading ? (
-                        <div className="flex items-center justify-center py-8 text-[12px] text-[rgba(13,13,13,0.40)]">
+                        <div className="flex items-center justify-center py-8 text-[14px] text-[rgba(13,13,13,0.40)]">
                           <Loader2 size={14} className="mr-1.5 animate-spin" />
                           Загрузка...
                         </div>
@@ -1268,14 +1268,14 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                             onSelectFile={handleFileClick} />
                         ))
                       ) : (
-                        <p className="px-3 py-6 text-center text-[12px] text-[rgba(13,13,13,0.38)]">Репозиторий пуст</p>
+                        <p className="px-3 py-6 text-center text-[14px] text-[rgba(13,13,13,0.38)]">Репозиторий пуст</p>
                       )}
                     </div>
                     {/* Content panel — Sprint 7.1: CodeEditor */}
                     <div className="flex flex-col flex-1 overflow-hidden" style={{ minHeight: 300, maxHeight: 460 }}>
                       {selectedFile && editorConnId === conn.id ? (
                         fileLoading ? (
-                          <div className="flex items-center justify-center py-10 text-[12px] text-[rgba(13,13,13,0.40)]">
+                          <div className="flex items-center justify-center py-10 text-[14px] text-[rgba(13,13,13,0.40)]">
                             <Loader2 size={14} className="mr-1.5 animate-spin" />
                             Загрузка...
                           </div>
@@ -1295,7 +1295,7 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                           />
                         )
                       ) : (
-                        <div className="flex h-full items-center justify-center py-10 text-[12px] text-[rgba(13,13,13,0.35)]">
+                        <div className="flex h-full items-center justify-center py-10 text-[14px] text-[rgba(13,13,13,0.35)]">
                           Выберите файл
                         </div>
                       )}
@@ -1310,7 +1310,7 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
           {!showConnectForm && connectors.length < 3 && (
             <button
               onClick={() => setShowConnectForm(true)}
-              className="flex items-center gap-2 rounded-[10px] border border-dashed border-[rgba(13,13,13,0.16)] px-4 py-3.5 text-[13px] text-[rgba(13,13,13,0.55)] transition-colors hover:border-[#D97757] hover:text-[#D97757]"
+              className="flex items-center gap-2 rounded-[10px] border border-dashed border-[rgba(13,13,13,0.16)] px-4 py-3.5 text-[15px] text-[rgba(13,13,13,0.55)] transition-colors hover:border-[#D97757] hover:text-[#D97757]"
             >
               <Link2 size={14} />
               Подключить репозиторий
@@ -1323,7 +1323,7 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
       {showConnectForm && (
         <form onSubmit={handleConnect} className="rounded-[12px] border border-[rgba(13,13,13,0.12)] bg-white p-5">
           <div className="mb-4 flex items-center justify-between">
-            <p className="text-[14px] font-semibold text-[#1A1A1A]">Подключить репозиторий</p>
+            <p className="text-[16px] font-semibold text-[#1A1A1A]">Подключить репозиторий</p>
             <button type="button" onClick={() => { setShowConnectForm(false); setConnectErr(null); }}
               className="rounded-[6px] p-1 text-[rgba(13,13,13,0.40)] hover:bg-[rgba(13,13,13,0.06)] transition-colors">
               <X size={14} />
@@ -1332,12 +1332,12 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
           <div className="flex flex-col gap-4">
             {/* Type */}
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-[rgba(13,13,13,0.55)]">Тип</label>
+              <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.55)]">Тип</label>
               <div className="flex gap-2">
                 {(["github", "gitea"] as const).map((t) => (
                   <button key={t} type="button" onClick={() => setConnType(t)}
                     className={[
-                      "flex items-center gap-1.5 rounded-[7px] border px-3 py-1.5 text-[13px] font-medium transition-colors",
+                      "flex items-center gap-1.5 rounded-[7px] border px-3 py-1.5 text-[15px] font-medium transition-colors",
                       connType === t
                         ? "border-[#D97757] bg-[rgba(217,119,87,0.07)] text-[#D97757]"
                         : "border-[rgba(13,13,13,0.14)] text-[rgba(13,13,13,0.65)] hover:border-[rgba(13,13,13,0.25)]",
@@ -1351,38 +1351,38 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
             </div>
             {/* URL */}
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-[rgba(13,13,13,0.55)]">URL репозитория</label>
+              <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.55)]">URL репозитория</label>
               <input value={repoUrl} onChange={(e) => setRepoUrl(e.target.value)} required
                 placeholder={connType === "github" ? "https://github.com/owner/repo" : "https://gitea.example.com/owner/repo"}
-                className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all" />
+                className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[15px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all" />
             </div>
             {/* PAT */}
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-[rgba(13,13,13,0.55)]">Personal Access Token</label>
+              <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.55)]">Personal Access Token</label>
               <input value={pat} onChange={(e) => setPat(e.target.value)} required type="password"
                 placeholder="ghp_... или gitea токен"
-                className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all" />
-              <p className="mt-1 text-[11px] text-[rgba(13,13,13,0.40)]">Токен хранится в зашифрованном виде</p>
+                className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[15px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all" />
+              <p className="mt-1 text-[13px] text-[rgba(13,13,13,0.40)]">Токен хранится в зашифрованном виде</p>
             </div>
             {/* Branch */}
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-[rgba(13,13,13,0.55)]">Ветка</label>
+              <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.55)]">Ветка</label>
               <input value={branch} onChange={(e) => setBranch(e.target.value)}
                 placeholder="main"
-                className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all" />
+                className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[15px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all" />
             </div>
             {connectErr && (
-              <div className="flex items-center gap-2 rounded-[7px] bg-[rgba(231,76,60,0.08)] px-3 py-2 text-[12px] text-[#e74c3c]">
+              <div className="flex items-center gap-2 rounded-[7px] bg-[rgba(231,76,60,0.08)] px-3 py-2 text-[14px] text-[#e74c3c]">
                 <AlertCircle size={12} /> {connectErr}
               </div>
             )}
             <div className="flex justify-end gap-2">
               <button type="button" onClick={() => { setShowConnectForm(false); setConnectErr(null); }}
-                className="rounded-[7px] px-4 py-2 text-[13px] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.05)] transition-colors">
+                className="rounded-[7px] px-4 py-2 text-[15px] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.05)] transition-colors">
                 Отмена
               </button>
               <button type="submit" disabled={connectLoading || !repoUrl.trim() || !pat.trim()}
-                className="flex items-center gap-1.5 rounded-[7px] bg-[#D97757] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 transition-colors">
+                className="flex items-center gap-1.5 rounded-[7px] bg-[#D97757] px-4 py-2 text-[15px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 transition-colors">
                 {connectLoading ? <><Loader2 size={12} className="animate-spin" />Подключение...</> : <><Link2 size={12} />Подключить</>}
               </button>
             </div>
@@ -1393,10 +1393,10 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
       {/* Commits section */}
       <div>
         <div className="mb-3 flex items-center justify-between">
-          <p className="text-[12px] font-semibold uppercase tracking-wide text-[rgba(13,13,13,0.45)]">Коммиты</p>
+          <p className="text-[14px] font-semibold uppercase tracking-wide text-[rgba(13,13,13,0.45)]">Коммиты</p>
           <button
             onClick={() => { setCommitConnId(connectors[0]?.id ?? null); setShowCommitModal(true); }}
-            className="flex items-center gap-1.5 rounded-[7px] border border-[rgba(13,13,13,0.14)] px-3 py-1.5 text-[12px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:border-[#D97757] hover:text-[#D97757]"
+            className="flex items-center gap-1.5 rounded-[7px] border border-[rgba(13,13,13,0.14)] px-3 py-1.5 text-[14px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:border-[#D97757] hover:text-[#D97757]"
           >
             <Plus size={12} />
             Новый коммит
@@ -1405,42 +1405,42 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
         {commitsLoading ? (
           <div className="h-12 animate-pulse rounded-[10px] bg-[rgba(13,13,13,0.05)]" />
         ) : commits.length === 0 ? (
-          <p className="py-4 text-center text-[13px] text-[rgba(13,13,13,0.38)]">Нет коммитов</p>
+          <p className="py-4 text-center text-[15px] text-[rgba(13,13,13,0.38)]">Нет коммитов</p>
         ) : (
           <div className="flex flex-col gap-2">
             {commits.map((c) => (
               <div key={c.id} className="rounded-[10px] border border-[rgba(13,13,13,0.09)] bg-white p-3.5">
                 <div className="flex items-start gap-3">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-medium text-[#1A1A1A]">{c.commit_message}</p>
+                    <p className="truncate text-[15px] font-medium text-[#1A1A1A]">{c.commit_message}</p>
                     <div className="mt-1 flex items-center gap-2 flex-wrap">
                       <CommitStatusBadge status={c.status} />
                       {c.kind === "pull_request" && (
-                        <span className="flex items-center gap-1 rounded-full bg-[rgba(217,119,87,0.08)] px-2 py-0.5 text-[10px] font-medium text-[#D97757]">
+                        <span className="flex items-center gap-1 rounded-full bg-[rgba(217,119,87,0.08)] px-2 py-0.5 text-[12px] font-medium text-[#D97757]">
                           <GitPullRequest size={9} />
                           PR
                         </span>
                       )}
-                      <span className="text-[11px] text-[rgba(13,13,13,0.35)]">
+                      <span className="text-[13px] text-[rgba(13,13,13,0.35)]">
                         {c.files.length} {c.files.length === 1 ? "файл" : "файлов"}
                       </span>
                       {c.pr_url && (
                         <a href={c.pr_url} target="_blank" rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-[11px] text-[#D97757] hover:underline">
+                          className="flex items-center gap-1 text-[13px] text-[#D97757] hover:underline">
                           <ExternalLink size={9} />
                           Открыть PR
                         </a>
                       )}
                     </div>
                     {c.status === "failed" && c.error_message && (
-                      <p className="mt-1 text-[11px] text-[#e74c3c] line-clamp-1">{c.error_message}</p>
+                      <p className="mt-1 text-[13px] text-[#e74c3c] line-clamp-1">{c.error_message}</p>
                     )}
                   </div>
                   {c.status === "pending" && (
                     <div className="flex shrink-0 items-center gap-1.5 flex-wrap justify-end">
                       <button
                         onClick={() => handleConfirm(c.id, "push")}
-                        className="flex items-center gap-1 rounded-[6px] bg-[#22a85a] px-2.5 py-1 text-[11px] font-medium text-white hover:bg-[#1a8a48] transition-colors"
+                        className="flex items-center gap-1 rounded-[6px] bg-[#22a85a] px-2.5 py-1 text-[13px] font-medium text-white hover:bg-[#1a8a48] transition-colors"
                       >
                         <Send size={10} />
                         Запушить
@@ -1448,7 +1448,7 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                       {c.connector_id && (
                         <button
                           onClick={() => handleConfirm(c.id, "pr")}
-                          className="flex items-center gap-1 rounded-[6px] border border-[rgba(217,119,87,0.4)] px-2.5 py-1 text-[11px] font-medium text-[#D97757] hover:bg-[rgba(217,119,87,0.06)] transition-colors"
+                          className="flex items-center gap-1 rounded-[6px] border border-[rgba(217,119,87,0.4)] px-2.5 py-1 text-[13px] font-medium text-[#D97757] hover:bg-[rgba(217,119,87,0.06)] transition-colors"
                         >
                           <GitPullRequest size={10} />
                           Pull Request
@@ -1456,7 +1456,7 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                       )}
                       <button
                         onClick={() => handleConfirm(c.id, "reject")}
-                        className="rounded-[6px] px-2.5 py-1 text-[11px] text-[rgba(13,13,13,0.45)] hover:bg-[rgba(13,13,13,0.06)] transition-colors"
+                        className="rounded-[6px] px-2.5 py-1 text-[13px] text-[rgba(13,13,13,0.45)] hover:bg-[rgba(13,13,13,0.06)] transition-colors"
                       >
                         Отклонить
                       </button>
@@ -1466,14 +1466,14 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                     <div className="flex shrink-0 items-center gap-1.5">
                       <button
                         onClick={() => handleConfirm(c.id, "push")}
-                        className="flex items-center gap-1 rounded-[6px] border border-[rgba(13,13,13,0.14)] px-2.5 py-1 text-[11px] text-[rgba(13,13,13,0.55)] hover:border-[#D97757] hover:text-[#D97757] transition-colors"
+                        className="flex items-center gap-1 rounded-[6px] border border-[rgba(13,13,13,0.14)] px-2.5 py-1 text-[13px] text-[rgba(13,13,13,0.55)] hover:border-[#D97757] hover:text-[#D97757] transition-colors"
                       >
                         <RefreshCw size={10} />
                         Повторить
                       </button>
                       <button
                         onClick={() => handleDelete(c.id)}
-                        className="flex items-center gap-1 rounded-[6px] border border-[rgba(13,13,13,0.10)] px-2 py-1 text-[11px] text-[rgba(13,13,13,0.35)] hover:border-[rgba(231,76,60,0.4)] hover:text-[#e74c3c] transition-colors"
+                        className="flex items-center gap-1 rounded-[6px] border border-[rgba(13,13,13,0.10)] px-2 py-1 text-[13px] text-[rgba(13,13,13,0.35)] hover:border-[rgba(231,76,60,0.4)] hover:text-[#e74c3c] transition-colors"
                         title="Удалить коммит"
                       >
                         <Trash2 size={10} />
@@ -1483,7 +1483,7 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                   {(c.status === "rejected" || c.status === "pushed") && (
                     <button
                       onClick={() => handleDelete(c.id)}
-                      className="flex shrink-0 items-center gap-1 rounded-[6px] border border-[rgba(13,13,13,0.10)] px-2 py-1 text-[11px] text-[rgba(13,13,13,0.35)] hover:border-[rgba(231,76,60,0.4)] hover:text-[#e74c3c] transition-colors"
+                      className="flex shrink-0 items-center gap-1 rounded-[6px] border border-[rgba(13,13,13,0.10)] px-2 py-1 text-[13px] text-[rgba(13,13,13,0.35)] hover:border-[rgba(231,76,60,0.4)] hover:text-[#e74c3c] transition-colors"
                       title="Удалить коммит"
                     >
                       <Trash2 size={10} />
@@ -1504,7 +1504,7 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-[15px] font-semibold text-[#1A1A1A]">Новый коммит</h2>
+              <h2 className="text-[17px] font-semibold text-[#1A1A1A]">Новый коммит</h2>
               <button onClick={() => setShowCommitModal(false)} className="rounded-[7px] p-1 text-[rgba(13,13,13,0.40)] hover:bg-[rgba(13,13,13,0.06)] transition-colors">
                 <X size={15} />
               </button>
@@ -1513,9 +1513,9 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
               {/* Connector select */}
               {connectors.length > 0 && (
                 <div>
-                  <label className="mb-1.5 block text-[12px] font-medium text-[rgba(13,13,13,0.55)]">Репозиторий</label>
+                  <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.55)]">Репозиторий</label>
                   <select value={commitConnId ?? ""} onChange={(e) => setCommitConnId(e.target.value ? Number(e.target.value) : null)}
-                    className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] text-[#1A1A1A] outline-none focus:border-[#D97757] transition-all">
+                    className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[15px] text-[#1A1A1A] outline-none focus:border-[#D97757] transition-all">
                     <option value="">Без репозитория (только запись)</option>
                     {connectors.map((c) => (
                       <option key={c.id} value={c.id}>{c.owner}/{c.repo} ({c.branch})</option>
@@ -1525,17 +1525,17 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
               )}
               {/* Commit message */}
               <div>
-                <label className="mb-1.5 block text-[12px] font-medium text-[rgba(13,13,13,0.55)]">Сообщение коммита</label>
+                <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.55)]">Сообщение коммита</label>
                 <input value={commitMsg} onChange={(e) => setCommitMsg(e.target.value)} required
                   placeholder="feat: add new feature"
-                  className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all" />
+                  className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[15px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all" />
               </div>
               {/* Files */}
               <div>
                 <div className="mb-2 flex items-center justify-between">
-                  <label className="text-[12px] font-medium text-[rgba(13,13,13,0.55)]">Файлы</label>
+                  <label className="text-[14px] font-medium text-[rgba(13,13,13,0.55)]">Файлы</label>
                   <button type="button" onClick={() => setCommitFiles((prev) => [...prev, { path: "", content: "" }])}
-                    className="flex items-center gap-1 text-[12px] text-[#D97757] hover:underline">
+                    className="flex items-center gap-1 text-[14px] text-[#D97757] hover:underline">
                     <Plus size={11} />Добавить файл
                   </button>
                 </div>
@@ -1545,7 +1545,7 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                       <div className="mb-2 flex items-center gap-2">
                         <input value={f.path} onChange={(e) => setCommitFiles((prev) => prev.map((x, j) => j === i ? { ...x, path: e.target.value } : x))}
                           placeholder="src/components/Button.tsx"
-                          className="flex-1 rounded-[6px] border border-[rgba(13,13,13,0.14)] px-2.5 py-1.5 text-[12px] text-[#1A1A1A] outline-none focus:border-[#D97757] transition-all" />
+                          className="flex-1 rounded-[6px] border border-[rgba(13,13,13,0.14)] px-2.5 py-1.5 text-[14px] text-[#1A1A1A] outline-none focus:border-[#D97757] transition-all" />
                         {commitFiles.length > 1 && (
                           <button type="button" onClick={() => setCommitFiles((prev) => prev.filter((_, j) => j !== i))}
                             className="shrink-0 rounded-[5px] p-1 text-[rgba(13,13,13,0.35)] hover:bg-[rgba(231,76,60,0.09)] hover:text-[#e74c3c] transition-colors">
@@ -1556,23 +1556,23 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                       <textarea value={f.content} onChange={(e) => setCommitFiles((prev) => prev.map((x, j) => j === i ? { ...x, content: e.target.value } : x))}
                         placeholder="Содержимое файла..."
                         rows={5}
-                        className="w-full resize-y rounded-[6px] border border-[rgba(13,13,13,0.14)] px-2.5 py-1.5 font-mono text-[11px] leading-relaxed text-[rgba(13,13,13,0.75)] outline-none focus:border-[#D97757] transition-all" />
+                        className="w-full resize-y rounded-[6px] border border-[rgba(13,13,13,0.14)] px-2.5 py-1.5 font-mono text-[13px] leading-relaxed text-[rgba(13,13,13,0.75)] outline-none focus:border-[#D97757] transition-all" />
                     </div>
                   ))}
                 </div>
               </div>
               {commitErr && (
-                <div className="flex items-center gap-2 rounded-[7px] bg-[rgba(231,76,60,0.08)] px-3 py-2 text-[12px] text-[#e74c3c]">
+                <div className="flex items-center gap-2 rounded-[7px] bg-[rgba(231,76,60,0.08)] px-3 py-2 text-[14px] text-[#e74c3c]">
                   <AlertCircle size={12} />{commitErr}
                 </div>
               )}
               <div className="flex justify-end gap-2">
                 <button type="button" onClick={() => setShowCommitModal(false)}
-                  className="rounded-[7px] px-4 py-2 text-[13px] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.05)] transition-colors">
+                  className="rounded-[7px] px-4 py-2 text-[15px] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.05)] transition-colors">
                   Отмена
                 </button>
                 <button type="submit" disabled={commitLoading || !commitMsg.trim() || commitFiles.every((f) => !f.path.trim())}
-                  className="flex items-center gap-1.5 rounded-[7px] bg-[#D97757] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 transition-colors">
+                  className="flex items-center gap-1.5 rounded-[7px] bg-[#D97757] px-4 py-2 text-[15px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 transition-colors">
                   {commitLoading ? <><Loader2 size={12} className="animate-spin" />Создание...</> : "Создать коммит"}
                 </button>
               </div>
@@ -1636,10 +1636,10 @@ function AccessTab({ project, onSaved }: { project: Project; onSaved: (p: Projec
               {project.is_public ? <Share2 size={16} className="text-[#D97757]" /> : <Lock size={16} className="text-[rgba(13,13,13,0.45)]" />}
             </div>
             <div>
-              <p className="text-[14px] font-semibold text-[#1A1A1A]">
+              <p className="text-[16px] font-semibold text-[#1A1A1A]">
                 {project.is_public ? "Space публичный" : "Space приватный"}
               </p>
-              <p className="text-[12px] text-[rgba(13,13,13,0.50)]">
+              <p className="text-[14px] text-[rgba(13,13,13,0.50)]">
                 {project.is_public ? "Доступен по публичной ссылке" : "Только вы видите этот Space"}
               </p>
             </div>
@@ -1666,23 +1666,23 @@ function AccessTab({ project, onSaved }: { project: Project; onSaved: (p: Projec
         {/* Public link */}
         {project.is_public && project.public_slug && (
           <div className="mt-4 rounded-[10px] border border-[rgba(217,119,87,0.18)] bg-[rgba(217,119,87,0.04)] p-3">
-            <p className="mb-1.5 text-[11px] font-medium text-[rgba(13,13,13,0.50)] uppercase tracking-wide">
+            <p className="mb-1.5 text-[13px] font-medium text-[rgba(13,13,13,0.50)] uppercase tracking-wide">
               Публичная ссылка
             </p>
             <div className="flex items-center gap-2">
-              <code className="flex-1 truncate rounded-[6px] bg-white px-3 py-1.5 text-[12px] font-mono text-[#D97757] border border-[rgba(217,119,87,0.15)]">
+              <code className="flex-1 truncate rounded-[6px] bg-white px-3 py-1.5 text-[14px] font-mono text-[#D97757] border border-[rgba(217,119,87,0.15)]">
                 {publicUrl}
               </code>
               <button
                 onClick={handleCopy}
-                className="flex items-center gap-1.5 rounded-[8px] bg-[#D97757] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[#C4623E] transition-colors"
+                className="flex items-center gap-1.5 rounded-[8px] bg-[#D97757] px-3 py-1.5 text-[14px] font-medium text-white hover:bg-[#C4623E] transition-colors"
               >
                 {copied ? <Check size={12} /> : <Copy size={12} />}
                 {copied ? "Скопировано" : "Копировать"}
               </button>
             </div>
             {(project.public_views ?? 0) > 0 && (
-              <p className="mt-1.5 text-[11px] text-[rgba(13,13,13,0.40)]">
+              <p className="mt-1.5 text-[13px] text-[rgba(13,13,13,0.40)]">
                 {project.public_views} {project.public_views === 1 ? "просмотр" : "просмотров"}
               </p>
             )}
@@ -1692,7 +1692,7 @@ function AccessTab({ project, onSaved }: { project: Project; onSaved: (p: Projec
 
       {/* Visibility settings */}
       <div className="rounded-[14px] border border-[rgba(13,13,13,0.09)] bg-white p-5">
-        <p className="mb-4 text-[13px] font-semibold text-[rgba(13,13,13,0.55)] uppercase tracking-wide">
+        <p className="mb-4 text-[15px] font-semibold text-[rgba(13,13,13,0.55)] uppercase tracking-wide">
           Что показывать в публичном Space
         </p>
 
@@ -1703,8 +1703,8 @@ function AccessTab({ project, onSaved }: { project: Project; onSaved: (p: Projec
           ].map(({ key, label, desc, value }) => (
             <div key={key} className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-[13px] font-medium text-[#1A1A1A]">{label}</p>
-                <p className="text-[12px] text-[rgba(13,13,13,0.45)]">{desc}</p>
+                <p className="text-[15px] font-medium text-[#1A1A1A]">{label}</p>
+                <p className="text-[14px] text-[rgba(13,13,13,0.45)]">{desc}</p>
               </div>
               <button
                 onClick={() => handleVisibilityChange(key, !value)}
@@ -1723,7 +1723,7 @@ function AccessTab({ project, onSaved }: { project: Project; onSaved: (p: Projec
         </div>
 
         {!project.is_public && (
-          <p className="mt-3 flex items-center gap-1.5 text-[12px] text-[rgba(13,13,13,0.40)]">
+          <p className="mt-3 flex items-center gap-1.5 text-[14px] text-[rgba(13,13,13,0.40)]">
             <Info size={12} />
             Настройки применятся после включения публичного доступа
           </p>
@@ -1793,7 +1793,7 @@ function CollaboratorsTab({ projectId }: { projectId: number }) {
       {/* Info */}
       <div className="flex items-start gap-2.5 rounded-[10px] bg-[rgba(217,119,87,0.06)] px-4 py-3">
         <Info size={14} className="mt-0.5 shrink-0 text-[#D97757]" />
-        <p className="text-[13px] leading-relaxed text-[rgba(13,13,13,0.65)]">
+        <p className="text-[15px] leading-relaxed text-[rgba(13,13,13,0.65)]">
           Пригласите коллег по email. Редактор может загружать файлы, синхронизировать репозитории и создавать коммиты.
           Наблюдатель — только читать.
         </p>
@@ -1801,7 +1801,7 @@ function CollaboratorsTab({ projectId }: { projectId: number }) {
 
       {/* Invite form */}
       <div className="rounded-[14px] border border-[rgba(13,13,13,0.09)] bg-white p-5">
-        <p className="mb-3 text-[13px] font-semibold text-[#1A1A1A]">Пригласить участника</p>
+        <p className="mb-3 text-[15px] font-semibold text-[#1A1A1A]">Пригласить участника</p>
         <form onSubmit={handleInvite} className="flex flex-col gap-3">
           <div className="flex gap-2">
             <input
@@ -1809,25 +1809,25 @@ function CollaboratorsTab({ projectId }: { projectId: number }) {
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
               placeholder="email@example.com"
-              className="flex-1 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
+              className="flex-1 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[15px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
               required
             />
             <select
               value={inviteRole}
               onChange={(e) => setInviteRole(e.target.value as "viewer" | "editor")}
-              className="rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] text-[#1A1A1A] outline-none focus:border-[#D97757] transition-all"
+              className="rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[15px] text-[#1A1A1A] outline-none focus:border-[#D97757] transition-all"
             >
               <option value="viewer">Наблюдатель</option>
               <option value="editor">Редактор</option>
             </select>
           </div>
           {inviteError && (
-            <p className="text-[12px] text-[#e74c3c]">{inviteError}</p>
+            <p className="text-[14px] text-[#e74c3c]">{inviteError}</p>
           )}
           <button
             type="submit"
             disabled={inviting || !inviteEmail.trim()}
-            className="flex items-center gap-1.5 self-start rounded-[8px] bg-[#D97757] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 transition-colors"
+            className="flex items-center gap-1.5 self-start rounded-[8px] bg-[#D97757] px-4 py-2 text-[15px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 transition-colors"
           >
             {inviting ? (
               <Loader2 size={13} className="animate-spin" />
@@ -1841,7 +1841,7 @@ function CollaboratorsTab({ projectId }: { projectId: number }) {
 
       {/* Collaborators list */}
       <div className="flex flex-col gap-3">
-        <p className="text-[12px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.40)]">
+        <p className="text-[14px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.40)]">
           Участники ({collabs.length})
         </p>
         {isLoading ? (
@@ -1851,26 +1851,26 @@ function CollaboratorsTab({ projectId }: { projectId: number }) {
             ))}
           </div>
         ) : collabs.length === 0 ? (
-          <p className="py-4 text-center text-[13px] text-[rgba(13,13,13,0.38)]">Нет участников</p>
+          <p className="py-4 text-center text-[15px] text-[rgba(13,13,13,0.38)]">Нет участников</p>
         ) : (
           collabs.map((c) => (
             <div
               key={c.id}
               className="flex items-center gap-3 rounded-[10px] border border-[rgba(13,13,13,0.09)] bg-white p-3.5"
             >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[rgba(13,13,13,0.07)] text-[13px] font-semibold text-[rgba(13,13,13,0.50)]">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[rgba(13,13,13,0.07)] text-[15px] font-semibold text-[rgba(13,13,13,0.50)]">
                 {c.email[0].toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[13px] font-medium text-[#1A1A1A]">{c.email}</p>
-                <p className="text-[11px] text-[rgba(13,13,13,0.40)]">{c.username}</p>
+                <p className="truncate text-[15px] font-medium text-[#1A1A1A]">{c.email}</p>
+                <p className="text-[13px] text-[rgba(13,13,13,0.40)]">{c.username}</p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <div className="flex items-center gap-1.5 rounded-[6px] border border-[rgba(13,13,13,0.12)] bg-white">
                   <button
                     onClick={() => c.role !== "viewer" && handleRoleChange(c, "viewer")}
                     className={[
-                      "flex items-center gap-1 rounded-[5px] px-2.5 py-1 text-[11px] font-medium transition-colors",
+                      "flex items-center gap-1 rounded-[5px] px-2.5 py-1 text-[13px] font-medium transition-colors",
                       c.role === "viewer"
                         ? "bg-[rgba(13,13,13,0.07)] text-[#1A1A1A]"
                         : "text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A]",
@@ -1883,7 +1883,7 @@ function CollaboratorsTab({ projectId }: { projectId: number }) {
                   <button
                     onClick={() => c.role !== "editor" && handleRoleChange(c, "editor")}
                     className={[
-                      "flex items-center gap-1 rounded-[5px] px-2.5 py-1 text-[11px] font-medium transition-colors",
+                      "flex items-center gap-1 rounded-[5px] px-2.5 py-1 text-[13px] font-medium transition-colors",
                       c.role === "editor"
                         ? "bg-[rgba(217,119,87,0.10)] text-[#D97757]"
                         : "text-[rgba(13,13,13,0.45)] hover:text-[#D97757]",
@@ -1940,11 +1940,11 @@ function AuditTab({ projectId }: { projectId: number }) {
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-[12px] font-semibold uppercase tracking-wide text-[rgba(13,13,13,0.45)]">
+      <p className="text-[14px] font-semibold uppercase tracking-wide text-[rgba(13,13,13,0.45)]">
         Журнал аудита
       </p>
       {entries.length === 0 ? (
-        <p className="py-8 text-center text-[13px] text-[rgba(13,13,13,0.38)]">Событий нет</p>
+        <p className="py-8 text-center text-[15px] text-[rgba(13,13,13,0.38)]">Событий нет</p>
       ) : (
         <div className="flex flex-col divide-y divide-[rgba(13,13,13,0.06)] rounded-[12px] border border-[rgba(13,13,13,0.09)] bg-white">
           {entries.map((e) => (
@@ -1953,11 +1953,11 @@ function AuditTab({ projectId }: { projectId: number }) {
                 {actionIcon[e.action] ?? <Info size={12} />}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[12px] font-medium text-[#1A1A1A]">{e.action_display}</p>
+                <p className="text-[14px] font-medium text-[#1A1A1A]">{e.action_display}</p>
                 {e.target && (
-                  <p className="truncate text-[11px] text-[rgba(13,13,13,0.45)]">{e.target}</p>
+                  <p className="truncate text-[13px] text-[rgba(13,13,13,0.45)]">{e.target}</p>
                 )}
-                <p className="text-[10px] text-[rgba(13,13,13,0.30)]">
+                <p className="text-[12px] text-[rgba(13,13,13,0.30)]">
                   {e.actor_email ?? "система"} &middot; {new Date(e.created_at).toLocaleString("ru")}
                 </p>
               </div>
@@ -2007,7 +2007,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
       {/* Back */}
       <Link
         href="/projects/"
-        className="mb-5 inline-flex items-center gap-1.5 text-[13px] text-[rgba(13,13,13,0.50)] hover:text-[#1A1A1A] transition-colors"
+        className="mb-5 inline-flex items-center gap-1.5 text-[15px] text-[rgba(13,13,13,0.50)] hover:text-[#1A1A1A] transition-colors"
       >
         <ArrowLeft size={14} />
         Все проекты
@@ -2027,17 +2027,17 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
           <div className="flex items-center gap-2">
             <h1 className="text-[22px] font-bold text-[#1A1A1A]">{project?.name ?? "Проект"}</h1>
             {project?.user_role === "editor" && (
-              <span className="rounded-full bg-[rgba(217,119,87,0.10)] px-2 py-0.5 text-[11px] font-medium text-[#D97757]">Редактор</span>
+              <span className="rounded-full bg-[rgba(217,119,87,0.10)] px-2 py-0.5 text-[13px] font-medium text-[#D97757]">Редактор</span>
             )}
             {project?.user_role === "viewer" && (
-              <span className="rounded-full bg-[rgba(13,13,13,0.07)] px-2 py-0.5 text-[11px] font-medium text-[rgba(13,13,13,0.50)]">Наблюдатель</span>
+              <span className="rounded-full bg-[rgba(13,13,13,0.07)] px-2 py-0.5 text-[13px] font-medium text-[rgba(13,13,13,0.50)]">Наблюдатель</span>
             )}
           </div>
           {/* Inline instructions preview under project name */}
           {hasInstructions && (
             <button
               onClick={() => setExpandInstructions((v) => !v)}
-              className="mt-1 flex items-center gap-1 text-[12px] text-[rgba(13,13,13,0.45)] hover:text-[rgba(13,13,13,0.65)] transition-colors"
+              className="mt-1 flex items-center gap-1 text-[14px] text-[rgba(13,13,13,0.45)] hover:text-[rgba(13,13,13,0.65)] transition-colors"
             >
               <FileText size={11} />
               <span>Инструкции активны</span>
@@ -2045,7 +2045,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
             </button>
           )}
           {hasInstructions && expandInstructions && (
-            <div className="mt-2 rounded-[8px] border border-[rgba(13,13,13,0.10)] bg-[rgba(13,13,13,0.02)] px-3 py-2.5 text-[12px] leading-relaxed text-[rgba(13,13,13,0.60)] line-clamp-4">
+            <div className="mt-2 rounded-[8px] border border-[rgba(13,13,13,0.10)] bg-[rgba(13,13,13,0.02)] px-3 py-2.5 text-[14px] leading-relaxed text-[rgba(13,13,13,0.60)] line-clamp-4">
               {project?.system_prompt}
             </div>
           )}
@@ -2082,7 +2082,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
         />
         <Link
           href={`/projects/${projectId}/kb/`}
-          className="relative flex items-center gap-1.5 border-b-2 -mb-px px-3 py-2.5 text-[13px] font-medium transition-colors border-transparent text-[rgba(13,13,13,0.52)] hover:text-[#1A1A1A]"
+          className="relative flex items-center gap-1.5 border-b-2 -mb-px px-3 py-2.5 text-[15px] font-medium transition-colors border-transparent text-[rgba(13,13,13,0.52)] hover:text-[#1A1A1A]"
         >
           <Database size={13} />
           База знаний
@@ -2123,7 +2123,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
         <div className="mb-4">
           <Link
             href={`/models/?project_id=${projectId}`}
-            className="inline-flex items-center gap-1.5 rounded-[9px] bg-[#D97757] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#C4623E] transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-[9px] bg-[#D97757] px-4 py-2 text-[15px] font-medium text-white hover:bg-[#C4623E] transition-colors"
           >
             <Plus size={14} />
             Новый чат
@@ -2179,7 +2179,7 @@ function TabButton({
     <button
       onClick={onClick}
       className={[
-        "relative flex items-center gap-1.5 px-3 py-2.5 text-[13px] font-medium transition-colors border-b-2 -mb-px",
+        "relative flex items-center gap-1.5 px-3 py-2.5 text-[15px] font-medium transition-colors border-b-2 -mb-px",
         active
           ? "border-[#D97757] text-[#D97757]"
           : "border-transparent text-[rgba(13,13,13,0.52)] hover:text-[#1A1A1A]",

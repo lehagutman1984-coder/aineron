@@ -112,7 +112,7 @@ export default function ComparePage() {
         <h1 className="text-[24px] font-bold text-[#1A1A1A] dark:text-[#EDE8E3]">
           Сравнение моделей
         </h1>
-        <p className="mt-1.5 text-[14px] text-[rgba(13,13,13,0.48)] dark:text-[rgba(236,236,236,0.42)]">
+        <p className="mt-1.5 text-[16px] text-[rgba(13,13,13,0.48)] dark:text-[rgba(236,236,236,0.42)]">
           {isImage
             ? "Один промпт — несколько изображений. Выберите 2–4 модели и сравните результат."
             : "Один запрос — несколько ответов. Выберите 2–3 нейросети и сравните результат."}
@@ -136,7 +136,7 @@ export default function ComparePage() {
                 key={tab.key}
                 onClick={() => switchMode(tab.key)}
                 className={[
-                  "flex items-center gap-1.5 rounded-[9px] px-4 py-1.5 text-[13px] font-medium transition-all",
+                  "flex items-center gap-1.5 rounded-[9px] px-4 py-1.5 text-[15px] font-medium transition-all",
                   active
                     ? "bg-white text-[#1A1A1A] shadow-sm dark:bg-[#2a2a2e] dark:text-[#EDE8E3]"
                     : "text-[rgba(13,13,13,0.5)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.45)]",
@@ -166,7 +166,7 @@ export default function ComparePage() {
           }}
           placeholder={isImage ? "Опишите изображение для генерации..." : "Введите запрос для сравнения..."}
           rows={4}
-          className="block w-full resize-none bg-white px-4 py-3.5 text-[14px] leading-relaxed text-[#1A1A1A] outline-none dark:bg-[#1C1917] dark:text-[#EDE8E3] dark:placeholder:text-[rgba(236,236,236,0.30)]"
+          className="block w-full resize-none bg-white px-4 py-3.5 text-[16px] leading-relaxed text-[#1A1A1A] outline-none dark:bg-[#1C1917] dark:text-[#EDE8E3] dark:placeholder:text-[rgba(236,236,236,0.30)]"
         />
       </div>
 
@@ -180,7 +180,7 @@ export default function ComparePage() {
           className="flex items-center justify-between px-4 py-3"
           style={{ borderBottom: "1px solid rgba(13,13,13,0.08)", background: "rgba(13,13,13,0.02)" }}
         >
-          <span className="text-[13px] font-medium text-[rgba(13,13,13,0.65)] dark:text-[rgba(236,236,236,0.55)]">
+          <span className="text-[15px] font-medium text-[rgba(13,13,13,0.65)] dark:text-[rgba(236,236,236,0.55)]">
             Выберите модели{" "}
             <span className="text-[#D97757]">{selected.length}/{maxSelect}</span>
           </span>
@@ -190,7 +190,7 @@ export default function ComparePage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Поиск..."
-              className="h-7 rounded-[7px] border border-[rgba(13,13,13,0.12)] bg-white pl-7 pr-3 text-[12px] text-[#1A1A1A] outline-none focus:border-[#D97757] dark:border-[rgba(255,255,255,0.12)] dark:bg-[#1c1c1f] dark:text-[#EDE8E3]"
+              className="h-7 rounded-[7px] border border-[rgba(13,13,13,0.12)] bg-white pl-7 pr-3 text-[14px] text-[#1A1A1A] outline-none focus:border-[#D97757] dark:border-[rgba(255,255,255,0.12)] dark:bg-[#1c1c1f] dark:text-[#EDE8E3]"
             />
           </div>
         </div>
@@ -237,10 +237,10 @@ export default function ComparePage() {
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[12px] font-medium text-[#1A1A1A] dark:text-[#EDE8E3]">
+                      <p className="truncate text-[14px] font-medium text-[#1A1A1A] dark:text-[#EDE8E3]">
                         {network.name}
                       </p>
-                      <p className="text-[11px] text-[rgba(13,13,13,0.40)] dark:text-[rgba(236,236,236,0.35)]">
+                      <p className="text-[13px] text-[rgba(13,13,13,0.40)] dark:text-[rgba(236,236,236,0.35)]">
                         {network.cost_per_message} зв.
                       </p>
                     </div>
@@ -251,7 +251,7 @@ export default function ComparePage() {
                 );
               })}
               {filtered.length === 0 && (
-                <p className="col-span-3 py-6 text-center text-[13px] text-[rgba(13,13,13,0.4)]">
+                <p className="col-span-3 py-6 text-center text-[15px] text-[rgba(13,13,13,0.4)]">
                   {isImage ? "Image-модели не найдены" : "Модели не найдены"}
                 </p>
               )}
@@ -268,7 +268,7 @@ export default function ComparePage() {
             return (
               <span
                 key={slug}
-                className="flex items-center gap-1.5 rounded-full border border-[#D97757] bg-[rgba(217,119,87,0.08)] px-3 py-1 text-[12px] font-medium text-[#D97757]"
+                className="flex items-center gap-1.5 rounded-full border border-[#D97757] bg-[rgba(217,119,87,0.08)] px-3 py-1 text-[14px] font-medium text-[#D97757]"
               >
                 {n?.name ?? slug}
                 <button onClick={() => toggleModel(slug)}>
@@ -282,12 +282,12 @@ export default function ComparePage() {
 
       {/* Error */}
       {error && (
-        <p className="mb-3 text-[13px] text-[#e74c3c]">{error}</p>
+        <p className="mb-3 text-[15px] text-[#e74c3c]">{error}</p>
       )}
 
       {/* Submit row */}
       <div className="flex items-center justify-between">
-        <p className="text-[13px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.38)]">
+        <p className="text-[15px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.38)]">
           {selected.length < 2
             ? "Выберите минимум 2 модели"
             : isImage
@@ -297,7 +297,7 @@ export default function ComparePage() {
         <button
           onClick={handleSubmit}
           disabled={!prompt.trim() || selected.length < 2 || isSubmitting}
-          className="flex items-center gap-2 rounded-[10px] px-5 py-2.5 text-[14px] font-medium text-white transition-all disabled:cursor-not-allowed disabled:opacity-35"
+          className="flex items-center gap-2 rounded-[10px] px-5 py-2.5 text-[16px] font-medium text-white transition-all disabled:cursor-not-allowed disabled:opacity-35"
           style={{ background: "#1A1A1A" }}
         >
           {isSubmitting ? (
@@ -373,16 +373,16 @@ function ResultsView({
       >
         <div className="mx-auto flex max-w-7xl items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.38)] dark:text-[rgba(236,236,236,0.35)]">
+            <p className="text-[13px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.38)] dark:text-[rgba(236,236,236,0.35)]">
               Запрос
             </p>
-            <p className="mt-0.5 line-clamp-2 text-[13px] text-[#1A1A1A] dark:text-[#EDE8E3]">
+            <p className="mt-0.5 line-clamp-2 text-[15px] text-[#1A1A1A] dark:text-[#EDE8E3]">
               {prompt}
             </p>
           </div>
           <button
             onClick={onReset}
-            className="flex shrink-0 items-center gap-1.5 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 py-1.5 text-[12px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:bg-[rgba(13,13,13,0.05)] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.55)]"
+            className="flex shrink-0 items-center gap-1.5 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 py-1.5 text-[14px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:bg-[rgba(13,13,13,0.05)] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.55)]"
           >
             <RotateCcw size={12} />
             Новое сравнение
@@ -392,7 +392,7 @@ function ResultsView({
         {/* Arena vote row */}
         {allDone && !voted && (
           <div className="mx-auto mt-3 max-w-7xl">
-            <p className="mb-2 flex items-center gap-1.5 text-[12px] font-medium text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.45)]">
+            <p className="mb-2 flex items-center gap-1.5 text-[14px] font-medium text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.45)]">
               <Trophy size={12} className="text-[#f4a017]" />
               {isImage ? "Какое изображение лучше?" : "Какой ответ лучший?"} Ваш голос влияет на Elo-рейтинг арены.
             </p>
@@ -401,18 +401,18 @@ function ResultsView({
                 <button
                   key={item.network_slug}
                   onClick={() => handleVote(item.network_slug)}
-                  className="flex items-center gap-1.5 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 py-1.5 text-[12px] font-medium text-[rgba(13,13,13,0.65)] transition-all hover:border-[#f4a017] hover:bg-[rgba(244,160,23,0.07)] hover:text-[#c68a00] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.55)]"
+                  className="flex items-center gap-1.5 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 py-1.5 text-[14px] font-medium text-[rgba(13,13,13,0.65)] transition-all hover:border-[#f4a017] hover:bg-[rgba(244,160,23,0.07)] hover:text-[#c68a00] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.55)]"
                 >
                   <Trophy size={11} />
                   {item.network_name}
                 </button>
               ))}
             </div>
-            {voteError && <p className="mt-1 text-[12px] text-[#e74c3c]">{voteError}</p>}
+            {voteError && <p className="mt-1 text-[14px] text-[#e74c3c]">{voteError}</p>}
           </div>
         )}
         {voted && (
-          <p className="mx-auto mt-2 max-w-7xl text-[12px] text-[rgba(13,13,13,0.50)] dark:text-[rgba(236,236,236,0.42)]">
+          <p className="mx-auto mt-2 max-w-7xl text-[14px] text-[rgba(13,13,13,0.50)] dark:text-[rgba(236,236,236,0.42)]">
             Голос засчитан — рейтинг Elo обновлён.
           </p>
         )}
@@ -498,12 +498,12 @@ function CompareColumn({
       >
         <div className="flex min-w-0 items-center gap-2">
           <ModelAvatar avatar={item.network_avatar} name={item.network_name} size={22} />
-          <span className="truncate text-[13px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
+          <span className="truncate text-[15px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
             {item.network_name}
           </span>
           {isWinner && <Trophy size={13} className="shrink-0 text-[#f4a017]" />}
         </div>
-        <span className="ml-2 shrink-0 rounded-full bg-[rgba(13,13,13,0.06)] px-2 py-0.5 text-[11px] text-[rgba(13,13,13,0.48)] dark:bg-[rgba(255,255,255,0.06)] dark:text-[rgba(236,236,236,0.40)]">
+        <span className="ml-2 shrink-0 rounded-full bg-[rgba(13,13,13,0.06)] px-2 py-0.5 text-[13px] text-[rgba(13,13,13,0.48)] dark:bg-[rgba(255,255,255,0.06)] dark:text-[rgba(236,236,236,0.40)]">
           {item.cost} зв.
         </span>
       </div>
@@ -521,7 +521,7 @@ function CompareColumn({
             ))}
           </div>
         ) : message.status === "failed" ? (
-          <p className="text-[13px] text-[#e74c3c]">
+          <p className="text-[15px] text-[#e74c3c]">
             {message.error_message ?? "Ошибка генерации. Попробуйте ещё раз."}
           </p>
         ) : (
@@ -537,14 +537,14 @@ function CompareColumn({
         >
           <button
             onClick={handleCopy}
-            className="flex items-center gap-1.5 rounded-[6px] px-2.5 py-1.5 text-[12px] text-[rgba(13,13,13,0.50)] transition-colors hover:bg-[rgba(13,13,13,0.05)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.45)] dark:hover:text-[#EDE8E3]"
+            className="flex items-center gap-1.5 rounded-[6px] px-2.5 py-1.5 text-[14px] text-[rgba(13,13,13,0.50)] transition-colors hover:bg-[rgba(13,13,13,0.05)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.45)] dark:hover:text-[#EDE8E3]"
           >
             {copied ? <Check size={12} /> : <Copy size={12} />}
             {copied ? "Скопировано" : "Копировать"}
           </button>
           <Link
             href={`/chat/${item.chat_id}/`}
-            className="flex items-center gap-1.5 rounded-[6px] px-2.5 py-1.5 text-[12px] text-[rgba(13,13,13,0.50)] transition-colors hover:bg-[rgba(13,13,13,0.05)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.45)] dark:hover:text-[#EDE8E3]"
+            className="flex items-center gap-1.5 rounded-[6px] px-2.5 py-1.5 text-[14px] text-[rgba(13,13,13,0.50)] transition-colors hover:bg-[rgba(13,13,13,0.05)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.45)] dark:hover:text-[#EDE8E3]"
           >
             <ExternalLink size={12} />
             Открыть чат
@@ -574,7 +574,7 @@ function MessageContent({ message }: { message: WebMessage }) {
   }
 
   return (
-    <p className="whitespace-pre-wrap text-[14px] leading-[1.75] text-[rgba(13,13,13,0.86)] dark:text-[rgba(236,236,236,0.82)]">
+    <p className="whitespace-pre-wrap text-[16px] leading-[1.75] text-[rgba(13,13,13,0.86)] dark:text-[rgba(236,236,236,0.82)]">
       {content}
     </p>
   );

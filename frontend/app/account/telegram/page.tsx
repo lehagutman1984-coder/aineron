@@ -116,7 +116,7 @@ export default function TelegramPage() {
     <div className="py-8 px-0 md:px-6">
       <div className="mb-6">
         <h1 className="text-[22px] font-semibold text-[#1A1A1A]">Telegram</h1>
-        <p className="mt-1 text-[13px] text-[rgba(13,13,13,0.5)]">
+        <p className="mt-1 text-[15px] text-[rgba(13,13,13,0.5)]">
           Привяжи Telegram-аккаунт, чтобы пользоваться AI прямо в мессенджере
         </p>
       </div>
@@ -129,15 +129,15 @@ export default function TelegramPage() {
               <CheckCircle size={24} className="text-[#D97757]" />
             </div>
             <div className="flex-1">
-              <p className="text-[15px] font-semibold text-[#1A1A1A]">Telegram привязан</p>
+              <p className="text-[17px] font-semibold text-[#1A1A1A]">Telegram привязан</p>
               {status.telegram_first_name && (
-                <p className="mt-0.5 text-[13px] text-[rgba(13,13,13,0.55)]">
+                <p className="mt-0.5 text-[15px] text-[rgba(13,13,13,0.55)]">
                   {status.telegram_first_name}
                   {status.telegram_username ? ` (@${status.telegram_username})` : ""}
                 </p>
               )}
               {status.linked_at && (
-                <p className="mt-0.5 text-[12px] text-[rgba(13,13,13,0.38)]">
+                <p className="mt-0.5 text-[14px] text-[rgba(13,13,13,0.38)]">
                   Привязан {new Date(status.linked_at).toLocaleDateString("ru-RU")}
                 </p>
               )}
@@ -149,7 +149,7 @@ export default function TelegramPage() {
               href="https://t.me/aineron_bot"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-[10px] bg-[#D97757] px-4 py-2.5 text-[13px] font-medium text-white hover:opacity-90 transition-opacity"
+              className="inline-flex items-center gap-2 rounded-[10px] bg-[#D97757] px-4 py-2.5 text-[15px] font-medium text-white hover:opacity-90 transition-opacity"
             >
               <MessageCircle size={15} />
               Открыть бота
@@ -157,7 +157,7 @@ export default function TelegramPage() {
             <button
               onClick={unlink}
               disabled={unlinking}
-              className="inline-flex items-center gap-2 rounded-[10px] border border-[rgba(13,13,13,0.12)] px-4 py-2.5 text-[13px] text-[rgba(13,13,13,0.6)] hover:text-[rgba(13,13,13,0.9)] transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-[10px] border border-[rgba(13,13,13,0.12)] px-4 py-2.5 text-[15px] text-[rgba(13,13,13,0.6)] hover:text-[rgba(13,13,13,0.9)] transition-colors disabled:opacity-50"
             >
               <Unlink size={15} />
               {unlinking ? "Отвязываю..." : "Отвязать"}
@@ -167,13 +167,13 @@ export default function TelegramPage() {
       ) : linkData && countdown > 0 ? (
         /* Ожидаем привязку */
         <div className="rounded-2xl border border-[rgba(13,13,13,0.10)] bg-white p-6">
-          <p className="text-[15px] font-semibold text-[#1A1A1A] mb-1">Подключение...</p>
-          <p className="text-[13px] text-[rgba(13,13,13,0.55)] mb-5">
+          <p className="text-[17px] font-semibold text-[#1A1A1A] mb-1">Подключение...</p>
+          <p className="text-[15px] text-[rgba(13,13,13,0.55)] mb-5">
             Ссылка действительна {formatTime(countdown)}. Перейди по ней и нажми Start.
           </p>
 
           <div className="flex items-center gap-2 rounded-[10px] bg-[rgba(13,13,13,0.04)] px-4 py-3 mb-4">
-            <code className="flex-1 truncate text-[12px] text-[rgba(13,13,13,0.7)]">
+            <code className="flex-1 truncate text-[14px] text-[rgba(13,13,13,0.7)]">
               {linkData.link}
             </code>
             <button
@@ -189,7 +189,7 @@ export default function TelegramPage() {
               href={linkData.link}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-[10px] bg-[#D97757] px-4 py-2.5 text-[13px] font-medium text-white hover:opacity-90 transition-opacity"
+              className="inline-flex items-center gap-2 rounded-[10px] bg-[#D97757] px-4 py-2.5 text-[15px] font-medium text-white hover:opacity-90 transition-opacity"
             >
               <MessageCircle size={15} />
               Открыть Telegram
@@ -197,14 +197,14 @@ export default function TelegramPage() {
             <button
               onClick={generateLink}
               disabled={generating}
-              className="inline-flex items-center gap-2 rounded-[10px] border border-[rgba(13,13,13,0.12)] px-4 py-2.5 text-[13px] text-[rgba(13,13,13,0.6)] hover:text-[rgba(13,13,13,0.9)] transition-colors"
+              className="inline-flex items-center gap-2 rounded-[10px] border border-[rgba(13,13,13,0.12)] px-4 py-2.5 text-[15px] text-[rgba(13,13,13,0.6)] hover:text-[rgba(13,13,13,0.9)] transition-colors"
             >
               <RefreshCw size={15} />
               Новая ссылка
             </button>
           </div>
 
-          <p className="mt-4 text-[12px] text-[rgba(13,13,13,0.38)]">
+          <p className="mt-4 text-[14px] text-[rgba(13,13,13,0.38)]">
             Страница автоматически обновится после привязки
           </p>
         </div>
@@ -216,8 +216,8 @@ export default function TelegramPage() {
               <MessageCircle size={24} className="text-[rgba(13,13,13,0.4)]" />
             </div>
             <div>
-              <p className="text-[15px] font-semibold text-[#1A1A1A]">Telegram не привязан</p>
-              <p className="mt-0.5 text-[13px] text-[rgba(13,13,13,0.55)]">
+              <p className="text-[17px] font-semibold text-[#1A1A1A]">Telegram не привязан</p>
+              <p className="mt-0.5 text-[15px] text-[rgba(13,13,13,0.55)]">
                 Привяжи аккаунт, чтобы использовать все AI-модели прямо в Telegram
               </p>
             </div>
@@ -231,7 +231,7 @@ export default function TelegramPage() {
               "Оплата через Telegram Stars",
               "Уведомления о балансе и подписке",
             ].map((f) => (
-              <li key={f} className="flex items-center gap-2 text-[13px] text-[rgba(13,13,13,0.65)]">
+              <li key={f} className="flex items-center gap-2 text-[15px] text-[rgba(13,13,13,0.65)]">
                 <CheckCircle size={14} className="shrink-0 text-[#D97757]" />
                 {f}
               </li>
@@ -241,7 +241,7 @@ export default function TelegramPage() {
           <button
             onClick={generateLink}
             disabled={generating}
-            className="inline-flex items-center gap-2 rounded-[10px] bg-[#D97757] px-5 py-2.5 text-[13px] font-medium text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-[10px] bg-[#D97757] px-5 py-2.5 text-[15px] font-medium text-white hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             <Link size={15} />
             {generating ? "Генерирую ссылку..." : "Подключить Telegram"}

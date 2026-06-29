@@ -34,7 +34,7 @@ export function DeepResearchPanel({ steps, status, error }: Props) {
       {/* Header */}
       <div className="flex items-center gap-2 border-b border-[rgba(217,119,87,0.12)] px-3 py-2.5">
         <BookOpen size={13} className="text-[#D97757]" />
-        <span className="text-[12px] font-semibold uppercase tracking-wide text-[#D97757]">
+        <span className="text-[14px] font-semibold uppercase tracking-wide text-[#D97757]">
           Глубокое исследование
         </span>
         {isRunning && (
@@ -53,7 +53,7 @@ export function DeepResearchPanel({ steps, status, error }: Props) {
         {steps.map((step, i) => (
           <div
             key={i}
-            className="flex items-start gap-2 py-1 text-[12px] leading-snug text-[rgba(13,13,13,0.65)] dark:text-[rgba(236,236,236,0.6)]"
+            className="flex items-start gap-2 py-1 text-[14px] leading-snug text-[rgba(13,13,13,0.65)] dark:text-[rgba(236,236,236,0.6)]"
           >
             <span className="mt-0.5 shrink-0">
               {STEP_ICONS[step.kind] ?? <CheckCircle size={13} className="text-[rgba(13,13,13,0.35)]" />}
@@ -62,13 +62,13 @@ export function DeepResearchPanel({ steps, status, error }: Props) {
           </div>
         ))}
         {isRunning && steps.length === 0 && (
-          <div className="flex items-center gap-2 py-2 text-[12px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.4)]">
+          <div className="flex items-center gap-2 py-2 text-[14px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.4)]">
             <Loader2 size={12} className="animate-spin" />
             Запуск исследования...
           </div>
         )}
         {status === "error" && error && (
-          <div className="mt-1 rounded-[6px] bg-red-50 px-2 py-1.5 text-[11px] text-red-600 dark:bg-red-950/30 dark:text-red-400">
+          <div className="mt-1 rounded-[6px] bg-red-50 px-2 py-1.5 text-[13px] text-red-600 dark:bg-red-950/30 dark:text-red-400">
             {error}
           </div>
         )}

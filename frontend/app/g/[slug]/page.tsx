@@ -62,11 +62,11 @@ export default async function PublicGenerationPage({ params }: { params: { slug:
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f7f7f8]">
         <div className="text-center">
-          <p className="text-[15px] font-medium text-[#1A1A1A]">Генерация не найдена</p>
-          <p className="mt-1 text-[13px] text-[rgba(13,13,13,0.45)]">
+          <p className="text-[17px] font-medium text-[#1A1A1A]">Генерация не найдена</p>
+          <p className="mt-1 text-[15px] text-[rgba(13,13,13,0.45)]">
             Ссылка недействительна или публикация снята
           </p>
-          <Link href="/gallery/" className="mt-4 inline-block text-[13px] text-[#D97757] hover:underline">
+          <Link href="/gallery/" className="mt-4 inline-block text-[15px] text-[#D97757] hover:underline">
             В галерею
           </Link>
         </div>
@@ -79,10 +79,10 @@ export default async function PublicGenerationPage({ params }: { params: { slug:
       {/* Header */}
       <header className="border-b border-[rgba(13,13,13,0.08)] bg-white">
         <div className="mx-auto flex max-w-[860px] items-center justify-between px-4 py-3">
-          <Link href="/" className="text-[13px] font-semibold tracking-tight text-[#1A1A1A]">
+          <Link href="/" className="text-[15px] font-semibold tracking-tight text-[#1A1A1A]">
             Aineron.ru
           </Link>
-          <Link href="/gallery/" className="text-[12px] text-[rgba(13,13,13,0.50)] hover:text-[#1A1A1A]">
+          <Link href="/gallery/" className="text-[14px] text-[rgba(13,13,13,0.50)] hover:text-[#1A1A1A]">
             Публичная галерея
           </Link>
         </div>
@@ -111,15 +111,15 @@ export default async function PublicGenerationPage({ params }: { params: { slug:
         <div className="mt-5 rounded-[14px] border border-[rgba(13,13,13,0.09)] bg-white p-5">
           {gen.prompt && (
             <>
-              <h2 className="mb-1.5 text-[12px] font-semibold uppercase tracking-wide text-[rgba(13,13,13,0.45)]">
+              <h2 className="mb-1.5 text-[14px] font-semibold uppercase tracking-wide text-[rgba(13,13,13,0.45)]">
                 Промт
               </h2>
-              <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-[rgba(13,13,13,0.85)]">
+              <p className="whitespace-pre-wrap text-[17px] leading-relaxed text-[rgba(13,13,13,0.85)]">
                 {gen.prompt}
               </p>
             </>
           )}
-          <div className="mt-4 flex flex-wrap items-center gap-3 text-[12px] text-[rgba(13,13,13,0.45)]">
+          <div className="mt-4 flex flex-wrap items-center gap-3 text-[14px] text-[rgba(13,13,13,0.45)]">
             {gen.model_name && (
               <span className="inline-flex items-center gap-1.5 rounded-[6px] bg-[rgba(217,119,87,0.08)] px-2 py-1 font-medium text-[#D97757]">
                 <Cpu size={12} />
@@ -149,16 +149,16 @@ export default async function PublicGenerationPage({ params }: { params: { slug:
             <Sparkles size={22} className="text-[#D97757]" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[13px] font-medium text-[#1A1A1A]">
+            <p className="text-[15px] font-medium text-[#1A1A1A]">
               Создайте похожее на Aineron.ru
             </p>
-            <p className="mt-0.5 text-[12px] leading-relaxed text-[rgba(13,13,13,0.55)]">
+            <p className="mt-0.5 text-[14px] leading-relaxed text-[rgba(13,13,13,0.55)]">
               Десятки моделей для генерации изображений и видео в одном кабинете.
             </p>
           </div>
           <Link
             href="/login/"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-[8px] bg-[#D97757] px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#C4623E]"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-[8px] bg-[#D97757] px-4 py-2 text-[15px] font-medium text-white transition-colors hover:bg-[#C4623E]"
           >
             <LogIn size={14} />
             Войти, чтобы создать

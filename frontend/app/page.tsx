@@ -22,7 +22,7 @@ export default async function HomePage() {
     <>
       {/* ── Hero ──────────────────────────────────────────────────────────────── */}
       <section className="mx-auto max-w-4xl px-4 pb-16 pt-24 text-center sm:px-6">
-        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[rgba(217,119,87,0.25)] bg-[rgba(217,119,87,0.06)] px-3.5 py-1 text-[13px] text-[#D97757]">
+        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[rgba(217,119,87,0.25)] bg-[rgba(217,119,87,0.06)] px-3.5 py-1 text-[15px] text-[#D97757]">
           <ShieldCheck size={13} />
           Российский сервис — без VPN и зарубежных карт
         </div>
@@ -34,21 +34,21 @@ export default async function HomePage() {
         <p className="mx-auto mb-3 max-w-2xl text-[18px] leading-relaxed text-[rgba(13,13,13,0.55)]">
           <HeroTypewriter />
         </p>
-        <p className="mx-auto mb-9 max-w-xl text-[15px] text-[rgba(13,13,13,0.45)]">
+        <p className="mx-auto mb-9 max-w-xl text-[17px] text-[rgba(13,13,13,0.45)]">
           GPT-4o, Claude, Gemini, Midjourney и 200+ моделей. Оплата рублями, один кошелёк.
         </p>
 
         <div className="flex flex-wrap items-center justify-center gap-3">
           <Link
             href="/register/"
-            className="inline-flex items-center gap-2 rounded-[10px] bg-[#D97757] px-7 py-3 text-[15px] font-medium text-white hover:bg-[#C4623E] transition-colors"
+            className="inline-flex items-center gap-2 rounded-[10px] bg-[#D97757] px-7 py-3 text-[17px] font-medium text-white hover:bg-[#C4623E] transition-colors"
           >
             Начать бесплатно
             <ArrowRight size={16} />
           </Link>
           <Link
             href="/models/"
-            className="inline-flex items-center gap-2 rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-white px-7 py-3 text-[15px] font-medium text-[#1A1A1A] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
+            className="inline-flex items-center gap-2 rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-white px-7 py-3 text-[17px] font-medium text-[#1A1A1A] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
           >
             Смотреть каталог
           </Link>
@@ -63,8 +63,8 @@ export default async function HomePage() {
             return (
               <div key={s.label} className="flex items-center gap-2.5">
                 <Icon size={16} className="text-[#D97757]" />
-                <span className="text-[14px] font-semibold text-[#1A1A1A]">{s.value}</span>
-                <span className="text-[13px] text-[rgba(13,13,13,0.50)]">{s.label}</span>
+                <span className="text-[16px] font-semibold text-[#1A1A1A]">{s.value}</span>
+                <span className="text-[15px] text-[rgba(13,13,13,0.50)]">{s.label}</span>
               </div>
             );
           })}
@@ -77,13 +77,13 @@ export default async function HomePage() {
           <div className="mb-8 flex items-end justify-between">
             <div>
               <h2 className="text-[22px] font-bold text-[#1A1A1A]">Популярные модели</h2>
-              <p className="mt-1 text-[14px] text-[rgba(13,13,13,0.50)]">
+              <p className="mt-1 text-[16px] text-[rgba(13,13,13,0.50)]">
                 Самые востребованные нейросети
               </p>
             </div>
             <Link
               href="/models/"
-              className="flex items-center gap-1 text-[13px] text-[#D97757] hover:text-[#C4623E] transition-colors"
+              className="flex items-center gap-1 text-[15px] text-[#D97757] hover:text-[#C4623E] transition-colors"
             >
               Все модели
               <ArrowRight size={14} />
@@ -102,7 +102,7 @@ export default async function HomePage() {
         <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6">
           <div className="mb-10 text-center">
             <h2 className="text-[26px] font-bold text-[#1A1A1A]">Для любой задачи</h2>
-            <p className="mt-2 text-[15px] text-[rgba(13,13,13,0.52)]">
+            <p className="mt-2 text-[17px] text-[rgba(13,13,13,0.52)]">
               Выберите свою роль и посмотрите примеры
             </p>
           </div>
@@ -114,13 +114,13 @@ export default async function HomePage() {
       <section className="mx-auto max-w-4xl px-4 py-16 sm:px-6">
         <div className="mb-10 text-center">
           <h2 className="text-[26px] font-bold text-[#1A1A1A]">Честное сравнение</h2>
-          <p className="mt-2 text-[15px] text-[rgba(13,13,13,0.52)]">
+          <p className="mt-2 text-[17px] text-[rgba(13,13,13,0.52)]">
             aineron.ru против главных альтернатив
           </p>
         </div>
 
         <div className="overflow-x-auto rounded-[16px] border border-[rgba(13,13,13,0.10)] bg-white">
-          <table className="w-full min-w-[480px] text-[13px]">
+          <table className="w-full min-w-[480px] text-[15px]">
             <thead>
               <tr className="border-b border-[rgba(13,13,13,0.08)]">
                 <th className="px-5 py-3.5 text-left font-medium text-[rgba(13,13,13,0.50)]">
@@ -170,28 +170,28 @@ export default async function HomePage() {
               <Star size={22} className="text-[#D97757]" />
             </div>
             <h2 className="text-[24px] font-bold text-[#1A1A1A]">Звёзды — простая оплата</h2>
-            <p className="mt-2 text-[15px] text-[rgba(13,13,13,0.55)]">
+            <p className="mt-2 text-[17px] text-[rgba(13,13,13,0.55)]">
               Пополняйте баланс и тратьте на любую модель. Звёзды не сгорают.
             </p>
           </div>
           <div className="grid grid-cols-1 divide-y border-t border-[rgba(13,13,13,0.08)] sm:grid-cols-3 sm:divide-x sm:divide-y-0" style={{ borderColor: "rgba(13,13,13,0.08)" }}>
             {PRICING.map((p) => (
               <div key={p.title} className="px-7 py-6 text-center">
-                <p className="mb-1 text-[13px] font-medium text-[rgba(13,13,13,0.50)]">{p.title}</p>
+                <p className="mb-1 text-[15px] font-medium text-[rgba(13,13,13,0.50)]">{p.title}</p>
                 <p className="text-[28px] font-bold text-[#1A1A1A]">{p.price}</p>
-                <p className="mt-1 text-[12px] text-[rgba(13,13,13,0.45)]">{p.sub}</p>
+                <p className="mt-1 text-[14px] text-[rgba(13,13,13,0.45)]">{p.sub}</p>
               </div>
             ))}
           </div>
           <div className="border-t border-[rgba(13,13,13,0.08)] px-8 py-5 text-center">
             <Link
               href="/register/"
-              className="inline-flex items-center gap-2 rounded-[10px] bg-[#D97757] px-8 py-3 text-[14px] font-medium text-white hover:bg-[#C4623E] transition-colors"
+              className="inline-flex items-center gap-2 rounded-[10px] bg-[#D97757] px-8 py-3 text-[16px] font-medium text-white hover:bg-[#C4623E] transition-colors"
             >
               Начать с 10 бесплатными звёздами
               <ArrowRight size={15} />
             </Link>
-            <p className="mt-2 text-[12px] text-[rgba(13,13,13,0.38)]">
+            <p className="mt-2 text-[14px] text-[rgba(13,13,13,0.38)]">
               Не нужна карта для старта
             </p>
           </div>
@@ -218,14 +218,14 @@ export default async function HomePage() {
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Link
               href="/register/"
-              className="inline-flex items-center gap-2 rounded-[10px] bg-white px-7 py-3 text-[15px] font-medium text-[#1A1A1A] hover:bg-[rgba(255,255,255,0.90)] transition-colors"
+              className="inline-flex items-center gap-2 rounded-[10px] bg-white px-7 py-3 text-[17px] font-medium text-[#1A1A1A] hover:bg-[rgba(255,255,255,0.90)] transition-colors"
             >
               Создать аккаунт
               <ArrowRight size={16} />
             </Link>
             <Link
               href="/models/"
-              className="inline-flex items-center gap-2 rounded-[10px] border border-[rgba(255,255,255,0.20)] px-7 py-3 text-[15px] font-medium text-white hover:border-[rgba(255,255,255,0.40)] transition-colors"
+              className="inline-flex items-center gap-2 rounded-[10px] border border-[rgba(255,255,255,0.20)] px-7 py-3 text-[17px] font-medium text-white hover:border-[rgba(255,255,255,0.40)] transition-colors"
             >
               Смотреть модели
             </Link>
@@ -270,19 +270,19 @@ function NetworkCard({ network }: { network: NetworkListItem }) {
           </div>
         )}
         <div>
-          <p className="text-[14px] font-semibold text-[#1A1A1A] group-hover:text-[#D97757] transition-colors">
+          <p className="text-[16px] font-semibold text-[#1A1A1A] group-hover:text-[#D97757] transition-colors">
             {network.name}
           </p>
-          <p className="text-[12px] text-[rgba(13,13,13,0.5)]">{network.category.name}</p>
+          <p className="text-[14px] text-[rgba(13,13,13,0.5)]">{network.category.name}</p>
         </div>
       </div>
       {network.description && (
-        <p className="line-clamp-2 text-[13px] leading-relaxed text-[rgba(13,13,13,0.65)]">
+        <p className="line-clamp-2 text-[15px] leading-relaxed text-[rgba(13,13,13,0.65)]">
           {network.description}
         </p>
       )}
       <div className="mt-auto flex items-center justify-between pt-1">
-        <span className="text-[12px] text-[rgba(13,13,13,0.45)]">
+        <span className="text-[14px] text-[rgba(13,13,13,0.45)]">
           {network.cost_per_message} зв. / сообщение
         </span>
         <ArrowRight
@@ -301,8 +301,8 @@ function FeatureCard({ icon: Icon, title, text }: { icon: React.ElementType; tit
       <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-[10px] bg-[rgba(217,119,87,0.10)] text-[#D97757]">
         <Icon size={20} />
       </div>
-      <p className="mb-1.5 text-[14px] font-semibold text-[#1A1A1A]">{title}</p>
-      <p className="text-[13px] leading-relaxed text-[rgba(13,13,13,0.58)]">{text}</p>
+      <p className="mb-1.5 text-[16px] font-semibold text-[#1A1A1A]">{title}</p>
+      <p className="text-[15px] leading-relaxed text-[rgba(13,13,13,0.58)]">{text}</p>
     </div>
   );
 }

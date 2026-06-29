@@ -37,7 +37,7 @@ export default function UsagePage() {
       <div className="mb-8 flex items-center gap-3">
         <Link
           href="/account/"
-          className="flex items-center gap-1 text-[13px] text-[rgba(13,13,13,0.5)] hover:text-[#1A1A1A] transition-colors"
+          className="flex items-center gap-1 text-[15px] text-[rgba(13,13,13,0.5)] hover:text-[#1A1A1A] transition-colors"
         >
           <ArrowLeft size={14} />
           Кабинет
@@ -54,7 +54,7 @@ export default function UsagePage() {
               key={opt.value}
               onClick={() => setDays(opt.value)}
               className={[
-                "rounded-[6px] px-3 py-1.5 text-[13px] font-medium transition-all",
+                "rounded-[6px] px-3 py-1.5 text-[15px] font-medium transition-all",
                 days === opt.value
                   ? "bg-[#D97757] text-white"
                   : "text-[rgba(13,13,13,0.6)] hover:text-[#1A1A1A]",
@@ -69,7 +69,7 @@ export default function UsagePage() {
           <select
             value={orgId ?? ""}
             onChange={(e) => setOrgId(e.target.value ? Number(e.target.value) : undefined)}
-            className="rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-3 py-2 text-[13px] text-[rgba(13,13,13,0.7)] outline-none focus:border-[#D97757]"
+            className="rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-3 py-2 text-[15px] text-[rgba(13,13,13,0.7)] outline-none focus:border-[#D97757]"
           >
             <option value="">Мои запросы</option>
             {orgs.map((o) => (
@@ -82,11 +82,11 @@ export default function UsagePage() {
       </div>
 
       {isLoading ? (
-        <div className="py-16 text-center text-[14px] text-[rgba(13,13,13,0.45)]">
+        <div className="py-16 text-center text-[16px] text-[rgba(13,13,13,0.45)]">
           Загрузка...
         </div>
       ) : !stats ? (
-        <div className="py-16 text-center text-[14px] text-[rgba(13,13,13,0.45)]">
+        <div className="py-16 text-center text-[16px] text-[rgba(13,13,13,0.45)]">
           Нет данных
         </div>
       ) : (
@@ -113,7 +113,7 @@ export default function UsagePage() {
           {/* Daily chart (CSS bar chart) */}
           {stats.by_day.length > 0 && (
             <div className="mb-6 rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-5">
-              <p className="mb-4 text-[13px] font-semibold text-[#1A1A1A]">
+              <p className="mb-4 text-[15px] font-semibold text-[#1A1A1A]">
                 Токены по дням
               </p>
               <div className="flex items-end gap-1" style={{ height: "100px" }}>
@@ -129,14 +129,14 @@ export default function UsagePage() {
                         className="absolute bottom-0 left-0 right-0 rounded-t-[2px] bg-[#D97757] transition-all group-hover:bg-[#C4623E]"
                         style={{ height: `${Math.max(pct, 2)}%` }}
                       />
-                      <div className="absolute bottom-full left-1/2 mb-1 hidden -translate-x-1/2 rounded-[4px] bg-[#1A1A1A] px-2 py-1 text-[10px] text-white group-hover:block whitespace-nowrap">
+                      <div className="absolute bottom-full left-1/2 mb-1 hidden -translate-x-1/2 rounded-[4px] bg-[#1A1A1A] px-2 py-1 text-[12px] text-white group-hover:block whitespace-nowrap">
                         {day.date}: {day.total_tokens.toLocaleString("ru-RU")} tok
                       </div>
                     </div>
                   );
                 })}
               </div>
-              <div className="mt-2 flex justify-between text-[10px] text-[rgba(13,13,13,0.35)]">
+              <div className="mt-2 flex justify-between text-[12px] text-[rgba(13,13,13,0.35)]">
                 <span>{stats.by_day[0]?.date}</span>
                 <span>{stats.by_day[stats.by_day.length - 1]?.date}</span>
               </div>
@@ -146,13 +146,13 @@ export default function UsagePage() {
           {/* By model */}
           {stats.by_model.length > 0 && (
             <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-5">
-              <p className="mb-4 text-[13px] font-semibold text-[#1A1A1A]">
+              <p className="mb-4 text-[15px] font-semibold text-[#1A1A1A]">
                 По моделям (топ 20)
               </p>
               <div className="overflow-x-auto">
-                <table className="w-full text-[13px]">
+                <table className="w-full text-[15px]">
                   <thead>
-                    <tr className="border-b border-[rgba(13,13,13,0.08)] text-left text-[11px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.45)]">
+                    <tr className="border-b border-[rgba(13,13,13,0.08)] text-left text-[13px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.45)]">
                       <th className="pb-2 pr-4">Модель</th>
                       <th className="pb-2 pr-4 text-right">Запросов</th>
                       <th className="pb-2 pr-4 text-right">Токенов</th>
@@ -210,7 +210,7 @@ function TotalCard({
         {icon}
       </div>
       <p className="mb-0.5 text-[24px] font-bold text-[#1A1A1A]">{value}</p>
-      <p className="text-[12px] text-[rgba(13,13,13,0.5)]">{label}</p>
+      <p className="text-[14px] text-[rgba(13,13,13,0.5)]">{label}</p>
     </div>
   );
 }

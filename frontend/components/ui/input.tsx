@@ -15,7 +15,7 @@ export function Input({ label, error, hint, className, id, ...props }: InputProp
       {label && (
         <label
           htmlFor={inputId}
-          className="text-[13px] font-medium text-[rgba(13,13,13,0.58)]"
+          className="text-[15px] font-medium text-[rgba(13,13,13,0.58)]"
         >
           {label}
         </label>
@@ -23,7 +23,7 @@ export function Input({ label, error, hint, className, id, ...props }: InputProp
       <input
         id={inputId}
         className={cn(
-          "h-10 w-full rounded-[8px] border border-[rgba(13,13,13,0.12)] bg-white px-3 text-[14px] text-[#1A1A1A] outline-none transition-all",
+          "h-10 w-full rounded-[8px] border border-[rgba(13,13,13,0.12)] bg-white px-3 text-[16px] text-[#1A1A1A] outline-none transition-all",
           "placeholder:text-[rgba(13,13,13,0.35)]",
           "focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/15",
           "disabled:cursor-not-allowed disabled:opacity-50",
@@ -33,10 +33,10 @@ export function Input({ label, error, hint, className, id, ...props }: InputProp
         {...props}
       />
       {error && (
-        <p className="text-[12px] text-[#e74c3c]">{error}</p>
+        <p className="text-[14px] text-[#e74c3c]">{error}</p>
       )}
       {hint && !error && (
-        <p className="text-[12px] text-[rgba(13,13,13,0.4)]">{hint}</p>
+        <p className="text-[14px] text-[rgba(13,13,13,0.4)]">{hint}</p>
       )}
     </div>
   );

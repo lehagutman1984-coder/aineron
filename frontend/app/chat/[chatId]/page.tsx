@@ -823,8 +823,8 @@ export default function ChatPage() {
   if (error || !chat) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-        <p className="text-[15px] text-[rgba(13,13,13,0.55)]">Чат не найден</p>
-        <Link href="/models/" className="text-[13px] text-[#D97757] hover:underline">
+        <p className="text-[17px] text-[rgba(13,13,13,0.55)]">Чат не найден</p>
+        <Link href="/models/" className="text-[15px] text-[#D97757] hover:underline">
           К каталогу моделей
         </Link>
       </div>
@@ -848,7 +848,7 @@ export default function ChatPage() {
       {/* Drag overlay */}
       {isDragOver && (
         <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center rounded-[14px] border-2 border-dashed border-[#D97757] bg-[rgba(217,119,87,0.06)]">
-          <p className="text-[15px] font-medium text-[#D97757]">Отпустите для загрузки</p>
+          <p className="text-[17px] font-medium text-[#D97757]">Отпустите для загрузки</p>
         </div>
       )}
       {/* Header */}
@@ -873,7 +873,7 @@ export default function ChatPage() {
               <Code2 size={12} />
             </div>
           )}
-          <span className="truncate text-[13px] font-semibold text-[#1A1A1A]">
+          <span className="truncate text-[15px] font-semibold text-[#1A1A1A]">
             {chat.network.name}
           </span>
         </div>
@@ -881,7 +881,7 @@ export default function ChatPage() {
         <div className="flex items-center gap-1">
           <div className="relative group/export">
             <button
-              className="flex h-8 items-center gap-1.5 rounded-[7px] px-2.5 text-[12px] font-medium text-[rgba(13,13,13,0.55)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A]"
+              className="flex h-8 items-center gap-1.5 rounded-[7px] px-2.5 text-[14px] font-medium text-[rgba(13,13,13,0.55)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A]"
               title="Экспортировать чат"
             >
               <Download size={13} />
@@ -891,7 +891,7 @@ export default function ChatPage() {
               <a
                 href={exportChat(id, "md")}
                 download
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-[rgba(13,13,13,0.70)] hover:bg-[rgba(13,13,13,0.04)]"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-[14px] text-[rgba(13,13,13,0.70)] hover:bg-[rgba(13,13,13,0.04)]"
               >
                 <FileText size={12} />
                 Markdown
@@ -899,7 +899,7 @@ export default function ChatPage() {
               <a
                 href={exportChat(id, "html")}
                 download
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-[rgba(13,13,13,0.70)] hover:bg-[rgba(13,13,13,0.04)]"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-[14px] text-[rgba(13,13,13,0.70)] hover:bg-[rgba(13,13,13,0.04)]"
               >
                 <FileText size={12} />
                 HTML
@@ -908,14 +908,14 @@ export default function ChatPage() {
           </div>
           <Link
             href="/models/"
-            className="flex h-8 items-center gap-1.5 rounded-[7px] px-2.5 text-[12px] font-medium text-[rgba(13,13,13,0.55)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A]"
+            className="flex h-8 items-center gap-1.5 rounded-[7px] px-2.5 text-[14px] font-medium text-[rgba(13,13,13,0.55)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A]"
           >
             <LayoutGrid size={13} />
             <span className="hidden sm:inline">Каталог</span>
           </Link>
           <Link
             href={`/models/${chat.network.slug}/`}
-            className="flex h-8 items-center gap-1.5 rounded-[7px] px-2.5 text-[12px] font-medium text-white transition-colors"
+            className="flex h-8 items-center gap-1.5 rounded-[7px] px-2.5 text-[14px] font-medium text-white transition-colors"
             style={{ background: "#1A1A1A" }}
           >
             <PenSquare size={13} />
@@ -934,13 +934,13 @@ export default function ChatPage() {
           }}
         >
           <FileText size={13} style={{ color: chat.project.color, flexShrink: 0 }} />
-          <span className="flex-1 truncate text-[12px]" style={{ color: chat.project.color }}>
+          <span className="flex-1 truncate text-[14px]" style={{ color: chat.project.color }}>
             <span className="font-medium">{chat.project.name}</span>
             <span className="opacity-70"> · инструкции проекта активны</span>
           </span>
           <Link
             href={`/projects/${chat.project.id}/`}
-            className="shrink-0 rounded-[5px] px-2 py-0.5 text-[11px] font-medium transition-colors hover:opacity-80"
+            className="shrink-0 rounded-[5px] px-2 py-0.5 text-[13px] font-medium transition-colors hover:opacity-80"
             style={{ color: chat.project.color, background: `${chat.project.color}18` }}
           >
             Открыть
@@ -957,7 +957,7 @@ export default function ChatPage() {
 
       {/* Branch tree: parent link */}
       {chat?.parent_chat_id && (
-        <div className="flex shrink-0 items-center gap-1.5 border-b border-[rgba(13,13,13,0.06)] px-4 py-1.5 text-[12px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.4)] dark:border-[rgba(255,255,255,0.06)]">
+        <div className="flex shrink-0 items-center gap-1.5 border-b border-[rgba(13,13,13,0.06)] px-4 py-1.5 text-[14px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.4)] dark:border-[rgba(255,255,255,0.06)]">
           <GitBranch size={11} className="shrink-0" />
           <span>Ветка от:</span>
           <a href={`/chat/${chat.parent_chat_id}/`} className="text-[#D97757] hover:underline">родительский чат</a>
@@ -967,7 +967,7 @@ export default function ChatPage() {
       {/* Branch tree: child branches */}
       {chat?.branches && chat.branches.length > 0 && (
         <div className="shrink-0 border-b border-[rgba(13,13,13,0.06)] px-4 py-2 dark:border-[rgba(255,255,255,0.06)]">
-          <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.4)]">
+          <div className="mb-1.5 flex items-center gap-1.5 text-[13px] font-medium text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.4)]">
             <GitBranch size={11} />
             Ветки ({chat.branches.length})
           </div>
@@ -976,7 +976,7 @@ export default function ChatPage() {
               <a
                 key={b.id}
                 href={`/chat/${b.id}/`}
-                className="rounded-[6px] border border-[rgba(13,13,13,0.1)] px-2 py-0.5 text-[11px] text-[rgba(13,13,13,0.6)] hover:border-[#D97757] hover:text-[#D97757] transition-colors dark:border-[rgba(255,255,255,0.1)] dark:text-[rgba(236,236,236,0.5)]"
+                className="rounded-[6px] border border-[rgba(13,13,13,0.1)] px-2 py-0.5 text-[13px] text-[rgba(13,13,13,0.6)] hover:border-[#D97757] hover:text-[#D97757] transition-colors dark:border-[rgba(255,255,255,0.1)] dark:text-[rgba(236,236,236,0.5)]"
               >
                 {b.title || `Ветка #${b.id}`}
               </a>
@@ -1012,14 +1012,14 @@ export default function ChatPage() {
               <p className="mt-4 text-[17px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
                 {chat.network.name}
               </p>
-              <p className="mt-1 text-[13px] text-[rgba(13,13,13,0.42)] dark:text-[rgba(236,236,236,0.40)]">
+              <p className="mt-1 text-[15px] text-[rgba(13,13,13,0.42)] dark:text-[rgba(236,236,236,0.40)]">
                 Выберите тему или напишите свой вопрос
               </p>
 
               {/* Prompt library button */}
               <button
                 onClick={() => setShowPromptPicker(true)}
-                className="mt-5 flex items-center gap-1.5 rounded-[8px] border px-3.5 py-2 text-[13px] font-medium transition-colors"
+                className="mt-5 flex items-center gap-1.5 rounded-[8px] border px-3.5 py-2 text-[15px] font-medium transition-colors"
                 style={{ borderColor: "var(--chat-input-border)", color: "rgba(13,13,13,0.55)" }}
               >
                 <BookMarked size={13} />
@@ -1045,10 +1045,10 @@ export default function ChatPage() {
                       (e.currentTarget as HTMLButtonElement).style.boxShadow = "";
                     }}
                   >
-                    <p className="text-[13px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
+                    <p className="text-[15px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
                       {card.label}
                     </p>
-                    <p className="mt-0.5 line-clamp-2 text-[12px] leading-relaxed text-[rgba(13,13,13,0.48)] dark:text-[rgba(236,236,236,0.42)]">
+                    <p className="mt-0.5 line-clamp-2 text-[14px] leading-relaxed text-[rgba(13,13,13,0.48)] dark:text-[rgba(236,236,236,0.42)]">
                       {card.prompt}
                     </p>
                   </button>
@@ -1123,10 +1123,10 @@ export default function ChatPage() {
               <div className="flex items-center gap-2.5 min-w-0">
                 <GitCommit size={15} className="shrink-0 text-[#D97757]" />
                 <div className="min-w-0">
-                  <p className="text-[13px] font-semibold text-[#1A1A1A]">
+                  <p className="text-[15px] font-semibold text-[#1A1A1A]">
                     AI предложил коммит ({pendingCommit.files_count} {pendingCommit.files_count === 1 ? "файл" : pendingCommit.files_count < 5 ? "файла" : "файлов"})
                   </p>
-                  <p className="truncate text-[11px] text-[rgba(13,13,13,0.50)]">{pendingCommit.commit_message}</p>
+                  <p className="truncate text-[13px] text-[rgba(13,13,13,0.50)]">{pendingCommit.commit_message}</p>
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-2">
@@ -1141,7 +1141,7 @@ export default function ChatPage() {
                       setCommitActionLoading(false);
                     }
                   }}
-                  className="flex items-center gap-1 rounded-[7px] bg-[#22a85a] px-2.5 py-1.5 text-[12px] font-medium text-white hover:bg-[#1a8a49] transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1 rounded-[7px] bg-[#22a85a] px-2.5 py-1.5 text-[14px] font-medium text-white hover:bg-[#1a8a49] transition-colors disabled:opacity-50"
                 >
                   <CheckCircle2 size={12} />
                   Подтвердить
@@ -1157,7 +1157,7 @@ export default function ChatPage() {
                       setCommitActionLoading(false);
                     }
                   }}
-                  className="flex items-center gap-1 rounded-[7px] border border-[rgba(13,13,13,0.15)] px-2.5 py-1.5 text-[12px] font-medium text-[rgba(13,13,13,0.60)] hover:border-[rgba(231,76,60,0.4)] hover:text-[#e74c3c] transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1 rounded-[7px] border border-[rgba(13,13,13,0.15)] px-2.5 py-1.5 text-[14px] font-medium text-[rgba(13,13,13,0.60)] hover:border-[rgba(231,76,60,0.4)] hover:text-[#e74c3c] transition-colors disabled:opacity-50"
                 >
                   <XCircle size={12} />
                   Отклонить
@@ -1171,7 +1171,7 @@ export default function ChatPage() {
       {/* Input */}
       <div className="shrink-0 px-4 pb-5 pt-2" style={{ background: "var(--chat-page-bg)" }}>
         {displayError && (
-          <p className="mx-auto mb-2 max-w-2xl text-[13px] text-[#e74c3c]">
+          <p className="mx-auto mb-2 max-w-2xl text-[15px] text-[#e74c3c]">
             {displayError}
           </p>
         )}
@@ -1215,11 +1215,11 @@ export default function ChatPage() {
                   </button>
                 </div>
                 <div className="min-w-0">
-                  <p className="flex items-center gap-1 text-[12px] font-medium text-[#1A1A1A] dark:text-[#EDE8E3]">
+                  <p className="flex items-center gap-1 text-[14px] font-medium text-[#1A1A1A] dark:text-[#EDE8E3]">
                     <ImagePlus size={12} className="text-[#D97757]" />
                     Редактирование изображения
                   </p>
-                  <p className="mt-0.5 text-[11px] text-[rgba(13,13,13,0.42)] dark:text-[rgba(236,236,236,0.4)]">
+                  <p className="mt-0.5 text-[13px] text-[rgba(13,13,13,0.42)] dark:text-[rgba(236,236,236,0.4)]">
                     {sourceImage.uploading
                       ? "Загрузка..."
                       : sourceImage.error
@@ -1240,7 +1240,7 @@ export default function ChatPage() {
               placeholder="Введите сообщение..."
               rows={1}
               disabled={isBusy}
-              className="block w-full resize-none bg-transparent px-4 py-3.5 pr-24 text-[14px] leading-relaxed text-[#1A1A1A] outline-none disabled:opacity-50 dark:text-[#EDE8E3] dark:placeholder:text-[rgba(236,236,236,0.35)]"
+              className="block w-full resize-none bg-transparent px-4 py-3.5 pr-24 text-[16px] leading-relaxed text-[#1A1A1A] outline-none disabled:opacity-50 dark:text-[#EDE8E3] dark:placeholder:text-[rgba(236,236,236,0.35)]"
               style={{ maxHeight: "200px", caretColor: "#D97757" }}
             />
             <input
@@ -1300,7 +1300,7 @@ export default function ChatPage() {
                 }}
                 title={webSearch ? "Веб-поиск включён. Нажмите чтобы отключить" : "Включить поиск в интернете"}
                 className={[
-                  "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all",
+                  "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[13px] font-medium transition-all",
                   webSearch
                     ? "bg-[rgba(217,119,87,0.12)] text-[#D97757] ring-1 ring-[rgba(217,119,87,0.35)]"
                     : "text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.38)] dark:hover:text-[#EDE8E3]",
@@ -1318,7 +1318,7 @@ export default function ChatPage() {
                 onClick={() => setVariantsMode((v) => !v)}
                 title={variantsMode ? "Режим вариантов включён. Нажмите чтобы отключить" : "Получить 3 варианта ответа (Кратко / Подробно / Пошагово)"}
                 className={[
-                  "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all",
+                  "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[13px] font-medium transition-all",
                   variantsMode
                     ? "bg-[rgba(217,119,87,0.12)] text-[#D97757] ring-1 ring-[rgba(217,119,87,0.35)]"
                     : "text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.38)] dark:hover:text-[#EDE8E3]",
@@ -1336,7 +1336,7 @@ export default function ChatPage() {
                 onClick={() => setResearchMode((v) => !v)}
                 title={researchMode ? "Режим исследования включён. Нажмите чтобы отключить" : "Глубокое исследование — многошаговый автономный анализ с цитатами"}
                 className={[
-                  "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all",
+                  "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[13px] font-medium transition-all",
                   researchMode
                     ? "bg-[rgba(22,163,74,0.12)] text-[#16a34a] ring-1 ring-[rgba(22,163,74,0.35)]"
                     : "text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.38)] dark:hover:text-[#EDE8E3]",
@@ -1361,7 +1361,7 @@ export default function ChatPage() {
           {/* Toolbar: batch count для fal-ai (генерация изображений) */}
           {chat.network.provider === "fal-ai" && (
             <div className="mt-1.5 flex items-center gap-1 px-1">
-              <span className="mr-0.5 text-[11px] font-medium text-[rgba(13,13,13,0.38)] dark:text-[rgba(236,236,236,0.33)]">
+              <span className="mr-0.5 text-[13px] font-medium text-[rgba(13,13,13,0.38)] dark:text-[rgba(236,236,236,0.33)]">
                 Количество:
               </span>
               {([1, 2, 4] as const).map((n) => (
@@ -1370,7 +1370,7 @@ export default function ChatPage() {
                   type="button"
                   onClick={() => setBatchCount(n)}
                   className={[
-                    "flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium transition-all",
+                    "flex items-center rounded-full px-2.5 py-1 text-[13px] font-medium transition-all",
                     batchCount === n
                       ? "bg-[rgba(217,119,87,0.12)] text-[#D97757] ring-1 ring-[rgba(217,119,87,0.35)]"
                       : "text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.38)] dark:hover:text-[#EDE8E3]",
@@ -1380,7 +1380,7 @@ export default function ChatPage() {
                 </button>
               ))}
               {batchCount > 1 && (
-                <span className="ml-1 text-[10px] text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.3)]">
+                <span className="ml-1 text-[12px] text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.3)]">
                   — будет сгенерировано {batchCount} варианта
                 </span>
               )}
@@ -1391,7 +1391,7 @@ export default function ChatPage() {
           {styleReferenceUrl && (
             <div className="mx-1 mt-1.5 flex items-center gap-2 rounded-[8px] border border-[rgba(217,119,87,0.2)] bg-[rgba(217,119,87,0.06)] px-3 py-1.5">
               <img src={styleReferenceUrl} alt="стиль" className="h-8 w-8 rounded-[4px] object-cover" />
-              <span className="flex-1 text-[12px] text-[rgba(13,13,13,0.7)] dark:text-[rgba(236,236,236,0.7)]">
+              <span className="flex-1 text-[14px] text-[rgba(13,13,13,0.7)] dark:text-[rgba(236,236,236,0.7)]">
                 Следующая генерация будет в стиле этого изображения
               </span>
               <button
@@ -1425,7 +1425,7 @@ export default function ChatPage() {
                     type="button"
                     onClick={() => setShowMediaSettings((v) => !v)}
                 className={[
-                  "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all",
+                  "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[13px] font-medium transition-all",
                   showMediaSettings
                     ? "bg-[rgba(13,13,13,0.08)] text-[#1A1A1A] dark:bg-[rgba(255,255,255,0.12)] dark:text-[#EDE8E3]"
                     : "text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.38)] dark:hover:text-[#EDE8E3]",
@@ -1451,7 +1451,7 @@ export default function ChatPage() {
           {isBusy && (
             <div className="mt-2 flex items-center gap-2 px-1">
               <BouncingDots />
-              <span className="text-[12px] text-[rgba(13,13,13,0.42)]">
+              <span className="text-[14px] text-[rgba(13,13,13,0.42)]">
                 {searchPhase === "searching" ? (
                   <span className="font-medium text-[#D97757]">Ищем в интернете...</span>
                 ) : searchPhase === "generating" ? (
@@ -1602,7 +1602,7 @@ function MessageRow({
     return (
       <div className="group flex flex-col items-end gap-1">
         <div
-          className="max-w-[78%] rounded-[18px] rounded-br-[4px] px-4 py-3 text-[14px] leading-relaxed text-white"
+          className="max-w-[78%] rounded-[18px] rounded-br-[4px] px-4 py-3 text-[16px] leading-relaxed text-white"
           style={{ background: "var(--chat-user-bubble)" }}
         >
           <PlainText text={message.content} />
@@ -1619,7 +1619,7 @@ function MessageRow({
                   setTimeout(() => setSavedFact(false), 2000);
                 } catch {}
               }}
-              className="flex h-6 items-center gap-1 rounded-[5px] px-2 text-[11px] font-medium text-[rgba(13,13,13,0.42)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.38)]"
+              className="flex h-6 items-center gap-1 rounded-[5px] px-2 text-[13px] font-medium text-[rgba(13,13,13,0.42)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.38)]"
               title="Запомнить это сообщение как факт памяти"
             >
               <BookmarkPlus size={11} />
@@ -1637,7 +1637,7 @@ function MessageRow({
                     setBranchLoading(false);
                   }
                 }}
-                className="flex h-6 items-center gap-1 rounded-[5px] px-2 text-[11px] font-medium text-[rgba(13,13,13,0.42)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.38)]"
+                className="flex h-6 items-center gap-1 rounded-[5px] px-2 text-[13px] font-medium text-[rgba(13,13,13,0.42)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.38)]"
                 title="Создать ветку разговора от этого сообщения"
               >
                 {branchLoading ? <Loader size={11} className="animate-spin" /> : <GitBranch size={11} />}
@@ -1682,7 +1682,7 @@ function MessageRow({
         ) : researchData?.status === "error" ? (
           <>
             <DeepResearchPanel steps={researchData.steps} status={researchData.status} error={researchData.error} />
-            <p className="mt-2 text-[13px] text-red-500">Ошибка исследования. Попробуйте ещё раз.</p>
+            <p className="mt-2 text-[15px] text-red-500">Ошибка исследования. Попробуйте ещё раз.</p>
           </>
         ) : message.status === "pending" ? (
           isFalAi && message.generation_id ? (
@@ -1698,7 +1698,7 @@ function MessageRow({
             </div>
           )
         ) : message.status === "failed" ? (
-          <p className="text-[14px] text-[#e74c3c]">
+          <p className="text-[16px] text-[#e74c3c]">
             {message.error_message ?? "Ошибка генерации. Попробуйте ещё раз."}
           </p>
         ) : (
@@ -1770,7 +1770,7 @@ function MessageRow({
             {isFalAi && (() => {
               const imgUrl = extractFirstImageUrl(message.content || message.plain_text || "");
               if (!imgUrl && !message.image_generation_id) return null;
-              const btnCls = "flex h-7 items-center gap-1.5 rounded-[6px] px-2 text-[12px] font-medium transition-all";
+              const btnCls = "flex h-7 items-center gap-1.5 rounded-[6px] px-2 text-[14px] font-medium transition-all";
               const btnStyle = { color: "rgba(217,119,87,0.9)" };
               const onEnter = (e: React.MouseEvent<HTMLButtonElement>) => {
                 e.currentTarget.style.background = "rgba(217,119,87,0.08)";
@@ -1868,7 +1868,7 @@ function MessageRow({
                 return artifact && onOpenArtifact ? (
                   <button
                     onClick={() => onOpenArtifact(artifact)}
-                    className="flex h-7 items-center gap-1.5 rounded-[6px] px-2 text-[12px] font-medium transition-colors"
+                    className="flex h-7 items-center gap-1.5 rounded-[6px] px-2 text-[14px] font-medium transition-colors"
                     style={{ color: "rgba(217,119,87,0.8)" }}
                     onMouseEnter={(e) => {
                       (e.currentTarget as HTMLButtonElement).style.background = "rgba(217,119,87,0.08)";
@@ -1888,7 +1888,7 @@ function MessageRow({
               {canRegenerate && onRegenerate && (
                 <button
                   onClick={onRegenerate}
-                  className="flex h-7 items-center gap-1.5 rounded-[6px] px-2 text-[12px] font-medium transition-colors"
+                  className="flex h-7 items-center gap-1.5 rounded-[6px] px-2 text-[14px] font-medium transition-colors"
                   style={{ color: "rgba(13,13,13,0.42)" }}
                   onMouseEnter={(e) => {
                     (e.currentTarget as HTMLButtonElement).style.background = "rgba(13,13,13,0.06)";
@@ -1916,11 +1916,11 @@ function MessageRow({
                 <div className="relative">
                   <button
                     onClick={() => setForgetPanelMsgId((v) => v === message.id ? null : message.id)}
-                    className="flex items-center gap-1 rounded-[6px] px-1.5 py-1 text-[11px] text-[rgba(217,119,87,0.6)] hover:bg-[rgba(217,119,87,0.07)] hover:text-[#D97757] transition-colors"
+                    className="flex items-center gap-1 rounded-[6px] px-1.5 py-1 text-[13px] text-[rgba(217,119,87,0.6)] hover:bg-[rgba(217,119,87,0.07)] hover:text-[#D97757] transition-colors"
                     title="Забыть из памяти"
                   >
                     <Brain size={12} />
-                    <span className="text-[10px]">Память</span>
+                    <span className="text-[12px]">Память</span>
                   </button>
                   {forgetPanelMsgId === message.id && (
                     <ForgetMemoryPanel onClose={() => setForgetPanelMsgId(null)} />
@@ -1971,7 +1971,7 @@ function SpeakButton({ text }: { text: string }) {
   return (
     <button
       onClick={handleClick}
-      className="flex h-7 items-center gap-1.5 rounded-[6px] px-2 text-[12px] font-medium transition-colors"
+      className="flex h-7 items-center gap-1.5 rounded-[6px] px-2 text-[14px] font-medium transition-colors"
       style={{ color: state !== "idle" ? "#D97757" : "rgba(13,13,13,0.42)" }}
       onMouseEnter={(e) => {
         if (state === "idle") {
@@ -2021,7 +2021,7 @@ function CopyButton({
   return (
     <button
       onClick={handleCopy}
-      className="flex h-7 items-center gap-1.5 rounded-[6px] px-2 text-[12px] font-medium transition-colors"
+      className="flex h-7 items-center gap-1.5 rounded-[6px] px-2 text-[14px] font-medium transition-colors"
       style={{ color: copied ? "#D97757" : "rgba(13,13,13,0.42)" }}
       onMouseEnter={(e) => {
         if (!copied) {
@@ -2095,7 +2095,7 @@ function StreamingDisplay({ text }: { text: string }) {
 
   return (
     <div
-      className="text-[15px] leading-[1.75]"
+      className="text-[17px] leading-[1.75]"
       style={{ color: "rgba(13,13,13,0.86)" }}
     >
       <PlainText text={displayed || " "} />
@@ -2208,7 +2208,7 @@ function PlainTextAnimated({ content, shouldAnimate }: { content: string; should
   }, []); // intentionally runs once on mount — content is captured via closure at mount time
 
   return (
-    <div className="text-[15px] leading-[1.75]" style={{ color: "rgba(13,13,13,0.86)" }}>
+    <div className="text-[17px] leading-[1.75]" style={{ color: "rgba(13,13,13,0.86)" }}>
       <PlainText text={displayed} />
       {showCursor && (
         <span
@@ -2233,7 +2233,7 @@ function SearchContextBlock({ context }: { context: string }) {
         className="flex w-full items-center gap-2 px-3 py-2 text-left"
       >
         <Globe size={13} className="shrink-0 text-[#D97757]" />
-        <span className="flex-1 text-[12px] font-medium text-[#D97757]">
+        <span className="flex-1 text-[14px] font-medium text-[#D97757]">
           Результаты поиска
         </span>
         {open ? (
@@ -2243,13 +2243,13 @@ function SearchContextBlock({ context }: { context: string }) {
         )}
       </button>
       <div className="border-t border-[rgba(217,119,87,0.12)] px-3 pb-3 pt-2">
-        <pre className="whitespace-pre-wrap font-sans text-[12px] leading-relaxed text-[rgba(13,13,13,0.65)] dark:text-[rgba(236,236,236,0.55)]">
+        <pre className="whitespace-pre-wrap font-sans text-[14px] leading-relaxed text-[rgba(13,13,13,0.65)] dark:text-[rgba(236,236,236,0.55)]">
           {open ? context : preview + (lines.length > 3 ? "\n..." : "")}
         </pre>
         {!open && lines.length > 3 && (
           <button
             onClick={() => setOpen(true)}
-            className="mt-1 text-[11px] text-[rgba(217,119,87,0.7)] hover:text-[#D97757]"
+            className="mt-1 text-[13px] text-[rgba(217,119,87,0.7)] hover:text-[#D97757]"
           >
             Показать всё ({lines.length} строк)
           </button>
@@ -2269,7 +2269,7 @@ function SourcesBlock({ sources }: { sources: KBSource[] }) {
         className="flex w-full items-center gap-2 px-3 py-2 text-left"
       >
         <FileText size={13} className="shrink-0 text-[#D97757]" />
-        <span className="flex-1 text-[12px] font-medium text-[#D97757]">
+        <span className="flex-1 text-[14px] font-medium text-[#D97757]">
           Источники ({sources.length})
         </span>
         {open ? (
@@ -2283,19 +2283,19 @@ function SourcesBlock({ sources }: { sources: KBSource[] }) {
           {sources.map((s) => (
             <div
               key={s.id}
-              className="group/src relative flex flex-col gap-0.5 rounded-[6px] px-2 py-1.5 text-[12px] text-[rgba(13,13,13,0.7)] dark:text-[rgba(236,236,236,0.6)] hover:bg-[rgba(217,119,87,0.06)] transition-colors"
+              className="group/src relative flex flex-col gap-0.5 rounded-[6px] px-2 py-1.5 text-[14px] text-[rgba(13,13,13,0.7)] dark:text-[rgba(236,236,236,0.6)] hover:bg-[rgba(217,119,87,0.06)] transition-colors"
             >
               <div className="flex items-center gap-2">
                 <FileText size={11} className="shrink-0 text-[rgba(217,119,87,0.5)]" />
                 <span className="font-mono truncate" title={s.path}>{s.filename}</span>
                 {s.path !== s.filename && (
-                  <span className="ml-auto shrink-0 text-[10px] text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.3)] font-mono truncate max-w-[180px]" title={s.path}>
+                  <span className="ml-auto shrink-0 text-[12px] text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.3)] font-mono truncate max-w-[180px]" title={s.path}>
                     {s.path}
                   </span>
                 )}
               </div>
               {s.snippet && (
-                <div className="hidden group-hover/src:block ml-5 text-[11px] leading-relaxed text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.38)] line-clamp-2">
+                <div className="hidden group-hover/src:block ml-5 text-[13px] leading-relaxed text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.38)] line-clamp-2">
                   {s.snippet}
                 </div>
               )}

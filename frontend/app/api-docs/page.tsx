@@ -208,10 +208,10 @@ const ERROR_BODY = `{
 function InfoCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white p-4">
-      <p className="text-[11px] font-medium uppercase tracking-wider text-[rgba(13,13,13,0.35)]">
+      <p className="text-[13px] font-medium uppercase tracking-wider text-[rgba(13,13,13,0.35)]">
         {label}
       </p>
-      <p className="mt-1 font-mono text-[14px] font-semibold text-[#1A1A1A]">{value}</p>
+      <p className="mt-1 font-mono text-[16px] font-semibold text-[#1A1A1A]">{value}</p>
     </div>
   );
 }
@@ -244,7 +244,7 @@ function MethodBadge({ method }: { method: "GET" | "POST" | "DELETE" }) {
   }[method];
   return (
     <span
-      className={`inline-flex items-center rounded-[5px] px-2 py-0.5 font-mono text-[11px] font-semibold ${cls}`}
+      className={`inline-flex items-center rounded-[5px] px-2 py-0.5 font-mono text-[13px] font-semibold ${cls}`}
     >
       {method}
     </span>
@@ -282,12 +282,12 @@ export default function ApiDocsPage() {
           <Code2 size={15} className="text-[rgba(13,13,13,0.35)]" />
           <Link
             href="/"
-            className="text-[13px] text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A] transition-colors"
+            className="text-[15px] text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A] transition-colors"
           >
             Главная
           </Link>
-          <span className="text-[13px] text-[rgba(13,13,13,0.25)]">/</span>
-          <span className="text-[13px] text-[rgba(13,13,13,0.65)]">API для разработчиков</span>
+          <span className="text-[15px] text-[rgba(13,13,13,0.25)]">/</span>
+          <span className="text-[15px] text-[rgba(13,13,13,0.65)]">API для разработчиков</span>
         </nav>
 
         {/* Hero */}
@@ -295,10 +295,10 @@ export default function ApiDocsPage() {
           <h1 className="text-[30px] font-bold leading-tight text-[#1A1A1A]">
             API для разработчиков
           </h1>
-          <p className="mt-2 max-w-2xl text-[15px] text-[rgba(13,13,13,0.55)]">
+          <p className="mt-2 max-w-2xl text-[17px] text-[rgba(13,13,13,0.55)]">
             OpenAI-совместимый API для доступа к GPT-4o, Claude, Gemini, Mistral и генерации
             изображений — без VPN, без санкций, из России. Работает с openai SDK простой сменой{" "}
-            <code className="rounded-[4px] bg-[rgba(13,13,13,0.07)] px-1.5 py-0.5 font-mono text-[13px]">
+            <code className="rounded-[4px] bg-[rgba(13,13,13,0.07)] px-1.5 py-0.5 font-mono text-[15px]">
               base_url
             </code>
             .
@@ -315,7 +315,7 @@ export default function ApiDocsPage() {
 
         {/* Quick start */}
         <Section title="Быстрый старт">
-          <ol className="mb-5 space-y-3 text-[14px]">
+          <ol className="mb-5 space-y-3 text-[16px]">
             {[
               <>
                 <strong className="text-[#1A1A1A]">Создайте API-ключ</strong> в личном кабинете
@@ -327,7 +327,7 @@ export default function ApiDocsPage() {
               </>,
               <>
                 <strong className="text-[#1A1A1A]">Укажите наш base_url</strong> вместо{" "}
-                <code className="rounded-[4px] bg-[rgba(13,13,13,0.07)] px-1.5 py-0.5 font-mono text-[12px]">
+                <code className="rounded-[4px] bg-[rgba(13,13,13,0.07)] px-1.5 py-0.5 font-mono text-[14px]">
                   api.openai.com
                 </code>{" "}
                 в вашем SDK или HTTP-клиенте.
@@ -338,7 +338,7 @@ export default function ApiDocsPage() {
               </>,
             ].map((step, i) => (
               <li key={i} className="flex gap-3 text-[rgba(13,13,13,0.75)]">
-                <span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-[#1A1A1A] text-[11px] font-bold text-white">
+                <span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-[#1A1A1A] text-[13px] font-bold text-white">
                   {i + 1}
                 </span>
                 <span>{step}</span>
@@ -350,13 +350,13 @@ export default function ApiDocsPage() {
 
         {/* Anthropic SDK */}
         <Section title="Anthropic SDK (Claude-модели)">
-          <p className="mb-4 text-[14px] text-[rgba(13,13,13,0.65)]">
+          <p className="mb-4 text-[16px] text-[rgba(13,13,13,0.65)]">
             Если вы используете официальный Anthropic SDK, достаточно указать наш{" "}
-            <code className="rounded-[4px] bg-[rgba(13,13,13,0.07)] px-1.5 py-0.5 font-mono text-[12px]">
+            <code className="rounded-[4px] bg-[rgba(13,13,13,0.07)] px-1.5 py-0.5 font-mono text-[14px]">
               base_url
             </code>{" "}
             — API полностью совместим с{" "}
-            <code className="rounded-[4px] bg-[rgba(13,13,13,0.07)] px-1.5 py-0.5 font-mono text-[12px]">
+            <code className="rounded-[4px] bg-[rgba(13,13,13,0.07)] px-1.5 py-0.5 font-mono text-[14px]">
               POST /api/v1/messages
             </code>
             .
@@ -366,7 +366,7 @@ export default function ApiDocsPage() {
 
         {/* Images */}
         <Section title="Генерация изображений и видео">
-          <p className="mb-4 text-[14px] text-[rgba(13,13,13,0.65)]">
+          <p className="mb-4 text-[16px] text-[rgba(13,13,13,0.65)]">
             Доступ к Flux, SDXL, Wan, Kling и другим медиа-моделям через стандартный OpenAI Images
             API.
           </p>
@@ -376,7 +376,7 @@ export default function ApiDocsPage() {
         {/* Endpoints */}
         <Section title="Список эндпоинтов">
           <div className="overflow-x-auto">
-            <table className="w-full text-[13px]">
+            <table className="w-full text-[15px]">
               <thead>
                 <tr className="border-b border-[rgba(13,13,13,0.08)]">
                   <th className="pb-2.5 text-left font-medium text-[rgba(13,13,13,0.40)]">
@@ -396,7 +396,7 @@ export default function ApiDocsPage() {
                     <td className="py-2.5">
                       <MethodBadge method={e.method} />
                     </td>
-                    <td className="py-2.5 pl-4 font-mono text-[12px] text-[rgba(13,13,13,0.70)]">
+                    <td className="py-2.5 pl-4 font-mono text-[14px] text-[rgba(13,13,13,0.70)]">
                       {e.path}
                     </td>
                     <td className="py-2.5 pl-4 text-[rgba(13,13,13,0.65)]">{e.desc}</td>
@@ -409,14 +409,14 @@ export default function ApiDocsPage() {
 
         {/* Error codes */}
         <Section title="Коды ошибок">
-          <p className="mb-4 text-[14px] text-[rgba(13,13,13,0.65)]">
+          <p className="mb-4 text-[16px] text-[rgba(13,13,13,0.65)]">
             Все ошибки возвращаются в OpenAI-совместимом формате:
           </p>
           <div className="mb-5">
             <StandaloneCodeBlock code={ERROR_BODY} />
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-[13px]">
+            <table className="w-full text-[15px]">
               <thead>
                 <tr className="border-b border-[rgba(13,13,13,0.08)]">
                   <th className="pb-2.5 text-left font-medium text-[rgba(13,13,13,0.40)]">
@@ -434,7 +434,7 @@ export default function ApiDocsPage() {
                 {ERRORS.map((e) => (
                   <tr key={e.code}>
                     <td className="py-2.5 font-semibold text-[#1A1A1A]">{e.code}</td>
-                    <td className="py-2.5 pl-4 font-mono text-[12px] text-[rgba(13,13,13,0.70)]">
+                    <td className="py-2.5 pl-4 font-mono text-[14px] text-[rgba(13,13,13,0.70)]">
                       {e.type}
                     </td>
                     <td className="py-2.5 pl-4 text-[rgba(13,13,13,0.65)]">{e.desc}</td>
@@ -449,7 +449,7 @@ export default function ApiDocsPage() {
         <div className="flex flex-wrap gap-3 pb-4">
           <Link
             href="/api-docs/playground/"
-            className="inline-flex items-center gap-2 rounded-[10px] bg-[#D97757] px-5 py-2.5 text-[14px] font-medium text-white hover:bg-[#C4623E] transition-colors"
+            className="inline-flex items-center gap-2 rounded-[10px] bg-[#D97757] px-5 py-2.5 text-[16px] font-medium text-white hover:bg-[#C4623E] transition-colors"
           >
             <Play size={14} />
             Playground
@@ -458,7 +458,7 @@ export default function ApiDocsPage() {
             href="/api/v1/docs/"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-[10px] bg-[#1A1A1A] px-5 py-2.5 text-[14px] font-medium text-white hover:bg-[#1a1a1a] transition-colors"
+            className="inline-flex items-center gap-2 rounded-[10px] bg-[#1A1A1A] px-5 py-2.5 text-[16px] font-medium text-white hover:bg-[#1a1a1a] transition-colors"
           >
             Swagger UI
             <ExternalLink size={14} />
@@ -466,19 +466,19 @@ export default function ApiDocsPage() {
           <a
             href="/static/docs/postman_collection.json"
             download="aineron_api.postman_collection.json"
-            className="inline-flex items-center gap-2 rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-white px-5 py-2.5 text-[14px] font-medium text-[rgba(13,13,13,0.70)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
+            className="inline-flex items-center gap-2 rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-white px-5 py-2.5 text-[16px] font-medium text-[rgba(13,13,13,0.70)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
           >
             Postman-коллекция
           </a>
           <Link
             href="/ide/"
-            className="inline-flex items-center gap-2 rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-white px-5 py-2.5 text-[14px] font-medium text-[rgba(13,13,13,0.70)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
+            className="inline-flex items-center gap-2 rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-white px-5 py-2.5 text-[16px] font-medium text-[rgba(13,13,13,0.70)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
           >
             Интеграция с IDE
           </Link>
           <Link
             href="/account/keys/"
-            className="inline-flex items-center gap-2 rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-white px-5 py-2.5 text-[14px] font-medium text-[rgba(13,13,13,0.70)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
+            className="inline-flex items-center gap-2 rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-white px-5 py-2.5 text-[16px] font-medium text-[rgba(13,13,13,0.70)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
           >
             Создать API-ключ
           </Link>

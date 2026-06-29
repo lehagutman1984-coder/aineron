@@ -43,7 +43,7 @@ export default async function BlogListPage({
       <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
         <div className="mb-8">
           <h1 className="text-[28px] font-bold text-[#1A1A1A]">Блог</h1>
-          <p className="mt-2 text-[15px] text-[rgba(13,13,13,0.6)]">
+          <p className="mt-2 text-[17px] text-[rgba(13,13,13,0.6)]">
             Гайды, сравнения и новости об AI-нейросетях
           </p>
         </div>
@@ -54,7 +54,7 @@ export default async function BlogListPage({
             <Link
               href="/blog/"
               className={[
-                "rounded-full px-4 py-1.5 text-[13px] font-medium transition-all",
+                "rounded-full px-4 py-1.5 text-[15px] font-medium transition-all",
                 !searchParams.category
                   ? "bg-[#1A1A1A] text-white"
                   : "border border-[rgba(13,13,13,0.15)] text-[rgba(13,13,13,0.65)] hover:border-[rgba(13,13,13,0.3)]",
@@ -67,7 +67,7 @@ export default async function BlogListPage({
                 key={cat.id}
                 href={`/blog/?category=${cat.slug}`}
                 className={[
-                  "rounded-full px-4 py-1.5 text-[13px] font-medium transition-all",
+                  "rounded-full px-4 py-1.5 text-[15px] font-medium transition-all",
                   searchParams.category === cat.slug
                     ? "bg-[#1A1A1A] text-white"
                     : "border border-[rgba(13,13,13,0.15)] text-[rgba(13,13,13,0.65)] hover:border-[rgba(13,13,13,0.3)]",
@@ -80,7 +80,7 @@ export default async function BlogListPage({
         )}
 
         {safePosts.length === 0 ? (
-          <div className="py-16 text-center text-[14px] text-[rgba(13,13,13,0.45)]">
+          <div className="py-16 text-center text-[16px] text-[rgba(13,13,13,0.45)]">
             Статей пока нет
           </div>
         ) : (
@@ -102,17 +102,17 @@ export default async function BlogListPage({
                 )}
                 <div className="flex flex-1 flex-col p-5">
                   {post.category && (
-                    <span className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#D97757]">
+                    <span className="mb-2 text-[13px] font-semibold uppercase tracking-wide text-[#D97757]">
                       {post.category.name}
                     </span>
                   )}
-                  <h2 className="mb-2 text-[15px] font-semibold leading-snug text-[#1A1A1A] group-hover:text-[#D97757] transition-colors">
+                  <h2 className="mb-2 text-[17px] font-semibold leading-snug text-[#1A1A1A] group-hover:text-[#D97757] transition-colors">
                     {post.title}
                   </h2>
-                  <p className="mb-4 flex-1 text-[13px] leading-relaxed text-[rgba(13,13,13,0.6)]">
+                  <p className="mb-4 flex-1 text-[15px] leading-relaxed text-[rgba(13,13,13,0.6)]">
                     {post.preview_text}
                   </p>
-                  <div className="flex items-center gap-4 text-[11px] text-[rgba(13,13,13,0.4)]">
+                  <div className="flex items-center gap-4 text-[13px] text-[rgba(13,13,13,0.4)]">
                     <span className="flex items-center gap-1">
                       <CalendarDays size={11} />
                       {new Date(post.published_at).toLocaleDateString("ru-RU", {

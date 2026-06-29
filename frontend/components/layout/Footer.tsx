@@ -38,11 +38,11 @@ export function Footer() {
           <div className="col-span-2 sm:col-span-1">
             <Link
               href="/"
-              className="text-[15px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]"
+              className="text-[17px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]"
             >
               aineron.ru
             </Link>
-            <p className="mt-2 text-[13px] leading-relaxed text-[rgba(13,13,13,0.50)] dark:text-[rgba(236,236,236,0.40)]">
+            <p className="mt-2 text-[15px] leading-relaxed text-[rgba(13,13,13,0.50)] dark:text-[rgba(236,236,236,0.40)]">
               AI-нейросети без VPN. GPT-4o, Claude, Gemini и другие — в одном месте.
             </p>
           </div>
@@ -50,7 +50,7 @@ export function Footer() {
           {/* Columns */}
           {COLUMNS.map((col) => (
             <div key={col.title}>
-              <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-[rgba(13,13,13,0.40)] dark:text-[rgba(236,236,236,0.35)]">
+              <p className="mb-3 text-[13px] font-semibold uppercase tracking-wider text-[rgba(13,13,13,0.40)] dark:text-[rgba(236,236,236,0.35)]">
                 {col.title}
               </p>
               <ul className="flex flex-col gap-2">
@@ -58,7 +58,7 @@ export function Footer() {
                   <li key={link.href}>
                     <Link
                       href={link.href}
-                      className="text-[13px] text-[rgba(13,13,13,0.65)] transition-colors hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.50)] dark:hover:text-[#EDE8E3]"
+                      className="text-[15px] text-[rgba(13,13,13,0.65)] transition-colors hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.50)] dark:hover:text-[#EDE8E3]"
                     >
                       {link.label}
                     </Link>
@@ -71,25 +71,25 @@ export function Footer() {
 
         {/* Bottom bar */}
         <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-[rgba(13,13,13,0.08)] pt-6 dark:border-[rgba(255,255,255,0.07)] sm:flex-row">
-          <p className="text-[12px] text-[rgba(13,13,13,0.40)] dark:text-[rgba(236,236,236,0.30)]">
+          <p className="text-[14px] text-[rgba(13,13,13,0.40)] dark:text-[rgba(236,236,236,0.30)]">
             &copy; {new Date().getFullYear()} aineron.ru
           </p>
           <div className="flex items-center gap-4">
             <Link
               href="/privacy-policy/"
-              className="text-[12px] text-[rgba(13,13,13,0.40)] transition-colors hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.30)] dark:hover:text-[#EDE8E3]"
+              className="text-[14px] text-[rgba(13,13,13,0.40)] transition-colors hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.30)] dark:hover:text-[#EDE8E3]"
             >
               Конфиденциальность
             </Link>
             <Link
               href="/terms/"
-              className="text-[12px] text-[rgba(13,13,13,0.40)] transition-colors hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.30)] dark:hover:text-[#EDE8E3]"
+              className="text-[14px] text-[rgba(13,13,13,0.40)] transition-colors hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.30)] dark:hover:text-[#EDE8E3]"
             >
               Условия
             </Link>
             <Link
               href="/status/"
-              className="text-[12px] text-[rgba(13,13,13,0.40)] transition-colors hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.30)] dark:hover:text-[#EDE8E3]"
+              className="text-[14px] text-[rgba(13,13,13,0.40)] transition-colors hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.30)] dark:hover:text-[#EDE8E3]"
             >
               Статус
             </Link>

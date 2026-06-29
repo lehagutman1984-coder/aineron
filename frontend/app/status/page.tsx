@@ -54,7 +54,7 @@ function PreviewMeta({ check }: { check: ServiceCheck }) {
   )
     parts.push(`${check.slots_used}/${check.max_concurrent} slots`);
   return parts.length > 0 ? (
-    <span className="font-mono text-[11px] text-[rgba(13,13,13,0.4)]">
+    <span className="font-mono text-[13px] text-[rgba(13,13,13,0.4)]">
       {parts.join(" · ")}
     </span>
   ) : null;
@@ -95,7 +95,7 @@ export default function StatusPage() {
       <div className="mb-10 text-center">
         <div
           className={[
-            "mb-4 inline-flex items-center gap-2 rounded-full px-5 py-2 text-[15px] font-semibold",
+            "mb-4 inline-flex items-center gap-2 rounded-full px-5 py-2 text-[17px] font-semibold",
             overall === "operational"
               ? "bg-green-50 text-green-700"
               : "bg-red-50 text-red-700",
@@ -107,7 +107,7 @@ export default function StatusPage() {
         <h1 className="text-[28px] font-bold text-[#1A1A1A]">
           Статус aineron.ru
         </h1>
-        <p className="mt-2 text-[14px] text-[rgba(13,13,13,0.5)]">
+        <p className="mt-2 text-[16px] text-[rgba(13,13,13,0.5)]">
           Обновляется каждую минуту
           {lastRefreshed && ` · Последнее: ${lastRefreshed.toLocaleTimeString("ru-RU")}`}
         </p>
@@ -129,11 +129,11 @@ export default function StatusPage() {
             >
               <div className="flex items-center gap-3">
                 <StatusIcon status={check?.status ?? "unknown"} />
-                <span className="text-[14px] font-medium text-[#1A1A1A]">
+                <span className="text-[16px] font-medium text-[#1A1A1A]">
                   {svc.label}
                 </span>
               </div>
-              <div className="flex items-center gap-3 text-[13px] text-[rgba(13,13,13,0.5)]">
+              <div className="flex items-center gap-3 text-[15px] text-[rgba(13,13,13,0.5)]">
                 {check?.latency_ms !== undefined && (
                   <span>{check.latency_ms} мс</span>
                 )}
@@ -162,7 +162,7 @@ export default function StatusPage() {
       <button
         onClick={fetchStatus}
         disabled={loading}
-        className="flex items-center gap-2 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-4 py-2 text-[13px] font-medium text-[rgba(13,13,13,0.7)] transition-all hover:border-[rgba(13,13,13,0.3)] disabled:opacity-50"
+        className="flex items-center gap-2 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-4 py-2 text-[15px] font-medium text-[rgba(13,13,13,0.7)] transition-all hover:border-[rgba(13,13,13,0.3)] disabled:opacity-50"
       >
         <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
         Обновить

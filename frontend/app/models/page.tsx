@@ -28,7 +28,7 @@ export default async function ModelsPage({
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
       <div className="mb-8">
         <h1 className="text-[28px] font-bold text-[#1A1A1A]">Каталог нейросетей</h1>
-        <p className="mt-2 text-[15px] text-[rgba(13,13,13,0.58)]">
+        <p className="mt-2 text-[17px] text-[rgba(13,13,13,0.58)]">
           {networks?.length ?? 0} моделей доступно
         </p>
       </div>

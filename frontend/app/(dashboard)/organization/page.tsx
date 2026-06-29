@@ -50,7 +50,7 @@ export default function OrganizationPage() {
       <div className="mb-8 flex items-center gap-3">
         <Link
           href="/account/"
-          className="flex items-center gap-1 text-[13px] text-[rgba(13,13,13,0.5)] hover:text-[#1A1A1A] transition-colors"
+          className="flex items-center gap-1 text-[15px] text-[rgba(13,13,13,0.5)] hover:text-[#1A1A1A] transition-colors"
         >
           <ArrowLeft size={14} />
           Кабинет
@@ -63,7 +63,7 @@ export default function OrganizationPage() {
         {/* Sidebar: org list */}
         <aside>
           <div className="mb-3 flex items-center justify-between">
-            <p className="text-[12px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.45)]">
+            <p className="text-[14px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.45)]">
               Ваши организации
             </p>
             <button
@@ -86,7 +86,7 @@ export default function OrganizationPage() {
                 onChange={(e) => setOrgName(e.target.value)}
                 required
                 autoFocus
-                className="w-full rounded-[6px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] outline-none focus:border-[#D97757] focus:ring-1 focus:ring-[rgba(217,119,87,0.15)]"
+                className="w-full rounded-[6px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[15px] outline-none focus:border-[#D97757] focus:ring-1 focus:ring-[rgba(217,119,87,0.15)]"
               />
               <input
                 type="text"
@@ -94,16 +94,16 @@ export default function OrganizationPage() {
                 value={orgInn}
                 onChange={(e) => setOrgInn(e.target.value)}
                 maxLength={12}
-                className="w-full rounded-[6px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] outline-none focus:border-[#D97757] focus:ring-1 focus:ring-[rgba(217,119,87,0.15)]"
+                className="w-full rounded-[6px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[15px] outline-none focus:border-[#D97757] focus:ring-1 focus:ring-[rgba(217,119,87,0.15)]"
               />
               {createError && (
-                <p className="text-[12px] text-[#e74c3c]">{createError}</p>
+                <p className="text-[14px] text-[#e74c3c]">{createError}</p>
               )}
               <div className="flex gap-2">
                 <button
                   type="submit"
                   disabled={!orgName.trim() || createOrgMutation.isPending}
-                  className="flex-1 h-8 rounded-[6px] bg-[#D97757] text-[12px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 transition-colors"
+                  className="flex-1 h-8 rounded-[6px] bg-[#D97757] text-[14px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 transition-colors"
                 >
                   {createOrgMutation.isPending ? "..." : "Создать"}
                 </button>
@@ -119,13 +119,13 @@ export default function OrganizationPage() {
           )}
 
           {isLoading ? (
-            <div className="py-6 text-center text-[13px] text-[rgba(13,13,13,0.45)]">
+            <div className="py-6 text-center text-[15px] text-[rgba(13,13,13,0.45)]">
               Загрузка...
             </div>
           ) : orgs.length === 0 ? (
             <div className="rounded-[10px] border border-dashed border-[rgba(13,13,13,0.18)] py-8 text-center">
               <Building2 size={24} className="mx-auto mb-2 text-[rgba(13,13,13,0.25)]" />
-              <p className="text-[13px] text-[rgba(13,13,13,0.5)]">Нет организаций</p>
+              <p className="text-[15px] text-[rgba(13,13,13,0.5)]">Нет организаций</p>
             </div>
           ) : (
             <div className="flex flex-col gap-1">
@@ -141,7 +141,7 @@ export default function OrganizationPage() {
                   ].join(" ")}
                 >
                   <Building2 size={14} className="shrink-0" />
-                  <span className="flex-1 truncate text-[13px] font-medium">
+                  <span className="flex-1 truncate text-[15px] font-medium">
                     {org.name}
                   </span>
                   <ChevronRight size={13} className="shrink-0 opacity-40" />
@@ -154,7 +154,7 @@ export default function OrganizationPage() {
         {/* Main: org detail */}
         <main>
           {!selectedOrg ? (
-            <div className="flex h-64 items-center justify-center rounded-[14px] border border-dashed border-[rgba(13,13,13,0.15)] text-[14px] text-[rgba(13,13,13,0.4)]">
+            <div className="flex h-64 items-center justify-center rounded-[14px] border border-dashed border-[rgba(13,13,13,0.15)] text-[16px] text-[rgba(13,13,13,0.4)]">
               Выберите организацию
             </div>
           ) : (
@@ -228,23 +228,23 @@ function OrgDetail({ org }: { org: Organization }) {
         <div className="mb-1 flex items-center gap-2">
           <Building2 size={18} className="text-[#D97757]" />
           <h2 className="text-[17px] font-bold text-[#1A1A1A]">{org.name}</h2>
-          <span className="rounded-full bg-[rgba(13,13,13,0.07)] px-2 py-0.5 text-[11px] text-[rgba(13,13,13,0.55)]">
+          <span className="rounded-full bg-[rgba(13,13,13,0.07)] px-2 py-0.5 text-[13px] text-[rgba(13,13,13,0.55)]">
             {org.user_role}
           </span>
         </div>
         {org.inn && (
-          <p className="text-[13px] text-[rgba(13,13,13,0.55)]">ИНН: {org.inn}</p>
+          <p className="text-[15px] text-[rgba(13,13,13,0.55)]">ИНН: {org.inn}</p>
         )}
         <div className="mt-3 flex items-center gap-4">
           <div className="text-center">
             <p className="text-[20px] font-bold text-[#1A1A1A]">
               {Number(org.balance_rub).toFixed(2)}
             </p>
-            <p className="text-[11px] text-[rgba(13,13,13,0.5)]">руб. баланс</p>
+            <p className="text-[13px] text-[rgba(13,13,13,0.5)]">руб. баланс</p>
           </div>
           <div className="text-center">
             <p className="text-[20px] font-bold text-[#1A1A1A]">{org.member_count}</p>
-            <p className="text-[11px] text-[rgba(13,13,13,0.5)]">участников</p>
+            <p className="text-[13px] text-[rgba(13,13,13,0.5)]">участников</p>
           </div>
         </div>
       </div>
@@ -257,12 +257,12 @@ function OrgDetail({ org }: { org: Organization }) {
               key={m.id}
               className="flex items-center gap-3 rounded-[8px] border border-[rgba(13,13,13,0.10)] bg-white px-3.5 py-2.5"
             >
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[rgba(217,119,87,0.10)] text-[11px] font-semibold text-[#D97757]">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[rgba(217,119,87,0.10)] text-[13px] font-semibold text-[#D97757]">
                 {m.email[0].toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="truncate text-[13px] font-medium text-[#1A1A1A]">{m.email}</p>
-                <p className="text-[11px] text-[rgba(13,13,13,0.45)]">{m.role}</p>
+                <p className="truncate text-[15px] font-medium text-[#1A1A1A]">{m.email}</p>
+                <p className="text-[13px] text-[rgba(13,13,13,0.45)]">{m.role}</p>
               </div>
               {isAdmin && m.role !== "owner" && (
                 <button
@@ -286,12 +286,12 @@ function OrgDetail({ org }: { org: Organization }) {
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
               required
-              className="flex-1 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] outline-none focus:border-[#D97757] focus:ring-1 focus:ring-[rgba(217,119,87,0.15)]"
+              className="flex-1 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[15px] outline-none focus:border-[#D97757] focus:ring-1 focus:ring-[rgba(217,119,87,0.15)]"
             />
             <button
               type="submit"
               disabled={inviteMutation.isPending}
-              className="flex h-9 items-center gap-1.5 rounded-[8px] bg-[#D97757] px-3 text-[13px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 transition-colors"
+              className="flex h-9 items-center gap-1.5 rounded-[8px] bg-[#D97757] px-3 text-[15px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 transition-colors"
             >
               <Mail size={13} />
               Пригласить
@@ -299,17 +299,17 @@ function OrgDetail({ org }: { org: Organization }) {
           </form>
         )}
         {inviteError && (
-          <p className="mt-1.5 text-[12px] text-[#e74c3c]">{inviteError}</p>
+          <p className="mt-1.5 text-[14px] text-[#e74c3c]">{inviteError}</p>
         )}
         {invites.length > 0 && (
           <div className="mt-3 flex flex-col gap-1">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.4)]">
+            <p className="text-[13px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.4)]">
               Ожидают принятия
             </p>
             {invites.map((inv) => (
               <div
                 key={inv.id}
-                className="flex items-center gap-2 rounded-[6px] bg-[rgba(13,13,13,0.03)] px-3 py-1.5 text-[12px] text-[rgba(13,13,13,0.6)]"
+                className="flex items-center gap-2 rounded-[6px] bg-[rgba(13,13,13,0.03)] px-3 py-1.5 text-[14px] text-[rgba(13,13,13,0.6)]"
               >
                 <Mail size={11} />
                 {inv.email}
@@ -324,7 +324,7 @@ function OrgDetail({ org }: { org: Organization }) {
         <Section title="Счета на оплату" icon={<FileText size={14} />}>
           <div className="flex flex-col gap-1.5">
             {invoices.length === 0 ? (
-              <p className="text-[13px] text-[rgba(13,13,13,0.45)]">Счетов нет</p>
+              <p className="text-[15px] text-[rgba(13,13,13,0.45)]">Счетов нет</p>
             ) : (
               invoices.map((inv) => (
                 <div
@@ -332,14 +332,14 @@ function OrgDetail({ org }: { org: Organization }) {
                   className="flex items-center gap-3 rounded-[8px] border border-[rgba(13,13,13,0.10)] bg-white px-3.5 py-2.5"
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-medium text-[#1A1A1A]">
+                    <p className="text-[15px] font-medium text-[#1A1A1A]">
                       {inv.number}
                     </p>
-                    <p className="text-[11px] text-[rgba(13,13,13,0.5)]">
+                    <p className="text-[13px] text-[rgba(13,13,13,0.5)]">
                       {inv.description}
                     </p>
                   </div>
-                  <p className="shrink-0 text-[13px] font-semibold text-[#1A1A1A]">
+                  <p className="shrink-0 text-[15px] font-semibold text-[#1A1A1A]">
                     {Number(inv.amount_rub).toLocaleString("ru-RU")} руб.
                   </p>
                   <StatusBadge status={inv.status} />
@@ -359,18 +359,18 @@ function OrgDetail({ org }: { org: Organization }) {
               min="100"
               step="100"
               required
-              className="flex-1 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] outline-none focus:border-[#D97757] focus:ring-1 focus:ring-[rgba(217,119,87,0.15)]"
+              className="flex-1 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[15px] outline-none focus:border-[#D97757] focus:ring-1 focus:ring-[rgba(217,119,87,0.15)]"
             />
             <button
               type="submit"
               disabled={invoiceMutation.isPending}
-              className="h-9 rounded-[8px] bg-[#D97757] px-3 text-[13px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 transition-colors"
+              className="h-9 rounded-[8px] bg-[#D97757] px-3 text-[15px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 transition-colors"
             >
               Выставить счёт
             </button>
           </form>
           {invoiceError && (
-            <p className="mt-1.5 text-[12px] text-[#e74c3c]">{invoiceError}</p>
+            <p className="mt-1.5 text-[14px] text-[#e74c3c]">{invoiceError}</p>
           )}
         </Section>
       )}
@@ -411,16 +411,16 @@ function TelegramSection({ orgId }: { orgId: number }) {
 
   return (
     <Section title="Telegram-интеграция" icon={<Send size={14} />}>
-      <p className="mb-4 text-[13px] text-[rgba(13,13,13,0.55)]">
+      <p className="mb-4 text-[15px] text-[rgba(13,13,13,0.55)]">
         Подключи Telegram-группы к организации. Участники смогут использовать бота за счёт баланса организации.
       </p>
 
       {/* Token generator */}
       <div className="mb-4 rounded-[10px] border border-[rgba(13,13,13,0.10)] bg-white p-4">
-        <p className="mb-2 text-[12px] font-medium text-[rgba(13,13,13,0.55)]">Токен подключения</p>
+        <p className="mb-2 text-[14px] font-medium text-[rgba(13,13,13,0.55)]">Токен подключения</p>
         {token ? (
           <div className="flex items-center gap-2">
-            <code className="flex-1 rounded-[6px] bg-[rgba(13,13,13,0.05)] px-3 py-1.5 text-[13px] font-mono text-[#1A1A1A] overflow-auto">
+            <code className="flex-1 rounded-[6px] bg-[rgba(13,13,13,0.05)] px-3 py-1.5 text-[15px] font-mono text-[#1A1A1A] overflow-auto">
               {token}
             </code>
             <button onClick={handleCopy} className="flex h-8 w-8 items-center justify-center rounded-[7px] border border-[rgba(13,13,13,0.12)] hover:bg-[rgba(13,13,13,0.05)] transition-colors">
@@ -428,19 +428,19 @@ function TelegramSection({ orgId }: { orgId: number }) {
             </button>
           </div>
         ) : (
-          <p className="text-[12px] text-[rgba(13,13,13,0.40)]">Нет активного токена</p>
+          <p className="text-[14px] text-[rgba(13,13,13,0.40)]">Нет активного токена</p>
         )}
         <div className="mt-3 flex items-start gap-3">
           <button
             onClick={() => genTokenMutation.mutate()}
             disabled={genTokenMutation.isPending}
-            className="flex items-center gap-1.5 rounded-[8px] bg-[#D97757] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 transition-colors"
+            className="flex items-center gap-1.5 rounded-[8px] bg-[#D97757] px-3 py-1.5 text-[14px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 transition-colors"
           >
             <RefreshCw size={12} className={genTokenMutation.isPending ? "animate-spin" : ""} />
             {token ? "Обновить токен" : "Создать токен"}
           </button>
           {token && (
-            <div className="text-[11px] text-[rgba(13,13,13,0.45)] leading-relaxed">
+            <div className="text-[13px] text-[rgba(13,13,13,0.45)] leading-relaxed">
               Добавь бота в группу, дай права <b>администратора</b> и напиши:<br />
               <code className="font-mono">/reggroup {token}</code>
             </div>
@@ -451,13 +451,13 @@ function TelegramSection({ orgId }: { orgId: number }) {
       {/* Connected groups */}
       {groups.length > 0 && (
         <div>
-          <p className="mb-2 text-[12px] font-medium text-[rgba(13,13,13,0.55)]">Подключённые группы ({groups.length})</p>
+          <p className="mb-2 text-[14px] font-medium text-[rgba(13,13,13,0.55)]">Подключённые группы ({groups.length})</p>
           <div className="flex flex-col gap-2">
             {groups.map((g) => (
               <div key={g.id} className="flex items-center justify-between rounded-[8px] border border-[rgba(13,13,13,0.08)] bg-white px-3 py-2">
                 <div>
-                  <p className="text-[13px] font-medium text-[#1A1A1A]">{g.group_title || `Group ${g.group_id}`}</p>
-                  <p className="text-[11px] text-[rgba(13,13,13,0.40)]">ID: {g.group_id}</p>
+                  <p className="text-[15px] font-medium text-[#1A1A1A]">{g.group_title || `Group ${g.group_id}`}</p>
+                  <p className="text-[13px] text-[rgba(13,13,13,0.40)]">ID: {g.group_id}</p>
                 </div>
                 <button
                   onClick={() => unregisterMutation.mutate(g.group_id)}
@@ -485,7 +485,7 @@ function Section({
 }) {
   return (
     <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-[rgba(13,13,13,0.02)] p-5">
-      <div className="mb-4 flex items-center gap-2 text-[12px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.5)]">
+      <div className="mb-4 flex items-center gap-2 text-[14px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.5)]">
         <span className="text-[#D97757]">{icon}</span>
         {title}
       </div>
@@ -503,7 +503,7 @@ function StatusBadge({ status }: { status: "pending" | "paid" | "cancelled" }) {
   const label = { pending: "Ожидает", paid: "Оплачен", cancelled: "Отменён" };
   return (
     <span
-      className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${map[status]}`}
+      className={`shrink-0 rounded-full px-2 py-0.5 text-[13px] font-medium ${map[status]}`}
     >
       {label[status]}
     </span>

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
@@ -52,7 +52,7 @@ export function StepTimeline({ projectId }: { projectId: string }) {
                   Файлов: {s.changed_files.length}
                 </div>
                 {s.changed_files.slice(0, 4).map((f) => (
-                  <div key={f} className="text-[11px] font-mono truncate text-[var(--text-secondary)] opacity-70">
+                  <div key={f} className="text-[13px] font-mono truncate text-[var(--text-secondary)] opacity-70">
                     {f}
                   </div>
                 ))}
@@ -61,7 +61,7 @@ export function StepTimeline({ projectId }: { projectId: string }) {
             {done && s.version_id !== null && (
               <button
                 onClick={() => branch(s.version_id!)}
-                className="flex items-center gap-1 text-[11px] text-blue-500 hover:underline mt-1"
+                className="flex items-center gap-1 text-[13px] text-blue-500 hover:underline mt-1"
               >
                 <GitBranch size={11} />
                 Ветка от этого шага

@@ -127,7 +127,7 @@ export function VoiceButton({
             : "Голосовой ввод (без Google)"
         }
         className={[
-          "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all",
+          "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[13px] font-medium transition-all",
           state === "recording"
             ? "bg-[rgba(231,76,60,0.12)] text-[#e74c3c]"
             : state === "transcribing"
@@ -155,7 +155,7 @@ export function VoiceButton({
 
       {error && (
         <div
-          className="absolute bottom-full left-0 mb-2 whitespace-nowrap rounded-[7px] px-2.5 py-1.5 text-[11px] text-white"
+          className="absolute bottom-full left-0 mb-2 whitespace-nowrap rounded-[7px] px-2.5 py-1.5 text-[13px] text-white"
           style={{ background: "#1A1A1A", boxShadow: "0 4px 12px rgba(0,0,0,0.18)" }}
         >
           {error}

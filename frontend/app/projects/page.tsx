@@ -77,16 +77,16 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
         </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-[rgba(13,13,13,0.55)]">Название</label>
+            <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.55)]">Название</label>
             <input
               autoFocus value={name} onChange={(e) => setName(e.target.value)}
               placeholder="Мой проект" maxLength={100}
-              className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[14px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
+              className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[16px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-[rgba(13,13,13,0.55)]">Иконка</label>
+              <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.55)]">Иконка</label>
               <div className="flex flex-wrap gap-1.5">
                 {ICONS.map((ic) => (
                   <button key={ic} type="button" onClick={() => setIcon(ic)}
@@ -98,7 +98,7 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
               </div>
             </div>
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-[rgba(13,13,13,0.55)]">Цвет</label>
+              <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.55)]">Цвет</label>
               <div className="flex flex-wrap gap-1.5">
                 {COLORS.map((c) => (
                   <button key={c} type="button" onClick={() => setColor(c)}
@@ -109,18 +109,18 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
             </div>
           </div>
           <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-[rgba(13,13,13,0.55)]">
+            <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.55)]">
               Системный промт <span className="text-[rgba(13,13,13,0.35)]">(необязательно)</span>
             </label>
             <textarea value={systemPrompt} onChange={(e) => setSystemPrompt(e.target.value)}
               placeholder="Ты — помощник-программист, отвечай только на русском..." rows={3}
-              className="w-full resize-none rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all" />
-            <p className="mt-1 text-[11px] text-[rgba(13,13,13,0.38)]">Применяется ко всем чатам в проекте автоматически</p>
+              className="w-full resize-none rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[15px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all" />
+            <p className="mt-1 text-[13px] text-[rgba(13,13,13,0.38)]">Применяется ко всем чатам в проекте автоматически</p>
           </div>
-          {error && <div className="rounded-[8px] bg-[rgba(231,76,60,0.08)] px-3 py-2 text-[13px] text-[#e74c3c]">{error}</div>}
+          {error && <div className="rounded-[8px] bg-[rgba(231,76,60,0.08)] px-3 py-2 text-[15px] text-[#e74c3c]">{error}</div>}
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={onClose} className="rounded-[8px] px-4 py-2 text-[13px] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.06)] transition-colors">Отмена</button>
-            <button type="submit" disabled={!name.trim() || loading} className="rounded-[8px] bg-[#D97757] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 transition-colors">
+            <button type="button" onClick={onClose} className="rounded-[8px] px-4 py-2 text-[15px] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.06)] transition-colors">Отмена</button>
+            <button type="submit" disabled={!name.trim() || loading} className="rounded-[8px] bg-[#D97757] px-4 py-2 text-[15px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 transition-colors">
               {loading ? "Создание..." : "Создать"}
             </button>
           </div>
@@ -156,18 +156,18 @@ function ProjectCard({
           <ProjectIcon name={project.icon} size={18} />
         </span>
       </div>
-      <h3 className="mb-1 text-[14px] font-semibold text-[#1A1A1A]">{project.name}</h3>
+      <h3 className="mb-1 text-[16px] font-semibold text-[#1A1A1A]">{project.name}</h3>
       {project.system_prompt ? (
-        <p className="mb-3 line-clamp-2 text-[12px] leading-[1.5] text-[rgba(13,13,13,0.50)]">{project.system_prompt}</p>
+        <p className="mb-3 line-clamp-2 text-[14px] leading-[1.5] text-[rgba(13,13,13,0.50)]">{project.system_prompt}</p>
       ) : (
-        <p className="mb-3 text-[12px] text-[rgba(13,13,13,0.32)]">Без системного промта</p>
+        <p className="mb-3 text-[14px] text-[rgba(13,13,13,0.32)]">Без системного промта</p>
       )}
       <div className="flex items-center justify-between">
-        <span className="flex items-center gap-1 text-[12px] text-[rgba(13,13,13,0.45)]">
+        <span className="flex items-center gap-1 text-[14px] text-[rgba(13,13,13,0.45)]">
           <MessageSquare size={12} />
           {project.chat_count} чатов
         </span>
-        <Link href={`/projects/${project.id}/`} className="flex items-center gap-0.5 text-[12px] font-medium text-[#D97757] hover:text-[#C4623E] transition-colors">
+        <Link href={`/projects/${project.id}/`} className="flex items-center gap-0.5 text-[14px] font-medium text-[#D97757] hover:text-[#C4623E] transition-colors">
           Открыть <ChevronRight size={13} />
         </Link>
       </div>
@@ -178,9 +178,9 @@ function ProjectCard({
         </button>
       ) : (
         <div className="absolute right-3 top-3 flex items-center gap-1 rounded-[8px] border border-[rgba(231,76,60,0.20)] bg-white p-1.5 shadow-lg">
-          <span className="px-1 text-[11px] text-[rgba(13,13,13,0.55)]">Удалить?</span>
-          <button onClick={() => onDelete(project.id)} className="rounded-[5px] bg-[#e74c3c] px-2 py-0.5 text-[11px] font-medium text-white hover:bg-[#c0392b] transition-colors">Да</button>
-          <button onClick={() => setConfirmDelete(false)} className="rounded-[5px] px-1.5 py-0.5 text-[11px] text-[rgba(13,13,13,0.45)] hover:bg-[rgba(13,13,13,0.07)] transition-colors">Нет</button>
+          <span className="px-1 text-[13px] text-[rgba(13,13,13,0.55)]">Удалить?</span>
+          <button onClick={() => onDelete(project.id)} className="rounded-[5px] bg-[#e74c3c] px-2 py-0.5 text-[13px] font-medium text-white hover:bg-[#c0392b] transition-colors">Да</button>
+          <button onClick={() => setConfirmDelete(false)} className="rounded-[5px] px-1.5 py-0.5 text-[13px] text-[rgba(13,13,13,0.45)] hover:bg-[rgba(13,13,13,0.07)] transition-colors">Нет</button>
         </div>
       )}
     </div>
@@ -214,9 +214,9 @@ function KanbanColumn({
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="h-2 w-2 rounded-full" style={{ background: col.color }} />
-          <span className="text-[13px] font-semibold text-[#1A1A1A]">{col.label}</span>
+          <span className="text-[15px] font-semibold text-[#1A1A1A]">{col.label}</span>
         </div>
-        <span className="rounded-full bg-[rgba(13,13,13,0.08)] px-2 py-0.5 text-[11px] font-medium text-[rgba(13,13,13,0.55)]">
+        <span className="rounded-full bg-[rgba(13,13,13,0.08)] px-2 py-0.5 text-[13px] font-medium text-[rgba(13,13,13,0.55)]">
           {projects.length}
         </span>
       </div>
@@ -227,7 +227,7 @@ function KanbanColumn({
           <ProjectCard key={p.id} project={p} onDelete={onDelete} onDragStart={onDragStart} />
         ))}
         {projects.length === 0 && (
-          <div className="flex h-16 items-center justify-center rounded-[10px] border border-dashed border-[rgba(13,13,13,0.12)] text-[12px] text-[rgba(13,13,13,0.30)]">
+          <div className="flex h-16 items-center justify-center rounded-[10px] border border-dashed border-[rgba(13,13,13,0.12)] text-[14px] text-[rgba(13,13,13,0.30)]">
             Перетащи проект сюда
           </div>
         )}
@@ -244,15 +244,15 @@ function GridCard({ project, onDelete }: { project: Project; onDelete: (id: numb
       <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-[10px]" style={{ background: `${project.color}18` }}>
         <span style={{ color: project.color }}><ProjectIcon name={project.icon} size={18} /></span>
       </div>
-      <h3 className="mb-1 text-[14px] font-semibold text-[#1A1A1A]">{project.name}</h3>
+      <h3 className="mb-1 text-[16px] font-semibold text-[#1A1A1A]">{project.name}</h3>
       {project.system_prompt ? (
-        <p className="mb-3 line-clamp-2 text-[12px] leading-[1.5] text-[rgba(13,13,13,0.50)]">{project.system_prompt}</p>
+        <p className="mb-3 line-clamp-2 text-[14px] leading-[1.5] text-[rgba(13,13,13,0.50)]">{project.system_prompt}</p>
       ) : (
-        <p className="mb-3 text-[12px] text-[rgba(13,13,13,0.32)]">Без системного промта</p>
+        <p className="mb-3 text-[14px] text-[rgba(13,13,13,0.32)]">Без системного промта</p>
       )}
       <div className="flex items-center justify-between">
-        <span className="flex items-center gap-1 text-[12px] text-[rgba(13,13,13,0.45)]"><MessageSquare size={12} />{project.chat_count} чатов</span>
-        <Link href={`/projects/${project.id}/`} className="flex items-center gap-0.5 text-[12px] font-medium text-[#D97757] hover:text-[#C4623E] transition-colors">
+        <span className="flex items-center gap-1 text-[14px] text-[rgba(13,13,13,0.45)]"><MessageSquare size={12} />{project.chat_count} чатов</span>
+        <Link href={`/projects/${project.id}/`} className="flex items-center gap-0.5 text-[14px] font-medium text-[#D97757] hover:text-[#C4623E] transition-colors">
           Открыть <ChevronRight size={13} />
         </Link>
       </div>
@@ -262,9 +262,9 @@ function GridCard({ project, onDelete }: { project: Project; onDelete: (id: numb
         </button>
       ) : (
         <div className="absolute right-3 top-3 flex items-center gap-1 rounded-[8px] border border-[rgba(231,76,60,0.20)] bg-white p-1.5 shadow-lg">
-          <span className="px-1 text-[11px] text-[rgba(13,13,13,0.55)]">Удалить?</span>
-          <button onClick={() => onDelete(project.id)} className="rounded-[5px] bg-[#e74c3c] px-2 py-0.5 text-[11px] font-medium text-white hover:bg-[#c0392b] transition-colors">Да</button>
-          <button onClick={() => setConfirmDelete(false)} className="rounded-[5px] px-1.5 py-0.5 text-[11px] text-[rgba(13,13,13,0.45)] hover:bg-[rgba(13,13,13,0.07)] transition-colors">Нет</button>
+          <span className="px-1 text-[13px] text-[rgba(13,13,13,0.55)]">Удалить?</span>
+          <button onClick={() => onDelete(project.id)} className="rounded-[5px] bg-[#e74c3c] px-2 py-0.5 text-[13px] font-medium text-white hover:bg-[#c0392b] transition-colors">Да</button>
+          <button onClick={() => setConfirmDelete(false)} className="rounded-[5px] px-1.5 py-0.5 text-[13px] text-[rgba(13,13,13,0.45)] hover:bg-[rgba(13,13,13,0.07)] transition-colors">Нет</button>
         </div>
       )}
     </div>
@@ -326,7 +326,7 @@ export default function ProjectsPage() {
       <div className="mb-7 flex items-center justify-between">
         <div>
           <h1 className="text-[24px] font-bold text-[#1A1A1A]">Проекты</h1>
-          <p className="mt-0.5 text-[14px] text-[rgba(13,13,13,0.50)]">
+          <p className="mt-0.5 text-[16px] text-[rgba(13,13,13,0.50)]">
             Группируйте чаты по задачам и задавайте общий системный промт
           </p>
         </div>
@@ -335,14 +335,14 @@ export default function ProjectsPage() {
           <div className="flex items-center rounded-[9px] border border-[rgba(13,13,13,0.10)] bg-white p-0.5">
             <button
               onClick={() => setViewMode("grid")}
-              className={["flex items-center gap-1.5 rounded-[7px] px-3 py-1.5 text-[12px] font-medium transition-colors", viewMode === "grid" ? "bg-[rgba(13,13,13,0.07)] text-[#1A1A1A]" : "text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A]"].join(" ")}
+              className={["flex items-center gap-1.5 rounded-[7px] px-3 py-1.5 text-[14px] font-medium transition-colors", viewMode === "grid" ? "bg-[rgba(13,13,13,0.07)] text-[#1A1A1A]" : "text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A]"].join(" ")}
             >
               <LayoutGrid size={13} />
               Сетка
             </button>
             <button
               onClick={() => setViewMode("kanban")}
-              className={["flex items-center gap-1.5 rounded-[7px] px-3 py-1.5 text-[12px] font-medium transition-colors", viewMode === "kanban" ? "bg-[rgba(13,13,13,0.07)] text-[#1A1A1A]" : "text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A]"].join(" ")}
+              className={["flex items-center gap-1.5 rounded-[7px] px-3 py-1.5 text-[14px] font-medium transition-colors", viewMode === "kanban" ? "bg-[rgba(13,13,13,0.07)] text-[#1A1A1A]" : "text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A]"].join(" ")}
             >
               <Columns3 size={13} />
               Канбан
@@ -350,7 +350,7 @@ export default function ProjectsPage() {
           </div>
           <button
             onClick={() => setShowModal(true)}
-            className="flex items-center gap-1.5 rounded-[9px] bg-[#D97757] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#C4623E] transition-colors"
+            className="flex items-center gap-1.5 rounded-[9px] bg-[#D97757] px-4 py-2 text-[15px] font-medium text-white hover:bg-[#C4623E] transition-colors"
           >
             <Plus size={15} />
             Новый проект
@@ -370,9 +370,9 @@ export default function ProjectsPage() {
           <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(217,119,87,0.08)]">
             <Folder size={22} className="text-[#D97757]" />
           </div>
-          <p className="mb-1 text-[15px] font-medium text-[#1A1A1A]">Нет проектов</p>
-          <p className="mb-4 text-[13px] text-[rgba(13,13,13,0.45)]">Создайте первый проект, чтобы группировать чаты</p>
-          <button onClick={() => setShowModal(true)} className="flex items-center gap-1.5 rounded-[9px] bg-[#D97757] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#C4623E] transition-colors">
+          <p className="mb-1 text-[17px] font-medium text-[#1A1A1A]">Нет проектов</p>
+          <p className="mb-4 text-[15px] text-[rgba(13,13,13,0.45)]">Создайте первый проект, чтобы группировать чаты</p>
+          <button onClick={() => setShowModal(true)} className="flex items-center gap-1.5 rounded-[9px] bg-[#D97757] px-4 py-2 text-[15px] font-medium text-white hover:bg-[#C4623E] transition-colors">
             <Plus size={15} />
             Создать проект
           </button>

@@ -41,7 +41,7 @@ export default function AccountPage() {
   const profile = me ?? user;
   if (!profile) {
     return (
-      <div className="flex h-[calc(100vh-56px)] items-center justify-center text-[14px] text-[rgba(13,13,13,0.45)]">
+      <div className="flex h-[calc(100vh-56px)] items-center justify-center text-[16px] text-[rgba(13,13,13,0.45)]">
         Загрузка...
       </div>
     );
@@ -58,15 +58,15 @@ export default function AccountPage() {
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         {/* Balance card */}
         <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-6">
-          <div className="mb-4 flex items-center gap-2 text-[13px] font-medium text-[rgba(13,13,13,0.55)] uppercase tracking-wide">
+          <div className="mb-4 flex items-center gap-2 text-[15px] font-medium text-[rgba(13,13,13,0.55)] uppercase tracking-wide">
             <Star size={14} className="text-[#D97757]" />
             Баланс
           </div>
           <p className="mb-1 text-[36px] font-bold text-[#1A1A1A]">{profile.pages_count}</p>
-          <p className="mb-4 text-[13px] text-[rgba(13,13,13,0.5)]">звёзд</p>
+          <p className="mb-4 text-[15px] text-[rgba(13,13,13,0.5)]">звёзд</p>
           <Link
             href="/account/billing/"
-            className="inline-flex h-9 items-center gap-2 rounded-[8px] bg-[#D97757] px-4 text-[13px] font-medium text-white hover:bg-[#C4623E] transition-colors"
+            className="inline-flex h-9 items-center gap-2 rounded-[8px] bg-[#D97757] px-4 text-[15px] font-medium text-white hover:bg-[#C4623E] transition-colors"
           >
             Пополнить
           </Link>
@@ -74,18 +74,18 @@ export default function AccountPage() {
 
         {/* Profile card */}
         <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-6">
-          <div className="mb-4 flex items-center gap-2 text-[13px] font-medium text-[rgba(13,13,13,0.55)] uppercase tracking-wide">
+          <div className="mb-4 flex items-center gap-2 text-[15px] font-medium text-[rgba(13,13,13,0.55)] uppercase tracking-wide">
             <User size={14} />
             Профиль
           </div>
-          <p className="mb-1 truncate text-[15px] font-medium text-[#1A1A1A]">{profile.email}</p>
-          <p className="mb-4 text-[13px] text-[rgba(13,13,13,0.5)]">
+          <p className="mb-1 truncate text-[17px] font-medium text-[#1A1A1A]">{profile.email}</p>
+          <p className="mb-4 text-[15px] text-[rgba(13,13,13,0.5)]">
             {"tariff_name" in profile ? profile.tariff_name : "Бесплатный тариф"}
           </p>
           <div className="flex flex-wrap gap-2">
             <Link
               href="/account/billing/"
-              className="inline-flex h-9 items-center rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[13px] text-[rgba(13,13,13,0.7)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
+              className="inline-flex h-9 items-center rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[15px] text-[rgba(13,13,13,0.7)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
             >
               Тарифы и платежи
             </Link>
@@ -95,13 +95,13 @@ export default function AccountPage() {
         {/* Referral card */}
         {"referral_code" in profile && (
           <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-6">
-            <div className="mb-4 flex items-center gap-2 text-[13px] font-medium text-[rgba(13,13,13,0.55)] uppercase tracking-wide">
+            <div className="mb-4 flex items-center gap-2 text-[15px] font-medium text-[rgba(13,13,13,0.55)] uppercase tracking-wide">
               <ExternalLink size={14} />
               Реферальная программа
             </div>
-            <p className="mb-2 text-[13px] text-[rgba(13,13,13,0.6)]">Ваша реферальная ссылка:</p>
+            <p className="mb-2 text-[15px] text-[rgba(13,13,13,0.6)]">Ваша реферальная ссылка:</p>
             <div className="flex items-center gap-2">
-              <code className="flex-1 truncate rounded-[6px] bg-[rgba(13,13,13,0.05)] px-3 py-2 text-[12px] text-[#1A1A1A]">
+              <code className="flex-1 truncate rounded-[6px] bg-[rgba(13,13,13,0.05)] px-3 py-2 text-[14px] text-[#1A1A1A]">
                 {typeof window !== "undefined"
                   ? `${window.location.origin}/?ref=${profile.referral_code}`
                   : `https://aineron.ru/?ref=${profile.referral_code}`}
@@ -124,16 +124,16 @@ export default function AccountPage() {
 
         {/* Memory card */}
         <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-6">
-          <div className="mb-4 flex items-center gap-2 text-[13px] font-medium text-[rgba(13,13,13,0.55)] uppercase tracking-wide">
+          <div className="mb-4 flex items-center gap-2 text-[15px] font-medium text-[rgba(13,13,13,0.55)] uppercase tracking-wide">
             <Brain size={14} className="text-[#D97757]" />
             Память
           </div>
-          <p className="mb-4 text-[13px] text-[rgba(13,13,13,0.6)]">
+          <p className="mb-4 text-[15px] text-[rgba(13,13,13,0.6)]">
             Факты о вас и история сессий.
           </p>
           <Link
             href="/account/memory/"
-            className="inline-flex h-9 items-center gap-2 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[13px] text-[rgba(13,13,13,0.7)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
+            className="inline-flex h-9 items-center gap-2 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[15px] text-[rgba(13,13,13,0.7)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
           >
             <Brain size={13} />
             Открыть память
@@ -142,24 +142,24 @@ export default function AccountPage() {
 
         {/* API keys shortcut */}
         <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-6">
-          <div className="mb-4 flex items-center gap-2 text-[13px] font-medium text-[rgba(13,13,13,0.55)] uppercase tracking-wide">
+          <div className="mb-4 flex items-center gap-2 text-[15px] font-medium text-[rgba(13,13,13,0.55)] uppercase tracking-wide">
             <Key size={14} />
             Для разработчиков
           </div>
-          <p className="mb-4 text-[13px] text-[rgba(13,13,13,0.6)]">
+          <p className="mb-4 text-[15px] text-[rgba(13,13,13,0.6)]">
             OpenAI-совместимый API. Подключите к Cursor, VS Code, Continue.
           </p>
           <div className="flex gap-2">
             <Link
               href="/account/keys/"
-              className="inline-flex h-9 items-center gap-2 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[13px] text-[rgba(13,13,13,0.7)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
+              className="inline-flex h-9 items-center gap-2 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[15px] text-[rgba(13,13,13,0.7)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
             >
               <Key size={13} />
               API-ключи
             </Link>
             <Link
               href="/api-docs/"
-              className="inline-flex h-9 items-center gap-2 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[13px] text-[rgba(13,13,13,0.7)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
+              className="inline-flex h-9 items-center gap-2 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[15px] text-[rgba(13,13,13,0.7)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
             >
               <ExternalLink size={13} />
               Документация
@@ -187,14 +187,14 @@ export default function AccountPage() {
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-medium text-[#1A1A1A]">{chat.title}</p>
+                  <p className="truncate text-[15px] font-medium text-[#1A1A1A]">{chat.title}</p>
                   {chat.last_message && (
-                    <p className="truncate text-[12px] text-[rgba(13,13,13,0.5)]">
+                    <p className="truncate text-[14px] text-[rgba(13,13,13,0.5)]">
                       {chat.last_message.preview}
                     </p>
                   )}
                 </div>
-                <p className="shrink-0 text-[11px] text-[rgba(13,13,13,0.35)]">
+                <p className="shrink-0 text-[13px] text-[rgba(13,13,13,0.35)]">
                   {new Date(chat.updated_at).toLocaleDateString("ru-RU")}
                 </p>
               </Link>
