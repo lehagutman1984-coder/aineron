@@ -915,8 +915,7 @@ export default function ChatPage() {
           </Link>
           <Link
             href={`/models/${chat.network.slug}/`}
-            className="flex h-8 items-center gap-1.5 rounded-[7px] px-2.5 text-[14px] font-medium text-white transition-colors"
-            style={{ background: "#1A1A1A" }}
+            className="flex h-8 items-center gap-1.5 rounded-[7px] bg-[#D97757] px-2.5 text-[14px] font-medium text-white transition-colors hover:bg-[#C4623E]"
           >
             <PenSquare size={13} />
             <span className="hidden sm:inline">Новый чат</span>

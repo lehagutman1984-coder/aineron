@@ -225,7 +225,7 @@ export default async function HomePage() {
             </Link>
             <Link
               href="/models/"
-              className="inline-flex items-center gap-2 rounded-[10px] border border-[rgba(255,255,255,0.20)] px-7 py-3 text-[17px] font-medium text-white hover:border-[rgba(255,255,255,0.40)] transition-colors"
+              className="inline-flex items-center gap-2 rounded-[10px] border border-[rgba(255,255,255,0.45)] bg-[rgba(255,255,255,0.10)] px-7 py-3 text-[17px] font-medium text-white hover:bg-[rgba(255,255,255,0.18)] hover:border-[rgba(255,255,255,0.65)] transition-colors"
             >
               Смотреть модели
             </Link>
