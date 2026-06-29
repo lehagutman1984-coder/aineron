@@ -9,7 +9,7 @@
   --font-family-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace;
 
   /* Brand colors */
-  --color-accent:       #0a7cff;
+  --color-accent:       #f0a38a;
   --color-accent-hover: #0066cc;
   --color-accent-2:     #1dd6c1;
 
@@ -49,14 +49,14 @@
   --text-static-white:     #ffffff;
   --icon-primary:          #0d0d0d;
   --icon-secondary:        rgba(13, 13, 13, 0.58);
-  --icon-accent:           #0a7cff;
+  --icon-accent:           #f0a38a;
   --background-primary:    #ffffff;
   --background-secondary:  rgba(13, 13, 13, 0.06);
   --background-tertiary:   rgba(13, 13, 13, 0.03);
   --border-primary:        rgba(13, 13, 13, 0.12);
   --border-secondary:      rgba(13, 13, 13, 0.10);
   --border-tertiary:       rgba(13, 13, 13, 0.06);
-  --btn-primary:           #0a7cff;
+  --btn-primary:           #f0a38a;
   --font-primary:          "Inter", sans-serif;
 
   /* Studio shorthand variables */
@@ -85,7 +85,7 @@ html[data-theme="dark"] {
   --border-primary:        rgba(255, 255, 255, 0.10);
   --border-secondary:      rgba(255, 255, 255, 0.07);
   --border-tertiary:       rgba(255, 255, 255, 0.04);
-  --btn-primary:           #0a7cff;
+  --btn-primary:           #f0a38a;
   color-scheme: dark;
 
   /* Studio shorthand variables — dark */
@@ -171,7 +171,7 @@ a {
 }
 
 .chat-prose a {
-  color: #0a7cff;
+  color: #f0a38a;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
