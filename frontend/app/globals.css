@@ -135,9 +135,11 @@ body {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
+@layer base {
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
 }
 
 /* Hide scrollbar but keep scrollability (used for tab rows) */
