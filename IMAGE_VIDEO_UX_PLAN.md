@@ -1,402 +1,171 @@
 # IMAGE_VIDEO_UX_PLAN.md — Путь к лидерству в России и Европе
 
-> Дата: 2026-06-28  
-> Приоритет: качество → UX → новые фичи (именно в этом порядке)  
-> Провайдеры: **laozhang.ai** (изображения), **apimart.ai** (видео)
+> Обновлено: 2026-06-29  
+> Провайдеры: **laozhang.ai** (изображения + текст), **apimart.ai** (видео)
 
 ---
 
-## ТЕКУЩИЙ СТАТУС: ЧТО РАБОТАЕТ / СЛОМАНО / НЕ ПРОВЕРЕНО
+## СТАТУС РЕАЛИЗАЦИИ — ЧТО СДЕЛАНО
 
 ### Изображения — laozhang.ai
 
-| Функция | Статус | Заметка |
+| Функция | Статус | Коммит / Заметка |
 |---|---|---|
-| Генерация DALL-E 3 | РАБОТАЕТ | стабильно |
-| Генерация GPT Image 1/2 | РАБОТАЕТ | стабильно |
-| Генерация Flux (2-pro/max/kontext) | РАБОТАЕТ | стабильно |
-| img2img (Flux Kontext) | РАБОТАЕТ | через fal_utils.py generate_image_edit |
-| Outpaint (расширение холста) | ПОЧИНЕНО 28.06 | commits b6b5dfd, b355a93, 12bf4e6 |
-| Inpaint (рисование маски) GPT Image 1 | **[БАГ НЕ ЗАКРЫТ]** | см. критический баг ниже |
-| Детализировать (upscale через img2img) | РАБОТАЕТ | результат появляется в чате |
-| Анимировать изображение (img2video) | РАБОТАЕТ | переход в новый чат с видеомоделью |
-
-### Критический баг: формат маски для GPT Image 1 inpaint
-
-**Проблема:** `MaskEditor` экспортирует PNG в формате grayscale: белый = область редактирования, чёрный = сохранить.  
-OpenAI API (`images.edit`) ожидает RGBA PNG где `alpha=0` = редактировать, `alpha=255` = сохранить.
-
-**Симптом:** При использовании маски с GPT Image 1:
-- либо API вернёт ошибку формата маски
-- либо результат будет перевёрнутым (чёрная область редактируется вместо белой)
-- либо laozhang.ai конвертирует сам (НЕ ПРОВЕРЕНО — требует тестирования)
-
-**Необходимое действие:** Перед отправкой в API для OpenAI-моделей преобразовать маску:
-```python
-# В generate_image_edit(), ветка mask_url
-if mask_url and model_id in _MODEL_SUPPORTED_SIZES:
-    mask_img = _PILImage.open(mask_io).convert("RGBA")
-    r, g, b, a = mask_img.split()
-    # Белые пиксели (редактировать) → alpha=0; чёрные (сохранить) → alpha=255
-    new_alpha = r.point(lambda x: 0 if x > 128 else 255)
-    mask_img.putalpha(new_alpha)
-    # Пересохранить как RGBA PNG
-```
-
-**Флаг:** До реализации и проверки inpaint с GPT Image 1 не продвигать как "работающую фичу".
+| Генерация DALL-E 3 / GPT Image 1/2 | ✅ РАБОТАЕТ | стабильно |
+| Генерация Flux 2 Pro/Max/Flex, Kontext Pro/Max | ✅ РАБОТАЕТ | стабильно |
+| **GPT Image 1.5** | ✅ ДОБАВЛЕНО 29.06 | новая модель |
+| **Seedream 4.0 / 4.5 / 5.0** | ✅ ДОБАВЛЕНО 29.06 | ByteDance, minimal_params fix |
+| **Gemini 3.1 Flash Image / 3 Pro Image / 2.5 Flash Image** | ✅ ДОБАВЛЕНО 29.06 | Google Imagen, minimal_params fix |
+| img2img / Flux Kontext редактирование | ✅ РАБОТАЕТ | generate_image_edit |
+| Outpaint (расширение холста по направлению) | ✅ РАБОТАЕТ | фикс 28.06 |
+| **Generative Expand (расширение до соотношения)** | ✅ СДЕЛАНО 28.06 | _prepare_expand_to_ratio + UI в EditImageModal |
+| **Fullscreen Lightbox (просмотр / zoom / скачать)** | ✅ СДЕЛАНО 28.06 | ZoomableImage + createPortal overlay |
+| Upscale / Детализация | ✅ РАБОТАЕТ | через img2img |
+| Style Reference (Flux Kontext) | ✅ РАБОТАЕТ | image_url как референс |
+| Vary / Вариации | ✅ РАБОТАЕТ | повторный запрос |
+| Before/After слайдер | ✅ РАБОТАЕТ | BeforeAfterSlider компонент |
+| Batch генерация (×1/×2/×4) | ✅ РАБОТАЕТ | параллельные запросы |
+| **Background Removal** | ✅ КОД ГОТОВ 28.06 | RemoveBackgroundView; нужен `pip install rembg` при rebuild |
+| Inpaint (mask → GPT Image 1) | ⚠️ БАГ | маска должна быть RGBA (alpha=0 = edit), сейчас grayscale |
+| AI Auto-Select (SAM2) | ❌ НЕТ | laozhang.ai не поддерживает — нужен новый провайдер |
 
 ### Видео — apimart.ai
 
 | Функция | Статус | Заметка |
 |---|---|---|
-| Text2Video Sora 2 | РАБОТАЕТ | через apimart |
-| Text2Video Veo 3.1 | РАБОТАЕТ | через apimart |
-| Text2Video Kling v2.6 | РАБОТАЕТ | с аудио |
-| Text2Video Seedance 1.5/2.0 | РАБОТАЕТ | ByteDance |
-| Img2Video (оживить) | ТРЕБУЕТ ПРОВЕРКИ | AnimateImageModal создаёт чат с видеомоделью, но img2video через fal_utils — нужно протестировать |
-| Прогресс видеогенерации | ПОЧИНЕНО | SSE поллинг |
+| Text2Video: Sora 2 / Pro | ✅ РАБОТАЕТ | duration 4/5/10/20 сек, aspect ratio |
+| Text2Video: Veo 3.1 Fast / Quality | ✅ РАБОТАЕТ | аудиодорожка, resolution |
+| Text2Video: Kling v2.6 | ✅ РАБОТАЕТ | аудио (pro mode), camera_type |
+| Text2Video: Seedance 1.5 Pro / 2.0 | ✅ РАБОТАЕТ | аудио, camerafixed, size |
+| Img2Video (оживить изображение) | ✅ РАБОТАЕТ | image_url в теле запроса |
+| Прогресс видеогенерации | ✅ РАБОТАЕТ | polling |
+| **Extend Video** | ❌ НЕТ | apimart вернул `Invalid URL` — endpoint не существует |
+| **Lip Sync** | ❌ НЕТ | apimart вернул `Invalid URL` — endpoint не существует |
+| Motion Brush | ❌ НЕТ | требует Runway ML |
+| Video Inpaint | ❌ НЕТ | требует Runway ML или Kling enterprise |
+| PikaEffects (inflate/melt/explode) | ❌ НЕТ | требует Pika API |
+
+### Новые текстовые модели — добавлено 29.06
+
+| Группа | Добавленные модели |
+|---|---|
+| DeepSeek | V3.2, V4 Flash, V4 Pro |
+| Gemini | 3.5 Flash, 3.1 Pro |
+| GLM | 5, 4.6 |
+| GPT-5 | Mini, Pro, 5.1 |
+| Grok | 4.3 |
+| Kimi | K2.5, K2.6 |
+| Qwen | 3.5 Flash, 3.5 Plus |
+| MiniMax | M2.5, M2.7 |
 
 ---
 
-## КОНКУРЕНТНЫЙ АНАЛИЗ: ЧТО ДАЮТ ТОПЫ
+## ЧТО ТРЕБУЕТ НОВОГО ПРОВАЙДЕРА — ФИНАЛЬНЫЙ ВЕРДИКТ
 
-### Midjourney (лидер по UX в генерации)
-- Aspect ratio presets с превью прямо в интерфейсе (16:9, 9:16, 1:1, 4:3, 3:2, 21:9)
-- Style reference (`--sref`) — задать стиль через ссылку на изображение
-- Character reference (`--cref`) — сохранить персонажа между генерациями
-- Vary Subtle / Vary Strong — вариации с небольшими / сильными изменениями
-- Remix mode — изменить промпт на уже сгенерированном
-- Describe — AI анализирует картинку и генерирует промпт
-- Pan / Zoom outpaint — расширение в нужную сторону (наш outpaint уже это делает!)
-- Публичная галерея с поиском по промпту
+> Проверено 29.06 прямыми API-запросами на apimart.ai и laozhang.ai.
 
-### Adobe Firefly (лидер в профессиональном редактировании)
-- Generative Fill — нарисовал маску → AI заполнил умно
-- **Auto-select** — клик на объект → AI выделяет его (Segment Anything)
-- Generative Expand — выбор нового соотношения → AI расширяет умно
-- Structure Reference — сохранить композицию, изменить стиль
-- Remove & Replace — удалить объект, AI заполняет фон
-- Текст в изображении (Ideogram-уровень)
-
-### Runway ML (лидер видеоредактирования)
-- Motion Brush — рисуешь на области видео, задаёшь вектор движения
-- Camera Controls — Pan Left/Right, Zoom In/Out, Tilt, Orbit, Dolly, Crane
-- Extend Video — добавить секунды к готовому видео
-- Video-to-Video — применить стиль к существующему видео
-- Inpaint в видео — замазать область + AI заполнит по кадрам
-
-### Kling AI (Kuaishou — быстро растёт)
-- Img2Video с очень высоким качеством движения
-- Motion control points — задать откуда-куда двигаться
-- Lip Sync — синхронизировать губы с аудио
-- Face Swap
-- Camera движения (крепкая интеграция)
-
-### Pika (простота и вирусность)
-- PikaEffects — inflate (раздуть), explode (взрыв), melt (расплавить), crush
-- Sound effects — AI добавляет звук к видео
-- Modify Region — локальное редактирование области видео
+| Фича | Что проверили | Результат | Нужен провайдер |
+|---|---|---|---|
+| **Extend Video** | `POST apimart.ai/v1/videos/extend` | `Invalid URL` — endpoint не существует | Kling official API или Runway ML |
+| **Lip Sync** | `POST apimart.ai/v1/videos/lip-sync` | `Invalid URL` — endpoint не существует | Kling official API (есть `/v1/videos/lip-sync`) или SyncLabs |
+| **AI Auto-Select** | laozhang.ai models list | `sam2`, `segment-anything` — отсутствуют | fal.ai (`fal-ai/sam2`) |
+| **Motion Brush** | — | нет у apimart, laozhang | Runway ML API |
+| **PikaEffects** (inflate/explode/melt) | — | нет у apimart, laozhang | Pika API |
+| **Inpaint в видео** | — | нет у apimart, laozhang | Runway ML или Kling enterprise |
+| **Ideogram** (текст в изображении) | laozhang.ai models list | отсутствует в каталоге | ideogram.ai API |
 
 ---
 
-## ЧТО РЕАЛИЗУЕМО ЧЕРЕЗ НАШИХ ПРОВАЙДЕРОВ
+## ОСТАВШИЕСЯ ЗАДАЧИ (в рамках текущих провайдеров)
 
-| Фича | Провайдер | Реализуемость |
-|---|---|---|
-| Style Reference (Image) | Flux Kontext Pro/Max | ПОДДЕРЖИВАЕТСЯ — через `image_url` как референс |
-| Vary Subtle/Strong | Любая модель | ПОДДЕРЖИВАЕТСЯ — повторный запрос с тем же промптом |
-| Describe (image → prompt) | GPT-4o | ПОДДЕРЖИВАЕТСЯ — уже есть handle_photo в чате |
-| Aspect Ratio пресеты | Flux / OpenAI | ПОДДЕРЖИВАЕТСЯ — добавить пресеты в UI |
-| Auto-select mask | SAM2 | ТРЕБУЕТ НОВОГО ПРОВАЙДЕРА (fal.ai/segment-anything) |
-| Remove & Replace | inpaint | ПОДДЕРЖИВАЕТСЯ (если починим маску) |
-| Background Removal | rembg (локальный) | ПОДДЕРЖИВАЕТСЯ — pip install rembg, без нового провайдера |
-| Camera Controls видео | Seedance (camerafixed) | ЧАСТИЧНО — только фиксированная камера |
-| Motion Brush | Runway API | ТРЕБУЕТ НОВОГО ПРОВАЙДЕРА |
-| Extend Video | apimart? | НУЖНО ПРОВЕРИТЬ — есть ли endpoint |
-| Lip Sync | apimart/laozhang? | НУЖНО ПРОВЕРИТЬ |
-| Video Effects (inflate/melt) | Pika API | ТРЕБУЕТ НОВОГО ПРОВАЙДЕРА |
-| Inpaint в видео | Runway/Kling API | ТРЕБУЕТ НОВОГО ПРОВАЙДЕРА |
-| Текст в изображении | Ideogram (laozhang?) | НУЖНО ПРОВЕРИТЬ — есть ли в каталоге |
-| Batch генерация | Любая модель | ПОДДЕРЖИВАЕТСЯ — N параллельных запросов |
+### Приоритет 1 — Баг: Inpaint маска GPT Image 1
 
----
+**Файл:** `src/aitext/fal_utils.py` → `generate_image_edit()`
 
-## ТРЕК 1: ХАРДВОРК — ЗАКРЕПИТЬ СУЩЕСТВУЮЩЕЕ (Sprint 1)
+Проблема: MaskEditor экспортирует grayscale PNG (белый = редактировать).
+OpenAI ожидает RGBA PNG где `alpha=0` = редактировать, `alpha=255` = сохранить.
 
-> Ничего нового, пока сломанное не починено и не верифицировано живым тестом.
+Фикс:
+```python
+# В ветке mask_url, перед отправкой в API
+if mask_url and model_id in _MODEL_SUPPORTED_SIZES:
+    mask_img = Image.open(mask_io).convert("RGBA")
+    r, g, b, a = mask_img.split()
+    new_alpha = r.point(lambda x: 0 if x > 128 else 255)
+    mask_img.putalpha(new_alpha)
+```
 
-### 1.1 Закрыть критический баг inpaint (ПРИОРИТЕТ 1)
+### Приоритет 2 — rembg: активация фонового удаления
 
-**Файл:** `src/aitext/fal_utils.py` — функция `generate_image_edit()`
+Background Removal написан (`RemoveBackgroundView`), но `rembg` не установлен в Docker-образе.
 
-Задача: в ветке `mask_url` (когда пользователь нарисовал маску):
-1. Скачать маску по `mask_url`
-2. Если модель в `_MODEL_SUPPORTED_SIZES` (OpenAI-семейство) — конвертировать white→alpha=0, black→alpha=255
-3. Снапнуть маску к поддерживаемому размеру (та же логика что для outpaint)
-4. **Живой тест:** запрос через GPT Image 1 с ручной маской и промптом "добавь облака"
-5. **Зафиксировать в логах:** `[inpaint] model=gpt-image-1 mask_converted=True size=1024x1024`
+Нужно в `Dockerfile` добавить:
+```dockerfile
+RUN pip install rembg onnxruntime
+```
 
-### 1.2 Верифицировать img2video (живым тестом)
+После rebuild — функция заработает автоматически. Без этого endpoint возвращает 503.
 
-Нажать кнопку "Оживить" на любой сгенерированной картинке → убедиться что:
-- Видео появляется в чате (не только в `/files/`)
-- Прогресс-бар показывает реальный прогресс
-- Ошибки показываются пользователю понятно
+### Приоритет 3 — MaskEditor UX
 
-### 1.3 MaskEditor: UX-доработки
-
-Текущий MaskEditor — чёрный холст с белой кистью (непонятно для пользователя).
+Текущий редактор маски неудобен (чёрный холст, непонятно что закрашиваешь).
 
 Нужно:
-- Показывать исходное изображение как фон полупрозрачно (opacity 0.7)
-- Белая кисть рисует поверх — пользователь видит ЧТО он выделяет
-- Добавить ластик (режим стирания кисти)
-- Кнопки: "Размер кисти" (S/M/L), "Стереть всё", "Отменить" (Ctrl+Z)
-- Показывать подсказку: "Закрасьте область, которую хотите изменить"
+- Фоновое изображение с opacity 0.5 под маской
+- Ластик (режим erase)
+- Размер кисти S/M/L
+- Подсказка: "Закрасьте область для редактирования"
 
-### 1.4 Outpaint: верификация после фикса
+### Приоритет 4 — Тестирование Gemini Image моделей
 
-После деплоя подтвердить что:
-- "Вверх" 1024×1024 → 1024×1536 ✓ (без ошибки размера)
-- "Со всех сторон" → корректный размер
-- Результат появляется в чате
+Gemini image модели добавлены с `minimal_params: true` (как Seedream).
+Нужно проверить что они реально работают через аналогичный тест:
 
-**Критерий готовности Трека 1:** Пользователь может:
-1. Нарисовать маску на GPT Image 1 → получить inpaint без ошибки
-2. Расширить холст в любом направлении → получить результат
-3. Оживить изображение → видео появляется в чате
-
----
-
-## ТРЕК 2: UX КАК У ПРОФЕССИОНАЛОВ (Sprint 2–3)
-
-### Sprint 2: "Студия изображений" (2–3 дня)
-
-#### 2.1 Aspect Ratio пресеты в генерации
-
-В UI генерации добавить быстрые кнопки пропорций (не только для Flux, но и для OpenAI-моделей):
-
-```
-[ 1:1 ] [ 16:9 ] [ 9:16 ] [ 3:4 ] [ 4:3 ]
-```
-
-Для OpenAI-моделей маппинг к ближайшему поддерживаемому:
-- 1:1 → 1024×1024
-- 16:9 или 4:3 → 1536×1024 (широкий)
-- 9:16 или 3:4 → 1024×1536 (портрет)
-
-**Реализация:** Добавить `aspect_ratio` пресеты в ImageGenerationSettings компонент.  
-**Провайдер:** Всё поддерживается текущими моделями.
-
-#### 2.2 Style Reference через Flux Kontext
-
-Flux Kontext Pro/Max умеют принимать `image_url` как референс стиля.  
-Добавить кнопку "Стиль из изображения" в EditImageModal:
-- Пользователь вводит URL или загружает изображение-образец стиля
-- Бэкенд передаёт его как `image_url` в Flux Kontext
-- Промпт описывает контент, стиль берётся из референса
-
-**Провайдер:** ПОДДЕРЖИВАЕТСЯ — Flux Kontext Pro/Max
-
-#### 2.3 Vary (Вариации)
-
-На каждом сгенерированном изображении кнопка "Вариации":
-- Вариация "слабая" — тот же промпт + другой seed, `strength=0.3`
-- Вариация "сильная" — тот же промпт + другой seed, `strength=0.7`
-- Показывает 2–4 варианта рядом
-
-**Реализация:** MessageActions → кнопка "Создать вариации" → запрос `N=2` к тому же эндпоинту.  
-**Провайдер:** ПОДДЕРЖИВАЕТСЯ всеми моделями.
-
-#### 2.4 "Описать" (Image → Prompt)
-
-Кнопка "Получить промпт" на изображении → GPT-4o анализирует → возвращает детальный промпт.  
-Промпт копируется в поле ввода одним кликом.
-
-**Реализация:** Новый `/api/v1/image-describe/` эндпоинт, использует `handle_photo=True` через GPT-4o.  
-**Провайдер:** ПОДДЕРЖИВАЕТСЯ — GPT-4o с `handle_photo=True` уже есть в системе.
-
-### Sprint 3: "Профессиональный редактор" (3–4 дня)
-
-#### 3.1 Удаление фона (Background Removal)
-
-Один клик → фон удаляется → PNG с прозрачным фоном.  
-Используем `rembg` (локально, без нового провайдера):
-
-```python
-pip install rembg onnxruntime
-# src/aitext/views.py — новый endpoint POST /api/v1/remove-background/
-```
-
-Затем можно:
-- Скачать PNG с прозрачным фоном
-- Нажать "Заменить фон" → открывает редактор с новым промптом
-
-**Провайдер:** НЕ ТРЕБУЕТ нового провайдера — rembg локально.
-
-#### 3.2 Before/After слайдер
-
-После редактирования (inpaint/outpaint) — интерактивный слайдер:
-- Слева исходник, справа результат
-- Drag для перемещения разделителя
-
-**Реализация:** Новый `BeforeAfterSlider` компонент в React, CSS clip-path.
-
-#### 3.3 Batch-генерация (4 варианта сразу)
-
-Чекбокс "4 варианта" при генерации → 4 параллельных запроса → сетка 2×2.
-
-**Провайдер:** ПОДДЕРЖИВАЕТСЯ. Celery tasks или concurrent requests.
-
-#### 3.4 Zoom / Pan в просмотре изображений
-
-Pinch-to-zoom и drag pan для изображений в чате — базовые возможности профессионального инструмента.  
-**Реализация:** `react-zoom-pan-pinch` или CSS transform.
-
----
-
-## ТРЕК 3: НОВЫЕ ВОЗМОЖНОСТИ (Sprint 4–5)
-
-### Sprint 4: AI-помощь в редактировании
-
-#### 4.1 AI Auto-Select (аналог Adobe Auto-Mask)
-
-Пользователь кликает на объект → AI выделяет его контур автоматически.
-
-**Провайдер:**
-- Segment Anything 2 доступен через `fal.ai/segment-anything-2`
-- **НУЖНО ПРОВЕРИТЬ:** есть ли этот endpoint в каталоге laozhang.ai
-- Если нет → либо добавить новый провайдер fal.ai напрямую, либо отложить
-
-**Реализация при наличии endpoint:**
-```python
-# POST /api/v1/segment/ — принимает image_url + click_x + click_y
-# Возвращает mask_url (PNG RGBA)
-```
-
-#### 4.2 Remove & Replace (удаление объектов)
-
-1. Пользователь выделяет объект (ручная маска или AI-выделение)
-2. Нажимает "Удалить объект"
-3. AI заполняет область фоном без объекта (inpaint с промптом "seamless background")
-
-**Провайдер:** ПОДДЕРЖИВАЕТСЯ через Flux Kontext inpaint (если маска работает).
-
-#### 4.3 Расширение с выбором пропорций (Generative Expand)
-
-Улучшенный outpaint: вместо кнопок "Влево/Вверх/..."  
-→ выбрать конечные пропорции (например, 16:9) → AI сам решает что расширять.
-
-**Реализация:** В `_prepare_outpaint_canvas()` добавить режим "target_ratio" — рассчитать направление и сколько добавить.
-
-### Sprint 5: Видеофичи
-
-#### 5.1 Img2Video: расширенные настройки
-
-В `AnimateImageModal` добавить настройки по модели:
-- Для Kling v2.6: motion style (slow/medium/fast), camera movement
-- Для Seedance: camerafixed + audio + длительность
-- Для Sora: аспект + длительность
-
-#### 5.2 Продление видео (Extend Video)
-
-**ТРЕБУЕТ ПРОВЕРКИ:** У apimart.ai есть ли endpoint для extend?  
-Если да — кнопка "Продлить +5 сек" на видео в чате.  
-Если нет — добавить в TODO после исследования.
-
-#### 5.3 Видео-gallery с превью
-
-В `/files/` раздел видео:
-- Thumbnail (первый кадр через video element)
-- Play прямо в галерее
-- Фильтр по модели
-
-#### 5.4 Download с watermark / без
-
-Pro-пользователи (с тарифом) — без watermark.  
-Бесплатные / trial — watermark "aineron.ru" в углу.
-
----
-
-## ТРЕК 4: РОСТ И ВИРУСНОСТЬ (Sprint 6)
-
-### 6.1 Публичная галерея
-
-- Страница `/gallery/` — всё что пользователи публикуют (opt-in)
-- Фильтры: модель, тип (изображение/видео), популярное
-- Лайки, количество просмотров
-- Кнопка "Ремикс" — открыть этот промпт в своём чате
-- SEO: каждая работа → отдельная страница `/gallery/{id}/` с JSON-LD
-
-### 6.2 Промпт-подсказки и сообщество промптов
-
-- "Топ промптов недели" на главной
-- Категории: портреты, пейзажи, реклама, концепт-арт
-- Быстрый старт: "Попробуй этот промпт" → один клик → сразу в чат
-
-### 6.3 Collections (избранное + папки)
-
-- Сохранить изображение в коллекцию
-- Создавать папки: "Клиент А", "Референсы", "Портреты"
-- Поделиться коллекцией по ссылке
-
----
-
-## ПРИОРИТИЗАЦИЯ: ПОРЯДОК РЕАЛИЗАЦИИ
-
-```
-Критично сейчас (блокирует доверие):
-  1. Баг inpaint маски (Трек 1.1)
-  2. Верификация img2video (Трек 1.2)
-  3. MaskEditor UX (Трек 1.3)
-  
-Высокий приоритет (конкурентное преимущество):
-  4. Aspect Ratio пресеты (Sprint 2.1)
-  5. Before/After слайдер (Sprint 3.2)
-  6. Background Removal (Sprint 3.1) — без нового провайдера!
-  7. Describe image → prompt (Sprint 2.4)
-  
-Средний приоритет:
-  8. Vary / Вариации (Sprint 2.3)
-  9. Style Reference Flux (Sprint 2.2)
-  10. Batch 4 варианта (Sprint 3.3)
-  
-Требует проверки провайдера:
-  11. AI Auto-Select (Sprint 4.1) — сначала проверить endpoint
-  12. Extend Video (Sprint 5.2) — сначала проверить endpoint
-  
-Следующий уровень (когда предыдущее работает):
-  13. Публичная галерея (Sprint 6.1)
-  14. Collections (Sprint 6.3)
+```bash
+docker-compose exec web python3 -c "import os,django; os.environ['DJANGO_SETTINGS_MODULE']='config.settings'; django.setup(); from django.conf import settings; import requests; r=requests.post(settings.LAOZHANG_API_URL+'/images/generations',headers={'Authorization':'Bearer '+settings.LAOZHANG_API_KEY},json={'model':'gemini-3.1-flash-image','prompt':'a cat'},timeout=30); print(r.status_code,r.text[:400])"
 ```
 
 ---
 
-## ОПРЕДЕЛЕНИЕ "ГОТОВО" (Definition of Done)
+## НОВЫЕ ПРОВАЙДЕРЫ — КОГДА ДОБАВЛЯТЬ
 
-Фича считается завершённой когда:
-1. Живой тест прошёл (не "tsc прошёл", а реальный API-запрос вернул результат)
-2. Ошибки API показываются пользователю понятным сообщением на русском
-3. Логи содержат достаточно информации для диагностики
-4. Если фича использует новый endpoint провайдера — этот endpoint сначала подтверждён запросом
-
-**Не считается "готово":**
-- TypeScript компилируется без ошибок — это минимум, не критерий готовности
-- "Логика выглядит правильно" — тестируй в реале
-- "Провайдер должен поддерживать" — проверь endpoint перед реализацией
+| Фича | Провайдер | Приоритет | Трудоёмкость |
+|---|---|---|---|
+| **Extend Video + Lip Sync** | Kling официальный API (`klingai.com/developer`) | Высокий — закрывает 2 фичи | ~4 часа |
+| **AI Auto-Select** | fal.ai SDK (`fal-ai/sam2`) | Средний — уникальная фича | ~3 часа |
+| **Ideogram** (профессиональный текст) | ideogram.ai API | Средний — нет конкурентов в RU | ~2 часа |
+| **PikaEffects** | Pika API | Низкий — вирусная, но нишевая | ~4 часа |
+| **Motion Brush + Video Inpaint** | Runway ML API | Низкий — дорого ($0.05-0.10/сек) | ~6 часов |
 
 ---
 
-## НОВЫЕ ПРОВАЙДЕРЫ (когда будем готовы к ним)
+## ОПРЕДЕЛЕНИЕ "ГОТОВО"
 
-| Фича | Провайдер | Оценка |
-|---|---|---|
-| AI Auto-Select | fal.ai/segment-anything-2 | Средне-дорого, высокий UX-эффект |
-| Motion Brush | Runway ML API | Дорого, уникальная фича |
-| Lip Sync | Wav2Lip/SyncLabs через любой | Средне, вирусная фича |
-| Ideogram (текст в изображении) | ideogram.ai API | Дёшево, уникально для RU рынка |
-| PikaEffects | Pika API | Вирусная фича для Telegram/Stories |
+Фича считается готовой когда:
+1. Живой API-запрос вернул корректный результат (не только TypeScript без ошибок)
+2. Ошибки провайдера показываются пользователю по-русски
+3. Если новый endpoint — сначала подтверждён прямым curl/python тестом
 
 ---
 
-*Этот план активен пока IMAGE_VIDEO_PLAN.md (7 спринтов) завершён. Приоритет: закрепить и сделать надёжным то, что уже есть.*
+## ТЕХНИЧЕСКИЕ ЗАМЕТКИ
+
+### minimal_params для Seedream / Gemini image
+
+Эти модели не принимают `size` и `n` параметры — возвращают `400 InvalidParameter`.
+Фикс: `config_json.metadata.minimal_params: true` → `_build_image_params` отправляет только `{model, prompt}`.
+
+Тест подтверждён 29.06: `POST /v1/images/generations {"model": "seedream-5-0-260128", "prompt": "a cat"}` → `200 OK` с URL изображения.
+
+### Команды обновления моделей
+
+```bash
+# Добавить все новые модели (изображения + текст)
+docker-compose exec web python manage.py add_new_models
+
+# Скачать аватары для новых моделей
+docker-compose exec web python manage.py download_avatars
+
+# Добавить видео-модели apimart
+docker-compose exec web python manage.py add_video_models
+```
