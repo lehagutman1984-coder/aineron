@@ -601,6 +601,16 @@ def generate_image_edit(network, user_msg, message, user_settings=None):
     # Скачиваем исходное изображение для multipart /images/edits
     import io as _io
     import requests as _req
+
+    def _make_absolute(url: str) -> str:
+        """Конвертирует относительный URL (/media/...) в абсолютный."""
+        if url and url.startswith('/'):
+            _site = (getattr(settings, 'SITE_URL', '') or 'https://aineron.ru').rstrip('/')
+            return _site + url
+        return url
+
+    image_url = _make_absolute(image_url)
+
     try:
         resp = _req.get(image_url, timeout=30)
         resp.raise_for_status()
@@ -650,7 +660,7 @@ def generate_image_edit(network, user_msg, message, user_settings=None):
     elif mask_url:
         try:
             from PIL import Image as _PILImage
-            mresp = _req.get(mask_url, timeout=30)
+            mresp = _req.get(_make_absolute(mask_url), timeout=30)
             mresp.raise_for_status()
             if model_id in _MODEL_SUPPORTED_SIZES:
                 # OpenAI-семейство: зеркалим подход outpaint (commit 12bf4e6).
