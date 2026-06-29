@@ -76,6 +76,7 @@ export default function ChatPage() {
   // img2img: модалка редактирования (маска / outpaint) для сгенерированного изображения
   const [editModalUrl, setEditModalUrl] = useState<string | null>(null);
   const [beforeAfterUrls, setBeforeAfterUrls] = useState<{ before: string; after: string } | null>(null);
+  const [pendingBeforeUrl, setPendingBeforeUrl] = useState<string | null>(null);
   const [describingId, setDescribingId] = useState<number | null>(null);
   // img2video: модалка "Оживить" — выбор видео-модели для сгенерированного изображения
   const [animateModalUrl, setAnimateModalUrl] = useState<string | null>(null);
@@ -237,6 +238,14 @@ export default function ChatPage() {
     setPendingMessageId(null);
     if (polledMessage.status === "completed") {
       animatedIds.current.add(polledMessage.id);
+      // Before/After slider: показываем после редактирования изображения
+      if (pendingBeforeUrl) {
+        const afterUrl = extractFirstImageUrl(polledMessage.content || polledMessage.plain_text || "");
+        if (afterUrl) {
+          setBeforeAfterUrls({ before: pendingBeforeUrl, after: afterUrl });
+        }
+        setPendingBeforeUrl(null);
+      }
     }
     qc.setQueryData<ChatDetail>(["chat", id], (prev) => {
       if (!prev) return prev;
@@ -247,7 +256,7 @@ export default function ChatPage() {
         ),
       };
     });
-  }, [polledMessage, id, qc]);
+  }, [polledMessage, id, qc, pendingBeforeUrl]);
 
   useEffect(() => {
     if (!isNearBottomRef.current) return;
@@ -692,8 +701,7 @@ export default function ChatPage() {
         ws: false,
         settings: falSettings,
       });
-      const beforeUrl = editModalUrl; // сохраняем до сброса
-      void beforeUrl;
+      if (editModalUrl) setPendingBeforeUrl(editModalUrl);
       setEditModalUrl(null);
     },
     [mediaSettings, sendMutation, editModalUrl]
