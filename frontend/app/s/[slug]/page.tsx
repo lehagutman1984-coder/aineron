@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Link from "next/link";
 import { FileText, MessageSquare, Folder, Code2, BookOpen, Briefcase, Zap, Globe, Palette, Clock } from "lucide-react";
 import type { PublicSpace } from "@/lib/api/types";
@@ -59,9 +59,9 @@ export default async function PublicSpacePage({ params }: { params: { slug: stri
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f7f7f8]">
         <div className="text-center">
-          <p className="text-[15px] font-medium text-[#0d0d0d]">Space не найден</p>
+          <p className="text-[15px] font-medium text-[#1A1A1A]">Space не найден</p>
           <p className="mt-1 text-[13px] text-[rgba(13,13,13,0.45)]">Ссылка недействительна или доступ ограничен</p>
-          <Link href="/" className="mt-4 inline-block text-[13px] text-[#f0a38a] hover:underline">
+          <Link href="/" className="mt-4 inline-block text-[13px] text-[#D97757] hover:underline">
             На главную
           </Link>
         </div>
@@ -76,7 +76,7 @@ export default async function PublicSpacePage({ params }: { params: { slug: stri
       {/* Header */}
       <header className="border-b border-[rgba(13,13,13,0.08)] bg-white">
         <div className="mx-auto flex max-w-[760px] items-center justify-between px-4 py-3">
-          <Link href="/" className="text-[13px] font-semibold text-[#0d0d0d] tracking-tight">
+          <Link href="/" className="text-[13px] font-semibold text-[#1A1A1A] tracking-tight">
             Aineron.ru
           </Link>
           <span className="text-[11px] text-[rgba(13,13,13,0.40)]">Project Space</span>
@@ -93,7 +93,7 @@ export default async function PublicSpacePage({ params }: { params: { slug: stri
             <SpaceIcon size={26} style={{ color: space.color }} />
           </div>
           <div>
-            <h1 className="text-[22px] font-bold text-[#0d0d0d] leading-tight">{space.name}</h1>
+            <h1 className="text-[22px] font-bold text-[#1A1A1A] leading-tight">{space.name}</h1>
             <p className="mt-0.5 flex items-center gap-1.5 text-[12px] text-[rgba(13,13,13,0.40)]">
               <Clock size={11} />
               Создан {formatDate(space.created_at)}
@@ -133,7 +133,7 @@ export default async function PublicSpacePage({ params }: { params: { slug: stri
                 <div key={f.id} className="flex items-center justify-between py-2.5">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <FileText size={14} className="shrink-0 text-[rgba(13,13,13,0.35)]" />
-                    <span className="truncate text-[13px] text-[#0d0d0d]">{f.filename}</span>
+                    <span className="truncate text-[13px] text-[#1A1A1A]">{f.filename}</span>
                     <span className="shrink-0 rounded-[4px] bg-[rgba(13,13,13,0.07)] px-1.5 py-0.5 text-[10px] text-[rgba(13,13,13,0.45)]">
                       {FILE_TYPE_LABEL[f.file_type] ?? "Файл"}
                     </span>
@@ -159,7 +159,7 @@ export default async function PublicSpacePage({ params }: { params: { slug: stri
             <div className="divide-y divide-[rgba(13,13,13,0.07)]">
               {space.chats.map((c) => (
                 <div key={c.id} className="flex items-center justify-between py-2.5">
-                  <span className="truncate text-[13px] text-[#0d0d0d]">{c.title || "Без названия"}</span>
+                  <span className="truncate text-[13px] text-[#1A1A1A]">{c.title || "Без названия"}</span>
                   <span className="ml-3 shrink-0 text-[12px] text-[rgba(13,13,13,0.40)]">
                     {new Date(c.updated_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
                   </span>
@@ -171,7 +171,7 @@ export default async function PublicSpacePage({ params }: { params: { slug: stri
 
         {/* CTA */}
         <div className="rounded-[14px] border border-[rgba(10,124,255,0.15)] bg-[rgba(10,124,255,0.04)] p-5">
-          <p className="text-[13px] font-medium text-[#0d0d0d]">
+          <p className="text-[13px] font-medium text-[#1A1A1A]">
             Создайте свой Project Space на Aineron.ru
           </p>
           <p className="mt-1 text-[12px] leading-relaxed text-[rgba(13,13,13,0.55)]">
@@ -179,7 +179,7 @@ export default async function PublicSpacePage({ params }: { params: { slug: stri
           </p>
           <Link
             href="/"
-            className="mt-3 inline-flex items-center gap-1.5 rounded-[8px] bg-[#f0a38a] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#0068e0] transition-colors"
+            className="mt-3 inline-flex items-center gap-1.5 rounded-[8px] bg-[#D97757] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#0068e0] transition-colors"
           >
             Попробовать бесплатно
           </Link>

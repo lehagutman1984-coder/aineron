@@ -1,4 +1,4 @@
-import { Loader2 } from "lucide-react";
+﻿import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SpinnerProps {
@@ -10,7 +10,7 @@ export function Spinner({ size = 20, className }: SpinnerProps) {
   return (
     <Loader2
       size={size}
-      className={cn("animate-spin text-[#f0a38a]", className)}
+      className={cn("animate-spin text-[#D97757]", className)}
     />
   );
 }

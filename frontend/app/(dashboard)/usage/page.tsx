@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -37,13 +37,13 @@ export default function UsagePage() {
       <div className="mb-8 flex items-center gap-3">
         <Link
           href="/account/"
-          className="flex items-center gap-1 text-[13px] text-[rgba(13,13,13,0.5)] hover:text-[#0d0d0d] transition-colors"
+          className="flex items-center gap-1 text-[13px] text-[rgba(13,13,13,0.5)] hover:text-[#1A1A1A] transition-colors"
         >
           <ArrowLeft size={14} />
           Кабинет
         </Link>
         <span className="text-[rgba(13,13,13,0.25)]">/</span>
-        <h1 className="text-[20px] font-bold text-[#0d0d0d]">Статистика использования</h1>
+        <h1 className="text-[20px] font-bold text-[#1A1A1A]">Статистика использования</h1>
       </div>
 
       {/* Filters */}
@@ -56,8 +56,8 @@ export default function UsagePage() {
               className={[
                 "rounded-[6px] px-3 py-1.5 text-[13px] font-medium transition-all",
                 days === opt.value
-                  ? "bg-[#f0a38a] text-white"
-                  : "text-[rgba(13,13,13,0.6)] hover:text-[#0d0d0d]",
+                  ? "bg-[#D97757] text-white"
+                  : "text-[rgba(13,13,13,0.6)] hover:text-[#1A1A1A]",
               ].join(" ")}
             >
               {opt.label}
@@ -69,7 +69,7 @@ export default function UsagePage() {
           <select
             value={orgId ?? ""}
             onChange={(e) => setOrgId(e.target.value ? Number(e.target.value) : undefined)}
-            className="rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-3 py-2 text-[13px] text-[rgba(13,13,13,0.7)] outline-none focus:border-[#f0a38a]"
+            className="rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-3 py-2 text-[13px] text-[rgba(13,13,13,0.7)] outline-none focus:border-[#D97757]"
           >
             <option value="">Мои запросы</option>
             {orgs.map((o) => (
@@ -113,7 +113,7 @@ export default function UsagePage() {
           {/* Daily chart (CSS bar chart) */}
           {stats.by_day.length > 0 && (
             <div className="mb-6 rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-5">
-              <p className="mb-4 text-[13px] font-semibold text-[#0d0d0d]">
+              <p className="mb-4 text-[13px] font-semibold text-[#1A1A1A]">
                 Токены по дням
               </p>
               <div className="flex items-end gap-1" style={{ height: "100px" }}>
@@ -126,10 +126,10 @@ export default function UsagePage() {
                       style={{ height: "100px" }}
                     >
                       <div
-                        className="absolute bottom-0 left-0 right-0 rounded-t-[2px] bg-[#f0a38a] transition-all group-hover:bg-[#0066cc]"
+                        className="absolute bottom-0 left-0 right-0 rounded-t-[2px] bg-[#D97757] transition-all group-hover:bg-[#0066cc]"
                         style={{ height: `${Math.max(pct, 2)}%` }}
                       />
-                      <div className="absolute bottom-full left-1/2 mb-1 hidden -translate-x-1/2 rounded-[4px] bg-[#0d0d0d] px-2 py-1 text-[10px] text-white group-hover:block whitespace-nowrap">
+                      <div className="absolute bottom-full left-1/2 mb-1 hidden -translate-x-1/2 rounded-[4px] bg-[#1A1A1A] px-2 py-1 text-[10px] text-white group-hover:block whitespace-nowrap">
                         {day.date}: {day.total_tokens.toLocaleString("ru-RU")} tok
                       </div>
                     </div>
@@ -146,7 +146,7 @@ export default function UsagePage() {
           {/* By model */}
           {stats.by_model.length > 0 && (
             <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-5">
-              <p className="mb-4 text-[13px] font-semibold text-[#0d0d0d]">
+              <p className="mb-4 text-[13px] font-semibold text-[#1A1A1A]">
                 По моделям (топ 20)
               </p>
               <div className="overflow-x-auto">
@@ -165,10 +165,10 @@ export default function UsagePage() {
                         key={row.model_slug}
                         className="border-b border-[rgba(13,13,13,0.05)] last:border-0"
                       >
-                        <td className="py-2 pr-4 font-medium text-[#0d0d0d]">
+                        <td className="py-2 pr-4 font-medium text-[#1A1A1A]">
                           <Link
                             href={`/models/${row.model_slug}/`}
-                            className="hover:text-[#f0a38a] transition-colors"
+                            className="hover:text-[#D97757] transition-colors"
                           >
                             {row.model_name}
                           </Link>
@@ -206,10 +206,10 @@ function TotalCard({
 }) {
   return (
     <div className="rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white p-5">
-      <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-[10px] bg-[rgba(10,124,255,0.10)] text-[#f0a38a]">
+      <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-[10px] bg-[rgba(10,124,255,0.10)] text-[#D97757]">
         {icon}
       </div>
-      <p className="mb-0.5 text-[24px] font-bold text-[#0d0d0d]">{value}</p>
+      <p className="mb-0.5 text-[24px] font-bold text-[#1A1A1A]">{value}</p>
       <p className="text-[12px] text-[rgba(13,13,13,0.5)]">{label}</p>
     </div>
   );

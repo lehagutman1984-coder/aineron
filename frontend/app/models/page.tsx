@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Code2, Image, Search } from "lucide-react";
 import { serverListNetworks, serverListCategories } from "@/lib/api/server";
@@ -27,7 +27,7 @@ export default async function ModelsPage({
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
       <div className="mb-8">
-        <h1 className="text-[28px] font-bold text-[#0d0d0d]">Каталог нейросетей</h1>
+        <h1 className="text-[28px] font-bold text-[#1A1A1A]">Каталог нейросетей</h1>
         <p className="mt-2 text-[15px] text-[rgba(13,13,13,0.58)]">
           {networks?.length ?? 0} моделей доступно
         </p>

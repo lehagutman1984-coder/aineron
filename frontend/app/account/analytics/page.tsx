@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -35,7 +35,7 @@ export default function AnalyticsPage() {
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-[22px] font-bold text-[#0d0d0d] dark:text-[#ececec]">
+          <h1 className="text-[22px] font-bold text-[#1A1A1A] dark:text-[#EDE8E3]">
             Аналитика
           </h1>
           <p className="mt-0.5 text-[13px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.40)]">
@@ -52,8 +52,8 @@ export default function AnalyticsPage() {
               className={[
                 "rounded-[7px] px-3 py-1.5 text-[12px] font-medium transition-all",
                 days === p.value
-                  ? "bg-[#0d0d0d] text-white dark:bg-[#ececec] dark:text-[#0d0d0d]"
-                  : "text-[rgba(13,13,13,0.55)] hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.45)]",
+                  ? "bg-[#1A1A1A] text-white dark:bg-[#EDE8E3] dark:text-[#1A1A1A]"
+                  : "text-[rgba(13,13,13,0.55)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.45)]",
               ].join(" ")}
             >
               {p.label}
@@ -68,30 +68,30 @@ export default function AnalyticsPage() {
           label="Звёзд потрачено"
           value={data?.totals.total_stars ?? 0}
           delta={delta}
-          icon={<Star size={15} className="text-[#f0a38a]" />}
+          icon={<Star size={15} className="text-[#D97757]" />}
           loading={isLoading}
         />
         <StatCard
           label="Запросов отправлено"
           value={data?.totals.total_requests ?? 0}
-          icon={<Zap size={15} className="text-[#f0a38a]" />}
+          icon={<Zap size={15} className="text-[#D97757]" />}
           loading={isLoading}
         />
         <StatCard
           label="Среднее в день"
           value={data?.totals.avg_per_day ?? 0}
           suffix=" зв."
-          icon={<BarChart2 size={15} className="text-[#f0a38a]" />}
+          icon={<BarChart2 size={15} className="text-[#D97757]" />}
           loading={isLoading}
         />
       </div>
 
       {/* Daily bar chart */}
       <div
-        className="mb-6 rounded-[14px] border bg-white p-5 dark:bg-[#18181b]"
+        className="mb-6 rounded-[14px] border bg-white p-5 dark:bg-[#1C1917]"
         style={{ borderColor: "rgba(13,13,13,0.10)" }}
       >
-        <h2 className="mb-4 text-[14px] font-semibold text-[#0d0d0d] dark:text-[#ececec]">
+        <h2 className="mb-4 text-[14px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
           Расход звёзд по дням
         </h2>
         {isLoading ? (
@@ -105,10 +105,10 @@ export default function AnalyticsPage() {
 
       {/* Top models */}
       <div
-        className="rounded-[14px] border bg-white p-5 dark:bg-[#18181b]"
+        className="rounded-[14px] border bg-white p-5 dark:bg-[#1C1917]"
         style={{ borderColor: "rgba(13,13,13,0.10)" }}
       >
-        <h2 className="mb-4 text-[14px] font-semibold text-[#0d0d0d] dark:text-[#ececec]">
+        <h2 className="mb-4 text-[14px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
           Топ моделей по расходу
         </h2>
         {isLoading ? (
@@ -142,7 +142,7 @@ function StatCard({
 }) {
   return (
     <div
-      className="rounded-[14px] border bg-white p-4 dark:bg-[#18181b]"
+      className="rounded-[14px] border bg-white p-4 dark:bg-[#1C1917]"
       style={{ borderColor: "rgba(13,13,13,0.10)" }}
     >
       <div className="mb-2 flex items-center gap-2">
@@ -155,7 +155,7 @@ function StatCard({
         <div className="h-7 w-20 animate-pulse rounded-[6px] bg-[rgba(13,13,13,0.06)]" />
       ) : (
         <div className="flex items-end gap-2">
-          <span className="text-[24px] font-bold leading-none text-[#0d0d0d] dark:text-[#ececec]">
+          <span className="text-[24px] font-bold leading-none text-[#1A1A1A] dark:text-[#EDE8E3]">
             {value.toLocaleString("ru-RU")}
             {suffix}
           </span>
@@ -233,7 +233,7 @@ function BarChart({ days, period }: { days: StarsUsageDay[]; period: number }) {
             />
             {/* Tooltip */}
             {entry.stars > 0 && (
-              <div className="pointer-events-none absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 z-10 hidden rounded-[7px] bg-[#0d0d0d] px-2 py-1 text-[10px] text-white whitespace-nowrap group-hover:block">
+              <div className="pointer-events-none absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 z-10 hidden rounded-[7px] bg-[#1A1A1A] px-2 py-1 text-[10px] text-white whitespace-nowrap group-hover:block">
                 {label}<br />{entry.stars} зв.
               </div>
             )}
@@ -280,7 +280,7 @@ function ModelList({ models }: { models: StarsUsageModel[] }) {
             </span>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2 mb-1">
-                <span className="truncate text-[13px] text-[#0d0d0d] dark:text-[#ececec]">
+                <span className="truncate text-[13px] text-[#1A1A1A] dark:text-[#EDE8E3]">
                   {m.name}
                 </span>
                 <span className="shrink-0 text-[12px] font-medium text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.45)]">
@@ -290,7 +290,7 @@ function ModelList({ models }: { models: StarsUsageModel[] }) {
               <div className="h-[5px] w-full overflow-hidden rounded-full bg-[rgba(13,13,13,0.07)] dark:bg-[rgba(255,255,255,0.07)]">
                 <div
                   className="h-full rounded-full transition-all duration-500"
-                  style={{ width: `${pct}%`, background: "#f0a38a" }}
+                  style={{ width: `${pct}%`, background: "#D97757" }}
                 />
               </div>
             </div>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useQuery } from "@tanstack/react-query";
 import { Trophy, Swords, TrendingUp } from "lucide-react";
@@ -19,13 +19,13 @@ export default function ArenaPage() {
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
           <Trophy size={24} className="text-[#f4a017]" />
-          <h1 className="text-[24px] font-bold text-[#0d0d0d] dark:text-[#ececec]">
+          <h1 className="text-[24px] font-bold text-[#1A1A1A] dark:text-[#EDE8E3]">
             Model Arena
           </h1>
         </div>
         <p className="text-[14px] text-[rgba(13,13,13,0.50)] dark:text-[rgba(236,236,236,0.45)]">
           Elo-рейтинг моделей на основе сравнительных поединков. Голосуйте на странице{" "}
-          <Link href="/compare" className="text-[#f0a38a] hover:underline">
+          <Link href="/compare" className="text-[#D97757] hover:underline">
             сравнения
           </Link>{" "}
           — рейтинг обновляется автоматически.
@@ -49,7 +49,7 @@ export default function ArenaPage() {
           <Swords size={32} className="mx-auto mb-3 text-[rgba(13,13,13,0.25)] dark:text-[rgba(236,236,236,0.25)]" />
           <p className="text-[14px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.40)]">
             Арена пуста. Сыграйте первый матч на странице{" "}
-            <Link href="/compare" className="text-[#f0a38a] hover:underline">
+            <Link href="/compare" className="text-[#D97757] hover:underline">
               сравнения моделей
             </Link>
             .
@@ -93,7 +93,7 @@ export default function ArenaPage() {
           <Link
             href="/compare"
             className="flex items-center gap-2 rounded-[10px] px-5 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
-            style={{ background: "#0d0d0d" }}
+            style={{ background: "#1A1A1A" }}
           >
             <Swords size={14} />
             Сыграть матч
@@ -135,11 +135,11 @@ function ArenaRow({ entry, rank }: { entry: ArenaEntry; rank: number }) {
             />
           ) : (
             <div className="h-7 w-7 shrink-0 rounded-[6px] bg-[rgba(10,124,255,0.12)] flex items-center justify-center">
-              <TrendingUp size={12} className="text-[#f0a38a]" />
+              <TrendingUp size={12} className="text-[#D97757]" />
             </div>
           )}
           <div>
-            <p className="font-semibold text-[#0d0d0d] dark:text-[#ececec]">{entry.name}</p>
+            <p className="font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">{entry.name}</p>
             {entry.description && (
               <p className="text-[11px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.38)] line-clamp-1">
                 {entry.description}
@@ -148,7 +148,7 @@ function ArenaRow({ entry, rank }: { entry: ArenaEntry; rank: number }) {
           </div>
         </div>
       </td>
-      <td className="px-4 py-3 text-right font-mono font-semibold text-[#0d0d0d] dark:text-[#ececec]">
+      <td className="px-4 py-3 text-right font-mono font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
         {entry.elo_rating.toFixed(0)}
       </td>
       <td className="px-4 py-3 text-right text-[rgba(13,13,13,0.50)] dark:text-[rgba(236,236,236,0.42)]">

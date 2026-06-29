@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useRef, useCallback } from "react";
 import { Mic, MicOff, Loader } from "lucide-react";
@@ -131,8 +131,8 @@ export function VoiceButton({
           state === "recording"
             ? "bg-[rgba(231,76,60,0.12)] text-[#e74c3c]"
             : state === "transcribing"
-            ? "text-[#f0a38a]"
-            : "text-[rgba(13,13,13,0.45)] hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.38)] dark:hover:text-[#ececec]",
+            ? "text-[#D97757]"
+            : "text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.38)] dark:hover:text-[#EDE8E3]",
           disabled || state === "transcribing" ? "cursor-not-allowed opacity-40" : "",
         ].join(" ")}
       >
@@ -156,12 +156,12 @@ export function VoiceButton({
       {error && (
         <div
           className="absolute bottom-full left-0 mb-2 whitespace-nowrap rounded-[7px] px-2.5 py-1.5 text-[11px] text-white"
-          style={{ background: "#0d0d0d", boxShadow: "0 4px 12px rgba(0,0,0,0.18)" }}
+          style={{ background: "#1A1A1A", boxShadow: "0 4px 12px rgba(0,0,0,0.18)" }}
         >
           {error}
           <div
             className="absolute left-3 top-full h-0 w-0"
-            style={{ borderLeft: "5px solid transparent", borderRight: "5px solid transparent", borderTop: "5px solid #0d0d0d" }}
+            style={{ borderLeft: "5px solid transparent", borderRight: "5px solid transparent", borderTop: "5px solid #1A1A1A" }}
           />
         </div>
       )}

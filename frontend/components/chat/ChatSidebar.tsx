@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
@@ -36,7 +36,7 @@ const PROJECT_ICON_MAP: Record<string, React.ElementType> = {
   Folder, Code2, BookOpen, Briefcase, Zap, Globe, Palette, MessageSquare,
 };
 const PROJECT_ICONS = Object.keys(PROJECT_ICON_MAP);
-const PROJECT_COLORS = ["#f0a38a", "#22a85a", "#e67e22", "#9b59b6", "#e74c3c", "#1dd6c1", "#0d0d0d", "#6366f1"];
+const PROJECT_COLORS = ["#D97757", "#22a85a", "#e67e22", "#9b59b6", "#e74c3c", "#1dd6c1", "#1A1A1A", "#6366f1"];
 
 function ProjectIcon({ name, size = 12 }: { name: string; size?: number }) {
   const Icon = PROJECT_ICON_MAP[name] ?? Folder;
@@ -83,10 +83,10 @@ function ProjectModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-[15px] font-semibold text-[#0d0d0d]">
+          <h2 className="text-[15px] font-semibold text-[#1A1A1A]">
             {mode === "create" ? "Новый проект" : "Настройки проекта"}
           </h2>
-          <button onClick={onClose} className="rounded-[7px] p-1 text-[rgba(13,13,13,0.4)] hover:bg-[rgba(13,13,13,0.06)] hover:text-[#0d0d0d] transition-colors">
+          <button onClick={onClose} className="rounded-[7px] p-1 text-[rgba(13,13,13,0.4)] hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A] transition-colors">
             <X size={15} />
           </button>
         </div>
@@ -99,7 +99,7 @@ function ProjectModal({
               onChange={(e) => setName(e.target.value)}
               placeholder="Мой проект"
               maxLength={100}
-              className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] text-[#0d0d0d] outline-none focus:border-[#f0a38a] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all"
+              className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -110,7 +110,7 @@ function ProjectModal({
                   const Icon = PROJECT_ICON_MAP[ic];
                   return (
                     <button key={ic} type="button" onClick={() => setIcon(ic)}
-                      className={["flex h-7 w-7 items-center justify-center rounded-[6px] transition-colors", icon === ic ? "ring-2 ring-[#f0a38a] ring-offset-1" : "border border-[rgba(13,13,13,0.12)] hover:bg-[rgba(13,13,13,0.05)]"].join(" ")}
+                      className={["flex h-7 w-7 items-center justify-center rounded-[6px] transition-colors", icon === ic ? "ring-2 ring-[#D97757] ring-offset-1" : "border border-[rgba(13,13,13,0.12)] hover:bg-[rgba(13,13,13,0.05)]"].join(" ")}
                       style={{ color: icon === ic ? color : "rgba(13,13,13,0.45)" }}
                     >
                       <Icon size={13} />
@@ -140,7 +140,7 @@ function ProjectModal({
               onChange={(e) => setSystemPrompt(e.target.value)}
               placeholder="Ты — помощник-программист..."
               rows={3}
-              className="w-full resize-none rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[12px] text-[#0d0d0d] outline-none focus:border-[#f0a38a] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all"
+              className="w-full resize-none rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[12px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] transition-all"
             />
           </div>
           {error && (
@@ -152,7 +152,7 @@ function ProjectModal({
               Отмена
             </button>
             <button type="submit" disabled={!name.trim() || loading}
-              className="rounded-[8px] bg-[#f0a38a] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 transition-colors">
+              className="rounded-[8px] bg-[#D97757] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 transition-colors">
               {loading ? (mode === "create" ? "Создание..." : "Сохранение...") : (mode === "create" ? "Создать" : "Сохранить")}
             </button>
           </div>
@@ -202,7 +202,7 @@ function ProjectSidebarRow({
           >
             <ProjectIcon name={project.icon} size={10} />
           </span>
-          <span className="truncate text-[12px] text-[rgba(13,13,13,0.65)] group-hover:text-[#0d0d0d]">
+          <span className="truncate text-[12px] text-[rgba(13,13,13,0.65)] group-hover:text-[#1A1A1A]">
             {project.name}
           </span>
           <span className="ml-auto shrink-0 text-[10px] text-[rgba(13,13,13,0.28)]">
@@ -219,7 +219,7 @@ function ProjectSidebarRow({
         <div className="relative mr-1 shrink-0">
           <button
             onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v); setConfirmDelete(false); }}
-            className="hidden h-5 w-5 items-center justify-center rounded-[4px] text-[rgba(13,13,13,0.30)] hover:bg-[rgba(13,13,13,0.08)] hover:text-[#0d0d0d] group-hover:flex transition-colors"
+            className="hidden h-5 w-5 items-center justify-center rounded-[4px] text-[rgba(13,13,13,0.30)] hover:bg-[rgba(13,13,13,0.08)] hover:text-[#1A1A1A] group-hover:flex transition-colors"
           >
             <MoreHorizontal size={11} />
           </button>
@@ -282,8 +282,8 @@ function ProjectSidebarRow({
                   className={[
                     "flex items-center rounded-[6px] px-2 py-1 text-[12px] transition-colors",
                     active
-                      ? "bg-[rgba(10,124,255,0.08)] text-[#f0a38a]"
-                      : "text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#0d0d0d]",
+                      ? "bg-[rgba(10,124,255,0.08)] text-[#D97757]"
+                      : "text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#1A1A1A]",
                   ].join(" ")}
                 >
                   <span className="truncate">{chat.title || chat.network.name}</span>
@@ -294,7 +294,7 @@ function ProjectSidebarRow({
           {projectChats.length > 6 && (
             <Link
               href={`/projects/${project.id}/`}
-              className="flex items-center gap-1 rounded-[6px] px-2 py-1 text-[11px] text-[rgba(13,13,13,0.40)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#f0a38a] transition-colors"
+              className="flex items-center gap-1 rounded-[6px] px-2 py-1 text-[11px] text-[rgba(13,13,13,0.40)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#D97757] transition-colors"
             >
               Все {projectChats.length} чатов
               <ChevronRight size={10} />
@@ -302,7 +302,7 @@ function ProjectSidebarRow({
           )}
           <Link
             href={`/models/?project_id=${project.id}`}
-            className="flex items-center gap-1.5 rounded-[6px] px-2 py-1.5 text-[11px] text-[rgba(13,13,13,0.38)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#f0a38a] transition-colors"
+            className="flex items-center gap-1.5 rounded-[6px] px-2 py-1.5 text-[11px] text-[rgba(13,13,13,0.38)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#D97757] transition-colors"
           >
             <Plus size={10} />
             Новый чат
@@ -394,14 +394,14 @@ function PreviewCard({
           ) : (
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] bg-[rgba(10,124,255,0.10)]">
               {chat.network.handle_photo || chat.network.handle_video ? (
-                <ImageIcon size={14} className="text-[#f0a38a]" />
+                <ImageIcon size={14} className="text-[#D97757]" />
               ) : (
-                <Code2 size={14} className="text-[#f0a38a]" />
+                <Code2 size={14} className="text-[#D97757]" />
               )}
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[12px] font-semibold text-[#0d0d0d]">
+            <p className="truncate text-[12px] font-semibold text-[#1A1A1A]">
               {chat.title || chat.network.name}
             </p>
             <p className="text-[10px] text-[rgba(13,13,13,0.42)]">
@@ -417,7 +417,7 @@ function PreviewCard({
               <div className="flex justify-end">
                 <div
                   className="max-w-[85%] rounded-[10px] rounded-br-[3px] px-3 py-2 text-[11px] leading-[1.5] text-white"
-                  style={{ background: "#0d0d0d" }}
+                  style={{ background: "#1A1A1A" }}
                 >
                   {chat.last_message.preview}
                 </div>
@@ -425,7 +425,7 @@ function PreviewCard({
             ) : (
               <div className="flex gap-2">
                 <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[rgba(10,124,255,0.10)]">
-                  <MessageSquare size={10} className="text-[#f0a38a]" />
+                  <MessageSquare size={10} className="text-[#D97757]" />
                 </div>
                 <p className="text-[11px] leading-[1.6] text-[rgba(13,13,13,0.72)]">
                   {chat.last_message.preview}
@@ -639,21 +639,21 @@ export function ChatSidebar() {
           <button
             onClick={toggleCollapse}
             title="Развернуть"
-            className="flex h-8 w-8 items-center justify-center rounded-[7px] text-[rgba(13,13,13,0.4)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#0d0d0d]"
+            className="flex h-8 w-8 items-center justify-center rounded-[7px] text-[rgba(13,13,13,0.4)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A]"
           >
             <ChevronRight size={15} />
           </button>
           <Link
             href="/models/"
             title="Новый чат"
-            className="flex h-8 w-8 items-center justify-center rounded-[7px] bg-[#f0a38a] text-white transition-colors hover:bg-[#0066cc]"
+            className="flex h-8 w-8 items-center justify-center rounded-[7px] bg-[#D97757] text-white transition-colors hover:bg-[#0066cc]"
           >
             <PenSquare size={14} />
           </Link>
           <Link
             href="/models/"
             title="Каталог"
-            className="flex h-8 w-8 items-center justify-center rounded-[7px] text-[rgba(13,13,13,0.4)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#0d0d0d]"
+            className="flex h-8 w-8 items-center justify-center rounded-[7px] text-[rgba(13,13,13,0.4)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A]"
           >
             <LayoutGrid size={14} />
           </Link>
@@ -695,7 +695,7 @@ export function ChatSidebar() {
         <div className="flex items-center gap-1.5 px-2.5 pb-2 pt-2.5">
           <Link
             href="/models/"
-            className="flex h-8 flex-1 items-center gap-1.5 rounded-[7px] bg-[#f0a38a] px-3 text-[12px] font-medium text-white transition-colors hover:bg-[#0066cc]"
+            className="flex h-8 flex-1 items-center gap-1.5 rounded-[7px] bg-[#D97757] px-3 text-[12px] font-medium text-white transition-colors hover:bg-[#0066cc]"
           >
             <PenSquare size={13} />
             Новый чат
@@ -703,14 +703,14 @@ export function ChatSidebar() {
           <Link
             href="/models/"
             title="Каталог"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] border border-[rgba(13,13,13,0.11)] text-[rgba(13,13,13,0.42)] transition-colors hover:bg-[rgba(13,13,13,0.05)] hover:text-[#0d0d0d]"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] border border-[rgba(13,13,13,0.11)] text-[rgba(13,13,13,0.42)] transition-colors hover:bg-[rgba(13,13,13,0.05)] hover:text-[#1A1A1A]"
           >
             <LayoutGrid size={14} />
           </Link>
           <button
             onClick={toggleCollapse}
             title="Свернуть"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] border border-[rgba(13,13,13,0.11)] text-[rgba(13,13,13,0.42)] transition-colors hover:bg-[rgba(13,13,13,0.05)] hover:text-[#0d0d0d]"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] border border-[rgba(13,13,13,0.11)] text-[rgba(13,13,13,0.42)] transition-colors hover:bg-[rgba(13,13,13,0.05)] hover:text-[#1A1A1A]"
           >
             <ChevronLeft size={14} />
           </button>
@@ -728,12 +728,12 @@ export function ChatSidebar() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Поиск чатов…"
-              className="w-full rounded-[8px] border border-[rgba(13,13,13,0.11)] bg-[rgba(13,13,13,0.03)] py-[6px] pl-7 pr-7 text-[12px] text-[#0d0d0d] outline-none placeholder:text-[rgba(13,13,13,0.32)] focus:border-[rgba(10,124,255,0.4)] focus:bg-white"
+              className="w-full rounded-[8px] border border-[rgba(13,13,13,0.11)] bg-[rgba(13,13,13,0.03)] py-[6px] pl-7 pr-7 text-[12px] text-[#1A1A1A] outline-none placeholder:text-[rgba(13,13,13,0.32)] focus:border-[rgba(10,124,255,0.4)] focus:bg-white"
             />
             {search ? (
               <button
                 onClick={() => setSearch("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-[rgba(13,13,13,0.35)] transition-colors hover:text-[#0d0d0d]"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-[rgba(13,13,13,0.35)] transition-colors hover:text-[#1A1A1A]"
               >
                 <X size={12} />
               </button>
@@ -766,7 +766,7 @@ export function ChatSidebar() {
             <button
               onClick={() => setShowProjectModal("create")}
               title="Новый проект"
-              className="flex h-5 w-5 items-center justify-center rounded-[4px] text-[rgba(13,13,13,0.30)] hover:bg-[rgba(13,13,13,0.07)] hover:text-[#f0a38a] transition-colors"
+              className="flex h-5 w-5 items-center justify-center rounded-[4px] text-[rgba(13,13,13,0.30)] hover:bg-[rgba(13,13,13,0.07)] hover:text-[#D97757] transition-colors"
             >
               <Plus size={12} />
             </button>
@@ -776,7 +776,7 @@ export function ChatSidebar() {
               {projects.length === 0 ? (
                 <button
                   onClick={() => setShowProjectModal("create")}
-                  className="mx-1 flex w-[calc(100%-8px)] items-center gap-2 rounded-[7px] px-2.5 py-1.5 text-[11px] text-[rgba(13,13,13,0.38)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#f0a38a] transition-colors"
+                  className="mx-1 flex w-[calc(100%-8px)] items-center gap-2 rounded-[7px] px-2.5 py-1.5 text-[11px] text-[rgba(13,13,13,0.38)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#D97757] transition-colors"
                 >
                   <Plus size={11} />
                   Создать проект
@@ -808,7 +808,7 @@ export function ChatSidebar() {
                 <>
                   Чатов пока нет.
                   <br />
-                  <Link href="/models/" className="mt-1 inline-block text-[#f0a38a] hover:underline">
+                  <Link href="/models/" className="mt-1 inline-block text-[#D97757] hover:underline">
                     Выбрать модель
                   </Link>
                 </>
@@ -844,7 +844,7 @@ export function ChatSidebar() {
                     {/* Active indicator */}
                     {active && (
                       <div
-                        className="absolute left-0 top-2 bottom-2 w-[2.5px] rounded-r-full bg-[#f0a38a]"
+                        className="absolute left-0 top-2 bottom-2 w-[2.5px] rounded-r-full bg-[#D97757]"
                       />
                     )}
 
@@ -862,9 +862,9 @@ export function ChatSidebar() {
                       ) : (
                         <div className="flex h-[22px] w-[22px] items-center justify-center rounded-[5px] bg-[rgba(10,124,255,0.10)]">
                           {chat.network.handle_photo || chat.network.handle_video ? (
-                            <ImageIcon size={12} className="text-[#f0a38a]" />
+                            <ImageIcon size={12} className="text-[#D97757]" />
                           ) : (
-                            <Code2 size={12} className="text-[#f0a38a]" />
+                            <Code2 size={12} className="text-[#D97757]" />
                           )}
                         </div>
                       )}
@@ -906,11 +906,11 @@ export function ChatSidebar() {
                             }}
                             onBlur={() => submitRename(chat.id)}
                             onClick={(e) => e.stopPropagation()}
-                            className="min-w-0 flex-1 rounded-[5px] border border-[rgba(10,124,255,0.45)] bg-white px-1.5 py-0.5 text-[12px] text-[#0d0d0d] outline-none"
+                            className="min-w-0 flex-1 rounded-[5px] border border-[rgba(10,124,255,0.45)] bg-white px-1.5 py-0.5 text-[12px] text-[#1A1A1A] outline-none"
                           />
                           <button
                             onClick={() => submitRename(chat.id)}
-                            className="shrink-0 text-[#f0a38a] transition-colors hover:text-[#0066cc]"
+                            className="shrink-0 text-[#D97757] transition-colors hover:text-[#0066cc]"
                           >
                             <Check size={13} />
                           </button>
@@ -921,7 +921,7 @@ export function ChatSidebar() {
                             <p
                               className={[
                                 "truncate text-[12px] font-medium leading-[1.35]",
-                                active ? "text-[#f0a38a]" : "text-[#0d0d0d]",
+                                active ? "text-[#D97757]" : "text-[#1A1A1A]",
                               ].join(" ")}
                             >
                               {chat.title || chat.network.name}
@@ -957,7 +957,7 @@ export function ChatSidebar() {
                             setEditTitle(chat.title || chat.network.name);
                           }}
                           title="Переименовать"
-                          className="flex h-6 w-6 items-center justify-center rounded-[5px] text-[rgba(13,13,13,0.4)] transition-colors hover:bg-[rgba(13,13,13,0.07)] hover:text-[#0d0d0d]"
+                          className="flex h-6 w-6 items-center justify-center rounded-[5px] text-[rgba(13,13,13,0.4)] transition-colors hover:bg-[rgba(13,13,13,0.07)] hover:text-[#1A1A1A]"
                         >
                           <Edit3 size={11} />
                         </button>

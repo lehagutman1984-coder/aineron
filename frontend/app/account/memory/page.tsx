@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -199,7 +199,7 @@ export default function MemoryPage() {
       <div className="mb-2">
         <Link
           href="/account/"
-          className="inline-flex items-center gap-1.5 text-[13px] text-[rgba(13,13,13,0.5)] hover:text-[#0d0d0d] transition-colors"
+          className="inline-flex items-center gap-1.5 text-[13px] text-[rgba(13,13,13,0.5)] hover:text-[#1A1A1A] transition-colors"
         >
           <ArrowLeft size={16} />
           Личный кабинет
@@ -208,11 +208,11 @@ export default function MemoryPage() {
 
       <div className="mb-8 flex items-start justify-between gap-4">
         <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-[rgba(13,13,13,0.05)] text-[#0d0d0d]">
+          <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-[rgba(13,13,13,0.05)] text-[#1A1A1A]">
             <Brain size={24} />
           </div>
           <div>
-            <h1 className="text-[24px] font-bold text-[#0d0d0d]">
+            <h1 className="text-[24px] font-bold text-[#1A1A1A]">
               Долговременная память
             </h1>
             <p className="mt-1 text-[14px] text-[rgba(13,13,13,0.55)]">
@@ -230,7 +230,7 @@ export default function MemoryPage() {
           disabled={settingsMutation.isPending}
           onClick={() => settingsMutation.mutate(!memoryEnabled)}
           className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
-            memoryEnabled ? "bg-[#0d0d0d]" : "bg-[rgba(13,13,13,0.18)]"
+            memoryEnabled ? "bg-[#1A1A1A]" : "bg-[rgba(13,13,13,0.18)]"
           }`}
         >
           <span
@@ -247,7 +247,7 @@ export default function MemoryPage() {
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-[12px] bg-[rgba(13,13,13,0.05)] text-[rgba(13,13,13,0.55)]">
             <Brain size={24} />
           </div>
-          <h2 className="mb-2 text-[18px] font-semibold text-[#0d0d0d]">
+          <h2 className="mb-2 text-[18px] font-semibold text-[#1A1A1A]">
             Память отключена
           </h2>
           <p className="mx-auto mb-6 max-w-md text-[14px] text-[rgba(13,13,13,0.55)]">
@@ -258,7 +258,7 @@ export default function MemoryPage() {
             type="button"
             disabled={settingsMutation.isPending}
             onClick={() => settingsMutation.mutate(true)}
-            className="inline-flex items-center gap-2 rounded-[8px] bg-[#0d0d0d] px-4 py-2 text-[14px] text-white hover:bg-[#333] transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-[8px] bg-[#1A1A1A] px-4 py-2 text-[14px] text-white hover:bg-[#333] transition-colors disabled:opacity-50"
           >
             <Sparkles size={16} />
             Включить память
@@ -269,15 +269,15 @@ export default function MemoryPage() {
           {/* Stats bar */}
           <div className="mb-6 grid grid-cols-3 gap-3">
             <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white px-4 py-3">
-              <p className="text-[22px] font-bold text-[#0d0d0d]">{stats.total}</p>
+              <p className="text-[22px] font-bold text-[#1A1A1A]">{stats.total}</p>
               <p className="text-[12px] text-[rgba(13,13,13,0.55)]">всего фактов</p>
             </div>
             <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white px-4 py-3">
-              <p className="text-[22px] font-bold text-[#0d0d0d]">{stats.auto}</p>
+              <p className="text-[22px] font-bold text-[#1A1A1A]">{stats.auto}</p>
               <p className="text-[12px] text-[rgba(13,13,13,0.55)]">авто</p>
             </div>
             <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white px-4 py-3">
-              <p className="text-[22px] font-bold text-[#0d0d0d]">{stats.manual}</p>
+              <p className="text-[22px] font-bold text-[#1A1A1A]">{stats.manual}</p>
               <p className="text-[12px] text-[rgba(13,13,13,0.55)]">вручную</p>
             </div>
           </div>
@@ -285,11 +285,11 @@ export default function MemoryPage() {
           {/* ============ Section 1: Facts ============ */}
           <section className="mb-10">
             <div className="mb-4 flex items-center justify-between gap-3">
-              <h2 className="text-[18px] font-semibold text-[#0d0d0d]">Факты</h2>
+              <h2 className="text-[18px] font-semibold text-[#1A1A1A]">Факты</h2>
               <button
                 type="button"
                 onClick={() => setShowForm((v) => !v)}
-                className="inline-flex items-center gap-2 rounded-[8px] bg-[#0d0d0d] px-4 py-2 text-[14px] text-white hover:bg-[#333] transition-colors"
+                className="inline-flex items-center gap-2 rounded-[8px] bg-[#1A1A1A] px-4 py-2 text-[14px] text-white hover:bg-[#333] transition-colors"
               >
                 {showForm ? <X size={16} /> : <Plus size={16} />}
                 {showForm ? "Отмена" : "Добавить факт"}
@@ -304,7 +304,7 @@ export default function MemoryPage() {
                   onChange={(e) => setNewContent(e.target.value)}
                   placeholder="Например: Я backend-разработчик, пишу на Python и предпочитаю краткие ответы."
                   rows={3}
-                  className="w-full resize-none rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-3 py-2 text-[14px] text-[#0d0d0d] outline-none placeholder:text-[rgba(13,13,13,0.35)] focus:border-[#0d0d0d]"
+                  className="w-full resize-none rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-3 py-2 text-[14px] text-[#1A1A1A] outline-none placeholder:text-[rgba(13,13,13,0.35)] focus:border-[#1A1A1A]"
                 />
                 <div className="mt-3 flex flex-wrap items-center gap-3">
                   <select
@@ -312,7 +312,7 @@ export default function MemoryPage() {
                     onChange={(e) =>
                       setNewCategory(e.target.value as MemoryCategory)
                     }
-                    className="rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-3 py-2 text-[14px] text-[#0d0d0d] outline-none focus:border-[#0d0d0d]"
+                    className="rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-3 py-2 text-[14px] text-[#1A1A1A] outline-none focus:border-[#1A1A1A]"
                   >
                     {CATEGORIES.map((c) => (
                       <option key={c.value} value={c.value}>
@@ -324,7 +324,7 @@ export default function MemoryPage() {
                     type="button"
                     disabled={!newContent.trim() || createMutation.isPending}
                     onClick={() => createMutation.mutate()}
-                    className="inline-flex items-center gap-2 rounded-[8px] bg-[#0d0d0d] px-4 py-2 text-[14px] text-white hover:bg-[#333] transition-colors disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-[8px] bg-[#1A1A1A] px-4 py-2 text-[14px] text-white hover:bg-[#333] transition-colors disabled:opacity-50"
                   >
                     <Check size={16} />
                     Сохранить
@@ -466,7 +466,7 @@ export default function MemoryPage() {
 
           {/* ============ Section 2: Session history ============ */}
           <section className="mb-10">
-            <h2 className="mb-4 text-[18px] font-semibold text-[#0d0d0d]">
+            <h2 className="mb-4 text-[18px] font-semibold text-[#1A1A1A]">
               История сессий
             </h2>
             {summariesQuery.isLoading ? (
@@ -502,7 +502,7 @@ export default function MemoryPage() {
             </div>
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <p className="text-[14px] font-medium text-[#0d0d0d]">
+                <p className="text-[14px] font-medium text-[#1A1A1A]">
                   Активные факты:{" "}
                   <span className="inline-flex items-center rounded-full bg-[rgba(13,13,13,0.06)] px-2 py-0.5 text-[13px]">
                     {stats.active}
@@ -576,7 +576,7 @@ function FilterTab({
       onClick={onClick}
       className={`rounded-[8px] px-3 py-1.5 text-[13px] transition-colors ${
         active
-          ? "bg-[#0d0d0d] text-white"
+          ? "bg-[#1A1A1A] text-white"
           : "border border-[rgba(13,13,13,0.12)] bg-white text-[rgba(13,13,13,0.65)] hover:bg-[rgba(13,13,13,0.04)]"
       }`}
     >
@@ -614,7 +614,7 @@ function FactCard({
           className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] transition-colors disabled:opacity-50 ${
             fact.is_pinned
               ? "bg-amber-100 text-amber-600"
-              : "text-[rgba(13,13,13,0.35)] hover:bg-[rgba(13,13,13,0.05)] hover:text-[#0d0d0d]"
+              : "text-[rgba(13,13,13,0.35)] hover:bg-[rgba(13,13,13,0.05)] hover:text-[#1A1A1A]"
           }`}
         >
           <Pin size={16} fill={fact.is_pinned ? "currentColor" : "none"} />
@@ -639,7 +639,7 @@ function FactCard({
               {auto ? "Авто" : "Вручную"}
             </span>
           </div>
-          <p className="text-[14px] leading-relaxed text-[#0d0d0d]">
+          <p className="text-[14px] leading-relaxed text-[#1A1A1A]">
             {fact.content}
           </p>
         </div>
@@ -654,7 +654,7 @@ function FactCard({
             disabled={busy}
             onClick={onToggleActive}
             className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors disabled:opacity-50 ${
-              fact.is_active ? "bg-[#0d0d0d]" : "bg-[rgba(13,13,13,0.18)]"
+              fact.is_active ? "bg-[#1A1A1A]" : "bg-[rgba(13,13,13,0.18)]"
             }`}
           >
             <span
@@ -705,7 +705,7 @@ function SummaryCard({
             <MessageSquare size={16} />
           </div>
           <div className="min-w-0">
-            <p className="truncate text-[14px] font-medium text-[#0d0d0d]">
+            <p className="truncate text-[14px] font-medium text-[#1A1A1A]">
               {summary.chat_title}
             </p>
             <p className="text-[12px] text-[rgba(13,13,13,0.5)]">
@@ -722,7 +722,7 @@ function SummaryCard({
         <button
           type="button"
           onClick={onToggle}
-          className="mt-2 inline-flex items-center gap-1 text-[13px] text-[rgba(13,13,13,0.55)] hover:text-[#0d0d0d] transition-colors"
+          className="mt-2 inline-flex items-center gap-1 text-[13px] text-[rgba(13,13,13,0.55)] hover:text-[#1A1A1A] transition-colors"
         >
           {expanded ? (
             <>

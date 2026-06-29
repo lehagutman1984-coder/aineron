@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -51,7 +51,7 @@ export default function PersonasPage() {
     <div className="mx-auto max-w-4xl px-4 py-10">
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-[24px] font-bold text-[#0d0d0d] dark:text-[#ececec]">
+          <h1 className="text-[24px] font-bold text-[#1A1A1A] dark:text-[#EDE8E3]">
             AI-персоны
           </h1>
           <p className="mt-1 text-[14px] text-[rgba(13,13,13,0.50)] dark:text-[rgba(236,236,236,0.45)]">
@@ -62,7 +62,7 @@ export default function PersonasPage() {
           <button
             onClick={() => setShowCreate(true)}
             className="flex items-center gap-2 rounded-[10px] px-4 py-2 text-[13px] font-semibold text-white transition-all hover:opacity-90"
-            style={{ background: "#0d0d0d" }}
+            style={{ background: "#1A1A1A" }}
           >
             <Plus size={14} />
             Создать персону
@@ -128,7 +128,7 @@ export default function PersonasPage() {
             >
               <X size={16} />
             </button>
-            <h2 className="mb-4 text-[17px] font-semibold text-[#0d0d0d] dark:text-[#ececec]">
+            <h2 className="mb-4 text-[17px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
               Новая персона
             </h2>
             <form onSubmit={handleCreate} className="space-y-3">
@@ -140,7 +140,7 @@ export default function PersonasPage() {
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   placeholder="Например: Дружелюбный ментор"
-                  className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-transparent px-3 py-2 text-[13px] outline-none focus:border-[#f0a38a]"
+                  className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-transparent px-3 py-2 text-[13px] outline-none focus:border-[#D97757]"
                 />
               </div>
               <div>
@@ -151,7 +151,7 @@ export default function PersonasPage() {
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                   placeholder="Одна строка о персоне"
-                  className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-transparent px-3 py-2 text-[13px] outline-none focus:border-[#f0a38a]"
+                  className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-transparent px-3 py-2 text-[13px] outline-none focus:border-[#D97757]"
                 />
               </div>
               <div>
@@ -163,7 +163,7 @@ export default function PersonasPage() {
                   onChange={(e) => setForm({ ...form, system_prompt: e.target.value })}
                   rows={5}
                   placeholder="Ты — дружелюбный ментор по программированию..."
-                  className="w-full resize-none rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-transparent px-3 py-2 text-[13px] outline-none focus:border-[#f0a38a]"
+                  className="w-full resize-none rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-transparent px-3 py-2 text-[13px] outline-none focus:border-[#D97757]"
                 />
               </div>
               {formErr && (
@@ -181,7 +181,7 @@ export default function PersonasPage() {
                   type="submit"
                   disabled={createMutation.isPending}
                   className="rounded-[8px] px-4 py-2 text-[13px] font-semibold text-white transition-opacity disabled:opacity-60"
-                  style={{ background: "#0d0d0d" }}
+                  style={{ background: "#1A1A1A" }}
                 >
                   {createMutation.isPending ? "Создание..." : "Создать"}
                 </button>
@@ -213,12 +213,12 @@ function PersonaCard({ persona, onDelete }: { persona: Persona; onDelete?: () =>
             className="shrink-0 rounded-[8px] object-cover"
           />
         ) : (
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] bg-[rgba(10,124,255,0.10)] text-[#f0a38a]">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] bg-[rgba(10,124,255,0.10)] text-[#D97757]">
             <Bot size={18} />
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <p className="truncate font-semibold text-[14px] text-[#0d0d0d] dark:text-[#ececec]">
+          <p className="truncate font-semibold text-[14px] text-[#1A1A1A] dark:text-[#EDE8E3]">
             {persona.name}
           </p>
           {persona.description && (

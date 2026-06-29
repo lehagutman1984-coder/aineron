@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Star, MessageSquare, ImageIcon, Code2, ChevronDown } from "lucide-react";
@@ -113,9 +113,9 @@ export default async function ModelDetailPage({ params, searchParams }: Props) {
       <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
         {/* Breadcrumbs */}
         <nav className="mb-4 flex items-center gap-2 text-[13px] text-[rgba(13,13,13,0.45)]">
-          <Link href="/" className="hover:text-[#0d0d0d] transition-colors">Главная</Link>
+          <Link href="/" className="hover:text-[#1A1A1A] transition-colors">Главная</Link>
           <span>/</span>
-          <Link href="/models/" className="hover:text-[#0d0d0d] transition-colors">Каталог</Link>
+          <Link href="/models/" className="hover:text-[#1A1A1A] transition-colors">Каталог</Link>
           <span>/</span>
           <span className="text-[rgba(13,13,13,0.65)]">{network.name}</span>
         </nav>
@@ -123,7 +123,7 @@ export default async function ModelDetailPage({ params, searchParams }: Props) {
         {/* Back */}
         <Link
           href="/models/"
-          className="mb-6 inline-flex items-center gap-1.5 text-[13px] text-[rgba(13,13,13,0.55)] hover:text-[#0d0d0d] transition-colors"
+          className="mb-6 inline-flex items-center gap-1.5 text-[13px] text-[rgba(13,13,13,0.55)] hover:text-[#1A1A1A] transition-colors"
         >
           <ArrowLeft size={14} />
           Каталог
@@ -140,13 +140,13 @@ export default async function ModelDetailPage({ params, searchParams }: Props) {
               className="rounded-[14px] object-cover shrink-0"
             />
           ) : (
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[14px] bg-[rgba(10,124,255,0.10)] text-[#f0a38a]">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[14px] bg-[rgba(10,124,255,0.10)] text-[#D97757]">
               {isMedia ? <ImageIcon size={28} /> : <Code2 size={28} />}
             </div>
           )}
           <div className="min-w-0 flex-1">
             <div className="mb-1 flex flex-wrap items-center gap-2">
-              <h1 className="text-[26px] font-bold text-[#0d0d0d]">{network.name}</h1>
+              <h1 className="text-[26px] font-bold text-[#1A1A1A]">{network.name}</h1>
               <span className="rounded-full bg-[rgba(13,13,13,0.07)] px-2.5 py-0.5 text-[12px] text-[rgba(13,13,13,0.55)]">
                 {network.category.name}
               </span>
@@ -183,7 +183,7 @@ export default async function ModelDetailPage({ params, searchParams }: Props) {
 
         {/* Chat start form */}
         <div className="mb-12 rounded-[14px] border border-[rgba(13,13,13,0.12)] bg-white p-6">
-          <h2 className="mb-4 text-[16px] font-semibold text-[#0d0d0d]">
+          <h2 className="mb-4 text-[16px] font-semibold text-[#1A1A1A]">
             {isMedia ? "Опишите, что нужно сгенерировать" : "Начать диалог"}
           </h2>
           <ChatStartForm
@@ -197,7 +197,7 @@ export default async function ModelDetailPage({ params, searchParams }: Props) {
         {/* FAQ */}
         {network.faqs.length > 0 && (
           <div className="mb-12">
-            <h2 className="mb-5 text-[20px] font-semibold text-[#0d0d0d]">
+            <h2 className="mb-5 text-[20px] font-semibold text-[#1A1A1A]">
               Частые вопросы
             </h2>
             <div className="flex flex-col gap-3">
@@ -206,7 +206,7 @@ export default async function ModelDetailPage({ params, searchParams }: Props) {
                   key={faq.id}
                   className="group rounded-[10px] border border-[rgba(13,13,13,0.10)] bg-white"
                 >
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-[14px] font-medium text-[#0d0d0d]">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-[14px] font-medium text-[#1A1A1A]">
                     {faq.question}
                     <ChevronDown
                       size={16}
@@ -225,7 +225,7 @@ export default async function ModelDetailPage({ params, searchParams }: Props) {
         {/* Related models */}
         {relatedNetworks.length > 0 && (
           <div>
-            <h2 className="mb-5 text-[18px] font-semibold text-[#0d0d0d]">
+            <h2 className="mb-5 text-[18px] font-semibold text-[#1A1A1A]">
               Похожие модели — {network.category.name}
             </h2>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -238,11 +238,11 @@ export default async function ModelDetailPage({ params, searchParams }: Props) {
                   {n.avatar ? (
                     <img src={n.avatar} alt={n.name} width={36} height={36} className="rounded-[8px]" />
                   ) : (
-                    <div className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[rgba(10,124,255,0.08)] text-[#f0a38a]">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[rgba(10,124,255,0.08)] text-[#D97757]">
                       <Code2 size={16} />
                     </div>
                   )}
-                  <span className="text-[12px] font-medium leading-tight text-[#0d0d0d]">
+                  <span className="text-[12px] font-medium leading-tight text-[#1A1A1A]">
                     {n.name}
                   </span>
                 </Link>
@@ -264,7 +264,7 @@ function StatChip({
 }) {
   return (
     <div className="flex items-center gap-1.5 rounded-full border border-[rgba(13,13,13,0.12)] px-3 py-1.5 text-[13px] text-[rgba(13,13,13,0.65)]">
-      <span className="text-[#f0a38a]">{icon}</span>
+      <span className="text-[#D97757]">{icon}</span>
       {label}
     </div>
   );

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, CalendarDays, Eye, Tag } from "lucide-react";
@@ -90,15 +90,15 @@ export default async function BlogPostPage({ params }: Props) {
       <article className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
         {/* Breadcrumbs */}
         <nav className="mb-6 flex items-center gap-2 text-[13px] text-[rgba(13,13,13,0.45)]">
-          <Link href="/" className="hover:text-[#0d0d0d] transition-colors">Главная</Link>
+          <Link href="/" className="hover:text-[#1A1A1A] transition-colors">Главная</Link>
           <span>/</span>
-          <Link href="/blog/" className="hover:text-[#0d0d0d] transition-colors">Блог</Link>
+          <Link href="/blog/" className="hover:text-[#1A1A1A] transition-colors">Блог</Link>
           {post.category && (
             <>
               <span>/</span>
               <Link
                 href={`/blog/?category=${post.category.slug}`}
-                className="hover:text-[#0d0d0d] transition-colors"
+                className="hover:text-[#1A1A1A] transition-colors"
               >
                 {post.category.name}
               </Link>
@@ -109,7 +109,7 @@ export default async function BlogPostPage({ params }: Props) {
         {/* Back */}
         <Link
           href="/blog/"
-          className="mb-6 inline-flex items-center gap-1.5 text-[13px] text-[rgba(13,13,13,0.55)] hover:text-[#0d0d0d] transition-colors"
+          className="mb-6 inline-flex items-center gap-1.5 text-[13px] text-[rgba(13,13,13,0.55)] hover:text-[#1A1A1A] transition-colors"
         >
           <ArrowLeft size={14} />
           Все статьи
@@ -118,11 +118,11 @@ export default async function BlogPostPage({ params }: Props) {
         {/* Header */}
         <header className="mb-8">
           {post.category && (
-            <span className="mb-3 inline-block text-[12px] font-semibold uppercase tracking-wide text-[#f0a38a]">
+            <span className="mb-3 inline-block text-[12px] font-semibold uppercase tracking-wide text-[#D97757]">
               {post.category.name}
             </span>
           )}
-          <h1 className="mb-4 text-[30px] font-bold leading-tight text-[#0d0d0d] sm:text-[34px]">
+          <h1 className="mb-4 text-[30px] font-bold leading-tight text-[#1A1A1A] sm:text-[34px]">
             {post.title}
           </h1>
           <div className="flex flex-wrap items-center gap-4 text-[13px] text-[rgba(13,13,13,0.5)]">
@@ -158,23 +158,23 @@ export default async function BlogPostPage({ params }: Props) {
         {/* Content */}
         <div
           className="prose prose-neutral max-w-none text-[15px] leading-relaxed text-[rgba(13,13,13,0.8)]
-            [&_h2]:mt-8 [&_h2]:text-[20px] [&_h2]:font-bold [&_h2]:text-[#0d0d0d]
-            [&_h3]:mt-6 [&_h3]:text-[17px] [&_h3]:font-semibold [&_h3]:text-[#0d0d0d]
+            [&_h2]:mt-8 [&_h2]:text-[20px] [&_h2]:font-bold [&_h2]:text-[#1A1A1A]
+            [&_h3]:mt-6 [&_h3]:text-[17px] [&_h3]:font-semibold [&_h3]:text-[#1A1A1A]
             [&_p]:mb-4
             [&_ul]:mb-4 [&_ul]:list-disc [&_ul]:pl-5
             [&_ol]:mb-4 [&_ol]:list-decimal [&_ol]:pl-5
             [&_li]:mb-1
             [&_pre]:overflow-x-auto [&_pre]:rounded-[8px] [&_pre]:bg-[#f5f5f5] [&_pre]:p-4 [&_pre]:text-[13px]
             [&_code]:rounded [&_code]:bg-[#f5f5f5] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-[13px] [&_code]:font-mono
-            [&_a]:text-[#f0a38a] [&_a]:underline hover:[&_a]:no-underline
-            [&_blockquote]:border-l-4 [&_blockquote]:border-[#f0a38a] [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-[rgba(13,13,13,0.6)]"
+            [&_a]:text-[#D97757] [&_a]:underline hover:[&_a]:no-underline
+            [&_blockquote]:border-l-4 [&_blockquote]:border-[#D97757] [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-[rgba(13,13,13,0.6)]"
           dangerouslySetInnerHTML={{ __html: post.content }}
         />
 
         {/* Related networks */}
         {post.network_slugs.length > 0 && (
           <div className="mt-10 border-t border-[rgba(13,13,13,0.08)] pt-8">
-            <p className="mb-3 flex items-center gap-2 text-[13px] font-semibold text-[#0d0d0d]">
+            <p className="mb-3 flex items-center gap-2 text-[13px] font-semibold text-[#1A1A1A]">
               <Tag size={14} />
               Связанные нейросети
             </p>
@@ -183,7 +183,7 @@ export default async function BlogPostPage({ params }: Props) {
                 <Link
                   key={slug}
                   href={`/models/${slug}/`}
-                  className="rounded-full border border-[rgba(13,13,13,0.15)] px-3 py-1 text-[12px] text-[rgba(13,13,13,0.7)] transition-all hover:border-[#f0a38a] hover:text-[#f0a38a]"
+                  className="rounded-full border border-[rgba(13,13,13,0.15)] px-3 py-1 text-[12px] text-[rgba(13,13,13,0.7)] transition-all hover:border-[#D97757] hover:text-[#D97757]"
                 >
                   {slug}
                 </Link>

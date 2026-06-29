@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { X, FileText, File, FileCode, Loader2, AlertCircle } from "lucide-react";
 
@@ -80,7 +80,7 @@ function AttachmentChip({
             Ошибка
           </div>
         ) : (
-          <p className="truncate text-[11px] font-medium text-[#0d0d0d] dark:text-[#ececec]">
+          <p className="truncate text-[11px] font-medium text-[#1A1A1A] dark:text-[#EDE8E3]">
             {attachment.filename}
           </p>
         )}
@@ -110,8 +110,8 @@ function FileTypeIcon({ mime }: { mime: string }) {
     mime.includes("javascript") ||
     mime.includes("typescript")
   )
-    return <FileCode size={17} style={{ color: "#f0a38a" }} />;
-  return <File size={17} style={{ color: "#f0a38a" }} />;
+    return <FileCode size={17} style={{ color: "#D97757" }} />;
+  return <File size={17} style={{ color: "#D97757" }} />;
 }
 
 function formatBytes(bytes: number): string {

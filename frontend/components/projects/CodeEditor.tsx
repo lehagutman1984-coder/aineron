@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
@@ -107,8 +107,8 @@ export default function CodeEditor({
             onClick={handleToggleEdit}
             className={`flex items-center gap-1 rounded px-2 py-0.5 text-[11px] transition-colors ${
               editMode
-                ? "bg-[rgba(13,13,13,0.08)] text-[#0d0d0d]"
-                : "text-[rgba(13,13,13,0.50)] hover:text-[#f0a38a]"
+                ? "bg-[rgba(13,13,13,0.08)] text-[#1A1A1A]"
+                : "text-[rgba(13,13,13,0.50)] hover:text-[#D97757]"
             }`}
           >
             {editMode ? <Eye size={11} /> : <Edit2 size={11} />}
@@ -116,7 +116,7 @@ export default function CodeEditor({
           </button>
         )}
         {onClose && (
-          <button onClick={onClose} className="rounded p-0.5 text-[rgba(13,13,13,0.38)] hover:text-[#0d0d0d] transition-colors">
+          <button onClick={onClose} className="rounded p-0.5 text-[rgba(13,13,13,0.38)] hover:text-[#1A1A1A] transition-colors">
             <X size={13} />
           </button>
         )}
@@ -150,13 +150,13 @@ export default function CodeEditor({
               value={commitMsg}
               onChange={(e) => setCommitMsg(e.target.value)}
               placeholder="Сообщение коммита..."
-              className="flex-1 rounded-[6px] border border-[rgba(13,13,13,0.16)] px-2.5 py-1.5 text-[12px] outline-none focus:border-[#f0a38a]"
+              className="flex-1 rounded-[6px] border border-[rgba(13,13,13,0.16)] px-2.5 py-1.5 text-[12px] outline-none focus:border-[#D97757]"
               onKeyDown={(e) => { if (e.key === "Enter") handleCommit(); }}
             />
             <button
               onClick={handleCommit}
               disabled={!commitMsg.trim() || committing}
-              className="flex items-center gap-1.5 rounded-[6px] bg-[#f0a38a] px-3 py-1.5 text-[12px] font-medium text-white disabled:opacity-50 hover:bg-[#0066ee] transition-colors"
+              className="flex items-center gap-1.5 rounded-[6px] bg-[#D97757] px-3 py-1.5 text-[12px] font-medium text-white disabled:opacity-50 hover:bg-[#0066ee] transition-colors"
             >
               {committing ? <Loader2 size={12} className="animate-spin" /> : <GitCommit size={12} />}
               Commit

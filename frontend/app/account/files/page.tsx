@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -110,7 +110,7 @@ function ShareControls({
             : "border-[rgba(13,13,13,0.10)] text-[rgba(13,13,13,0.6)] hover:bg-[rgba(13,13,13,0.04)]"
         }`}
       >
-        <Share2 size={10} className={isPublic ? "text-[#1a9d4b]" : "text-[#f0a38a]"} />
+        <Share2 size={10} className={isPublic ? "text-[#1a9d4b]" : "text-[#D97757]"} />
         {isPublic ? "Публичное" : "Сделать публичным"}
       </button>
       {isPublic && shareSlug && (
@@ -119,7 +119,7 @@ function ShareControls({
           title="Скопировать публичную ссылку"
           className="inline-flex items-center gap-1 rounded-[6px] border border-[rgba(13,13,13,0.10)] px-1.5 py-0.5 text-[10px] font-medium text-[rgba(13,13,13,0.6)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
         >
-          {copied ? <Check size={10} className="text-[#1a9d4b]" /> : <Link2 size={10} className="text-[#f0a38a]" />}
+          {copied ? <Check size={10} className="text-[#1a9d4b]" /> : <Link2 size={10} className="text-[#D97757]" />}
           {copied ? "Скопировано" : "Скопировать ссылку"}
         </button>
       )}
@@ -206,7 +206,7 @@ function FileCard({
               </span>
             )}
             {file.model_name && (
-              <span className="inline-flex items-center rounded-[5px] bg-[rgba(10,124,255,0.08)] px-1.5 py-0.5 text-[10px] font-medium text-[#f0a38a]">
+              <span className="inline-flex items-center rounded-[5px] bg-[rgba(10,124,255,0.08)] px-1.5 py-0.5 text-[10px] font-medium text-[#D97757]">
                 {file.model_name}
               </span>
             )}
@@ -225,7 +225,7 @@ function FileCard({
               title="Детализировать — усилить резкость и проработку деталей"
               className="inline-flex items-center gap-1 rounded-[6px] border border-[rgba(13,13,13,0.10)] px-1.5 py-0.5 text-[10px] font-medium text-[rgba(13,13,13,0.6)] hover:bg-[rgba(13,13,13,0.04)] disabled:opacity-50 transition-colors"
             >
-              <Maximize2 size={10} className="text-[#f0a38a]" />
+              <Maximize2 size={10} className="text-[#D97757]" />
               Детализировать
             </button>
             <button
@@ -234,7 +234,7 @@ function FileCard({
               title="Создать 4 вариации"
               className="inline-flex items-center gap-1 rounded-[6px] border border-[rgba(13,13,13,0.10)] px-1.5 py-0.5 text-[10px] font-medium text-[rgba(13,13,13,0.6)] hover:bg-[rgba(13,13,13,0.04)] disabled:opacity-50 transition-colors"
             >
-              <Images size={10} className="text-[#f0a38a]" />
+              <Images size={10} className="text-[#D97757]" />
               Варианты
             </button>
             <button
@@ -242,7 +242,7 @@ function FileCard({
               title="Использовать как референс стиля"
               className="inline-flex items-center gap-1 rounded-[6px] border border-[rgba(13,13,13,0.10)] px-1.5 py-0.5 text-[10px] font-medium text-[rgba(13,13,13,0.6)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
             >
-              <Palette size={10} className="text-[#f0a38a]" />
+              <Palette size={10} className="text-[#D97757]" />
               Стиль
             </button>
           </div>
@@ -263,7 +263,7 @@ function FileCard({
           title="Повторить генерацию (те же параметры)"
           className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-white/90 shadow-sm hover:bg-white disabled:opacity-50 transition-colors"
         >
-          <RotateCcw size={13} className={rerunning ? "animate-spin text-[#f0a38a]" : "text-[#f0a38a]"} />
+          <RotateCcw size={13} className={rerunning ? "animate-spin text-[#D97757]" : "text-[#D97757]"} />
         </button>
         {file.media_type === "image" && (
           <>
@@ -272,14 +272,14 @@ function FileCard({
               title="Редактировать изображение (img2img)"
               className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-white/90 shadow-sm hover:bg-white transition-colors"
             >
-              <Pencil size={13} className="text-[#f0a38a]" />
+              <Pencil size={13} className="text-[#D97757]" />
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); onAnimate(file); }}
               title="Оживить изображение (img2video)"
               className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-white/90 shadow-sm hover:bg-white transition-colors"
             >
-              <Film size={13} className="text-[#f0a38a]" />
+              <Film size={13} className="text-[#D97757]" />
             </button>
           </>
         )}
@@ -344,7 +344,7 @@ function PreviewModal({
       onClick={onClose}
     >
       <div
-        className="relative flex max-h-[90vh] max-w-4xl w-full flex-col overflow-hidden rounded-[16px] bg-[#0d0d0d]"
+        className="relative flex max-h-[90vh] max-w-4xl w-full flex-col overflow-hidden rounded-[16px] bg-[#1A1A1A]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -705,7 +705,7 @@ export default function FilesPage() {
     <div className="px-4 py-10 sm:px-6 space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-[22px] font-bold text-[#0d0d0d]">Мои файлы</h1>
+          <h1 className="text-[22px] font-bold text-[#1A1A1A]">Мои файлы</h1>
           {total > 0 && (
             <p className="mt-0.5 text-[13px] text-[rgba(13,13,13,0.45)]">
               {total} {total === 1 ? "файл" : total < 5 ? "файла" : "файлов"}
@@ -722,8 +722,8 @@ export default function FilesPage() {
             onClick={() => handleCategoryChange(t.key)}
             className={`rounded-[7px] px-4 py-1.5 text-[13px] font-medium transition-all ${
               category === t.key
-                ? "bg-white text-[#0d0d0d] shadow-sm"
-                : "text-[rgba(13,13,13,0.55)] hover:text-[#0d0d0d]"
+                ? "bg-white text-[#1A1A1A] shadow-sm"
+                : "text-[rgba(13,13,13,0.55)] hover:text-[#1A1A1A]"
             }`}
           >
             {t.label}
@@ -747,7 +747,7 @@ export default function FilesPage() {
           <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[rgba(13,13,13,0.05)]">
             <FolderOpen size={28} className="text-[rgba(13,13,13,0.25)]" />
           </div>
-          <p className="text-[15px] font-medium text-[#0d0d0d]">Файлов пока нет</p>
+          <p className="text-[15px] font-medium text-[#1A1A1A]">Файлов пока нет</p>
           <p className="mt-1 text-[13px] text-[rgba(13,13,13,0.45)]">
             Сгенерированные изображения и видео будут здесь
           </p>

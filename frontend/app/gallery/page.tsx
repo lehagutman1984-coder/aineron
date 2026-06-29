@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -76,7 +76,7 @@ function GalleryCard({ item, onTry }: { item: GalleryItem; onTry: (prompt: strin
         </p>
         <div className="mt-1.5 flex flex-wrap items-center gap-1">
           {item.model_name && (
-            <span className="inline-flex items-center rounded-[5px] bg-[rgba(10,124,255,0.08)] px-1.5 py-0.5 text-[10px] font-medium text-[#f0a38a]">
+            <span className="inline-flex items-center rounded-[5px] bg-[rgba(10,124,255,0.08)] px-1.5 py-0.5 text-[10px] font-medium text-[#D97757]">
               {item.model_name}
             </span>
           )}
@@ -90,7 +90,7 @@ function GalleryCard({ item, onTry }: { item: GalleryItem; onTry: (prompt: strin
                 setCopied(true);
                 setTimeout(() => setCopied(false), 1500);
               }}
-              className="ml-auto flex h-6 w-6 items-center justify-center rounded-[5px] text-[rgba(13,13,13,0.35)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#0d0d0d]"
+              className="ml-auto flex h-6 w-6 items-center justify-center rounded-[5px] text-[rgba(13,13,13,0.35)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A]"
               title="Скопировать промпт"
             >
               {copied ? <Check size={12} /> : <Copy size={12} />}
@@ -101,7 +101,7 @@ function GalleryCard({ item, onTry }: { item: GalleryItem; onTry: (prompt: strin
           {item.prompt && (
             <button
               onClick={() => onTry(item.prompt)}
-              className="inline-flex items-center gap-1.5 rounded-[7px] bg-[rgba(10,124,255,0.08)] px-2.5 py-1.5 text-[12px] font-medium text-[#f0a38a] transition-colors hover:bg-[rgba(10,124,255,0.14)]"
+              className="inline-flex items-center gap-1.5 rounded-[7px] bg-[rgba(10,124,255,0.08)] px-2.5 py-1.5 text-[12px] font-medium text-[#D97757] transition-colors hover:bg-[rgba(10,124,255,0.14)]"
             >
               <Wand2 size={12} />
               Попробовать
@@ -165,12 +165,12 @@ export default function GalleryPage() {
       {/* Header */}
       <header className="border-b border-[rgba(13,13,13,0.08)] bg-white">
         <div className="mx-auto flex max-w-[1100px] items-center justify-between px-4 py-3">
-          <Link href="/" className="text-[13px] font-semibold tracking-tight text-[#0d0d0d]">
+          <Link href="/" className="text-[13px] font-semibold tracking-tight text-[#1A1A1A]">
             Aineron.ru
           </Link>
           <Link
             href="/models/"
-            className="rounded-[8px] bg-[#f0a38a] px-4 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-[#0068e0]"
+            className="rounded-[8px] bg-[#D97757] px-4 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-[#0068e0]"
           >
             Создать своё
           </Link>
@@ -180,10 +180,10 @@ export default function GalleryPage() {
       <main className="mx-auto max-w-[1100px] px-4 py-8">
         <div className="mb-5 flex items-center gap-2.5">
           <div className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-[rgba(10,124,255,0.10)]">
-            <Sparkles size={20} className="text-[#f0a38a]" />
+            <Sparkles size={20} className="text-[#D97757]" />
           </div>
           <div>
-            <h1 className="text-[22px] font-bold leading-tight text-[#0d0d0d]">Публичная галерея</h1>
+            <h1 className="text-[22px] font-bold leading-tight text-[#1A1A1A]">Публичная галерея</h1>
             <p className="text-[13px] text-[rgba(13,13,13,0.45)]">
               Работы пользователей Aineron{total > 0 ? ` · ${total}` : ""}
             </p>
@@ -197,7 +197,7 @@ export default function GalleryPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Поиск по промпту..."
-            className="w-full rounded-[10px] border border-[rgba(13,13,13,0.12)] bg-white px-4 py-2 pl-10 text-[13px] outline-none focus:border-[#f0a38a] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] dark:border-[rgba(255,255,255,0.1)] dark:bg-[rgba(255,255,255,0.06)] dark:text-[#ececec]"
+            className="w-full rounded-[10px] border border-[rgba(13,13,13,0.12)] bg-white px-4 py-2 pl-10 text-[13px] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(10,124,255,0.12)] dark:border-[rgba(255,255,255,0.1)] dark:bg-[rgba(255,255,255,0.06)] dark:text-[#EDE8E3]"
           />
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[rgba(13,13,13,0.35)]" />
         </div>
@@ -211,8 +211,8 @@ export default function GalleryPage() {
                 onClick={() => setFilter(t.key)}
                 className={`rounded-[7px] px-4 py-1.5 text-[13px] font-medium transition-all ${
                   filter === t.key
-                    ? "bg-white text-[#0d0d0d] shadow-sm"
-                    : "text-[rgba(13,13,13,0.55)] hover:text-[#0d0d0d]"
+                    ? "bg-white text-[#1A1A1A] shadow-sm"
+                    : "text-[rgba(13,13,13,0.55)] hover:text-[#1A1A1A]"
                 }`}
               >
                 {t.label}
@@ -227,7 +227,7 @@ export default function GalleryPage() {
             onClick={() => setModel("")}
             className={`h-7 rounded-[6px] border px-2.5 text-[11px] font-medium transition-colors ${
               !model
-                ? "border-[#f0a38a] bg-[rgba(10,124,255,0.08)] text-[#f0a38a]"
+                ? "border-[#D97757] bg-[rgba(10,124,255,0.08)] text-[#D97757]"
                 : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.55)] hover:border-[rgba(13,13,13,0.25)]"
             }`}
           >
@@ -239,7 +239,7 @@ export default function GalleryPage() {
               onClick={() => setModel(model === m ? "" : m)}
               className={`h-7 rounded-[6px] border px-2.5 text-[11px] font-medium transition-colors ${
                 model === m
-                  ? "border-[#f0a38a] bg-[rgba(10,124,255,0.08)] text-[#f0a38a]"
+                  ? "border-[#D97757] bg-[rgba(10,124,255,0.08)] text-[#D97757]"
                   : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.55)] hover:border-[rgba(13,13,13,0.25)]"
               }`}
             >
@@ -264,7 +264,7 @@ export default function GalleryPage() {
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[rgba(13,13,13,0.05)]">
               <ImageOff size={28} className="text-[rgba(13,13,13,0.25)]" />
             </div>
-            <p className="text-[15px] font-medium text-[#0d0d0d]">Пока пусто</p>
+            <p className="text-[15px] font-medium text-[#1A1A1A]">Пока пусто</p>
             <p className="mt-1 text-[13px] text-[rgba(13,13,13,0.45)]">
               Здесь появятся публичные работы пользователей
             </p>

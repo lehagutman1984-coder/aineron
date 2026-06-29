@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { Dices, Lock, Unlock, ChevronDown, ChevronRight } from "lucide-react";
@@ -60,7 +60,7 @@ function AspectRatioPresets({
             title={label}
             className={`flex flex-col items-center justify-center gap-0.5 rounded-[6px] border px-1.5 py-1 transition-colors ${
               isActive
-                ? "border-[#f0a38a] bg-[rgba(10,124,255,0.08)] text-[#f0a38a]"
+                ? "border-[#D97757] bg-[rgba(10,124,255,0.08)] text-[#D97757]"
                 : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.04)] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.5)]"
             }`}
           >
@@ -111,7 +111,7 @@ function SeedField({
           className={[
             "flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] border transition-colors",
             locked
-              ? "border-[#f0a38a] bg-[rgba(10,124,255,0.10)] text-[#f0a38a]"
+              ? "border-[#D97757] bg-[rgba(10,124,255,0.10)] text-[#D97757]"
               : "border-[rgba(13,13,13,0.15)] text-[rgba(13,13,13,0.5)] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.5)]",
           ].join(" ")}
         >
@@ -128,13 +128,13 @@ function SeedField({
             const raw = e.target.value;
             onSet(raw === "" ? null : Math.floor(Number(raw)));
           }}
-          className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-2 py-1 text-[12px] text-[#0d0d0d] focus:outline-none disabled:bg-[rgba(13,13,13,0.04)] disabled:text-[rgba(13,13,13,0.35)] dark:border-[rgba(255,255,255,0.12)] dark:bg-[rgba(255,255,255,0.08)] dark:text-[#ececec]"
+          className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-2 py-1 text-[12px] text-[#1A1A1A] focus:outline-none disabled:bg-[rgba(13,13,13,0.04)] disabled:text-[rgba(13,13,13,0.35)] dark:border-[rgba(255,255,255,0.12)] dark:bg-[rgba(255,255,255,0.08)] dark:text-[#EDE8E3]"
         />
         <button
           type="button"
           title="Случайный seed"
           onClick={() => onSet(randomSeed(field.max))}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] border border-[rgba(13,13,13,0.15)] text-[rgba(13,13,13,0.5)] hover:text-[#f0a38a] transition-colors dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.5)]"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] border border-[rgba(13,13,13,0.15)] text-[rgba(13,13,13,0.5)] hover:text-[#D97757] transition-colors dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.5)]"
         >
           <Dices size={13} />
         </button>
@@ -168,7 +168,7 @@ function NumberField({
           const raw = e.target.value;
           onSet(raw === "" ? null : Number(raw));
         }}
-        className="rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-2 py-1 text-[12px] text-[#0d0d0d] focus:outline-none dark:border-[rgba(255,255,255,0.12)] dark:bg-[rgba(255,255,255,0.08)] dark:text-[#ececec]"
+        className="rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-2 py-1 text-[12px] text-[#1A1A1A] focus:outline-none dark:border-[rgba(255,255,255,0.12)] dark:bg-[rgba(255,255,255,0.08)] dark:text-[#EDE8E3]"
       />
     </div>
   );
@@ -192,7 +192,7 @@ function CollapsibleTextarea({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1 text-[11px] text-[rgba(13,13,13,0.5)] hover:text-[#0d0d0d] transition-colors dark:text-[rgba(236,236,236,0.45)] dark:hover:text-[#ececec]"
+        className="flex items-center gap-1 text-[11px] text-[rgba(13,13,13,0.5)] hover:text-[#1A1A1A] transition-colors dark:text-[rgba(236,236,236,0.45)] dark:hover:text-[#EDE8E3]"
       >
         {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
         <span>{field.label}</span>
@@ -209,7 +209,7 @@ function CollapsibleTextarea({
           rows={3}
           onChange={(e) => onSet(e.target.value)}
           placeholder={field.label}
-          className="w-full resize-y rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-2 py-1.5 text-[12px] text-[#0d0d0d] focus:outline-none dark:border-[rgba(255,255,255,0.12)] dark:bg-[rgba(255,255,255,0.08)] dark:text-[#ececec]"
+          className="w-full resize-y rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-2 py-1.5 text-[12px] text-[#1A1A1A] focus:outline-none dark:border-[rgba(255,255,255,0.12)] dark:bg-[rgba(255,255,255,0.08)] dark:text-[#EDE8E3]"
         />
       )}
     </div>
@@ -257,7 +257,7 @@ export function MediaSettingsPanel({
                     <select
                       value={String(val ?? "")}
                       onChange={(e) => set(field.name, e.target.value)}
-                      className="rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-2 py-1 text-[12px] font-medium text-[#0d0d0d] focus:outline-none dark:border-[rgba(255,255,255,0.12)] dark:bg-[rgba(255,255,255,0.08)] dark:text-[#ececec]"
+                      className="rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-2 py-1 text-[12px] font-medium text-[#1A1A1A] focus:outline-none dark:border-[rgba(255,255,255,0.12)] dark:bg-[rgba(255,255,255,0.08)] dark:text-[#EDE8E3]"
                       style={{ minWidth: "120px" }}
                     >
                       {(field.options ?? []).map((opt) => (
@@ -282,7 +282,7 @@ export function MediaSettingsPanel({
                       onClick={() => set(field.name, !checked)}
                       className={[
                         "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-none",
-                        checked ? "bg-[#f0a38a]" : "bg-[rgba(13,13,13,0.15)] dark:bg-[rgba(255,255,255,0.15)]",
+                        checked ? "bg-[#D97757]" : "bg-[rgba(13,13,13,0.15)] dark:bg-[rgba(255,255,255,0.15)]",
                       ].join(" ")}
                     >
                       <span
@@ -307,7 +307,7 @@ export function MediaSettingsPanel({
                   <div key={field.name} className="flex flex-col gap-1" style={{ minWidth: "160px" }}>
                     <label className="flex items-center justify-between text-[11px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">
                       <span>{field.label}</span>
-                      <span className="font-medium text-[#0d0d0d] dark:text-[#ececec]">
+                      <span className="font-medium text-[#1A1A1A] dark:text-[#EDE8E3]">
                         {String(val ?? field.min ?? 0)}
                       </span>
                     </label>
@@ -318,7 +318,7 @@ export function MediaSettingsPanel({
                       step={field.step ?? 1}
                       value={Number(val ?? field.min ?? 0)}
                       onChange={(e) => set(field.name, Number(e.target.value))}
-                      className="w-full accent-[#f0a38a]"
+                      className="w-full accent-[#D97757]"
                     />
                   </div>
                 );
@@ -365,7 +365,7 @@ export function MediaSettingsPanel({
                       maxLength={field.max_length}
                       onChange={(e) => set(field.name, e.target.value)}
                       placeholder={field.label}
-                      className="rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-2 py-1 text-[12px] text-[#0d0d0d] focus:outline-none dark:border-[rgba(255,255,255,0.12)] dark:bg-[rgba(255,255,255,0.08)] dark:text-[#ececec]"
+                      className="rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-2 py-1 text-[12px] text-[#1A1A1A] focus:outline-none dark:border-[rgba(255,255,255,0.12)] dark:bg-[rgba(255,255,255,0.08)] dark:text-[#EDE8E3]"
                       style={{ width: "100%" }}
                     />
                   </div>

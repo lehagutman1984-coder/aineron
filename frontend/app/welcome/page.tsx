@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -17,7 +17,7 @@ const INTERESTS = [
     label: "Написать код",
     description: "Отладка, рефакторинг, объяснение алгоритмов",
     icon: Code2,
-    color: "#f0a38a",
+    color: "#D97757",
     bg: "rgba(10,124,255,0.08)",
     prompts: [
       "Напиши функцию на Python для валидации email",
@@ -122,7 +122,7 @@ export default function WelcomePage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[#f5f5f7] px-4 py-12">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-[#FAF9F7] px-4 py-12">
       {/* Progress */}
       <div className="mb-8 flex items-center gap-2">
         {[1, 2, 3].map((s) => (
@@ -131,9 +131,9 @@ export default function WelcomePage() {
               className={[
                 "flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold transition-all",
                 s < step
-                  ? "bg-[#0d0d0d] text-white"
+                  ? "bg-[#1A1A1A] text-white"
                   : s === step
-                  ? "bg-[#f0a38a] text-white"
+                  ? "bg-[#D97757] text-white"
                   : "bg-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.40)]",
               ].join(" ")}
             >
@@ -143,7 +143,7 @@ export default function WelcomePage() {
               <div
                 className={[
                   "h-[2px] w-8 rounded-full transition-all",
-                  s < step ? "bg-[#0d0d0d]" : "bg-[rgba(13,13,13,0.12)]",
+                  s < step ? "bg-[#1A1A1A]" : "bg-[rgba(13,13,13,0.12)]",
                 ].join(" ")}
               />
             )}
@@ -197,9 +197,9 @@ function Step1({ onSelect }: { onSelect: (key: InterestKey) => void }) {
     <>
       <div className="mb-6 text-center">
         <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-[12px] bg-[rgba(10,124,255,0.08)]">
-          <Star size={20} className="text-[#f0a38a]" />
+          <Star size={20} className="text-[#D97757]" />
         </div>
-        <h1 className="text-[22px] font-bold text-[#0d0d0d]">Добро пожаловать!</h1>
+        <h1 className="text-[22px] font-bold text-[#1A1A1A]">Добро пожаловать!</h1>
         <p className="mt-1 text-[14px] text-[rgba(13,13,13,0.52)]">
           Для чего вы планируете использовать AI?
         </p>
@@ -220,7 +220,7 @@ function Step1({ onSelect }: { onSelect: (key: InterestKey) => void }) {
               >
                 <Icon size={17} style={{ color: item.color }} />
               </div>
-              <p className="text-[13px] font-semibold text-[#0d0d0d]">{item.label}</p>
+              <p className="text-[13px] font-semibold text-[#1A1A1A]">{item.label}</p>
               <p className="mt-0.5 text-[11px] leading-snug text-[rgba(13,13,13,0.45)]">
                 {item.description}
               </p>
@@ -251,7 +251,7 @@ function Step2({
     <>
       <button
         onClick={onBack}
-        className="mb-4 flex items-center gap-1 text-[12px] text-[rgba(13,13,13,0.45)] hover:text-[#0d0d0d] transition-colors"
+        className="mb-4 flex items-center gap-1 text-[12px] text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A] transition-colors"
       >
         <ChevronRight size={12} className="rotate-180" />
         Назад
@@ -265,7 +265,7 @@ function Step2({
           <Icon size={18} style={{ color: interest.color }} />
         </div>
         <div>
-          <h2 className="text-[17px] font-bold text-[#0d0d0d]">{interest.label}</h2>
+          <h2 className="text-[17px] font-bold text-[#1A1A1A]">{interest.label}</h2>
           <p className="text-[13px] text-[rgba(13,13,13,0.50)]">Выберите пример или откройте каталог</p>
         </div>
       </div>
@@ -278,15 +278,15 @@ function Step2({
             className={[
               "flex items-center gap-3 rounded-[10px] border px-4 py-3 text-left text-[13px] transition-all",
               pickedPrompt === prompt
-                ? "border-[#f0a38a] bg-[rgba(10,124,255,0.06)] text-[#0d0d0d]"
-                : "border-[rgba(13,13,13,0.10)] text-[rgba(13,13,13,0.70)] hover:border-[rgba(13,13,13,0.20)] hover:text-[#0d0d0d]",
+                ? "border-[#D97757] bg-[rgba(10,124,255,0.06)] text-[#1A1A1A]"
+                : "border-[rgba(13,13,13,0.10)] text-[rgba(13,13,13,0.70)] hover:border-[rgba(13,13,13,0.20)] hover:text-[#1A1A1A]",
             ].join(" ")}
           >
             <div
               className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all"
               style={{
-                borderColor: pickedPrompt === prompt ? "#f0a38a" : "rgba(13,13,13,0.18)",
-                background: pickedPrompt === prompt ? "#f0a38a" : "transparent",
+                borderColor: pickedPrompt === prompt ? "#D97757" : "rgba(13,13,13,0.18)",
+                background: pickedPrompt === prompt ? "#D97757" : "transparent",
               }}
             >
               {pickedPrompt === prompt && <Check size={10} className="text-white" />}
@@ -299,14 +299,14 @@ function Step2({
       <div className="flex gap-2">
         <Link
           href={interest.catalog}
-          className="flex-1 rounded-[10px] border border-[rgba(13,13,13,0.12)] py-2.5 text-center text-[13px] font-medium text-[rgba(13,13,13,0.60)] transition-colors hover:border-[rgba(13,13,13,0.22)] hover:text-[#0d0d0d]"
+          className="flex-1 rounded-[10px] border border-[rgba(13,13,13,0.12)] py-2.5 text-center text-[13px] font-medium text-[rgba(13,13,13,0.60)] transition-colors hover:border-[rgba(13,13,13,0.22)] hover:text-[#1A1A1A]"
           onClick={() => localStorage.setItem(ONBOARDING_KEY, "1")}
         >
           Открыть каталог
         </Link>
         <button
           onClick={onNext}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-[10px] bg-[#f0a38a] py-2.5 text-[13px] font-medium text-white transition-colors hover:bg-[#0066cc]"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-[10px] bg-[#D97757] py-2.5 text-[13px] font-medium text-white transition-colors hover:bg-[#0066cc]"
         >
           Продолжить
           <ArrowRight size={14} />
@@ -332,7 +332,7 @@ function Step3({
         <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-[rgba(34,168,90,0.10)]">
           <Check size={22} className="text-[#22a85a]" />
         </div>
-        <h2 className="text-[20px] font-bold text-[#0d0d0d]">Всё готово!</h2>
+        <h2 className="text-[20px] font-bold text-[#1A1A1A]">Всё готово!</h2>
         <p className="mt-1 text-[13px] text-[rgba(13,13,13,0.50)]">
           На вашем балансе уже есть звёзды для первых запросов
         </p>
@@ -343,16 +343,16 @@ function Step3({
         <Link
           href={`${interest.catalog}`}
           onClick={() => localStorage.setItem(ONBOARDING_KEY, "1")}
-          className="mb-4 flex items-start gap-3 rounded-[12px] border border-[#f0a38a] bg-[rgba(10,124,255,0.05)] p-4 text-[13px] transition-all hover:bg-[rgba(10,124,255,0.08)]"
+          className="mb-4 flex items-start gap-3 rounded-[12px] border border-[#D97757] bg-[rgba(10,124,255,0.05)] p-4 text-[13px] transition-all hover:bg-[rgba(10,124,255,0.08)]"
         >
-          <div className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#f0a38a]" />
+          <div className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#D97757]" />
           <div>
-            <p className="mb-0.5 text-[11px] font-medium uppercase tracking-wide text-[#f0a38a]">
+            <p className="mb-0.5 text-[11px] font-medium uppercase tracking-wide text-[#D97757]">
               Ваш первый запрос
             </p>
-            <p className="text-[#0d0d0d]">{prompt}</p>
+            <p className="text-[#1A1A1A]">{prompt}</p>
           </div>
-          <ArrowRight size={14} className="ml-auto mt-0.5 shrink-0 text-[#f0a38a]" />
+          <ArrowRight size={14} className="ml-auto mt-0.5 shrink-0 text-[#D97757]" />
         </Link>
       )}
 
@@ -382,7 +382,7 @@ function Step3({
             className="flex items-center gap-3 rounded-[10px] border border-[rgba(13,13,13,0.10)] px-4 py-3 transition-all hover:border-[rgba(13,13,13,0.20)] hover:shadow-[0_1px_8px_rgba(0,0,0,0.06)]"
           >
             <div className="min-w-0 flex-1">
-              <p className="text-[13px] font-medium text-[#0d0d0d]">{item.label}</p>
+              <p className="text-[13px] font-medium text-[#1A1A1A]">{item.label}</p>
               <p className="text-[11px] text-[rgba(13,13,13,0.45)]">{item.sub}</p>
             </div>
             <ChevronRight size={14} className="shrink-0 text-[rgba(13,13,13,0.30)]" />
@@ -392,7 +392,7 @@ function Step3({
 
       <button
         onClick={onFinish}
-        className="w-full rounded-[10px] bg-[#0d0d0d] py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-[rgba(13,13,13,0.85)]"
+        className="w-full rounded-[10px] bg-[#1A1A1A] py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-[rgba(13,13,13,0.85)]"
       >
         Перейти в личный кабинет
       </button>

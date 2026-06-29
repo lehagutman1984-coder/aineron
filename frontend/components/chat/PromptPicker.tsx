@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -19,7 +19,7 @@ const CATS = [
 type CatKey = (typeof CATS)[number]["key"];
 
 function CatIcon({ category, size = 13 }: { category: string; size?: number }) {
-  const cls = "shrink-0 text-[#f0a38a]";
+  const cls = "shrink-0 text-[#D97757]";
   switch (category) {
     case "code": return <Code2 size={size} className={cls} />;
     case "translate": return <Globe size={size} className={cls} />;
@@ -66,7 +66,7 @@ export function PromptPicker({
 
       {/* Sheet */}
       <div
-        className="relative flex w-full max-w-xl flex-col rounded-t-[20px] bg-white shadow-2xl dark:bg-[#18181b] sm:rounded-[20px]"
+        className="relative flex w-full max-w-xl flex-col rounded-t-[20px] bg-white shadow-2xl dark:bg-[#1C1917] sm:rounded-[20px]"
         style={{
           border: "1px solid rgba(13,13,13,0.10)",
           maxHeight: "80vh",
@@ -78,8 +78,8 @@ export function PromptPicker({
           style={{ borderBottom: "1px solid rgba(13,13,13,0.08)" }}
         >
           <div className="flex items-center gap-2">
-            <BookMarked size={15} className="text-[#f0a38a]" />
-            <span className="text-[14px] font-semibold text-[#0d0d0d] dark:text-[#ececec]">
+            <BookMarked size={15} className="text-[#D97757]" />
+            <span className="text-[14px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
               Шаблоны промтов
             </span>
           </div>
@@ -99,7 +99,7 @@ export function PromptPicker({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Поиск..."
-              className="h-8 w-full rounded-[8px] border border-[rgba(13,13,13,0.12)] bg-transparent pl-7 pr-3 text-[12px] text-[#0d0d0d] outline-none focus:border-[#f0a38a] dark:border-[rgba(255,255,255,0.12)] dark:text-[#ececec]"
+              className="h-8 w-full rounded-[8px] border border-[rgba(13,13,13,0.12)] bg-transparent pl-7 pr-3 text-[12px] text-[#1A1A1A] outline-none focus:border-[#D97757] dark:border-[rgba(255,255,255,0.12)] dark:text-[#EDE8E3]"
             />
           </div>
         </div>
@@ -113,7 +113,7 @@ export function PromptPicker({
               className={[
                 "shrink-0 rounded-full px-3 py-1 text-[11px] font-medium transition-all",
                 cat === key
-                  ? "bg-[#0d0d0d] text-white dark:bg-[#ececec] dark:text-[#0d0d0d]"
+                  ? "bg-[#1A1A1A] text-white dark:bg-[#EDE8E3] dark:text-[#1A1A1A]"
                   : "border border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.60)] hover:border-[rgba(13,13,13,0.25)] dark:border-[rgba(255,255,255,0.10)] dark:text-[rgba(236,236,236,0.55)]",
               ].join(" ")}
             >
@@ -146,7 +146,7 @@ export function PromptPicker({
                     <CatIcon category={p.category} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-medium text-[#0d0d0d] dark:text-[#ececec]">
+                    <p className="text-[13px] font-medium text-[#1A1A1A] dark:text-[#EDE8E3]">
                       {p.title}
                     </p>
                     <p className="mt-0.5 line-clamp-1 text-[11px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.38)]">

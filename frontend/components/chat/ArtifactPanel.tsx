@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { X, Code2, Eye, Copy, Check, ExternalLink } from "lucide-react";
@@ -144,8 +144,8 @@ export function ArtifactPanel({ artifact, onClose }: ArtifactPanelProps) {
     <div className="flex h-full flex-col" style={{ borderLeft: "1px solid var(--border-color, rgba(13,13,13,0.10))" }}>
       {/* Header */}
       <div className="flex shrink-0 items-center gap-2 border-b border-[rgba(13,13,13,0.08)] px-3 py-2.5 dark:border-[rgba(255,255,255,0.08)]">
-        <Code2 size={14} className="shrink-0 text-[#f0a38a]" />
-        <span className="flex-1 truncate text-[13px] font-semibold text-[#0d0d0d] dark:text-[#ececec]">
+        <Code2 size={14} className="shrink-0 text-[#D97757]" />
+        <span className="flex-1 truncate text-[13px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
           {artifact.title || "Артефакт"}
         </span>
         <div className="flex items-center gap-1">
@@ -153,14 +153,14 @@ export function ArtifactPanel({ artifact, onClose }: ArtifactPanelProps) {
           <div className="flex rounded-[6px] bg-[rgba(13,13,13,0.06)] p-0.5 dark:bg-[rgba(255,255,255,0.06)]">
             <button
               onClick={() => setTab("preview")}
-              className={`flex items-center gap-1 rounded-[4px] px-2 py-0.5 text-[11px] font-medium transition-all ${tab === "preview" ? "bg-white text-[#0d0d0d] shadow-sm dark:bg-[rgba(255,255,255,0.12)] dark:text-[#ececec]" : "text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.4)]"}`}
+              className={`flex items-center gap-1 rounded-[4px] px-2 py-0.5 text-[11px] font-medium transition-all ${tab === "preview" ? "bg-white text-[#1A1A1A] shadow-sm dark:bg-[rgba(255,255,255,0.12)] dark:text-[#EDE8E3]" : "text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.4)]"}`}
             >
               <Eye size={11} />
               Preview
             </button>
             <button
               onClick={() => setTab("code")}
-              className={`flex items-center gap-1 rounded-[4px] px-2 py-0.5 text-[11px] font-medium transition-all ${tab === "code" ? "bg-white text-[#0d0d0d] shadow-sm dark:bg-[rgba(255,255,255,0.12)] dark:text-[#ececec]" : "text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.4)]"}`}
+              className={`flex items-center gap-1 rounded-[4px] px-2 py-0.5 text-[11px] font-medium transition-all ${tab === "code" ? "bg-white text-[#1A1A1A] shadow-sm dark:bg-[rgba(255,255,255,0.12)] dark:text-[#EDE8E3]" : "text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.4)]"}`}
             >
               <Code2 size={11} />
               Код
@@ -168,14 +168,14 @@ export function ArtifactPanel({ artifact, onClose }: ArtifactPanelProps) {
           </div>
           <button
             onClick={handleCopy}
-            className="flex h-6 w-6 items-center justify-center rounded-[5px] text-[rgba(13,13,13,0.4)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.4)] dark:hover:bg-[rgba(255,255,255,0.08)]"
+            className="flex h-6 w-6 items-center justify-center rounded-[5px] text-[rgba(13,13,13,0.4)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.4)] dark:hover:bg-[rgba(255,255,255,0.08)]"
             title="Скопировать код"
           >
             {copied ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
           </button>
           <button
             onClick={onClose}
-            className="flex h-6 w-6 items-center justify-center rounded-[5px] text-[rgba(13,13,13,0.4)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.4)] dark:hover:bg-[rgba(255,255,255,0.08)]"
+            className="flex h-6 w-6 items-center justify-center rounded-[5px] text-[rgba(13,13,13,0.4)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.4)] dark:hover:bg-[rgba(255,255,255,0.08)]"
           >
             <X size={12} />
           </button>
@@ -187,7 +187,7 @@ export function ArtifactPanel({ artifact, onClose }: ArtifactPanelProps) {
         {tab === "preview" ? (
           <SandboxedPreview artifact={artifact} />
         ) : (
-          <pre className="h-full overflow-auto p-4 font-mono text-[12px] leading-relaxed text-[#0d0d0d] dark:text-[#ececec]">
+          <pre className="h-full overflow-auto p-4 font-mono text-[12px] leading-relaxed text-[#1A1A1A] dark:text-[#EDE8E3]">
             <code>{artifact.code}</code>
           </pre>
         )}

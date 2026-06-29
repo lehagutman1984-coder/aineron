@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { Brain, X } from "lucide-react";
@@ -33,7 +33,7 @@ export function MemoryToast({ count, facts, onDismiss }: Props) {
     >
       <Brain size={15} className="mt-0.5 shrink-0 text-[#7c3aed]" />
       <div className="min-w-0 flex-1">
-        <div className="text-[12px] font-semibold text-[#0d0d0d] dark:text-[#ececec]">
+        <div className="text-[12px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
           Запомнено: {count} {count === 1 ? "факт" : count < 5 ? "факта" : "фактов"}
         </div>
         {facts.length > 0 && (
@@ -54,7 +54,7 @@ export function MemoryToast({ count, facts, onDismiss }: Props) {
           setVisible(false);
           setTimeout(onDismiss, 300);
         }}
-        className="shrink-0 text-[rgba(13,13,13,0.35)] hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.3)]"
+        className="shrink-0 text-[rgba(13,13,13,0.35)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.3)]"
       >
         <X size={12} />
       </button>

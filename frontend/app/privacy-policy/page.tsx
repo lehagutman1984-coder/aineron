@@ -1,4 +1,4 @@
-import { FileText } from "lucide-react";
+﻿import { FileText } from "lucide-react";
 import Link from "next/link";
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "https://aineron.ru/api/v1").replace(/\/$/, "");
@@ -32,13 +32,13 @@ export default async function PrivacyPolicyPage() {
     : null;
 
   return (
-    <div className="min-h-screen bg-[#f5f5f7] px-4 py-12">
+    <div className="min-h-screen bg-[#FAF9F7] px-4 py-12">
       <div className="mx-auto max-w-3xl">
         <div className="mb-6 flex items-center gap-3">
           <FileText size={20} className="text-[rgba(13,13,13,0.45)]" />
           <Link
             href="/"
-            className="text-[13px] text-[rgba(13,13,13,0.45)] hover:text-[#0d0d0d] transition-colors"
+            className="text-[13px] text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A] transition-colors"
           >
             Главная
           </Link>
@@ -47,7 +47,7 @@ export default async function PrivacyPolicyPage() {
         </div>
 
         <div className="rounded-[16px] border border-[rgba(13,13,13,0.10)] bg-white p-8 shadow-sm">
-          <h1 className="mb-2 text-[26px] font-bold text-[#0d0d0d]">
+          <h1 className="mb-2 text-[26px] font-bold text-[#1A1A1A]">
             {doc?.title ?? "Политика конфиденциальности"}
           </h1>
           {date && (
@@ -58,13 +58,13 @@ export default async function PrivacyPolicyPage() {
 
           {doc ? (
             <div
-              className="prose prose-sm max-w-none text-[rgba(13,13,13,0.75)] [&_h2]:text-[18px] [&_h2]:font-semibold [&_h2]:text-[#0d0d0d] [&_h2]:mt-6 [&_h2]:mb-3 [&_p]:mb-3 [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:pl-5"
+              className="prose prose-sm max-w-none text-[rgba(13,13,13,0.75)] [&_h2]:text-[18px] [&_h2]:font-semibold [&_h2]:text-[#1A1A1A] [&_h2]:mt-6 [&_h2]:mb-3 [&_p]:mb-3 [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:pl-5"
               dangerouslySetInnerHTML={{ __html: doc.content }}
             />
           ) : (
             <p className="text-[14px] text-[rgba(13,13,13,0.55)]">
               Документ находится в разработке. Свяжитесь с нами по адресу{" "}
-              <a href="mailto:support@aineron.ru" className="text-[#f0a38a] hover:underline">
+              <a href="mailto:support@aineron.ru" className="text-[#D97757] hover:underline">
                 support@aineron.ru
               </a>
             </p>

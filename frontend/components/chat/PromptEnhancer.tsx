@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { Wand2, Check, X, Loader2, RefreshCw } from "lucide-react";
@@ -75,7 +75,7 @@ export function PromptEnhancer({ prompt, onAccept, disabled }: PromptEnhancerPro
           "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all disabled:cursor-not-allowed disabled:opacity-40",
           open
             ? "bg-[rgba(124,58,237,0.12)] text-[#7c3aed] ring-1 ring-[rgba(124,58,237,0.35)]"
-            : "text-[rgba(13,13,13,0.45)] hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.38)] dark:hover:text-[#ececec]",
+            : "text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.38)] dark:hover:text-[#EDE8E3]",
         ].join(" ")}
       >
         {loading ? <Loader2 size={12} className="animate-spin" /> : <Wand2 size={12} />}
@@ -88,7 +88,7 @@ export function PromptEnhancer({ prompt, onAccept, disabled }: PromptEnhancerPro
           style={{ border: "1px solid rgba(13,13,13,0.12)" }}
         >
           <div className="mb-2.5 flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-[12px] font-semibold text-[#0d0d0d] dark:text-[#ececec]">
+            <span className="flex items-center gap-1.5 text-[12px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
               <Wand2 size={13} className="text-[#7c3aed]" />
               Улучшенный промпт
             </span>
@@ -145,7 +145,7 @@ export function PromptEnhancer({ prompt, onAccept, disabled }: PromptEnhancerPro
                 <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-[#7c3aed]">
                   Стало
                 </p>
-                <p className="max-h-[180px] overflow-y-auto rounded-[8px] bg-[rgba(124,58,237,0.06)] px-2.5 py-1.5 text-[12px] leading-relaxed text-[#0d0d0d] ring-1 ring-[rgba(124,58,237,0.18)] dark:text-[#ececec]">
+                <p className="max-h-[180px] overflow-y-auto rounded-[8px] bg-[rgba(124,58,237,0.06)] px-2.5 py-1.5 text-[12px] leading-relaxed text-[#1A1A1A] ring-1 ring-[rgba(124,58,237,0.18)] dark:text-[#EDE8E3]">
                   {enhanced}
                 </p>
               </div>

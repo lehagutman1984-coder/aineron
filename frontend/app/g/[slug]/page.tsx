@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Link from "next/link";
 import { Clock, Cpu, LogIn, Sparkles } from "lucide-react";
 import type { PublicGeneration } from "@/lib/api/types";
@@ -62,11 +62,11 @@ export default async function PublicGenerationPage({ params }: { params: { slug:
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f7f7f8]">
         <div className="text-center">
-          <p className="text-[15px] font-medium text-[#0d0d0d]">Генерация не найдена</p>
+          <p className="text-[15px] font-medium text-[#1A1A1A]">Генерация не найдена</p>
           <p className="mt-1 text-[13px] text-[rgba(13,13,13,0.45)]">
             Ссылка недействительна или публикация снята
           </p>
-          <Link href="/gallery/" className="mt-4 inline-block text-[13px] text-[#f0a38a] hover:underline">
+          <Link href="/gallery/" className="mt-4 inline-block text-[13px] text-[#D97757] hover:underline">
             В галерею
           </Link>
         </div>
@@ -79,10 +79,10 @@ export default async function PublicGenerationPage({ params }: { params: { slug:
       {/* Header */}
       <header className="border-b border-[rgba(13,13,13,0.08)] bg-white">
         <div className="mx-auto flex max-w-[860px] items-center justify-between px-4 py-3">
-          <Link href="/" className="text-[13px] font-semibold tracking-tight text-[#0d0d0d]">
+          <Link href="/" className="text-[13px] font-semibold tracking-tight text-[#1A1A1A]">
             Aineron.ru
           </Link>
-          <Link href="/gallery/" className="text-[12px] text-[rgba(13,13,13,0.50)] hover:text-[#0d0d0d]">
+          <Link href="/gallery/" className="text-[12px] text-[rgba(13,13,13,0.50)] hover:text-[#1A1A1A]">
             Публичная галерея
           </Link>
         </div>
@@ -121,7 +121,7 @@ export default async function PublicGenerationPage({ params }: { params: { slug:
           )}
           <div className="mt-4 flex flex-wrap items-center gap-3 text-[12px] text-[rgba(13,13,13,0.45)]">
             {gen.model_name && (
-              <span className="inline-flex items-center gap-1.5 rounded-[6px] bg-[rgba(10,124,255,0.08)] px-2 py-1 font-medium text-[#f0a38a]">
+              <span className="inline-flex items-center gap-1.5 rounded-[6px] bg-[rgba(10,124,255,0.08)] px-2 py-1 font-medium text-[#D97757]">
                 <Cpu size={12} />
                 {gen.model_name}
               </span>
@@ -146,10 +146,10 @@ export default async function PublicGenerationPage({ params }: { params: { slug:
         {/* CTA */}
         <div className="mt-5 flex items-center gap-4 rounded-[14px] border border-[rgba(10,124,255,0.15)] bg-[rgba(10,124,255,0.04)] p-5">
           <div className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-[12px] bg-[rgba(10,124,255,0.10)] sm:flex">
-            <Sparkles size={22} className="text-[#f0a38a]" />
+            <Sparkles size={22} className="text-[#D97757]" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[13px] font-medium text-[#0d0d0d]">
+            <p className="text-[13px] font-medium text-[#1A1A1A]">
               Создайте похожее на Aineron.ru
             </p>
             <p className="mt-0.5 text-[12px] leading-relaxed text-[rgba(13,13,13,0.55)]">
@@ -158,7 +158,7 @@ export default async function PublicGenerationPage({ params }: { params: { slug:
           </div>
           <Link
             href="/login/"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-[8px] bg-[#f0a38a] px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#0068e0]"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-[8px] bg-[#D97757] px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#0068e0]"
           >
             <LogIn size={14} />
             Войти, чтобы создать

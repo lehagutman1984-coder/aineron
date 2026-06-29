@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useRef } from "react";
 import ReactMarkdown from "react-markdown";
@@ -149,7 +149,7 @@ const components: Components = {
     }
     return (
       <code
-        className="rounded-[4px] bg-[rgba(13,13,13,0.07)] px-[0.35em] py-[0.1em] font-mono text-[0.84em] text-[#0d0d0d]"
+        className="rounded-[4px] bg-[rgba(13,13,13,0.07)] px-[0.35em] py-[0.1em] font-mono text-[0.84em] text-[#1A1A1A]"
         {...props}
       >
         {children}
@@ -162,7 +162,7 @@ const components: Components = {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-[#f0a38a] underline underline-offset-2 transition-opacity hover:opacity-75"
+      className="text-[#D97757] underline underline-offset-2 transition-opacity hover:opacity-75"
       {...props}
     >
       {children}
@@ -208,17 +208,17 @@ const components: Components = {
   ),
 
   h1: ({ children, ...props }) => (
-    <h1 className="mb-2 mt-5 text-[1.2rem] font-semibold text-[#0d0d0d]" {...props}>
+    <h1 className="mb-2 mt-5 text-[1.2rem] font-semibold text-[#1A1A1A]" {...props}>
       {children}
     </h1>
   ),
   h2: ({ children, ...props }) => (
-    <h2 className="mb-2 mt-4 text-[1.05rem] font-semibold text-[#0d0d0d]" {...props}>
+    <h2 className="mb-2 mt-4 text-[1.05rem] font-semibold text-[#1A1A1A]" {...props}>
       {children}
     </h2>
   ),
   h3: ({ children, ...props }) => (
-    <h3 className="mb-1.5 mt-3.5 text-[0.95rem] font-semibold text-[#0d0d0d]" {...props}>
+    <h3 className="mb-1.5 mt-3.5 text-[0.95rem] font-semibold text-[#1A1A1A]" {...props}>
       {children}
     </h3>
   ),
@@ -230,7 +230,7 @@ const components: Components = {
           type="checkbox"
           checked={checked}
           readOnly
-          className="mr-1.5 accent-[#f0a38a]"
+          className="mr-1.5 accent-[#D97757]"
           {...props}
         />
       );
@@ -283,8 +283,8 @@ function FileBlock({ filePath, code, truncated }: { filePath: string; code: stri
         className="flex cursor-pointer items-center gap-2.5 px-4 py-2.5 transition-colors hover:bg-[rgba(0,122,255,0.06)]"
         onClick={() => setExpanded((v) => !v)}
       >
-        <FileCode size={14} className="shrink-0 text-[#f0a38a]" />
-        <span className="flex-1 font-mono text-[13px] font-medium text-[#f0a38a]">
+        <FileCode size={14} className="shrink-0 text-[#D97757]" />
+        <span className="flex-1 font-mono text-[13px] font-medium text-[#D97757]">
           {filePath}
         </span>
         <span className="text-[11px] text-[rgba(0,0,0,0.38)]">

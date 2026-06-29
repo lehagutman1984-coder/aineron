@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+﻿import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -13,12 +13,12 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const BASE =
-  "inline-flex items-center justify-center gap-2 font-medium rounded-[8px] transition-all duration-150 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f0a38a] disabled:opacity-50 disabled:pointer-events-none";
+  "inline-flex items-center justify-center gap-2 font-medium rounded-[8px] transition-all duration-150 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D97757] disabled:opacity-50 disabled:pointer-events-none";
 
 const VARIANTS: Record<ButtonVariant, string> = {
-  primary:     "bg-[#f0a38a] text-white hover:bg-[#0066cc] active:bg-[#0055aa]",
-  secondary:   "bg-[rgba(13,13,13,0.06)] text-[#0d0d0d] hover:bg-[rgba(13,13,13,0.10)] border border-[rgba(13,13,13,0.12)]",
-  ghost:       "text-[rgba(13,13,13,0.58)] hover:bg-[rgba(13,13,13,0.06)] hover:text-[#0d0d0d]",
+  primary:     "bg-[#D97757] text-white hover:bg-[#0066cc] active:bg-[#0055aa]",
+  secondary:   "bg-[rgba(13,13,13,0.06)] text-[#1A1A1A] hover:bg-[rgba(13,13,13,0.10)] border border-[rgba(13,13,13,0.12)]",
+  ghost:       "text-[rgba(13,13,13,0.58)] hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A]",
   destructive: "bg-[#e74c3c] text-white hover:bg-[#c0392b] active:bg-[#a93226]",
 };
 

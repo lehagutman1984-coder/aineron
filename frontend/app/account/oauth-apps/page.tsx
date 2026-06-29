@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -80,14 +80,14 @@ export default function OAuthAppsPage() {
     <div className="mx-auto max-w-3xl px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-[20px] font-semibold text-[#0d0d0d] dark:text-[#ececec]">OAuth-приложения</h1>
+          <h1 className="text-[20px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">OAuth-приложения</h1>
           <p className="mt-1 text-[13px] text-[rgba(13,13,13,0.50)] dark:text-[rgba(236,236,236,0.45)]">
             Сторонние приложения с доступом через Telegram-аутентификацию
           </p>
         </div>
         <button
           onClick={() => setFormOpen(!formOpen)}
-          className="flex items-center gap-2 rounded-lg bg-[#f0a38a] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#0060df]"
+          className="flex items-center gap-2 rounded-lg bg-[#D97757] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#0060df]"
         >
           <Plus size={14} />
           Создать
@@ -105,7 +105,7 @@ export default function OAuthAppsPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="My App"
-                className="w-full rounded-lg border border-[rgba(13,13,13,0.12)] bg-white px-3 py-2 text-[13px] outline-none focus:border-[#f0a38a] dark:border-[rgba(255,255,255,0.10)] dark:bg-[rgba(255,255,255,0.05)] dark:text-[#ececec]"
+                className="w-full rounded-lg border border-[rgba(13,13,13,0.12)] bg-white px-3 py-2 text-[13px] outline-none focus:border-[#D97757] dark:border-[rgba(255,255,255,0.10)] dark:bg-[rgba(255,255,255,0.05)] dark:text-[#EDE8E3]"
               />
             </div>
             <div>
@@ -117,7 +117,7 @@ export default function OAuthAppsPage() {
                 onChange={(e) => setRedirectUris(e.target.value)}
                 placeholder="https://myapp.com/auth/callback"
                 rows={3}
-                className="w-full rounded-lg border border-[rgba(13,13,13,0.12)] bg-white px-3 py-2 text-[13px] outline-none focus:border-[#f0a38a] dark:border-[rgba(255,255,255,0.10)] dark:bg-[rgba(255,255,255,0.05)] dark:text-[#ececec]"
+                className="w-full rounded-lg border border-[rgba(13,13,13,0.12)] bg-white px-3 py-2 text-[13px] outline-none focus:border-[#D97757] dark:border-[rgba(255,255,255,0.10)] dark:bg-[rgba(255,255,255,0.05)] dark:text-[#EDE8E3]"
               />
             </div>
             {error && <p className="text-[12px] text-[#e74c3c]">{error}</p>}
@@ -125,7 +125,7 @@ export default function OAuthAppsPage() {
               <button
                 onClick={() => create.mutate({ name, redirect_uris: redirectUris })}
                 disabled={!name.trim() || !redirectUris.trim() || create.isPending}
-                className="rounded-lg bg-[#f0a38a] px-4 py-2 text-[13px] font-medium text-white disabled:opacity-50 hover:bg-[#0060df]"
+                className="rounded-lg bg-[#D97757] px-4 py-2 text-[13px] font-medium text-white disabled:opacity-50 hover:bg-[#0060df]"
               >
                 {create.isPending ? "Создание..." : "Создать"}
               </button>
@@ -161,7 +161,7 @@ export default function OAuthAppsPage() {
             >
               <div className="mb-3 flex items-start justify-between">
                 <div>
-                  <p className="text-[14px] font-medium text-[#0d0d0d] dark:text-[#ececec]">{app.name}</p>
+                  <p className="text-[14px] font-medium text-[#1A1A1A] dark:text-[#EDE8E3]">{app.name}</p>
                   <p className="mt-0.5 text-[11px] text-[rgba(13,13,13,0.40)]">
                     Создано {new Date(app.created).toLocaleDateString("ru")}
                   </p>
@@ -198,7 +198,7 @@ export default function OAuthAppsPage() {
                 <a
                   href={`/oauth/authorize/?client_id=${app.client_id}&response_type=code&scope=profile`}
                   target="_blank"
-                  className="flex items-center gap-1 text-[12px] text-[#f0a38a] hover:underline"
+                  className="flex items-center gap-1 text-[12px] text-[#D97757] hover:underline"
                 >
                   <ExternalLink size={12} />
                   Тест авторизации
@@ -231,18 +231,18 @@ function CredentialRow({
     <div>
       <span className="text-[11px] text-[rgba(13,13,13,0.40)]">{label}</span>
       <div className="mt-0.5 flex items-center gap-2">
-        <code className="flex-1 rounded bg-[rgba(13,13,13,0.04)] px-2 py-1 text-[11px] font-mono text-[#0d0d0d] dark:bg-[rgba(255,255,255,0.06)] dark:text-[#ececec]">
+        <code className="flex-1 rounded bg-[rgba(13,13,13,0.04)] px-2 py-1 text-[11px] font-mono text-[#1A1A1A] dark:bg-[rgba(255,255,255,0.06)] dark:text-[#EDE8E3]">
           {display}
         </code>
         {secret && (
           <button
             onClick={() => setShow(!show)}
-            className="text-[rgba(13,13,13,0.35)] hover:text-[#0d0d0d] dark:hover:text-[#ececec]"
+            className="text-[rgba(13,13,13,0.35)] hover:text-[#1A1A1A] dark:hover:text-[#EDE8E3]"
           >
             {show ? <span className="text-[11px]">скрыть</span> : <span className="text-[11px]">показать</span>}
           </button>
         )}
-        <button onClick={onCopy} className="text-[rgba(13,13,13,0.35)] hover:text-[#f0a38a]">
+        <button onClick={onCopy} className="text-[rgba(13,13,13,0.35)] hover:text-[#D97757]">
           {copied ? (
             <span className="text-[11px] text-[#22c55e]">скопировано</span>
           ) : (

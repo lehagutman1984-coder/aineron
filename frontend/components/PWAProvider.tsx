@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { Download, X } from "lucide-react";
@@ -77,19 +77,19 @@ export function PWAProvider() {
 
   return (
     <div className="fixed bottom-4 left-4 right-4 z-50 mx-auto flex max-w-sm items-start gap-3 rounded-[14px] border border-[rgba(10,124,255,0.20)] bg-white p-4 shadow-[0_4px_24px_rgba(0,0,0,0.12)]">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-[#f0a38a] text-white">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-[#D97757] text-white">
         <Download size={18} />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-[13px] font-semibold text-[#0d0d0d]">
+        <p className="text-[13px] font-semibold text-[#1A1A1A]">
           Установить приложение
         </p>
         {ios ? (
           <p className="mt-0.5 text-[12px] text-[rgba(13,13,13,0.55)] leading-relaxed">
             Нажмите{" "}
-            <span className="font-medium text-[#0d0d0d]">«Поделиться»</span> в
+            <span className="font-medium text-[#1A1A1A]">«Поделиться»</span> в
             Safari, затем{" "}
-            <span className="font-medium text-[#0d0d0d]">
+            <span className="font-medium text-[#1A1A1A]">
               «На экран Домой»
             </span>
           </p>
@@ -101,7 +101,7 @@ export function PWAProvider() {
         {!ios && (
           <button
             onClick={install}
-            className="mt-2 rounded-[7px] bg-[#f0a38a] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[#0066cc] transition-colors"
+            className="mt-2 rounded-[7px] bg-[#D97757] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[#0066cc] transition-colors"
           >
             Установить
           </button>

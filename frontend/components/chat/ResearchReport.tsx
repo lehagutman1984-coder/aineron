@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useCallback } from "react";
 import { ChevronDown, ChevronRight, BookOpen, Download } from "lucide-react";
@@ -14,7 +14,7 @@ function CollapsibleSection({ title, html }: { title: string; html: string }) {
     <div className="border-b border-[rgba(13,13,13,0.06)] last:border-0 dark:border-[rgba(255,255,255,0.05)]">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 py-2 text-left text-[13px] font-semibold text-[#0d0d0d] dark:text-[#ececec]"
+        className="flex w-full items-center gap-2 py-2 text-left text-[13px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]"
       >
         {open ? (
           <ChevronDown size={13} className="shrink-0 text-[rgba(13,13,13,0.4)]" />

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect } from "react";
 import Link from "next/link";
@@ -53,20 +53,20 @@ export default function AccountPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
-      <h1 className="mb-8 text-[24px] font-bold text-[#0d0d0d]">Личный кабинет</h1>
+      <h1 className="mb-8 text-[24px] font-bold text-[#1A1A1A]">Личный кабинет</h1>
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         {/* Balance card */}
         <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-6">
           <div className="mb-4 flex items-center gap-2 text-[13px] font-medium text-[rgba(13,13,13,0.55)] uppercase tracking-wide">
-            <Star size={14} className="text-[#f0a38a]" />
+            <Star size={14} className="text-[#D97757]" />
             Баланс
           </div>
-          <p className="mb-1 text-[36px] font-bold text-[#0d0d0d]">{profile.pages_count}</p>
+          <p className="mb-1 text-[36px] font-bold text-[#1A1A1A]">{profile.pages_count}</p>
           <p className="mb-4 text-[13px] text-[rgba(13,13,13,0.5)]">звёзд</p>
           <Link
             href="/account/billing/"
-            className="inline-flex h-9 items-center gap-2 rounded-[8px] bg-[#f0a38a] px-4 text-[13px] font-medium text-white hover:bg-[#0066cc] transition-colors"
+            className="inline-flex h-9 items-center gap-2 rounded-[8px] bg-[#D97757] px-4 text-[13px] font-medium text-white hover:bg-[#0066cc] transition-colors"
           >
             Пополнить
           </Link>
@@ -78,7 +78,7 @@ export default function AccountPage() {
             <User size={14} />
             Профиль
           </div>
-          <p className="mb-1 truncate text-[15px] font-medium text-[#0d0d0d]">{profile.email}</p>
+          <p className="mb-1 truncate text-[15px] font-medium text-[#1A1A1A]">{profile.email}</p>
           <p className="mb-4 text-[13px] text-[rgba(13,13,13,0.5)]">
             {"tariff_name" in profile ? profile.tariff_name : "Бесплатный тариф"}
           </p>
@@ -101,7 +101,7 @@ export default function AccountPage() {
             </div>
             <p className="mb-2 text-[13px] text-[rgba(13,13,13,0.6)]">Ваша реферальная ссылка:</p>
             <div className="flex items-center gap-2">
-              <code className="flex-1 truncate rounded-[6px] bg-[rgba(13,13,13,0.05)] px-3 py-2 text-[12px] text-[#0d0d0d]">
+              <code className="flex-1 truncate rounded-[6px] bg-[rgba(13,13,13,0.05)] px-3 py-2 text-[12px] text-[#1A1A1A]">
                 {typeof window !== "undefined"
                   ? `${window.location.origin}/?ref=${profile.referral_code}`
                   : `https://aineron.ru/?ref=${profile.referral_code}`}
@@ -114,7 +114,7 @@ export default function AccountPage() {
                       : `https://aineron.ru/?ref=${profile.referral_code}`
                   )
                 }
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[6px] border border-[rgba(13,13,13,0.15)] text-[rgba(13,13,13,0.5)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#0d0d0d] transition-all"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[6px] border border-[rgba(13,13,13,0.15)] text-[rgba(13,13,13,0.5)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#1A1A1A] transition-all"
               >
                 <Copy size={13} />
               </button>
@@ -125,7 +125,7 @@ export default function AccountPage() {
         {/* Memory card */}
         <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-6">
           <div className="mb-4 flex items-center gap-2 text-[13px] font-medium text-[rgba(13,13,13,0.55)] uppercase tracking-wide">
-            <Brain size={14} className="text-[#f0a38a]" />
+            <Brain size={14} className="text-[#D97757]" />
             Память
           </div>
           <p className="mb-4 text-[13px] text-[rgba(13,13,13,0.6)]">
@@ -171,7 +171,7 @@ export default function AccountPage() {
       {/* Recent chats */}
       {chats && chats.length > 0 && (
         <div className="mt-8">
-          <h2 className="mb-4 text-[18px] font-semibold text-[#0d0d0d]">Последние чаты</h2>
+          <h2 className="mb-4 text-[18px] font-semibold text-[#1A1A1A]">Последние чаты</h2>
           <div className="flex flex-col gap-2">
             {chats.slice(0, 10).map((chat) => (
               <Link
@@ -182,12 +182,12 @@ export default function AccountPage() {
                 {chat.network.avatar ? (
                   <img src={chat.network.avatar} alt={chat.network.name} width={28} height={28} className="rounded-[6px]" />
                 ) : (
-                  <div className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-[rgba(10,124,255,0.10)] text-[#f0a38a]">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-[rgba(10,124,255,0.10)] text-[#D97757]">
                     <MessageSquare size={13} />
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-medium text-[#0d0d0d]">{chat.title}</p>
+                  <p className="truncate text-[13px] font-medium text-[#1A1A1A]">{chat.title}</p>
                   {chat.last_message && (
                     <p className="truncate text-[12px] text-[rgba(13,13,13,0.5)]">
                       {chat.last_message.preview}

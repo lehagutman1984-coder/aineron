@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, type ReactNode } from "react";
 import { X } from "lucide-react";
@@ -64,10 +64,10 @@ export function Modal({
       >
         {title && (
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-[18px] font-600 text-[#0d0d0d]">{title}</h2>
+            <h2 className="text-[18px] font-600 text-[#1A1A1A]">{title}</h2>
             <button
               onClick={onClose}
-              className="flex h-8 w-8 items-center justify-center rounded-[6px] text-[rgba(13,13,13,0.4)] hover:bg-[rgba(13,13,13,0.06)] hover:text-[#0d0d0d] transition-all"
+              className="flex h-8 w-8 items-center justify-center rounded-[6px] text-[rgba(13,13,13,0.4)] hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A] transition-all"
             >
               <X size={18} />
             </button>
@@ -76,7 +76,7 @@ export function Modal({
         {!title && (
           <button
             onClick={onClose}
-            className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-[6px] text-[rgba(13,13,13,0.4)] hover:bg-[rgba(13,13,13,0.06)] hover:text-[#0d0d0d] transition-all"
+            className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-[6px] text-[rgba(13,13,13,0.4)] hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A] transition-all"
           >
             <X size={18} />
           </button>

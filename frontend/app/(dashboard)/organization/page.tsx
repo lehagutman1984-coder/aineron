@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -50,13 +50,13 @@ export default function OrganizationPage() {
       <div className="mb-8 flex items-center gap-3">
         <Link
           href="/account/"
-          className="flex items-center gap-1 text-[13px] text-[rgba(13,13,13,0.5)] hover:text-[#0d0d0d] transition-colors"
+          className="flex items-center gap-1 text-[13px] text-[rgba(13,13,13,0.5)] hover:text-[#1A1A1A] transition-colors"
         >
           <ArrowLeft size={14} />
           Кабинет
         </Link>
         <span className="text-[rgba(13,13,13,0.25)]">/</span>
-        <h1 className="text-[20px] font-bold text-[#0d0d0d]">Организации</h1>
+        <h1 className="text-[20px] font-bold text-[#1A1A1A]">Организации</h1>
       </div>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-[280px_1fr]">
@@ -68,7 +68,7 @@ export default function OrganizationPage() {
             </p>
             <button
               onClick={() => setCreateOrgOpen((v) => !v)}
-              className="flex h-6 w-6 items-center justify-center rounded-[6px] text-[rgba(13,13,13,0.5)] hover:bg-[rgba(13,13,13,0.06)] hover:text-[#0d0d0d] transition-all"
+              className="flex h-6 w-6 items-center justify-center rounded-[6px] text-[rgba(13,13,13,0.5)] hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A] transition-all"
             >
               <Plus size={14} />
             </button>
@@ -86,7 +86,7 @@ export default function OrganizationPage() {
                 onChange={(e) => setOrgName(e.target.value)}
                 required
                 autoFocus
-                className="w-full rounded-[6px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] outline-none focus:border-[#f0a38a] focus:ring-1 focus:ring-[rgba(10,124,255,0.15)]"
+                className="w-full rounded-[6px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] outline-none focus:border-[#D97757] focus:ring-1 focus:ring-[rgba(10,124,255,0.15)]"
               />
               <input
                 type="text"
@@ -94,7 +94,7 @@ export default function OrganizationPage() {
                 value={orgInn}
                 onChange={(e) => setOrgInn(e.target.value)}
                 maxLength={12}
-                className="w-full rounded-[6px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] outline-none focus:border-[#f0a38a] focus:ring-1 focus:ring-[rgba(10,124,255,0.15)]"
+                className="w-full rounded-[6px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] outline-none focus:border-[#D97757] focus:ring-1 focus:ring-[rgba(10,124,255,0.15)]"
               />
               {createError && (
                 <p className="text-[12px] text-[#e74c3c]">{createError}</p>
@@ -103,7 +103,7 @@ export default function OrganizationPage() {
                 <button
                   type="submit"
                   disabled={!orgName.trim() || createOrgMutation.isPending}
-                  className="flex-1 h-8 rounded-[6px] bg-[#f0a38a] text-[12px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 transition-colors"
+                  className="flex-1 h-8 rounded-[6px] bg-[#D97757] text-[12px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 transition-colors"
                 >
                   {createOrgMutation.isPending ? "..." : "Создать"}
                 </button>
@@ -136,8 +136,8 @@ export default function OrganizationPage() {
                   className={[
                     "flex w-full items-center gap-2 rounded-[8px] px-3 py-2.5 text-left transition-all",
                     selectedOrgId === org.id
-                      ? "bg-[rgba(10,124,255,0.08)] text-[#f0a38a]"
-                      : "text-[rgba(13,13,13,0.7)] hover:bg-[rgba(13,13,13,0.05)] hover:text-[#0d0d0d]",
+                      ? "bg-[rgba(10,124,255,0.08)] text-[#D97757]"
+                      : "text-[rgba(13,13,13,0.7)] hover:bg-[rgba(13,13,13,0.05)] hover:text-[#1A1A1A]",
                   ].join(" ")}
                 >
                   <Building2 size={14} className="shrink-0" />
@@ -226,8 +226,8 @@ function OrgDetail({ org }: { org: Organization }) {
       {/* Header */}
       <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-5">
         <div className="mb-1 flex items-center gap-2">
-          <Building2 size={18} className="text-[#f0a38a]" />
-          <h2 className="text-[17px] font-bold text-[#0d0d0d]">{org.name}</h2>
+          <Building2 size={18} className="text-[#D97757]" />
+          <h2 className="text-[17px] font-bold text-[#1A1A1A]">{org.name}</h2>
           <span className="rounded-full bg-[rgba(13,13,13,0.07)] px-2 py-0.5 text-[11px] text-[rgba(13,13,13,0.55)]">
             {org.user_role}
           </span>
@@ -237,13 +237,13 @@ function OrgDetail({ org }: { org: Organization }) {
         )}
         <div className="mt-3 flex items-center gap-4">
           <div className="text-center">
-            <p className="text-[20px] font-bold text-[#0d0d0d]">
+            <p className="text-[20px] font-bold text-[#1A1A1A]">
               {Number(org.balance_rub).toFixed(2)}
             </p>
             <p className="text-[11px] text-[rgba(13,13,13,0.5)]">руб. баланс</p>
           </div>
           <div className="text-center">
-            <p className="text-[20px] font-bold text-[#0d0d0d]">{org.member_count}</p>
+            <p className="text-[20px] font-bold text-[#1A1A1A]">{org.member_count}</p>
             <p className="text-[11px] text-[rgba(13,13,13,0.5)]">участников</p>
           </div>
         </div>
@@ -257,11 +257,11 @@ function OrgDetail({ org }: { org: Organization }) {
               key={m.id}
               className="flex items-center gap-3 rounded-[8px] border border-[rgba(13,13,13,0.10)] bg-white px-3.5 py-2.5"
             >
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[rgba(10,124,255,0.10)] text-[11px] font-semibold text-[#f0a38a]">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[rgba(10,124,255,0.10)] text-[11px] font-semibold text-[#D97757]">
                 {m.email[0].toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="truncate text-[13px] font-medium text-[#0d0d0d]">{m.email}</p>
+                <p className="truncate text-[13px] font-medium text-[#1A1A1A]">{m.email}</p>
                 <p className="text-[11px] text-[rgba(13,13,13,0.45)]">{m.role}</p>
               </div>
               {isAdmin && m.role !== "owner" && (
@@ -286,12 +286,12 @@ function OrgDetail({ org }: { org: Organization }) {
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
               required
-              className="flex-1 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] outline-none focus:border-[#f0a38a] focus:ring-1 focus:ring-[rgba(10,124,255,0.15)]"
+              className="flex-1 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] outline-none focus:border-[#D97757] focus:ring-1 focus:ring-[rgba(10,124,255,0.15)]"
             />
             <button
               type="submit"
               disabled={inviteMutation.isPending}
-              className="flex h-9 items-center gap-1.5 rounded-[8px] bg-[#f0a38a] px-3 text-[13px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 transition-colors"
+              className="flex h-9 items-center gap-1.5 rounded-[8px] bg-[#D97757] px-3 text-[13px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 transition-colors"
             >
               <Mail size={13} />
               Пригласить
@@ -332,14 +332,14 @@ function OrgDetail({ org }: { org: Organization }) {
                   className="flex items-center gap-3 rounded-[8px] border border-[rgba(13,13,13,0.10)] bg-white px-3.5 py-2.5"
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-medium text-[#0d0d0d]">
+                    <p className="text-[13px] font-medium text-[#1A1A1A]">
                       {inv.number}
                     </p>
                     <p className="text-[11px] text-[rgba(13,13,13,0.5)]">
                       {inv.description}
                     </p>
                   </div>
-                  <p className="shrink-0 text-[13px] font-semibold text-[#0d0d0d]">
+                  <p className="shrink-0 text-[13px] font-semibold text-[#1A1A1A]">
                     {Number(inv.amount_rub).toLocaleString("ru-RU")} руб.
                   </p>
                   <StatusBadge status={inv.status} />
@@ -359,12 +359,12 @@ function OrgDetail({ org }: { org: Organization }) {
               min="100"
               step="100"
               required
-              className="flex-1 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] outline-none focus:border-[#f0a38a] focus:ring-1 focus:ring-[rgba(10,124,255,0.15)]"
+              className="flex-1 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[13px] outline-none focus:border-[#D97757] focus:ring-1 focus:ring-[rgba(10,124,255,0.15)]"
             />
             <button
               type="submit"
               disabled={invoiceMutation.isPending}
-              className="h-9 rounded-[8px] bg-[#f0a38a] px-3 text-[13px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 transition-colors"
+              className="h-9 rounded-[8px] bg-[#D97757] px-3 text-[13px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 transition-colors"
             >
               Выставить счёт
             </button>
@@ -420,7 +420,7 @@ function TelegramSection({ orgId }: { orgId: number }) {
         <p className="mb-2 text-[12px] font-medium text-[rgba(13,13,13,0.55)]">Токен подключения</p>
         {token ? (
           <div className="flex items-center gap-2">
-            <code className="flex-1 rounded-[6px] bg-[rgba(13,13,13,0.05)] px-3 py-1.5 text-[13px] font-mono text-[#0d0d0d] overflow-auto">
+            <code className="flex-1 rounded-[6px] bg-[rgba(13,13,13,0.05)] px-3 py-1.5 text-[13px] font-mono text-[#1A1A1A] overflow-auto">
               {token}
             </code>
             <button onClick={handleCopy} className="flex h-8 w-8 items-center justify-center rounded-[7px] border border-[rgba(13,13,13,0.12)] hover:bg-[rgba(13,13,13,0.05)] transition-colors">
@@ -434,7 +434,7 @@ function TelegramSection({ orgId }: { orgId: number }) {
           <button
             onClick={() => genTokenMutation.mutate()}
             disabled={genTokenMutation.isPending}
-            className="flex items-center gap-1.5 rounded-[8px] bg-[#f0a38a] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 transition-colors"
+            className="flex items-center gap-1.5 rounded-[8px] bg-[#D97757] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[#0066cc] disabled:opacity-50 transition-colors"
           >
             <RefreshCw size={12} className={genTokenMutation.isPending ? "animate-spin" : ""} />
             {token ? "Обновить токен" : "Создать токен"}
@@ -456,7 +456,7 @@ function TelegramSection({ orgId }: { orgId: number }) {
             {groups.map((g) => (
               <div key={g.id} className="flex items-center justify-between rounded-[8px] border border-[rgba(13,13,13,0.08)] bg-white px-3 py-2">
                 <div>
-                  <p className="text-[13px] font-medium text-[#0d0d0d]">{g.group_title || `Group ${g.group_id}`}</p>
+                  <p className="text-[13px] font-medium text-[#1A1A1A]">{g.group_title || `Group ${g.group_id}`}</p>
                   <p className="text-[11px] text-[rgba(13,13,13,0.40)]">ID: {g.group_id}</p>
                 </div>
                 <button
@@ -486,7 +486,7 @@ function Section({
   return (
     <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-[rgba(13,13,13,0.02)] p-5">
       <div className="mb-4 flex items-center gap-2 text-[12px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.5)]">
-        <span className="text-[#f0a38a]">{icon}</span>
+        <span className="text-[#D97757]">{icon}</span>
         {title}
       </div>
       {children}

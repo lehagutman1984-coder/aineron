@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useRef, useCallback } from "react";
 import Link from "next/link";
@@ -48,7 +48,7 @@ function RoleTag({ role, onChange }: { role: Role; onChange: () => void }) {
       className={[
         "shrink-0 rounded-[5px] px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide transition-colors",
         role === "user"
-          ? "bg-[rgba(10,124,255,0.10)] text-[#f0a38a]"
+          ? "bg-[rgba(10,124,255,0.10)] text-[#D97757]"
           : "bg-[rgba(13,13,13,0.06)] text-[rgba(13,13,13,0.55)]",
       ].join(" ")}
     >
@@ -229,18 +229,18 @@ export default function PlaygroundPage() {
       <div className="mb-6 flex items-center gap-3">
         <Link
           href="/api-docs/"
-          className="flex items-center gap-1.5 text-[13px] text-[rgba(13,13,13,0.45)] hover:text-[#0d0d0d] transition-colors"
+          className="flex items-center gap-1.5 text-[13px] text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A] transition-colors"
         >
           <ArrowLeft size={14} />
           Документация
         </Link>
         <span className="text-[rgba(13,13,13,0.25)]">/</span>
-        <span className="text-[13px] font-medium text-[#0d0d0d]">
+        <span className="text-[13px] font-medium text-[#1A1A1A]">
           API Playground
         </span>
       </div>
 
-      <h1 className="mb-1 text-[24px] font-bold text-[#0d0d0d]">
+      <h1 className="mb-1 text-[24px] font-bold text-[#1A1A1A]">
         API Playground
       </h1>
       <p className="mb-8 text-[14px] text-[rgba(13,13,13,0.55)]">
@@ -261,7 +261,7 @@ export default function PlaygroundPage() {
                 className={[
                   "flex flex-1 items-center justify-center gap-1.5 rounded-[8px] border py-2 text-[13px] font-medium transition-colors",
                   authMode === "session"
-                    ? "border-[#f0a38a] bg-[rgba(10,124,255,0.06)] text-[#f0a38a]"
+                    ? "border-[#D97757] bg-[rgba(10,124,255,0.06)] text-[#D97757]"
                     : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.55)] hover:border-[rgba(13,13,13,0.25)]",
                 ].join(" ")}
               >
@@ -273,7 +273,7 @@ export default function PlaygroundPage() {
                 className={[
                   "flex flex-1 items-center justify-center gap-1.5 rounded-[8px] border py-2 text-[13px] font-medium transition-colors",
                   authMode === "apikey"
-                    ? "border-[#f0a38a] bg-[rgba(10,124,255,0.06)] text-[#f0a38a]"
+                    ? "border-[#D97757] bg-[rgba(10,124,255,0.06)] text-[#D97757]"
                     : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.55)] hover:border-[rgba(13,13,13,0.25)]",
                 ].join(" ")}
               >
@@ -288,7 +288,7 @@ export default function PlaygroundPage() {
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder="ak_ВАШ_КЛЮЧ"
                 spellCheck={false}
-                className="mt-3 w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-3 py-2 font-mono text-[13px] text-[#0d0d0d] placeholder:text-[rgba(13,13,13,0.35)] focus:border-[#f0a38a] focus:outline-none"
+                className="mt-3 w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-3 py-2 font-mono text-[13px] text-[#1A1A1A] placeholder:text-[rgba(13,13,13,0.35)] focus:border-[#D97757] focus:outline-none"
               />
             )}
             {authMode === "session" && (
@@ -307,7 +307,7 @@ export default function PlaygroundPage() {
             <select
               value={model}
               onChange={(e) => setModel(e.target.value)}
-              className="mb-3 w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-3 py-2 text-[13px] text-[#0d0d0d] focus:border-[#f0a38a] focus:outline-none"
+              className="mb-3 w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-3 py-2 text-[13px] text-[#1A1A1A] focus:border-[#D97757] focus:outline-none"
             >
               {PRESET_MODELS.map((m) => (
                 <option key={m.id} value={m.id}>
@@ -322,7 +322,7 @@ export default function PlaygroundPage() {
                 value={customModel}
                 onChange={(e) => setCustomModel(e.target.value)}
                 placeholder="gpt-4o-2024-11-20"
-                className="mb-3 w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-3 py-2 font-mono text-[13px] text-[#0d0d0d] placeholder:text-[rgba(13,13,13,0.35)] focus:border-[#f0a38a] focus:outline-none"
+                className="mb-3 w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-3 py-2 font-mono text-[13px] text-[#1A1A1A] placeholder:text-[rgba(13,13,13,0.35)] focus:border-[#D97757] focus:outline-none"
               />
             )}
 
@@ -332,7 +332,7 @@ export default function PlaygroundPage() {
                   <label className="text-[12px] text-[rgba(13,13,13,0.55)]">
                     Temperature
                   </label>
-                  <span className="text-[12px] font-mono font-medium text-[#0d0d0d]">
+                  <span className="text-[12px] font-mono font-medium text-[#1A1A1A]">
                     {temperature.toFixed(1)}
                   </span>
                 </div>
@@ -343,7 +343,7 @@ export default function PlaygroundPage() {
                   step={0.1}
                   value={temperature}
                   onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                  className="w-full accent-[#f0a38a]"
+                  className="w-full accent-[#D97757]"
                 />
               </div>
               <div>
@@ -358,7 +358,7 @@ export default function PlaygroundPage() {
                   onChange={(e) =>
                     setMaxTokens(Math.max(1, parseInt(e.target.value) || 1))
                   }
-                  className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-3 py-2 text-[13px] text-[#0d0d0d] focus:border-[#f0a38a] focus:outline-none"
+                  className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-3 py-2 text-[13px] text-[#1A1A1A] focus:border-[#D97757] focus:outline-none"
                 />
               </div>
             </div>
@@ -368,7 +368,7 @@ export default function PlaygroundPage() {
                 type="checkbox"
                 checked={streamMode}
                 onChange={(e) => setStreamMode(e.target.checked)}
-                className="accent-[#f0a38a]"
+                className="accent-[#D97757]"
               />
               <span className="text-[13px] text-[rgba(13,13,13,0.65)]">
                 Streaming (SSE)
@@ -398,7 +398,7 @@ export default function PlaygroundPage() {
                   onChange={(e) => setSystemPrompt(e.target.value)}
                   rows={4}
                   placeholder="Ты — полезный ассистент..."
-                  className="mt-3 w-full resize-none rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-3 py-2 text-[13px] text-[#0d0d0d] placeholder:text-[rgba(13,13,13,0.35)] focus:border-[#f0a38a] focus:outline-none"
+                  className="mt-3 w-full resize-none rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-3 py-2 text-[13px] text-[#1A1A1A] placeholder:text-[rgba(13,13,13,0.35)] focus:border-[#D97757] focus:outline-none"
                 />
               </div>
             )}
@@ -429,7 +429,7 @@ export default function PlaygroundPage() {
                         ? "Напиши Hello World на Python"
                         : "Ответ ассистента..."
                     }
-                    className="flex-1 resize-none rounded-[8px] border border-[rgba(13,13,13,0.12)] bg-[rgba(13,13,13,0.02)] px-3 py-2 text-[13px] text-[#0d0d0d] placeholder:text-[rgba(13,13,13,0.30)] focus:border-[#f0a38a] focus:outline-none"
+                    className="flex-1 resize-none rounded-[8px] border border-[rgba(13,13,13,0.12)] bg-[rgba(13,13,13,0.02)] px-3 py-2 text-[13px] text-[#1A1A1A] placeholder:text-[rgba(13,13,13,0.30)] focus:border-[#D97757] focus:outline-none"
                   />
                   <button
                     onClick={() => removeMessage(msg.id)}
@@ -443,7 +443,7 @@ export default function PlaygroundPage() {
             </div>
             <button
               onClick={addMessage}
-              className="mt-3 flex items-center gap-1.5 text-[12px] text-[rgba(13,13,13,0.45)] hover:text-[#f0a38a] transition-colors"
+              className="mt-3 flex items-center gap-1.5 text-[12px] text-[rgba(13,13,13,0.45)] hover:text-[#D97757] transition-colors"
             >
               <Plus size={13} />
               Добавить сообщение
@@ -457,7 +457,7 @@ export default function PlaygroundPage() {
               "flex h-11 w-full items-center justify-center gap-2 rounded-[10px] text-[14px] font-semibold text-white transition-colors",
               loading
                 ? "bg-[#dc2626] hover:bg-[#b91c1c]"
-                : "bg-[#f0a38a] hover:bg-[#0066cc]",
+                : "bg-[#D97757] hover:bg-[#0066cc]",
             ].join(" ")}
           >
             {loading ? (
@@ -499,7 +499,7 @@ export default function PlaygroundPage() {
               {(resText || resJson) && (
                 <button
                   onClick={copyRes}
-                  className="flex items-center gap-1 text-[12px] text-[rgba(13,13,13,0.40)] hover:text-[#0d0d0d] transition-colors"
+                  className="flex items-center gap-1 text-[12px] text-[rgba(13,13,13,0.40)] hover:text-[#1A1A1A] transition-colors"
                 >
                   {copied ? <Check size={13} /> : <Copy size={13} />}
                   {copied ? "Скопировано" : "Копировать"}
@@ -517,8 +517,8 @@ export default function PlaygroundPage() {
                     className={[
                       "mr-4 border-b-2 py-2 text-[12px] font-medium transition-colors",
                       resTab === tab
-                        ? "border-[#f0a38a] text-[#f0a38a]"
-                        : "border-transparent text-[rgba(13,13,13,0.45)] hover:text-[#0d0d0d]",
+                        ? "border-[#D97757] text-[#D97757]"
+                        : "border-transparent text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A]",
                     ].join(" ")}
                   >
                     {tab === "formatted" ? "Ответ" : "JSON"}
@@ -539,7 +539,7 @@ export default function PlaygroundPage() {
               {!loading && resText === null && resJson === null && (
                 <div className="flex h-full min-h-[260px] flex-col items-center justify-center text-center">
                   <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-[12px] bg-[rgba(10,124,255,0.08)]">
-                    <Play size={20} className="text-[#f0a38a]" />
+                    <Play size={20} className="text-[#D97757]" />
                   </div>
                   <p className="text-[13px] text-[rgba(13,13,13,0.45)]">
                     Заполните запрос и нажмите «Выполнить»
@@ -548,13 +548,13 @@ export default function PlaygroundPage() {
               )}
 
               {resTab === "formatted" && resText !== null && (
-                <pre className="whitespace-pre-wrap break-words font-sans text-[13px] leading-relaxed text-[#0d0d0d]">
+                <pre className="whitespace-pre-wrap break-words font-sans text-[13px] leading-relaxed text-[#1A1A1A]">
                   {resText}
                 </pre>
               )}
 
               {resTab === "json" && resJson !== null && (
-                <pre className="overflow-x-auto whitespace-pre font-mono text-[11.5px] leading-relaxed text-[#0d0d0d]">
+                <pre className="overflow-x-auto whitespace-pre font-mono text-[11.5px] leading-relaxed text-[#1A1A1A]">
                   <code>{resJson}</code>
                 </pre>
               )}
@@ -563,11 +563,11 @@ export default function PlaygroundPage() {
 
           {/* Request preview */}
           <details className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white">
-            <summary className="cursor-pointer px-4 py-3 text-[12px] font-medium text-[rgba(13,13,13,0.45)] uppercase tracking-wide hover:text-[#0d0d0d] transition-colors select-none">
+            <summary className="cursor-pointer px-4 py-3 text-[12px] font-medium text-[rgba(13,13,13,0.45)] uppercase tracking-wide hover:text-[#1A1A1A] transition-colors select-none">
               curl-команда
             </summary>
             <div className="border-t border-[rgba(13,13,13,0.06)] px-4 pb-4">
-              <pre className="mt-3 overflow-x-auto rounded-[8px] bg-[#0d0d0d] p-3 font-mono text-[11px] leading-relaxed text-[#e4e4e4]">
+              <pre className="mt-3 overflow-x-auto rounded-[8px] bg-[#1A1A1A] p-3 font-mono text-[11px] leading-relaxed text-[#e4e4e4]">
                 {[
                   `curl https://aineron.ru/api/v1/chat/completions \\`,
                   authMode === "apikey"
@@ -604,7 +604,7 @@ export default function PlaygroundPage() {
           <div className="flex flex-wrap gap-2">
             <Link
               href="/account/keys/"
-              className="inline-flex items-center gap-1.5 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 py-1.5 text-[12px] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#0d0d0d] transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 py-1.5 text-[12px] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#1A1A1A] transition-colors"
             >
               <Key size={12} />
               Получить API-ключ
@@ -613,7 +613,7 @@ export default function PlaygroundPage() {
               href="/api/v1/docs/"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 py-1.5 text-[12px] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#0d0d0d] transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 py-1.5 text-[12px] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#1A1A1A] transition-colors"
             >
               Swagger UI
             </a>

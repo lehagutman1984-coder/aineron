@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -27,15 +27,15 @@ export default function ProjectGraphPage() {
       >
         <Link
           href={`/projects/${id}`}
-          className="flex items-center gap-1.5 text-[12px] text-[rgba(13,13,13,0.50)] hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.45)]"
+          className="flex items-center gap-1.5 text-[12px] text-[rgba(13,13,13,0.50)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.45)]"
         >
           <ArrowLeft size={13} />
           Проект
         </Link>
         <span className="text-[rgba(13,13,13,0.20)]">/</span>
         <div className="flex items-center gap-2">
-          <Network size={16} className="text-[#f0a38a]" />
-          <span className="text-[14px] font-semibold text-[#0d0d0d] dark:text-[#ececec]">
+          <Network size={16} className="text-[#D97757]" />
+          <span className="text-[14px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
             Граф знаний
           </span>
         </div>
@@ -64,7 +64,7 @@ export default function ProjectGraphPage() {
             </p>
             <Link
               href={`/projects/${id}`}
-              className="text-[13px] font-medium text-[#f0a38a] hover:underline"
+              className="text-[13px] font-medium text-[#D97757] hover:underline"
             >
               Перейти к базе знаний
             </Link>
@@ -166,7 +166,7 @@ function GraphCanvas({ nodes, edges }: { nodes: GraphNode[]; edges: GraphEdge[] 
         if (!a || !b) continue;
         const alpha = Math.min(1, e.weight * 0.8 + 0.15);
         ctx.globalAlpha = alpha;
-        ctx.strokeStyle = "#f0a38a";
+        ctx.strokeStyle = "#D97757";
         ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
       }
 
@@ -177,11 +177,11 @@ function GraphCanvas({ nodes, edges }: { nodes: GraphNode[]; edges: GraphEdge[] 
         ctx.arc(n.x, n.y, 18, 0, Math.PI * 2);
         ctx.fillStyle = "rgba(10,124,255,0.12)";
         ctx.fill();
-        ctx.strokeStyle = "#f0a38a";
+        ctx.strokeStyle = "#D97757";
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
-        ctx.fillStyle = "#0d0d0d";
+        ctx.fillStyle = "#1A1A1A";
         ctx.font = "11px system-ui, sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";

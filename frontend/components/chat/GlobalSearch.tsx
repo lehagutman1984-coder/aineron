@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -100,12 +100,12 @@ export function GlobalSearch() {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Поиск по истории чатов..."
-            className="flex-1 bg-transparent text-sm outline-none text-[#0d0d0d] placeholder:text-[rgba(13,13,13,0.32)]"
+            className="flex-1 bg-transparent text-sm outline-none text-[#1A1A1A] placeholder:text-[rgba(13,13,13,0.32)]"
           />
           {loading && (
-            <div className="w-4 h-4 border-2 border-[#f0a38a] border-t-transparent rounded-full animate-spin flex-shrink-0" />
+            <div className="w-4 h-4 border-2 border-[#D97757] border-t-transparent rounded-full animate-spin flex-shrink-0" />
           )}
-          <button onClick={() => setOpen(false)} className="text-[rgba(13,13,13,0.35)] hover:text-[#0d0d0d]">
+          <button onClick={() => setOpen(false)} className="text-[rgba(13,13,13,0.35)] hover:text-[#1A1A1A]">
             <X size={16} />
           </button>
         </div>
@@ -123,12 +123,12 @@ export function GlobalSearch() {
                 >
                   <div className="flex-shrink-0 mt-0.5">
                     {r.role === "user"
-                      ? <MessageSquare size={14} className="text-[#f0a38a]" />
+                      ? <MessageSquare size={14} className="text-[#D97757]" />
                       : <Bot size={14} className="text-[rgba(13,13,13,0.40)]" />}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-[12px] font-medium text-[#0d0d0d] truncate">{r.chat_title}</span>
+                      <span className="text-[12px] font-medium text-[#1A1A1A] truncate">{r.chat_title}</span>
                       <span className="text-[10px] text-[rgba(13,13,13,0.40)] flex-shrink-0">{r.network_name}</span>
                     </div>
                     <p className="text-[11px] text-[rgba(13,13,13,0.60)] line-clamp-2 leading-relaxed">{r.snippet}</p>

@@ -1,4 +1,4 @@
-import type { HTMLAttributes, ReactNode } from "react";
+﻿import type { HTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 interface CardProps extends HTMLAttributes<HTMLDivElement> {
@@ -24,7 +24,7 @@ export function Card({
     <div
       className={cn(
         "rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-[rgba(13,13,13,0.04)]",
-        hover && "transition-colors hover:border-[#f0a38a] cursor-pointer",
+        hover && "transition-colors hover:border-[#D97757] cursor-pointer",
         PADDING[padding],
         className
       )}
@@ -45,7 +45,7 @@ export function CardHeader({ children, className, ...props }: HTMLAttributes<HTM
 
 export function CardTitle({ children, className, ...props }: HTMLAttributes<HTMLHeadingElement>) {
   return (
-    <h3 className={cn("text-[16px] font-600 text-[#0d0d0d]", className)} {...props}>
+    <h3 className={cn("text-[16px] font-600 text-[#1A1A1A]", className)} {...props}>
       {children}
     </h3>
   );

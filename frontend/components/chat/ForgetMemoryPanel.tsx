@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { Brain, X, Loader2 } from "lucide-react";
@@ -50,8 +50,8 @@ export function ForgetMemoryPanel({ onClose }: Props) {
     >
       <div className="flex items-center gap-2 border-b border-[rgba(13,13,13,0.07)] px-3 py-2.5 dark:border-[rgba(255,255,255,0.07)]">
         <Brain size={13} className="text-[#7c3aed]" />
-        <span className="flex-1 text-[12px] font-semibold text-[#0d0d0d] dark:text-[#ececec]">Забыть из памяти</span>
-        <button onClick={onClose} className="text-[rgba(13,13,13,0.35)] hover:text-[#0d0d0d]"><X size={12} /></button>
+        <span className="flex-1 text-[12px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">Забыть из памяти</span>
+        <button onClick={onClose} className="text-[rgba(13,13,13,0.35)] hover:text-[#1A1A1A]"><X size={12} /></button>
       </div>
       <div className="max-h-[240px] overflow-y-auto px-2 py-1.5">
         {loading && <div className="flex justify-center py-4"><Loader2 size={16} className="animate-spin text-[rgba(13,13,13,0.35)]" /></div>}
@@ -73,7 +73,7 @@ export function ForgetMemoryPanel({ onClose }: Props) {
         ))}
       </div>
       <div className="border-t border-[rgba(13,13,13,0.07)] px-3 py-2 dark:border-[rgba(255,255,255,0.07)]">
-        <a href="/account/memory/" className="text-[11px] text-[rgba(10,124,255,0.8)] hover:text-[#f0a38a]">Управление памятью →</a>
+        <a href="/account/memory/" className="text-[11px] text-[rgba(10,124,255,0.8)] hover:text-[#D97757]">Управление памятью →</a>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 
@@ -35,7 +35,7 @@ export function HeroTypewriter() {
   }, [displayed, deleting, idx]);
 
   return (
-    <span className="inline-block min-h-[1.2em] text-[#f0a38a]">
+    <span className="inline-block min-h-[1.2em] text-[#D97757]">
       {displayed}
       <span className="animate-pulse">|</span>
     </span>

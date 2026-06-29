@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Eraser, Check, Loader2, Brush, RotateCcw } from "lucide-react";
@@ -304,7 +304,7 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
         <p className="text-[12px] text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.55)]">
           {mode === "draw" ? (
             <>
-              <span className="font-medium text-[#0d0d0d] dark:text-white">Кисть:</span>
+              <span className="font-medium text-[#1A1A1A] dark:text-white">Кисть:</span>
               {" "}закрасьте область, которую нужно изменить — белая подсветка показывает выделение
             </>
           ) : (
@@ -329,8 +329,8 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
             title="Рисовать маску"
             className={`rounded-[6px] px-2.5 py-1 text-[12px] font-medium transition-colors flex items-center gap-1 ${
               mode === "draw"
-                ? "bg-white text-[#0d0d0d] shadow-sm dark:bg-[rgba(255,255,255,0.12)] dark:text-white"
-                : "text-[rgba(13,13,13,0.55)] hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.5)] dark:hover:text-white"
+                ? "bg-white text-[#1A1A1A] shadow-sm dark:bg-[rgba(255,255,255,0.12)] dark:text-white"
+                : "text-[rgba(13,13,13,0.55)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.5)] dark:hover:text-white"
             }`}
           >
             <Brush size={12} />
@@ -342,8 +342,8 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
             title="Стереть часть маски"
             className={`rounded-[6px] px-2.5 py-1 text-[12px] font-medium transition-colors flex items-center gap-1 ${
               mode === "erase"
-                ? "bg-white text-[#0d0d0d] shadow-sm dark:bg-[rgba(255,255,255,0.12)] dark:text-white"
-                : "text-[rgba(13,13,13,0.55)] hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.5)] dark:hover:text-white"
+                ? "bg-white text-[#1A1A1A] shadow-sm dark:bg-[rgba(255,255,255,0.12)] dark:text-white"
+                : "text-[rgba(13,13,13,0.55)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.5)] dark:hover:text-white"
             }`}
           >
             <Eraser size={12} />
@@ -361,8 +361,8 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
               onClick={() => setBrush(k)}
               className={`rounded-[6px] px-2.5 py-1 text-[12px] font-medium transition-colors ${
                 brush === k
-                  ? "bg-white text-[#0d0d0d] shadow-sm dark:bg-[rgba(255,255,255,0.12)] dark:text-white"
-                  : "text-[rgba(13,13,13,0.55)] hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.5)] dark:hover:text-white"
+                  ? "bg-white text-[#1A1A1A] shadow-sm dark:bg-[rgba(255,255,255,0.12)] dark:text-white"
+                  : "text-[rgba(13,13,13,0.55)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.5)] dark:hover:text-white"
               }`}
             >
               {BRUSH_LABEL[k]}
@@ -398,7 +398,7 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
           type="button"
           onClick={handleApply}
           disabled={!hasStrokes || uploading || applying}
-          className="flex h-9 items-center gap-1.5 rounded-[8px] bg-[#f0a38a] px-4 text-[12px] font-medium text-white transition-colors hover:bg-[#0066cc] disabled:opacity-40"
+          className="flex h-9 items-center gap-1.5 rounded-[8px] bg-[#D97757] px-4 text-[12px] font-medium text-white transition-colors hover:bg-[#0066cc] disabled:opacity-40"
         >
           {uploading ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
           Применить маску

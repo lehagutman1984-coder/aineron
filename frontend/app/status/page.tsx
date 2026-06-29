@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { CheckCircle, XCircle, AlertCircle, RefreshCw } from "lucide-react";
@@ -104,7 +104,7 @@ export default function StatusPage() {
           <StatusIcon status={overall} />
           {overall === "operational" ? "Все системы работают" : "Есть проблемы"}
         </div>
-        <h1 className="text-[28px] font-bold text-[#0d0d0d]">
+        <h1 className="text-[28px] font-bold text-[#1A1A1A]">
           Статус aineron.ru
         </h1>
         <p className="mt-2 text-[14px] text-[rgba(13,13,13,0.5)]">
@@ -129,7 +129,7 @@ export default function StatusPage() {
             >
               <div className="flex items-center gap-3">
                 <StatusIcon status={check?.status ?? "unknown"} />
-                <span className="text-[14px] font-medium text-[#0d0d0d]">
+                <span className="text-[14px] font-medium text-[#1A1A1A]">
                   {svc.label}
                 </span>
               </div>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { Code2, Megaphone, BookOpen, Palette } from "lucide-react";
@@ -80,8 +80,8 @@ export function UseCaseTabs() {
               className={[
                 "flex items-center gap-1.5 rounded-[9px] px-4 py-2 text-[13px] font-medium transition-all",
                 active === c.key
-                  ? "bg-[#0d0d0d] text-white dark:bg-[#ececec] dark:text-[#0d0d0d]"
-                  : "border border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.60)] hover:border-[rgba(13,13,13,0.25)] hover:text-[#0d0d0d]",
+                  ? "bg-[#1A1A1A] text-white dark:bg-[#EDE8E3] dark:text-[#1A1A1A]"
+                  : "border border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.60)] hover:border-[rgba(13,13,13,0.25)] hover:text-[#1A1A1A]",
               ].join(" ")}
             >
               <CIcon size={13} />
@@ -101,14 +101,14 @@ export function UseCaseTabs() {
           <div className="p-7">
             <div className="mb-4 flex items-center gap-2.5">
               <div className="flex h-9 w-9 items-center justify-center rounded-[9px] bg-[rgba(10,124,255,0.10)]">
-                <Icon size={17} className="text-[#f0a38a]" />
+                <Icon size={17} className="text-[#D97757]" />
               </div>
-              <p className="text-[16px] font-semibold text-[#0d0d0d]">{current.heading}</p>
+              <p className="text-[16px] font-semibold text-[#1A1A1A]">{current.heading}</p>
             </div>
             <ul className="flex flex-col gap-2.5">
               {current.items.map((item) => (
                 <li key={item} className="flex items-start gap-2.5 text-[14px] text-[rgba(13,13,13,0.70)]">
-                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#f0a38a]" />
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#D97757]" />
                   {item}
                 </li>
               ))}
@@ -123,12 +123,12 @@ export function UseCaseTabs() {
             <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.38)]">
               Пример запроса
             </p>
-            <div className="mb-4 rounded-[12px] bg-[rgba(10,124,255,0.07)] px-4 py-3 text-[13px] text-[#0d0d0d]">
+            <div className="mb-4 rounded-[12px] bg-[rgba(10,124,255,0.07)] px-4 py-3 text-[13px] text-[#1A1A1A]">
               {current.prompt}
             </div>
             <div className="rounded-[12px] border border-[rgba(13,13,13,0.08)] bg-white px-4 py-3">
               <div className="mb-2 flex items-center gap-1.5">
-                <div className="h-2 w-2 rounded-full bg-[#f0a38a]" />
+                <div className="h-2 w-2 rounded-full bg-[#D97757]" />
                 <span className="text-[11px] font-medium text-[rgba(13,13,13,0.50)]">AI отвечает</span>
               </div>
               <div className="space-y-1.5">
@@ -139,7 +139,7 @@ export function UseCaseTabs() {
             </div>
             <a
               href="/register/"
-              className="mt-5 flex items-center justify-center gap-1.5 rounded-[9px] bg-[#f0a38a] px-4 py-2.5 text-[13px] font-medium text-white transition-colors hover:bg-[#0066cc]"
+              className="mt-5 flex items-center justify-center gap-1.5 rounded-[9px] bg-[#D97757] px-4 py-2.5 text-[13px] font-medium text-white transition-colors hover:bg-[#0066cc]"
             >
               Попробовать
             </a>

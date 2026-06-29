@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { Copy, Check } from "lucide-react";
@@ -60,8 +60,8 @@ export function CodeTabs({ tabs }: { tabs: CodeTabItem[] }) {
             onClick={() => setActive(t.key)}
             className={`rounded-[7px] px-3 py-1 text-[12px] font-medium transition-all ${
               t.key === active
-                ? "bg-white text-[#0d0d0d] shadow-sm"
-                : "text-[rgba(13,13,13,0.5)] hover:text-[#0d0d0d]"
+                ? "bg-white text-[#1A1A1A] shadow-sm"
+                : "text-[rgba(13,13,13,0.5)] hover:text-[#1A1A1A]"
             }`}
           >
             {t.label}

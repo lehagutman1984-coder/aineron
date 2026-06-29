@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
 import { Film, CheckCircle2, Loader2 } from "lucide-react";
@@ -60,7 +60,7 @@ export function GenerationProgress({ generationId, onComplete }: Props) {
         {done ? (
           <CheckCircle2 size={15} className="text-[#10a37f]" />
         ) : (
-          <Loader2 size={15} className="animate-spin text-[#f0a38a]" />
+          <Loader2 size={15} className="animate-spin text-[#D97757]" />
         )}
         <span className="flex items-center gap-1.5 text-[13px] font-medium text-[rgba(13,13,13,0.7)] dark:text-[rgba(236,236,236,0.7)]">
           <Film size={13} className="opacity-60" />
@@ -73,7 +73,7 @@ export function GenerationProgress({ generationId, onComplete }: Props) {
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-[rgba(13,13,13,0.08)] dark:bg-[rgba(255,255,255,0.1)]">
         <div
           className={`h-full rounded-full transition-all duration-500 ease-out ${
-            done ? "bg-[#10a37f]" : "bg-[#f0a38a]"
+            done ? "bg-[#10a37f]" : "bg-[#D97757]"
           }`}
           style={{ width: `${pct}%` }}
         />

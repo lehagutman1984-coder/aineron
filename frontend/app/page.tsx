@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import {
   ArrowRight, Zap, Globe, Code2, ImageIcon, Check, X,
   Users, MessageSquare, Star, ShieldCheck,
@@ -22,12 +22,12 @@ export default async function HomePage() {
     <>
       {/* ── Hero ──────────────────────────────────────────────────────────────── */}
       <section className="mx-auto max-w-4xl px-4 pb-16 pt-24 text-center sm:px-6">
-        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[rgba(10,124,255,0.25)] bg-[rgba(10,124,255,0.06)] px-3.5 py-1 text-[13px] text-[#f0a38a]">
+        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[rgba(10,124,255,0.25)] bg-[rgba(10,124,255,0.06)] px-3.5 py-1 text-[13px] text-[#D97757]">
           <ShieldCheck size={13} />
           Российский сервис — без VPN и зарубежных карт
         </div>
 
-        <h1 className="mb-4 text-[40px] font-bold leading-tight tracking-tight text-[#0d0d0d] sm:text-[54px]">
+        <h1 className="mb-4 text-[40px] font-bold leading-tight tracking-tight text-[#1A1A1A] sm:text-[54px]">
           Нейросети без границ
         </h1>
 
@@ -41,14 +41,14 @@ export default async function HomePage() {
         <div className="flex flex-wrap items-center justify-center gap-3">
           <Link
             href="/register/"
-            className="inline-flex items-center gap-2 rounded-[10px] bg-[#f0a38a] px-7 py-3 text-[15px] font-medium text-white hover:bg-[#0066cc] transition-colors"
+            className="inline-flex items-center gap-2 rounded-[10px] bg-[#D97757] px-7 py-3 text-[15px] font-medium text-white hover:bg-[#0066cc] transition-colors"
           >
             Начать бесплатно
             <ArrowRight size={16} />
           </Link>
           <Link
             href="/models/"
-            className="inline-flex items-center gap-2 rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-white px-7 py-3 text-[15px] font-medium text-[#0d0d0d] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
+            className="inline-flex items-center gap-2 rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-white px-7 py-3 text-[15px] font-medium text-[#1A1A1A] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
           >
             Смотреть каталог
           </Link>
@@ -62,8 +62,8 @@ export default async function HomePage() {
             const Icon = s.icon;
             return (
               <div key={s.label} className="flex items-center gap-2.5">
-                <Icon size={16} className="text-[#f0a38a]" />
-                <span className="text-[14px] font-semibold text-[#0d0d0d]">{s.value}</span>
+                <Icon size={16} className="text-[#D97757]" />
+                <span className="text-[14px] font-semibold text-[#1A1A1A]">{s.value}</span>
                 <span className="text-[13px] text-[rgba(13,13,13,0.50)]">{s.label}</span>
               </div>
             );
@@ -76,14 +76,14 @@ export default async function HomePage() {
         <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
           <div className="mb-8 flex items-end justify-between">
             <div>
-              <h2 className="text-[22px] font-bold text-[#0d0d0d]">Популярные модели</h2>
+              <h2 className="text-[22px] font-bold text-[#1A1A1A]">Популярные модели</h2>
               <p className="mt-1 text-[14px] text-[rgba(13,13,13,0.50)]">
                 Самые востребованные нейросети
               </p>
             </div>
             <Link
               href="/models/"
-              className="flex items-center gap-1 text-[13px] text-[#f0a38a] hover:text-[#0066cc] transition-colors"
+              className="flex items-center gap-1 text-[13px] text-[#D97757] hover:text-[#0066cc] transition-colors"
             >
               Все модели
               <ArrowRight size={14} />
@@ -101,7 +101,7 @@ export default async function HomePage() {
       <section className="border-t border-[rgba(13,13,13,0.07)] bg-[rgba(13,13,13,0.015)]">
         <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6">
           <div className="mb-10 text-center">
-            <h2 className="text-[26px] font-bold text-[#0d0d0d]">Для любой задачи</h2>
+            <h2 className="text-[26px] font-bold text-[#1A1A1A]">Для любой задачи</h2>
             <p className="mt-2 text-[15px] text-[rgba(13,13,13,0.52)]">
               Выберите свою роль и посмотрите примеры
             </p>
@@ -113,7 +113,7 @@ export default async function HomePage() {
       {/* ── Comparison table ──────────────────────────────────────────────────── */}
       <section className="mx-auto max-w-4xl px-4 py-16 sm:px-6">
         <div className="mb-10 text-center">
-          <h2 className="text-[26px] font-bold text-[#0d0d0d]">Честное сравнение</h2>
+          <h2 className="text-[26px] font-bold text-[#1A1A1A]">Честное сравнение</h2>
           <p className="mt-2 text-[15px] text-[rgba(13,13,13,0.52)]">
             aineron.ru против главных альтернатив
           </p>
@@ -126,7 +126,7 @@ export default async function HomePage() {
                 <th className="px-5 py-3.5 text-left font-medium text-[rgba(13,13,13,0.50)]">
                   Возможность
                 </th>
-                <th className="px-4 py-3.5 text-center font-bold text-[#f0a38a]">aineron.ru</th>
+                <th className="px-4 py-3.5 text-center font-bold text-[#D97757]">aineron.ru</th>
                 <th className="px-4 py-3.5 text-center font-medium text-[rgba(13,13,13,0.55)]">ChatGPT</th>
                 <th className="px-4 py-3.5 text-center font-medium text-[rgba(13,13,13,0.55)]">RouterAI</th>
               </tr>
@@ -137,7 +137,7 @@ export default async function HomePage() {
                   key={row.feature}
                   className={i % 2 === 0 ? "bg-[rgba(13,13,13,0.015)]" : ""}
                 >
-                  <td className="px-5 py-3 text-[#0d0d0d]">{row.feature}</td>
+                  <td className="px-5 py-3 text-[#1A1A1A]">{row.feature}</td>
                   <td className="px-4 py-3 text-center"><Cell val={row.aineron} /></td>
                   <td className="px-4 py-3 text-center"><Cell val={row.chatgpt} /></td>
                   <td className="px-4 py-3 text-center"><Cell val={row.router} /></td>
@@ -151,7 +151,7 @@ export default async function HomePage() {
       {/* ── Features grid ─────────────────────────────────────────────────────── */}
       <section className="border-t border-[rgba(13,13,13,0.07)] bg-[rgba(13,13,13,0.015)]">
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
-          <h2 className="mb-10 text-center text-[24px] font-bold text-[#0d0d0d]">
+          <h2 className="mb-10 text-center text-[24px] font-bold text-[#1A1A1A]">
             Почему aineron.ru
           </h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -167,9 +167,9 @@ export default async function HomePage() {
         <div className="overflow-hidden rounded-[20px] border border-[rgba(13,13,13,0.10)] bg-white">
           <div className="px-8 py-8 text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-[14px] bg-[rgba(10,124,255,0.10)]">
-              <Star size={22} className="text-[#f0a38a]" />
+              <Star size={22} className="text-[#D97757]" />
             </div>
-            <h2 className="text-[24px] font-bold text-[#0d0d0d]">Звёзды — простая оплата</h2>
+            <h2 className="text-[24px] font-bold text-[#1A1A1A]">Звёзды — простая оплата</h2>
             <p className="mt-2 text-[15px] text-[rgba(13,13,13,0.55)]">
               Пополняйте баланс и тратьте на любую модель. Звёзды не сгорают.
             </p>
@@ -178,7 +178,7 @@ export default async function HomePage() {
             {PRICING.map((p) => (
               <div key={p.title} className="px-7 py-6 text-center">
                 <p className="mb-1 text-[13px] font-medium text-[rgba(13,13,13,0.50)]">{p.title}</p>
-                <p className="text-[28px] font-bold text-[#0d0d0d]">{p.price}</p>
+                <p className="text-[28px] font-bold text-[#1A1A1A]">{p.price}</p>
                 <p className="mt-1 text-[12px] text-[rgba(13,13,13,0.45)]">{p.sub}</p>
               </div>
             ))}
@@ -186,7 +186,7 @@ export default async function HomePage() {
           <div className="border-t border-[rgba(13,13,13,0.08)] px-8 py-5 text-center">
             <Link
               href="/register/"
-              className="inline-flex items-center gap-2 rounded-[10px] bg-[#f0a38a] px-8 py-3 text-[14px] font-medium text-white hover:bg-[#0066cc] transition-colors"
+              className="inline-flex items-center gap-2 rounded-[10px] bg-[#D97757] px-8 py-3 text-[14px] font-medium text-white hover:bg-[#0066cc] transition-colors"
             >
               Начать с 10 бесплатными звёздами
               <ArrowRight size={15} />
@@ -200,14 +200,14 @@ export default async function HomePage() {
 
       {/* ── FAQ ───────────────────────────────────────────────────────────────── */}
       <section className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
-        <h2 className="mb-8 text-center text-[24px] font-bold text-[#0d0d0d]">
+        <h2 className="mb-8 text-center text-[24px] font-bold text-[#1A1A1A]">
           Частые вопросы
         </h2>
         <FaqAccordion />
       </section>
 
       {/* ── Final CTA ─────────────────────────────────────────────────────────── */}
-      <section className="border-t border-[rgba(13,13,13,0.07)] bg-[#0d0d0d]">
+      <section className="border-t border-[rgba(13,13,13,0.07)] bg-[#1A1A1A]">
         <div className="mx-auto max-w-3xl px-4 py-20 text-center sm:px-6">
           <h2 className="mb-3 text-[28px] font-bold text-white">
             Начните прямо сейчас
@@ -218,7 +218,7 @@ export default async function HomePage() {
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Link
               href="/register/"
-              className="inline-flex items-center gap-2 rounded-[10px] bg-white px-7 py-3 text-[15px] font-medium text-[#0d0d0d] hover:bg-[rgba(255,255,255,0.90)] transition-colors"
+              className="inline-flex items-center gap-2 rounded-[10px] bg-white px-7 py-3 text-[15px] font-medium text-[#1A1A1A] hover:bg-[rgba(255,255,255,0.90)] transition-colors"
             >
               Создать аккаунт
               <ArrowRight size={16} />
@@ -248,7 +248,7 @@ function NetworkCard({ network }: { network: NetworkListItem }) {
   return (
     <Link
       href={`/models/${network.slug}/`}
-      className="group flex flex-col gap-3 rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white p-5 hover:border-[#f0a38a] hover:shadow-sm transition-all duration-150"
+      className="group flex flex-col gap-3 rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white p-5 hover:border-[#D97757] hover:shadow-sm transition-all duration-150"
     >
       <div className="flex items-center gap-3">
         {network.avatar ? (
@@ -261,7 +261,7 @@ function NetworkCard({ network }: { network: NetworkListItem }) {
             className="rounded-[8px] object-cover"
           />
         ) : (
-          <div className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[rgba(10,124,255,0.10)] text-[#f0a38a]">
+          <div className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[rgba(10,124,255,0.10)] text-[#D97757]">
             {network.handle_photo || network.handle_video ? (
               <ImageIcon size={18} />
             ) : (
@@ -270,7 +270,7 @@ function NetworkCard({ network }: { network: NetworkListItem }) {
           </div>
         )}
         <div>
-          <p className="text-[14px] font-semibold text-[#0d0d0d] group-hover:text-[#f0a38a] transition-colors">
+          <p className="text-[14px] font-semibold text-[#1A1A1A] group-hover:text-[#D97757] transition-colors">
             {network.name}
           </p>
           <p className="text-[12px] text-[rgba(13,13,13,0.5)]">{network.category.name}</p>
@@ -287,7 +287,7 @@ function NetworkCard({ network }: { network: NetworkListItem }) {
         </span>
         <ArrowRight
           size={14}
-          className="text-[rgba(13,13,13,0.3)] group-hover:text-[#f0a38a] transition-colors"
+          className="text-[rgba(13,13,13,0.3)] group-hover:text-[#D97757] transition-colors"
         />
       </div>
     </Link>
@@ -298,10 +298,10 @@ function NetworkCard({ network }: { network: NetworkListItem }) {
 function FeatureCard({ icon: Icon, title, text }: { icon: React.ElementType; title: string; text: string }) {
   return (
     <div className="rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white p-5">
-      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-[10px] bg-[rgba(10,124,255,0.10)] text-[#f0a38a]">
+      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-[10px] bg-[rgba(10,124,255,0.10)] text-[#D97757]">
         <Icon size={20} />
       </div>
-      <p className="mb-1.5 text-[14px] font-semibold text-[#0d0d0d]">{title}</p>
+      <p className="mb-1.5 text-[14px] font-semibold text-[#1A1A1A]">{title}</p>
       <p className="text-[13px] leading-relaxed text-[rgba(13,13,13,0.58)]">{text}</p>
     </div>
   );

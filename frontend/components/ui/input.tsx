@@ -1,4 +1,4 @@
-import type { InputHTMLAttributes } from "react";
+﻿import type { InputHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -23,9 +23,9 @@ export function Input({ label, error, hint, className, id, ...props }: InputProp
       <input
         id={inputId}
         className={cn(
-          "h-10 w-full rounded-[8px] border border-[rgba(13,13,13,0.12)] bg-white px-3 text-[14px] text-[#0d0d0d] outline-none transition-all",
+          "h-10 w-full rounded-[8px] border border-[rgba(13,13,13,0.12)] bg-white px-3 text-[14px] text-[#1A1A1A] outline-none transition-all",
           "placeholder:text-[rgba(13,13,13,0.35)]",
-          "focus:border-[#f0a38a] focus:ring-2 focus:ring-[#f0a38a]/15",
+          "focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/15",
           "disabled:cursor-not-allowed disabled:opacity-50",
           error && "border-[#e74c3c] focus:border-[#e74c3c] focus:ring-[#e74c3c]/15",
           className

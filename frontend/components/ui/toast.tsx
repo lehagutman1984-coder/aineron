@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { CheckCircle, XCircle, Info, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -13,13 +13,13 @@ const ICONS = {
 const COLORS = {
   success: "border-[#1abc9c] bg-[rgba(26,188,156,0.06)]",
   error:   "border-[#e74c3c] bg-[rgba(231,76,60,0.06)]",
-  info:    "border-[#f0a38a] bg-[rgba(10,124,255,0.06)]",
+  info:    "border-[#D97757] bg-[rgba(10,124,255,0.06)]",
 };
 
 const ICON_COLORS = {
   success: "text-[#1abc9c]",
   error:   "text-[#e74c3c]",
-  info:    "text-[#f0a38a]",
+  info:    "text-[#D97757]",
 };
 
 export function ToastContainer() {
@@ -43,12 +43,12 @@ export function ToastContainer() {
               size={18}
               className={cn("mt-0.5 shrink-0", ICON_COLORS[toast.type])}
             />
-            <p className="flex-1 text-[13px] text-[#0d0d0d] leading-snug">
+            <p className="flex-1 text-[13px] text-[#1A1A1A] leading-snug">
               {toast.message}
             </p>
             <button
               onClick={() => removeToast(toast.id)}
-              className="shrink-0 text-[rgba(13,13,13,0.35)] hover:text-[#0d0d0d] transition-colors"
+              className="shrink-0 text-[rgba(13,13,13,0.35)] hover:text-[#1A1A1A] transition-colors"
             >
               <X size={16} />
             </button>

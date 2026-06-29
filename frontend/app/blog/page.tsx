@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Link from "next/link";
 import { CalendarDays, Eye } from "lucide-react";
 import { serverListBlogPosts, serverListBlogCategories } from "@/lib/api/server";
@@ -42,7 +42,7 @@ export default async function BlogListPage({
 
       <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
         <div className="mb-8">
-          <h1 className="text-[28px] font-bold text-[#0d0d0d]">Блог</h1>
+          <h1 className="text-[28px] font-bold text-[#1A1A1A]">Блог</h1>
           <p className="mt-2 text-[15px] text-[rgba(13,13,13,0.6)]">
             Гайды, сравнения и новости об AI-нейросетях
           </p>
@@ -56,7 +56,7 @@ export default async function BlogListPage({
               className={[
                 "rounded-full px-4 py-1.5 text-[13px] font-medium transition-all",
                 !searchParams.category
-                  ? "bg-[#0d0d0d] text-white"
+                  ? "bg-[#1A1A1A] text-white"
                   : "border border-[rgba(13,13,13,0.15)] text-[rgba(13,13,13,0.65)] hover:border-[rgba(13,13,13,0.3)]",
               ].join(" ")}
             >
@@ -69,7 +69,7 @@ export default async function BlogListPage({
                 className={[
                   "rounded-full px-4 py-1.5 text-[13px] font-medium transition-all",
                   searchParams.category === cat.slug
-                    ? "bg-[#0d0d0d] text-white"
+                    ? "bg-[#1A1A1A] text-white"
                     : "border border-[rgba(13,13,13,0.15)] text-[rgba(13,13,13,0.65)] hover:border-[rgba(13,13,13,0.3)]",
                 ].join(" ")}
               >
@@ -102,11 +102,11 @@ export default async function BlogListPage({
                 )}
                 <div className="flex flex-1 flex-col p-5">
                   {post.category && (
-                    <span className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#f0a38a]">
+                    <span className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#D97757]">
                       {post.category.name}
                     </span>
                   )}
-                  <h2 className="mb-2 text-[15px] font-semibold leading-snug text-[#0d0d0d] group-hover:text-[#f0a38a] transition-colors">
+                  <h2 className="mb-2 text-[15px] font-semibold leading-snug text-[#1A1A1A] group-hover:text-[#D97757] transition-colors">
                     {post.title}
                   </h2>
                   <p className="mb-4 flex-1 text-[13px] leading-relaxed text-[rgba(13,13,13,0.6)]">

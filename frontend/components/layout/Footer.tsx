@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 
 const COLUMNS = [
   {
@@ -31,14 +31,14 @@ const COLUMNS = [
 
 export function Footer() {
   return (
-    <footer className="border-t border-[rgba(13,13,13,0.10)] bg-white dark:border-[rgba(255,255,255,0.08)] dark:bg-[#111113]">
+    <footer className="border-t border-[rgba(13,13,13,0.10)] bg-white dark:border-[rgba(255,255,255,0.08)] dark:bg-[#1C1917]">
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
         <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
           {/* Brand */}
           <div className="col-span-2 sm:col-span-1">
             <Link
               href="/"
-              className="text-[15px] font-semibold text-[#0d0d0d] dark:text-[#ececec]"
+              className="text-[15px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]"
             >
               aineron.ru
             </Link>
@@ -58,7 +58,7 @@ export function Footer() {
                   <li key={link.href}>
                     <Link
                       href={link.href}
-                      className="text-[13px] text-[rgba(13,13,13,0.65)] transition-colors hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.50)] dark:hover:text-[#ececec]"
+                      className="text-[13px] text-[rgba(13,13,13,0.65)] transition-colors hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.50)] dark:hover:text-[#EDE8E3]"
                     >
                       {link.label}
                     </Link>
@@ -77,19 +77,19 @@ export function Footer() {
           <div className="flex items-center gap-4">
             <Link
               href="/privacy-policy/"
-              className="text-[12px] text-[rgba(13,13,13,0.40)] transition-colors hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.30)] dark:hover:text-[#ececec]"
+              className="text-[12px] text-[rgba(13,13,13,0.40)] transition-colors hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.30)] dark:hover:text-[#EDE8E3]"
             >
               Конфиденциальность
             </Link>
             <Link
               href="/terms/"
-              className="text-[12px] text-[rgba(13,13,13,0.40)] transition-colors hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.30)] dark:hover:text-[#ececec]"
+              className="text-[12px] text-[rgba(13,13,13,0.40)] transition-colors hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.30)] dark:hover:text-[#EDE8E3]"
             >
               Условия
             </Link>
             <Link
               href="/status/"
-              className="text-[12px] text-[rgba(13,13,13,0.40)] transition-colors hover:text-[#0d0d0d] dark:text-[rgba(236,236,236,0.30)] dark:hover:text-[#ececec]"
+              className="text-[12px] text-[rgba(13,13,13,0.40)] transition-colors hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.30)] dark:hover:text-[#EDE8E3]"
             >
               Статус
             </Link>

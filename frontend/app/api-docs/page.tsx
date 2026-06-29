@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Link from "next/link";
 import { Code2, ExternalLink, Play } from "lucide-react";
 import { CodeTabs, StandaloneCodeBlock } from "@/components/docs/CodeTabs";
@@ -211,7 +211,7 @@ function InfoCard({ label, value }: { label: string; value: string }) {
       <p className="text-[11px] font-medium uppercase tracking-wider text-[rgba(13,13,13,0.35)]">
         {label}
       </p>
-      <p className="mt-1 font-mono text-[14px] font-semibold text-[#0d0d0d]">{value}</p>
+      <p className="mt-1 font-mono text-[14px] font-semibold text-[#1A1A1A]">{value}</p>
     </div>
   );
 }
@@ -230,7 +230,7 @@ function Section({
       id={id}
       className="rounded-[16px] border border-[rgba(13,13,13,0.10)] bg-white p-6 shadow-sm"
     >
-      <h2 className="mb-4 text-[18px] font-semibold text-[#0d0d0d]">{title}</h2>
+      <h2 className="mb-4 text-[18px] font-semibold text-[#1A1A1A]">{title}</h2>
       {children}
     </section>
   );
@@ -275,14 +275,14 @@ const ERRORS: { code: number; type: string; desc: string }[] = [
 
 export default function ApiDocsPage() {
   return (
-    <div className="min-h-screen bg-[#f5f5f7] px-4 py-12">
+    <div className="min-h-screen bg-[#FAF9F7] px-4 py-12">
       <div className="mx-auto max-w-4xl space-y-6">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2">
           <Code2 size={15} className="text-[rgba(13,13,13,0.35)]" />
           <Link
             href="/"
-            className="text-[13px] text-[rgba(13,13,13,0.45)] hover:text-[#0d0d0d] transition-colors"
+            className="text-[13px] text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A] transition-colors"
           >
             Главная
           </Link>
@@ -292,7 +292,7 @@ export default function ApiDocsPage() {
 
         {/* Hero */}
         <div>
-          <h1 className="text-[30px] font-bold leading-tight text-[#0d0d0d]">
+          <h1 className="text-[30px] font-bold leading-tight text-[#1A1A1A]">
             API для разработчиков
           </h1>
           <p className="mt-2 max-w-2xl text-[15px] text-[rgba(13,13,13,0.55)]">
@@ -318,27 +318,27 @@ export default function ApiDocsPage() {
           <ol className="mb-5 space-y-3 text-[14px]">
             {[
               <>
-                <strong className="text-[#0d0d0d]">Создайте API-ключ</strong> в личном кабинете
+                <strong className="text-[#1A1A1A]">Создайте API-ключ</strong> в личном кабинете
                 — раздел{" "}
-                <Link href="/account/keys/" className="text-[#f0a38a] hover:underline">
+                <Link href="/account/keys/" className="text-[#D97757] hover:underline">
                   API-ключи
                 </Link>
                 . Ключ показывается один раз, сохраните его сразу.
               </>,
               <>
-                <strong className="text-[#0d0d0d]">Укажите наш base_url</strong> вместо{" "}
+                <strong className="text-[#1A1A1A]">Укажите наш base_url</strong> вместо{" "}
                 <code className="rounded-[4px] bg-[rgba(13,13,13,0.07)] px-1.5 py-0.5 font-mono text-[12px]">
                   api.openai.com
                 </code>{" "}
                 в вашем SDK или HTTP-клиенте.
               </>,
               <>
-                <strong className="text-[#0d0d0d]">Пополните баланс звёзд</strong> и начните
+                <strong className="text-[#1A1A1A]">Пополните баланс звёзд</strong> и начните
                 запросы — списание по токенам автоматически.
               </>,
             ].map((step, i) => (
               <li key={i} className="flex gap-3 text-[rgba(13,13,13,0.75)]">
-                <span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-[#0d0d0d] text-[11px] font-bold text-white">
+                <span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-[#1A1A1A] text-[11px] font-bold text-white">
                   {i + 1}
                 </span>
                 <span>{step}</span>
@@ -433,7 +433,7 @@ export default function ApiDocsPage() {
               <tbody className="divide-y divide-[rgba(13,13,13,0.06)]">
                 {ERRORS.map((e) => (
                   <tr key={e.code}>
-                    <td className="py-2.5 font-semibold text-[#0d0d0d]">{e.code}</td>
+                    <td className="py-2.5 font-semibold text-[#1A1A1A]">{e.code}</td>
                     <td className="py-2.5 pl-4 font-mono text-[12px] text-[rgba(13,13,13,0.70)]">
                       {e.type}
                     </td>
@@ -449,7 +449,7 @@ export default function ApiDocsPage() {
         <div className="flex flex-wrap gap-3 pb-4">
           <Link
             href="/api-docs/playground/"
-            className="inline-flex items-center gap-2 rounded-[10px] bg-[#f0a38a] px-5 py-2.5 text-[14px] font-medium text-white hover:bg-[#0066cc] transition-colors"
+            className="inline-flex items-center gap-2 rounded-[10px] bg-[#D97757] px-5 py-2.5 text-[14px] font-medium text-white hover:bg-[#0066cc] transition-colors"
           >
             <Play size={14} />
             Playground
@@ -458,7 +458,7 @@ export default function ApiDocsPage() {
             href="/api/v1/docs/"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-[10px] bg-[#0d0d0d] px-5 py-2.5 text-[14px] font-medium text-white hover:bg-[#1a1a1a] transition-colors"
+            className="inline-flex items-center gap-2 rounded-[10px] bg-[#1A1A1A] px-5 py-2.5 text-[14px] font-medium text-white hover:bg-[#1a1a1a] transition-colors"
           >
             Swagger UI
             <ExternalLink size={14} />
