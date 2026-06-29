@@ -38,7 +38,7 @@ from api.views.audit import AuditLogListView
 from api.views.api_status import APIStatusView
 from api.views.legal import LegalPrivacyView, LegalTermsView
 from api.views.referral import ReferralView, ReferralWithdrawView
-from api.views.files import UserFilesView, UserFileDeleteView, GenerationRerunView, GenerationUpscaleView, GenerationVariationsView, GenerationDescribeView, GenerationFavoriteToggleView, FavoritesListView
+from api.views.files import UserFilesView, UserFileDeleteView, GenerationRerunView, GenerationUpscaleView, GenerationVariationsView, GenerationDescribeView, GenerationFavoriteToggleView, FavoritesListView, RemoveBackgroundView
 from api.views.generations import GenerationProgressView
 from api.views.share import (
     GalleryView, PublicGenerationView, GenerationShareView, GenerationUnshareView, GenerationLikeView,
@@ -180,6 +180,7 @@ urlpatterns = [
     path('v1/generations/<int:pk>/variations/', GenerationVariationsView.as_view(), name='generation_variations'),
     path('v1/generations/<int:pk>/describe/', GenerationDescribeView.as_view(), name='generation_describe'),
     path('v1/generations/<int:pk>/favorite/', GenerationFavoriteToggleView.as_view(), name='generation_favorite'),
+    path('v1/generations/<int:pk>/remove-background/', RemoveBackgroundView.as_view(), name='generation_remove_bg'),
     path('v1/favorites/', FavoritesListView.as_view(), name='favorites_list'),
     path('v1/generations/<int:pk>/share/', GenerationShareView.as_view(), name='generation_share'),
     path('v1/generations/<int:pk>/unshare/', GenerationUnshareView.as_view(), name='generation_unshare'),

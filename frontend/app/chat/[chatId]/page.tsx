@@ -22,7 +22,7 @@ import { GenerationProgress } from "@/components/chat/GenerationProgress";
 import { PromptEnhancer } from "@/components/chat/PromptEnhancer";
 import { BeforeAfterSlider } from "@/components/chat/BeforeAfterSlider";
 import { ZoomableImage } from "@/components/chat/ZoomableImage";
-import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, uploadFile, synthesizeSpeech, confirmCommit, exportChat, quickSaveFact, branchChat, startDeepResearch, getResearchStatus, getMemoryToast, upscaleGeneration, createVariations, describeGeneration, downloadImageUrl, favoriteGeneration, APIError, BASE_URL, type CommitProposed } from "@/lib/api/client";
+import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, uploadFile, synthesizeSpeech, confirmCommit, exportChat, quickSaveFact, branchChat, startDeepResearch, getResearchStatus, getMemoryToast, upscaleGeneration, createVariations, describeGeneration, downloadImageUrl, favoriteGeneration, removeBackground, APIError, BASE_URL, type CommitProposed } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 import { useUIStore } from "@/lib/stores/ui";
 import type { WebMessage, ChatDetail, UiSection, KBSource } from "@/lib/api/types";
@@ -588,9 +588,22 @@ export default function ChatPage() {
     }
   }, [describingId, addToast]);
 
-  // Убрать фон через img2img — отправляет edit с фиксированным промптом
+  // Убрать фон: сначала пробуем rembg-endpoint (если генерация есть в БД),
+  // иначе fallback через img2img с промптом
   const handleRemoveBg = useCallback(
-    (imageUrl: string) => {
+    async (imageUrl: string, generationId?: number) => {
+      if (generationId) {
+        try {
+          const res = await removeBackground(generationId);
+          addToast({ type: "success", message: "Фон удалён — результат появится в следующем сообщении." });
+          // Обновляем чат чтобы показать новый файл
+          qc.invalidateQueries({ queryKey: ["chat", id] });
+          void res;
+          return;
+        } catch {
+          // fallback to img2img below
+        }
+      }
       sendMutation.mutate({
         msg: "Remove background completely, make it transparent or clean white background",
         attachmentIds: [],
@@ -598,7 +611,7 @@ export default function ChatPage() {
         settings: { ...mediaSettings, image_url: imageUrl },
       });
     },
-    [sendMutation, mediaSettings]
+    [sendMutation, mediaSettings, addToast, qc, id]
   );
 
   // Видео готово (SSE) — форсируем перезагрузку статуса сообщения
@@ -695,6 +708,7 @@ export default function ChatPage() {
       };
       if (payload.mask_url) falSettings.mask_url = payload.mask_url;
       if (payload.outpaint_direction) falSettings.outpaint_direction = payload.outpaint_direction;
+      if (payload.target_ratio) falSettings.target_ratio = payload.target_ratio;
       sendMutation.mutate({
         msg: payload.prompt || " ",
         attachmentIds: [],
@@ -1574,7 +1588,7 @@ function MessageRow({
   onStyleImage?: (url: string) => void;
   onDescribeImage?: (generationId: number) => void;
   onDownloadImage?: (url: string) => void;
-  onRemoveBg?: (url: string) => void;
+  onRemoveBg?: (url: string, generationId?: number) => void;
   describingId?: number | null;
   onVideoComplete?: () => void;
   researchData?: { steps: import("@/lib/api/types").DeepResearchStep[]; status: import("@/lib/api/types").DeepResearchStatus; error: string };
@@ -1774,7 +1788,7 @@ function MessageRow({
                     </button>
                   )}
                   {imgUrl && onRemoveBg && (
-                    <button onClick={() => onRemoveBg(imgUrl)} className={btnCls} style={btnStyle} onMouseEnter={onEnter} onMouseLeave={onLeave} title="Убрать фон (img2img через GPT Image)">
+                    <button onClick={() => onRemoveBg(imgUrl, message.image_generation_id ?? undefined)} className={btnCls} style={btnStyle} onMouseEnter={onEnter} onMouseLeave={onLeave} title="Убрать фон">
                       <Eraser size={13} /><span>Убрать фон</span>
                     </button>
                   )}

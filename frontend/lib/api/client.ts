@@ -572,6 +572,9 @@ export const getFavorites = (params?: { page?: number; per_page?: number; media_
   return request(`/favorites/${q.toString() ? "?" + q.toString() : ""}`);
 };
 
+export const removeBackground = (genId: number): Promise<{ id: number; url: string }> =>
+  request<{ id: number; url: string }>(`/generations/${genId}/remove-background/`, { method: "POST" });
+
 // ============ Sprint 7: Public gallery & sharing ============
 
 export const shareGeneration = (genId: string): Promise<ShareGenerationResponse> =>

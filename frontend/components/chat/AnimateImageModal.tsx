@@ -13,7 +13,8 @@ interface Props {
 }
 
 const DURATIONS = [5, 8, 10];
-const SORA_DURATIONS = [5, 10];
+const SORA_DURATIONS = [5, 10, 20];
+const SORA_ASPECTS = ["16:9", "9:16", "1:1"] as const;
 
 /**
  * "Оживить" (img2video): выбор видео-модели + motion-промт + длительность.
@@ -36,7 +37,8 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
   const [motionStrength, setMotionStrength] = useState(0.6);
   const [cameraFixed, setCameraFixed] = useState(false);
   const [generateAudio, setGenerateAudio] = useState(false);
-  const [soraDuration, setSoraDuration] = useState<5 | 10>(5);
+  const [soraDuration, setSoraDuration] = useState<5 | 10 | 20>(5);
+  const [soraAspect, setSoraAspect] = useState<string>("16:9");
 
   const { data: networks, isLoading } = useQuery({
     queryKey: ["networks", "fal-ai"],
@@ -65,6 +67,7 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
       if (isKling) { extra.camera_type = cameraType; extra.motion_strength = motionStrength; }
       if (isSeedance) { extra.camerafixed = cameraFixed; extra.audio = generateAudio; }
       if (isVeo) { extra.audio_response = generateAudio; }
+      if (isSora) { extra.aspect_ratio = soraAspect; }
       const activeDuration = isSora ? soraDuration : duration;
       return createChat({
         network_slug: selectedSlug,
@@ -228,25 +231,46 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
                 </>
               )}
               {isSora && (
-                <div className="flex flex-col gap-1">
-                  <label className="text-[11px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">Длительность</label>
-                  <div className="flex gap-1.5">
-                    {SORA_DURATIONS.map((d) => (
-                      <button
-                        key={d}
-                        type="button"
-                        onClick={() => setSoraDuration(d as 5 | 10)}
-                        className={`h-8 flex-1 rounded-[8px] border text-[12px] font-medium transition-colors ${
-                          soraDuration === d
-                            ? "border-[#0a7cff] bg-[rgba(10,124,255,0.08)] text-[#0a7cff]"
-                            : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.65)] hover:bg-[rgba(13,13,13,0.04)] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.65)]"
-                        }`}
-                      >
-                        {d} сек
-                      </button>
-                    ))}
+                <>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[11px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">Длительность</label>
+                    <div className="flex gap-1.5">
+                      {SORA_DURATIONS.map((d) => (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => setSoraDuration(d as 5 | 10 | 20)}
+                          className={`h-8 flex-1 rounded-[8px] border text-[12px] font-medium transition-colors ${
+                            soraDuration === d
+                              ? "border-[#0a7cff] bg-[rgba(10,124,255,0.08)] text-[#0a7cff]"
+                              : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.65)] hover:bg-[rgba(13,13,13,0.04)] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.65)]"
+                          }`}
+                        >
+                          {d} сек
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[11px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">Соотношение сторон</label>
+                    <div className="flex gap-1.5">
+                      {SORA_ASPECTS.map((r) => (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => setSoraAspect(r)}
+                          className={`h-8 flex-1 rounded-[8px] border text-[12px] font-medium transition-colors ${
+                            soraAspect === r
+                              ? "border-[#0a7cff] bg-[rgba(10,124,255,0.08)] text-[#0a7cff]"
+                              : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.65)] hover:bg-[rgba(13,13,13,0.04)] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.65)]"
+                          }`}
+                        >
+                          {r}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
               )}
               {(isSeedance || isVeo) && (
                 <div className="flex flex-wrap gap-4">

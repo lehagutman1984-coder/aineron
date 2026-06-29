@@ -603,6 +603,49 @@ def _prepare_outpaint_canvas(image_bytes, direction, expand_ratio=0.25):
     return out_img.getvalue(), out_mask.getvalue()
 
 
+def _prepare_expand_to_ratio(image_bytes, target_ratio_str):
+    """Расширяет холст до целевого соотношения сторон (16:9, 4:3, 1:1, 3:4, 9:16, 21:9).
+
+    Оригинал размещается по центру расширенного холста.
+    Возвращает (expanded_png_bytes, mask_png_bytes) — тот же формат что _prepare_outpaint_canvas.
+    """
+    from PIL import Image
+    import io as _io
+
+    rw, rh = (int(x) for x in target_ratio_str.split(':'))
+    target_wh = rw / rh
+
+    src = Image.open(_io.BytesIO(image_bytes)).convert('RGBA')
+    sw, sh = src.size
+    current_wh = sw / sh
+
+    if abs(current_wh - target_wh) < 0.01:
+        mask = Image.new('L', (sw, sh), 0)  # nothing to paint
+        buf_i = _io.BytesIO(); src.save(buf_i, format='PNG')
+        buf_m = _io.BytesIO(); mask.save(buf_m, format='PNG')
+        return buf_i.getvalue(), buf_m.getvalue()
+
+    if current_wh < target_wh:
+        new_w = max(sw + 1, int(round(sh * target_wh)))
+        new_h = sh
+    else:
+        new_w = sw
+        new_h = max(sh + 1, int(round(sw / target_wh)))
+
+    paste_x = (new_w - sw) // 2
+    paste_y = (new_h - sh) // 2
+
+    expanded = Image.new('RGBA', (new_w, new_h), (0, 0, 0, 0))
+    expanded.paste(src, (paste_x, paste_y))
+
+    mask = Image.new('L', (new_w, new_h), 255)
+    mask.paste(Image.new('L', (sw, sh), 0), (paste_x, paste_y))
+
+    out_img = _io.BytesIO(); expanded.save(out_img, format='PNG')
+    out_mask = _io.BytesIO(); mask.save(out_mask, format='PNG')
+    return out_img.getvalue(), out_mask.getvalue()
+
+
 def generate_image_edit(network, user_msg, message, user_settings=None):
     """Img2img: редактирование изображения через laozhang /images/edits (multipart)
     с фолбэком на /images/generations + image_url в теле.
@@ -632,6 +675,7 @@ def generate_image_edit(network, user_msg, message, user_settings=None):
     outpaint_direction = (
         final_args.get('outpaint_direction') or (user_settings or {}).get('outpaint_direction', '')
     )
+    target_ratio = (user_settings or {}).get('target_ratio', '')
     # Sprint 6: style/character reference — референс стиля, проброс провайдеру.
     # Точное имя параметра провайдер-зависимо, поэтому шлём через extra_body
     # под несколькими распространёнными ключами.
@@ -663,10 +707,33 @@ def generate_image_edit(network, user_msg, message, user_settings=None):
     except Exception as e:
         raise Exception(f"Не удалось скачать исходное изображение: {e}")
 
-    # Маска: либо outpaint (PIL строит расширенный холст), либо ручная маска (mask_url).
-    # Outpaint и ручная маска взаимоисключающие — outpaint имеет приоритет.
+    # Маска: outpaint > target_ratio > ручная маска — взаимоисключающие режимы.
+    # target_ratio строит расширенный холст аналогично outpaint, но по целевому соотношению.
     mask_file = None
     size_override = None
+    if target_ratio and not outpaint_direction:
+        try:
+            from PIL import Image as _PILImage
+            exp_bytes, mask_bytes = _prepare_expand_to_ratio(img_bytes, target_ratio)
+            ew, eh = _PILImage.open(_io.BytesIO(exp_bytes)).size
+            sw, sh = _snap_size_to_supported(model_id, ew, eh)
+            if (sw, sh) != (ew, eh):
+                exp_img = _PILImage.open(_io.BytesIO(exp_bytes)).resize((sw, sh), _PILImage.LANCZOS)
+                buf = _io.BytesIO(); exp_img.save(buf, format='PNG')
+                exp_bytes = buf.getvalue()
+            img_file = _io.BytesIO(exp_bytes)
+            img_file.name = 'source.png'
+            if model_id not in _MODEL_SUPPORTED_SIZES:
+                if (sw, sh) != (ew, eh):
+                    mask_img = _PILImage.open(_io.BytesIO(mask_bytes)).resize((sw, sh), _PILImage.NEAREST)
+                    buf_m = _io.BytesIO(); mask_img.save(buf_m, format='PNG')
+                    mask_bytes = buf_m.getvalue()
+                mask_file = _io.BytesIO(mask_bytes)
+                mask_file.name = 'mask.png'
+            size_override = f'{sw}x{sh}'
+            logger.info(f'[expand-to-ratio] target={target_ratio} canvas={ew}x{eh} → {size_override}')
+        except Exception as e:
+            logger.warning(f'[expand-to-ratio] failed ({e}); продолжаем без расширения')
     if outpaint_direction:
         try:
             from PIL import Image as _PILImage

@@ -20,6 +20,7 @@ export interface EditImagePayload {
   image_url: string;
   mask_url?: string;
   outpaint_direction?: "left" | "right" | "up" | "down" | "all";
+  target_ratio?: string;
 }
 
 interface Props {
@@ -30,6 +31,8 @@ interface Props {
 }
 
 type Direction = "left" | "right" | "up" | "down" | "all";
+
+const EXPAND_RATIOS = ["16:9", "4:3", "1:1", "3:4", "9:16", "21:9"];
 
 const ASPECT_HINT: Record<Direction, string> = {
   left: "→ финальное: ~4:3",
@@ -52,6 +55,7 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
   const [maskMode, setMaskMode] = useState(false);
   const [maskUrl, setMaskUrl] = useState<string | null>(null);
   const [outpaint, setOutpaint] = useState<Direction | null>(null);
+  const [targetRatio, setTargetRatio] = useState<string | null>(null);
 
   // Маска и outpaint взаимоисключающие
   const handleMaskApplied = (url: string) => {
@@ -64,22 +68,30 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
     setOutpaint((prev) => (prev === dir ? null : dir));
     setMaskUrl(null);
     setMaskMode(false);
+    setTargetRatio(null);
+  };
+
+  const toggleTargetRatio = (ratio: string) => {
+    setTargetRatio((prev) => (prev === ratio ? null : ratio));
+    setOutpaint(null);
+    setMaskUrl(null);
+    setMaskMode(false);
   };
 
   const toggleMaskMode = () => {
     setMaskMode((v) => !v);
-    // Открытие редактора маски снимает выбор outpaint
-    if (!maskMode) setOutpaint(null);
+    if (!maskMode) { setOutpaint(null); setTargetRatio(null); }
   };
 
-  const canSubmit = prompt.trim().length > 0 || Boolean(maskUrl) || Boolean(outpaint);
+  const canSubmit = prompt.trim().length > 0 || Boolean(maskUrl) || Boolean(outpaint) || Boolean(targetRatio);
 
   const submitting = false; // отправка управляется родителем (sendMutation), модалка закрывается сразу
 
   const handleSubmit = () => {
     if (!canSubmit) return;
     const payload: EditImagePayload = { prompt: prompt.trim(), image_url: imageUrl };
-    if (outpaint) payload.outpaint_direction = outpaint;
+    if (targetRatio) payload.target_ratio = targetRatio;
+    else if (outpaint) payload.outpaint_direction = outpaint;
     else if (maskUrl) payload.mask_url = maskUrl;
     onSubmit(payload);
   };
@@ -174,7 +186,7 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
           </div>
 
           {/* Outpaint */}
-          <div className={(maskMode || maskUrl) ? "opacity-40 pointer-events-none select-none" : ""}>
+          <div className={(maskMode || maskUrl || Boolean(targetRatio)) ? "opacity-40 pointer-events-none select-none" : ""}>
             <p className="mb-2 text-[12px] font-medium text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.55)]">
               Расширить холст (outpaint)
             </p>
@@ -204,6 +216,32 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
             )}
           </div>
 
+          {/* Generative Expand — расширение до целевого соотношения */}
+          <div className={(maskMode || maskUrl || Boolean(outpaint)) ? "opacity-40 pointer-events-none select-none" : ""}>
+            <p className="mb-2 text-[12px] font-medium text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.55)]">
+              Расширить до соотношения
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {EXPAND_RATIOS.map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => toggleTargetRatio(r)}
+                  className={`h-9 rounded-[8px] border px-3 text-[12px] font-medium transition-colors ${
+                    targetRatio === r
+                      ? "border-[#7c3aed] bg-[rgba(124,58,237,0.08)] text-[#7c3aed]"
+                      : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.65)] hover:bg-[rgba(13,13,13,0.04)] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.65)]"
+                  }`}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1 text-[11px] text-[rgba(13,13,13,0.38)] dark:text-[rgba(236,236,236,0.35)]">
+              AI равномерно расширит края до выбранного формата
+            </p>
+          </div>
+
           {/* Prompt */}
           <div>
             <textarea
@@ -211,7 +249,7 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
               onChange={(e) => setPrompt(e.target.value)}
               rows={3}
               placeholder={
-                outpaint
+                outpaint || targetRatio
                   ? "Опишите, чем заполнить новую область (необязательно)..."
                   : maskUrl
                     ? "Опишите, что разместить в закрашенной области..."

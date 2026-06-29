@@ -472,3 +472,68 @@ class FavoritesListView(APIView):
             'page': page,
             'total': total,
         })
+
+
+class RemoveBackgroundView(APIView):
+    """POST /v1/generations/<pk>/remove-background/ — удаление фона через rembg (локально).
+
+    Возвращает {id, url} новой GeneratedImage с прозрачным PNG-фоном.
+    Если rembg не установлен — 503 с понятным сообщением.
+    """
+    authentication_classes = [CsrfExemptSessionAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            from rembg import remove as rembg_remove
+        except ImportError:
+            return Response(
+                {'error': 'Функция временно недоступна — обновление сервиса. Попробуйте через img2img с промптом «remove background».'},
+                status=503
+            )
+
+        gen = get_object_or_404(GeneratedImage, pk=pk)
+        owns = (gen.user_id == request.user.pk) or (
+            gen.message_id and gen.message and gen.message.chat.user_id == request.user.pk
+        )
+        if not owns:
+            return Response({'error': 'Доступ запрещён'}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            img_bytes = gen.image.read()
+        except Exception as e:
+            return Response({'error': f'Не удалось прочитать изображение: {e}'}, status=500)
+
+        try:
+            result_bytes = rembg_remove(img_bytes)
+        except Exception as e:
+            return Response({'error': f'Ошибка удаления фона: {e}'}, status=500)
+
+        try:
+            import uuid as _uuid
+            from django.core.files.base import ContentFile
+
+            owner = gen.user or (gen.message.chat.user if gen.message_id and gen.message else None)
+            new_gen = GeneratedImage(
+                message=gen.message,
+                user=owner,
+                prompt=(gen.prompt or ''),
+                media_type='image',
+                model_name=gen.model_name or '',
+                parent=gen,
+                status='done',
+                progress=100,
+            )
+            filename = f'nobg_{_uuid.uuid4().hex[:12]}.png'
+            new_gen.image.save(filename, ContentFile(result_bytes), save=False)
+            new_gen.save()
+
+            image_url = ''
+            try:
+                image_url = request.build_absolute_uri(new_gen.image.url)
+            except Exception:
+                pass
+
+            return Response({'id': new_gen.id, 'url': image_url})
+        except Exception as e:
+            return Response({'error': f'Ошибка сохранения: {e}'}, status=500)
