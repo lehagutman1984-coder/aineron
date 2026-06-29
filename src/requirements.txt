@@ -43,6 +43,8 @@ msgpack==1.1.2
 openai==2.21.0
 packaging==26.0
 pillow==12.1.1
+rembg==2.0.57
+onnxruntime==1.20.1
 prompt_toolkit==3.0.52
 py-ubjson==0.16.1
 pyasn1==0.6.2

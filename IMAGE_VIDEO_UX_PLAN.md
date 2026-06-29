@@ -25,8 +25,8 @@
 | Vary / Вариации | ✅ РАБОТАЕТ | повторный запрос |
 | Before/After слайдер | ✅ РАБОТАЕТ | BeforeAfterSlider компонент |
 | Batch генерация (×1/×2/×4) | ✅ РАБОТАЕТ | параллельные запросы |
-| **Background Removal** | ✅ КОД ГОТОВ 28.06 | RemoveBackgroundView; нужен `pip install rembg` при rebuild |
-| Inpaint (mask → GPT Image 1) | ⚠️ БАГ | маска должна быть RGBA (alpha=0 = edit), сейчас grayscale |
+| **Background Removal** | ✅ АКТИВНО 29.06 | rembg добавлен в requirements.txt, rebuild активирует |
+| Inpaint (mask → GPT Image 1) | ✅ РАБОТАЕТ | подтверждено 29.06 |
 | AI Auto-Select (SAM2) | ❌ НЕТ | laozhang.ai не поддерживает — нужен новый провайдер |
 
 ### Видео — apimart.ai
@@ -78,35 +78,7 @@
 
 ## ОСТАВШИЕСЯ ЗАДАЧИ (в рамках текущих провайдеров)
 
-### Приоритет 1 — Баг: Inpaint маска GPT Image 1
-
-**Файл:** `src/aitext/fal_utils.py` → `generate_image_edit()`
-
-Проблема: MaskEditor экспортирует grayscale PNG (белый = редактировать).
-OpenAI ожидает RGBA PNG где `alpha=0` = редактировать, `alpha=255` = сохранить.
-
-Фикс:
-```python
-# В ветке mask_url, перед отправкой в API
-if mask_url and model_id in _MODEL_SUPPORTED_SIZES:
-    mask_img = Image.open(mask_io).convert("RGBA")
-    r, g, b, a = mask_img.split()
-    new_alpha = r.point(lambda x: 0 if x > 128 else 255)
-    mask_img.putalpha(new_alpha)
-```
-
-### Приоритет 2 — rembg: активация фонового удаления
-
-Background Removal написан (`RemoveBackgroundView`), но `rembg` не установлен в Docker-образе.
-
-Нужно в `Dockerfile` добавить:
-```dockerfile
-RUN pip install rembg onnxruntime
-```
-
-После rebuild — функция заработает автоматически. Без этого endpoint возвращает 503.
-
-### Приоритет 3 — MaskEditor UX
+### Приоритет 1 — MaskEditor UX
 
 Текущий редактор маски неудобен (чёрный холст, непонятно что закрашиваешь).
 
@@ -116,7 +88,7 @@ RUN pip install rembg onnxruntime
 - Размер кисти S/M/L
 - Подсказка: "Закрасьте область для редактирования"
 
-### Приоритет 4 — Тестирование Gemini Image моделей
+### Приоритет 2 — Тестирование Gemini Image моделей
 
 Gemini image модели добавлены с `minimal_params: true` (как Seedream).
 Нужно проверить что они реально работают через аналогичный тест:
