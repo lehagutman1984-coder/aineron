@@ -509,13 +509,21 @@ SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 
 
 # ========== DJANGO REST FRAMEWORK ==========
+# S6: JWT из Mini App (telegram_webapp_auth выдаёт simplejwt-токены).
+# Подключаем только если пакет установлен — отсутствие зависимости не должно
+# ронять весь бэкенд на старте (collectstatic/migrate/gunicorn).
+_DRF_AUTH_CLASSES = [
+    'api.authentication.APIKeyAuthentication',
+    'api.authentication.CsrfExemptSessionAuthentication',
+]
+try:
+    import rest_framework_simplejwt  # noqa: F401
+    _DRF_AUTH_CLASSES.insert(1, 'rest_framework_simplejwt.authentication.JWTAuthentication')
+except ImportError:
+    pass
+
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'api.authentication.APIKeyAuthentication',
-        # S6: JWT из Mini App (telegram_webapp_auth выдаёт simplejwt-токены)
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-        'api.authentication.CsrfExemptSessionAuthentication',
-    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': _DRF_AUTH_CLASSES,
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
