@@ -78,9 +78,9 @@ def models_tabs_kb(active_tab: str, networks: list, current_id: int | None = Non
 
 def star_packs_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text='100 звёзд — 50 XTR', callback_data='pack:stars_100')],
-        [InlineKeyboardButton(text='220 звёзд — 100 XTR  (+10%)', callback_data='pack:stars_220')],
-        [InlineKeyboardButton(text='600 звёзд — 250 XTR  (+20%)', callback_data='pack:stars_600')],
+        [InlineKeyboardButton(text='100 ₽ — 50 XTR', callback_data='pack:stars_100')],
+        [InlineKeyboardButton(text='220 ₽ — 100 XTR  (+10%)', callback_data='pack:stars_220')],
+        [InlineKeyboardButton(text='600 ₽ — 250 XTR  (+20%)', callback_data='pack:stars_600')],
     ])
 
 

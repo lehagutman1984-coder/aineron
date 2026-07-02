@@ -1,8 +1,10 @@
 import tiktoken
 from .models import StudioProject
 from .models_catalog import MODEL_TIER
+from core.money import apply_min_charge
 
-STAR_RATE = {'fast': 1, 'coder': 1.7, 'smart': 3}
+# Копеек за 1000 токенов (было STAR_RATE {fast:1, coder:1.7, smart:3} × 100 — тот же множитель).
+KOPECK_RATE = {'fast': 100, 'coder': 170, 'smart': 300}
 
 AGENT_BUDGET = {
     # 3-role pipeline
@@ -27,8 +29,8 @@ def count_tokens(text: str, model: str = 'gpt-4') -> int:
     return len(enc.encode(text or ''))
 
 
-def estimate_stars(project: StudioProject, planned_steps: int = 5) -> int:
-    """Estimate total stars for 3-role pipeline: architect(1x) + coder+guardian(N steps)."""
+def estimate_kopecks(project: StudioProject, planned_steps: int = 5) -> int:
+    """Estimate total kopecks for 3-role pipeline: architect(1x) + coder+guardian(N steps)."""
     idata = getattr(project, 'interview_data', {}) or {}
     plan = idata.get('plan')
     if isinstance(plan, list) and plan:
@@ -44,22 +46,23 @@ def estimate_stars(project: StudioProject, planned_steps: int = 5) -> int:
         return MODEL_TIER.get(m, default_tier) if m else (ai_tier if name == 'coder' else default_tier)
 
     arch_tier, arch_budget = AGENT_BUDGET['architect']
-    total += (arch_budget / 1000.0) * STAR_RATE.get(tier_for('architect', arch_tier), STAR_RATE['smart'])
+    total += (arch_budget / 1000.0) * KOPECK_RATE.get(tier_for('architect', arch_tier), KOPECK_RATE['smart'])
 
     coder_tier, coder_budget = AGENT_BUDGET['coder']
-    total += (coder_budget / 1000.0) * STAR_RATE.get(tier_for('coder', coder_tier), STAR_RATE['fast']) * planned_steps
+    total += (coder_budget / 1000.0) * KOPECK_RATE.get(tier_for('coder', coder_tier), KOPECK_RATE['fast']) * planned_steps
 
     guardian_tier, guardian_budget = AGENT_BUDGET['guardian']
-    total += (guardian_budget / 1000.0) * STAR_RATE.get(tier_for('guardian', guardian_tier), STAR_RATE['smart']) * planned_steps
+    total += (guardian_budget / 1000.0) * KOPECK_RATE.get(tier_for('guardian', guardian_tier), KOPECK_RATE['smart']) * planned_steps
 
-    return int(total) + 1
+    return int(total) + 100  # +1 ₽ буфер на округления
 
 
-def stars_for_tokens(prompt_tokens: int, completion_tokens: int, tier: str) -> int:
+def kopecks_for_tokens(prompt_tokens: int, completion_tokens: int, tier: str) -> int:
     """Реальная стоимость одного вызова агента по факту токенов (суммарные prompt+completion)."""
     total = (prompt_tokens or 0) + (completion_tokens or 0)
-    rate = STAR_RATE.get(tier, STAR_RATE['fast'])
-    return max(1, int((total / 1000.0) * rate))
+    rate = KOPECK_RATE.get(tier, KOPECK_RATE['fast'])
+    raw = int((total / 1000.0) * rate)
+    return apply_min_charge(raw)
 
 
 def coder_tier_for_model(model: str) -> str:
@@ -67,54 +70,85 @@ def coder_tier_for_model(model: str) -> str:
     return MODEL_TIER.get(model, 'fast')
 
 
-def can_afford(user, amount: int) -> bool:
-    return user.pages_count >= amount
+def can_afford(user, amount_kopecks: int) -> bool:
+    return user.balance_kopecks >= amount_kopecks
 
 
-def charge(user, amount: int, project: StudioProject):
-    user.spend_pages(amount)
-    project.stars_spent += amount
-    project.save(update_fields=['stars_spent'])
+def charge(user, amount_kopecks: int, project: StudioProject, reference: str = ''):
+    user.spend_kopecks(amount_kopecks, type='spend', reference=reference)
+    from django.db.models import F
+    StudioProject.objects.filter(pk=project.pk).update(
+        stars_spent_kopecks=F('stars_spent_kopecks') + amount_kopecks,
+        stars_spent=F('stars_spent') + max(0, amount_kopecks // 100),
+    )
+    project.refresh_from_db(fields=['stars_spent_kopecks', 'stars_spent'])
 
 
-def refund(user, amount: int, project: StudioProject):
-    user.add_pages(amount)
-    project.stars_spent = max(0, project.stars_spent - amount)
-    project.save(update_fields=['stars_spent'])
+def refund(user, amount_kopecks: int, project: StudioProject, reference: str = ''):
+    user.add_kopecks(amount_kopecks, type='refund', reference=reference)
+    from django.db.models import F
+    from django.db.models.functions import Greatest
+    StudioProject.objects.filter(pk=project.pk).update(
+        stars_spent_kopecks=Greatest(F('stars_spent_kopecks') - amount_kopecks, 0),
+        stars_spent=Greatest(F('stars_spent') - max(0, amount_kopecks // 100), 0),
+    )
+    project.refresh_from_db(fields=['stars_spent_kopecks', 'stars_spent'])
 
 
-def reserve(user, amount: int, project: StudioProject) -> bool:
-    """Lock estimated stars from user's balance into project.stars_reserved."""
-    user.refresh_from_db(fields=['pages_count'])
-    if user.pages_count < amount:
+def reserve(user, amount_kopecks: int, project: StudioProject, reference: str = '') -> bool:
+    """Lock estimated kopecks from user's balance into project.stars_reserved_kopecks."""
+    user.refresh_from_db(fields=['balance_kopecks'])
+    if not user.has_enough_kopecks(amount_kopecks):
         return False
-    user.spend_pages(amount)
-    project.stars_reserved += amount
-    project.save(update_fields=['stars_reserved'])
+    ok = user.spend_kopecks(amount_kopecks, type='spend', reference=reference)
+    if not ok:
+        return False
+    from django.db.models import F
+    StudioProject.objects.filter(pk=project.pk).update(
+        stars_reserved_kopecks=F('stars_reserved_kopecks') + amount_kopecks,
+        stars_reserved=F('stars_reserved') + max(0, amount_kopecks // 100),
+    )
+    project.refresh_from_db(fields=['stars_reserved_kopecks', 'stars_reserved'])
     return True
 
 
-def charge_from_reserve(amount: int, project: StudioProject) -> bool:
-    """Spend from reserve first; top up from live balance if reserve is short."""
-    take = min(amount, project.stars_reserved)
-    project.stars_reserved -= take
-    project.stars_spent += take
-    rest = amount - take
+def charge_from_reserve(amount_kopecks: int, project: StudioProject, reference: str = '') -> bool:
+    """
+    Spend from reserve first; top up from live balance if reserve is short.
+    reference (если задан) обеспечивает идемпотентность по (type, reference) —
+    важно передавать уникальный на (project, agent, step) ключ, а не саму сумму,
+    иначе два РАЗНЫХ события с одинаковой стоимостью ошибочно схлопнутся в одно.
+    """
+    from django.db.models import F
+    from django.db.models.functions import Greatest
+
+    project.refresh_from_db(fields=['stars_reserved_kopecks', 'stars_spent_kopecks'])
+    take = min(amount_kopecks, project.stars_reserved_kopecks)
+    rest = amount_kopecks - take
+
     if rest > 0:
         user = project.user
-        user.refresh_from_db(fields=['pages_count'])
-        if user.pages_count < rest:
-            project.save(update_fields=['stars_reserved', 'stars_spent'])
+        user.refresh_from_db(fields=['balance_kopecks'])
+        if not user.has_enough_kopecks(rest):
             return False
-        user.spend_pages(rest)
-        project.stars_spent += rest
-    project.save(update_fields=['stars_reserved', 'stars_spent'])
+        if not user.spend_kopecks(rest, type='spend', reference=reference):
+            return False
+
+    StudioProject.objects.filter(pk=project.pk).update(
+        stars_reserved_kopecks=Greatest(F('stars_reserved_kopecks') - take, 0),
+        stars_reserved=Greatest(F('stars_reserved') - max(0, take // 100), 0),
+        stars_spent_kopecks=F('stars_spent_kopecks') + amount_kopecks,
+        stars_spent=F('stars_spent') + max(0, amount_kopecks // 100),
+    )
+    project.refresh_from_db(fields=['stars_reserved_kopecks', 'stars_reserved', 'stars_spent_kopecks', 'stars_spent'])
     return True
 
 
-def release_reserve(project: StudioProject):
-    """Return unused reserved stars to the user's balance."""
-    if project.stars_reserved > 0:
-        project.user.add_pages(project.stars_reserved)
-        project.stars_reserved = 0
-        project.save(update_fields=['stars_reserved'])
+def release_reserve(project: StudioProject, reference: str = ''):
+    """Return unused reserved kopecks to the user's balance."""
+    project.refresh_from_db(fields=['stars_reserved_kopecks'])
+    if project.stars_reserved_kopecks > 0:
+        amount = project.stars_reserved_kopecks
+        project.user.add_kopecks(amount, type='refund', reference=reference)
+        StudioProject.objects.filter(pk=project.pk).update(stars_reserved_kopecks=0, stars_reserved=0)
+        project.refresh_from_db(fields=['stars_reserved_kopecks', 'stars_reserved'])

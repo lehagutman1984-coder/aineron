@@ -459,8 +459,8 @@ class CustomUserAdmin(UserAdmin):
                 tariff = Tariff.objects.get(id=tariff_id)
                 for user in queryset:
                     user.tariff = tariff
-                    user.pages_count = tariff.pages_count
-                    user.save()
+                    user.save(update_fields=['tariff'])
+                    user.set_kopecks(tariff.balance_grant_kopecks)
                 self.message_user(request, f'Тариф изменен на "{tariff.display_name}" для {queryset.count()} пользователей')
             except Tariff.DoesNotExist:
                 self.message_user(request, 'Указанный тариф не существует', level='ERROR')

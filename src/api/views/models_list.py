@@ -25,6 +25,8 @@ class ModelsListView(APIView):
                 'description': n.description,
                 'cost_per_1k_tokens': float(n.stars_per_1k_tokens) if n.stars_per_1k_tokens else None,
                 'cost_per_message': n.cost_per_message,
+                'cost_kopecks': n.cost_kopecks,
+                'kopecks_per_1k_tokens': float(n.kopecks_per_1k_tokens) if n.kopecks_per_1k_tokens else None,
             }
             for n in networks
             if n.model_name

@@ -175,11 +175,13 @@ def attempt_auto_renewal(subscription):
             response = requests.post("https://auth.robokassa.ru/Merchant/Recurring", data=data, timeout=30)
 
             if response.status_code == 200 and response.text.strip().startswith('OK'):
+                from core.money import rub_to_kopecks
                 PaymentHistory.objects.create(
                     user=user,
                     tariff=new_tariff,
                     invoice_id=str(new_inv_id),
                     amount=amount,
+                    amount_kopecks=rub_to_kopecks(amount),
                     pages_count=new_tariff.pages_count,
                     status='success',
                     payment_type='subscription',
@@ -249,11 +251,13 @@ def attempt_auto_renewal(subscription):
         response = requests.post("https://auth.robokassa.ru/Merchant/Recurring", data=data, timeout=30)
 
         if response.status_code == 200 and response.text.strip().startswith('OK'):
+            from core.money import rub_to_kopecks
             PaymentHistory.objects.create(
                 user=user,
                 tariff=tariff,
                 invoice_id=str(new_inv_id),
                 amount=tariff.price,
+                amount_kopecks=rub_to_kopecks(tariff.price),
                 pages_count=tariff.pages_count,
                 status='success',
                 payment_type='subscription',
@@ -261,8 +265,8 @@ def attempt_auto_renewal(subscription):
                 parent_payment=parent_payment
             )
 
-            user.pages_count += tariff.pages_count
-            user.save()
+            user.add_kopecks(tariff.balance_grant_kopecks, type='subscription', reference=str(new_inv_id))
+            user.refresh_from_db(fields=['balance_kopecks', 'pages_count'])
 
             subscription.expires_at = timezone.now() + timedelta(days=tariff.duration_days)
             subscription.robokassa_invoice_id = str(new_inv_id)

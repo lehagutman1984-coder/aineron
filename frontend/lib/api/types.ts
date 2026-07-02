@@ -157,7 +157,9 @@ export interface APIKeyCreateResponse extends APIKey {
 export interface User {
   id: number;
   email: string;
+  /** @deprecated используйте balance_kopecks — легаси-поле сохранено для обратной совместимости */
   pages_count: number;
+  balance_kopecks: number;
   tariff: string;
   active_subscription: boolean;
   referral_code: string;
@@ -180,7 +182,9 @@ export interface NetworkListItem {
   category: Category;
   avatar: string | null;
   description: string;
+  /** @deprecated используйте cost_kopecks */
   cost_per_message: number;
+  cost_kopecks: number;
   provider: string;
   is_popular: boolean;
   unlimited: boolean;
@@ -515,12 +519,16 @@ export interface CreateChatResponse {
   user_message_id: number;
   assistant_message_id: number;
   new_balance: number;
+  new_balance_kopecks: number;
 }
 
 export interface SendMessageResponse {
   user_message_id: number;
   assistant_message_id: number;
   new_balance: number;
+  new_balance_kopecks: number;
+  cost?: number;
+  cost_kopecks?: number;
 }
 
 // ============ Organizations / B2B ============
@@ -571,6 +579,7 @@ export interface UsageDay {
   date: string;
   total_tokens: number;
   stars_charged: number;
+  cost_kopecks: number;
   requests: number;
 }
 
@@ -579,6 +588,7 @@ export interface UsageByModel {
   model_slug: string;
   total_tokens: number;
   stars_charged: number;
+  cost_kopecks: number;
   requests: number;
 }
 
@@ -587,6 +597,7 @@ export interface UsageStats {
   totals: {
     total_tokens: number;
     total_stars: number;
+    total_kopecks: number;
     total_requests: number;
   };
   by_day: UsageDay[];
@@ -632,7 +643,9 @@ export interface BlogPostDetail extends BlogPost {
 export interface Tariff {
   id: number;
   display_name: string;
+  /** @deprecated используйте balance_grant_kopecks */
   pages_count: number;
+  balance_grant_kopecks: number;
   price: string;
   is_free: boolean;
   is_trial: boolean;
@@ -653,6 +666,7 @@ export interface TariffsResponse {
   tariffs: Tariff[];
   current_subscription: UserSubscription | null;
   pages_count: number;
+  balance_kopecks: number;
 }
 
 export interface RobokassaForm {
@@ -679,6 +693,7 @@ export interface PaymentHistory {
   payment_type: "subscription" | "pages" | "promo";
   invoice_id: string;
   amount: string;
+  amount_kopecks: number | null;
   pages_count: number;
   status: "pending" | "success" | "failed" | "refunded";
   description: string;
@@ -690,7 +705,9 @@ export interface PaymentHistory {
 export interface ApplyPromoResponse {
   ok: boolean;
   stars_added: number;
+  kopecks_added: number;
   new_balance: number;
+  new_balance_kopecks: number;
   message: string;
 }
 
@@ -808,17 +825,21 @@ export interface CompareItem {
   provider: string;
   assistant_message_id: number;
   cost: number;
+  cost_kopecks: number;
 }
 
 export interface CompareResponse {
   items: CompareItem[];
   total_cost: number;
+  total_cost_kopecks: number;
   new_balance: number;
+  new_balance_kopecks: number;
 }
 
 export interface ImageCompareResponse {
   items: CompareItem[];
   new_balance: number;
+  new_balance_kopecks: number;
 }
 
 export interface EnhancePromptResponse {
@@ -867,12 +888,14 @@ export interface ProjectGraph {
 export interface StarsUsageDay {
   date: string;
   stars: number;
+  kopecks: number;
   requests: number;
 }
 
 export interface StarsUsageModel {
   name: string;
   stars: number;
+  kopecks: number;
   requests: number;
 }
 
@@ -880,11 +903,14 @@ export interface StarsUsage {
   period_days: number;
   totals: {
     total_stars: number;
+    total_kopecks: number;
     total_requests: number;
     avg_per_day: number;
+    avg_per_day_kopecks: number;
   };
   prev_period: {
     total_stars: number;
+    total_kopecks: number;
     total_requests: number;
   };
   by_day: StarsUsageDay[];
@@ -917,6 +943,7 @@ export interface ReferralData {
   referral_code: string;
   referral_clicks: number;
   balance: number;
+  balance_kopecks: number | null;
   balance_type: "rub" | "stars";
   can_withdraw: boolean;
   earnings: ReferralEarning[];
@@ -947,7 +974,9 @@ export interface AuthUser {
   id: number;
   email: string;
   username: string;
+  /** @deprecated используйте balance_kopecks */
   pages_count: number;
+  balance_kopecks: number;
   active_subscription: boolean;
   referral_code: string;
   tariff_name: string;

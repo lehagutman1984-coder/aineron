@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { studioApi } from "@/lib/api/studio";
 import type { StudioProject, StudioMode, StudioStack, StudioModel } from "@/lib/api/studio";
+import { formatRub } from "@/lib/money";
 import { TemplateGallery } from "@/components/studio/TemplateGallery";
 import { StudioHero } from "@/components/studio/StudioHero";
 import { StackCards } from "@/components/studio/StackCards";
@@ -324,7 +325,7 @@ export default function StudioPage() {
                       ))}
                     </select>
                     <p className="text-xs text-[var(--muted)] mt-1">
-                      ≈ {starsPerStep} звёзд за шаг
+                      ≈ {formatRub(starsPerStep * 100)} за шаг
                     </p>
                   </div>
 

@@ -59,6 +59,7 @@ class TariffListView(APIView):
             'tariffs': TariffSerializer(tariffs, many=True).data,
             'current_subscription': subscription,
             'pages_count': user.pages_count,
+            'balance_kopecks': user.balance_kopecks,
         })
 
 
@@ -91,12 +92,14 @@ class TariffPayView(APIView):
         receipt_json = json.dumps(receipt_data, separators=(',', ':'), ensure_ascii=False)
         signature = _robokassa_signature(merchant_login, out_sum, inv_id, receipt_json, password1)
 
+        from core.money import rub_to_kopecks
         payment = PaymentHistory.objects.create(
             user=request.user,
             payment_type='subscription',
             tariff=tariff,
             invoice_id=str(inv_id),
             amount=tariff.price,
+            amount_kopecks=rub_to_kopecks(tariff.price),
             pages_count=tariff.pages_count,
             status='pending',
             description=description,
@@ -168,11 +171,13 @@ class BuyPagesView(APIView):
         receipt_json = json.dumps(receipt_data, separators=(',', ':'), ensure_ascii=False)
         signature = _robokassa_signature(merchant_login, out_sum, inv_id, receipt_json, password1)
 
+        from core.money import rub_to_kopecks
         payment = PaymentHistory.objects.create(
             user=request.user,
             payment_type='pages',
             invoice_id=str(inv_id),
             amount=price,
+            amount_kopecks=rub_to_kopecks(price),
             pages_count=pages,
             status='pending',
             description=description,
@@ -237,22 +242,26 @@ class ApplyPromoView(APIView):
             return Response({'error': {'message': 'Промокод уже был использован', 'type': 'invalid_request_error', 'code': 'promo_already_used'}}, status=status.HTTP_400_BAD_REQUEST)
 
         UsedPromoCode.objects.create(user=request.user, promo_code=promo)
-        request.user.add_pages(promo.stars)
+        request.user.add_kopecks(promo.kopecks, type='promo', reference=f'promo:{promo.pk}:{request.user.id}')
         PaymentHistory.objects.create(
             user=request.user,
             payment_type='promo',
             invoice_id=f'promo-{promo.pk}',
             amount=0,
+            amount_kopecks=0,
             pages_count=promo.stars,
             status='success',
             description=f'Промокод {code_str}: +{promo.stars} звёзд',
         )
 
+        from core.money import format_rub
         return Response({
             'ok': True,
             'stars_added': promo.stars,
+            'kopecks_added': promo.kopecks,
             'new_balance': request.user.pages_count,
-            'message': f'Промокод принят! Начислено {promo.stars} звёзд.',
+            'new_balance_kopecks': request.user.balance_kopecks,
+            'message': f'Промокод принят! Начислено {format_rub(promo.kopecks)}.',
         })
 
 
@@ -281,14 +290,14 @@ class StarsUsageView(APIView):
         by_day = list(
             qs.annotate(day=TruncDate('created_at'))
             .values('day')
-            .annotate(stars=Sum('amount'), requests=Count('id'))
+            .annotate(kopecks=Sum('amount_kopecks'), requests=Count('id'))
             .order_by('day')
         )
 
         by_desc = list(
             qs.values('description')
-            .annotate(stars=Sum('amount'), requests=Count('id'))
-            .order_by('-stars')[:30]
+            .annotate(kopecks=Sum('amount_kopecks'), requests=Count('id'))
+            .order_by('-kopecks')[:30]
         )
 
         def extract_model(desc):
@@ -299,34 +308,43 @@ class StarsUsageView(APIView):
         for row in by_desc:
             name = extract_model(row['description'])
             if name not in by_model:
-                by_model[name] = {'name': name, 'stars': 0, 'requests': 0}
-            by_model[name]['stars'] += row['stars'] or 0
+                by_model[name] = {'name': name, 'kopecks': 0, 'requests': 0}
+            by_model[name]['kopecks'] += row['kopecks'] or 0
             by_model[name]['requests'] += row['requests'] or 0
 
-        totals = qs.aggregate(total_stars=Sum('amount'), total_requests=Count('id'))
-        prev_totals = prev_qs.aggregate(total_stars=Sum('amount'), total_requests=Count('id'))
+        totals = qs.aggregate(total_kopecks=Sum('amount_kopecks'), total_requests=Count('id'))
+        prev_totals = prev_qs.aggregate(total_kopecks=Sum('amount_kopecks'), total_requests=Count('id'))
 
-        total_stars = totals['total_stars'] or 0
-        avg_per_day = round(total_stars / days, 1)
+        total_kopecks = totals['total_kopecks'] or 0
+        avg_per_day_kopecks = round(total_kopecks / days, 1)
+
+        for row in by_model.values():
+            row['stars'] = row['kopecks'] // 100
+        for row in by_day:
+            row['stars'] = (row['kopecks'] or 0) // 100
 
         return Response({
             'period_days': days,
             'totals': {
-                'total_stars': total_stars,
+                'total_stars': total_kopecks // 100,
+                'total_kopecks': total_kopecks,
                 'total_requests': totals['total_requests'] or 0,
-                'avg_per_day': avg_per_day,
+                'avg_per_day': avg_per_day_kopecks / 100,
+                'avg_per_day_kopecks': avg_per_day_kopecks,
             },
             'prev_period': {
-                'total_stars': prev_totals['total_stars'] or 0,
+                'total_stars': (prev_totals['total_kopecks'] or 0) // 100,
+                'total_kopecks': prev_totals['total_kopecks'] or 0,
                 'total_requests': prev_totals['total_requests'] or 0,
             },
             'by_day': [
                 {
                     'date': str(row['day']),
-                    'stars': row['stars'] or 0,
+                    'stars': row['stars'],
+                    'kopecks': row['kopecks'] or 0,
                     'requests': row['requests'] or 0,
                 }
                 for row in by_day
             ],
-            'by_model': sorted(by_model.values(), key=lambda x: -x['stars'])[:10],
+            'by_model': sorted(by_model.values(), key=lambda x: -x['kopecks'])[:10],
         })

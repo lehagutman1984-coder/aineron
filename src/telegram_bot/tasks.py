@@ -67,7 +67,7 @@ def _send_digest_to_user(tg_user):
         network = (
             NeuralNetwork.objects
             .filter(is_active=True, handle_photo=False, handle_video=False)
-            .order_by('cost_per_message')
+            .order_by('cost_kopecks')
             .first()
         )
     if not network or not network.model_name:
@@ -198,7 +198,7 @@ def summarize_poll(self, poll_session_id: int):
 
     network = session.tg_user.default_network
     if not network:
-        network = NeuralNetwork.objects.filter(is_active=True, provider='openrouter').order_by('cost_per_message').first()
+        network = NeuralNetwork.objects.filter(is_active=True, provider='openrouter').order_by('cost_kopecks').first()
     if not network or not network.model_name:
         return
 

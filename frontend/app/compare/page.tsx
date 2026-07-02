@@ -9,6 +9,7 @@ import Link from "next/link";
 import { listNetworks, compareModels, compareImages, getMessageStatus, voteArena, APIError } from "@/lib/api/client";
 import { MarkdownContent } from "@/components/chat/MarkdownContent";
 import { useAuthStore } from "@/lib/stores/auth";
+import { formatRub } from "@/lib/money";
 import type { NetworkListItem, WebMessage, CompareItem } from "@/lib/api/types";
 import { Trophy, Image as ImageIcon, MessageSquareText } from "lucide-react";
 
@@ -19,7 +20,7 @@ const detectHTML = (s: string) =>
 
 // ── Page root ─────────────────────────────────────────────────────────────────
 export default function ComparePage() {
-  const { setStars } = useAuthStore();
+  const { setBalance } = useAuthStore();
   const [mode, setMode] = useState<CompareMode>("text");
   const [prompt, setPrompt] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
@@ -63,9 +64,9 @@ export default function ComparePage() {
     );
   };
 
-  const totalCost = selected.reduce((sum, slug) => {
+  const totalCostKopecks = selected.reduce((sum, slug) => {
     const n = networks.find((n) => n.slug === slug);
-    return sum + (n?.cost_per_message ?? 0);
+    return sum + (n?.cost_kopecks ?? 0);
   }, 0);
 
   const handleSubmit = async () => {
@@ -75,11 +76,11 @@ export default function ComparePage() {
     try {
       if (isImage) {
         const res = await compareImages({ prompt: prompt.trim(), models: selected });
-        setStars(res.new_balance);
+        setBalance(res.new_balance_kopecks);
         setCompareItems(res.items);
       } else {
         const res = await compareModels({ message: prompt.trim(), network_slugs: selected });
-        setStars(res.new_balance);
+        setBalance(res.new_balance_kopecks);
         setCompareItems(res.items);
       }
     } catch (err) {
@@ -241,7 +242,7 @@ export default function ComparePage() {
                         {network.name}
                       </p>
                       <p className="text-[13px] text-[rgba(13,13,13,0.40)] dark:text-[rgba(236,236,236,0.35)]">
-                        {network.cost_per_message} зв.
+                        {formatRub(network.cost_kopecks)}
                       </p>
                     </div>
                     {isSelected && (
@@ -291,8 +292,8 @@ export default function ComparePage() {
           {selected.length < 2
             ? "Выберите минимум 2 модели"
             : isImage
-            ? `~${totalCost} зв. (списывается за каждое изображение)`
-            : `Стоимость: ${totalCost} зв.`}
+            ? `~${formatRub(totalCostKopecks)} (списывается за каждое изображение)`
+            : `Стоимость: ${formatRub(totalCostKopecks)}`}
         </p>
         <button
           onClick={handleSubmit}
@@ -504,7 +505,7 @@ function CompareColumn({
           {isWinner && <Trophy size={13} className="shrink-0 text-[#f4a017]" />}
         </div>
         <span className="ml-2 shrink-0 rounded-full bg-[rgba(13,13,13,0.06)] px-2 py-0.5 text-[13px] text-[rgba(13,13,13,0.48)] dark:bg-[rgba(255,255,255,0.06)] dark:text-[rgba(236,236,236,0.40)]">
-          {item.cost} зв.
+          {formatRub(item.cost_kopecks)}
         </span>
       </div>
 

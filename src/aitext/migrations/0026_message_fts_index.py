@@ -1,6 +1,22 @@
 from django.db import migrations
 
 
+def _create_fts_index(apps, schema_editor):
+    # Postgres-only (GIN FTS): на SQLite (локальные тесты) — no-op.
+    if schema_editor.connection.vendor == 'postgresql':
+        schema_editor.execute(
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS aitext_message_fts_gin "
+            "ON aitext_message "
+            "USING gin(to_tsvector('russian', "
+            "coalesce(plain_text, '') || ' ' || coalesce(content, '')));"
+        )
+
+
+def _drop_fts_index(apps, schema_editor):
+    if schema_editor.connection.vendor == 'postgresql':
+        schema_editor.execute("DROP INDEX IF EXISTS aitext_message_fts_gin;")
+
+
 class Migration(migrations.Migration):
     """
     Add GIN FTS index on Message content fields for chat search.
@@ -14,13 +30,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunSQL(
-            sql=(
-                "CREATE INDEX CONCURRENTLY IF NOT EXISTS aitext_message_fts_gin "
-                "ON aitext_message "
-                "USING gin(to_tsvector('russian', "
-                "coalesce(plain_text, '') || ' ' || coalesce(content, '')));"
-            ),
-            reverse_sql="DROP INDEX IF EXISTS aitext_message_fts_gin;",
-        ),
+        migrations.RunPython(_create_fts_index, _drop_fts_index),
     ]

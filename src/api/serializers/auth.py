@@ -6,6 +6,7 @@ class UserSerializer(serializers.Serializer):
     email = serializers.EmailField()
     username = serializers.CharField()
     pages_count = serializers.IntegerField()
+    balance_kopecks = serializers.IntegerField()
     active_subscription = serializers.BooleanField()
     referral_code = serializers.CharField()
     email_verified = serializers.BooleanField()

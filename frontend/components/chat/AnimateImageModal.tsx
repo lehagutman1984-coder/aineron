@@ -6,6 +6,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { X, Film, Loader2, Sparkles } from "lucide-react";
 import { listNetworks, createChat } from "@/lib/api/client";
 import type { NetworkListItem } from "@/lib/api/types";
+import { formatRub } from "@/lib/money";
 
 interface Props {
   imageUrl: string;
@@ -155,7 +156,7 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
                       {m.name}
                     </span>
                     <span className="text-[13px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.45)]">
-                      {m.cost_per_message} зв.
+                      {formatRub(m.cost_kopecks)}
                     </span>
                   </button>
                 ))}

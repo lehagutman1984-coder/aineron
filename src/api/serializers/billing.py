@@ -6,7 +6,7 @@ class TariffSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tariff
         fields = [
-            'id', 'display_name', 'pages_count', 'price',
+            'id', 'display_name', 'pages_count', 'balance_grant_kopecks', 'price',
             'is_free', 'is_trial', 'duration_days',
         ]
 
@@ -29,7 +29,7 @@ class PaymentHistorySerializer(serializers.ModelSerializer):
     class Meta:
         model = PaymentHistory
         fields = [
-            'id', 'payment_type', 'invoice_id', 'amount',
+            'id', 'payment_type', 'invoice_id', 'amount', 'amount_kopecks',
             'pages_count', 'status', 'description',
             'tariff_name', 'paid_at', 'created_at',
         ]

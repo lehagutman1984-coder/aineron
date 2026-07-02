@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import { ArrowRight, Code2, ImageIcon } from "lucide-react";
 import type { NetworkListItem, Category } from "@/lib/api/types";
+import { formatRub } from "@/lib/money";
 
 interface Props {
   networks: NetworkListItem[];
@@ -145,7 +146,7 @@ function NetworkCard({ network, projectId }: { network: NetworkListItem; project
       )}
       <div className="mt-auto flex items-center justify-between pt-1">
         <span className="text-[14px] text-[rgba(13,13,13,0.45)]">
-          {network.unlimited ? "Безлимит" : `${network.cost_per_message} зв.`}
+          {network.unlimited ? "Безлимит" : formatRub(network.cost_kopecks)}
         </span>
         <ArrowRight
           size={14}

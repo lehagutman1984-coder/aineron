@@ -46,13 +46,16 @@ class StudioProject(models.Model):
     sandbox_container_id = models.CharField(max_length=128, blank=True)
     preview_port = models.IntegerField(null=True, blank=True)
     repo_url = models.URLField(blank=True)
-    stars_reserved = models.IntegerField(default=0)
-    stars_spent = models.IntegerField(default=0)
+    stars_reserved = models.IntegerField(default=0)  # legacy, dual-write — см. stars_reserved_kopecks
+    stars_spent = models.IntegerField(default=0)  # legacy, dual-write — см. stars_spent_kopecks
+    stars_reserved_kopecks = models.BigIntegerField(default=0, verbose_name='Зарезервировано, копейки')
+    stars_spent_kopecks = models.BigIntegerField(default=0, verbose_name='Потрачено, копейки')
     vercel_deployment_url = models.URLField(blank=True)
     ai_model = models.CharField(max_length=64, default='claude-sonnet-4-6')
     agent_models = models.JSONField(default=dict, blank=True)  # per-agent overrides: {'coder': 'qwen3-coder-plus', ...}
     max_iterations = models.IntegerField(default=0)  # 0 = use global STUDIO_MAX_ITERATIONS
-    max_stars_budget = models.IntegerField(default=0)  # 0 = no cap
+    max_stars_budget = models.IntegerField(default=0)  # legacy, dual-write — см. max_kopecks_budget
+    max_kopecks_budget = models.BigIntegerField(default=0, verbose_name='Бюджет, копейки (0 = без лимита)')
     auto_deploy = models.BooleanField(default=False)
     deploy_target = models.CharField(max_length=20, choices=DEPLOY_TARGET_CHOICES, default='none')
     forked_from = models.ForeignKey(

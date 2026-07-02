@@ -168,8 +168,21 @@ class NeuralNetwork(models.Model):
         max_digits=8,
         decimal_places=4,
         default=0,
-        verbose_name='Звёзд за 1000 токенов (dev-API)',
-        help_text='Для токенного биллинга через API-ключи. 0 = авто-расчёт из cost_per_message.'
+        verbose_name='Звёзд за 1000 токенов (dev-API), legacy',
+        help_text='Legacy-поле, только для чтения через save()-синхронизацию. Редактируйте kopecks_per_1k_tokens.'
+    )
+    cost_kopecks = models.BigIntegerField(
+        default=0,
+        verbose_name='Стоимость за сообщение, копейки',
+        help_text='Авторитетное поле цены (позволяет дробные ₽, например 50 = 0,50 ₽). '
+                   '0 при создании = выводится из cost_per_message×100 один раз; далее оба поля независимы.'
+    )
+    kopecks_per_1k_tokens = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name='Копеек за 1000 токенов (dev-API)',
+        help_text='Для токенного биллинга через API-ключи. 0 = авто-расчёт из cost_kopecks.'
     )
 
     # §7.5 Model Arena Elo rating
@@ -189,6 +202,20 @@ class NeuralNetwork(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.category.name})"
+
+    def save(self, *args, **kwargs):
+        # Разовый вывод cost_kopecks из legacy cost_per_message при создании/пока не задан явно.
+        # После первого явного задания cost_kopecks поля независимы — редактируйте любое из них.
+        if not self.cost_kopecks and self.cost_per_message:
+            self.cost_kopecks = self.cost_per_message * 100
+        if not self.kopecks_per_1k_tokens and self.stars_per_1k_tokens:
+            self.kopecks_per_1k_tokens = self.stars_per_1k_tokens * 100
+        super().save(*args, **kwargs)
+
+    @property
+    def cost_rub(self):
+        from core.money import kopecks_to_rub
+        return kopecks_to_rub(self.cost_kopecks)
 
     def get_avatar(self):
         if self.avatar and self.avatar.url:
@@ -1080,7 +1107,8 @@ class UsageEvent(models.Model):
         null=True, blank=True,
         verbose_name='Модель',
     )
-    cost = models.IntegerField(default=0, verbose_name='Стоимость (зв.)')
+    cost = models.IntegerField(default=0, verbose_name='Стоимость (зв., legacy)')
+    cost_kopecks = models.BigIntegerField(default=0, verbose_name='Стоимость, копейки')
     meta = models.JSONField(default=dict, blank=True, verbose_name='Доп. данные')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Время')
 

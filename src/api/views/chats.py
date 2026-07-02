@@ -57,7 +57,7 @@ class ChatListCreateView(ListCreateAPIView):
             return Response({'error': {'message': 'Нет текста или файлов', 'type': 'invalid_request_error', 'code': None}}, status=400)
 
         network = get_object_or_404(NeuralNetwork, slug=network_slug, is_active=True)
-        cost = network.cost_per_message
+        cost_kopecks = network.cost_kopecks
         deduct_stars = True
 
         # Медиа-генерация доступна только на платных тарифах
@@ -85,10 +85,11 @@ class ChatListCreateView(ListCreateAPIView):
                 usage.count += 1
                 usage.save()
 
-        if deduct_stars and request.user.pages_count < cost:
+        if deduct_stars and not request.user.has_enough_kopecks(cost_kopecks):
+            from core.money import format_rub
             return Response({
                 'error': {
-                    'message': f'Недостаточно звёзд. Нужно {cost} зв., у вас {request.user.pages_count} зв.',
+                    'message': f'Недостаточно средств. Нужно {format_rub(cost_kopecks)}, у вас {format_rub(request.user.balance_kopecks)}.',
                     'type': 'insufficient_quota',
                     'code': 'insufficient_quota',
                 }
@@ -120,9 +121,9 @@ class ChatListCreateView(ListCreateAPIView):
         )
 
         if network.provider != 'fal-ai' and deduct_stars:
-            request.user.spend_pages(cost)
+            request.user.spend_kopecks(cost_kopecks, type='spend', reference=f'chat:{assistant_message.id}')
             UserSpending.objects.create(
-                user=request.user, amount=cost,
+                user=request.user, amount=max(1, cost_kopecks // 100), amount_kopecks=cost_kopecks,
                 description=f"Сообщение в чате с {network.name}",
             )
 
@@ -156,6 +157,7 @@ class ChatListCreateView(ListCreateAPIView):
             'user_message_id': user_message.id,
             'assistant_message_id': assistant_message.id,
             'new_balance': request.user.pages_count,
+            'new_balance_kopecks': request.user.balance_kopecks,
         }, status=201)
 
 
@@ -200,7 +202,7 @@ class SendMessageView(APIView):
             return Response({'error': {'message': 'Нет текста или файлов', 'type': 'invalid_request_error', 'code': None}}, status=400)
 
         network = chat.network
-        cost = network.cost_per_message
+        cost_kopecks = network.cost_kopecks
         deduct_stars = True
 
         # Медиа-генерация доступна только на платных тарифах
@@ -228,10 +230,11 @@ class SendMessageView(APIView):
                 usage.count += 1
                 usage.save()
 
-        if deduct_stars and request.user.pages_count < cost:
+        if deduct_stars and not request.user.has_enough_kopecks(cost_kopecks):
+            from core.money import format_rub
             return Response({
                 'error': {
-                    'message': f'Недостаточно звёзд. Нужно {cost} зв., у вас {request.user.pages_count} зв.',
+                    'message': f'Недостаточно средств. Нужно {format_rub(cost_kopecks)}, у вас {format_rub(request.user.balance_kopecks)}.',
                     'type': 'insufficient_quota',
                     'code': 'insufficient_quota',
                 }
@@ -247,9 +250,9 @@ class SendMessageView(APIView):
         )
 
         if network.provider != 'fal-ai' and deduct_stars:
-            request.user.spend_pages(cost)
+            request.user.spend_kopecks(cost_kopecks, type='spend', reference=f'chat:{assistant_message.id}')
             UserSpending.objects.create(
-                user=request.user, amount=cost,
+                user=request.user, amount=max(1, cost_kopecks // 100), amount_kopecks=cost_kopecks,
                 description=f"Сообщение в чате с {network.name}",
             )
 
@@ -268,6 +271,7 @@ class SendMessageView(APIView):
             'user_message_id': user_message.id,
             'assistant_message_id': assistant_message.id,
             'new_balance': request.user.pages_count,
+            'new_balance_kopecks': request.user.balance_kopecks,
         }, status=201)
 
 
@@ -313,7 +317,7 @@ class StreamMessageView(APIView):
                 'error': {'message': 'Нет текста или файлов', 'type': 'invalid_request_error', 'code': None}
             }, status=400)
 
-        cost = network.cost_per_message
+        cost_kopecks = network.cost_kopecks
         deduct_stars = True
 
         if (network.unlimited and
@@ -328,10 +332,11 @@ class StreamMessageView(APIView):
                 usage.count += 1
                 usage.save()
 
-        if deduct_stars and request.user.pages_count < cost:
+        if deduct_stars and not request.user.has_enough_kopecks(cost_kopecks):
+            from core.money import format_rub
             return Response({
                 'error': {
-                    'message': f'Недостаточно звёзд. Нужно {cost} зв., у вас {request.user.pages_count} зв.',
+                    'message': f'Недостаточно средств. Нужно {format_rub(cost_kopecks)}, у вас {format_rub(request.user.balance_kopecks)}.',
                     'type': 'insufficient_quota',
                     'code': 'insufficient_quota',
                 }
@@ -354,13 +359,14 @@ class StreamMessageView(APIView):
             ).update(message=user_message)
 
         if deduct_stars:
-            request.user.spend_pages(cost)
+            request.user.spend_kopecks(cost_kopecks, type='spend', reference=f'chat:{assistant_message.id}')
             UserSpending.objects.create(
-                user=request.user, amount=cost,
+                user=request.user, amount=max(1, cost_kopecks // 100), amount_kopecks=cost_kopecks,
                 description=f"Сообщение в чате с {network.name}",
             )
 
         new_balance = request.user.pages_count
+        new_balance_kopecks = request.user.balance_kopecks
         chat.updated_at = timezone.now()
         chat.save(update_fields=['updated_at'])
 
@@ -512,6 +518,7 @@ class StreamMessageView(APIView):
                 "user_message_id": user_msg_id,
                 "assistant_message_id": assist_msg_id,
                 "new_balance": new_balance,
+                "new_balance_kopecks": new_balance_kopecks,
             })
 
             # Сообщаем фронтенду итог поиска (поиск уже выполнен синхронно выше)
@@ -591,11 +598,11 @@ class StreamMessageView(APIView):
                     # Sprint 3: 1.5× billing — charge extra 0.5× for the 2 parallel variant calls
                     if all_variants and deduct_stars:
                         import math as _math
-                        _extra = max(1, _math.ceil(cost * 0.5))
+                        _extra_kopecks = max(1, _math.ceil(cost_kopecks * 0.5))
                         try:
-                            user.spend_pages(_extra)
+                            user.spend_kopecks(_extra_kopecks, type='spend', reference=f'chat-variants:{assist_msg_id}')
                             UserSpending.objects.create(
-                                user=user, amount=_extra,
+                                user=user, amount=max(1, _extra_kopecks // 100), amount_kopecks=_extra_kopecks,
                                 description=f"Генерация вариантов ответа (×1.5) в чате с {network.name}",
                             )
                         except Exception:
@@ -623,7 +630,7 @@ class StreamMessageView(APIView):
                         event_type='search' if web_search else 'message',
                         channel='web',
                         network=network,
-                        cost=cost if deduct_stars else 0,
+                        cost_kopecks=cost_kopecks if deduct_stars else 0,
                         **ab_meta,
                     )
                 except Exception:
@@ -667,8 +674,9 @@ class StreamMessageView(APIView):
                     exc_info=True,
                 )
                 if deduct_stars:
-                    user.add_pages(cost)
-                    logger.info(f"Refunded {cost} stars to {user.email} after streaming error")
+                    user.add_kopecks(cost_kopecks, type='refund', reference=f'chat:{assist_msg_id}')
+                    from core.money import format_rub
+                    logger.info(f"Refunded {format_rub(cost_kopecks)} to {user.email} after streaming error")
                 user_msg = f"Ошибка при генерации ответа. Попробуйте ещё раз."
                 assistant_message.status = Message.Status.FAILED
                 assistant_message.error_message = user_msg
@@ -701,21 +709,22 @@ class RegenerateView(APIView):
                 }
             }, status=400)
 
-        cost = network.cost_per_message
+        cost_kopecks = network.cost_kopecks
 
-        if network.provider != 'fal-ai' and request.user.pages_count < cost:
+        if network.provider != 'fal-ai' and not request.user.has_enough_kopecks(cost_kopecks):
+            from core.money import format_rub
             return Response({
                 'error': {
-                    'message': f'Недостаточно звёзд. Нужно {cost} зв., у вас {request.user.pages_count} зв.',
+                    'message': f'Недостаточно средств. Нужно {format_rub(cost_kopecks)}, у вас {format_rub(request.user.balance_kopecks)}.',
                     'type': 'insufficient_quota',
                     'code': 'insufficient_quota',
                 }
             }, status=402)
 
         if network.provider != 'fal-ai':
-            request.user.spend_pages(cost)
+            request.user.spend_kopecks(cost_kopecks, type='spend', reference=f'chat-regen:{last_assistant.id}')
             UserSpending.objects.create(
-                user=request.user, amount=cost,
+                user=request.user, amount=max(1, cost_kopecks // 100), amount_kopecks=cost_kopecks,
                 description=f"Повторная генерация в чате с {network.name}",
             )
 
@@ -733,4 +742,5 @@ class RegenerateView(APIView):
         return Response({
             'assistant_message_id': last_assistant.id,
             'new_balance': request.user.pages_count,
+            'new_balance_kopecks': request.user.balance_kopecks,
         })

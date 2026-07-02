@@ -53,7 +53,7 @@ function RegisterForm() {
 
       <div className="mb-5 flex items-center gap-2 rounded-[8px] bg-[rgba(217,119,87,0.10)] px-3.5 py-2.5 text-[15px] text-[#D97757]">
         <Check size={14} />
-        10 звёзд бесплатно при регистрации
+        10 ₽ бесплатно при регистрации
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">

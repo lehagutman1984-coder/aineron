@@ -33,6 +33,7 @@ class ReferralView(APIView):
         else:
             balance = user.pages_count
             balance_type = 'stars'
+        balance_kopecks = user.balance_kopecks if not user.can_convert_to_rub else None
 
         earnings_qs = ReferralEarning.objects.filter(user=user).order_by('-created_at')[:50]
         earnings = [
@@ -66,6 +67,7 @@ class ReferralView(APIView):
             'referral_code': user.referral_code,
             'referral_clicks': user.referral_clicks,
             'balance': balance,
+            'balance_kopecks': balance_kopecks,
             'balance_type': balance_type,
             'can_withdraw': user.can_convert_to_rub and user.rub_balance > 0,
             'earnings': earnings,

@@ -251,7 +251,7 @@ class DeviationView(APIView):
 class ProjectSettingsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    ALLOWED = {'ai_model', 'agent_models', 'max_iterations', 'max_stars_budget', 'auto_deploy', 'mode'}
+    ALLOWED = {'ai_model', 'agent_models', 'max_iterations', 'max_stars_budget', 'max_kopecks_budget', 'auto_deploy', 'mode'}
 
     def patch(self, request, id):
         from ..models_catalog import MODEL_TIER
@@ -268,7 +268,7 @@ class ProjectSettingsView(APIView):
             invalid = [v for v in am.values() if v not in MODEL_TIER]
             if invalid:
                 return Response({'error': f'Неизвестные модели: {", ".join(invalid)}'}, status=400)
-        for k in ('max_iterations', 'max_stars_budget'):
+        for k in ('max_iterations', 'max_stars_budget', 'max_kopecks_budget'):
             if k in request.data:
                 val = request.data[k]
                 if not isinstance(val, int) or val < 0:
@@ -279,6 +279,14 @@ class ProjectSettingsView(APIView):
             if key in request.data:
                 setattr(project, key, request.data[key])
                 updated.append(key)
+        # Синхронизация budget-полей: kopecks — авторитетное поле для реального биллинга (Фаза 5),
+        # max_stars_budget остаётся legacy-отображением.
+        if 'max_stars_budget' in updated and 'max_kopecks_budget' not in request.data:
+            project.max_kopecks_budget = project.max_stars_budget * 100
+            updated.append('max_kopecks_budget')
+        elif 'max_kopecks_budget' in updated:
+            project.max_stars_budget = project.max_kopecks_budget // 100
+            updated.append('max_stars_budget')
         if updated:
             project.save(update_fields=updated)
         return Response({
@@ -286,6 +294,7 @@ class ProjectSettingsView(APIView):
             'agent_models': project.agent_models or {},
             'max_iterations': project.max_iterations,
             'max_stars_budget': project.max_stars_budget,
+            'max_kopecks_budget': project.max_kopecks_budget,
             'auto_deploy': project.auto_deploy,
             'mode': project.mode,
         })

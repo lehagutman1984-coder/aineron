@@ -675,7 +675,7 @@ def generate_ai_response(self, message_id, web_search=False):
 
             logger.info(f"=== Генерация медиа для сообщения {message_id}, нейросеть: {network.name} ===")
             stars_deducted = False
-            total_cost = 0
+            total_cost_kopecks = 0
             try:
                 user_settings = user_msg.settings if user_msg else {}
 
@@ -683,7 +683,7 @@ def generate_ai_response(self, message_id, web_search=False):
                 if not config:
                     raise Exception("Отсутствует конфигурация модели")
 
-                base_cost = network.cost_per_message
+                base_cost_kopecks = network.cost_kopecks
                 if user_settings:
                     _, errors, extra_cost = validate_and_merge_settings(config, user_settings)
                     if errors:
@@ -691,22 +691,26 @@ def generate_ai_response(self, message_id, web_search=False):
                 else:
                     extra_cost = 0
 
-                total_cost = base_cost + extra_cost
+                # extra_cost приходит из config_json в звёздах (legacy admin-поле) — ×100
+                total_cost_kopecks = base_cost_kopecks + extra_cost * 100
 
                 # skip_star_billing: True means org billing was already charged in group handler
                 skip_billing = (message.settings or {}).get('skip_star_billing', False)
                 if not skip_billing:
-                    if user.pages_count < total_cost:
-                        raise Exception(f"Недостаточно звёзд. Нужно {total_cost} зв., у вас {user.pages_count} зв.")
+                    if not user.has_enough_kopecks(total_cost_kopecks):
+                        from core.money import format_rub
+                        raise Exception(f"Недостаточно средств. Нужно {format_rub(total_cost_kopecks)}, у вас {format_rub(user.balance_kopecks)}.")
 
-                    user.spend_pages(total_cost)
+                    user.spend_kopecks(total_cost_kopecks, type='spend', reference=f'media:{message.id}')
                     stars_deducted = True
                     UserSpending.objects.create(
                         user=user,
-                        amount=total_cost,
+                        amount=max(1, total_cost_kopecks // 100),
+                        amount_kopecks=total_cost_kopecks,
                         description=f"Сообщение в чате с {network.name} (включая настройки)"
                     )
-                    logger.info(f"Списано {total_cost} зв. у пользователя {user.email}")
+                    from core.money import format_rub
+                    logger.info(f"Списано {format_rub(total_cost_kopecks)} у пользователя {user.email}")
 
                 original_prompt = user_msg.content if user_msg else ""
                 if network.translate_to_english and original_prompt:
@@ -735,7 +739,7 @@ def generate_ai_response(self, message_id, web_search=False):
                     tg_chat_id = chat_settings.get('telegram_chat_id')
                     if tg_chat_id and saved_images:
                         from telegram_bot.notify import send_media_to_telegram
-                        send_media_to_telegram(tg_chat_id, saved_images[0], network.name, network.cost_per_message)
+                        send_media_to_telegram(tg_chat_id, saved_images[0], network.name, network.cost_kopecks)
                     elif tg_chat_id:
                         from telegram_bot.notify import maybe_notify_chat
                         maybe_notify_chat(tg_chat_id, f"Видео готово. Смотри в кабинете: https://aineron.ru/account/files/")
@@ -750,8 +754,9 @@ def generate_ai_response(self, message_id, web_search=False):
                 error_str = str(e)
                 logger.error(f"Ошибка генерации медиа для сообщения {message_id}: {e}")
                 if stars_deducted:
-                    user.add_pages(total_cost)
-                    logger.info(f"Возвращено {total_cost} зв. пользователю {user.email} из-за ошибки генерации")
+                    user.add_kopecks(total_cost_kopecks, type='refund', reference=f'media:{message.id}')
+                    from core.money import format_rub
+                    logger.info(f"Возвращено {format_rub(total_cost_kopecks)} пользователю {user.email} из-за ошибки генерации")
                 message.status = Message.Status.FAILED
                 if 'billing' in error_str.lower() or 'balance' in error_str.lower() or 'quota' in error_str.lower():
                     message.error_message = "Проблема с провайдером, обратитесь к администратору сервиса для решения проблем."
@@ -1028,16 +1033,17 @@ def generate_ai_response(self, message_id, web_search=False):
 
         logger.info(f"AI ответ сгенерирован для сообщения {message_id}, сохранено изображений: {len(saved_images)}")
 
-        # TEXT_BILLING_ENABLED: списание звёзд за текстовые сообщения (off by default)
+        # TEXT_BILLING_ENABLED: списание за текстовые сообщения (off by default)
         if getattr(settings, 'TEXT_BILLING_ENABLED', False):
             _skip = (message.settings or {}).get('skip_star_billing', False)
             if not _skip:
-                _cost = network.cost_per_message
+                _cost_kopecks = network.cost_kopecks
                 try:
-                    user.spend_pages(_cost)
+                    user.spend_kopecks(_cost_kopecks, type='spend', reference=f'text:{message.id}')
                     UserSpending.objects.create(
                         user=user,
-                        amount=_cost,
+                        amount=max(1, _cost_kopecks // 100),
+                        amount_kopecks=_cost_kopecks,
                         description=f"Сообщение в чате с {network.name}",
                     )
                 except Exception as _bill_err:
@@ -1085,7 +1091,7 @@ def generate_ai_response(self, message_id, web_search=False):
 # ──────────────────────────────────────────────────────────────────────────────
 
 @shared_task(bind=True, max_retries=1)
-def upscale_generation_task(self, generation_id, user_id, factor=2, image_url=None, cost=0, placeholder_id=None):
+def upscale_generation_task(self, generation_id, user_id, factor=2, image_url=None, cost_kopecks=0, placeholder_id=None):
     """Sprint 6: улучшение изображения через upscale-модель провайдера.
 
     Биллинг со списанием/возвратом звёзд выполняется здесь.
@@ -1102,17 +1108,19 @@ def upscale_generation_task(self, generation_id, user_id, factor=2, image_url=No
         except CustomUser.DoesNotExist:
             user = None
 
-        if user and cost:
-            if user.pages_count < cost:
-                raise Exception(f"Недостаточно звёзд. Нужно {cost} зв., у вас {user.pages_count} зв.")
-            user.spend_pages(cost)
+        if user and cost_kopecks:
+            from core.money import format_rub
+            if not user.has_enough_kopecks(cost_kopecks):
+                raise Exception(f"Недостаточно средств. Нужно {format_rub(cost_kopecks)}, у вас {format_rub(user.balance_kopecks)}.")
+            user.spend_kopecks(cost_kopecks, type='spend', reference=f'upscale:{generation_id}')
             stars_deducted = True
             UserSpending.objects.create(
                 user=user,
-                amount=cost,
+                amount=max(1, cost_kopecks // 100),
+                amount_kopecks=cost_kopecks,
                 description=f"Улучшение изображения ×{factor}",
             )
-            logger.info(f"[upscale] списано {cost} зв. у пользователя {user.email}")
+            logger.info(f"[upscale] списано {format_rub(cost_kopecks)} у пользователя {user.email}")
 
         gen = generate_upscale(generation_id, user_id=user_id, factor=factor, image_url=image_url, placeholder_id=placeholder_id)
         logger.info(f"[upscale] генерация {generation_id} улучшена ×{factor} → {gen.id if gen else None}")
@@ -1148,8 +1156,9 @@ def upscale_generation_task(self, generation_id, user_id, factor=2, image_url=No
     except Exception as e:
         logger.error(f"[upscale] ошибка улучшения генерации {generation_id}: {e}")
         if stars_deducted and user:
-            user.add_pages(cost)
-            logger.info(f"[upscale] возвращено {cost} зв. пользователю {user.email} из-за ошибки")
+            from core.money import format_rub
+            user.add_kopecks(cost_kopecks, type='refund', reference=f'upscale:{generation_id}')
+            logger.info(f"[upscale] возвращено {format_rub(cost_kopecks)} пользователю {user.email} из-за ошибки")
         raise
 
 

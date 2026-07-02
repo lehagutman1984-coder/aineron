@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Coins, ExternalLink, Loader2, Monitor, RefreshCw, Smartphone, StopCircle, Tablet, Terminal, XCircle, Zap } from 'lucide-react';
 import { studioApi } from '@/lib/api/studio';
 import { APIError } from '@/lib/api/client';
+import { formatRub } from '@/lib/money';
 import { SessionTimer } from './SessionTimer';
 
 type E2BState = 'idle' | 'starting' | 'running' | 'failed' | 'expired' | 'capped';
@@ -246,7 +247,7 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
         <div>
           <p className="text-sm font-medium text-[var(--text)]">Превью не запущено</p>
           <p className="text-xs text-[var(--text-secondary)] mt-1 max-w-[220px] leading-relaxed">
-            ~1 зв./мин · сессия до 15 мин · списывается только фактическое время
+            ~1 ₽/мин · сессия до 15 мин · списывается только фактическое время
           </p>
         </div>
         <button
@@ -325,7 +326,7 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
         <div>
           <p className="text-sm font-medium text-[var(--text)]">Сессия завершена</p>
           <p className="text-xs text-[var(--text-secondary)] mt-1">
-            15 мин истекли{sessionCost > 0 ? ` · потрачено ~${sessionCost} зв.` : ''}
+            15 мин истекли{sessionCost > 0 ? ` · потрачено ~${formatRub(sessionCost * 100)}` : ''}
           </p>
         </div>
         <button
@@ -417,9 +418,9 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
 
         {/* Cost indicator */}
         {costStars > 0 && (
-          <span className="flex items-center gap-1 text-[12px] text-[var(--text-secondary)]" title="Потрачено звёзд за сессию">
+          <span className="flex items-center gap-1 text-[12px] text-[var(--text-secondary)]" title="Потрачено за сессию">
             <Coins size={11} />
-            {costStars}
+            {formatRub(costStars * 100)}
           </span>
         )}
 

@@ -43,6 +43,7 @@ class UsageStatsView(APIView):
             .annotate(
                 total_tokens=Sum('total_tokens'),
                 stars_charged=Sum('stars_charged'),
+                cost_kopecks=Sum('cost_kopecks'),
                 requests=Count('id'),
             )
             .order_by('day')
@@ -54,6 +55,7 @@ class UsageStatsView(APIView):
             .annotate(
                 total_tokens=Sum('total_tokens'),
                 stars_charged=Sum('stars_charged'),
+                cost_kopecks=Sum('cost_kopecks'),
                 requests=Count('id'),
             )
             .order_by('-total_tokens')[:20]
@@ -62,6 +64,7 @@ class UsageStatsView(APIView):
         totals = qs.aggregate(
             total_tokens=Sum('total_tokens'),
             total_stars=Sum('stars_charged'),
+            total_kopecks=Sum('cost_kopecks'),
             total_requests=Count('id'),
         )
 
@@ -70,6 +73,7 @@ class UsageStatsView(APIView):
             'totals': {
                 'total_tokens': totals['total_tokens'] or 0,
                 'total_stars': totals['total_stars'] or 0,
+                'total_kopecks': totals['total_kopecks'] or 0,
                 'total_requests': totals['total_requests'] or 0,
             },
             'by_day': [
@@ -77,6 +81,7 @@ class UsageStatsView(APIView):
                     'date': str(row['day']),
                     'total_tokens': row['total_tokens'] or 0,
                     'stars_charged': row['stars_charged'] or 0,
+                    'cost_kopecks': row['cost_kopecks'] or 0,
                     'requests': row['requests'] or 0,
                 }
                 for row in by_day
@@ -87,6 +92,7 @@ class UsageStatsView(APIView):
                     'model_slug': row['network__slug'],
                     'total_tokens': row['total_tokens'] or 0,
                     'stars_charged': row['stars_charged'] or 0,
+                    'cost_kopecks': row['cost_kopecks'] or 0,
                     'requests': row['requests'] or 0,
                 }
                 for row in by_model

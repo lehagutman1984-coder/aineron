@@ -49,11 +49,11 @@ class CompareView(APIView):
 
         today = timezone.now().date()
         network_costs: dict = {}
-        total_cost = 0
+        total_cost_kopecks = 0
 
         for slug in unique_slugs:
             network = networks_map[slug]
-            cost = network.cost_per_message
+            cost_kopecks = network.cost_kopecks
             deduct = True
 
             if (network.unlimited and
@@ -68,14 +68,15 @@ class CompareView(APIView):
                     usage.save()
 
             if network.provider != 'fal-ai' and deduct:
-                total_cost += cost
+                total_cost_kopecks += cost_kopecks
 
-            network_costs[slug] = (cost, deduct)
+            network_costs[slug] = (cost_kopecks, deduct)
 
-        if request.user.pages_count < total_cost:
+        if not request.user.has_enough_kopecks(total_cost_kopecks):
+            from core.money import format_rub
             return Response({
                 'error': {
-                    'message': f'Недостаточно звёзд. Нужно {total_cost} зв., у вас {request.user.pages_count} зв.',
+                    'message': f'Недостаточно средств. Нужно {format_rub(total_cost_kopecks)}, у вас {format_rub(request.user.balance_kopecks)}.',
                     'type': 'insufficient_quota',
                     'code': 'insufficient_quota',
                 }
@@ -84,7 +85,7 @@ class CompareView(APIView):
         items = []
         for slug in unique_slugs:
             network = networks_map[slug]
-            cost, deduct = network_costs[slug]
+            cost_kopecks, deduct = network_costs[slug]
 
             chat = Chat.objects.create(
                 user=request.user,
@@ -101,9 +102,9 @@ class CompareView(APIView):
             )
 
             if network.provider != 'fal-ai' and deduct:
-                request.user.spend_pages(cost)
+                request.user.spend_kopecks(cost_kopecks, type='spend', reference=f'compare:{assistant_message.id}')
                 UserSpending.objects.create(
-                    user=request.user, amount=cost,
+                    user=request.user, amount=max(1, cost_kopecks // 100), amount_kopecks=cost_kopecks,
                     description=f"Сравнение моделей: {network.name}",
                 )
 
@@ -119,11 +120,14 @@ class CompareView(APIView):
                 'network_avatar': network.avatar.url if network.avatar else None,
                 'provider': network.provider,
                 'assistant_message_id': assistant_message.id,
-                'cost': cost,
+                'cost': cost_kopecks // 100,
+                'cost_kopecks': cost_kopecks,
             })
 
         return Response({
             'items': items,
-            'total_cost': total_cost,
+            'total_cost': total_cost_kopecks // 100,
+            'total_cost_kopecks': total_cost_kopecks,
             'new_balance': request.user.pages_count,
+            'new_balance_kopecks': request.user.balance_kopecks,
         }, status=201)

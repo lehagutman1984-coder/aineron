@@ -3,11 +3,12 @@
 import { useState } from 'react';
 import { Coins, CheckCircle2, GitBranch, Globe, Loader2, ExternalLink } from 'lucide-react';
 import { studioApi } from '@/lib/api/studio';
+import { formatRub } from '@/lib/money';
 import { card, btn } from './styles';
 
 interface BillingEstimateProps {
-  estimatedStars?: number;
-  spentStars?: number;
+  estimatedKopecks?: number;
+  spentKopecks?: number;
   plannedSteps?: number;
   repoUrl?: string;
   completed?: boolean;
@@ -16,8 +17,8 @@ interface BillingEstimateProps {
 }
 
 export function BillingEstimate({
-  estimatedStars,
-  spentStars,
+  estimatedKopecks,
+  spentKopecks,
   plannedSteps,
   repoUrl,
   completed,
@@ -47,7 +48,7 @@ export function BillingEstimate({
         <div className="space-y-2 text-sm">
           <div className="flex items-center gap-2 text-[var(--text-secondary)]">
             <Coins size={14} className="text-yellow-400" />
-            Потрачено звёзд: <strong className="text-[var(--text)]">{spentStars ?? 0}</strong>
+            Потрачено: <strong className="text-[var(--text)]">{formatRub(spentKopecks ?? 0)}</strong>
           </div>
           {plannedSteps !== undefined && (
             <div className="flex items-center gap-2 text-[var(--text-secondary)]">
@@ -103,13 +104,13 @@ export function BillingEstimate({
     <div className="flex items-center gap-3 p-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-xl text-sm">
       <Coins size={18} className="text-yellow-400 shrink-0" />
       <div className="flex-1">
-        {spentStars !== undefined ? (
+        {spentKopecks !== undefined ? (
           <span>
-            Потрачено: <strong>{spentStars}</strong> звёзд
+            Потрачено: <strong>{formatRub(spentKopecks)}</strong>
           </span>
         ) : (
           <span>
-            Примерная стоимость: <strong>~{estimatedStars ?? '?'}</strong> звёзд
+            Примерная стоимость: <strong>~{estimatedKopecks !== undefined ? formatRub(estimatedKopecks) : '?'}</strong>
             {plannedSteps ? ` за ${plannedSteps} шагов` : ''}
           </span>
         )}

@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { serverListNetworks } from "@/lib/api/server";
 import type { NetworkListItem } from "@/lib/api/types";
+import { formatRub } from "@/lib/money";
 import { HeroTypewriter } from "@/components/landing/HeroTypewriter";
 import { UseCaseTabs } from "@/components/landing/UseCaseTabs";
 import { FaqAccordion } from "@/components/landing/FaqAccordion";
@@ -169,9 +170,9 @@ export default async function HomePage() {
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-[14px] bg-[rgba(217,119,87,0.10)]">
               <Star size={22} className="text-[#D97757]" />
             </div>
-            <h2 className="text-[24px] font-bold text-[#1A1A1A]">Звёзды — простая оплата</h2>
+            <h2 className="text-[24px] font-bold text-[#1A1A1A]">Простая оплата в рублях</h2>
             <p className="mt-2 text-[17px] text-[rgba(13,13,13,0.55)]">
-              Пополняйте баланс и тратьте на любую модель. Звёзды не сгорают.
+              Пополняйте баланс и тратьте на любую модель. Средства не сгорают.
             </p>
           </div>
           <div className="grid grid-cols-1 divide-y border-t border-[rgba(13,13,13,0.08)] sm:grid-cols-3 sm:divide-x sm:divide-y-0" style={{ borderColor: "rgba(13,13,13,0.08)" }}>
@@ -188,7 +189,7 @@ export default async function HomePage() {
               href="/register/"
               className="inline-flex items-center gap-2 rounded-[10px] bg-[#D97757] px-8 py-3 text-[16px] font-medium text-white hover:bg-[#C4623E] transition-colors"
             >
-              Начать с 10 бесплатными звёздами
+              Начать с 10 ₽ бесплатно
               <ArrowRight size={15} />
             </Link>
             <p className="mt-2 text-[14px] text-[rgba(13,13,13,0.38)]">
@@ -213,7 +214,7 @@ export default async function HomePage() {
             Начните прямо сейчас
           </h2>
           <p className="mb-8 text-[16px] text-[rgba(255,255,255,0.55)]">
-            10 звёзд бесплатно. Без VPN, без зарубежных карт.
+            10 ₽ бесплатно. Без VPN, без зарубежных карт.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Link
@@ -283,7 +284,7 @@ function NetworkCard({ network }: { network: NetworkListItem }) {
       )}
       <div className="mt-auto flex items-center justify-between pt-1">
         <span className="text-[14px] text-[rgba(13,13,13,0.45)]">
-          {network.cost_per_message} зв. / сообщение
+          {formatRub(network.cost_kopecks)} / сообщение
         </span>
         <ArrowRight
           size={14}
@@ -317,7 +318,7 @@ const STATS = [
 
 const FEATURES = [
   { icon: Globe, title: "Без VPN", text: "Российский сервис, оплата рублями. Доступно с любого устройства в РФ." },
-  { icon: Zap, title: "Мгновенный старт", text: "Регистрация за 30 секунд, 10 бесплатных звёзд сразу." },
+  { icon: Zap, title: "Мгновенный старт", text: "Регистрация за 30 секунд, 10 ₽ на балансе сразу." },
   { icon: Code2, title: "OpenAI API", text: "Подключите к Cursor, VS Code, Continue и любому OpenAI-совместимому приложению." },
   { icon: ImageIcon, title: "Текст и медиа", text: "LLM, изображения и видео — один кошелёк, одна точка входа." },
 ];
@@ -341,7 +342,7 @@ const COMPARISON: {
 ];
 
 const PRICING = [
-  { title: "10 звёзд", price: "бесплатно", sub: "после регистрации" },
-  { title: "Дополнительные", price: "от 1 ₽", sub: "за звезду, без минимума" },
+  { title: "10 ₽", price: "бесплатно", sub: "после регистрации" },
+  { title: "Пополнение", price: "от 1 ₽", sub: "любая сумма, без минимума" },
   { title: "Подписки", price: "со скидкой", sub: "пакеты для активных пользователей" },
 ];

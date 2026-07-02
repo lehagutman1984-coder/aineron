@@ -7,6 +7,7 @@ import { useAuthStore } from "@/lib/stores/auth";
 import { useUIStore, type Theme } from "@/lib/stores/ui";
 import { authLogout } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
+import { formatRub } from "@/lib/money";
 
 const THEME_CYCLE: Theme[] = ["system", "light", "dark"];
 
@@ -17,7 +18,7 @@ function ThemeIcon({ theme }: { theme: Theme }) {
 }
 
 export function Navbar() {
-  const { user, stars, logout } = useAuthStore();
+  const { user, balanceKopecks, logout } = useAuthStore();
   const { theme, setTheme } = useUIStore();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -68,7 +69,7 @@ export function Navbar() {
             <>
               <div className="flex items-center gap-1.5 rounded-full border border-[rgba(13,13,13,0.12)] px-3 py-1.5 text-[15px] text-[#1A1A1A] dark:border-[rgba(255,255,255,0.12)] dark:text-[#EDE8E3]">
                 <Star size={13} className="text-[#D97757]" />
-                <span className="font-medium">{stars}</span>
+                <span className="font-medium">{formatRub(balanceKopecks)}</span>
               </div>
               <Link
                 href="/account/"
@@ -134,7 +135,7 @@ export function Navbar() {
               <>
                 <div className="flex items-center gap-2 py-2 text-[15px] text-[rgba(13,13,13,0.7)] dark:text-[rgba(236,236,236,0.6)]">
                   <Star size={13} className="text-[#D97757]" />
-                  <span>{stars} звёзд</span>
+                  <span>{formatRub(balanceKopecks)}</span>
                 </div>
                 <MobileNavLink href="/account/" onClick={() => setMobileOpen(false)}>Личный кабинет</MobileNavLink>
                 <button

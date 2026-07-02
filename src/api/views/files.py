@@ -147,11 +147,12 @@ class GenerationRerunView(APIView):
                 }
             }, status=402)
 
-        cost = network.cost_per_message
-        if network.provider != 'fal-ai' and request.user.pages_count < cost:
+        cost_kopecks = network.cost_kopecks
+        if network.provider != 'fal-ai' and not request.user.has_enough_kopecks(cost_kopecks):
+            from core.money import format_rub
             return Response({
                 'error': {
-                    'message': f'Недостаточно звёзд. Нужно {cost} зв., у вас {request.user.pages_count} зв.',
+                    'message': f'Недостаточно средств. Нужно {format_rub(cost_kopecks)}, у вас {format_rub(request.user.balance_kopecks)}.',
                     'type': 'insufficient_quota',
                     'code': 'insufficient_quota',
                 }
@@ -230,11 +231,12 @@ class GenerationUpscaleView(APIView):
             }, status=402)
 
         network = gen.message.chat.network if gen.message_id else None
-        cost = network.cost_per_message if network else 0
-        if cost and request.user.pages_count < cost:
+        cost_kopecks = network.cost_kopecks if network else 0
+        if cost_kopecks and not request.user.has_enough_kopecks(cost_kopecks):
+            from core.money import format_rub
             return Response({
                 'error': {
-                    'message': f'Недостаточно звёзд. Нужно {cost} зв., у вас {request.user.pages_count} зв.',
+                    'message': f'Недостаточно средств. Нужно {format_rub(cost_kopecks)}, у вас {format_rub(request.user.balance_kopecks)}.',
                     'type': 'insufficient_quota',
                     'code': 'insufficient_quota',
                 }
@@ -260,7 +262,7 @@ class GenerationUpscaleView(APIView):
         )
 
         from aitext.tasks import upscale_generation_task
-        task = upscale_generation_task.delay(gen.id, request.user.id, factor, image_url, cost, placeholder.id)
+        task = upscale_generation_task.delay(gen.id, request.user.id, factor, image_url, cost_kopecks, placeholder.id)
 
         return Response({
             'placeholder_id': placeholder.id,
@@ -313,12 +315,13 @@ class GenerationVariationsView(APIView):
                 }
             }, status=402)
 
-        cost = network.cost_per_message
-        total_cost = cost * count
-        if request.user.pages_count < total_cost:
+        cost_kopecks = network.cost_kopecks
+        total_cost_kopecks = cost_kopecks * count
+        if not request.user.has_enough_kopecks(total_cost_kopecks):
+            from core.money import format_rub
             return Response({
                 'error': {
-                    'message': f'Недостаточно звёзд. Нужно {total_cost} зв. на {count} вариаций, у вас {request.user.pages_count} зв.',
+                    'message': f'Недостаточно средств. Нужно {format_rub(total_cost_kopecks)} на {count} вариаций, у вас {format_rub(request.user.balance_kopecks)}.',
                     'type': 'insufficient_quota',
                     'code': 'insufficient_quota',
                 }

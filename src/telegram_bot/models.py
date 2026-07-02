@@ -149,7 +149,8 @@ class TelegramEvent(models.Model):
         null=True, blank=True,
         verbose_name='Модель',
     )
-    cost = models.IntegerField(default=0, verbose_name='Стоимость (зв.)')
+    cost = models.IntegerField(default=0, verbose_name='Стоимость (зв., legacy)')
+    cost_kopecks = models.BigIntegerField(default=0, verbose_name='Стоимость, копейки')
     meta = models.JSONField(default=dict, blank=True, verbose_name='Доп. данные')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Время')
 

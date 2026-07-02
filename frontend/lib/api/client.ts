@@ -253,8 +253,8 @@ export const searchChats = (q: string, page = 1): Promise<import("./types").Chat
 export const exportChat = (id: number, format: "md" | "html" = "md"): string =>
   `${BASE_URL}/chats/${id}/export/?format=${format}`;
 
-export const regenerateChat = (chatId: number): Promise<{ assistant_message_id: number; new_balance: number }> =>
-  request<{ assistant_message_id: number; new_balance: number }>(`/chats/${chatId}/regenerate/`, {
+export const regenerateChat = (chatId: number): Promise<{ assistant_message_id: number; new_balance: number; new_balance_kopecks: number }> =>
+  request<{ assistant_message_id: number; new_balance: number; new_balance_kopecks: number }>(`/chats/${chatId}/regenerate/`, {
     method: "POST",
   });
 
@@ -295,7 +295,7 @@ export const getMessageStatus = (messageId: number): Promise<WebMessage> =>
 // ============ SSE Streaming ============
 
 type SSEEvent =
-  | { type: "init"; user_message_id: number; assistant_message_id: number; new_balance: number }
+  | { type: "init"; user_message_id: number; assistant_message_id: number; new_balance: number; new_balance_kopecks: number }
   | { type: "search_done"; preview: string }
   | { type: "token"; text: string }
   | { type: "done"; content: string; plain_text: string; search_context?: string; sources?: import("./types").KBSource[]; variants?: import("./types").MessageVariant[]; commit_proposed?: { id: number; commit_message: string; files_count: number; project_id: number } | null; used_memory?: boolean }
@@ -312,7 +312,7 @@ export async function streamMessage(
   chatId: number,
   body: { message: string; files?: unknown[]; settings?: Record<string, unknown>; attachment_ids?: string[]; web_search?: boolean; variants_mode?: boolean },
   callbacks: {
-    onInit: (data: { user_message_id: number; assistant_message_id: number; new_balance: number }) => void;
+    onInit: (data: { user_message_id: number; assistant_message_id: number; new_balance: number; new_balance_kopecks: number }) => void;
     onSearchDone?: (preview: string) => void;
     onToken: (text: string) => void;
     onDone: (data: { content: string; plain_text: string; search_context?: string; sources?: import("./types").KBSource[]; variants?: import("./types").MessageVariant[]; commit_proposed?: CommitProposed | null; used_memory?: boolean }) => void;

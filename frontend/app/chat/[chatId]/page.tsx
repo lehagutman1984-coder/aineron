@@ -63,7 +63,7 @@ export default function ChatPage() {
   const { chatId } = useParams<{ chatId: string }>();
   const id = Number(chatId);
   const qc = useQueryClient();
-  const { setStars } = useAuthStore();
+  const { setBalance } = useAuthStore();
   const addToast = useUIStore((s) => s.addToast);
 
   const [text, setText] = useState("");
@@ -289,7 +289,7 @@ export default function ChatPage() {
       if (textareaRef.current) textareaRef.current.style.height = "auto";
     },
     onSuccess: (res) => {
-      setStars(res.new_balance);
+      setBalance(res.new_balance_kopecks);
       setPendingMessageId(res.assistant_message_id);
       qc.setQueryData<ChatDetail>(["chat", id], (prev) => {
         if (!prev) return prev;
@@ -324,7 +324,7 @@ export default function ChatPage() {
       });
     },
     onSuccess: (res) => {
-      setStars(res.new_balance);
+      setBalance(res.new_balance_kopecks);
       setPendingMessageId(res.assistant_message_id);
     },
     onError: () => {
@@ -365,9 +365,9 @@ export default function ChatPage() {
         // Показываем "Ищу в интернете..." сразу при отправке (поиск синхронный на backend)
         if (webSearch) setSearchPhase("searching");
         await streamMessage(id, { message: msg, attachment_ids: attachmentIds, web_search: webSearch, variants_mode: variantsMode }, {
-          onInit: ({ user_message_id, assistant_message_id, new_balance }) => {
+          onInit: ({ user_message_id, assistant_message_id, new_balance_kopecks }) => {
             realAssistId = assistant_message_id;
-            setStars(new_balance);
+            setBalance(new_balance_kopecks);
             setStreamingAssistId(assistant_message_id);
             qc.setQueryData<ChatDetail>(["chat", id], (prev) => {
               if (!prev) return prev;
@@ -453,7 +453,7 @@ export default function ChatPage() {
         setStreamError(errMsg);
       }
     },
-    [id, qc, setStars, webSearch, variantsMode]
+    [id, qc, setBalance, webSearch, variantsMode]
   );
 
   // Sprint 2 — Deep Research submit

@@ -13,6 +13,67 @@ from django.db import migrations, models
 import django.db.models.deletion
 
 
+def _create_vector_extension(apps, schema_editor):
+    # Postgres-only: на SQLite (локальные тесты) — no-op.
+    if schema_editor.connection.vendor == 'postgresql':
+        schema_editor.execute('CREATE EXTENSION IF NOT EXISTS vector;')
+
+
+def _drop_vector_extension(apps, schema_editor):
+    if schema_editor.connection.vendor == 'postgresql':
+        schema_editor.execute('DROP EXTENSION IF EXISTS vector;')
+
+
+def _create_chunk_table(apps, schema_editor):
+    if schema_editor.connection.vendor == 'postgresql':
+        schema_editor.execute("""
+            CREATE TABLE IF NOT EXISTS aitext_projectchunk (
+                id          bigserial PRIMARY KEY,
+                project_id  bigint NOT NULL
+                    REFERENCES aitext_project(id) ON DELETE CASCADE,
+                file_id     bigint NOT NULL
+                    REFERENCES aitext_projectfile(id) ON DELETE CASCADE,
+                chunk_index integer NOT NULL CHECK (chunk_index >= 0),
+                content     text NOT NULL,
+                token_count integer NOT NULL DEFAULT 0
+                    CHECK (token_count >= 0),
+                embedding   vector(1536)
+            );
+            CREATE INDEX IF NOT EXISTS chunk_project_idx
+                ON aitext_projectchunk (project_id);
+            CREATE INDEX IF NOT EXISTS chunk_file_idx
+                ON aitext_projectchunk (file_id);
+        """)
+    else:
+        # SQLite (локальные тесты, без pgvector): та же таблица, embedding как BLOB.
+        # PROJECT_VECTOR_RAG выключен по умолчанию — реальные векторные запросы сюда не идут.
+        # sqlite3 не умеет несколько statements в одном execute() — разбиваем по отдельности.
+        schema_editor.execute("""
+            CREATE TABLE IF NOT EXISTS aitext_projectchunk (
+                id          integer PRIMARY KEY AUTOINCREMENT,
+                project_id  bigint NOT NULL
+                    REFERENCES aitext_project(id) ON DELETE CASCADE,
+                file_id     bigint NOT NULL
+                    REFERENCES aitext_projectfile(id) ON DELETE CASCADE,
+                chunk_index integer NOT NULL CHECK (chunk_index >= 0),
+                content     text NOT NULL,
+                token_count integer NOT NULL DEFAULT 0
+                    CHECK (token_count >= 0),
+                embedding   blob
+            )
+        """)
+        schema_editor.execute(
+            "CREATE INDEX IF NOT EXISTS chunk_project_idx ON aitext_projectchunk (project_id)"
+        )
+        schema_editor.execute(
+            "CREATE INDEX IF NOT EXISTS chunk_file_idx ON aitext_projectchunk (file_id)"
+        )
+
+
+def _drop_chunk_table(apps, schema_editor):
+    schema_editor.execute('DROP TABLE IF EXISTS aitext_projectchunk;')
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -20,11 +81,8 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        # 1. Активируем расширение pgvector
-        migrations.RunSQL(
-            sql='CREATE EXTENSION IF NOT EXISTS vector;',
-            reverse_sql='DROP EXTENSION IF EXISTS vector;',
-        ),
+        # 1. Активируем расширение pgvector (Postgres-only, no-op на SQLite)
+        migrations.RunPython(_create_vector_extension, _drop_vector_extension),
 
         # 2. Новые поля на ProjectFile
         migrations.AddField(
@@ -62,27 +120,7 @@ class Migration(migrations.Migration):
         #    CreateModel регистрирует модель в Django state (без физического CREATE TABLE).
         migrations.SeparateDatabaseAndState(
             database_operations=[
-                migrations.RunSQL(
-                    sql="""
-                        CREATE TABLE IF NOT EXISTS aitext_projectchunk (
-                            id          bigserial PRIMARY KEY,
-                            project_id  bigint NOT NULL
-                                REFERENCES aitext_project(id) ON DELETE CASCADE,
-                            file_id     bigint NOT NULL
-                                REFERENCES aitext_projectfile(id) ON DELETE CASCADE,
-                            chunk_index integer NOT NULL CHECK (chunk_index >= 0),
-                            content     text NOT NULL,
-                            token_count integer NOT NULL DEFAULT 0
-                                CHECK (token_count >= 0),
-                            embedding   vector(1536)
-                        );
-                        CREATE INDEX IF NOT EXISTS chunk_project_idx
-                            ON aitext_projectchunk (project_id);
-                        CREATE INDEX IF NOT EXISTS chunk_file_idx
-                            ON aitext_projectchunk (file_id);
-                    """,
-                    reverse_sql='DROP TABLE IF EXISTS aitext_projectchunk;',
-                ),
+                migrations.RunPython(_create_chunk_table, _drop_chunk_table),
             ],
             state_operations=[
                 migrations.CreateModel(

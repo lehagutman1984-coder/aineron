@@ -25,30 +25,31 @@ def _get_week_spending(user):
     from django.db.models import Sum
     from users.models import UserSpending
     week_ago = timezone.now() - timedelta(days=7)
-    result = UserSpending.objects.filter(user=user, created_at__gte=week_ago).aggregate(total=Sum('amount'))
+    result = UserSpending.objects.filter(user=user, created_at__gte=week_ago).aggregate(total=Sum('amount_kopecks'))
     return result['total'] or 0
 
 
 async def send_balance(message: Message, tg_user):
+    from core.money import format_rub
     network = tg_user.default_network
-    cost = network.cost_per_message if network else 0
+    cost_kopecks = network.cost_kopecks if network else 0
     name = network.name if network else '—'
-    balance = tg_user.user.pages_count
-    estimate = stars_estimate(balance, cost) if cost else '—'
-    week_total = await _get_week_spending(tg_user.user)
+    balance_kopecks = tg_user.user.balance_kopecks
+    estimate = stars_estimate(balance_kopecks, cost_kopecks) if cost_kopecks else '—'
+    week_total_kopecks = await _get_week_spending(tg_user.user)
 
     lines = [
         f'<b>Aineron · Баланс</b>',
         DIVIDER,
-        f'Доступно:    <b>{balance} зв.</b>',
+        f'Доступно:    <b>{format_rub(balance_kopecks)}</b>',
     ]
-    if cost:
-        lines.append(f'Модель:      {name}  ({cost} зв./сообщ.)')
+    if cost_kopecks:
+        lines.append(f'Модель:      {name}  ({format_rub(cost_kopecks)}/сообщ.)')
         lines.append(f'Хватит на:   ~{estimate} ответов')
     else:
         lines.append(f'Модель:      {name}')
-    if week_total:
-        lines.append(f'\nЗа 7 дней:   -{week_total} зв.')
+    if week_total_kopecks:
+        lines.append(f'\nЗа 7 дней:   -{format_rub(week_total_kopecks)}')
 
     lines += [DIVIDER, 'Пополнение:']
     text = '\n'.join(lines)
@@ -178,6 +179,7 @@ async def cb_rbk_pack(query: CallbackQuery, tg_user=None):
     pay_url = "https://auth.robokassa.ru/Merchant/Index.aspx?" + urllib.parse.urlencode(params)
 
     from users.models import PaymentHistory
+    from core.money import rub_to_kopecks
     @sync_to_async
     def _create_payment():
         return PaymentHistory.objects.create(
@@ -185,6 +187,7 @@ async def cb_rbk_pack(query: CallbackQuery, tg_user=None):
             payment_type='pages',
             invoice_id=str(inv_id),
             amount=float(out_sum),
+            amount_kopecks=rub_to_kopecks(out_sum),
             pages_count=stars,
             status='pending',
             description=description,

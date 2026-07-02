@@ -15,13 +15,17 @@ export interface StudioProject {
   entry_mode: EntryMode;
   target_url: string;
   target_stack: StudioStack;
+  stars_reserved: number;
   stars_spent: number;
+  stars_reserved_kopecks: number;
+  stars_spent_kopecks: number;
   sandbox_container_id: string;
   preview_port: number | null;
   ai_model: string;
   agent_models: Record<string, string>;
   max_iterations: number;
   max_stars_budget: number;
+  max_kopecks_budget: number;
   auto_deploy: boolean;
   project_md_content: string;
   commits_md_content: string;
@@ -84,8 +88,11 @@ export interface StudioVersion {
 
 export interface StudioEstimate {
   estimated_stars: number;
+  estimated_kopecks: number;
+  estimated_rub: string;
   planned_steps: number;
   balance: number;
+  balance_kopecks: number;
   affordable: boolean;
 }
 
@@ -187,6 +194,7 @@ export const studioApi = {
     agent_models: Record<string, string>;
     max_iterations: number;
     max_stars_budget: number;
+    max_kopecks_budget: number;
     auto_deploy: boolean;
     mode: string;
   }>) =>

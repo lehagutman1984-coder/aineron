@@ -6,6 +6,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { Loader2, Play, Edit3, Check, AlertTriangle, X } from 'lucide-react';
 import { studioApi } from '@/lib/api/studio';
 import { BillingEstimate } from '@/components/studio/BillingEstimate';
+import { formatRub } from '@/lib/money';
 import { btn, empty } from '@/components/studio/styles';
 
 function MarkdownBlock({ title, content, onSave }: { title: string; content: string; onSave: (v: string) => void }) {
@@ -150,7 +151,7 @@ export default function ReviewPage() {
       />
 
       <BillingEstimate
-        estimatedStars={estimate?.estimated_stars}
+        estimatedKopecks={estimate?.estimated_kopecks}
         plannedSteps={estimate?.planned_steps ?? plannedSteps}
       />
 
@@ -159,7 +160,7 @@ export default function ReviewPage() {
           <div className="flex items-center gap-2 mb-3 text-sm text-amber-600 dark:text-amber-400">
             <AlertTriangle size={16} />
             <span>
-              Недостаточно звёзд: нужно ~{estimate.estimated_stars}, на балансе {estimate.balance}
+              Недостаточно средств: нужно ~{formatRub(estimate.estimated_kopecks)}, на балансе {formatRub(estimate.balance_kopecks)}
             </span>
           </div>
         )}

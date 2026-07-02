@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { TrendingUp, TrendingDown, Minus, Star, Zap, BarChart2 } from "lucide-react";
 import { getStarsUsage } from "@/lib/api/client";
 import type { StarsUsageDay, StarsUsageModel } from "@/lib/api/types";
+import { formatRub } from "@/lib/money";
 
 const PERIODS = [
   { label: "7 дней", value: 7 },
@@ -65,8 +66,9 @@ export default function AnalyticsPage() {
       {/* Stat cards */}
       <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <StatCard
-          label="Звёзд потрачено"
-          value={data?.totals.total_stars ?? 0}
+          label="Потрачено"
+          value={data?.totals.total_kopecks ?? 0}
+          display={formatRub(data?.totals.total_kopecks ?? 0)}
           delta={delta}
           icon={<Star size={15} className="text-[#D97757]" />}
           loading={isLoading}
@@ -79,8 +81,8 @@ export default function AnalyticsPage() {
         />
         <StatCard
           label="Среднее в день"
-          value={data?.totals.avg_per_day ?? 0}
-          suffix=" зв."
+          value={data?.totals.avg_per_day_kopecks ?? 0}
+          display={formatRub(data?.totals.avg_per_day_kopecks ?? 0)}
           icon={<BarChart2 size={15} className="text-[#D97757]" />}
           loading={isLoading}
         />
@@ -131,12 +133,14 @@ export default function AnalyticsPage() {
 
 // ── Stat card ──────────────────────────────────────────────────────────────────
 function StatCard({
-  label, value, delta, suffix = "", icon, loading,
+  label, value, delta, suffix = "", display, icon, loading,
 }: {
   label: string;
   value: number;
   delta?: number | null;
   suffix?: string;
+  /** Готовая отформатированная строка (например, formatRub) — если задана, переопределяет value+suffix */
+  display?: string;
   icon: React.ReactNode;
   loading: boolean;
 }) {
@@ -156,8 +160,7 @@ function StatCard({
       ) : (
         <div className="flex items-end gap-2">
           <span className="text-[24px] font-bold leading-none text-[#1A1A1A] dark:text-[#EDE8E3]">
-            {value.toLocaleString("ru-RU")}
-            {suffix}
+            {display ?? `${value.toLocaleString("ru-RU")}${suffix}`}
           </span>
           {delta != null && (
             <DeltaBadge delta={delta} />
@@ -200,7 +203,7 @@ function BarChart({ days, period }: { days: StarsUsageDay[]; period: number }) {
     const d = new Date(now);
     d.setDate(d.getDate() - i);
     const key = d.toISOString().slice(0, 10);
-    entries.push(map.get(key) ?? { date: key, stars: 0, requests: 0 });
+    entries.push(map.get(key) ?? { date: key, stars: 0, kopecks: 0, requests: 0 });
   }
 
   // Show at most 30 bars (group if period=90)
@@ -208,33 +211,33 @@ function BarChart({ days, period }: { days: StarsUsageDay[]; period: number }) {
     ? groupByWeek(entries)
     : entries;
 
-  const maxGrouped = Math.max(...grouped.map((g) => g.stars), 1);
+  const maxGrouped = Math.max(...grouped.map((g) => g.kopecks), 1);
 
   return (
     <div className="flex h-40 items-end gap-[2px]">
       {grouped.map((entry) => {
-        const pct = Math.max((entry.stars / maxGrouped) * 100, entry.stars > 0 ? 2 : 0);
+        const pct = Math.max((entry.kopecks / maxGrouped) * 100, entry.kopecks > 0 ? 2 : 0);
         const label = formatDateLabel(entry.date, period);
         return (
           <div
             key={entry.date}
             className="group relative flex flex-1 flex-col items-center justify-end"
-            title={`${label}: ${entry.stars} зв., ${entry.requests} запр.`}
+            title={`${label}: ${formatRub(entry.kopecks)}, ${entry.requests} запр.`}
           >
             <div
               className="w-full rounded-t-[3px] transition-all duration-200"
               style={{
                 height: `${pct}%`,
-                background: entry.stars > 0
+                background: entry.kopecks > 0
                   ? "rgba(217,119,87,0.75)"
                   : "rgba(13,13,13,0.07)",
                 minHeight: "2px",
               }}
             />
             {/* Tooltip */}
-            {entry.stars > 0 && (
+            {entry.kopecks > 0 && (
               <div className="pointer-events-none absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 z-10 hidden rounded-[7px] bg-[#1A1A1A] px-2 py-1 text-[12px] text-white whitespace-nowrap group-hover:block">
-                {label}<br />{entry.stars} зв.
+                {label}<br />{formatRub(entry.kopecks)}, {entry.requests} запр.
               </div>
             )}
           </div>
@@ -251,8 +254,9 @@ function groupByWeek(days: StarsUsageDay[]): StarsUsageDay[] {
     const weekStart = new Date(date);
     weekStart.setDate(date.getDate() - date.getDay());
     const key = weekStart.toISOString().slice(0, 10);
-    if (!weeks[key]) weeks[key] = { date: key, stars: 0, requests: 0 };
+    if (!weeks[key]) weeks[key] = { date: key, stars: 0, kopecks: 0, requests: 0 };
     weeks[key].stars += d.stars;
+    weeks[key].kopecks += d.kopecks;
     weeks[key].requests += d.requests;
   }
   return Object.values(weeks).sort((a, b) => a.date.localeCompare(b.date));
@@ -267,12 +271,12 @@ function formatDateLabel(date: string, period: number) {
 
 // ── Top models list ────────────────────────────────────────────────────────────
 function ModelList({ models }: { models: StarsUsageModel[] }) {
-  const maxStars = Math.max(...models.map((m) => m.stars), 1);
+  const maxKopecks = Math.max(...models.map((m) => m.kopecks), 1);
 
   return (
     <div className="flex flex-col gap-2">
       {models.map((m, i) => {
-        const pct = (m.stars / maxStars) * 100;
+        const pct = (m.kopecks / maxKopecks) * 100;
         return (
           <div key={m.name} className="flex items-center gap-3">
             <span className="w-4 shrink-0 text-right text-[13px] font-medium text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.28)]">
@@ -284,7 +288,7 @@ function ModelList({ models }: { models: StarsUsageModel[] }) {
                   {m.name}
                 </span>
                 <span className="shrink-0 text-[14px] font-medium text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.45)]">
-                  {m.stars} зв.
+                  {formatRub(m.kopecks)}
                 </span>
               </div>
               <div className="h-[5px] w-full overflow-hidden rounded-full bg-[rgba(13,13,13,0.07)] dark:bg-[rgba(255,255,255,0.07)]">

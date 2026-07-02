@@ -33,7 +33,7 @@ def _create_inline_message(tg_user, text):
         ).order_by('order').first()
     if not network:
         return None
-    if tg_user.user.pages_count < network.cost_per_message:
+    if not tg_user.user.has_enough_kopecks(network.cost_kopecks):
         return None
     chat = Chat.objects.create(
         user=tg_user.user, network=network,

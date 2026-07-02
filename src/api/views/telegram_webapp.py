@@ -73,5 +73,6 @@ def telegram_webapp_auth(request):
             'id': tg_user.user.id,
             'email': tg_user.user.email,
             'pages_count': tg_user.user.pages_count,
+            'balance_kopecks': tg_user.user.balance_kopecks,
         },
     })

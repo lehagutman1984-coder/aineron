@@ -21,6 +21,7 @@ import { PipelineTimeline } from './PipelineTimeline';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import type { StudioProject, StudioFileNode, StudioFileDetail, PipelineState } from '@/lib/api/studio';
 import { studioApi } from '@/lib/api/studio';
+import { formatRub } from '@/lib/money';
 import { layout, btn, banner, form, drawer } from './styles';
 
 type MobileTab = 'files' | 'code' | 'preview';
@@ -324,7 +325,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
         {isCompleted && (
           <span className="md:hidden flex items-center gap-1 text-[13px] text-green-500 shrink-0">
             <CheckCircle size={11} />
-            {project.stars_spent ? `${project.stars_spent}★` : 'Готово'}
+            {project.stars_spent_kopecks ? formatRub(project.stars_spent_kopecks) : 'Готово'}
           </span>
         )}
         <div className={layout.rightGroup}>
@@ -412,7 +413,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
           <CheckCircle size={12} className="text-green-500 shrink-0" />
           <span className="font-medium text-green-400">Проект завершён</span>
           <span className="opacity-30 mx-0.5">·</span>
-          <span>{project.stars_spent ?? 0} звёзд</span>
+          <span>{formatRub(project.stars_spent_kopecks ?? 0)}</span>
           {(project.interview_data?.planned_steps as number | undefined) && (
             <>
               <span className="opacity-30 mx-0.5">·</span>
@@ -713,10 +714,10 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
            pipeline.status === 'paused_on_loop' || pipeline.status === 'paused_manual' ? 'Пауза' :
            pipeline.status === 'failed' ? 'Ошибка' : pipeline.status}
         </span>
-        {!!project.stars_spent && (
+        {!!project.stars_spent_kopecks && (
           <>
             <span className={layout.divider} />
-            <span className={layout.statusBarItem}>{project.stars_spent} звёзд</span>
+            <span className={layout.statusBarItem}>{formatRub(project.stars_spent_kopecks)}</span>
           </>
         )}
       </div>

@@ -568,12 +568,14 @@ def create_robokassa_payment(request):
         logger.info(f"[PAY] Создание платежа: InvId={inv_id}, сумма={out_sum}, подпись={signature}")
         logger.info(f"[DATA] Receipt JSON: {receipt_json}")
 
+        from core.money import rub_to_kopecks
         payment = PaymentHistory.objects.create(
             user=request.user,
             payment_type='subscription',
             tariff=tariff,
             invoice_id=str(inv_id),
             amount=tariff.price,
+            amount_kopecks=rub_to_kopecks(tariff.price),
             pages_count=tariff.pages_count,
             status='pending',
             description=description,
@@ -659,9 +661,6 @@ def payment_success(request):
                         logger.error(f"[ERR] Для платежа {inv_id} не указан тариф")
                         return HttpResponse(f"OK{inv_id}")
 
-                    # Начисляем страницы
-                    user.pages_count += tariff.pages_count
-
                     if user.active_subscription:
                         subscription = user.active_subscription
                         subscription.expires_at = datetime.now() + timedelta(days=tariff.duration_days)
@@ -685,6 +684,10 @@ def payment_success(request):
 
                     user.tariff = tariff
                     user.save()
+
+                    # Начисляем баланс атомарно, идемпотентно по invoice_id (защита от повтора вебхука)
+                    user.add_kopecks(tariff.balance_grant_kopecks, type='subscription', reference=inv_id)
+                    user.refresh_from_db(fields=['balance_kopecks', 'pages_count'])
                     logger.info(f"[PAY] У пользователя {user.email} теперь {user.pages_count} страниц")
 
                     # ========== РЕФЕРАЛЬНЫЙ БОНУС ==========
@@ -697,8 +700,10 @@ def payment_success(request):
                             amount_stars = 0
                             logger.info(f"[PAY] Рефералу {referrer.email} начислено {tariff.referral_bonus} руб за покупку {tariff.display_name} пользователем {user.email}")
                         else:
-                            referrer.pages_count += tariff.referral_bonus_stars
-                            referrer.save(update_fields=['pages_count'])
+                            referrer.add_kopecks(
+                                tariff.referral_bonus_kopecks, type='referral',
+                                reference=f'{inv_id}:referral',
+                            )
                             amount_rub = 0
                             amount_stars = tariff.referral_bonus_stars
                             logger.info(f" зв. Рефералу {referrer.email} начислено {tariff.referral_bonus_stars} звёзд за покупку {tariff.display_name} пользователем {user.email}")
@@ -713,26 +718,28 @@ def payment_success(request):
                             )
 
                 elif payment.payment_type == 'pages':
-                    user.add_pages(payment.pages_count)
+                    user.add_kopecks(payment.pages_count * 100, type='topup', reference=inv_id)
+                    user.refresh_from_db(fields=['balance_kopecks', 'pages_count'])
                     logger.info(f"[OK] Пользователь {user.email} купил {payment.pages_count} страниц, теперь всего: {user.pages_count}")
 
                 # ── Telegram-уведомление об успешной оплате ──
                 try:
                     from telegram_bot.notify import notify_user
+                    from core.money import format_rub
                     tg = getattr(user, 'telegram', None)
                     if tg:
                         if payment.payment_type == 'pages':
                             msg = (
                                 f"<b>Оплата прошла успешно!</b>\n\n"
-                                f"Начислено: <b>{payment.pages_count} звёзд</b>\n"
-                                f"Баланс: <b>{user.pages_count} звёзд</b>"
+                                f"Начислено: <b>{format_rub(payment.pages_count * 100)}</b>\n"
+                                f"Баланс: <b>{format_rub(user.balance_kopecks)}</b>"
                             )
                         else:
                             tname = payment.tariff.display_name if payment.tariff else '—'
                             msg = (
                                 f"<b>Подписка активирована!</b>\n\n"
                                 f"Тариф: <b>{tname}</b>\n"
-                                f"Баланс: <b>{user.pages_count} звёзд</b>"
+                                f"Баланс: <b>{format_rub(user.balance_kopecks)}</b>"
                             )
                         notify_user(tg.telegram_id, msg)
                 except Exception as tg_err:
@@ -893,11 +900,13 @@ def buy_pages(request):
         logger.info(f"[DATA] Receipt: {receipt_json}")
         logger.info(f"[SEC] Signature: {signature_str}")
 
+        from core.money import rub_to_kopecks
         payment = PaymentHistory.objects.create(
             user=request.user,
             payment_type='pages',
             invoice_id=str(inv_id),
             amount=total_price,
+            amount_kopecks=rub_to_kopecks(total_price),
             pages_count=pages_to_buy,
             status='pending',
             description=description,

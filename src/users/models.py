@@ -4,6 +4,8 @@ from django.utils import timezone
 from datetime import timedelta
 import uuid
 
+from core.money import rub_to_kopecks
+
 
 class Tariff(models.Model):
     """
@@ -66,6 +68,16 @@ class Tariff(models.Model):
         verbose_name='Реферальный бонус (звёзд)',
         help_text='Сколько звёзд получит пригласивший пользователь при покупке этого тарифа'
     )
+    balance_grant_kopecks = models.BigIntegerField(
+        default=0,
+        verbose_name='Начисление на баланс, копейки',
+        help_text='Авто-синхронизируется с pages_count ×100 при сохранении (1 звезда = 100 коп.)'
+    )
+    referral_bonus_kopecks = models.BigIntegerField(
+        default=0,
+        verbose_name='Реферальный бонус, копейки',
+        help_text='Авто-синхронизируется с referral_bonus_stars ×100 при сохранении'
+    )
 
     class Meta:
         verbose_name = 'Тариф'
@@ -74,6 +86,13 @@ class Tariff(models.Model):
 
     def __str__(self):
         return f"{self.display_name} - {self.pages_count} стр. - {self.price} руб."
+
+    def save(self, *args, **kwargs):
+        # Dual-write: pages_count/referral_bonus_stars остаются полем админки на время
+        # переходного периода, balance_grant_kopecks/referral_bonus_kopecks — производные.
+        self.balance_grant_kopecks = self.pages_count * 100
+        self.referral_bonus_kopecks = self.referral_bonus_stars * 100
+        super().save(*args, **kwargs)
 
     @classmethod
     def get_default_tariff(cls):
@@ -308,6 +327,12 @@ class PaymentHistory(models.Model):
         default=0,
         verbose_name='Куплено звезд'
     )
+    amount_kopecks = models.BigIntegerField(
+        null=True,
+        blank=True,
+        verbose_name='Сумма, копейки',
+        help_text='Заполняется только для новых записей (после миграции биллинга). Историю не конвертируем — финансовый аудит.'
+    )
     status = models.CharField(
         max_length=20,
         choices=[
@@ -420,10 +445,15 @@ class CustomUser(AbstractUser):
         verbose_name='Код подтверждения'
     )
 
-    # Звезды
+    # Звезды (legacy, dual-write на время миграции биллинга — см. balance_kopecks)
     pages_count = models.PositiveIntegerField(
         default=0,
         verbose_name='Количество звезд'
+    )
+    balance_kopecks = models.BigIntegerField(
+        default=0,
+        verbose_name='Баланс, копейки',
+        help_text='Авторитетный баланс (1 звезда = 100 коп.). См. src/core/money.py, BILLING_MIGRATION_PLAN.md'
     )
     tariff = models.ForeignKey(
         'Tariff',
@@ -532,6 +562,7 @@ class CustomUser(AbstractUser):
             free_tariff = Tariff.get_default_tariff()
             self.tariff = free_tariff
             self.pages_count = free_tariff.pages_count
+            self.balance_kopecks = free_tariff.balance_grant_kopecks
 
             if not self.active_subscription:
                 free_subscription = UserSubscription.objects.create(
@@ -543,31 +574,111 @@ class CustomUser(AbstractUser):
                 )
                 self.active_subscription = free_subscription
 
-            self.save(update_fields=['tariff', 'pages_count', 'active_subscription'])
+            self.save(update_fields=['tariff', 'pages_count', 'balance_kopecks', 'active_subscription'])
+
+    # ========== БАЛАНС (копейки) — атомарные операции ==========
+    # Источник истины — balance_kopecks. pages_count остаётся dual-write
+    # legacy-полем на время миграции (см. BILLING_MIGRATION_PLAN.md), удаляется в Фазе R2.
+
+    def has_enough_kopecks(self, amount_kopecks):
+        return self.balance_kopecks >= amount_kopecks
+
+    def spend_kopecks(self, amount_kopecks, *, type='spend', reference=''):
+        """
+        Атомарное списание через condition UPDATE (без TOCTOU-гонки).
+        Возвращает False при недостатке средств (баланс не меняется).
+        Если reference уже использовался с этим type — повторное списание не
+        происходит (идемпотентность повторных вызовов/ретраев Celery).
+        """
+        from django.db import IntegrityError, transaction
+        from django.db.models import F
+        from django.db.models.functions import Greatest
+
+        if amount_kopecks <= 0:
+            return True
+        try:
+            with transaction.atomic():
+                updated = CustomUser.objects.filter(
+                    pk=self.pk, balance_kopecks__gte=amount_kopecks
+                ).update(
+                    balance_kopecks=F('balance_kopecks') - amount_kopecks,
+                    pages_count=Greatest(F('pages_count') - (amount_kopecks // 100), 0),
+                )
+                if not updated:
+                    return False
+                self.refresh_from_db(fields=['balance_kopecks', 'pages_count'])
+                BalanceTransaction.objects.create(
+                    user=self, amount_kopecks=-amount_kopecks, balance_after=self.balance_kopecks,
+                    type=type, reference=reference,
+                )
+        except IntegrityError:
+            # Дубликат (type, reference): весь блок атомарно откатился, баланс не тронут.
+            self.refresh_from_db(fields=['balance_kopecks', 'pages_count'])
+            return True
+        return True
+
+    def add_kopecks(self, amount_kopecks, *, type='topup', reference=''):
+        """
+        Атомарное начисление. Если reference уже использовался с этим type
+        (повтор вебхука Robokassa/Telegram) — операция становится no-op.
+        """
+        from django.db import IntegrityError, transaction
+        from django.db.models import F
+        from django.db.models.functions import Greatest
+
+        if amount_kopecks <= 0:
+            return True
+        try:
+            with transaction.atomic():
+                CustomUser.objects.filter(pk=self.pk).update(
+                    balance_kopecks=F('balance_kopecks') + amount_kopecks,
+                    pages_count=Greatest(F('pages_count') + (amount_kopecks // 100), 0),
+                )
+                self.refresh_from_db(fields=['balance_kopecks', 'pages_count'])
+                BalanceTransaction.objects.create(
+                    user=self, amount_kopecks=amount_kopecks, balance_after=self.balance_kopecks,
+                    type=type, reference=reference,
+                )
+        except IntegrityError:
+            self.refresh_from_db(fields=['balance_kopecks', 'pages_count'])
+            return True
+        return True
+
+    def set_kopecks(self, amount_kopecks, *, reference=''):
+        """Прямая установка баланса (админ-действие). Пишет ledger-дельту."""
+        old_balance = CustomUser.objects.filter(pk=self.pk).values_list(
+            'balance_kopecks', flat=True
+        ).first() or 0
+        delta = amount_kopecks - old_balance
+        CustomUser.objects.filter(pk=self.pk).update(
+            balance_kopecks=amount_kopecks,
+            pages_count=max(0, amount_kopecks // 100),
+        )
+        self.refresh_from_db(fields=['balance_kopecks', 'pages_count'])
+        if delta != 0:
+            BalanceTransaction.objects.create(
+                user=self, amount_kopecks=delta, balance_after=self.balance_kopecks,
+                type='admin', reference=reference,
+            )
+        return True
+
+    # ========== Legacy-обёртки (звёзды, ×100) — сохранены для необновлённых call sites ==========
 
     def has_enough_pages(self, required_pages):
-        return self.pages_count >= required_pages
+        return self.has_enough_kopecks(required_pages * 100)
 
     def spend_pages(self, pages_count):
-        if self.has_enough_pages(pages_count):
-            self.pages_count -= pages_count
-            self.save(update_fields=['pages_count'])
-            return True
-        return False
+        return self.spend_kopecks(pages_count * 100)
 
     def add_pages(self, pages_count):
-        self.pages_count += pages_count
-        self.save(update_fields=['pages_count'])
-        return True
+        return self.add_kopecks(pages_count * 100)
 
     def set_pages(self, pages_count):
-        self.pages_count = pages_count
-        self.save(update_fields=['pages_count'])
-        return True
+        return self.set_kopecks(pages_count * 100)
 
     def activate_paid_tariff(self, tariff, payment_data=None):
         """
-        Активирует платный тариф - ДОБАВЛЯЕТ звезды к существующим
+        Активирует платный тариф - ДОБАВЛЯЕТ баланс к существующему
         """
         # Деактивируем старую подписку
         if self.active_subscription:
@@ -591,11 +702,13 @@ class CustomUser(AbstractUser):
             original_tariff=tariff if tariff.is_trial else None
         )
 
-        # Обновляем пользователя
+        # Обновляем тариф/подписку, начисляем баланс отдельной атомарной операцией
         self.tariff = tariff
         self.active_subscription = subscription
-        self.pages_count += tariff.pages_count
-        self.save(update_fields=['tariff', 'active_subscription', 'pages_count'])
+        self.save(update_fields=['tariff', 'active_subscription'])
+
+        invoice_ref = (payment_data or {}).get('invoice_id') or ''
+        self.add_kopecks(tariff.balance_grant_kopecks, type='subscription', reference=invoice_ref)
 
         # Создаём запись в истории платежей
         if payment_data:
@@ -607,6 +720,7 @@ class CustomUser(AbstractUser):
                 payment_id=payment_data.get('payment_id'),
                 amount=tariff.price,
                 pages_count=tariff.pages_count,
+                amount_kopecks=rub_to_kopecks(tariff.price),
                 status='success',
                 paid_at=timezone.now(),
                 description=f"Активация тарифа {tariff.display_name}"
@@ -629,8 +743,8 @@ class CustomUser(AbstractUser):
         )
         self.tariff = free_tariff
         self.active_subscription = free_subscription
-        self.pages_count = free_tariff.pages_count
-        self.save(update_fields=['tariff', 'active_subscription', 'pages_count'])
+        self.save(update_fields=['tariff', 'active_subscription'])
+        self.set_kopecks(free_tariff.balance_grant_kopecks)
         return free_subscription
 
     def verify_email(self):
@@ -666,6 +780,7 @@ class CustomUser(AbstractUser):
                     'email_verified': True,
                     'tariff': free_tariff,
                     'pages_count': free_tariff.pages_count,
+                    'balance_kopecks': free_tariff.balance_grant_kopecks,
                 }
             )
             if created:
@@ -831,6 +946,11 @@ class PromoCode(models.Model):
     stars = models.PositiveIntegerField(
         verbose_name='Количество звезд'
     )
+    kopecks = models.BigIntegerField(
+        default=0,
+        verbose_name='Начисление, копейки',
+        help_text='Авто-синхронизируется с stars ×100 при сохранении'
+    )
     usage_limit = models.PositiveIntegerField(
         default=1,
         verbose_name='Лимит использований (0 - безлимит)'
@@ -859,6 +979,10 @@ class PromoCode(models.Model):
 
     def __str__(self):
         return f"{self.code} (+{self.stars} зв.) использован {self.used_count}/{self.usage_limit if self.usage_limit > 0 else 'inf'}"
+
+    def save(self, *args, **kwargs):
+        self.kopecks = self.stars * 100
+        super().save(*args, **kwargs)
 
     def is_valid(self):
         if not self.is_active:
@@ -916,6 +1040,10 @@ class UserSpending(models.Model):
     )
     amount = models.PositiveIntegerField(
         verbose_name='Количество звезд'
+    )
+    amount_kopecks = models.BigIntegerField(
+        default=0,
+        verbose_name='Списано, копейки'
     )
     description = models.CharField(
         max_length=255,
@@ -1066,3 +1194,66 @@ class WithdrawalRequest(models.Model):
 
     def __str__(self):
         return f"{self.user.email} - {self.amount} руб - {self.get_status_display()}"
+
+
+class BalanceTransaction(models.Model):
+    """
+    Реестр движений рублёвого баланса (копейки). Пишется при каждом
+    spend_kopecks/add_kopecks на CustomUser — источник аудита поверх
+    balance_kopecks. Реконсиляция "баланс = SUM(ledger)" не выполняется,
+    источник истины — CustomUser.balance_kopecks.
+    """
+    class Type(models.TextChoices):
+        SPEND = 'spend', 'Списание'
+        REFUND = 'refund', 'Возврат'
+        TOPUP = 'topup', 'Пополнение'
+        SUBSCRIPTION = 'subscription', 'Тариф'
+        PROMO = 'promo', 'Промокод'
+        REFERRAL = 'referral', 'Реферальный бонус'
+        XTR = 'xtr', 'Telegram Stars'
+        ADMIN = 'admin', 'Ручное начисление'
+
+    user = models.ForeignKey(
+        'CustomUser',
+        on_delete=models.CASCADE,
+        related_name='transactions',
+        verbose_name='Пользователь'
+    )
+    amount_kopecks = models.BigIntegerField(
+        verbose_name='Сумма, копейки',
+        help_text='Знаковая величина: списание < 0, начисление > 0'
+    )
+    balance_after = models.BigIntegerField(
+        verbose_name='Баланс после операции, копейки'
+    )
+    type = models.CharField(
+        max_length=20,
+        choices=Type.choices,
+        verbose_name='Тип операции'
+    )
+    reference = models.CharField(
+        max_length=128,
+        blank=True,
+        default='',
+        verbose_name='Ссылка',
+        help_text='invoice_id / request_id / project_id — для идемпотентности начислений'
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата')
+
+    class Meta:
+        verbose_name = 'Транзакция баланса'
+        verbose_name_plural = 'Транзакции баланса'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', '-created_at'], name='balance_txn_user_idx'),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['type', 'reference'],
+                condition=models.Q(reference__gt=''),
+                name='uniq_balance_txn_type_reference',
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.user.email} - {self.amount_kopecks:+d} коп. -> {self.balance_after} коп. ({self.type})"

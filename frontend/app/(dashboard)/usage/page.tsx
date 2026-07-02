@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, BarChart2, Zap, Star, Activity } from "lucide-react";
 import { getUsageStats, listOrgs } from "@/lib/api/client";
 import type { UsageStats, Organization } from "@/lib/api/types";
+import { formatRub } from "@/lib/money";
 
 const PERIOD_OPTIONS = [
   { label: "7 дней", value: 7 },
@@ -105,8 +106,8 @@ export default function UsagePage() {
             />
             <TotalCard
               icon={<Star size={18} />}
-              label="Списано звёзд"
-              value={stats.totals.total_stars.toLocaleString("ru-RU")}
+              label="Потрачено"
+              value={formatRub(stats.totals.total_kopecks)}
             />
           </div>
 
@@ -156,7 +157,7 @@ export default function UsagePage() {
                       <th className="pb-2 pr-4">Модель</th>
                       <th className="pb-2 pr-4 text-right">Запросов</th>
                       <th className="pb-2 pr-4 text-right">Токенов</th>
-                      <th className="pb-2 text-right">Звёзд</th>
+                      <th className="pb-2 text-right">Потрачено</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -180,7 +181,7 @@ export default function UsagePage() {
                           {row.total_tokens.toLocaleString("ru-RU")}
                         </td>
                         <td className="py-2 text-right text-[rgba(13,13,13,0.65)]">
-                          {row.stars_charged.toLocaleString("ru-RU")}
+                          {formatRub(row.cost_kopecks)}
                         </td>
                       </tr>
                     ))}

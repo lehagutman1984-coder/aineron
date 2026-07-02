@@ -20,7 +20,7 @@ interface Props {
 export function ChatStartForm({ networkSlug, isMedia, configJson, projectId }: Props) {
   const router = useRouter();
   const qc = useQueryClient();
-  const { user, setStars } = useAuthStore();
+  const { user, setBalance } = useAuthStore();
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -90,7 +90,7 @@ export function ChatStartForm({ networkSlug, isMedia, configJson, projectId }: P
         settings: Object.keys(settings).length > 0 ? settings : undefined,
         project_id: projectId,
       });
-      setStars(res.new_balance);
+      setBalance(res.new_balance_kopecks);
       qc.invalidateQueries({ queryKey: ["chats"] });
       router.push(`/chat/${res.chat_id}/`);
     } catch (err) {

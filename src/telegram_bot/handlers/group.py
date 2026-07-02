@@ -29,13 +29,19 @@ def _get_group_config(group_id: int):
         return None
 
 
-def _charge_org(organization, cost_stars: int) -> bool:
-    """Deduct cost from org balance. Returns False if insufficient balance."""
-    from decimal import Decimal
+def _charge_org(organization, cost_kopecks: int) -> bool:
+    """
+    Deduct cost from org balance. Returns False if insufficient balance.
+    Унифицировано с личным тарифом: 1 звезда = 1 ₽ (settings.ORG_KOPECKS_PER_STAR,
+    ранее здесь было 0.10 ₽/звезда — расхождение с личным тарифом устранено
+    при миграции биллинга, см. BILLING_MIGRATION_PLAN.md).
+    """
+    from django.conf import settings
     from teams.models import Organization
-    # Convert stars to rubles: 1 star ≈ 0.1 rub (adjust to your rate)
-    STAR_TO_RUB = Decimal('0.10')
-    cost_rub = Decimal(cost_stars) * STAR_TO_RUB
+    from core.money import kopecks_to_rub
+
+    org_rate = int(getattr(settings, 'ORG_KOPECKS_PER_STAR', 100))
+    cost_rub = kopecks_to_rub(cost_kopecks * org_rate // 100)
     updated = Organization.objects.filter(
         id=organization.id,
         balance_rub__gte=cost_rub,
@@ -86,8 +92,8 @@ async def handle_group_message(message: Message, bot: Bot):
             await message.reply('Нет доступных моделей.')
             return
 
-        cost = network.cost_per_message if network else 5
-        ok = await _charge_org_async(group_config.organization, cost)
+        cost_kopecks = network.cost_kopecks if network else 500
+        ok = await _charge_org_async(group_config.organization, cost_kopecks)
         if not ok:
             await message.reply(
                 f'Баланс организации <b>{group_config.organization.name}</b> исчерпан. '

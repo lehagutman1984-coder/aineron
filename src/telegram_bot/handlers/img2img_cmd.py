@@ -116,10 +116,11 @@ async def cmd_img2img(message: Message, state: FSMContext, tg_user=None):
         await message.answer('Нет доступных моделей для image-to-image. Попробуй позже.')
         return
 
-    if tg_user.user.pages_count < network.cost_per_message:
+    if not tg_user.user.has_enough_kopecks(network.cost_kopecks):
+        from core.money import format_rub
         await message.answer(
-            f'Недостаточно звёзд.\n'
-            f'Нужно: {network.cost_per_message}, у вас: {tg_user.user.pages_count}\n\n'
+            f'Недостаточно средств.\n'
+            f'Нужно: {format_rub(network.cost_kopecks)}, у вас: {format_rub(tg_user.user.balance_kopecks)}\n\n'
             f'Пополните баланс: /balance'
         )
         return
@@ -217,7 +218,7 @@ async def handle_img2img_photo(message: Message, state: FSMContext, tg_user=None
                 else:
                     await status_msg.edit_text('Изображение готово, но не найдено. Проверь /account/files/')
 
-                await async_log_event(tg_user, 'image', network=network, cost=network.cost_per_message)
+                await async_log_event(tg_user, 'image', network=network, cost_kopecks=network.cost_kopecks)
                 return
 
             elif msg.status == 'failed':

@@ -104,7 +104,8 @@ class TokenUsage(models.Model):
     prompt_tokens = models.PositiveIntegerField(default=0, verbose_name='Токены запроса')
     completion_tokens = models.PositiveIntegerField(default=0, verbose_name='Токены ответа')
     total_tokens = models.PositiveIntegerField(default=0, verbose_name='Всего токенов')
-    stars_charged = models.PositiveIntegerField(default=0, verbose_name='Списано звёзд')
+    stars_charged = models.PositiveIntegerField(default=0, verbose_name='Списано звёзд (legacy)')
+    cost_kopecks = models.BigIntegerField(default=0, verbose_name='Списано, копейки')
     request_id = models.CharField(max_length=64, blank=True, verbose_name='ID запроса')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Время запроса', db_index=True)
 

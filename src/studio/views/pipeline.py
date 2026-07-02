@@ -12,7 +12,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from ..models import StudioProject, ProjectDatabase, PreviewSession
 from ..serializers import PipelineStateSerializer
-from ..billing import estimate_stars, reserve, charge_from_reserve, release_reserve
+from ..billing import estimate_kopecks, reserve, charge_from_reserve, release_reserve
+from core.money import format_rub
 
 _PREVIEW_SVC = _os.environ.get('PREVIEW_SERVICE_URL', 'http://localhost:8001')
 _PREVIEW_TOKEN = _os.environ.get('PREVIEW_INTERNAL_TOKEN', '')
@@ -157,12 +158,15 @@ class EstimateView(APIView):
         if not planned:
             from ..tasks import _split_steps
             planned = len(_split_steps(project.commits_md_content)) or 5
-        est = estimate_stars(project, planned_steps=planned)
+        est = estimate_kopecks(project, planned_steps=planned)
         return Response({
-            'estimated_stars': est,
+            'estimated_stars': est // 100,
+            'estimated_kopecks': est,
+            'estimated_rub': format_rub(est),
             'planned_steps': planned,
             'balance': request.user.pages_count,
-            'affordable': request.user.pages_count >= est,
+            'balance_kopecks': request.user.balance_kopecks,
+            'affordable': request.user.balance_kopecks >= est,
         })
 
 
@@ -273,7 +277,7 @@ class PipelineResumeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, id):
-        from ..billing import estimate_stars, can_afford
+        from ..billing import estimate_kopecks, can_afford
         project = get_object_or_404(StudioProject, id=id, user=request.user)
         state = project.pipeline
         action = request.data.get('action', 'continue')
@@ -299,7 +303,7 @@ class PipelineResumeView(APIView):
         remaining_steps = max(0, project.interview_data.get('planned_steps', 5) - state.step_index)
         low_balance = not can_afford(
             request.user,
-            estimate_stars(project, planned_steps=remaining_steps),
+            estimate_kopecks(project, planned_steps=remaining_steps),
         )
         return Response({'status': 'running', 'low_balance': low_balance})
 
@@ -809,10 +813,11 @@ class E2BPreviewView(APIView):
         if stack not in ('nextjs', 'python', 'django'):
             return Response({'error': f'E2B не поддерживает стек {stack}'}, status=400)
 
-        # Sprint 8: reserve stars for max session duration (15 min × rate)
-        rate = getattr(settings, 'E2B_PREVIEW_STARS_PER_MIN', 1)
+        # Sprint 8: reserve kopecks for max session duration (15 min × rate)
+        rate = getattr(settings, 'E2B_PREVIEW_STARS_PER_MIN', 1)  # звёзд/мин (legacy env unit)
         ttl_minutes = 900 // 60  # 15 min
-        max_cost = ttl_minutes * rate
+        max_cost = ttl_minutes * rate  # звёзды, для отображения/legacy-поля
+        max_cost_kopecks = max_cost * 100
 
         # Daily spend cap — check before reserving stars
         allowed, used_min, cap_min = _check_and_reserve_daily_cap(str(request.user.id), ttl_minutes)
@@ -822,10 +827,10 @@ class E2BPreviewView(APIView):
                 status=429,
             )
 
-        if max_cost > 0 and not reserve(request.user, max_cost, project):
+        if max_cost_kopecks > 0 and not reserve(request.user, max_cost_kopecks, project):
             _refund_daily_cap(str(request.user.id), ttl_minutes)
             return Response(
-                {'error': f'Недостаточно звёзд для запуска превью (нужно {max_cost} зв.)'},
+                {'error': f'Недостаточно средств для запуска превью (нужно {format_rub(max_cost_kopecks)})'},
                 status=402,
             )
 
@@ -905,7 +910,7 @@ class E2BPreviewView(APIView):
             rate = getattr(settings, 'E2B_PREVIEW_STARS_PER_MIN', 1)
             duration_sec = stop_data.get('duration_seconds', 0) or 0
             actual_stars = min(int((duration_sec / 60) * rate) + 1, ps.reserved_stars)
-            charge_from_reserve(actual_stars, ps.project)
+            charge_from_reserve(actual_stars * 100, ps.project, reference=f'preview:{ps.session_id}')
             ps.settled = True
             ps.save(update_fields=['settled'])
 
@@ -954,7 +959,7 @@ class E2BPreviewStatusView(APIView):
             rate = getattr(settings, 'E2B_PREVIEW_STARS_PER_MIN', 1)
             duration_sec = stop_data.get('duration_seconds', 0) or 0
             actual_stars = min(int((duration_sec / 60) * rate) + 1, ps.reserved_stars)
-            charge_from_reserve(actual_stars, ps.project)
+            charge_from_reserve(actual_stars * 100, ps.project, reference=f'preview:{ps.session_id}')
             ps.settled = True
             ps.save(update_fields=['settled'])
 

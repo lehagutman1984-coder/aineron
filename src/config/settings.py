@@ -458,6 +458,12 @@ TELEGRAM_BOT_USERNAME   = os.getenv('TELEGRAM_BOT_USERNAME',   'aineron_bot')
 TELEGRAM_ADMIN_IDS      = [int(x) for x in os.getenv('TELEGRAM_ADMIN_IDS', '').split(',') if x.strip().isdigit()]
 
 
+# ========== БИЛЛИНГ (единый рублёвый баланс, копейки) ==========
+# Инвариант: 1 звезда (legacy) = 1 рубль = 100 копеек. См. src/core/money.py и BILLING_MIGRATION_PLAN.md
+MIN_CHARGE_KOPECKS = int(os.environ.get('MIN_CHARGE_KOPECKS', '10'))  # 0,10 ₽ минимальное списание
+ORG_KOPECKS_PER_STAR = int(os.environ.get('ORG_KOPECKS_PER_STAR', '100'))  # унифицировано с MIN_CHARGE: 1 звезда = 100 коп
+
+
 # ========== ROBOKASSA ==========
 ROBOKASSA_LOGIN = os.environ.get('ROBOKASSA_LOGIN', 'aineron.ru')
 ROBOKASSA_PASS1 = os.environ.get('ROBOKASSA_PASS1', '')

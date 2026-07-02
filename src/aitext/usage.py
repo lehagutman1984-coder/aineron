@@ -13,7 +13,7 @@ def log_usage_event(
     event_type: str,
     channel: str = 'web',
     network=None,
-    cost: int = 0,
+    cost_kopecks: int = 0,
     **meta,
 ) -> None:
     """
@@ -24,7 +24,7 @@ def log_usage_event(
         event_type: UsageEvent.EventType value (e.g. 'message', 'image', 'error')
         channel: 'web' | 'bot' | 'api'
         network: NeuralNetwork instance or None
-        cost: integer star cost (default 0)
+        cost_kopecks: integer cost in kopecks (default 0)
         **meta: arbitrary key-value pairs stored in meta JSONField
     """
     try:
@@ -34,7 +34,8 @@ def log_usage_event(
             channel=channel,
             event_type=event_type,
             network=network,
-            cost=cost,
+            cost=max(0, cost_kopecks // 100),
+            cost_kopecks=cost_kopecks,
             meta=meta or {},
         )
     except Exception as exc:
@@ -46,11 +47,11 @@ async def async_log_usage_event(
     event_type: str,
     channel: str = 'bot',
     network=None,
-    cost: int = 0,
+    cost_kopecks: int = 0,
     **meta,
 ) -> None:
     """Async wrapper — for use in async bot handlers."""
     from asgiref.sync import sync_to_async
     await sync_to_async(log_usage_event, thread_sensitive=True)(
-        user, event_type, channel=channel, network=network, cost=cost, **meta
+        user, event_type, channel=channel, network=network, cost_kopecks=cost_kopecks, **meta
     )

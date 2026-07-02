@@ -6,63 +6,68 @@ from .models import StudioProject, StudioFile, StudioVersion, StudioPipelineStat
 from .events import publish_event
 from . import sandbox
 from .billing import (
-    STAR_RATE, AGENT_BUDGET, can_afford, charge, refund, coder_tier_for_model,
-    reserve, charge_from_reserve, release_reserve, estimate_stars, stars_for_tokens,
+    KOPECK_RATE, AGENT_BUDGET, can_afford, charge, refund, coder_tier_for_model,
+    reserve, charge_from_reserve, release_reserve, estimate_kopecks, kopecks_for_tokens,
 )
+from core.money import format_rub
 
 QUEUE = 'studio_queue'
 
 
 class InsufficientStars(Exception):
     """Raised when a user can't afford an agent run. Pauses the pipeline."""
-    def __init__(self, needed, reason=None):
-        self.needed = needed
+    def __init__(self, needed_kopecks, reason=None):
+        self.needed = needed_kopecks
         self.reason = reason
-        super().__init__(f'Недостаточно звёзд: нужно {needed}')
+        super().__init__(f'Недостаточно средств: нужно {format_rub(needed_kopecks)}')
 
 
 def _agent_cost(agent_name: str) -> int:
+    """Стоимость шага агента в копейках."""
     tier, budget = AGENT_BUDGET.get(agent_name, ('fast', 2000))
-    return max(1, int((budget / 1000.0) * STAR_RATE[tier]))
+    return max(1, int((budget / 1000.0) * KOPECK_RATE[tier]))
 
 
 def _billing_charge(project, agent_name: str, step_index: int, tier_override: str = None,
                     prompt_tokens: int = None, completion_tokens: int = None):
-    """Charge stars for one agent run, emit SSE billing event, update billing_log."""
+    """Charge kopecks for one agent run, emit SSE billing event, update billing_log."""
     if (settings.STUDIO_V4_TOKEN_BILLING
             and prompt_tokens is not None and completion_tokens is not None):
         tier = tier_override or AGENT_BUDGET.get(agent_name, ('fast', 0))[0]
-        cost = stars_for_tokens(prompt_tokens, completion_tokens, tier)
+        cost = kopecks_for_tokens(prompt_tokens, completion_tokens, tier)
     elif tier_override:
         tier, budget = AGENT_BUDGET.get(agent_name, ('fast', 2000))
-        cost = max(1, int((budget / 1000.0) * STAR_RATE[tier_override]))
+        cost = max(1, int((budget / 1000.0) * KOPECK_RATE[tier_override]))
     else:
         cost = _agent_cost(agent_name)
-    cap = project.max_stars_budget or 0
+    cap = project.max_kopecks_budget or 0
     if cap:
-        project.refresh_from_db(fields=['stars_spent'])
-        if project.stars_spent + cost > cap:
+        project.refresh_from_db(fields=['stars_spent_kopecks'])
+        if project.stars_spent_kopecks + cost > cap:
             raise InsufficientStars(
                 cost,
-                reason=f'Бюджет проекта исчерпан (лимит {cap} зв., потрачено {project.stars_spent} зв.)',
+                reason=f'Бюджет проекта исчерпан (лимит {format_rub(cap)}, потрачено {format_rub(project.stars_spent_kopecks)})',
             )
-    if not charge_from_reserve(cost, project):
+    reference = f'studio:{project.id}:{agent_name}:{step_index}'
+    if not charge_from_reserve(cost, project, reference=reference):
         raise InsufficientStars(cost)
     publish_event(str(project.id), {
         'agent': agent_name, 'level': 'billing',
-        'text': f'-{cost} зв. (шаг {step_index})',
+        'text': f'-{format_rub(cost)} (шаг {step_index})',
     })
     log = project.interview_data.setdefault('billing_log', [])
-    log.append({'agent': agent_name, 'stars': cost, 'step': step_index})
+    log.append({'agent': agent_name, 'stars': cost // 100, 'kopecks': cost, 'step': step_index})
     project.save(update_fields=['interview_data'])
     return cost
 
 
 def _pause_no_funds(project, needed, reason=None):
+    # Без reference: событие паузы нечастое и не ретраится инфраструктурой —
+    # фиксированный ключ по project.id ошибочно склеил бы разные по сумме события.
     release_reserve(project)
     state = project.pipeline
     state.status = 'paused_on_loop'
-    state.pause_reason = reason or f'Недостаточно звёзд для продолжения (нужно ещё ~{needed})'
+    state.pause_reason = reason or f'Недостаточно средств для продолжения (нужно ещё ~{format_rub(needed)})'
     state.save(update_fields=['status', 'pause_reason'])
     project.status = 'paused'
     project.save(update_fields=['status'])
@@ -355,15 +360,17 @@ def run_pipeline(project_id):
     if not can_afford(project.user, _agent_cost('coder')):
         publish_event(project_id, {
             'agent': 'system', 'level': 'error',
-            'text': 'Недостаточно звёзд для запуска кодинга',
+            'text': 'Недостаточно средств для запуска кодинга',
         })
         return
     planned = project.interview_data.get('planned_steps', 5)
-    est = estimate_stars(project, planned_steps=planned)
-    if not reserve(project.user, est, project):
+    est = estimate_kopecks(project, planned_steps=planned)
+    # Фиксированный reference: старт кодинга — разовое событие в жизненном цикле проекта,
+    # повтор (ретрай таска) должен быть идемпотентным, а не резервировать баланс повторно.
+    if not reserve(project.user, est, project, reference=f'studio-reserve:{project.id}:initial'):
         publish_event(project_id, {
             'agent': 'system', 'level': 'error',
-            'text': f'Недостаточно звёзд для резервирования (~{est}). Пополните баланс.',
+            'text': f'Недостаточно средств для резервирования (~{format_rub(est)}). Пополните баланс.',
         })
         return
     project.status = 'coding'
@@ -797,10 +804,10 @@ def guardian_review(self, project_id, step_index):
         coder_iteration.delay(project_id, step_index)
     else:
         step_refund = _agent_cost('coder') + _agent_cost('guardian')
-        refund(project.user, step_refund, project)
+        refund(project.user, step_refund, project, reference=f'studio-refund:{project.id}:{step_index}:loop')
         publish_event(project_id, {
             'agent': 'system', 'level': 'billing',
-            'text': f'+{step_refund} зв. возврат (шаг не сошёлся)',
+            'text': f'+{format_rub(step_refund)} возврат (шаг не сошёлся)',
         })
         publish_event(project_id, {
             'agent': 'system', 'level': 'warning',
@@ -945,10 +952,10 @@ def merge_reports(results, project_id, step_index):
         else:
             # Reached max iterations — refund last step's agent costs
             step_refund = _agent_cost('coder') + _agent_cost('reviewer') + _agent_cost('tester')
-            refund(project.user, step_refund, project)
+            refund(project.user, step_refund, project, reference=f'studio-refund:{project.id}:{step_index}:legacy-loop')
             publish_event(project_id, {
                 'agent': 'system', 'level': 'billing',
-                'text': f'+{step_refund} зв. возврат (шаг не сошёлся)',
+                'text': f'+{format_rub(step_refund)} возврат (шаг не сошёлся)',
             })
             state.status = 'paused_on_loop'
             state.pause_reason = (
@@ -1592,7 +1599,7 @@ def _settle_preview_session(ps, rate):
     duration_min = (_tz.now() - ps.started_at).total_seconds() / 60
     actual_stars = min(int(duration_min * rate) + 1, ps.reserved_stars)
     try:
-        charge_from_reserve(actual_stars, ps.project)
+        charge_from_reserve(actual_stars * 100, ps.project, reference=f'preview:{ps.session_id}')
     except Exception:
         pass
     ps.settled = True

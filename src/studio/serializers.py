@@ -9,7 +9,9 @@ class StudioProjectSerializer(serializers.ModelSerializer):
         read_only_fields = (
             'id', 'user', 'status',
             'sandbox_container_id', 'preview_port', 'repo_url',
-            'stars_reserved', 'stars_spent', 'created_at', 'updated_at',
+            'stars_reserved', 'stars_spent',
+            'stars_reserved_kopecks', 'stars_spent_kopecks',
+            'created_at', 'updated_at',
         )
 
 

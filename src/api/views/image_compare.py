@@ -120,9 +120,11 @@ class ImageCompareView(APIView):
                 'provider': network.provider,
                 'assistant_message_id': assistant_message.id,
                 'cost': network.cost_per_message,
+                'cost_kopecks': network.cost_kopecks,
             })
 
         return Response({
             'items': items,
             'new_balance': request.user.pages_count,
+            'new_balance_kopecks': request.user.balance_kopecks,
         }, status=201)

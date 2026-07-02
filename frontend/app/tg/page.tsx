@@ -1,11 +1,12 @@
 ﻿'use client'
 
 import { useEffect, useState } from 'react'
+import { formatRub } from '@/lib/money'
 
 interface UserInfo {
   id: number
   email: string
-  pages_count: number
+  balance_kopecks: number
 }
 
 const linkStyle: React.CSSProperties = {
@@ -106,8 +107,7 @@ export default function TelegramMiniApp() {
           <div style={{ fontSize: 13, color: 'var(--tg-theme-hint-color, #666)', marginBottom: 4 }}>
             Баланс
           </div>
-          <div style={{ fontSize: 32, fontWeight: 700 }}>{user.pages_count}</div>
-          <div style={{ fontSize: 14, color: 'var(--tg-theme-hint-color, #666)' }}>звёзд</div>
+          <div style={{ fontSize: 32, fontWeight: 700 }}>{formatRub(user.balance_kopecks)}</div>
         </div>
       )}
 

@@ -23,7 +23,7 @@ class NeuralNetworkListSerializer(serializers.ModelSerializer):
         model = NeuralNetwork
         fields = [
             'id', 'name', 'slug', 'category', 'avatar',
-            'description', 'cost_per_message', 'provider',
+            'description', 'cost_per_message', 'cost_kopecks', 'provider',
             'is_popular', 'unlimited', 'messages_limit',
             'handle_photo', 'handle_video', 'handle_archive', 'handle_text_files',
             'seo_title', 'seo_description', 'model_name', 'order', 'output_type',

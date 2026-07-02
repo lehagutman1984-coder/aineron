@@ -58,13 +58,15 @@ class ImageGenerationsView(APIView):
             )
 
         user = request.user
-        cost = network.cost_per_message * n
+        cost_kopecks = network.cost_kopecks * n
+        request_id = str(uuid.uuid4())[:8]
 
-        if user.pages_count < cost:
+        if not user.has_enough_kopecks(cost_kopecks):
+            from core.money import format_rub
             return Response(
                 {
                     'error': {
-                        'message': f'Insufficient balance. Need {cost} stars, have {user.pages_count}.',
+                        'message': f'Insufficient balance. Need {format_rub(cost_kopecks)}, have {format_rub(user.balance_kopecks)}.',
                         'type': 'insufficient_quota',
                         'code': 'insufficient_quota',
                     }
@@ -73,7 +75,7 @@ class ImageGenerationsView(APIView):
             )
 
         # Списываем заранее (как в web-чате)
-        user.spend_pages(cost)
+        user.spend_kopecks(cost_kopecks, type='spend', reference=f'api-image:{request_id}')
         stars_returned = False
 
         try:
@@ -98,7 +100,7 @@ class ImageGenerationsView(APIView):
                     urls.append(img_url)
 
             if not urls:
-                user.add_pages(cost)
+                user.add_kopecks(cost_kopecks, type='refund', reference=f'api-image:{request_id}')
                 stars_returned = True
                 return Response(
                     {'error': {'message': 'No images returned from upstream', 'type': 'api_error', 'code': 'no_images'}},
@@ -125,7 +127,7 @@ class ImageGenerationsView(APIView):
 
         except Exception as e:
             if not stars_returned:
-                user.add_pages(cost)
+                user.add_kopecks(cost_kopecks, type='refund', reference=f'api-image:{request_id}')
             logger.error(f'[API] Ошибка генерации изображения для {user.email}: {e}')
             return Response(
                 {'error': {'message': str(e), 'type': 'api_error', 'code': 'generation_error'}},

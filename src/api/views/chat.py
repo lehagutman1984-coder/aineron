@@ -17,7 +17,7 @@ from drf_spectacular.utils import extend_schema
 from aitext.models import NeuralNetwork
 from aitext.tasks import get_laozhang_client
 from api.exceptions import InsufficientStarsError
-from api.services.billing import charge_for_tokens, refund_stars
+from api.services.billing import charge_for_tokens, refund_kopecks
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ def _stream_completion(user, network, messages, kwargs, api_key):
 
     prompt_tokens = 0
     completion_tokens = 0
-    stars_charged = 0
+    kopecks_charged = 0
 
     try:
         with client.chat.completions.create(stream=True, **kwargs) as stream:
@@ -105,7 +105,7 @@ def _stream_completion(user, network, messages, kwargs, api_key):
             'total_tokens': total_tokens,
         }
         try:
-            stars_charged = charge_for_tokens(user, network, usage, api_key=api_key)
+            kopecks_charged = charge_for_tokens(user, network, usage, api_key=api_key)
         except InsufficientStarsError as e:
             logger.warning(f'[API] Нехватка баланса после стрима для {user.email}: {e}')
 
@@ -113,8 +113,8 @@ def _stream_completion(user, network, messages, kwargs, api_key):
 
     except Exception as e:
         logger.error(f'[API] Ошибка стриминга для {user.email}: {e}')
-        if stars_charged:
-            refund_stars(user, stars_charged, reason='stream error')
+        if kopecks_charged:
+            refund_kopecks(user, kopecks_charged, reason='stream error')
         error_event = {
             'error': {
                 'message': str(e),
@@ -165,11 +165,12 @@ class ChatCompletionsView(APIView):
         api_key = getattr(request, 'api_key', None)
 
         # Предварительная проверка баланса (примерная, точное списание после ответа)
-        if user.pages_count <= 0:
+        if user.balance_kopecks <= 0:
+            from core.money import format_rub
             return Response(
                 {
                     'error': {
-                        'message': f'Insufficient balance. Current balance: {user.pages_count} stars.',
+                        'message': f'Insufficient balance. Current balance: {format_rub(user.balance_kopecks)}.',
                         'type': 'insufficient_quota',
                         'code': 'insufficient_quota',
                     }
@@ -200,7 +201,7 @@ class ChatCompletionsView(APIView):
             return response
 
         # Non-streaming
-        stars_charged = 0
+        kopecks_charged = 0
         try:
             completion = client.chat.completions.create(**kwargs)
         except Exception as e:
@@ -218,7 +219,7 @@ class ChatCompletionsView(APIView):
         }
 
         try:
-            stars_charged = charge_for_tokens(user, network, usage, api_key=api_key)
+            kopecks_charged = charge_for_tokens(user, network, usage, api_key=api_key)
         except InsufficientStarsError as e:
             return Response(
                 {'error': {'message': str(e), 'type': 'insufficient_quota', 'code': 'insufficient_quota'}},

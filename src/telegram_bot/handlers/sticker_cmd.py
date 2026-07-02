@@ -104,9 +104,10 @@ async def cmd_sticker(message: Message, tg_user=None):
         await message.answer('Нет доступных моделей для генерации изображений.')
         return
 
-    if tg_user.user.pages_count < network.cost_per_message:
+    if not tg_user.user.has_enough_kopecks(network.cost_kopecks):
+        from core.money import format_rub
         await message.answer(
-            f'Недостаточно звёзд. Нужно: {network.cost_per_message}, у вас: {tg_user.user.pages_count}\n'
+            f'Недостаточно средств. Нужно: {format_rub(network.cost_kopecks)}, у вас: {format_rub(tg_user.user.balance_kopecks)}\n'
             '/balance — пополнить'
         )
         return
@@ -157,7 +158,7 @@ async def cmd_sticker(message: Message, tg_user=None):
                     logger.error(f'sticker send error: {e}')
                     await message.answer(f'Стикер создан: {img_url}')
 
-                await async_log_event(tg_user, 'image', network=network, cost=network.cost_per_message)
+                await async_log_event(tg_user, 'image', network=network, cost_kopecks=network.cost_kopecks)
             else:
                 await status_msg.edit_text('Стикер создан, но не найден. Попробуй ещё раз.')
             return

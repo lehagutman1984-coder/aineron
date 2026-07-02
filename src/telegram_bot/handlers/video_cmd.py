@@ -66,10 +66,11 @@ async def cmd_video(message: Message, tg_user=None):
         await message.answer('Нет доступных моделей для генерации видео. Выберите модель: /models')
         return
 
-    if tg_user.user.pages_count < network.cost_per_message:
+    if not tg_user.user.has_enough_kopecks(network.cost_kopecks):
+        from core.money import format_rub
         await message.answer(
             f'<b>Недостаточно средств</b>\n{DIVIDER}\n'
-            f'Нужно: <b>{network.cost_per_message} зв.</b>   У вас: {tg_user.user.pages_count} зв.\n\n'
+            f'Нужно: <b>{format_rub(network.cost_kopecks)}</b>   У вас: {format_rub(tg_user.user.balance_kopecks)}\n\n'
             'Пополните баланс: /balance',
             parse_mode='HTML',
         )
@@ -80,12 +81,13 @@ async def cmd_video(message: Message, tg_user=None):
     from aitext.tasks import generate_ai_response
     generate_ai_response.delay(assistant_msg.id)
 
+    from core.money import format_rub
     await message.answer(
         f'<b>Aineron · Видео</b>\n{DIVIDER}\n'
         f'Запрос принят.\n\n'
-        f'Модель: <b>{network.name}</b>  ·  {network.cost_per_message} зв.\n'
+        f'Модель: <b>{network.name}</b>  ·  {format_rub(network.cost_kopecks)}\n'
         f'Готово через 5–15 минут — пришлю результат.',
         parse_mode='HTML',
     )
     await async_log_event(tg_user, 'video', network=network,
-                          cost=network.cost_per_message)
+                          cost_kopecks=network.cost_kopecks)

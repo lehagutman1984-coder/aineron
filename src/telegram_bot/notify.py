@@ -70,9 +70,10 @@ def maybe_notify_chat(telegram_chat_id: int, text: str) -> None:
         logger.warning(f'maybe_notify_chat failed: {e}')
 
 
-def send_media_to_telegram(telegram_chat_id: int, generated_image, network_name: str, cost: int) -> None:
+def send_media_to_telegram(telegram_chat_id: int, generated_image, network_name: str, cost_kopecks: int) -> None:
     """Отправить сгенерированное видео/изображение в Telegram чат."""
     from django.conf import settings
+    from core.money import format_rub
     if not getattr(settings, 'TELEGRAM_BOT_ENABLED', False) or not getattr(settings, 'TELEGRAM_BOT_TOKEN', ''):
         return
 
@@ -83,7 +84,7 @@ def send_media_to_telegram(telegram_chat_id: int, generated_image, network_name:
         return
 
     is_video = getattr(generated_image, 'file_type', None) == 'video' or 'video' in (generated_image.image.name or '')
-    caption = f'{network_name} · {cost} зв.'
+    caption = f'{network_name} · {format_rub(cost_kopecks)}'
 
     async def _send():
         from aiogram import Bot

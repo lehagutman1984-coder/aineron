@@ -4,7 +4,7 @@ from asgiref.sync import sync_to_async
 logger = logging.getLogger(__name__)
 
 
-def log_event(tg_user, event_type: str, network=None, cost: int = 0, **meta):
+def log_event(tg_user, event_type: str, network=None, cost_kopecks: int = 0, **meta):
     """Log a TelegramEvent + UsageEvent. Sync, never raises."""
     try:
         from telegram_bot.models import TelegramEvent
@@ -12,7 +12,8 @@ def log_event(tg_user, event_type: str, network=None, cost: int = 0, **meta):
             telegram_user=tg_user,
             event_type=event_type,
             network=network,
-            cost=cost,
+            cost=max(0, cost_kopecks // 100),
+            cost_kopecks=cost_kopecks,
             meta=meta or {},
         )
     except Exception as e:
@@ -27,7 +28,7 @@ def log_event(tg_user, event_type: str, network=None, cost: int = 0, **meta):
             event_type=event_type,
             channel='bot',
             network=network,
-            cost=cost,
+            cost_kopecks=cost_kopecks,
             **meta,
         )
     except Exception as e:

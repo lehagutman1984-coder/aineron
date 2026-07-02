@@ -46,9 +46,10 @@ class AudioTranscriptionsView(APIView):
             )
 
         user = request.user
-        if user.pages_count <= 0:
+        if user.balance_kopecks <= 0:
+            from core.money import format_rub
             return Response(
-                {'error': {'message': f'Insufficient balance: {user.pages_count} stars.', 'type': 'insufficient_quota', 'code': 'insufficient_quota'}},
+                {'error': {'message': f'Insufficient balance: {format_rub(user.balance_kopecks)}.', 'type': 'insufficient_quota', 'code': 'insufficient_quota'}},
                 status=status.HTTP_402_PAYMENT_REQUIRED,
             )
 
@@ -73,9 +74,10 @@ class AudioTranscriptionsView(APIView):
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
-        # Списываем 1 звезду за транскрипцию
+        # Списываем фиксированную ставку (1 ₽) за транскрипцию
         try:
-            user.spend_pages(1)
+            import uuid as _uuid
+            user.spend_kopecks(100, type='spend', reference=f'api-asr:{_uuid.uuid4().hex[:8]}')
         except Exception:
             pass
 
@@ -116,9 +118,10 @@ class AudioSpeechView(APIView):
             )
 
         user = request.user
-        if user.pages_count <= 0:
+        if user.balance_kopecks <= 0:
+            from core.money import format_rub
             return Response(
-                {'error': {'message': f'Insufficient balance: {user.pages_count} stars.', 'type': 'insufficient_quota', 'code': 'insufficient_quota'}},
+                {'error': {'message': f'Insufficient balance: {format_rub(user.balance_kopecks)}.', 'type': 'insufficient_quota', 'code': 'insufficient_quota'}},
                 status=status.HTTP_402_PAYMENT_REQUIRED,
             )
 
@@ -138,9 +141,10 @@ class AudioSpeechView(APIView):
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
-        # Списываем 1 звезду за TTS
+        # Списываем фиксированную ставку (1 ₽) за TTS
         try:
-            user.spend_pages(1)
+            import uuid as _uuid
+            user.spend_kopecks(100, type='spend', reference=f'api-tts:{_uuid.uuid4().hex[:8]}')
         except Exception:
             pass
 

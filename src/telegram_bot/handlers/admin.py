@@ -67,10 +67,11 @@ def _count_users():
 
 def _grant_stars(tg_id, stars):
     from telegram_bot.models import TelegramUser
+    from core.money import format_rub
     try:
         tu = TelegramUser.objects.select_related('user').get(telegram_id=tg_id)
-        tu.user.add_pages(stars)
-        return f'Начислено {stars} звёзд → {tu.user.email} (новый баланс: {tu.user.pages_count})'
+        tu.user.add_kopecks(stars * 100, type='admin', reference='')
+        return f'Начислено {format_rub(stars * 100)} → {tu.user.email} (новый баланс: {format_rub(tu.user.balance_kopecks)})'
     except TelegramUser.DoesNotExist:
         return 'Пользователь не найден'
 

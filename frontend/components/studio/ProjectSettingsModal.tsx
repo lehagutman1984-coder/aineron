@@ -5,6 +5,7 @@ import { X, Zap, Code2, Compass, ShieldCheck, ChevronDown, Database } from 'luci
 import { studioApi, type StudioProject } from '@/lib/api/studio';
 import { useQuery } from '@tanstack/react-query';
 import type { StudioModel } from '@/lib/api/studio';
+import { kopecksToRub, rubToKopecks } from '@/lib/money';
 import { modal, form } from './styles';
 import { AGENTS } from './agentConfig';
 import { DatabasePanel } from './DatabasePanel';
@@ -33,7 +34,7 @@ export function ProjectSettingsModal({ project, onClose, onSaved }: Props) {
   const [aiModel, setAiModel] = useState(project.ai_model ?? 'claude-sonnet-4-6');
   const [agentModels, setAgentModels] = useState<Record<string, string>>(project.agent_models ?? {});
   const [iterations, setIterations] = useState(project.max_iterations ?? 0);
-  const [budget, setBudget] = useState(project.max_stars_budget ?? 0);
+  const [budget, setBudget] = useState(kopecksToRub(project.max_kopecks_budget ?? 0));
   const [mode, setMode] = useState(project.mode);
   const [saving, setSaving] = useState(false);
   const [expandedAgent, setExpandedAgent] = useState<string | null>(null);
@@ -65,7 +66,7 @@ export function ProjectSettingsModal({ project, onClose, onSaved }: Props) {
         ai_model: aiModel,
         agent_models: agentModels,
         max_iterations: iterations,
-        max_stars_budget: budget,
+        max_kopecks_budget: rubToKopecks(budget),
         mode,
       });
       onSaved();
@@ -240,7 +241,7 @@ export function ProjectSettingsModal({ project, onClose, onSaved }: Props) {
               />
             </label>
             <label className="block col-span-2 text-xs space-y-1">
-              <span className="text-[var(--text-secondary)]">Бюджет звёзд (0 = без лимита)</span>
+              <span className="text-[var(--text-secondary)]">Бюджет, ₽ (0 = без лимита)</span>
               <input
                 type="number"
                 min={0}

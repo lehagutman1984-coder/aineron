@@ -23,6 +23,8 @@ import {
   applyPromoCode,
 } from "@/lib/api/client";
 import type { Tariff, PaymentHistory, RobokassaForm } from "@/lib/api/types";
+import { formatRub } from "@/lib/money";
+import { useAuthStore } from "@/lib/stores/auth";
 
 // ── Robokassa redirect ───────────────────────────────────────────────────────
 
@@ -123,7 +125,7 @@ function TariffCard({
       <div>
         <p className="font-semibold text-[var(--color-text-primary)]">{tariff.display_name}</p>
         <p className="text-sm text-[var(--color-text-secondary)] mt-0.5">
-          {tariff.pages_count} звёзд
+          {formatRub(tariff.balance_grant_kopecks)}
           {tariff.duration_days < 36500 && ` · ${tariff.duration_days} дней`}
         </p>
       </div>
@@ -230,6 +232,7 @@ function StarsSection() {
 
 function PromoSection() {
   const queryClient = useQueryClient();
+  const setBalance = useAuthStore((s) => s.setBalance);
   const [code, setCode] = useState("");
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -238,6 +241,9 @@ function PromoSection() {
     onSuccess: (data) => {
       setSuccessMsg(data.message);
       setCode("");
+      if (data.new_balance_kopecks != null) {
+        setBalance(data.new_balance_kopecks);
+      }
       queryClient.invalidateQueries({ queryKey: ["payment-history"] });
       queryClient.invalidateQueries({ queryKey: ["tariffs"] });
     },
@@ -323,7 +329,10 @@ function HistorySection() {
               </p>
             )}
             <p className="text-xs text-[var(--color-text-secondary)]">
-              +{p.pages_count} зв. · {paymentStatusLabel(p.status)}
+              {p.amount_kopecks != null
+                ? `+${formatRub(p.amount_kopecks)}`
+                : `+${p.pages_count} зв.`}{" "}
+              · {paymentStatusLabel(p.status)}
             </p>
           </div>
         </div>
@@ -371,7 +380,7 @@ export default function BillingPage() {
           <p className="mt-1 text-[var(--color-text-secondary)]">
             Текущий баланс:{" "}
             <span className="font-semibold text-[var(--color-text-primary)]">
-              {tariffsData.pages_count} звёзд
+              {formatRub(tariffsData.balance_kopecks)}
             </span>
             {tariffsData.current_subscription && (
               <>

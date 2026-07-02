@@ -648,10 +648,10 @@ class SmartCoderTest(APITestCase):
         self.assertEqual(self._agent('deepseek-v3.2')._pick_model('[COMPLEX] Auth'), expected)
 
     def test_billing_tier_smart_costs_more_than_fast(self):
-        from studio.billing import STAR_RATE, AGENT_BUDGET
+        from studio.billing import KOPECK_RATE, AGENT_BUDGET
         _, budget = AGENT_BUDGET['coder']
-        cost_smart = max(1, int((budget / 1000.0) * STAR_RATE['smart']))
-        cost_fast = max(1, int((budget / 1000.0) * STAR_RATE['fast']))
+        cost_smart = max(1, int((budget / 1000.0) * KOPECK_RATE['smart']))
+        cost_fast = max(1, int((budget / 1000.0) * KOPECK_RATE['fast']))
         self.assertGreater(cost_smart, cost_fast)
 
     def test_coder_tier_for_model_uses_catalog(self):
@@ -662,52 +662,53 @@ class SmartCoderTest(APITestCase):
 
 
 class StarReservationTest(APITestCase):
-    """Commit 25 — reserve/charge_from_reserve/release_reserve billing helpers."""
+    """Commit 25 — reserve/charge_from_reserve/release_reserve billing helpers (копейки)."""
 
     def setUp(self):
-        self.user = User.objects.create_user(email='res@t.ru', password='x', pages_count=50)
+        self.user = User.objects.create_user(username='res', email='res@t.ru', password='x')
+        self.user.set_kopecks(5000)  # 50 ₽, детерминированно (не зависит от free-тарифа)
         self.project = StudioProject.objects.create(user=self.user, name='R', status='ready', mode='auto')
 
     def test_reserve_reduces_balance_and_increases_reserved(self):
         from studio.billing import reserve
-        result = reserve(self.user, 20, self.project)
+        result = reserve(self.user, 2000, self.project)
         self.assertTrue(result)
         self.user.refresh_from_db()
-        self.assertEqual(self.user.pages_count, 30)
+        self.assertEqual(self.user.balance_kopecks, 3000)
         self.project.refresh_from_db()
-        self.assertEqual(self.project.stars_reserved, 20)
+        self.assertEqual(self.project.stars_reserved_kopecks, 2000)
 
     def test_reserve_fails_on_insufficient_balance(self):
         from studio.billing import reserve
-        result = reserve(self.user, 100, self.project)
+        result = reserve(self.user, 10000, self.project)
         self.assertFalse(result)
         self.user.refresh_from_db()
-        self.assertEqual(self.user.pages_count, 50)
+        self.assertEqual(self.user.balance_kopecks, 5000)
 
     def test_charge_from_reserve_uses_reserve_first(self):
         from studio.billing import reserve, charge_from_reserve
-        reserve(self.user, 20, self.project)
-        result = charge_from_reserve(10, self.project)
+        reserve(self.user, 2000, self.project)
+        result = charge_from_reserve(1000, self.project)
         self.assertTrue(result)
         self.project.refresh_from_db()
-        self.assertEqual(self.project.stars_reserved, 10)
-        self.assertEqual(self.project.stars_spent, 10)
+        self.assertEqual(self.project.stars_reserved_kopecks, 1000)
+        self.assertEqual(self.project.stars_spent_kopecks, 1000)
 
     def test_release_reserve_returns_unused_to_balance(self):
         from studio.billing import reserve, release_reserve
-        reserve(self.user, 20, self.project)
+        reserve(self.user, 2000, self.project)
         self.user.refresh_from_db()
-        balance_after_reserve = self.user.pages_count
+        balance_after_reserve = self.user.balance_kopecks
         release_reserve(self.project)
         self.user.refresh_from_db()
-        self.assertEqual(self.user.pages_count, balance_after_reserve + 20)
+        self.assertEqual(self.user.balance_kopecks, balance_after_reserve + 2000)
         self.project.refresh_from_db()
-        self.assertEqual(self.project.stars_reserved, 0)
+        self.assertEqual(self.project.stars_reserved_kopecks, 0)
 
     def test_next_step_calls_release_reserve_on_completion(self):
         from studio.tasks import next_step
         from studio.billing import reserve
-        reserve(self.user, 20, self.project)
+        reserve(self.user, 2000, self.project)
         self.project.interview_data = {'planned_steps': 1}
         self.project.save(update_fields=['interview_data'])
         state = StudioPipelineState.objects.create(project=self.project, status='running', step_index=0)
@@ -716,7 +717,7 @@ class StarReservationTest(APITestCase):
             next_step(str(self.project.id), 0)  # nxt=1 >= total=1 → completed
 
         self.project.refresh_from_db()
-        self.assertEqual(self.project.stars_reserved, 0)
+        self.assertEqual(self.project.stars_reserved_kopecks, 0)
         self.assertEqual(self.project.status, 'completed')
 
 
@@ -943,10 +944,11 @@ class EstimateViewTest(APITestCase):
     """Commit 8 — EstimateView returns real star estimate, not hardcoded value."""
 
     def setUp(self):
-        self.user = User.objects.create_user(email='est@t.ru', password='x', pages_count=200)
+        self.user = User.objects.create_user(username='est', email='est@t.ru', password='x')
+        self.user.set_kopecks(20000)
         self.client.force_authenticate(self.user)
 
-    @patch('studio.billing.estimate_stars', return_value=90)
+    @patch('studio.billing.estimate_kopecks', return_value=9000)
     def test_estimate_returns_correct_fields(self, mock_est):
         project = StudioProject.objects.create(
             user=self.user, name='E',
@@ -956,9 +958,10 @@ class EstimateViewTest(APITestCase):
         r = self.client.get(f'/api/v1/studio/projects/{project.id}/estimate/')
         self.assertEqual(r.status_code, 200)
         self.assertIn('estimated_stars', r.data)
+        self.assertIn('estimated_kopecks', r.data)
         self.assertIn('affordable', r.data)
         self.assertEqual(r.data['planned_steps'], 3)
-        self.assertEqual(r.data['balance'], 200)
+        self.assertEqual(r.data['balance_kopecks'], 20000)
 
 
 class SplitStepsTest(APITestCase):

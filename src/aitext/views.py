@@ -94,7 +94,7 @@ def create_chat(request):
             return JsonResponse({'success': False, 'message': 'Нет текста или файлов'})
 
         network = get_object_or_404(NeuralNetwork, slug=network_slug, is_active=True)
-        cost = network.cost_per_message
+        cost_kopecks = network.cost_kopecks
         deduct_stars = True
 
         # ========== ЛОГИКА БЕСПЛАТНЫХ СООБЩЕНИЙ ==========
@@ -113,10 +113,11 @@ def create_chat(request):
                 logger.info(f"Бесплатное сообщение для {request.user.email} в {network.name} ({usage.count}/{network.messages_limit})")
 
         # Проверка баланса для fal.ai (списание в Celery, но проверяем сейчас)
-        if deduct_stars and request.user.pages_count < cost:
+        if deduct_stars and not request.user.has_enough_kopecks(cost_kopecks):
+            from core.money import format_rub
             return JsonResponse({
                 'success': False,
-                'message': f'Недостаточно звёзд. Нужно {cost} зв., у вас {request.user.pages_count} зв.'
+                'message': f'Недостаточно средств. Нужно {format_rub(cost_kopecks)}, у вас {format_rub(request.user.balance_kopecks)}.'
             })
 
         # Создаём чат с настройками
@@ -161,13 +162,14 @@ def create_chat(request):
             status=Message.Status.PENDING
         )
 
-        # ========== СПИСАНИЕ ЗВЁЗД (только для текстовых моделей) ==========
+        # ========== СПИСАНИЕ (только для текстовых моделей) ==========
         # Для моделей изображений/видео списание происходит в задаче Celery
         if network.provider != 'fal-ai' and deduct_stars:
-            request.user.spend_pages(cost)
+            request.user.spend_kopecks(cost_kopecks, type='spend', reference=f'chat:{assistant_message.id}')
             UserSpending.objects.create(
                 user=request.user,
-                amount=cost,
+                amount=max(1, cost_kopecks // 100),
+                amount_kopecks=cost_kopecks,
                 description=f"Сообщение в чате с {network.name}"
             )
 
@@ -179,7 +181,8 @@ def create_chat(request):
         return JsonResponse({
             'success': True,
             'chat_id': chat.id,
-            'new_balance': request.user.pages_count
+            'new_balance': request.user.pages_count,
+            'new_balance_kopecks': request.user.balance_kopecks
         })
 
     except Exception as e:
@@ -202,7 +205,7 @@ def send_message(request, chat_id):
 
         chat = get_object_or_404(Chat, id=chat_id, user=request.user)
         network = chat.network
-        cost = network.cost_per_message
+        cost_kopecks = network.cost_kopecks
         deduct_stars = True
 
         # ========== ЛОГИКА БЕСПЛАТНЫХ СООБЩЕНИЙ ==========
@@ -223,10 +226,11 @@ def send_message(request, chat_id):
                 logger.info(f"Лимит бесплатных сообщений исчерпан для {request.user.email} в {network.name}")
 
         # Проверка баланса для fal.ai (списание в Celery, но проверяем сейчас)
-        if deduct_stars and request.user.pages_count < cost:
+        if deduct_stars and not request.user.has_enough_kopecks(cost_kopecks):
+            from core.money import format_rub
             return JsonResponse({
                 'success': False,
-                'message': f'Недостаточно звёзд. Нужно {cost} зв., у вас {request.user.pages_count} зв.'
+                'message': f'Недостаточно средств. Нужно {format_rub(cost_kopecks)}, у вас {format_rub(request.user.balance_kopecks)}.'
             })
 
         # Обновляем настройки чата, если они отличаются
@@ -268,13 +272,14 @@ def send_message(request, chat_id):
             status=Message.Status.PENDING
         )
 
-        # ========== СПИСАНИЕ ЗВЁЗД (только для текстовых моделей) ==========
+        # ========== СПИСАНИЕ (только для текстовых моделей) ==========
         # Для моделей изображений/видео списание происходит в задаче Celery
         if network.provider != 'fal-ai' and deduct_stars:
-            request.user.spend_pages(cost)
+            request.user.spend_kopecks(cost_kopecks, type='spend', reference=f'chat:{assistant_message.id}')
             UserSpending.objects.create(
                 user=request.user,
-                amount=cost,
+                amount=max(1, cost_kopecks // 100),
+                amount_kopecks=cost_kopecks,
                 description=f"Сообщение в чате с {network.name}"
             )
 
@@ -299,7 +304,9 @@ def send_message(request, chat_id):
             },
             'assistant_message_id': assistant_message.id,
             'new_balance': request.user.pages_count,
-            'cost': cost,
+            'new_balance_kopecks': request.user.balance_kopecks,
+            'cost': max(1, cost_kopecks // 100),
+            'cost_kopecks': cost_kopecks,
             'free_message': not deduct_stars
         })
 

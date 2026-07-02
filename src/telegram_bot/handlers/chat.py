@@ -85,8 +85,8 @@ def _get_message_state(msg_id):
     return AiMessage.objects.get(id=msg_id)
 
 
-def _check_balance(user, cost):
-    return user.pages_count >= cost
+def _check_balance(user, cost_kopecks):
+    return user.has_enough_kopecks(cost_kopecks)
 
 
 get_default_network = sync_to_async(_get_default_network, thread_sensitive=True)
@@ -111,8 +111,9 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
         return
 
     if not skip_billing:
-        has_balance = await check_balance(tg_user.user, network.cost_per_message)
+        has_balance = await check_balance(tg_user.user, network.cost_kopecks)
         if not has_balance:
+            from core.money import format_rub
             from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
             kb = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text='Telegram Stars (XTR)', callback_data='buy_stars')],
@@ -121,7 +122,7 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
             ])
             await tg_message.answer(
                 f'<b>Недостаточно средств</b>\n{DIVIDER}\n'
-                f'Нужно: <b>{network.cost_per_message} зв.</b>   У вас: {tg_user.user.pages_count} зв.\n\n'
+                f'Нужно: <b>{format_rub(network.cost_kopecks)}</b>   У вас: {format_rub(tg_user.user.balance_kopecks)}\n\n'
                 f'Пополните баланс:',
                 parse_mode='HTML',
                 reply_markup=kb,
@@ -164,7 +165,7 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
                     await tg_message.answer(part, parse_mode='HTML',
                                             reply_markup=after_answer_kb(msg.id))
             await async_log_event(tg_user, 'message', network=network,
-                                  cost=network.cost_per_message)
+                                  cost_kopecks=network.cost_kopecks)
             return
 
         elif msg.status == 'failed':

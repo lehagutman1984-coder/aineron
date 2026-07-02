@@ -61,9 +61,10 @@ class EmbeddingsView(APIView):
         user = request.user
         api_key = getattr(request, 'api_key', None)
 
-        if user.pages_count <= 0:
+        if user.balance_kopecks <= 0:
+            from core.money import format_rub
             return Response(
-                {'error': {'message': f'Insufficient balance: {user.pages_count} stars.', 'type': 'insufficient_quota', 'code': 'insufficient_quota'}},
+                {'error': {'message': f'Insufficient balance: {format_rub(user.balance_kopecks)}.', 'type': 'insufficient_quota', 'code': 'insufficient_quota'}},
                 status=status.HTTP_402_PAYMENT_REQUIRED,
             )
 

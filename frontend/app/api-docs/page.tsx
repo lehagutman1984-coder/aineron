@@ -197,7 +197,7 @@ print(image.data[0].url)`,
 
 const ERROR_BODY = `{
   "error": {
-    "message": "Недостаточно звёзд для выполнения запроса",
+    "message": "Недостаточно средств. Нужно 3 ₽, у вас 1,50 ₽.",
     "type": "insufficient_quota",
     "code": "insufficient_quota"
   }
@@ -265,7 +265,7 @@ const ENDPOINTS: { method: "GET" | "POST" | "DELETE"; path: string; desc: string
 
 const ERRORS: { code: number; type: string; desc: string }[] = [
   { code: 401, type: "authentication_error", desc: "Неверный или отсутствующий API-ключ" },
-  { code: 402, type: "insufficient_quota", desc: "Недостаточно звёзд на балансе" },
+  { code: 402, type: "insufficient_quota", desc: "Недостаточно средств на балансе" },
   { code: 403, type: "permission_error", desc: "Нет доступа к ресурсу" },
   { code: 429, type: "rate_limit_exceeded", desc: "Превышен лимит запросов (120/мин)" },
   { code: 400, type: "invalid_request_error", desc: "Неверные параметры запроса" },
@@ -310,7 +310,7 @@ export default function ApiDocsPage() {
           <InfoCard label="Base URL" value="aineron.ru/api/v1" />
           <InfoCard label="Аутентификация" value="Bearer ak_..." />
           <InfoCard label="Формат ошибок" value="OpenAI-совместимый" />
-          <InfoCard label="Биллинг" value="Звёзды / 1 000 токенов" />
+          <InfoCard label="Биллинг" value="Рубли / 1 000 токенов" />
         </div>
 
         {/* Quick start */}
@@ -333,7 +333,7 @@ export default function ApiDocsPage() {
                 в вашем SDK или HTTP-клиенте.
               </>,
               <>
-                <strong className="text-[#1A1A1A]">Пополните баланс звёзд</strong> и начните
+                <strong className="text-[#1A1A1A]">Пополните баланс</strong> и начните
                 запросы — списание по токенам автоматически.
               </>,
             ].map((step, i) => (
