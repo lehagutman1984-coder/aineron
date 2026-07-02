@@ -409,6 +409,69 @@ def execute_ai_task(self, task_id: int, run_iso: str):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# S5 — AI-секретарь: утренняя сводка и TTL-очистка черновиков
+# ═══════════════════════════════════════════════════════════════════════════
+
+@shared_task(name='telegram_bot.tasks.business_daily_summary', bind=True,
+             max_retries=0, ignore_result=True)
+def business_daily_summary(self):
+    """Утренняя сводка владельцу: сколько сообщений обработано за сутки."""
+    from datetime import timedelta
+    from django.conf import settings as dj
+    from django.utils import timezone as tz
+    from django.db.models import Count, Q
+    from telegram_bot.models import BusinessConnection
+    from telegram_bot.notify import notify_user
+
+    if not getattr(dj, 'TG_BUSINESS', False):
+        return
+
+    day_ago = tz.now() - timedelta(hours=24)
+    connections = (
+        BusinessConnection.objects.filter(is_enabled=True, secretary_on=True)
+        .select_related('tg_user')
+        .annotate(
+            total=Count('drafts', filter=Q(drafts__created_at__gte=day_ago)),
+            auto=Count('drafts', filter=Q(drafts__created_at__gte=day_ago,
+                                          drafts__status='auto')),
+            sent=Count('drafts', filter=Q(drafts__created_at__gte=day_ago,
+                                          drafts__status='sent')),
+            pending=Count('drafts', filter=Q(drafts__created_at__gte=day_ago,
+                                             drafts__status='pending')),
+        )
+    )
+    for conn in connections:
+        if not conn.total:
+            continue
+        try:
+            notify_user(
+                conn.tg_user.telegram_id,
+                f'<b>AI-секретарь · сводка за сутки</b>\n'
+                f'Сообщений клиентов: <b>{conn.total}</b>\n'
+                f'Отвечено автоматически: {conn.auto}\n'
+                f'Отправлено вами: {conn.sent}\n'
+                f'Ждут решения: {conn.pending}\n\n'
+                f'Управление: /secretary',
+            )
+        except Exception as e:
+            logger.warning(f'business_daily_summary failed for {conn.pk}: {e}')
+
+
+@shared_task(name='telegram_bot.tasks.cleanup_business_drafts', bind=True,
+             max_retries=0, ignore_result=True)
+def cleanup_business_drafts(self):
+    """Приватность: черновики с текстами клиентов живут максимум 7 дней."""
+    from datetime import timedelta
+    from django.utils import timezone as tz
+    from telegram_bot.models import BusinessDraft
+
+    cutoff = tz.now() - timedelta(days=7)
+    deleted, _ = BusinessDraft.objects.filter(created_at__lt=cutoff).delete()
+    if deleted:
+        logger.info(f'cleanup_business_drafts: {deleted} deleted')
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # S4 — Подарки за активность (за флагом TG_GIFTS, бюджет в env)
 # ═══════════════════════════════════════════════════════════════════════════
 

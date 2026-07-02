@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     TelegramUser, TelegramChat, TelegramLinkToken, TelegramGroup, AITask,
-    StarsSubscription,
+    StarsSubscription, BusinessConnection, BusinessDraft,
 )
 
 
@@ -44,6 +44,23 @@ class StarsSubscriptionAdmin(admin.ModelAdmin):
     list_filter = ('is_active',)
     raw_id_fields = ('tg_user', 'tariff')
     readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(BusinessConnection)
+class BusinessConnectionAdmin(admin.ModelAdmin):
+    list_display = ('tg_user', 'connection_id', 'mode', 'is_enabled', 'secretary_on',
+                    'replies_this_month', 'created_at')
+    list_filter = ('mode', 'is_enabled', 'secretary_on')
+    raw_id_fields = ('tg_user',)
+    readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(BusinessDraft)
+class BusinessDraftAdmin(admin.ModelAdmin):
+    list_display = ('connection', 'client_name', 'status', 'created_at')
+    list_filter = ('status',)
+    raw_id_fields = ('connection',)
+    readonly_fields = ('created_at',)
 
 
 @admin.register(TelegramGroup)

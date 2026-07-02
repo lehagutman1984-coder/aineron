@@ -32,6 +32,18 @@ TASKS = [
         "cron": True,
     },
     {
+        "name": "AI-секретарь: утренняя сводка (ежедневно 09:00 МСК)",
+        "task": "telegram_bot.tasks.business_daily_summary",
+        "schedule": {"hour": "6", "minute": "0"},  # UTC 06:00 = MSK 09:00
+        "cron": True,
+    },
+    {
+        "name": "AI-секретарь: очистка черновиков старше 7 дней (ежедневно)",
+        "task": "telegram_bot.tasks.cleanup_business_drafts",
+        "schedule": {"hour": "2", "minute": "30"},
+        "cron": True,
+    },
+    {
         "name": "Подарки за активность (понедельник 12:00 МСК, за флагом TG_GIFTS)",
         "task": "telegram_bot.tasks.send_activity_gifts",
         "schedule": {"day_of_week": "1", "hour": "9", "minute": "0"},  # UTC 09:00 = MSK 12:00

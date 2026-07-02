@@ -457,6 +457,85 @@ class StarsSubscription(models.Model):
         return f'{self.tg_user} — {self.tariff} до {self.expires_at}'
 
 
+class BusinessConnection(models.Model):
+    """S5 — AI-секретарь: подключение Telegram Business аккаунта к боту.
+
+    Приватность: переписка клиентов не логируется — хранится только очередь
+    черновиков (BusinessDraft) с TTL-очисткой.
+    """
+    class Mode(models.TextChoices):
+        DRAFTS = 'drafts', 'Черновики (подтверждение владельцем)'
+        AUTOPILOT = 'autopilot', 'Автопилот (типовые вопросы)'
+
+    tg_user = models.ForeignKey(
+        TelegramUser,
+        on_delete=models.CASCADE,
+        related_name='business_connections',
+        verbose_name='Владелец (TG пользователь)',
+    )
+    connection_id = models.CharField(max_length=128, unique=True,
+                                     verbose_name='business_connection_id')
+    is_enabled = models.BooleanField(default=True, verbose_name='Подключение активно')
+    secretary_on = models.BooleanField(default=True, verbose_name='Секретарь включён')
+    mode = models.CharField(max_length=10, choices=Mode.choices, default=Mode.DRAFTS,
+                            verbose_name='Режим')
+    scope_all = models.BooleanField(default=True, verbose_name='Работать во всех чатах')
+    allowed_chat_ids = models.JSONField(default=list, blank=True,
+                                        verbose_name='Белый список чатов')
+    tone = models.TextField(blank=True, verbose_name='Тон ответов (инструкция AI)')
+    stop_word = models.CharField(max_length=50, default='оператор',
+                                 verbose_name='Стоп-слово клиента (передать человеку)')
+    can_reply = models.BooleanField(default=False, verbose_name='Право отвечать (rights)')
+    replies_month = models.CharField(max_length=7, blank=True, default='',
+                                     verbose_name='Месяц счётчика (YYYY-MM)')
+    replies_this_month = models.PositiveIntegerField(default=0,
+                                                     verbose_name='Ответов за месяц')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Business-подключение'
+        verbose_name_plural = 'Business-подключения'
+
+    def __str__(self):
+        return f'{self.tg_user} — {self.connection_id[:12]} ({self.mode})'
+
+
+class BusinessDraft(models.Model):
+    """S5 — очередь черновиков AI-секретаря (единственное место с текстом
+    сообщений клиентов; чистится по TTL задачей cleanup_business_drafts)."""
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Ждёт решения'
+        SENT = 'sent', 'Отправлен'
+        IGNORED = 'ignored', 'Игнор'
+        AUTO = 'auto', 'Автоответ'
+
+    connection = models.ForeignKey(
+        BusinessConnection,
+        on_delete=models.CASCADE,
+        related_name='drafts',
+        verbose_name='Подключение',
+    )
+    client_chat_id = models.BigIntegerField(verbose_name='Чат клиента')
+    client_name = models.CharField(max_length=150, blank=True, verbose_name='Имя клиента')
+    incoming_text = models.TextField(verbose_name='Сообщение клиента')
+    draft_text = models.TextField(blank=True, verbose_name='Черновик ответа')
+    status = models.CharField(max_length=10, choices=Status.choices,
+                              default=Status.PENDING, verbose_name='Статус')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Черновик секретаря'
+        verbose_name_plural = 'Черновики секретаря'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['connection', 'status'], name='bizdraft_conn_idx'),
+        ]
+
+    def __str__(self):
+        return f'{self.connection} → {self.client_name} ({self.status})'
+
+
 def ai_task_limit(user) -> int:
     """S2 — лимит активных AI-задач по тарифу: free 1, Старт 3, Стандарт 10, Про 30."""
     tariff = getattr(user, 'tariff', None)

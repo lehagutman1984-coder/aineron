@@ -54,11 +54,21 @@ class Command(BaseCommand):
             webhook_url = f'{site_url}/telegram/webhook/'
             secret = settings.TELEGRAM_WEBHOOK_SECRET or None
 
+            allowed_updates = [
+                'message', 'callback_query', 'pre_checkout_query',
+                'successful_payment', 'inline_query', 'chosen_inline_result',
+            ]
+            # S5: AI-секретарь — апдейты Telegram Business (за флагом)
+            if getattr(settings, 'TG_BUSINESS', False):
+                allowed_updates += [
+                    'business_connection', 'business_message',
+                    'edited_business_message', 'deleted_business_messages',
+                ]
             await bot.set_webhook(
                 url=webhook_url,
                 secret_token=secret,
                 drop_pending_updates=True,
-                allowed_updates=['message', 'callback_query', 'pre_checkout_query', 'successful_payment', 'inline_query', 'chosen_inline_result'],
+                allowed_updates=allowed_updates,
             )
             self.stdout.write(self.style.SUCCESS(f'Webhook set: {webhook_url}'))
 
@@ -74,6 +84,11 @@ class Command(BaseCommand):
                 BotCommand(command='img2video', description='Оживить фото — фото → видео'),
                 BotCommand(command='sticker', description='Создать AI-стикер'),
                 BotCommand(command='ai', description='AI-агенты: пост, код-ревью, перевод'),
+                BotCommand(command='task', description='AI-задача по расписанию'),
+                BotCommand(command='tasks', description='Мои AI-задачи'),
+                BotCommand(command='research', description='Глубокое исследование с источниками'),
+                BotCommand(command='subscribe', description='Подписка на тариф в Stars'),
+                BotCommand(command='secretary', description='AI-секретарь для Telegram Business'),
                 BotCommand(command='memory', description='Что бот помнит о тебе'),
                 BotCommand(command='digest', description='Ежедневный AI-дайджест'),
                 BotCommand(command='balance', description='Баланс и пополнение'),
