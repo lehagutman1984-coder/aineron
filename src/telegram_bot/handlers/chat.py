@@ -2,7 +2,7 @@ import asyncio
 import logging
 from asgiref.sync import sync_to_async
 from aiogram import Router, F
-from aiogram.filters import Command
+from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message, CallbackQuery
@@ -336,7 +336,10 @@ async def cb_del_msg(query: CallbackQuery, tg_user=None):
         await query.answer("Удалено.")
 
 
-@router.message(F.text & ~F.text.startswith('/'))
+# StateFilter(None) ОБЯЗАТЕЛЕН: без него catch-all перехватывает текстовые
+# шаги FSM всех роутеров, подключённых после chat (tasks/business/mybot и др.),
+# и списывает деньги за сообщение, ушедшее в обычный AI-чат.
+@router.message(F.text & ~F.text.startswith('/'), StateFilter(None))
 async def handle_text_message(message: Message, tg_user=None):
     if tg_user is None:
         return

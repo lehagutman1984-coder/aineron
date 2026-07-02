@@ -4,6 +4,7 @@
 поглотит команды). /summary и /stat работают в зарегистрированных группах
 (орг-биллинг); /quiz — в любой группе с привязанным пользователем.
 """
+import html as html_mod
 import json
 import logging
 
@@ -138,10 +139,6 @@ async def cmd_summary(message: Message, tg_user=None):
         )
         return
 
-    if not await charge(group_config, tg_user):
-        await message.reply('Баланс организации исчерпан — пополните на сайте.')
-        return
-
     dialogue = '\n'.join(f'{l.from_name}: {l.text}' for l in logs)
     status = await message.reply(f'Готовлю сводку за {hours} ч ({len(logs)} сообщений)...')
     summary = await llm(
@@ -152,6 +149,10 @@ async def cmd_summary(message: Message, tg_user=None):
     )
     if not summary:
         await status.edit_text('Не удалось подготовить сводку, попробуйте позже.')
+        return
+    # Списание только после успешной генерации — нет платы за ошибку LLM
+    if not await charge(group_config, tg_user):
+        await status.edit_text('Баланс организации исчерпан — пополните на сайте.')
         return
     from telegram_bot.utils import telegram_format, split_message
     parts_out = split_message(telegram_format(summary))
@@ -182,9 +183,6 @@ async def cmd_quiz(message: Message, tg_user=None):
     if tg_user is None and group_config is None:
         await message.reply('Привяжите аккаунт: напишите /start боту @aineron_bot')
         return
-    if not await charge(group_config, tg_user):
-        await message.reply('Недостаточно средств для генерации квиза.')
-        return
 
     status = await message.reply(f'Готовлю квиз по теме «{topic[:60]}»...')
     raw = await llm(
@@ -203,6 +201,10 @@ async def cmd_quiz(message: Message, tg_user=None):
         pass
     if not questions:
         await status.edit_text('Не удалось сгенерировать квиз, попробуйте другую тему.')
+        return
+    # Списание только после успешной генерации вопросов
+    if not await charge(group_config, tg_user):
+        await status.edit_text('Недостаточно средств для генерации квиза.')
         return
 
     try:
@@ -248,7 +250,7 @@ async def cmd_stat(message: Message, tg_user=None):
     for i, (uid, count) in enumerate(rows, 1):
         lines.append(f'{i}. id{uid} — {count} запрос(ов)')
     await message.reply(
-        card(f'Использование за 30 дней · {group_config.organization.name}',
+        card(f'Использование за 30 дней · {html_mod.escape(group_config.organization.name)}',
              '\n'.join(lines),
              'Детальная аналитика: aineron.ru/dashboard/usage/'),
         parse_mode='HTML',

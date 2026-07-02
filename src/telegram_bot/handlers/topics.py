@@ -4,6 +4,7 @@
 каждый проект пользователя — у топика свой контекст, персона и модель
 (через проект). Естественная навигация вместо /history-переключений.
 """
+import html as html_mod
 import logging
 
 from aiogram import Router, F
@@ -155,7 +156,7 @@ async def cb_topic_new(query: CallbackQuery, tg_user=None):
         await query.bot.send_message(
             chat_id=query.message.chat.id,
             message_thread_id=thread_id,
-            text=card(f'Проект «{project.name}»',
+            text=card(f'Проект «{html_mod.escape(project.name)}»',
                       'Пишите сюда — контекст, персона и база знаний этого '
                       'проекта подключены автоматически.'),
             parse_mode='HTML',

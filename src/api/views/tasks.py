@@ -24,6 +24,29 @@ class AITaskSerializer(serializers.ModelSerializer):
             'runs_count', 'created_from', 'created_at',
         ]
 
+    def validate(self, attrs):
+        def _val(name, default=None):
+            if name in attrs:
+                return attrs[name]
+            return getattr(self.instance, name, default) if self.instance else default
+
+        schedule_type = _val('schedule_type', 'daily')
+        if schedule_type in ('daily', 'weekly') and _val('run_time') is None:
+            raise serializers.ValidationError(
+                {'run_time': 'Для daily/weekly укажите время запуска (HH:MM, МСК)'})
+        if schedule_type == 'weekly':
+            weekday = _val('weekday')
+            if weekday is None or not (0 <= int(weekday) <= 6):
+                raise serializers.ValidationError(
+                    {'weekday': 'Для weekly укажите день недели 0–6 (0 = понедельник)'})
+        if schedule_type == 'cron' and len((_val('cron') or '').split()) != 5:
+            raise serializers.ValidationError(
+                {'cron': 'Cron-выражение должно содержать 5 полей'})
+        if schedule_type == 'once' and not self.instance:
+            raise serializers.ValidationError(
+                {'schedule_type': 'Разовые задачи создаются в боте: /task'})
+        return attrs
+
 
 class AITaskListCreateView(APIView):
     """GET /v1/tasks/ — список задач; POST — создать."""

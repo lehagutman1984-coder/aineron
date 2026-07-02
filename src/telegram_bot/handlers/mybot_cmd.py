@@ -5,6 +5,7 @@
 (Bot API 9.6); fallback — пользователь создаёт бота в BotFather и присылает
 токен. Сообщения гостей оплачиваются с баланса владельца.
 """
+import html as html_mod
 import logging
 
 from aiogram import Router, F
@@ -103,7 +104,7 @@ async def cmd_mybot(message: Message, state: FSMContext, tg_user=None):
         lines.append('Ваши боты:')
         for b in bots:
             status = 'активен' if b.is_active else 'выключен'
-            lines.append(f'@{b.bot_username} — {b.name} ({status}, '
+            lines.append(f'@{b.bot_username} — {html_mod.escape(b.name)} ({status}, '
                          f'{b.messages_count} сообщ.)')
             rows.append([InlineKeyboardButton(
                 text=f'Удалить @{b.bot_username}',
@@ -193,17 +194,21 @@ async def on_mybot_token(message: Message, state: FSMContext, tg_user=None):
     if ':' not in token or len(token) < 20:
         await message.answer('Это не похоже на токен BotFather. Пришлите токен ещё раз.')
         return
-    # Проверяем токен через getMe
+    # Проверяем токен через getMe (сессия закрывается в любом случае)
     from aiogram import Bot
     username = ''
+    b = Bot(token=token)
     try:
-        b = Bot(token=token)
         me = await b.get_me()
         username = me.username or ''
-        await b.session.close()
     except Exception:
         await message.answer('Токен не работает. Проверьте и пришлите ещё раз.')
         return
+    finally:
+        try:
+            await b.session.close()
+        except Exception:
+            pass
     try:
         await message.delete()  # не оставляем токен в чате
     except Exception:
@@ -226,7 +231,7 @@ async def _finalize(message: Message, state: FSMContext, tg_user, token: str, us
         return
     await message.answer(
         card('Ваш AI-бот запущен',
-             f'<b>@{username}</b> — «{data.get("name")}»\n\n'
+             f'<b>@{username}</b> — «{html_mod.escape(data.get("name") or "")}»\n\n'
              f'Отправьте боту /start и проверьте ответы. Гости бота могут '
              f'писать без регистрации — сообщения оплачиваются с вашего баланса.',
              'Управление: /mybot'),

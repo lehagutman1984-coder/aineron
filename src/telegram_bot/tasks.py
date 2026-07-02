@@ -217,7 +217,9 @@ def summarize_poll(self, poll_session_id: int):
 
     PollSession.objects.filter(pk=poll_session_id).update(ai_summary=summary)
 
-    text = f'Опрос завершён!\n\n<b>Вопрос:</b> {session.question}\n\n<b>AI-анализ:</b>\n{summary}'
+    import html as html_mod
+    text = (f'Опрос завершён!\n\n<b>Вопрос:</b> {html_mod.escape(session.question)}\n\n'
+            f'<b>AI-анализ:</b>\n{html_mod.escape(summary)}')
     async_to_sync(_bot_send_html)(session.tg_user.telegram_id, text)
 
 
@@ -388,7 +390,14 @@ def execute_ai_task(self, task_id: int, run_iso: str):
 
     title = task.title or 'AI-задача'
     md = f'**{title}**\n\n{content}\n\n_{network.name} · {format_rub(cost)} · управление: /tasks_'
-    notify_user_rich(chat_id, md)
+    delivered = notify_user_rich(chat_id, md)
+    if not delivered:
+        # Пользователь заблокировал бота / чат недоступен: возврат средств
+        # и пауза задачи, чтобы не списывать деньги в никуда каждый запуск
+        user.add_kopecks(cost, type='refund', reference=reference)
+        AITask.objects.filter(pk=task_id).update(is_active=False, paused_reason='delivery')
+        logger.warning(f'execute_ai_task {task_id}: delivery failed, refunded and paused')
+        return
 
     cache.set(cap_key, ran_today + 1, timeout=86400)
 

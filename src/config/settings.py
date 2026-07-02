@@ -481,6 +481,8 @@ RESEARCH_PRICE_KOPECKS = int(os.getenv('RESEARCH_PRICE_KOPECKS', '1000'))
 BUSINESS_REPLY_PRICE_KOPECKS = int(os.getenv('BUSINESS_REPLY_PRICE_KOPECKS', '100'))
 # Сколько авто-ответов в месяц включено в тариф «Бизнес»
 BUSINESS_TARIFF_ALLOWANCE = int(os.getenv('BUSINESS_TARIFF_ALLOWANCE', '300'))
+# Managed Bots (S8): дневной cap сообщений гостей на одного бота (антиспам)
+MANAGEDBOT_DAILY_CAP = int(os.getenv('MANAGEDBOT_DAILY_CAP', '300'))
 
 
 # ========== БИЛЛИНГ (единый рублёвый баланс, копейки) ==========

@@ -95,18 +95,30 @@ def _activate_stars_subscription(tg_user, tariff_id: int, charge_id: str,
         return tariff
 
     user = tg_user.user
-    user.activate_paid_tariff(tariff, payment_data={'invoice_id': charge_id})
+    subscription = user.activate_paid_tariff(tariff, payment_data={'invoice_id': charge_id})
 
-    StarsSubscription.objects.update_or_create(
+    # КРИТИЧНО: продление этой подписки делает Telegram (successful_payment
+    # с is_recurring), а НЕ Robokassa. auto_renew=True отправил бы её в
+    # process_pending_renewals → невалидный PreviousInvoiceID → исчерпание
+    # попыток → return_to_free_tariff() с обнулением баланса пользователя.
+    subscription.auto_renew = False
+    subscription.robokassa_invoice_id = None
+    subscription.save(update_fields=['auto_renew', 'robokassa_invoice_id'])
+
+    sub, created = StarsSubscription.objects.update_or_create(
         tg_user=tg_user,
         defaults={
             'tariff': tariff,
-            'telegram_charge_id': charge_id,
             'xtr_amount': xtr_amount,
             'expires_at': expires_at or (timezone.now() + timedelta(days=30)),
             'is_active': True,
         },
     )
+    # editUserStarSubscription требует charge_id ПЕРВОГО платежа подписки —
+    # не перезаписываем его при recurring-продлениях
+    if created or not sub.telegram_charge_id:
+        sub.telegram_charge_id = charge_id
+        sub.save(update_fields=['telegram_charge_id'])
     return tariff
 
 

@@ -83,10 +83,26 @@ def managed_bot_webhook(request, bot_id: int):
 
     msg = data.get('message') or {}
     text = (msg.get('text') or '').strip()
-    chat_id = (msg.get('chat') or {}).get('id')
+    chat = msg.get('chat') or {}
+    chat_id = chat.get('id')
     message_id = msg.get('message_id')
     if not text or chat_id is None:
         return HttpResponse('ok')
+
+    # Только личные чаты: в группе каждый текст любого участника списывал бы
+    # деньги владельца — вектор злоупотребления
+    if chat.get('type') != 'private':
+        return HttpResponse('ok')
+
+    # Дневной cap на владельца — защита от спам-атаки на баланс
+    from django.core.cache import cache
+    from django.utils import timezone
+    cap = int(getattr(settings, 'MANAGEDBOT_DAILY_CAP', 300))
+    cap_key = f'managedbot_cap:{managed.pk}:{timezone.now().date().isoformat()}'
+    used = cache.get(cap_key, 0)
+    if used >= cap:
+        return HttpResponse('ok')
+    cache.set(cap_key, used + 1, timeout=86400)
 
     from telegram_bot.tasks import managed_bot_reply
     managed_bot_reply.delay(bot_id, chat_id, text, message_id or 0)

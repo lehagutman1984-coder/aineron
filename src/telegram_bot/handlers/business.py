@@ -145,29 +145,54 @@ def _get_draft(draft_id: int, tg_user):
     )
 
 
-def _charge_reply(conn, draft_id: int) -> bool:
+def _charge_reply(conn, draft_id: int) -> tuple:
     """Биллинг ответа: тариф «Бизнес» — 300/мес включено, сверх — по цене
-    BUSINESS_REPLY_PRICE_KOPECKS; без тарифа — каждый ответ платный."""
+    BUSINESS_REPLY_PRICE_KOPECKS; без тарифа — каждый ответ платный.
+
+    Возвращает (ok, paid): paid=True если было реальное списание —
+    при неудачной отправке вызывающий код обязан вызвать _refund_reply.
+    """
+    from django.db.models import F
     from django.utils import timezone
+    from telegram_bot.models import BusinessConnection
     price = getattr(settings, 'BUSINESS_REPLY_PRICE_KOPECKS', 100)
     allowance = getattr(settings, 'BUSINESS_TARIFF_ALLOWANCE', 300)
     user = conn.tg_user.user
 
     month = timezone.now().strftime('%Y-%m')
     if conn.replies_month != month:
-        conn.replies_month = month
-        conn.replies_this_month = 0
+        BusinessConnection.objects.filter(pk=conn.pk).update(
+            replies_month=month, replies_this_month=0,
+        )
+        conn.replies_month, conn.replies_this_month = month, 0
 
     tariff_name = (getattr(user.tariff, 'display_name', '') or '').lower()
     is_business_tariff = 'бизнес' in tariff_name or 'business' in tariff_name
     free = is_business_tariff and conn.replies_this_month < allowance
 
+    paid = False
     if not free:
         if not user.spend_kopecks(price, type='spend', reference=f'bizreply:{draft_id}'):
-            return False
-    conn.replies_this_month += 1
-    conn.save(update_fields=['replies_month', 'replies_this_month'])
-    return True
+            return False, False
+        paid = True
+    # Атомарный инкремент — без гонки при параллельных клиентах
+    BusinessConnection.objects.filter(pk=conn.pk).update(
+        replies_this_month=F('replies_this_month') + 1,
+    )
+    return True, paid
+
+
+def _refund_reply(conn, draft_id: int, paid: bool):
+    """Возврат списания за недоставленный ответ + откат счётчика."""
+    from django.db.models import F
+    from django.db.models.functions import Greatest
+    from telegram_bot.models import BusinessConnection
+    if paid:
+        price = getattr(settings, 'BUSINESS_REPLY_PRICE_KOPECKS', 100)
+        conn.tg_user.user.add_kopecks(price, type='refund', reference=f'bizreply:{draft_id}')
+    BusinessConnection.objects.filter(pk=conn.pk).update(
+        replies_this_month=Greatest(F('replies_this_month') - 1, 0),
+    )
 
 
 def _mark_draft(draft_id: int, status: str, new_text: str = None):
@@ -185,6 +210,7 @@ generate_reply = sync_to_async(_generate_reply, thread_sensitive=True)
 create_draft = sync_to_async(_create_draft, thread_sensitive=True)
 get_draft = sync_to_async(_get_draft, thread_sensitive=True)
 charge_reply = sync_to_async(_charge_reply, thread_sensitive=True)
+refund_reply = sync_to_async(_refund_reply, thread_sensitive=True)
 mark_draft = sync_to_async(_mark_draft, thread_sensitive=True)
 
 
@@ -308,7 +334,8 @@ async def on_business_message(message: Message):
     if conn.mode == 'autopilot' and result['confident']:
         draft = await create_draft(conn, chat_id, client_name, text,
                                    result['reply'], status='auto')
-        if not await charge_reply(conn, draft.pk):
+        charged, paid = await charge_reply(conn, draft.pk)
+        if not charged:
             await mark_draft(draft.pk, 'pending')
             try:
                 await message.bot.send_message(
@@ -320,6 +347,23 @@ async def on_business_message(message: Message):
                 pass
             return
         sent = await _send_business_reply(message.bot, conn, chat_id, result['reply'])
+        if not sent:
+            # Возврат средств + эскалация владельцу карточкой-черновиком
+            await refund_reply(conn, draft.pk, paid)
+            await mark_draft(draft.pk, 'pending')
+            try:
+                await message.bot.send_message(
+                    chat_id=owner_id,
+                    text=card(
+                        f'Автоответ не доставлен — от {html_mod.escape(client_name)}',
+                        f'{html_mod.escape(text[:600])}\n{DIVIDER}\n'
+                        f'<b>Черновик ответа:</b>\n{html_mod.escape(result["reply"][:1500])}',
+                    ),
+                    parse_mode='HTML',
+                    reply_markup=_draft_kb(draft.pk),
+                )
+            except Exception:
+                pass
         if sent:
             await async_log_event(conn.tg_user, 'business_reply', mode='auto')
             try:
@@ -363,7 +407,8 @@ async def cb_bizdraft_send(query: CallbackQuery, tg_user=None):
     if draft is None or draft.status != 'pending':
         await query.answer('Черновик не найден или уже обработан')
         return
-    if not await charge_reply(draft.connection, draft.pk):
+    charged, paid = await charge_reply(draft.connection, draft.pk)
+    if not charged:
         await query.answer('Недостаточно средств — пополните баланс: /balance', show_alert=True)
         return
     sent = await _send_business_reply(query.bot, draft.connection,
@@ -377,8 +422,9 @@ async def cb_bizdraft_send(query: CallbackQuery, tg_user=None):
         except Exception:
             pass
     else:
-        await query.answer('Не удалось отправить (проверьте права бота в Telegram Business)',
-                           show_alert=True)
+        await refund_reply(draft.connection, draft.pk, paid)
+        await query.answer('Не удалось отправить (проверьте права бота в Telegram Business). '
+                           'Средства возвращены.', show_alert=True)
 
 
 @router.callback_query(F.data.startswith('bizdraft_ignore:'))
@@ -424,7 +470,8 @@ async def on_bizdraft_new_text(message: Message, state: FSMContext, tg_user=None
     if draft is None or draft.status != 'pending':
         await message.answer('Черновик не найден или уже обработан.')
         return
-    if not await charge_reply(draft.connection, draft.pk):
+    charged, paid = await charge_reply(draft.connection, draft.pk)
+    if not charged:
         await message.answer('Недостаточно средств — пополните баланс: /balance')
         return
     sent = await _send_business_reply(message.bot, draft.connection,
@@ -434,7 +481,8 @@ async def on_bizdraft_new_text(message: Message, state: FSMContext, tg_user=None
         await async_log_event(tg_user, 'business_reply', mode='edited')
         await message.answer('Отправлено клиенту.')
     else:
-        await message.answer('Не удалось отправить — проверьте права бота.')
+        await refund_reply(draft.connection, draft.pk, paid)
+        await message.answer('Не удалось отправить — проверьте права бота. Средства возвращены.')
 
 
 @router.callback_query(F.data.startswith('bizdraft_check:'))

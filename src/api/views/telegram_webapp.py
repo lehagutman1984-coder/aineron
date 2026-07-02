@@ -32,6 +32,15 @@ def _validate_telegram_webapp_data(init_data: str):
         ).hexdigest()
         if not hmac.compare_digest(expected, hash_value):
             return None
+        # Перехваченный initData не должен жить вечно (замена JWT-выдачи)
+        import time
+        try:
+            auth_date = int(params.get('auth_date', '0'))
+        except ValueError:
+            return None
+        if auth_date and time.time() - auth_date > 86400:
+            logger.warning('WebApp initData expired (auth_date older than 24h)')
+            return None
         user_data = json.loads(params.get('user', '{}'))
         return user_data
     except Exception as e:
@@ -89,7 +98,10 @@ def telegram_webapp_files(request):
     from django.core.paginator import Paginator
     from aitext.models import GeneratedImage
 
-    page = int(request.query_params.get('page', 1))
+    try:
+        page = max(1, int(request.query_params.get('page', 1)))
+    except (TypeError, ValueError):
+        page = 1
     from django.db.models import Q
     qs = (
         GeneratedImage.objects

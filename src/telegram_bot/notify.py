@@ -215,14 +215,18 @@ def notify_user(telegram_id: int, text: str) -> None:
     _send_sync(telegram_id, text)
 
 
-def notify_user_rich(telegram_id: int, md_text: str, reply_markup=None) -> None:
+def notify_user_rich(telegram_id: int, md_text: str, reply_markup=None) -> bool:
     """Синхронная доставка markdown-текста rich-сообщением с HTML-fallback.
 
-    Для Celery-задач (AI-задачи, research, сводки). Не падает при любой ошибке.
+    Для Celery-задач (AI-задачи, research, сводки). Не падает при любой
+    ошибке; возвращает True при успешной доставке — вызывающий код обязан
+    вернуть средства пользователю, если доставка не удалась.
     """
     from django.conf import settings
     if not settings.TELEGRAM_BOT_ENABLED or not settings.TELEGRAM_BOT_TOKEN:
-        return
+        return False
+
+    result = {'ok': False}
 
     async def _send():
         from aiogram import Bot
@@ -234,26 +238,33 @@ def notify_user_rich(telegram_id: int, md_text: str, reply_markup=None) -> None:
         ) as b:
             try:
                 await send_rich_or_markdown(b, telegram_id, md_text, reply_markup=reply_markup)
+                result['ok'] = True
             except Exception as e:
                 logger.warning(f'notify_user_rich failed for {telegram_id}: {e}')
 
     try:
         loop = asyncio.get_event_loop()
         if loop.is_running():
-            _executor.submit(asyncio.run, _send())
+            _executor.submit(asyncio.run, _send()).result(timeout=60)
         else:
             loop.run_until_complete(_send())
     except RuntimeError:
-        asyncio.run(_send())
+        try:
+            asyncio.run(_send())
+        except Exception as e:
+            logger.error(f'notify_user_rich error: {e}')
     except Exception as e:
         logger.error(f'notify_user_rich error: {e}')
+    return result['ok']
 
 
-def notify_user_if_linked(user) -> None:
+def notify_user_if_linked(user, text: str) -> None:
     """Отправить уведомление если у пользователя привязан Telegram."""
+    if not text:
+        return
     try:
         tg = user.telegram
-        notify_user(tg.telegram_id, f"")
+        notify_user(tg.telegram_id, text)
     except Exception:
         pass
 
