@@ -43,8 +43,21 @@ docker-compose exec -T web python manage.py setup_periodic_tasks
 echo -e "${YELLOW}Собираем статические файлы...${NC}"
 docker-compose exec -T web python manage.py collectstatic --noinput
 
-echo -e "${YELLOW}Создаем суперпользователя...${NC}"
-docker-compose exec -T web python manage.py createsuperuser --noinput --username admin --email admin@example.com || echo -e "${YELLOW}Суперпользователь уже существует${NC}"
+echo -e "${YELLOW}Создаем суперпользователя (если отсутствует)...${NC}"
+docker-compose exec -T web python manage.py shell -c "
+from django.contrib.auth import get_user_model
+import os
+User = get_user_model()
+if User.objects.filter(is_superuser=True).exists():
+    print('Суперпользователь уже существует — пропускаем')
+else:
+    User.objects.create_superuser(
+        username=os.getenv('DJANGO_SUPERUSER_USERNAME', 'admin'),
+        email=os.getenv('DJANGO_SUPERUSER_EMAIL', 'admin@example.com'),
+        password=os.getenv('DJANGO_SUPERUSER_PASSWORD') or None,
+    )
+    print('Суперпользователь создан')
+" || echo -e "${YELLOW}Шаг суперпользователя пропущен (ошибка не критична)${NC}"
 
 # ---------- Studio seeds ----------
 echo -e "${YELLOW}Засеиваем шаблоны Studio...${NC}"
