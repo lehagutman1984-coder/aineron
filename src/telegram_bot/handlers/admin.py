@@ -174,3 +174,75 @@ async def cmd_grant(message: Message):
         return
     result = await _grant_stars_async(tg_id, stars)
     await message.answer(result)
+
+
+# ─── S4: Paid Media в канале + статистика партнёрки ───
+
+@router.message(Command('paidpost'))
+async def cmd_paidpost(message: Message):
+    """Эксклюзивный платный пост: ответьте на фото/видео командой
+    /paidpost <stars> <@канал или chat_id>."""
+    if not _is_admin(message.from_user.id):
+        return
+    parts = (message.text or '').split()
+    reply = message.reply_to_message
+    if len(parts) != 3 or reply is None or not (reply.photo or reply.video):
+        await message.answer(
+            'Использование: ответьте на сообщение с фото/видео командой\n'
+            '/paidpost <stars> <@канал>',
+        )
+        return
+    try:
+        star_count = int(parts[1])
+    except ValueError:
+        await message.answer('Первый аргумент — цена в Stars (число).')
+        return
+    target = parts[2]
+    chat_id = int(target) if target.lstrip('-').isdigit() else target
+
+    send_paid = getattr(message.bot, 'send_paid_media', None)
+    if send_paid is None:
+        await message.answer('Эта версия aiogram не поддерживает sendPaidMedia.')
+        return
+    try:
+        from aiogram.types import InputPaidMediaPhoto, InputPaidMediaVideo
+        if reply.photo:
+            media = [InputPaidMediaPhoto(media=reply.photo[-1].file_id)]
+        else:
+            media = [InputPaidMediaVideo(media=reply.video.file_id)]
+        await send_paid(
+            chat_id=chat_id, star_count=star_count, media=media,
+            caption=reply.caption or 'Эксклюзив от aineron',
+        )
+        await message.answer(f'Платный пост отправлен в {target} за {star_count} XTR.')
+    except Exception as e:
+        logger.error(f'paidpost failed: {e}')
+        await message.answer(f'Ошибка отправки: {e}')
+
+
+@router.message(Command('affstats'))
+async def cmd_affstats(message: Message):
+    """Статистика Stars-транзакций, включая партнёрские начисления (S4)."""
+    if not _is_admin(message.from_user.id):
+        return
+    get_tx = getattr(message.bot, 'get_star_transactions', None)
+    if get_tx is None:
+        await message.answer('Эта версия aiogram не поддерживает getStarTransactions.')
+        return
+    try:
+        result = await get_tx(limit=100)
+        txs = getattr(result, 'transactions', [])
+        total_in = sum(t.amount for t in txs if getattr(t, 'source', None) is not None)
+        affiliate = 0
+        for t in txs:
+            src = getattr(t, 'source', None)
+            if src is not None and 'Affiliate' in type(src).__name__:
+                affiliate += t.amount
+        await message.answer(
+            f'<b>Stars-транзакции (последние {len(txs)})</b>\n'
+            f'Всего получено: {total_in} XTR\n'
+            f'Из партнёрской программы: {affiliate} XTR',
+            parse_mode='HTML',
+        )
+    except Exception as e:
+        await message.answer(f'Ошибка: {e}')

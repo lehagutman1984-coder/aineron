@@ -29,6 +29,15 @@ def _get_week_spending(user):
     return result['total'] or 0
 
 
+@sync_to_async
+def _get_stars_subscription(tg_user):
+    from telegram_bot.models import StarsSubscription
+    return (
+        StarsSubscription.objects.select_related('tariff')
+        .filter(tg_user=tg_user, is_active=True).first()
+    )
+
+
 async def send_balance(message: Message, tg_user):
     from core.money import format_rub
     network = tg_user.default_network
@@ -51,6 +60,21 @@ async def send_balance(message: Message, tg_user):
     if week_total_kopecks:
         lines.append(f'\nЗа 7 дней:   -{format_rub(week_total_kopecks)}')
 
+    # S4: блок «Подписка» — статус Stars-подписки и отмена
+    sub = await _get_stars_subscription(tg_user)
+    sub_rows = []
+    if sub and sub.tariff:
+        renewal = sub.expires_at.strftime('%d.%m.%Y') if sub.expires_at else '—'
+        lines += [DIVIDER, f'Подписка:    <b>{sub.tariff.display_name}</b> (Stars)',
+                  f'Продление:   {renewal} · {sub.xtr_amount} XTR/мес']
+        sub_rows.append([InlineKeyboardButton(text='Отменить подписку',
+                                              callback_data='substars_cancel')])
+    else:
+        from telegram_bot import capabilities
+        if capabilities.is_enabled('stars_subscriptions'):
+            sub_rows.append([InlineKeyboardButton(text='Оформить подписку в Stars',
+                                                  callback_data='substars_open')])
+
     lines += [DIVIDER, 'Пополнение:']
     text = '\n'.join(lines)
 
@@ -58,8 +82,57 @@ async def send_balance(message: Message, tg_user):
         [InlineKeyboardButton(text='Пополнить на сайте', url='https://aineron.ru/account/billing/')],
         [InlineKeyboardButton(text='Telegram Stars (XTR)', callback_data='buy_stars')],
         [InlineKeyboardButton(text='Карта / СБП (Robokassa)', callback_data='buy_robokassa')],
+        *sub_rows,
     ])
     await message.answer(text, parse_mode='HTML', reply_markup=kb)
+
+
+@router.callback_query(F.data == 'substars_open')
+async def cb_substars_open(query: CallbackQuery, tg_user=None):
+    from telegram_bot.handlers.payment import cmd_subscribe
+    await query.answer()
+    if tg_user:
+        await cmd_subscribe(query.message, tg_user=tg_user)
+
+
+@router.callback_query(F.data == 'substars_cancel')
+async def cb_substars_cancel(query: CallbackQuery, tg_user=None):
+    """S4: отмена Stars-подписки — editUserStarSubscription(is_canceled=True)."""
+    if tg_user is None:
+        await query.answer()
+        return
+    sub = await _get_stars_subscription(tg_user)
+    if not sub or not sub.telegram_charge_id:
+        await query.answer('Активная подписка не найдена', show_alert=True)
+        return
+
+    edit_sub = getattr(query.bot, 'edit_user_star_subscription', None)
+    if edit_sub is None:
+        await query.answer('Отмена: Настройки Telegram → Платежи → Подписки', show_alert=True)
+        return
+    try:
+        await edit_sub(
+            user_id=query.from_user.id,
+            telegram_payment_charge_id=sub.telegram_charge_id,
+            is_canceled=True,
+        )
+    except Exception as e:
+        logger.warning(f'edit_user_star_subscription failed: {e}')
+        await query.answer('Не удалось отменить автоматически. '
+                           'Настройки Telegram → Платежи → Подписки', show_alert=True)
+        return
+
+    @sync_to_async
+    def _deactivate():
+        from telegram_bot.models import StarsSubscription
+        StarsSubscription.objects.filter(pk=sub.pk).update(is_active=False)
+
+    await _deactivate()
+    await query.answer('Подписка отменена — доступ сохранится до конца оплаченного периода')
+    await query.message.answer(
+        'Подписка отменена. Тариф действует до конца оплаченного периода, '
+        'после чего продления не будет. Вернуться: /subscribe',
+    )
 
 
 @router.message(or_f(Command('balance'), F.text == 'Баланс'))

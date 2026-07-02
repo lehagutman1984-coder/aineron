@@ -48,6 +48,150 @@ async def pre_checkout(query: PreCheckoutQuery):
     await query.answer(ok=True)
 
 
+# ─── S4: Stars-подписки (Bot API 8.0) ───
+# Месячный период подписки в секундах — константа Telegram
+STARS_SUBSCRIPTION_PERIOD = 2592000
+# Наценка Stars-тарифа к рублёвой цене (комиссия Telegram, см. PRICING.md риски S4)
+STARS_MARKUP = 1.18
+
+
+def _tariff_xtr_price(tariff) -> int:
+    """Цена тарифа в XTR: рубли → XTR по курсу TG_XTR_RATE_KOPECKS + наценка."""
+    import math
+    from django.conf import settings as dj
+    rate = getattr(dj, 'TG_XTR_RATE_KOPECKS', 200)
+    return max(1, math.ceil(float(tariff.price) * 100 / rate * STARS_MARKUP))
+
+
+def _get_paid_tariffs():
+    from users.models import Tariff
+    return list(
+        Tariff.objects.filter(is_active=True, is_free=False, is_trial=False)
+        .order_by('price')
+    )
+
+
+def _activate_stars_subscription(tg_user, tariff_id: int, charge_id: str,
+                                 xtr_amount: int, expires_at=None):
+    """Активация/продление тарифа по Stars-подписке. Идемпотентно по charge_id."""
+    from django.utils import timezone
+    from datetime import timedelta
+    from users.models import Tariff, PaymentHistory
+    from telegram_bot.models import StarsSubscription
+
+    tariff = Tariff.objects.filter(pk=tariff_id, is_active=True).first()
+    if tariff is None:
+        return None
+
+    # Идемпотентность повторного webhook: платёж с этим charge_id уже обработан
+    if PaymentHistory.objects.filter(invoice_id=charge_id).exists():
+        return tariff
+
+    user = tg_user.user
+    user.activate_paid_tariff(tariff, payment_data={'invoice_id': charge_id})
+
+    StarsSubscription.objects.update_or_create(
+        tg_user=tg_user,
+        defaults={
+            'tariff': tariff,
+            'telegram_charge_id': charge_id,
+            'xtr_amount': xtr_amount,
+            'expires_at': expires_at or (timezone.now() + timedelta(days=30)),
+            'is_active': True,
+        },
+    )
+    return tariff
+
+
+activate_stars_subscription = sync_to_async(_activate_stars_subscription, thread_sensitive=True)
+get_paid_tariffs = sync_to_async(_get_paid_tariffs, thread_sensitive=True)
+
+
+@router.message(Command('subscribe'))
+async def cmd_subscribe(message: Message, tg_user=None):
+    """S4: тарифы как ежемесячные Stars-подписки — MRR прямо в Telegram."""
+    from telegram_bot import capabilities
+    from telegram_bot.utils import DIVIDER
+
+    if tg_user is None:
+        await message.answer('Привяжите аккаунт через /start')
+        return
+    if not capabilities.is_enabled('stars_subscriptions'):
+        await message.answer(
+            'Подписки в Stars скоро появятся. Пока оформите тариф на сайте:\n'
+            'https://aineron.ru/account/billing/',
+        )
+        return
+
+    tariffs = await get_paid_tariffs()
+    if not tariffs:
+        await message.answer('Нет доступных тарифов. Загляните позже.')
+        return
+
+    rows = []
+    lines = [f'<b>Aineron · Подписка в Telegram</b>', DIVIDER,
+             'Ежемесячное продление в Stars, отмена в любой момент (/balance).', '']
+    for t in tariffs:
+        xtr = _tariff_xtr_price(t)
+        lines.append(f'<b>{t.display_name}</b> — {int(t.price)} ₽ на баланс ежемесячно')
+        rows.append([InlineKeyboardButton(
+            text=f'{t.display_name} — {xtr} XTR/мес',
+            callback_data=f'substars:{t.pk}',
+        )])
+    await message.answer(
+        '\n'.join(lines), parse_mode='HTML',
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=rows),
+    )
+
+
+@router.callback_query(F.data.startswith('substars:'))
+async def cb_substars(query: CallbackQuery, tg_user=None):
+    from telegram_bot import capabilities
+
+    if tg_user is None:
+        await query.answer('Привяжите аккаунт через /start', show_alert=True)
+        return
+    if not capabilities.is_enabled('stars_subscriptions'):
+        await query.answer('Функция временно недоступна', show_alert=True)
+        return
+
+    tariff_id = int(query.data.split(':')[1])
+    tariffs = await get_paid_tariffs()
+    tariff = next((t for t in tariffs if t.pk == tariff_id), None)
+    if tariff is None:
+        await query.answer('Тариф не найден')
+        return
+
+    xtr = _tariff_xtr_price(tariff)
+    try:
+        link = await query.bot.create_invoice_link(
+            title=f'Подписка {tariff.display_name}',
+            description=f'{int(tariff.price)} ₽ на баланс aineron.ru ежемесячно',
+            payload=f'subtariff:{tariff.pk}:{xtr}',
+            currency='XTR',
+            prices=[LabeledPrice(label=f'{tariff.display_name} / месяц', amount=xtr)],
+            subscription_period=STARS_SUBSCRIPTION_PERIOD,
+        )
+    except TypeError:
+        # aiogram без subscription_period — деградация до разовой оплаты недопустима
+        await query.answer('Подписки требуют обновления бота. Оформите на сайте.', show_alert=True)
+        return
+    except Exception as e:
+        logger.error(f'create_invoice_link subscription failed: {e}')
+        await query.answer('Не удалось создать подписку, попробуйте позже', show_alert=True)
+        return
+
+    await query.message.answer(
+        f'<b>Подписка {tariff.display_name}</b>\n'
+        f'{xtr} XTR в месяц · продление автоматическое, отмена в /balance',
+        parse_mode='HTML',
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text=f'Оформить за {xtr} XTR/мес', url=link),
+        ]]),
+    )
+    await query.answer()
+
+
 @router.message(F.successful_payment)
 async def on_successful_payment(message: Message, tg_user=None):
     from core.money import format_rub
@@ -56,6 +200,36 @@ async def on_successful_payment(message: Message, tg_user=None):
         return
     payload = message.successful_payment.invoice_payload
     charge_id = message.successful_payment.telegram_payment_charge_id
+
+    # S4: платёж по Stars-подписке (первый или recurring-продление)
+    if payload.startswith('subtariff:'):
+        try:
+            _, tariff_id_s, xtr_s = payload.split(':')
+            tariff_id, xtr = int(tariff_id_s), int(xtr_s)
+        except ValueError:
+            logger.warning(f'Malformed subscription payload: {payload}')
+            return
+        expires_at = getattr(message.successful_payment, 'subscription_expiration_date', None)
+        tariff = await activate_stars_subscription(tg_user, tariff_id, charge_id, xtr, expires_at)
+        if tariff is None:
+            await message.answer('Тариф не найден — обратитесь в поддержку.')
+            return
+        is_recurring = bool(getattr(message.successful_payment, 'is_recurring', False))
+        await async_log_event(tg_user, 'subscription',
+                              cost_kopecks=int(tariff.price) * 100,
+                              payload=payload, recurring=is_recurring)
+        from telegram_bot.notify import EFFECT_CELEBRATION
+        text = (
+            f'<b>Подписка {tariff.display_name} '
+            f'{"продлена" if is_recurring else "оформлена"}!</b>\n\n'
+            f'Начислено: <b>{format_rub(int(tariff.price) * 100)}</b>\n'
+            f'Продление автоматическое. Управление: /balance'
+        )
+        try:
+            await message.answer(text, parse_mode='HTML', message_effect_id=EFFECT_CELEBRATION)
+        except Exception:
+            await message.answer(text, parse_mode='HTML')
+        return
 
     # Resolve rubles amount from known packs or stars_custom:N format (N — рубли)
     pack = RUB_PACKS.get(payload)

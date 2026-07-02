@@ -408,6 +408,111 @@ def execute_ai_task(self, task_id: int, run_iso: str):
         pass
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# S4 — Подарки за активность (за флагом TG_GIFTS, бюджет в env)
+# ═══════════════════════════════════════════════════════════════════════════
+
+@shared_task(name='telegram_bot.tasks.send_activity_gifts', bind=True, max_retries=0,
+             ignore_result=True)
+def send_activity_gifts(self):
+    """Еженедельно: подарок за 30-дневный streak активности или 3+ приведённых
+    друзей за месяц. Умеренно — лимит бюджета TG_GIFTS_MONTHLY_BUDGET_STARS."""
+    import asyncio
+    from datetime import timedelta
+    from django.conf import settings as dj
+    from django.core.cache import cache
+    from django.utils import timezone as tz
+    from django.db.models import Count
+    from telegram_bot.models import TelegramUser, TelegramEvent
+    from users.models import CustomUser
+
+    if not getattr(dj, 'TG_GIFTS', False):
+        return
+
+    budget = getattr(dj, 'TG_GIFTS_MONTHLY_BUDGET_STARS', 500)
+    month_key = f'tg_gifts_spent:{tz.now().strftime("%Y-%m")}'
+    spent = cache.get(month_key, 0)
+    if spent >= budget:
+        return
+
+    month_ago = tz.now() - timedelta(days=30)
+
+    # Кандидаты: 30 разных дней активности за месяц ИЛИ 3+ рефералов за месяц
+    from django.db.models.functions import TruncDate
+    streak_ids = set(
+        TelegramEvent.objects.filter(created_at__gte=month_ago)
+        .annotate(day=TruncDate('created_at'))
+        .values('telegram_user')
+        .annotate(days=Count('day', distinct=True))
+        .filter(days__gte=30)
+        .values_list('telegram_user', flat=True)
+    )
+    referrer_user_ids = set(
+        CustomUser.objects.filter(date_joined__gte=month_ago, referrer__isnull=False)
+        .values('referrer')
+        .annotate(n=Count('id'))
+        .filter(n__gte=3)
+        .values_list('referrer', flat=True)
+    )
+    candidates = list(
+        TelegramUser.objects.filter(
+            models_q_or(streak_ids, referrer_user_ids)
+        ).select_related('user')[:20]
+    ) if (streak_ids or referrer_user_ids) else []
+
+    if not candidates:
+        return
+
+    async def _gift_all(users):
+        nonlocal spent
+        from aiogram import Bot
+        bot = Bot(token=dj.TELEGRAM_BOT_TOKEN)
+        try:
+            send_gift = getattr(bot, 'send_gift', None)
+            get_gifts = getattr(bot, 'get_available_gifts', None)
+            if send_gift is None or get_gifts is None:
+                return
+            gifts = await get_gifts()
+            gift_list = sorted(getattr(gifts, 'gifts', []), key=lambda g: g.star_count)
+            if not gift_list:
+                return
+            cheapest = gift_list[0]
+            for tu in users:
+                if spent + cheapest.star_count > budget:
+                    break
+                # не дарить дважды в месяц
+                user_key = f'tg_gift_sent:{tu.telegram_id}:{tz.now().strftime("%Y-%m")}'
+                if cache.get(user_key):
+                    continue
+                try:
+                    await send_gift(
+                        user_id=tu.telegram_id, gift_id=cheapest.id,
+                        text='Спасибо за активность в aineron!',
+                    )
+                    spent += cheapest.star_count
+                    cache.set(user_key, True, timeout=32 * 86400)
+                    cache.set(month_key, spent, timeout=32 * 86400)
+                except Exception as e:
+                    logger.warning(f'send_activity_gifts: gift to {tu.telegram_id} failed: {e}')
+        finally:
+            await bot.session.close()
+
+    try:
+        asyncio.run(_gift_all(candidates))
+        logger.info(f'send_activity_gifts: budget spent {spent}/{budget}')
+    except Exception as e:
+        logger.error(f'send_activity_gifts error: {e}')
+
+
+def models_q_or(streak_tg_user_ids, referrer_user_ids):
+    """Q-объект: TelegramUser по pk из streak-списка или по user_id из рефереров."""
+    from django.db.models import Q
+    q = Q(pk__in=list(streak_tg_user_ids))
+    if referrer_user_ids:
+        q = q | Q(user_id__in=list(referrer_user_ids))
+    return q
+
+
 @shared_task(name='telegram_bot.tasks.broadcast_message', bind=True, max_retries=0)
 def broadcast_message(self, text: str, admin_tg_id: int):
     """Send broadcast to all linked Telegram users. ~20 msg/s."""

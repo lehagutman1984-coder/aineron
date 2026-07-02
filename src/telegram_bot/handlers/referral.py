@@ -57,6 +57,17 @@ async def cmd_referral(message: Message, tg_user=None):
         f"За каждого оплатившего реферала вы получаете бонус на баланс!"
     )
 
+    # S4: партнёрская программа Telegram — блок «Для каналов» (за флагом)
+    from telegram_bot import capabilities
+    if capabilities.is_enabled('affiliate'):
+        text += (
+            "\n\n<b>Для каналов и блогеров</b>\n"
+            "Бот участвует в партнёрской программе Telegram: подключите его "
+            "в разделе «Заработок» вашего канала и получайте комиссию со "
+            "всех Stars-платежей приведённых пользователей. Выплаты "
+            "производит сам Telegram."
+        )
+
     share_text = "Попробуй%20AI%20на%20aineron.ru!"
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(

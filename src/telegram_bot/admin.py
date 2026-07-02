@@ -1,5 +1,8 @@
 from django.contrib import admin
-from .models import TelegramUser, TelegramChat, TelegramLinkToken, TelegramGroup, AITask
+from .models import (
+    TelegramUser, TelegramChat, TelegramLinkToken, TelegramGroup, AITask,
+    StarsSubscription,
+)
 
 
 @admin.register(TelegramUser)
@@ -33,6 +36,14 @@ class AITaskAdmin(admin.ModelAdmin):
     search_fields = ('title', 'prompt', 'user__email')
     raw_id_fields = ('user', 'network')
     readonly_fields = ('created_at', 'last_run_at', 'runs_count')
+
+
+@admin.register(StarsSubscription)
+class StarsSubscriptionAdmin(admin.ModelAdmin):
+    list_display = ('tg_user', 'tariff', 'xtr_amount', 'expires_at', 'is_active')
+    list_filter = ('is_active',)
+    raw_id_fields = ('tg_user', 'tariff')
+    readonly_fields = ('created_at', 'updated_at')
 
 
 @admin.register(TelegramGroup)

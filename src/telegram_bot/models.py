@@ -420,6 +420,43 @@ class AITask(models.Model):
         return f'cron: {self.cron}'
 
 
+class StarsSubscription(models.Model):
+    """S4 — подписка на тариф через Telegram Stars (Bot API 8.0).
+
+    Продление приходит successful_payment с is_recurring=True; начисление
+    идемпотентно по telegram_payment_charge_id (механизм BalanceTransaction).
+    Связка с UserSubscription — через activate_paid_tariff (invoice_id=charge_id).
+    """
+    tg_user = models.OneToOneField(
+        TelegramUser,
+        on_delete=models.CASCADE,
+        related_name='stars_subscription',
+        verbose_name='TG пользователь',
+    )
+    tariff = models.ForeignKey(
+        'users.Tariff',
+        on_delete=models.SET_NULL,
+        null=True,
+        verbose_name='Тариф',
+    )
+    telegram_charge_id = models.CharField(
+        max_length=128, blank=True,
+        verbose_name='Последний telegram_payment_charge_id',
+    )
+    xtr_amount = models.PositiveIntegerField(default=0, verbose_name='Цена, XTR/мес')
+    expires_at = models.DateTimeField(null=True, blank=True, verbose_name='Оплачено до')
+    is_active = models.BooleanField(default=True, verbose_name='Активна')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Stars-подписка'
+        verbose_name_plural = 'Stars-подписки'
+
+    def __str__(self):
+        return f'{self.tg_user} — {self.tariff} до {self.expires_at}'
+
+
 def ai_task_limit(user) -> int:
     """S2 — лимит активных AI-задач по тарифу: free 1, Старт 3, Стандарт 10, Про 30."""
     tariff = getattr(user, 'tariff', None)
