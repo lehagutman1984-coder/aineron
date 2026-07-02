@@ -75,9 +75,16 @@ def _activate_stars_subscription(tg_user, tariff_id: int, charge_id: str,
                                  xtr_amount: int, expires_at=None):
     """Активация/продление тарифа по Stars-подписке. Идемпотентно по charge_id."""
     from django.utils import timezone
-    from datetime import timedelta
+    from datetime import datetime, timedelta, timezone as dt_tz
     from users.models import Tariff, PaymentHistory
     from telegram_bot.models import StarsSubscription
+
+    # subscription_expiration_date может прийти unix-числом — нормализуем
+    if isinstance(expires_at, (int, float)):
+        try:
+            expires_at = datetime.fromtimestamp(expires_at, tz=dt_tz.utc)
+        except (ValueError, OverflowError, OSError):
+            expires_at = None
 
     tariff = Tariff.objects.filter(pk=tariff_id, is_active=True).first()
     if tariff is None:

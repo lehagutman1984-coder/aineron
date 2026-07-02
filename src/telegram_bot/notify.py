@@ -38,11 +38,18 @@ async def send_rich_or_markdown(bot, chat_id: int, md_text: str,
     parts = split_message(telegram_format(md_text))
     last = None
     for i, part in enumerate(parts):
-        last = await bot.send_message(
-            chat_id=chat_id, text=part, parse_mode='HTML',
-            reply_markup=reply_markup if i == len(parts) - 1 else None,
-            **kwargs,
-        )
+        markup = reply_markup if i == len(parts) - 1 else None
+        try:
+            last = await bot.send_message(
+                chat_id=chat_id, text=part, parse_mode='HTML',
+                reply_markup=markup, **kwargs,
+            )
+        except Exception:
+            # Невалидный для Telegram HTML от LLM — доставляем plain-text,
+            # деньги пользователя не должны пропадать из-за разметки
+            last = await bot.send_message(
+                chat_id=chat_id, text=part[:4096], reply_markup=markup, **kwargs,
+            )
     return last
 
 
@@ -131,8 +138,13 @@ class DraftStreamer:
                 await self.tg_message.answer(part, parse_mode='HTML', reply_markup=markup,
                                              **self._answer_kwargs(), **effect_kwargs)
             except Exception:
-                await self.tg_message.answer(part, parse_mode='HTML', reply_markup=markup,
-                                             **self._answer_kwargs())
+                try:
+                    await self.tg_message.answer(part, parse_mode='HTML', reply_markup=markup,
+                                                 **self._answer_kwargs())
+                except Exception:
+                    # невалидный HTML — ответ не должен потеряться
+                    await self.tg_message.answer(part[:4096], reply_markup=markup,
+                                                 **self._answer_kwargs())
             effect_kwargs = {}
 
     async def fail(self, text: str):

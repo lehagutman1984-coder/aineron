@@ -4,6 +4,7 @@
 Главный путь создания — естественный язык: «каждое утро в 8 присылай новости
 AI и курс доллара» → LLM-парсер → карточка подтверждения → AITask.
 """
+import html
 import json
 import logging
 import re
@@ -246,8 +247,8 @@ def _confirm_card(parsed: dict) -> str:
     web = 'да' if parsed.get('use_web_search', True) else 'нет'
     return card(
         'Новая AI-задача',
-        f'<b>{parsed.get("title") or "Без названия"}</b>\n\n'
-        f'{parsed.get("prompt")}\n\n'
+        f'<b>{html.escape(parsed.get("title") or "Без названия")}</b>\n\n'
+        f'{html.escape(parsed.get("prompt") or "")}\n\n'
         f'Расписание: {sched}{extra} в {time_s} МСК\n'
         f'Веб-поиск: {web}',
         'Каждый запуск оплачивается по цене сообщения модели.',
@@ -336,7 +337,7 @@ async def _send_task_list(message: Message, tg_user):
             'completed': 'выполнена',
         }.get(t.paused_reason, 'на паузе')
         body = (
-            f'{t.prompt[:200]}\n\n'
+            f'{html.escape(t.prompt[:200])}\n\n'
             f'Расписание: {t.schedule_human()}\n'
             f'Статус: {status} · запусков: {t.runs_count}'
         )
@@ -349,7 +350,7 @@ async def _send_task_list(message: Message, tg_user):
             InlineKeyboardButton(text='Удалить', callback_data=f'task_del:{t.pk}'),
         ]]
         await message.answer(
-            card(t.title or 'AI-задача', body),
+            card(html.escape(t.title or 'AI-задача'), body),
             parse_mode='HTML',
             reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
         )
@@ -377,7 +378,7 @@ async def cb_task_confirm(query: CallbackQuery, state: FSMContext, tg_user=None)
     task = await create_task(tg_user.user, parsed)
     await query.message.edit_text(
         card('Задача создана',
-             f'<b>{task.title or "AI-задача"}</b>\n'
+             f'<b>{html.escape(task.title or "AI-задача")}</b>\n'
              f'Расписание: {task.schedule_human()}\n\n'
              f'Первый запуск пришлю автоматически. Управление: /tasks'),
         parse_mode='HTML',
@@ -464,8 +465,8 @@ async def cb_task_toggle(query: CallbackQuery, tg_user=None):
     status = 'активна' if task.is_active else 'на паузе'
     try:
         await query.message.edit_text(
-            card(task.title or 'AI-задача',
-                 f'{task.prompt[:200]}\n\n'
+            card(html.escape(task.title or 'AI-задача'),
+                 f'{html.escape(task.prompt[:200])}\n\n'
                  f'Расписание: {task.schedule_human()}\n'
                  f'Статус: {status} · запусков: {task.runs_count}'),
             parse_mode='HTML',

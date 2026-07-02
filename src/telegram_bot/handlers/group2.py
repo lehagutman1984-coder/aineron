@@ -155,13 +155,18 @@ async def cmd_summary(message: Message, tg_user=None):
         return
     from telegram_bot.utils import telegram_format, split_message
     parts_out = split_message(telegram_format(summary))
-    await status.edit_text(
-        card(f'Сводка за {hours} ч', parts_out[0][:3800],
-             'Авто-сводку каждый день настроит владелец: /task в личке бота'),
-        parse_mode='HTML',
-    )
+    summary_card = card(f'Сводка за {hours} ч', parts_out[0][:3800],
+                        'Авто-сводку каждый день настроит владелец: /task в личке бота')
+    try:
+        await status.edit_text(summary_card, parse_mode='HTML')
+    except Exception:
+        # LLM мог вернуть невалидный для Telegram HTML — plain-text fallback
+        await status.edit_text(f'Сводка за {hours} ч\n\n{summary[:3800]}')
     for extra in parts_out[1:]:
-        await message.answer(extra, parse_mode='HTML')
+        try:
+            await message.answer(extra, parse_mode='HTML')
+        except Exception:
+            await message.answer(extra)
 
 
 @router.message(Command('quiz'), F.chat.type.in_(GROUP_TYPES))

@@ -7,6 +7,7 @@ rich-сообщение + файл-экспорт .md. Цена фиксиров
 с подтверждением перед запуском; при ошибке — возврат средств.
 """
 import asyncio
+import html
 import logging
 
 from aiogram import Router, F
@@ -134,7 +135,7 @@ async def _ask_confirmation(message: Message, state: FSMContext, tg_user, questi
     await state.update_data(question=question)
     await message.answer(
         card('Deep Research',
-             f'<b>Вопрос:</b> {question}\n\n'
+             f'<b>Вопрос:</b> {html.escape(question)}\n\n'
              f'Запущу многошаговое исследование с поиском источников '
              f'и отчётом с цитатами. Займёт 2–5 минут.',
              f'Цена: {format_rub(price)}'),

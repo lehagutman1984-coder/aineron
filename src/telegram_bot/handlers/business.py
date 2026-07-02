@@ -10,6 +10,7 @@
 Всё за флагом TG_BUSINESS. Приватность: хранится только очередь черновиков
 с TTL (cleanup_business_drafts), переписка клиентов не логируется.
 """
+import html as html_mod
 import json
 import logging
 
@@ -292,7 +293,7 @@ async def on_business_message(message: Message):
             await message.bot.send_message(
                 chat_id=owner_id,
                 text=card('Клиент просит человека',
-                          f'<b>{client_name}</b>: {text[:500]}\n\n'
+                          f'<b>{html_mod.escape(client_name)}</b>: {html_mod.escape(text[:500])}\n\n'
                           'AI-секретарь передал диалог вам.'),
                 parse_mode='HTML',
             )
@@ -325,8 +326,8 @@ async def on_business_message(message: Message):
                 await message.bot.send_message(
                     chat_id=owner_id,
                     text=card('Автоответ отправлен',
-                              f'<b>{client_name}</b>: {text[:300]}\n\n'
-                              f'<b>Ответ AI:</b> {result["reply"][:500]}'),
+                              f'<b>{html_mod.escape(client_name)}</b>: {html_mod.escape(text[:300])}\n\n'
+                              f'<b>Ответ AI:</b> {html_mod.escape(result["reply"][:500])}'),
                     parse_mode='HTML',
                 )
             except Exception:
@@ -339,8 +340,9 @@ async def on_business_message(message: Message):
         await message.bot.send_message(
             chat_id=owner_id,
             text=card(
-                f'Сообщение от {client_name}',
-                f'{text[:600]}\n{DIVIDER}\n<b>Черновик ответа:</b>\n{result["reply"][:1500]}',
+                f'Сообщение от {html_mod.escape(client_name)}',
+                f'{html_mod.escape(text[:600])}\n{DIVIDER}\n'
+                f'<b>Черновик ответа:</b>\n{html_mod.escape(result["reply"][:1500])}',
             ),
             parse_mode='HTML',
             reply_markup=_draft_kb(draft.pk),
