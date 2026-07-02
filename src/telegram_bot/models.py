@@ -603,6 +603,59 @@ class GroupMessageLog(models.Model):
         return f'{self.group} — {self.from_name}: {self.text[:40]}'
 
 
+class ManagedBot(models.Model):
+    """S8 — персональный AI-бот пользователя («фабрика агентов», за флагом).
+
+    Пользователь получает СВОЕГО бота (@his_name_bot) с персоной, базой знаний
+    (проект/RAG) и моделью. Апдейты всех managed-ботов мультиплексируются
+    одним webhook-роутером (views.managed_bot_webhook). Сообщения гостей
+    оплачиваются с баланса владельца (идемпотентно).
+    """
+    owner = models.ForeignKey(
+        TelegramUser,
+        on_delete=models.CASCADE,
+        related_name='managed_bots',
+        verbose_name='Владелец',
+    )
+    bot_username = models.CharField(max_length=100, blank=True, verbose_name='Username бота')
+    token = models.CharField(max_length=100, verbose_name='Токен бота')
+    name = models.CharField(max_length=100, verbose_name='Имя агента')
+    greeting = models.TextField(
+        blank=True, default='Привет! Я AI-ассистент. Задайте вопрос.',
+        verbose_name='Приветствие (/start)',
+    )
+    system_prompt = models.TextField(blank=True, verbose_name='Персона / системный промт')
+    network = models.ForeignKey(
+        'aitext.NeuralNetwork',
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='managed_bots',
+        verbose_name='Модель (пусто = самая дешёвая)',
+    )
+    project = models.ForeignKey(
+        'aitext.Project',
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='managed_bots',
+        verbose_name='Проект (база знаний RAG)',
+    )
+    is_active = models.BooleanField(default=True, verbose_name='Активен')
+    messages_count = models.PositiveIntegerField(default=0, verbose_name='Сообщений гостей')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Персональный бот'
+        verbose_name_plural = 'Персональные боты'
+
+    def __str__(self):
+        return f'@{self.bot_username or "?"} ({self.owner})'
+
+    def webhook_secret(self) -> str:
+        """Секрет вебхука, детерминированный от токена (не храним отдельно)."""
+        import hashlib
+        return hashlib.sha256(f'managed:{self.token}'.encode()).hexdigest()[:32]
+
+
 def ai_task_limit(user) -> int:
     """S2 — лимит активных AI-задач по тарифу: free 1, Старт 3, Стандарт 10, Про 30."""
     tariff = getattr(user, 'tariff', None)

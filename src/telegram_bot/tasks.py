@@ -486,6 +486,111 @@ def cleanup_group_message_logs(self):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# S8 — Managed Bots: ответ гостю персонального бота
+# ═══════════════════════════════════════════════════════════════════════════
+
+@shared_task(bind=True, max_retries=1, ignore_result=True,
+             name='telegram_bot.tasks.managed_bot_reply')
+def managed_bot_reply(self, bot_id: int, chat_id: int, text: str, message_id: int):
+    """Гость написал персональному боту → LLM-ответ от имени агента.
+
+    Биллинг — с баланса владельца, идемпотентно по
+    managedbot:{bot_id}:{chat_id}:{message_id}.
+    """
+    from aiogram import Bot
+    from telegram_bot.models import ManagedBot
+    from aitext.models import NeuralNetwork
+    from aitext.tasks import get_laozhang_client
+
+    managed = (
+        ManagedBot.objects.select_related('owner', 'owner__user', 'network', 'project')
+        .filter(pk=bot_id, is_active=True).first()
+    )
+    if managed is None:
+        return
+
+    async def _send(reply_text: str):
+        b = Bot(token=managed.token)
+        try:
+            await b.send_message(chat_id=chat_id, text=reply_text[:4000])
+        except Exception as e:
+            logger.warning(f'managed_bot_reply send failed ({bot_id}): {e}')
+        finally:
+            await b.session.close()
+
+    # /start — приветствие без LLM и без списания
+    if text.startswith('/start'):
+        async_to_sync(_send)(managed.greeting or 'Привет! Задайте вопрос.')
+        return
+
+    owner = managed.owner.user
+    network = managed.network
+    if network is None or not network.is_active:
+        network = (
+            NeuralNetwork.objects.filter(is_active=True, provider='openrouter')
+            .order_by('cost_kopecks').first()
+        )
+    if network is None or not network.model_name:
+        return
+
+    reference = f'managedbot:{bot_id}:{chat_id}:{message_id}'
+    if not owner.spend_kopecks(network.cost_kopecks, type='spend', reference=reference):
+        async_to_sync(_send)('Бот временно недоступен. Загляните позже.')
+        try:
+            from telegram_bot.notify import notify_user
+            notify_user(
+                managed.owner.telegram_id,
+                f'Персональный бот @{managed.bot_username} остановлен: '
+                f'недостаточно средств. Пополните баланс: /balance',
+            )
+        except Exception:
+            pass
+        return
+
+    # База знаний: RAG по проекту владельца (реюз механизма deep research)
+    kb_context = ''
+    if managed.project_id:
+        try:
+            from aitext.tasks import _kb_search_chunks
+            chunks = _kb_search_chunks(managed.project, text, top_k=4)
+            if chunks:
+                kb_context = '\n'.join(f'- {c["text"][:300]}' for c in chunks)
+        except Exception as e:
+            logger.warning(f'managed_bot_reply kb failed: {e}')
+
+    system = (
+        f'Ты — AI-агент «{managed.name}». '
+        + (managed.system_prompt or 'Отвечай полезно и вежливо.')
+        + (f'\n\nБаза знаний:\n{kb_context}' if kb_context else '')
+        + '\nОтвечай на языке собеседника, лаконично.'
+    )
+    try:
+        client = get_laozhang_client()
+        resp = client.chat.completions.create(
+            model=network.model_name,
+            messages=[
+                {'role': 'system', 'content': system},
+                {'role': 'user', 'content': text[:2000]},
+            ],
+            max_tokens=800,
+            temperature=0.6,
+        )
+        reply = (resp.choices[0].message.content or '').strip()
+        if not reply:
+            raise ValueError('empty reply')
+    except Exception as e:
+        logger.error(f'managed_bot_reply LLM failed ({bot_id}): {e}')
+        owner.add_kopecks(network.cost_kopecks, type='refund', reference=reference)
+        async_to_sync(_send)('Не удалось ответить, попробуйте ещё раз.')
+        return
+
+    async_to_sync(_send)(reply)
+
+    from django.db.models import F
+    ManagedBot.objects.filter(pk=bot_id).update(messages_count=F('messages_count') + 1)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # S4 — Подарки за активность (за флагом TG_GIFTS, бюджет в env)
 # ═══════════════════════════════════════════════════════════════════════════
 

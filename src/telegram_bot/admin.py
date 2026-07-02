@@ -1,7 +1,8 @@
 from django.contrib import admin
 from .models import (
     TelegramUser, TelegramChat, TelegramLinkToken, TelegramGroup, AITask,
-    StarsSubscription, BusinessConnection, BusinessDraft,
+    StarsSubscription, BusinessConnection, BusinessDraft, TelegramTopic,
+    ManagedBot,
 )
 
 
@@ -61,6 +62,22 @@ class BusinessDraftAdmin(admin.ModelAdmin):
     list_filter = ('status',)
     raw_id_fields = ('connection',)
     readonly_fields = ('created_at',)
+
+
+@admin.register(TelegramTopic)
+class TelegramTopicAdmin(admin.ModelAdmin):
+    list_display = ('tg_user', 'topic_id', 'title', 'project', 'is_active')
+    raw_id_fields = ('tg_user', 'project', 'chat')
+
+
+@admin.register(ManagedBot)
+class ManagedBotAdmin(admin.ModelAdmin):
+    list_display = ('bot_username', 'name', 'owner', 'is_active', 'messages_count', 'created_at')
+    list_filter = ('is_active',)
+    search_fields = ('bot_username', 'name', 'owner__user__email')
+    raw_id_fields = ('owner', 'network', 'project')
+    readonly_fields = ('created_at', 'messages_count')
+    exclude = ('token',)
 
 
 @admin.register(TelegramGroup)
