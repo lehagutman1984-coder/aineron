@@ -54,10 +54,31 @@ _get_group_config_async = sync_to_async(_get_group_config, thread_sensitive=True
 _charge_org_async = sync_to_async(_charge_org, thread_sensitive=True)
 
 
+def _log_group_message(group_id: int, from_name: str, text: str):
+    """S7: короткий лог для /summary — только зарегистрированные группы."""
+    from telegram_bot.models import TelegramGroup, GroupMessageLog
+    group = TelegramGroup.objects.filter(group_id=group_id, enabled=True).only('id').first()
+    if group is None:
+        return
+    GroupMessageLog.objects.create(
+        group=group, from_name=from_name[:150], text=text[:500],
+    )
+
+
+_log_group_message_async = sync_to_async(_log_group_message, thread_sensitive=True)
+
+
 @router.message(F.chat.type.in_({'group', 'supergroup'}))
 async def handle_group_message(message: Message, bot: Bot):
     if not message.text:
         return
+
+    # S7: лог сообщений зарегистрированных групп для /summary (TTL 48 ч)
+    try:
+        from_name = message.from_user.full_name if message.from_user else ''
+        await _log_group_message_async(message.chat.id, from_name, message.text)
+    except Exception as e:
+        logger.debug(f'group log skipped: {e}')
 
     bot_user = await bot.get_me()
     is_reply_to_bot = (

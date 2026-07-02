@@ -536,6 +536,73 @@ class BusinessDraft(models.Model):
         return f'{self.connection} → {self.client_name} ({self.status})'
 
 
+class TelegramTopic(models.Model):
+    """S7 — топик в личке бота (Bot API 9.3+) ↔ проект пользователя.
+
+    Нативные «папки чатов» прямо в Telegram: у каждого топика свой контекст
+    (Chat), проект и, через проект, — персона и база знаний.
+    """
+    tg_user = models.ForeignKey(
+        TelegramUser,
+        on_delete=models.CASCADE,
+        related_name='topics',
+        verbose_name='TG пользователь',
+    )
+    topic_id = models.IntegerField(verbose_name='message_thread_id топика')
+    project = models.ForeignKey(
+        'aitext.Project',
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='telegram_topics',
+        verbose_name='Проект',
+    )
+    chat = models.ForeignKey(
+        'aitext.Chat',
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='telegram_topics',
+        verbose_name='Чат контекста',
+    )
+    title = models.CharField(max_length=128, blank=True, verbose_name='Название топика')
+    is_active = models.BooleanField(default=True, verbose_name='Активен')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Топик бота'
+        verbose_name_plural = 'Топики бота'
+        unique_together = [('tg_user', 'topic_id')]
+
+    def __str__(self):
+        return f'{self.tg_user} — топик {self.title or self.topic_id}'
+
+
+class GroupMessageLog(models.Model):
+    """S7 — короткий лог сообщений зарегистрированной группы для /summary.
+
+    Только для групп с орг-биллингом (владелец включил бота осознанно).
+    TTL 48 часов — чистится задачей cleanup_group_message_logs.
+    """
+    group = models.ForeignKey(
+        TelegramGroup,
+        on_delete=models.CASCADE,
+        related_name='message_logs',
+        verbose_name='Группа',
+    )
+    from_name = models.CharField(max_length=150, blank=True, verbose_name='Автор')
+    text = models.CharField(max_length=500, verbose_name='Текст (обрезан)')
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = 'Лог сообщения группы'
+        verbose_name_plural = 'Логи сообщений групп'
+        indexes = [
+            models.Index(fields=['group', 'created_at'], name='grouplog_idx'),
+        ]
+
+    def __str__(self):
+        return f'{self.group} — {self.from_name}: {self.text[:40]}'
+
+
 def ai_task_limit(user) -> int:
     """S2 — лимит активных AI-задач по тарифу: free 1, Старт 3, Стандарт 10, Про 30."""
     tariff = getattr(user, 'tariff', None)

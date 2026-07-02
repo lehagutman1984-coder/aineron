@@ -44,6 +44,12 @@ TASKS = [
         "cron": True,
     },
     {
+        "name": "Группы: очистка логов /summary старше 48 ч (ежедневно)",
+        "task": "telegram_bot.tasks.cleanup_group_message_logs",
+        "schedule": {"hour": "3", "minute": "0"},
+        "cron": True,
+    },
+    {
         "name": "Подарки за активность (понедельник 12:00 МСК, за флагом TG_GIFTS)",
         "task": "telegram_bot.tasks.send_activity_gifts",
         "schedule": {"day_of_week": "1", "hour": "9", "minute": "0"},  # UTC 09:00 = MSK 12:00

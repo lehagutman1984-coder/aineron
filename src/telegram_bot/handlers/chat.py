@@ -340,6 +340,17 @@ async def cb_del_msg(query: CallbackQuery, tg_user=None):
 async def handle_text_message(message: Message, tg_user=None):
     if tg_user is None:
         return
+    # S7: сообщение в топике-проекте — свой контекст (Chat) топика
+    thread_id = getattr(message, 'message_thread_id', None)
+    if thread_id and capabilities.is_enabled('topics'):
+        try:
+            from telegram_bot.handlers.topics import resolve_topic_chat
+            topic_chat = await resolve_topic_chat(tg_user, thread_id)
+            if topic_chat is not None:
+                await process_text(message, tg_user, message.text, chat_override=topic_chat)
+                return
+        except Exception as e:
+            logger.debug(f'topic routing skipped: {e}')
     # S2: детект интента «задача по расписанию» — предложить создать AI-задачу
     try:
         from telegram_bot.handlers.tasks_cmd import looks_like_task_intent

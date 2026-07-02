@@ -27,6 +27,7 @@ def register_routers():
         search_cmd, export_cmd, img2img_cmd, img2video_cmd, digest_cmd, scenarios_cmd,
         reggroup_cmd, sticker_cmd, memory_cmd, persona_cmd,
         remind_cmd, poll_cmd, tasks_cmd, research_cmd, business,
+        topics, group2,
     )
     dp.message.middleware(AuthMiddleware())
     dp.callback_query.middleware(AuthMiddleware())
@@ -64,5 +65,7 @@ def register_routers():
     dp.include_router(tasks_cmd.router)      # /task, /tasks — AI-задачи по расписанию (S2)
     dp.include_router(research_cmd.router)   # /research — Deep Research с источниками (S3)
     dp.include_router(business.router)       # AI-секретарь: Business Connection (S5)
+    dp.include_router(topics.router)         # /topics — топики-проекты в личке (S7)
+    dp.include_router(group2.router)         # /summary, /quiz, /stat — Группы 2.0 (S7), ПЕРЕД group
     dp.include_router(group.router)           # LAST — group chat fallback
     _routers_registered = True

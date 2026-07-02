@@ -471,6 +471,20 @@ def cleanup_business_drafts(self):
         logger.info(f'cleanup_business_drafts: {deleted} deleted')
 
 
+@shared_task(name='telegram_bot.tasks.cleanup_group_message_logs', bind=True,
+             max_retries=0, ignore_result=True)
+def cleanup_group_message_logs(self):
+    """S7: лог групповых сообщений для /summary живёт максимум 48 часов."""
+    from datetime import timedelta
+    from django.utils import timezone as tz
+    from telegram_bot.models import GroupMessageLog
+
+    cutoff = tz.now() - timedelta(hours=48)
+    deleted, _ = GroupMessageLog.objects.filter(created_at__lt=cutoff).delete()
+    if deleted:
+        logger.info(f'cleanup_group_message_logs: {deleted} deleted')
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # S4 — Подарки за активность (за флагом TG_GIFTS, бюджет в env)
 # ═══════════════════════════════════════════════════════════════════════════

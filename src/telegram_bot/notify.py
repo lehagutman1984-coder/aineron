@@ -60,11 +60,16 @@ class DraftStreamer:
         self.tg_message = tg_message
         self.bot = tg_message.bot
         self.chat_id = tg_message.chat.id
+        # S7: ответы в топиках остаются в своём треде
+        self.thread_id = getattr(tg_message, 'message_thread_id', None)
         self.min_edit_interval = min_edit_interval
         self._use_draft = capabilities.available('native_streaming', self.bot)
         self.sent = None          # placeholder-сообщение (fallback-режим)
         self._last_edit = 0.0
         self._last_text = ''
+
+    def _answer_kwargs(self) -> dict:
+        return {'message_thread_id': self.thread_id} if self.thread_id else {}
 
     async def start(self, placeholder: str):
         """Показать начальный статус («Генерирую...» или пустой черновик)."""
@@ -75,7 +80,7 @@ class DraftStreamer:
             except Exception as e:
                 logger.warning(f'DraftStreamer: sendMessageDraft failed, fallback: {e}')
                 self._use_draft = False
-        self.sent = await self.tg_message.answer(placeholder)
+        self.sent = await self.tg_message.answer(placeholder, **self._answer_kwargs())
 
     async def update(self, partial_text: str):
         """Обновить превью частичным текстом ответа."""
@@ -93,7 +98,8 @@ class DraftStreamer:
                 self._use_draft = False
                 if self.sent is None:
                     try:
-                        self.sent = await self.tg_message.answer('Генерирую ответ...')
+                        self.sent = await self.tg_message.answer(
+                            'Генерирую ответ...', **self._answer_kwargs())
                     except Exception:
                         return
         now = time.monotonic()
@@ -122,10 +128,11 @@ class DraftStreamer:
                 except Exception:
                     pass
             try:
-                await self.tg_message.answer(part, parse_mode='HTML',
-                                             reply_markup=markup, **effect_kwargs)
+                await self.tg_message.answer(part, parse_mode='HTML', reply_markup=markup,
+                                             **self._answer_kwargs(), **effect_kwargs)
             except Exception:
-                await self.tg_message.answer(part, parse_mode='HTML', reply_markup=markup)
+                await self.tg_message.answer(part, parse_mode='HTML', reply_markup=markup,
+                                             **self._answer_kwargs())
             effect_kwargs = {}
 
     async def fail(self, text: str):
@@ -136,7 +143,7 @@ class DraftStreamer:
                 return
             except Exception:
                 pass
-        await self.tg_message.answer(text)
+        await self.tg_message.answer(text, **self._answer_kwargs())
 
 
 def stream_draft_or_edit(tg_message, min_edit_interval: float = 3.5) -> DraftStreamer:
