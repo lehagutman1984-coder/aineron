@@ -63,9 +63,9 @@ async def handle_voice_message(message: Message, tg_user=None, bot=None):
 
         await status_msg.edit_text(f"<b>[Голосовое]:</b> {text}", parse_mode='HTML')
 
-        # Передаём в обычный чат-пайплайн
+        # Передаём в обычный чат-пайплайн; S10 — ответ голосом на голосовое
         from telegram_bot.handlers.chat import process_text
-        await process_text(message, tg_user, text)
+        await process_text(message, tg_user, text, voice_reply=True)
 
     except Exception as e:
         logger.exception(f'Voice transcription error: {e}')

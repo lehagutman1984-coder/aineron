@@ -106,6 +106,8 @@ async def handle_menu_button(message: Message, state=None, tg_user=None):
             '/task — AI-задачи по расписанию (утренний бриф, мониторинг)\n'
             '/tasks — мои задачи\n'
             '/research &lt;вопрос&gt; — глубокое исследование с источниками\n'
+            '/agent &lt;задача&gt; — агент: поиск + вычисления + отчёт\n'
+            '/channel — AI-посты в ваш канал по расписанию\n'
             '/search &lt;запрос&gt; — поиск по истории\n'
             '/export — скачать текущий чат (.md)\n'
             '/digest — AI-дайджест\n'

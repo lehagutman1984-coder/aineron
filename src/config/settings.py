@@ -483,6 +483,9 @@ BUSINESS_REPLY_PRICE_KOPECKS = int(os.getenv('BUSINESS_REPLY_PRICE_KOPECKS', '10
 BUSINESS_TARIFF_ALLOWANCE = int(os.getenv('BUSINESS_TARIFF_ALLOWANCE', '300'))
 # Managed Bots (S8): дневной cap сообщений гостей на одного бота (антиспам)
 MANAGEDBOT_DAILY_CAP = int(os.getenv('MANAGEDBOT_DAILY_CAP', '300'))
+# Agent Mode (S9): фиксированная цена запуска, копейки (5 ₽; себестоимость —
+# до 7 LLM-вызовов дешёвой модели + до 5 Tavily-запросов ≈ 1–2 ₽)
+AGENT_PRICE_KOPECKS = int(os.getenv('AGENT_PRICE_KOPECKS', '500'))
 
 
 # ========== БИЛЛИНГ (единый рублёвый баланс, копейки) ==========

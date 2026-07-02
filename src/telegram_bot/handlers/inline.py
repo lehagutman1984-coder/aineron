@@ -2,8 +2,8 @@ import hashlib
 import logging
 from aiogram import Router
 from aiogram.types import (
-    InlineQuery, InlineQueryResultArticle, InputTextMessageContent,
-    ChosenInlineResult,
+    InlineQuery, InlineQueryResultArticle, InlineQueryResultPhoto,
+    InputTextMessageContent, ChosenInlineResult,
 )
 from asgiref.sync import sync_to_async
 
@@ -68,15 +68,47 @@ async def handle_inline(query: InlineQuery):
         return
 
     if not text:
-        result = InlineQueryResultArticle(
+        # Inline 2.0: пустой запрос — свои свежие генерации, шаринг одним тапом
+        results = [InlineQueryResultArticle(
             id='hint',
             title='Задай вопрос AI',
             description='Введи запрос после @aineron_bot',
             input_message_content=InputTextMessageContent(
                 message_text='Введи запрос после @aineron_bot для получения ответа AI'
             ),
-        )
-        await query.answer([result], cache_time=5, is_personal=True)
+        )]
+
+        def _recent_images(user):
+            from django.conf import settings as dj
+            from django.db.models import Q
+            from aitext.models import GeneratedImage
+            gens = (
+                GeneratedImage.objects
+                .filter(Q(message__chat__user=user) | Q(user=user), media_type='image')
+                .exclude(image='').order_by('-created_at')[:5]
+            )
+            site = getattr(dj, 'SITE_URL', 'https://aineron.ru')
+            urls = []
+            for g in gens:
+                try:
+                    urls.append((g.pk, f'{site}{g.image.url}', (g.prompt or '')[:80]))
+                except Exception:
+                    continue
+            return urls
+
+        try:
+            images = await sync_to_async(_recent_images, thread_sensitive=True)(tg_user.user)
+            for pk, url, prompt in images:
+                results.append(InlineQueryResultPhoto(
+                    id=f'gen{pk}',
+                    photo_url=url,
+                    thumbnail_url=url,
+                    caption=f'Создано в aineron: {prompt}' if prompt else 'Создано в aineron',
+                ))
+        except Exception as e:
+            logger.debug(f'inline gallery skipped: {e}')
+
+        await query.answer(results, cache_time=5, is_personal=True)
         return
 
     result_id = hashlib.md5(f'{query.from_user.id}:{text}'.encode()).hexdigest()[:8]

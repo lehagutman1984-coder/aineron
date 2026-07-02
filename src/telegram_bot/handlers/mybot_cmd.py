@@ -24,6 +24,39 @@ router = Router()
 
 MAX_MANAGED_BOTS = 3
 
+# S12 — Маркетплейс агентов v1: готовые шаблоны персон
+PERSONA_TEMPLATES = {
+    'support': {
+        'label': 'Поддержка магазина',
+        'persona': ('Специалист поддержки интернет-магазина: отвечает вежливо и '
+                    'коротко, помогает с заказами, доставкой, возвратами и '
+                    'выбором товара. Если не знает точного ответа — обещает '
+                    'уточнить у менеджера и просит контакт.'),
+        'greeting': 'Здравствуйте! Помогу с заказом, доставкой или возвратом. Что подсказать?',
+    },
+    'lawyer': {
+        'label': 'Юрист-консультант',
+        'persona': ('Юрист-консультант по законодательству РФ: объясняет простым '
+                    'языком, ссылается на нормы права, всегда добавляет, что это '
+                    'информация общего характера, а не юридическая консультация.'),
+        'greeting': 'Здравствуйте! Опишите вашу правовую ситуацию — разберём по шагам.',
+    },
+    'tutor': {
+        'label': 'Репетитор',
+        'persona': ('Терпеливый репетитор: объясняет тему шаг за шагом, задаёт '
+                    'наводящие вопросы, проверяет понимание, приводит примеры '
+                    'и мини-задачи. Хвалит за прогресс.'),
+        'greeting': 'Привет! Какую тему разбираем сегодня?',
+    },
+    'copywriter': {
+        'label': 'Копирайтер',
+        'persona': ('Копирайтер: пишет продающие тексты, посты, слоганы и письма. '
+                    'Сначала уточняет аудиторию и цель, затем даёт 2–3 варианта '
+                    'на выбор.'),
+        'greeting': 'Привет! Расскажите, какой текст нужен и для кого — предложу варианты.',
+    },
+}
+
 
 class MyBotFSM(StatesGroup):
     name = State()
@@ -130,17 +163,45 @@ async def cb_mybot_new(query: CallbackQuery, state: FSMContext, tg_user=None):
         await query.answer(f'Максимум {MAX_MANAGED_BOTS} бота', show_alert=True)
         return
     await query.answer()
+    # S12: сначала выбор готового шаблона персоны
+    rows = [[InlineKeyboardButton(text=tpl['label'], callback_data=f'mybot_tpl:{key}')]
+            for key, tpl in PERSONA_TEMPLATES.items()]
+    rows.append([InlineKeyboardButton(text='Своя персона', callback_data='mybot_tpl:custom')])
+    await query.message.answer(
+        'Выберите готовый шаблон агента или опишите персону сами:',
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=rows),
+    )
+
+
+@router.callback_query(F.data.startswith('mybot_tpl:'))
+async def cb_mybot_tpl(query: CallbackQuery, state: FSMContext, tg_user=None):
+    if tg_user is None:
+        await query.answer()
+        return
+    key = query.data.split(':', 1)[1]
+    tpl = PERSONA_TEMPLATES.get(key)
+    await query.answer()
+    if tpl is not None:
+        await state.update_data(persona=tpl['persona'], greeting=tpl['greeting'],
+                                from_template=True)
+    else:
+        await state.update_data(from_template=False)
     await state.set_state(MyBotFSM.name)
-    await query.message.answer('Шаг 1/4. Как назвать вашего AI-агента? (до 100 символов)')
+    await query.message.answer('Как назвать вашего AI-агента? (до 100 символов)')
 
 
 @router.message(MyBotFSM.name)
-async def on_mybot_name(message: Message, state: FSMContext):
+async def on_mybot_name(message: Message, state: FSMContext, tg_user=None):
     name = (message.text or '').strip()[:100]
     if not name:
         await message.answer('Пустое имя — попробуйте ещё раз.')
         return
     await state.update_data(name=name)
+    data = await state.get_data()
+    if data.get('from_template'):
+        # S12: персона и приветствие уже из шаблона — сразу к токену
+        await _acquire_token(message, state, tg_user)
+        return
     await state.set_state(MyBotFSM.persona)
     await message.answer(
         'Шаг 2/4. Опишите персону: кто этот агент и как отвечает?\n\n'
@@ -162,8 +223,11 @@ async def on_mybot_persona(message: Message, state: FSMContext):
 async def on_mybot_greeting(message: Message, state: FSMContext, tg_user=None):
     text = (message.text or '').strip()
     await state.update_data(greeting='' if text == '-' else text[:1000])
+    await _acquire_token(message, state, tg_user)
 
-    # Пытаемся получить токен автоматически (Bot API 9.6)
+
+async def _acquire_token(message: Message, state: FSMContext, tg_user):
+    """Получение токена: getManagedBotToken (Bot API 9.6) или BotFather-fallback."""
     get_token = getattr(message.bot, 'get_managed_bot_token', None)
     if get_token is not None:
         try:
@@ -179,7 +243,7 @@ async def on_mybot_greeting(message: Message, state: FSMContext, tg_user=None):
 
     await state.set_state(MyBotFSM.token)
     await message.answer(
-        card('Шаг 4/4. Токен бота',
+        card('Последний шаг: токен бота',
              '1. Откройте @BotFather → /newbot\n'
              '2. Придумайте имя и username (например, my_shop_ai_bot)\n'
              '3. Пришлите сюда токен вида <code>123456:ABC-DEF...</code>',

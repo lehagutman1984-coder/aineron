@@ -2,8 +2,21 @@ from django.contrib import admin
 from .models import (
     TelegramUser, TelegramChat, TelegramLinkToken, TelegramGroup, AITask,
     StarsSubscription, BusinessConnection, BusinessDraft, TelegramTopic,
-    ManagedBot,
+    ManagedBot, AgentRun,
 )
+
+
+@admin.register(AgentRun)
+class AgentRunAdmin(admin.ModelAdmin):
+    list_display = ('user', 'goal_short', 'status', 'created_at', 'finished_at')
+    list_filter = ('status',)
+    search_fields = ('goal', 'user__email')
+    raw_id_fields = ('user',)
+    readonly_fields = ('created_at', 'finished_at', 'steps')
+
+    def goal_short(self, obj):
+        return obj.goal[:60]
+    goal_short.short_description = 'Задача'
 
 
 @admin.register(TelegramUser)

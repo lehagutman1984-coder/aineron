@@ -495,6 +495,250 @@ def cleanup_group_message_logs(self):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# Retention-гигиена (Roadmap H2 2026): onboarding-loop и weekly-отчёт админам
+# ═══════════════════════════════════════════════════════════════════════════
+
+@shared_task(bind=True, max_retries=0, ignore_result=True,
+             name='telegram_bot.tasks.offer_first_ai_task')
+def offer_first_ai_task(self):
+    """Onboarding-loop: пользователям, привязавшим бота 1–3 дня назад и не
+    создавшим ни одной AI-задачи, предлагаем «Утренний бриф» одной кнопкой.
+    Конверсия в ежедневную привычку — главный retention-рычаг S2."""
+    from datetime import timedelta
+    from django.core.cache import cache
+    from django.utils import timezone as tz
+    from telegram_bot.models import TelegramUser, AITask
+    from telegram_bot.notify import notify_user
+
+    now = tz.now()
+    candidates = list(
+        TelegramUser.objects.select_related('user')
+        .filter(linked_at__gte=now - timedelta(days=3),
+                linked_at__lte=now - timedelta(days=1))[:200]
+    )
+    offered = 0
+    for tu in candidates:
+        cache_key = f'tg_task_offer:{tu.telegram_id}'
+        if cache.get(cache_key):
+            continue
+        if AITask.objects.filter(user=tu.user).exists():
+            continue
+        try:
+            from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+            kb = InlineKeyboardMarkup(inline_keyboard=[[
+                InlineKeyboardButton(text='Включить утренний бриф',
+                                     callback_data='task_preset:brief'),
+            ]])
+            from telegram_bot.notify import notify_user_rich
+            notify_user_rich(
+                tu.telegram_id,
+                '**Совет дня**\n\nЯ умею работать по расписанию, пока вы спите: '
+                'каждое утро — свежие новости AI, курс доллара и идея дня. '
+                'Одна кнопка — и бриф будет ждать вас в 8:00.',
+                reply_markup=kb,
+            )
+            cache.set(cache_key, True, timeout=30 * 86400)
+            offered += 1
+        except Exception as e:
+            logger.debug(f'offer_first_ai_task failed for {tu.telegram_id}: {e}')
+    if offered:
+        logger.info(f'offer_first_ai_task: {offered} offered')
+
+
+@shared_task(bind=True, max_retries=0, ignore_result=True,
+             name='telegram_bot.tasks.admin_weekly_report')
+def admin_weekly_report(self):
+    """Понедельничный отчёт админам: DAU/новые пользователи/выручка/супер-фичи."""
+    from datetime import timedelta
+    from django.conf import settings as dj
+    from django.db.models import Count, Sum
+    from django.utils import timezone as tz
+    from telegram_bot.models import TelegramUser, TelegramEvent, AITask
+    from telegram_bot.notify import notify_user
+    from core.money import format_rub
+
+    admin_ids = getattr(dj, 'TELEGRAM_ADMIN_IDS', [])
+    if not admin_ids:
+        return
+
+    week_ago = tz.now() - timedelta(days=7)
+    new_users = TelegramUser.objects.filter(linked_at__gte=week_ago).count()
+    wau = (TelegramEvent.objects.filter(created_at__gte=week_ago)
+           .values('telegram_user').distinct().count())
+    by_type = dict(
+        TelegramEvent.objects.filter(created_at__gte=week_ago)
+        .values_list('event_type').annotate(n=Count('id'))
+        .values_list('event_type', 'n')
+    )
+    revenue = (TelegramEvent.objects.filter(
+        created_at__gte=week_ago, event_type__in=['payment', 'subscription'])
+        .aggregate(s=Sum('cost_kopecks'))['s'] or 0)
+    active_tasks = AITask.objects.filter(is_active=True).count()
+
+    text = (
+        '<b>Aineron · недельный отчёт бота</b>\n'
+        f'Новых пользователей: <b>{new_users}</b>\n'
+        f'WAU: <b>{wau}</b>\n'
+        f'Платежи + подписки: <b>{format_rub(revenue)}</b>\n\n'
+        f'Сообщений: {by_type.get("message", 0)}\n'
+        f'Изображений: {by_type.get("image", 0)} · Видео: {by_type.get("video", 0)}\n'
+        f'AI-задач исполнено: {by_type.get("task_run", 0)} (активных: {active_tasks})\n'
+        f'Research: {by_type.get("research", 0)} · Agent: {by_type.get("agent", 0)}\n'
+        f'Секретарь: {by_type.get("business_reply", 0)} ответов\n'
+        f'Stars-подписок оформлено/продлено: {by_type.get("subscription", 0)}'
+    )
+    for admin_id in admin_ids:
+        try:
+            notify_user(admin_id, text)
+        except Exception:
+            pass
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# S9 — Agent Mode: многошаговый агент с инструментами
+# ═══════════════════════════════════════════════════════════════════════════
+
+@shared_task(bind=True, max_retries=0, ignore_result=True, soft_time_limit=240,
+             name='telegram_bot.tasks.run_agent')
+def run_agent(self, agent_run_id: int):
+    """Цикл агента: LLM планирует шаг → инструмент (search/calc) → наблюдение →
+    ... → finish с отчётом. Списание фиксированное (AGENT_PRICE_KOPECKS),
+    идемпотентно agent:{run_id}; при ошибке или недоставке — возврат."""
+    from django.conf import settings as dj
+    from django.utils import timezone as tz
+    from telegram_bot.models import AgentRun, TelegramEvent
+    from telegram_bot.notify import notify_user_rich, notify_user
+    from telegram_bot.agent import AGENT_SYSTEM, MAX_STEPS, safe_calc, parse_action, step_human
+    from aitext.models import NeuralNetwork
+    from aitext.tasks import get_laozhang_client
+    from core.money import format_rub
+
+    try:
+        run = AgentRun.objects.select_related('user').get(pk=agent_run_id)
+    except AgentRun.DoesNotExist:
+        return
+
+    user = run.user
+    tg = getattr(user, 'telegram', None)
+    if tg is None:
+        return
+    chat_id = tg.telegram_id
+    price = getattr(dj, 'AGENT_PRICE_KOPECKS', 500)
+    reference = f'agent:{agent_run_id}'
+
+    def _fail(msg: str, refund: bool = True):
+        if refund:
+            user.add_kopecks(price, type='refund', reference=reference)
+        AgentRun.objects.filter(pk=agent_run_id).update(
+            status='error', error=msg[:500], finished_at=tz.now(),
+        )
+        notify_user(chat_id, f'{msg} Средства возвращены.' if refund else msg)
+
+    if not user.spend_kopecks(price, type='spend', reference=reference):
+        AgentRun.objects.filter(pk=agent_run_id).update(status='error', error='no_balance')
+        notify_user(chat_id, 'Недостаточно средств для Agent Mode. Пополните баланс: /balance')
+        return
+
+    network = (
+        tg.default_network
+        if tg.default_network and tg.default_network.is_active
+        else NeuralNetwork.objects.filter(is_active=True, provider='openrouter')
+        .order_by('cost_kopecks').first()
+    )
+    if network is None or not network.model_name:
+        _fail('Нет доступных моделей.')
+        return
+
+    run.status = 'running'
+    run.save(update_fields=['status'])
+    run.append_step('start', 'Планирую выполнение задачи...')
+
+    client = get_laozhang_client()
+    messages = [
+        {'role': 'system', 'content': AGENT_SYSTEM},
+        {'role': 'user', 'content': run.goal[:2000]},
+    ]
+    report = ''
+
+    try:
+        for step_no in range(1, MAX_STEPS + 1):
+            resp = client.chat.completions.create(
+                model=network.model_name,
+                messages=messages,
+                max_tokens=1800,
+                temperature=0.3,
+            )
+            raw = (resp.choices[0].message.content or '').strip()
+            action = parse_action(raw)
+            if action is None:
+                # LLM ответил не по протоколу — принимаем текст как финал
+                report = raw
+                break
+
+            messages.append({'role': 'assistant', 'content': raw})
+
+            if action['action'] == 'finish':
+                report = action['input']
+                break
+
+            run.append_step(action['action'], step_human(action))
+
+            if action['action'] == 'search':
+                try:
+                    from aitext.web_search import web_search
+                    observation = web_search(action['input'], max_results=5) or 'Ничего не найдено.'
+                except Exception as e:
+                    observation = f'Поиск недоступен: {e}'
+            else:  # calc
+                observation = safe_calc(action['input'])
+
+            messages.append({
+                'role': 'user',
+                'content': f'Наблюдение (шаг {step_no}): {observation[:4000]}',
+            })
+        else:
+            # Лимит шагов исчерпан — просим финализировать
+            messages.append({'role': 'user',
+                             'content': 'Лимит шагов исчерпан. Дай финальный отчёт сейчас.'})
+            resp = client.chat.completions.create(
+                model=network.model_name, messages=messages,
+                max_tokens=1800, temperature=0.3,
+            )
+            raw = (resp.choices[0].message.content or '').strip()
+            action = parse_action(raw)
+            report = action['input'] if action and action['action'] == 'finish' else raw
+    except Exception as e:
+        logger.error(f'run_agent {agent_run_id} failed: {e}', exc_info=True)
+        _fail('Agent Mode: ошибка выполнения.')
+        return
+
+    if not report.strip():
+        _fail('Agent Mode: пустой результат.')
+        return
+
+    run.append_step('done', 'Задача выполнена')
+    AgentRun.objects.filter(pk=agent_run_id).update(
+        status='done', result_md=report, finished_at=tz.now(),
+    )
+
+    delivered = notify_user_rich(
+        chat_id,
+        f'{report}\n\n_Agent Mode · {format_rub(price)} · {network.name}_',
+    )
+    if not delivered:
+        user.add_kopecks(price, type='refund', reference=reference)
+        return
+
+    try:
+        TelegramEvent.objects.create(
+            telegram_user=tg, event_type='agent', network=network,
+            cost_kopecks=price, meta={'run_id': agent_run_id, 'steps': len(run.steps)},
+        )
+    except Exception:
+        pass
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # S8 — Managed Bots: ответ гостю персонального бота
 # ═══════════════════════════════════════════════════════════════════════════
 

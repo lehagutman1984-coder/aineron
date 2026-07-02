@@ -138,6 +138,7 @@ class TelegramEvent(models.Model):
         BUSINESS_REPLY = 'business_reply', 'AI-секретарь (ответ)'
         SUBSCRIPTION = 'subscription', 'Stars-подписка'
         AFFILIATE_JOIN = 'affiliate_join', 'Партнёрская регистрация'
+        AGENT = 'agent', 'Agent Mode (запуск)'
 
     telegram_user = models.ForeignKey(
         TelegramUser,
@@ -601,6 +602,46 @@ class GroupMessageLog(models.Model):
 
     def __str__(self):
         return f'{self.group} — {self.from_name}: {self.text[:40]}'
+
+
+class AgentRun(models.Model):
+    """S9 — Agent Mode: многошаговое выполнение задачи с инструментами.
+
+    Агент планирует и исполняет шаги (веб-поиск, вычисления) в цикле LLM,
+    прогресс пишется в steps (живой прогресс в боте, как у DeepResearch).
+    """
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Ожидает'
+        RUNNING = 'running', 'Выполняется'
+        DONE = 'done', 'Готово'
+        ERROR = 'error', 'Ошибка'
+
+    user = models.ForeignKey(
+        'users.CustomUser',
+        on_delete=models.CASCADE,
+        related_name='agent_runs',
+        verbose_name='Пользователь',
+    )
+    goal = models.TextField(verbose_name='Задача')
+    status = models.CharField(max_length=10, choices=Status.choices,
+                              default=Status.PENDING, verbose_name='Статус')
+    steps = models.JSONField(default=list, blank=True, verbose_name='Шаги выполнения')
+    result_md = models.TextField(blank=True, verbose_name='Итоговый отчёт (markdown)')
+    error = models.TextField(blank=True, verbose_name='Ошибка')
+    created_at = models.DateTimeField(auto_now_add=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Agent Mode запуск'
+        verbose_name_plural = 'Agent Mode запуски'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'AgentRun #{self.pk} — {self.status} — {self.goal[:50]}'
+
+    def append_step(self, kind: str, text: str):
+        self.steps = list(self.steps) + [{'kind': kind, 'text': text}]
+        self.save(update_fields=['steps'])
 
 
 class ManagedBot(models.Model):

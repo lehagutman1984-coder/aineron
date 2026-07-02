@@ -102,11 +102,13 @@ check_balance = sync_to_async(_check_balance, thread_sensitive=True)
 
 
 async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
-                       skip_billing: bool = False, chat_override=None):
+                       skip_billing: bool = False, chat_override=None,
+                       voice_reply: bool = False):
     """Общий пайплайн: текст → AI → ответ с polling.
 
     skip_billing=True  — биллинг уже снят на стороне вызывающего (оргбиллинг).
     chat_override      — передать готовый объект Chat (напр., для изолированных групповых чатов).
+    voice_reply=True   — дополнительно озвучить ответ (S10: голос-в-голос).
     """
     from aitext.tasks import generate_ai_response
 
@@ -178,6 +180,17 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
             if not delivered:
                 parts = split_message(telegram_format(full_text))
                 await streamer.finish(parts, reply_markup=markup)
+            # S10: голос-в-голос — озвучиваем ответ на голосовое сообщение
+            # (или всегда, если включена настройка «Голосовые ответы»)
+            if voice_reply or tg_user.voice_responses:
+                try:
+                    from aiogram.types import BufferedInputFile
+                    from telegram_bot.handlers.voice import synthesize_speech
+                    audio = await synthesize_speech(full_text[:700])
+                    await tg_message.answer_voice(
+                        BufferedInputFile(audio, filename='answer.mp3'))
+                except Exception as e:
+                    logger.debug(f'voice reply skipped: {e}')
             await set_status_reaction(tg_message.bot, tg_message.chat.id, tg_message.message_id, None)
             await async_log_event(tg_user, 'message', network=network,
                                   cost_kopecks=network.cost_kopecks)

@@ -50,6 +50,18 @@ TASKS = [
         "cron": True,
     },
     {
+        "name": "Onboarding: предложение первой AI-задачи (ежедневно 11:00 МСК)",
+        "task": "telegram_bot.tasks.offer_first_ai_task",
+        "schedule": {"hour": "8", "minute": "0"},  # UTC 08:00 = MSK 11:00
+        "cron": True,
+    },
+    {
+        "name": "Недельный отчёт админам (понедельник 10:00 МСК)",
+        "task": "telegram_bot.tasks.admin_weekly_report",
+        "schedule": {"day_of_week": "1", "hour": "7", "minute": "0"},
+        "cron": True,
+    },
+    {
         "name": "Подарки за активность (понедельник 12:00 МСК, за флагом TG_GIFTS)",
         "task": "telegram_bot.tasks.send_activity_gifts",
         "schedule": {"day_of_week": "1", "hour": "9", "minute": "0"},  # UTC 09:00 = MSK 12:00
