@@ -510,6 +510,8 @@ SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'api.authentication.APIKeyAuthentication',
+        # S6: JWT из Mini App (telegram_webapp_auth выдаёт simplejwt-токены)
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
         'api.authentication.CsrfExemptSessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [

@@ -63,7 +63,9 @@ from api.views.usage_events import UsageEventListView, UsageEventSummaryView
 from api.views.bot_payment import BotPayUrlView
 from api.views.ab_tests import ABTestListCreateView, ABTestResultsView
 from api.views.telegram_link import TelegramLinkTokenView
-from api.views.telegram_webapp import telegram_webapp_auth
+from api.views.telegram_webapp import (
+    telegram_webapp_auth, telegram_webapp_files, telegram_prepare_share,
+)
 from api.views.memory import (
     MemoryListCreateView, MemoryDetailView,
     MemoryClearView, MemorySummariesView, MemorySettingsView,
@@ -267,6 +269,8 @@ urlpatterns = [
     # ========== Telegram Bot ==========
     path('v1/telegram/link-token/', TelegramLinkTokenView.as_view(), name='telegram_link_token'),
     path('v1/telegram/webapp-auth/', telegram_webapp_auth, name='telegram-webapp-auth'),
+    path('v1/telegram/webapp/files/', telegram_webapp_files, name='telegram-webapp-files'),
+    path('v1/telegram/webapp/prepare-share/', telegram_prepare_share, name='telegram-prepare-share'),
 
     # ========== OpenAPI / Swagger ==========
     path('v1/schema/', SpectacularAPIView.as_view(), name='schema'),
