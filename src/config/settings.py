@@ -457,6 +457,23 @@ TELEGRAM_WEBHOOK_SECRET = os.getenv('TELEGRAM_WEBHOOK_SECRET', '')
 TELEGRAM_BOT_USERNAME   = os.getenv('TELEGRAM_BOT_USERNAME',   'aineron_bot')
 TELEGRAM_ADMIN_IDS      = [int(x) for x in os.getenv('TELEGRAM_ADMIN_IDS', '').split(',') if x.strip().isdigit()]
 
+# Фиче-флаги Bot API 9.3+/10.1 (TELEGRAM_SUPREMACY_PLAN, S0).
+# Каждая супер-фича включается отдельно и откатывается без деплоя кода.
+TG_NATIVE_STREAMING    = os.getenv('TG_NATIVE_STREAMING',    '0') == '1'  # sendMessageDraft (S1)
+TG_RICH_MESSAGES       = os.getenv('TG_RICH_MESSAGES',       '0') == '1'  # sendRichMessage (S1)
+TG_STARS_SUBSCRIPTIONS = os.getenv('TG_STARS_SUBSCRIPTIONS', '0') == '1'  # подписки в Stars (S4)
+TG_BUSINESS            = os.getenv('TG_BUSINESS',            '0') == '1'  # AI-секретарь (S5)
+TG_AFFILIATE           = os.getenv('TG_AFFILIATE',           '0') == '1'  # партнёрская программа (S4)
+TG_GIFTS               = os.getenv('TG_GIFTS',               '0') == '1'  # подарки за активность (S4)
+TG_TOPICS              = os.getenv('TG_TOPICS',              '0') == '1'  # топики-проекты в личке (S7)
+TG_MANAGED_BOTS        = os.getenv('TG_MANAGED_BOTS',        '0') == '1'  # персональные боты (S8)
+TG_STYLED_BUTTONS      = os.getenv('TG_STYLED_BUTTONS',      '0') == '1'  # icon_custom_emoji_id (S1, нужен Premium)
+# Бюджет подарков: максимум Stars в месяц с баланса бота (S4)
+TG_GIFTS_MONTHLY_BUDGET_STARS = int(os.getenv('TG_GIFTS_MONTHLY_BUDGET_STARS', '500'))
+# Курс XTR→копейки: сколько копеек начисляется за 1 звезду Telegram Stars.
+# Единая точка пересмотра при изменении цен Telegram (S4). 1 XTR = 2 ₽ = 200 коп.
+TG_XTR_RATE_KOPECKS = int(os.getenv('TG_XTR_RATE_KOPECKS', '200'))
+
 
 # ========== БИЛЛИНГ (единый рублёвый баланс, копейки) ==========
 # Инвариант: 1 звезда (legacy) = 1 рубль = 100 копеек. См. src/core/money.py и BILLING_MIGRATION_PLAN.md

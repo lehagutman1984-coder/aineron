@@ -88,5 +88,6 @@ django-cors-headers==4.7.0
 tiktoken
 docker
 beautifulsoup4
-aiogram>=3.17,<4.0
+# Bot API 10.1: нативный стриминг, Rich Messages, Stars-подписки, Business Connection (TELEGRAM_SUPREMACY_PLAN S0)
+aiogram>=3.29,<4.0
 django-oauth-toolkit>=2.4.0
