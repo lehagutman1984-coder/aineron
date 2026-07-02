@@ -102,11 +102,13 @@ class CompareView(APIView):
             )
 
             if network.provider != 'fal-ai' and deduct:
+                from aitext.billing import record_message_billing
                 request.user.spend_kopecks(cost_kopecks, type='spend', reference=f'compare:{assistant_message.id}')
                 UserSpending.objects.create(
-                    user=request.user, amount=max(1, cost_kopecks // 100), amount_kopecks=cost_kopecks,
+                    user=request.user, amount=cost_kopecks // 100, amount_kopecks=cost_kopecks,
                     description=f"Сравнение моделей: {network.name}",
                 )
+                record_message_billing(assistant_message, f'compare:{assistant_message.id}', cost_kopecks)
 
             chat.updated_at = timezone.now()
             chat.save(update_fields=['updated_at'])

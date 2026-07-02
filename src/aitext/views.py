@@ -165,13 +165,15 @@ def create_chat(request):
         # ========== СПИСАНИЕ (только для текстовых моделей) ==========
         # Для моделей изображений/видео списание происходит в задаче Celery
         if network.provider != 'fal-ai' and deduct_stars:
+            from aitext.billing import record_message_billing
             request.user.spend_kopecks(cost_kopecks, type='spend', reference=f'chat:{assistant_message.id}')
             UserSpending.objects.create(
                 user=request.user,
-                amount=max(1, cost_kopecks // 100),
+                amount=cost_kopecks // 100,
                 amount_kopecks=cost_kopecks,
                 description=f"Сообщение в чате с {network.name}"
             )
+            record_message_billing(assistant_message, f'chat:{assistant_message.id}', cost_kopecks)
 
         chat.updated_at = timezone.now()
         chat.save(update_fields=['updated_at'])
@@ -275,13 +277,15 @@ def send_message(request, chat_id):
         # ========== СПИСАНИЕ (только для текстовых моделей) ==========
         # Для моделей изображений/видео списание происходит в задаче Celery
         if network.provider != 'fal-ai' and deduct_stars:
+            from aitext.billing import record_message_billing
             request.user.spend_kopecks(cost_kopecks, type='spend', reference=f'chat:{assistant_message.id}')
             UserSpending.objects.create(
                 user=request.user,
-                amount=max(1, cost_kopecks // 100),
+                amount=cost_kopecks // 100,
                 amount_kopecks=cost_kopecks,
                 description=f"Сообщение в чате с {network.name}"
             )
+            record_message_billing(assistant_message, f'chat:{assistant_message.id}', cost_kopecks)
 
         # ========== ОБНОВЛЕНИЕ ЧАТА ==========
         chat.updated_at = timezone.now()

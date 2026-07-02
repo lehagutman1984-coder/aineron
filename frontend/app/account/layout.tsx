@@ -9,7 +9,7 @@ import {
   Users,
   FolderOpen,
   LogOut,
-  Star,
+  Wallet,
   BarChart2,
   MessageCircle,
   AppWindow,
@@ -92,7 +92,7 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
                 {user?.email ?? "—"}
               </p>
               <div className="mt-1.5 flex items-center gap-1.5">
-                <Star size={12} className="text-[#D97757]" />
+                <Wallet size={12} className="text-[#D97757]" />
                 <span className="text-[14px] text-[rgba(13,13,13,0.50)]">
                   {formatRub(balanceKopecks ?? 0)}
                 </span>

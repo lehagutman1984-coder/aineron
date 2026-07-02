@@ -53,8 +53,8 @@ async def cmd_referral(message: Message, tg_user=None):
         f"<b>Статистика:</b>\n"
         f"Приглашено: {referred_count}\n"
         f"Из них оплатили: {paid_count}\n"
-        f"Заработано: {stars_earned} звёзд\n\n"
-        f"За каждого оплатившего реферала вы получаете бонус звёзд!"
+        f"Заработано: {stars_earned} ₽\n\n"
+        f"За каждого оплатившего реферала вы получаете бонус на баланс!"
     )
 
     share_text = "Попробуй%20AI%20на%20aineron.ru!"

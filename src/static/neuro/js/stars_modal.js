@@ -41,7 +41,7 @@ class PagesModal {
             <div class="pages-modal-header">
                 <h2>
                     <i class="fas fa-shopping-cart"></i>
-                    Покупка звезд
+                    Пополнение баланса
                 </h2>
                 <button class="pages-modal-close" id="pagesModalClose">
                     <i class="fas fa-times"></i>
@@ -55,28 +55,28 @@ class PagesModal {
                     </div>
                     <div class="balance-value">
                         <span id="currentPagesBalance">0</span>
-                        <span>звезд</span>
+                        <span>₽</span>
                     </div>
                 </div>
 
                 <div class="pages-selector">
-                    <label class="pages-labels">Выберите количество звезд</label>
+                    <label class="pages-labels">Выберите сумму пополнения</label>
                     <div class="pages-presets">
                         <button class="pages-preset-btn" data-pages="50">
                             <span>50</span>
-                            <span>звезд</span>
+                            <span>₽</span>
                         </button>
                         <button class="pages-preset-btn" data-pages="100">
                             <span>100</span>
-                            <span>звезд</span>
+                            <span>₽</span>
                         </button>
                         <button class="pages-preset-btn" data-pages="500">
                             <span>500</span>
-                            <span>звезд</span>
+                            <span>₽</span>
                         </button>
                         <button class="pages-preset-btn" data-pages="1000">
                             <span>1000</span>
-                            <span>звезд</span>
+                            <span>₽</span>
                         </button>
                     </div>
 
@@ -94,7 +94,7 @@ class PagesModal {
                     <div class="price-row">
                         <span class="price-label">
                             <i class="fas fa-tag"></i>
-                            Цена за 1 звезду
+                            Цена за 1 ₽ баланса
                         </span>
                         <span class="price-value" id="pricePerPageDisplay">0 ₽</span>
                     </div>
@@ -248,11 +248,11 @@ class PagesModal {
 
     selectPages(pages) {
         if (pages < this.minPages) {
-            this.showError(`Минимальное количество: ${this.minPages} звезд`);
+            this.showError(`Минимальная сумма пополнения: ${this.minPages} ₽`);
             return;
         }
         if (pages > this.maxPages) {
-            this.showError(`Максимальное количество: ${this.maxPages} звезд`);
+            this.showError(`Максимальная сумма пополнения: ${this.maxPages} ₽`);
             return;
         }
         this.hideError();
@@ -348,7 +348,7 @@ class PagesModal {
         if (this.isLoading) return;
         const pagesToBuy = this.selectedPages;
         if (pagesToBuy <= 0) {
-            this.showError('Выберите количество звезд');
+            this.showError('Выберите сумму пополнения');
             return;
         }
 

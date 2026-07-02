@@ -65,7 +65,7 @@ export function GitHistory({ projectId }: GitHistoryProps) {
               ) : (
                 <span className="opacity-40">нет sha</span>
               )}
-              <span>{v.stars_spent_at_version} зв.</span>
+              <span>{v.stars_spent_at_version} ₽</span>
             </div>
           </div>
           {confirmId === v.id ? (

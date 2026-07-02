@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   CreditCard,
-  Star,
+  Wallet,
   History,
   Tag,
   ChevronRight,
@@ -79,7 +79,7 @@ function paymentStatusLabel(status: PaymentHistory["status"]) {
 function paymentTypeLabel(type: PaymentHistory["payment_type"]) {
   const map: Record<PaymentHistory["payment_type"], string> = {
     subscription: "Тариф",
-    pages: "Звёзды",
+    pages: "Пополнение",
     promo: "Промокод",
   };
   return map[type];
@@ -174,7 +174,7 @@ function StarsSection() {
   if (!settings.is_active) {
     return (
       <p className="text-[var(--color-text-secondary)] text-sm">
-        Покупка звёзд временно недоступна.
+        Пополнение баланса временно недоступно.
       </p>
     );
   }
@@ -185,7 +185,7 @@ function StarsSection() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between text-sm text-[var(--color-text-secondary)]">
-        <span>Цена: {price.toLocaleString("ru-RU")} ₽ / звезда</span>
+        <span>1 ₽ на балансе = {price.toLocaleString("ru-RU")} ₽</span>
         <span>
           Мин: {settings.min_pages_for_purchase} — Макс: {settings.max_pages_for_purchase}
         </span>
@@ -204,7 +204,7 @@ function StarsSection() {
       />
       <div className="flex items-center justify-between">
         <p className="text-[var(--color-text-primary)] font-medium">
-          {count || settings.min_pages_for_purchase} звёзд ={" "}
+          Пополнение на {count || settings.min_pages_for_purchase} ₽ ={" "}
           <span className="font-bold">{parseFloat(total).toLocaleString("ru-RU")} ₽</span>
         </p>
         <button
@@ -331,7 +331,7 @@ function HistorySection() {
             <p className="text-xs text-[var(--color-text-secondary)]">
               {p.amount_kopecks != null
                 ? `+${formatRub(p.amount_kopecks)}`
-                : `+${p.pages_count} зв.`}{" "}
+                : `+${p.pages_count} ₽`}{" "}
               · {paymentStatusLabel(p.status)}
             </p>
           </div>
@@ -426,7 +426,7 @@ export default function BillingPage() {
 
       {/* Buy stars */}
       <section>
-        <SectionHeader icon={Star} title="Купить звёзды" />
+        <SectionHeader icon={Wallet} title="Пополнить баланс" />
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
           <StarsSection />
         </div>

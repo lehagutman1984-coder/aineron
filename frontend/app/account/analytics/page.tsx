@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { TrendingUp, TrendingDown, Minus, Star, Zap, BarChart2 } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Wallet, Zap, BarChart2 } from "lucide-react";
 import { getStarsUsage } from "@/lib/api/client";
 import type { StarsUsageDay, StarsUsageModel } from "@/lib/api/types";
 import { formatRub } from "@/lib/money";
@@ -40,7 +40,7 @@ export default function AnalyticsPage() {
             Аналитика
           </h1>
           <p className="mt-0.5 text-[15px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.40)]">
-            Расходы звёзд по времени и моделям
+            Расходы по времени и моделям
           </p>
         </div>
 
@@ -70,7 +70,7 @@ export default function AnalyticsPage() {
           value={data?.totals.total_kopecks ?? 0}
           display={formatRub(data?.totals.total_kopecks ?? 0)}
           delta={delta}
-          icon={<Star size={15} className="text-[#D97757]" />}
+          icon={<Wallet size={15} className="text-[#D97757]" />}
           loading={isLoading}
         />
         <StatCard
@@ -94,7 +94,7 @@ export default function AnalyticsPage() {
         style={{ borderColor: "rgba(13,13,13,0.10)" }}
       >
         <h2 className="mb-4 text-[16px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
-          Расход звёзд по дням
+          Расходы по дням
         </h2>
         {isLoading ? (
           <div className="h-40 animate-pulse rounded-[8px] bg-[rgba(13,13,13,0.05)]" />

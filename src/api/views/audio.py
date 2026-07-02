@@ -46,7 +46,8 @@ class AudioTranscriptionsView(APIView):
             )
 
         user = request.user
-        if user.balance_kopecks <= 0:
+        ASR_COST_KOPECKS = 100  # 1 ₽ за транскрипцию
+        if not user.has_enough_kopecks(ASR_COST_KOPECKS):
             from core.money import format_rub
             return Response(
                 {'error': {'message': f'Insufficient balance: {format_rub(user.balance_kopecks)}.', 'type': 'insufficient_quota', 'code': 'insufficient_quota'}},
@@ -75,11 +76,9 @@ class AudioTranscriptionsView(APIView):
             )
 
         # Списываем фиксированную ставку (1 ₽) за транскрипцию
-        try:
-            import uuid as _uuid
-            user.spend_kopecks(100, type='spend', reference=f'api-asr:{_uuid.uuid4().hex[:8]}')
-        except Exception:
-            pass
+        import uuid as _uuid
+        if not user.spend_kopecks(ASR_COST_KOPECKS, type='spend', reference=f'api-asr:{_uuid.uuid4().hex[:8]}'):
+            logger.warning(f'[API] ASR: не удалось списать средства у {user.email} (баланс исчерпан гонкой)')
 
         if response_format == 'json':
             return Response({'text': getattr(transcription, 'text', str(transcription))})
@@ -118,7 +117,8 @@ class AudioSpeechView(APIView):
             )
 
         user = request.user
-        if user.balance_kopecks <= 0:
+        TTS_COST_KOPECKS = 100  # 1 ₽ за синтез
+        if not user.has_enough_kopecks(TTS_COST_KOPECKS):
             from core.money import format_rub
             return Response(
                 {'error': {'message': f'Insufficient balance: {format_rub(user.balance_kopecks)}.', 'type': 'insufficient_quota', 'code': 'insufficient_quota'}},
@@ -142,11 +142,9 @@ class AudioSpeechView(APIView):
             )
 
         # Списываем фиксированную ставку (1 ₽) за TTS
-        try:
-            import uuid as _uuid
-            user.spend_kopecks(100, type='spend', reference=f'api-tts:{_uuid.uuid4().hex[:8]}')
-        except Exception:
-            pass
+        import uuid as _uuid
+        if not user.spend_kopecks(TTS_COST_KOPECKS, type='spend', reference=f'api-tts:{_uuid.uuid4().hex[:8]}'):
+            logger.warning(f'[API] TTS: не удалось списать средства у {user.email} (баланс исчерпан гонкой)')
 
         content_types = {
             'mp3': 'audio/mpeg', 'opus': 'audio/opus',

@@ -72,6 +72,15 @@ class BalanceAtomicityTests(TestCase):
         self.user.refresh_from_db(fields=['balance_kopecks'])
         self.assertEqual(self.user.balance_kopecks, 1000)
 
+    def test_fractional_spends_do_not_drift_pages_count(self):
+        # Дельта с floor давала бы pages_count=10 после двух списаний по 0,50 ₽;
+        # пересчёт от фактического баланса — корректные 9.
+        self.user.spend_kopecks(50, type='spend', reference='frac:1')
+        self.user.spend_kopecks(50, type='spend', reference='frac:2')
+        self.user.refresh_from_db(fields=['balance_kopecks', 'pages_count'])
+        self.assertEqual(self.user.balance_kopecks, 900)
+        self.assertEqual(self.user.pages_count, 9)
+
 
 class DualWriteSyncTests(TestCase):
     """Проверяет авто-синхронизацию kopecks-полей в save() для справочников."""

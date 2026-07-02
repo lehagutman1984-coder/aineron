@@ -22,10 +22,10 @@ from users.models import PaymentHistory
 logger = logging.getLogger(__name__)
 
 BOT_STAR_PACKS = {
-    'stars_100':  {'stars': 100,  'price': '99.00',  'label': '100 звёзд aineron'},
-    'stars_220':  {'stars': 220,  'price': '199.00', 'label': '220 звёзд aineron (+10%)'},
-    'stars_600':  {'stars': 600,  'price': '499.00', 'label': '600 звёзд aineron (+20%)'},
-    'stars_1500': {'stars': 1500, 'price': '999.00', 'label': '1500 звёзд aineron (+25%)'},
+    'stars_100':  {'stars': 100,  'price': '99.00',  'label': '100 ₽ на баланс aineron'},
+    'stars_220':  {'stars': 220,  'price': '199.00', 'label': '220 ₽ на баланс aineron (+10%)'},
+    'stars_600':  {'stars': 600,  'price': '499.00', 'label': '600 ₽ на баланс aineron (+20%)'},
+    'stars_1500': {'stars': 1500, 'price': '999.00', 'label': '1500 ₽ на баланс aineron (+25%)'},
 }
 
 

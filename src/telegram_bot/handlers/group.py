@@ -77,6 +77,15 @@ async def handle_group_message(message: Message, bot: Bot):
     # Check if this group has org billing configured
     group_config = await _get_group_config_async(message.chat.id)
 
+    # Текст запроса извлекается ДО списания: пустое обращение («@bot» без текста)
+    # не должно тарифицироваться с орг-баланса.
+    text = message.text
+    if bot_user.username:
+        text = text.replace(f'@{bot_user.username}', '')
+    text = text.strip()
+    if not text:
+        return
+
     if group_config:
         # Org billing: anyone in the group can use the bot, charged from org balance
         network = None
@@ -104,12 +113,6 @@ async def handle_group_message(message: Message, bot: Bot):
 
         # Anonymous group member — route to per-user isolated chat
         if tg_user is None:
-            text = message.text
-            if bot_user.username:
-                text = text.replace(f'@{bot_user.username}', '').strip()
-            if not text:
-                return
-
             def _get_or_create_group_chat(group_cfg, from_uid, net):
                 from telegram_bot.models import TelegramGroupChat, TelegramUser
                 from aitext.models import Chat
@@ -155,12 +158,6 @@ async def handle_group_message(message: Message, bot: Bot):
 
     elif tg_user is None:
         await message.reply('Привяжи аккаунт aineron.ru: напиши /start боту @aineron_bot')
-        return
-
-    text = message.text
-    if bot_user.username:
-        text = text.replace(f'@{bot_user.username}', '').strip()
-    if not text:
         return
 
     # Override system prompt with group's if set

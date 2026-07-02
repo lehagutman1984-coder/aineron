@@ -6,6 +6,7 @@ import logging
 import datetime
 import requests as _req
 from celery import shared_task
+from celery.exceptions import MaxRetriesExceededError
 from openai import OpenAI
 from django.conf import settings
 from django.core.files.base import ContentFile
@@ -761,7 +762,7 @@ def generate_ai_response(self, message_id, web_search=False):
                 if 'billing' in error_str.lower() or 'balance' in error_str.lower() or 'quota' in error_str.lower():
                     message.error_message = "Проблема с провайдером, обратитесь к администратору сервиса для решения проблем."
                 else:
-                    message.error_message = "Произошла ошибка генерации, звезды возвращены на ваш баланс, пожалуйста выберите другую нейросеть из каталога, пока мы будем устранять проблему."
+                    message.error_message = "Произошла ошибка генерации, средства возвращены на ваш баланс, пожалуйста выберите другую нейросеть из каталога, пока мы будем устранять проблему."
                 message.save()
                 return
 
@@ -1035,14 +1036,16 @@ def generate_ai_response(self, message_id, web_search=False):
 
         # TEXT_BILLING_ENABLED: списание за текстовые сообщения (off by default)
         if getattr(settings, 'TEXT_BILLING_ENABLED', False):
-            _skip = (message.settings or {}).get('skip_star_billing', False)
+            _msg_settings = message.settings or {}
+            # billing_reference => веб-view уже списал pre-charge, второй раз нельзя
+            _skip = _msg_settings.get('skip_star_billing', False) or _msg_settings.get('billing_reference')
             if not _skip:
                 _cost_kopecks = network.cost_kopecks
                 try:
                     user.spend_kopecks(_cost_kopecks, type='spend', reference=f'text:{message.id}')
                     UserSpending.objects.create(
                         user=user,
-                        amount=max(1, _cost_kopecks // 100),
+                        amount=_cost_kopecks // 100,
                         amount_kopecks=_cost_kopecks,
                         description=f"Сообщение в чате с {network.name}",
                     )
@@ -1082,8 +1085,20 @@ def generate_ai_response(self, message_id, web_search=False):
             message.error_message = str(e)
             message.save()
         except Message.DoesNotExist:
-            pass
-        raise self.retry(exc=e, countdown=60)
+            message = None
+        try:
+            raise self.retry(exc=e, countdown=60)
+        except MaxRetriesExceededError:
+            # Окончательный провал: вернуть pre-charge веб-списание за текст
+            # (media-ветка возвращает средства сама, у неё billing_reference нет).
+            if message is not None:
+                try:
+                    from aitext.billing import refund_message_billing
+                    if refund_message_billing(message):
+                        logger.info(f"Возврат средств за проваленную генерацию, сообщение {message_id}")
+                except Exception as refund_err:
+                    logger.error(f"Не удалось вернуть средства за сообщение {message_id}: {refund_err}")
+            raise
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -1102,6 +1117,11 @@ def upscale_generation_task(self, generation_id, user_id, factor=2, image_url=No
 
     stars_deducted = False
     user = None
+    # Одну генерацию можно апскейлить несколько раз — reference уникален на
+    # попытку (placeholder создаётся заново на каждый запрос), но стабилен при
+    # ретрае Celery. Иначе повторный апскейл бесплатен, а его провал возвращает
+    # деньги за ПЕРВУЮ успешную попытку.
+    billing_ref = f'upscale:{generation_id}:{placeholder_id or f"x{factor}"}'
     try:
         try:
             user = CustomUser.objects.get(id=user_id)
@@ -1112,11 +1132,11 @@ def upscale_generation_task(self, generation_id, user_id, factor=2, image_url=No
             from core.money import format_rub
             if not user.has_enough_kopecks(cost_kopecks):
                 raise Exception(f"Недостаточно средств. Нужно {format_rub(cost_kopecks)}, у вас {format_rub(user.balance_kopecks)}.")
-            user.spend_kopecks(cost_kopecks, type='spend', reference=f'upscale:{generation_id}')
+            user.spend_kopecks(cost_kopecks, type='spend', reference=billing_ref)
             stars_deducted = True
             UserSpending.objects.create(
                 user=user,
-                amount=max(1, cost_kopecks // 100),
+                amount=cost_kopecks // 100,
                 amount_kopecks=cost_kopecks,
                 description=f"Улучшение изображения ×{factor}",
             )
@@ -1157,7 +1177,7 @@ def upscale_generation_task(self, generation_id, user_id, factor=2, image_url=No
         logger.error(f"[upscale] ошибка улучшения генерации {generation_id}: {e}")
         if stars_deducted and user:
             from core.money import format_rub
-            user.add_kopecks(cost_kopecks, type='refund', reference=f'upscale:{generation_id}')
+            user.add_kopecks(cost_kopecks, type='refund', reference=billing_ref)
             logger.info(f"[upscale] возвращено {format_rub(cost_kopecks)} пользователю {user.email} из-за ошибки")
         raise
 

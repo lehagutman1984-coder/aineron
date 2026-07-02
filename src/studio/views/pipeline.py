@@ -1,4 +1,5 @@
 import os as _os
+import uuid
 
 import requests as _rq
 from django.conf import settings
@@ -12,7 +13,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from ..models import StudioProject, ProjectDatabase, PreviewSession
 from ..serializers import PipelineStateSerializer
-from ..billing import estimate_kopecks, reserve, charge_from_reserve, release_reserve
+from ..billing import estimate_kopecks, reserve, charge_from_reserve, release_reserve, release_reserve_amount
 from core.money import format_rub
 
 _PREVIEW_SVC = _os.environ.get('PREVIEW_SERVICE_URL', 'http://localhost:8001')
@@ -331,13 +332,13 @@ class ContextChatView(APIView):
         project = get_object_or_404(StudioProject, id=id, user=request.user)
         from ..agents.assistant import AssistantAgent
         from ..billing import can_afford, charge
-        cost = 1
+        cost = 100  # 1 ₽ в копейках
         if not can_afford(request.user, cost):
-            return Response({'error': 'Недостаточно звёзд'}, status=402)
+            return Response({'error': 'Недостаточно средств на балансе. Пополните баланс.'}, status=402)
         msg = request.data.get('message', '')
         history = project.interview_data.get('assistant_history', [])
         answer = AssistantAgent(project).answer(msg, history)
-        charge(request.user, cost, project)
+        charge(request.user, cost, project, reference=f'studio-chat:{project.id}:{uuid.uuid4().hex}')
         history += [{'role': 'user', 'text': msg}, {'role': 'assistant', 'text': answer}]
         project.interview_data['assistant_history'] = history[-20:]
         project.save(update_fields=['interview_data'])
@@ -512,16 +513,16 @@ class ExplainView(APIView):
     def post(self, request, id):
         project = get_object_or_404(StudioProject, id=id, user=request.user)
         from ..billing import can_afford, charge
-        cost = 1
+        cost = 100  # 1 ₽ в копейках
         if not can_afford(request.user, cost):
-            return Response({'error': 'Недостаточно звёзд'}, status=402)
+            return Response({'error': 'Недостаточно средств на балансе. Пополните баланс.'}, status=402)
         code = request.data.get('code', '')
         path = request.data.get('path', '')
         if not code.strip():
             return Response({'error': 'Пустой фрагмент'}, status=400)
         from ..agents.explainer import ExplainerAgent
         answer = ExplainerAgent(project).explain(code, path)
-        charge(request.user, cost, project)
+        charge(request.user, cost, project, reference=f'studio-explain:{project.id}:{uuid.uuid4().hex}')
         return Response({'explanation': answer})
 
 
@@ -855,7 +856,7 @@ class E2BPreviewView(APIView):
             )
         except _rq.exceptions.RequestException:
             _refund_daily_cap(str(request.user.id), ttl_minutes)
-            release_reserve(project)
+            release_reserve_amount(project, max_cost_kopecks)
             return Response(
                 {'error': 'preview-service недоступен. Запустите: cd preview-service && uvicorn main:app --port 8001'},
                 status=503,
@@ -863,18 +864,18 @@ class E2BPreviewView(APIView):
 
         if resp.status_code == 429:
             _refund_daily_cap(str(request.user.id), ttl_minutes)
-            release_reserve(project)
+            release_reserve_amount(project, max_cost_kopecks)
             return Response({'error': resp.json().get('detail', 'Слишком много превью')}, status=429)
         if not resp.ok:
             _refund_daily_cap(str(request.user.id), ttl_minutes)
-            release_reserve(project)
+            release_reserve_amount(project, max_cost_kopecks)
             return Response({'error': resp.text[:500]}, status=502)
 
         data = resp.json()
         session_id_new = data.get('session_id')
         if not session_id_new:
             _refund_daily_cap(str(request.user.id), ttl_minutes)
-            release_reserve(project)
+            release_reserve_amount(project, max_cost_kopecks)
             return Response({'error': 'preview-service вернул неожиданный ответ'}, status=502)
         # Create billing record (settled=False — will be charged on stop or by reconciler)
         PreviewSession.objects.create(
@@ -904,17 +905,27 @@ class E2BPreviewView(APIView):
         except Exception:
             pass
 
-        # Sprint 8: settle billing — charge actual duration, release remainder
-        ps = PreviewSession.objects.filter(session_id=session_id, user=request.user, settled=False).first()
-        if ps:
-            rate = getattr(settings, 'E2B_PREVIEW_STARS_PER_MIN', 1)
-            duration_sec = stop_data.get('duration_seconds', 0) or 0
-            actual_stars = min(int((duration_sec / 60) * rate) + 1, ps.reserved_stars)
-            charge_from_reserve(actual_stars * 100, ps.project, reference=f'preview:{ps.session_id}')
-            ps.settled = True
-            ps.save(update_fields=['settled'])
+        _settle_preview_billing(request.user, session_id, stop_data)
 
         return Response({'ok': True})
+
+
+def _settle_preview_billing(user, session_id, stop_data):
+    """Списать фактическую длительность превью из резерва и вернуть остаток."""
+    from ..billing import release_reserve_amount
+    ps = PreviewSession.objects.filter(session_id=session_id, user=user, settled=False).first()
+    if not ps:
+        return
+    rate = getattr(settings, 'E2B_PREVIEW_STARS_PER_MIN', 1)
+    duration_sec = stop_data.get('duration_seconds', 0) or 0
+    actual_stars = min(int((duration_sec / 60) * rate) + 1, ps.reserved_stars)
+    charge_from_reserve(actual_stars * 100, ps.project, reference=f'preview:{ps.session_id}')
+    release_reserve_amount(
+        ps.project, (ps.reserved_stars - actual_stars) * 100,
+        reference=f'preview-release:{ps.session_id}',
+    )
+    ps.settled = True
+    ps.save(update_fields=['settled'])
 
 
 class E2BPreviewStatusView(APIView):
@@ -953,15 +964,7 @@ class E2BPreviewStatusView(APIView):
         except Exception:
             pass
 
-        # Sprint 8: settle billing (same logic as E2BPreviewView.delete)
-        ps = PreviewSession.objects.filter(session_id=session_id, user=request.user, settled=False).first()
-        if ps:
-            rate = getattr(settings, 'E2B_PREVIEW_STARS_PER_MIN', 1)
-            duration_sec = stop_data.get('duration_seconds', 0) or 0
-            actual_stars = min(int((duration_sec / 60) * rate) + 1, ps.reserved_stars)
-            charge_from_reserve(actual_stars * 100, ps.project, reference=f'preview:{ps.session_id}')
-            ps.settled = True
-            ps.save(update_fields=['settled'])
+        _settle_preview_billing(request.user, session_id, stop_data)
 
         return Response({'ok': True})
 
@@ -1029,9 +1032,9 @@ class BotEmulateView(APIView):
     def post(self, request, id):
         project = get_object_or_404(StudioProject, id=id, user=request.user)
         from ..billing import can_afford, charge
-        cost = 1
+        cost = 100  # 1 ₽ в копейках
         if not can_afford(request.user, cost):
-            return Response({'error': 'Недостаточно звёзд'}, status=402)
+            return Response({'error': 'Недостаточно средств на балансе. Пополните баланс.'}, status=402)
 
         message = str(request.data.get('message', ''))[:500]
         if not message.strip():
@@ -1067,7 +1070,7 @@ class BotEmulateView(APIView):
         except Exception as exc:
             return Response({'error': f'Ошибка LLM: {exc}'}, status=502)
 
-        charge(request.user, cost, project)
+        charge(request.user, cost, project, reference=f'studio-botemu:{project.id}:{uuid.uuid4().hex}')
         return Response({'reply': reply})
 
 

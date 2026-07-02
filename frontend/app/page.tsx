@@ -1,7 +1,7 @@
 ﻿import Link from "next/link";
 import {
   ArrowRight, Zap, Globe, Code2, ImageIcon, Check, X,
-  Users, MessageSquare, Star, ShieldCheck,
+  Users, MessageSquare, Wallet, ShieldCheck,
 } from "lucide-react";
 import { serverListNetworks } from "@/lib/api/server";
 import type { NetworkListItem } from "@/lib/api/types";
@@ -168,7 +168,7 @@ export default async function HomePage() {
         <div className="overflow-hidden rounded-[20px] border border-[rgba(13,13,13,0.10)] bg-white">
           <div className="px-8 py-8 text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-[14px] bg-[rgba(217,119,87,0.10)]">
-              <Star size={22} className="text-[#D97757]" />
+              <Wallet size={22} className="text-[#D97757]" />
             </div>
             <h2 className="text-[24px] font-bold text-[#1A1A1A]">Простая оплата в рублях</h2>
             <p className="mt-2 text-[17px] text-[rgba(13,13,13,0.55)]">

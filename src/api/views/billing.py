@@ -134,7 +134,7 @@ class PageSaleSettingsView(APIView):
     """GET /api/v1/billing/pages/"""
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(summary='Настройки покупки звёзд', tags=['Billing'])
+    @extend_schema(summary='Настройки пополнения баланса', tags=['Billing'])
     def get(self, request):
         s = PageSaleSettings.get_settings()
         return Response(PageSaleSettingsSerializer(s).data)
@@ -144,12 +144,12 @@ class BuyPagesView(APIView):
     """POST /api/v1/billing/pages/buy/"""
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(summary='Купить звёзды (Robokassa)', tags=['Billing'])
+    @extend_schema(summary='Пополнить баланс (Robokassa)', tags=['Billing'])
     def post(self, request):
         pages = int(request.data.get('pages', 0))
         s = PageSaleSettings.get_settings()
         if not s.is_active:
-            return Response({'error': {'message': 'Star purchases are disabled', 'type': 'unavailable', 'code': 'disabled'}}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            return Response({'error': {'message': 'Пополнение баланса временно недоступно', 'type': 'unavailable', 'code': 'disabled'}}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         if pages < s.min_pages_for_purchase or pages > s.max_pages_for_purchase:
             return Response({'error': {'message': f'Pages must be between {s.min_pages_for_purchase} and {s.max_pages_for_purchase}', 'type': 'invalid_request_error', 'code': 'invalid_pages'}}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -158,11 +158,11 @@ class BuyPagesView(APIView):
         password1 = settings.ROBOKASSA_PASS1
         inv_id = _make_invoice_id()
         out_sum = f"{price:.2f}"
-        description = f"Покупка {pages} звёзд"
+        description = f"Пополнение баланса на {pages} ₽"
 
         receipt_data = {
             "items": [{
-                "name": f"Звёзды ({pages} шт.)",
+                "name": f"Пополнение баланса ({pages} ₽)",
                 "quantity": 1,
                 "sum": price,
                 "tax": "none",
@@ -251,7 +251,7 @@ class ApplyPromoView(APIView):
             amount_kopecks=0,
             pages_count=promo.stars,
             status='success',
-            description=f'Промокод {code_str}: +{promo.stars} звёзд',
+            description=f'Промокод {code_str}: +{promo.stars} ₽',
         )
 
         from core.money import format_rub
@@ -271,7 +271,7 @@ class StarsUsageView(APIView):
 
     _MODEL_RE = re.compile(r' с (.+?)(?:\s*\(|$)')
 
-    @extend_schema(summary='Аналитика трат звёзд', tags=['Billing'])
+    @extend_schema(summary='Аналитика трат', tags=['Billing'])
     def get(self, request):
         try:
             days = min(int(request.query_params.get('days', 30)), 90)

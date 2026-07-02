@@ -288,7 +288,7 @@ class PaymentHistoryAdmin(admin.ModelAdmin):
         if obj.tariff:
             return format_html('{}<br><small>{} стр.</small>', obj.tariff.display_name, obj.tariff.pages_count)
         elif obj.payment_type == 'pages':
-            return format_html('<span style="color: #9333ea;">Покупка звезд</span><br><small>{} стр.</small>', obj.pages_count)
+            return format_html('<span style="color: #9333ea;">Пополнение баланса</span><br><small>{} ₽</small>', obj.pages_count)
         return '-'
     tariff_info.short_description = 'Тариф/Тип'
 
@@ -300,7 +300,7 @@ class PaymentHistoryAdmin(admin.ModelAdmin):
 
     def payment_type_display(self, obj):
         if obj.payment_type == 'pages':
-            return format_html('<span style="color: #9333ea; font-weight: bold; background: #f3e8ff; padding: 3px 8px; border-radius: 20px;"> Покупка звезд</span>')
+            return format_html('<span style="color: #9333ea; font-weight: bold; background: #f3e8ff; padding: 3px 8px; border-radius: 20px;"> Пополнение баланса</span>')
         elif obj.payment_type == 'subscription':
             if obj.parent_payment is None:
                 return format_html('<span style="color: #2563eb; font-weight: bold; background: #dbeafe; padding: 3px 8px; border-radius: 20px;"> Материнский (подписка)</span>')
@@ -312,7 +312,7 @@ class PaymentHistoryAdmin(admin.ModelAdmin):
 
     def payment_type_display_form(self, obj):
         if obj.payment_type == 'pages':
-            return format_html('<div style="background: #f3e8ff; padding: 10px; border-radius: 8px; border-left: 4px solid #9333ea;"> ПОКУПКА звезд<br>{} стр. за {} ₽</div>', obj.pages_count, obj.amount)
+            return format_html('<div style="background: #f3e8ff; padding: 10px; border-radius: 8px; border-left: 4px solid #9333ea;"> ПОПОЛНЕНИЕ БАЛАНСА<br>{} ₽ за {} ₽</div>', obj.pages_count, obj.amount)
         elif obj.payment_type == 'subscription':
             if obj.parent_payment is None:
                 return format_html('<div style="background: #dbeafe; padding: 10px; border-radius: 8px; border-left: 4px solid #2563eb;"> МАТЕРИНСКИЙ ПЛАТЕЖ<br>Первый платеж по тарифу {}</div>', obj.tariff.display_name if obj.tariff else '-')
@@ -371,7 +371,7 @@ class CustomUserAdmin(UserAdmin):
         (None, {'fields': ('username', 'password')}),
         (_('Personal info'), {'fields': ('first_name', 'last_name', 'email')}),
         (_('Email verification'), {'fields': ('email_verified', 'email_verification_token', 'email_verification_code')}),
-        (_('Тарифы и звезды'), {'fields': ('tariff', 'active_subscription', 'pages_count', 'subscription_details')}),
+        (_('Тарифы и баланс'), {'fields': ('tariff', 'active_subscription', 'pages_count', 'subscription_details')}),
         (_('Баланс в рублях'), {'fields': ('rub_balance', 'can_convert_to_rub')}),
         (_('Security'), {'fields': ('shadow_banned',)}),
         (_('Permissions'), {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
@@ -393,8 +393,8 @@ class CustomUserAdmin(UserAdmin):
     tariff_info.admin_order_field = 'tariff__display_name'
     def pages_display(self, obj):
         color = 'green' if obj.pages_count > 10 else 'orange' if obj.pages_count > 0 else 'red'
-        return format_html('<span style="color: {}; font-weight: bold;">{} звезд</span>', color, obj.pages_count)
-    pages_display.short_description = 'Звезды'
+        return format_html('<span style="color: {}; font-weight: bold;">{} ₽</span>', color, obj.pages_count)
+    pages_display.short_description = 'Баланс'
     def subscription_details(self, obj):
         if obj.active_subscription:
             sub = obj.active_subscription
@@ -406,7 +406,7 @@ class CustomUserAdmin(UserAdmin):
                 '<p><strong>Начало:</strong> {}</p>'
                 '<p><strong>Окончание:</strong> {}</p>'
                 '<p><strong>Автопродление:</strong> {}</p>'
-                '<p><strong>Звезд по тарифу:</strong> {}</p>'
+                '<p><strong>Начисление по тарифу (₽):</strong> {}</p>'
                 '</div>',
                 sub.subscription_id,
                 sub.tariff.display_name if sub.tariff else '-',
@@ -433,12 +433,12 @@ class CustomUserAdmin(UserAdmin):
                 pages_count = int(pages_count)
                 for user in queryset:
                     user.add_pages(pages_count)
-                self.message_user(request, f'Добавлено {pages_count} звезд {queryset.count()} пользователям')
+                self.message_user(request, f'Начислено {pages_count} ₽ {queryset.count()} пользователям')
             except ValueError:
                 self.message_user(request, 'Укажите корректное число', level='ERROR')
         else:
-            self.message_user(request, 'Укажите количество звезд', level='ERROR')
-    add_pages_to_users.short_description = 'Добавить звезды выбранным пользователям'
+            self.message_user(request, 'Укажите сумму в рублях', level='ERROR')
+    add_pages_to_users.short_description = 'Начислить рубли выбранным пользователям'
     def set_pages_count(self, request, queryset):
         pages_count = request.POST.get('pages_count')
         if pages_count:
@@ -446,12 +446,12 @@ class CustomUserAdmin(UserAdmin):
                 pages_count = int(pages_count)
                 for user in queryset:
                     user.set_pages(pages_count)
-                self.message_user(request, f'Установлено {pages_count} звезд {queryset.count()} пользователям')
+                self.message_user(request, f'Установлен баланс {pages_count} ₽ {queryset.count()} пользователям')
             except ValueError:
                 self.message_user(request, 'Укажите корректное число', level='ERROR')
         else:
-            self.message_user(request, 'Укажите количество звезд', level='ERROR')
-    set_pages_count.short_description = 'Установить точное количество звезд'
+            self.message_user(request, 'Укажите сумму в рублях', level='ERROR')
+    set_pages_count.short_description = 'Установить точный баланс (₽)'
     def change_tariff_for_users(self, request, queryset):
         tariff_id = request.POST.get('tariff_id')
         if tariff_id:
@@ -495,8 +495,8 @@ class CustomUserAdmin(UserAdmin):
         response = HttpResponse(content_type='text/csv')
         response['Content-Disposition'] = f'attachment; filename="users_stats_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv"'
         writer = csv.writer(response)
-        writer.writerow(['Username', 'Email', 'Тариф', 'Тип тарифа', 'Звезд по тарифу',
-                         'Текущее количество звезд', 'Статус подписки', 'Окончание подписки',
+        writer.writerow(['Username', 'Email', 'Тариф', 'Тип тарифа', 'Начисление по тарифу (₽)',
+                         'Текущий баланс (₽)', 'Статус подписки', 'Окончание подписки',
                          'Дата регистрации', 'Последний вход', 'Email подтвержден', 'Теневой бан'])
         for user in queryset:
             subscription_status = '-'

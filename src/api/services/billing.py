@@ -98,7 +98,7 @@ def charge_for_tokens(user, network, usage: dict, api_key=None) -> int:
         prompt_tokens=usage.get('prompt_tokens', 0),
         completion_tokens=usage.get('completion_tokens', 0),
         total_tokens=total_tokens,
-        stars_charged=max(1, round(kopecks / 100)) if kopecks else 0,
+        stars_charged=kopecks // 100,
         cost_kopecks=kopecks,
         request_id=request_id,
     )

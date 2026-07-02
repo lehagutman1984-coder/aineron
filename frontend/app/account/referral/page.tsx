@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Copy, Check, Users, Star, Banknote, ArrowDownToLine } from "lucide-react";
+import { Copy, Check, Users, Wallet, Banknote, ArrowDownToLine } from "lucide-react";
 import { getReferral, requestReferralWithdrawal } from "@/lib/api/client";
 import type { ReferralData } from "@/lib/api/types";
 import { formatRub } from "@/lib/money";
@@ -98,7 +98,7 @@ export default function ReferralPage() {
 
         <div className="rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white p-4">
           <div className="mb-1 flex items-center gap-2 text-[14px] text-[rgba(13,13,13,0.45)]">
-            {data.balance_type === "rub" ? <Banknote size={14} /> : <Star size={14} />}
+            {data.balance_type === "rub" ? <Banknote size={14} /> : <Wallet size={14} />}
             Баланс
           </div>
           <div className="text-[24px] font-bold text-[#1A1A1A]">
@@ -159,7 +159,7 @@ export default function ReferralPage() {
                 </div>
                 <div className="text-right text-[15px] font-medium text-[#1A1A1A]">
                   {e.amount_rub > 0 && <div>+{e.amount_rub.toFixed(2)} ₽</div>}
-                  {e.amount_stars > 0 && <div>+{e.amount_stars} звёзд</div>}
+                  {e.amount_stars > 0 && <div>+{e.amount_stars} ₽</div>}
                 </div>
               </div>
             ))}

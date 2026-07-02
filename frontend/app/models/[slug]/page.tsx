@@ -1,7 +1,7 @@
 ﻿import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Star, MessageSquare, ImageIcon, Code2, ChevronDown } from "lucide-react";
+import { ArrowLeft, Coins, MessageSquare, ImageIcon, Code2, ChevronDown } from "lucide-react";
 import { serverGetNetwork, serverListNetworks } from "@/lib/api/server";
 import { formatRub, kopecksToRub } from "@/lib/money";
 import { ChatStartForm } from "./ChatStartForm";
@@ -161,7 +161,7 @@ export default async function ModelDetailPage({ params, searchParams }: Props) {
         {/* Stats row */}
         <div className="mb-8 flex flex-wrap gap-4">
           <StatChip
-            icon={<Star size={14} />}
+            icon={<Coins size={14} />}
             label={
               network.unlimited
                 ? "Безлимит"

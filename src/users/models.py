@@ -410,12 +410,13 @@ class PageSaleSettings(models.Model):
 
     @classmethod
     def get_settings(cls):
+        # Рублёвый биллинг: 1 единица пополнения = 1 ₽ на балансе (инвариант 1:1).
         settings, created = cls.objects.get_or_create(
             id=1,
             defaults={
-                'price_per_page': 10.00,
-                'min_pages_for_purchase': 1,
-                'max_pages_for_purchase': 100
+                'price_per_page': 1.00,
+                'min_pages_for_purchase': 10,
+                'max_pages_for_purchase': 50000
             }
         )
         return settings
@@ -592,7 +593,6 @@ class CustomUser(AbstractUser):
         """
         from django.db import IntegrityError, transaction
         from django.db.models import F
-        from django.db.models.functions import Greatest
 
         if amount_kopecks <= 0:
             return True
@@ -602,11 +602,14 @@ class CustomUser(AbstractUser):
                     pk=self.pk, balance_kopecks__gte=amount_kopecks
                 ).update(
                     balance_kopecks=F('balance_kopecks') - amount_kopecks,
-                    pages_count=Greatest(F('pages_count') - (amount_kopecks // 100), 0),
                 )
                 if not updated:
                     return False
-                self.refresh_from_db(fields=['balance_kopecks', 'pages_count'])
+                self.refresh_from_db(fields=['balance_kopecks'])
+                # Dual-write: pages_count всегда пересчитывается от фактического
+                # баланса (дельта с floor накапливала бы дрейф при дробных ценах).
+                self.pages_count = max(0, self.balance_kopecks // 100)
+                CustomUser.objects.filter(pk=self.pk).update(pages_count=self.pages_count)
                 BalanceTransaction.objects.create(
                     user=self, amount_kopecks=-amount_kopecks, balance_after=self.balance_kopecks,
                     type=type, reference=reference,
@@ -624,7 +627,6 @@ class CustomUser(AbstractUser):
         """
         from django.db import IntegrityError, transaction
         from django.db.models import F
-        from django.db.models.functions import Greatest
 
         if amount_kopecks <= 0:
             return True
@@ -632,9 +634,11 @@ class CustomUser(AbstractUser):
             with transaction.atomic():
                 CustomUser.objects.filter(pk=self.pk).update(
                     balance_kopecks=F('balance_kopecks') + amount_kopecks,
-                    pages_count=Greatest(F('pages_count') + (amount_kopecks // 100), 0),
                 )
-                self.refresh_from_db(fields=['balance_kopecks', 'pages_count'])
+                self.refresh_from_db(fields=['balance_kopecks'])
+                # Dual-write: пересчёт от фактического баланса (см. spend_kopecks).
+                self.pages_count = max(0, self.balance_kopecks // 100)
+                CustomUser.objects.filter(pk=self.pk).update(pages_count=self.pages_count)
                 BalanceTransaction.objects.create(
                     user=self, amount_kopecks=amount_kopecks, balance_after=self.balance_kopecks,
                     type=type, reference=reference,
@@ -710,21 +714,27 @@ class CustomUser(AbstractUser):
         invoice_ref = (payment_data or {}).get('invoice_id') or ''
         self.add_kopecks(tariff.balance_grant_kopecks, type='subscription', reference=invoice_ref)
 
-        # Создаём запись в истории платежей
+        # Создаём запись в истории платежей. Если запись с этим invoice_id уже
+        # существует (например, создана в users/tasks.py при recurring-переходе
+        # на next_tariff) — не дублируем: payment_success ищет платёж через
+        # .get(invoice_id=...) и упадёт на MultipleObjectsReturned.
         if payment_data:
-            PaymentHistory.objects.create(
-                user=self,
-                subscription=subscription,
-                tariff=tariff,
-                invoice_id=payment_data.get('invoice_id'),
-                payment_id=payment_data.get('payment_id'),
-                amount=tariff.price,
-                pages_count=tariff.pages_count,
-                amount_kopecks=rub_to_kopecks(tariff.price),
-                status='success',
-                paid_at=timezone.now(),
-                description=f"Активация тарифа {tariff.display_name}"
-            )
+            _invoice_id = payment_data.get('invoice_id')
+            _exists = bool(_invoice_id) and PaymentHistory.objects.filter(invoice_id=_invoice_id).exists()
+            if not _exists:
+                PaymentHistory.objects.create(
+                    user=self,
+                    subscription=subscription,
+                    tariff=tariff,
+                    invoice_id=_invoice_id,
+                    payment_id=payment_data.get('payment_id'),
+                    amount=tariff.price,
+                    pages_count=tariff.pages_count,
+                    amount_kopecks=rub_to_kopecks(tariff.price),
+                    status='success',
+                    paid_at=timezone.now(),
+                    description=f"Активация тарифа {tariff.display_name}"
+                )
         return subscription
 
     def return_to_free_tariff(self):

@@ -100,9 +100,20 @@ def reserve(user, amount_kopecks: int, project: StudioProject, reference: str = 
     user.refresh_from_db(fields=['balance_kopecks'])
     if not user.has_enough_kopecks(amount_kopecks):
         return False
+    # Дубликат reference (ретрай/повторный запуск): spend_kopecks вернёт True,
+    # НЕ списав баланс. Инкрементировать резерв в этом случае нельзя — иначе
+    # появляется фантомный резерв, который release_reserve потом реально начислит.
+    already_spent = False
+    if reference:
+        from users.models import BalanceTransaction
+        already_spent = BalanceTransaction.objects.filter(
+            user=user, type='spend', reference=reference,
+        ).exists()
     ok = user.spend_kopecks(amount_kopecks, type='spend', reference=reference)
     if not ok:
         return False
+    if already_spent:
+        return True
     from django.db.models import F
     StudioProject.objects.filter(pk=project.pk).update(
         stars_reserved_kopecks=F('stars_reserved_kopecks') + amount_kopecks,
@@ -152,3 +163,23 @@ def release_reserve(project: StudioProject, reference: str = ''):
         project.user.add_kopecks(amount, type='refund', reference=reference)
         StudioProject.objects.filter(pk=project.pk).update(stars_reserved_kopecks=0, stars_reserved=0)
         project.refresh_from_db(fields=['stars_reserved_kopecks', 'stars_reserved'])
+
+
+def release_reserve_amount(project: StudioProject, amount_kopecks: int, reference: str = ''):
+    """
+    Частичный возврат резерва (остаток превью-сессии и т.п.), не затрагивая
+    резерв параллельно идущего пайплайна. Клэмпится к текущему резерву.
+    """
+    from django.db.models import F
+    from django.db.models.functions import Greatest
+
+    project.refresh_from_db(fields=['stars_reserved_kopecks'])
+    amount = min(amount_kopecks, project.stars_reserved_kopecks)
+    if amount <= 0:
+        return
+    project.user.add_kopecks(amount, type='refund', reference=reference)
+    StudioProject.objects.filter(pk=project.pk).update(
+        stars_reserved_kopecks=Greatest(F('stars_reserved_kopecks') - amount, 0),
+        stars_reserved=Greatest(F('stars_reserved') - max(0, amount // 100), 0),
+    )
+    project.refresh_from_db(fields=['stars_reserved_kopecks', 'stars_reserved'])

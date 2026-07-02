@@ -34,12 +34,21 @@ class InvoiceAdmin(admin.ModelAdmin):
 
     @admin.action(description='Отметить оплаченными и зачислить баланс')
     def mark_paid(self, request, queryset):
+        from django.db.models import F
+        from .models import Organization
+
         count = 0
         for invoice in queryset.filter(status=Invoice.Status.PENDING).select_related('organization'):
-            invoice.status = Invoice.Status.PAID
-            invoice.paid_at = timezone.now()
-            invoice.save(update_fields=['status', 'paid_at'])
-            invoice.organization.balance_rub += invoice.amount_rub
-            invoice.organization.save(update_fields=['balance_rub'])
+            # Атомарный гейт по статусу: повторный клик/параллельный админ
+            # не зачислит баланс дважды.
+            claimed = Invoice.objects.filter(
+                pk=invoice.pk, status=Invoice.Status.PENDING,
+            ).update(status=Invoice.Status.PAID, paid_at=timezone.now())
+            if not claimed:
+                continue
+            # F(): параллельное списание орг-баланса ботом не потеряется.
+            Organization.objects.filter(pk=invoice.organization_id).update(
+                balance_rub=F('balance_rub') + invoice.amount_rub
+            )
             count += 1
         self.message_user(request, f'Оплачено и зачислено: {count} счетов')

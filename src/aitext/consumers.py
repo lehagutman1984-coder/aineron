@@ -124,7 +124,7 @@ class VoiceConsumer(AsyncWebsocketConsumer):
         # Check balance before processing
         has_balance = await self._check_balance()
         if not has_balance:
-            await self.send(text_data=json.dumps({'error': 'Недостаточно звёзд для голосового режима'}))
+            await self.send(text_data=json.dumps({'error': 'Недостаточно средств для голосового режима'}))
             return
 
         try:

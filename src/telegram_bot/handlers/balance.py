@@ -11,10 +11,10 @@ logger = logging.getLogger(__name__)
 router = Router()
 
 _RBK_PACKS = [
-    ('stars_100',  '100 звёзд — 99 ₽'),
-    ('stars_220',  '220 звёзд — 199 ₽ (+10%)'),
-    ('stars_600',  '600 звёзд — 499 ₽ (+20%)'),
-    ('stars_1500', '1500 звёзд — 999 ₽ (+25%)'),
+    ('stars_100',  '100 ₽ на баланс — 99 ₽'),
+    ('stars_220',  '220 ₽ на баланс — 199 ₽ (+10%)'),
+    ('stars_600',  '600 ₽ на баланс — 499 ₽ (+20%)'),
+    ('stars_1500', '1500 ₽ на баланс — 999 ₽ (+25%)'),
 ]
 
 
@@ -155,7 +155,7 @@ async def cb_rbk_pack(query: CallbackQuery, tg_user=None):
     inv_id = int(time.time() * 1000) % 10_000_000 + random.randint(1, 999)
     out_sum = pack['price']
     stars = pack['stars']
-    description = f"{stars} звёзд aineron.ru"
+    description = f"Пополнение баланса aineron.ru на {stars} ₽"
 
     receipt_data = {"items": [{"name": description[:128], "quantity": 1, "sum": float(out_sum), "tax": "none"}]}
     receipt_json = json.dumps(receipt_data, separators=(',', ':'), ensure_ascii=False)
@@ -196,8 +196,8 @@ async def cb_rbk_pack(query: CallbackQuery, tg_user=None):
     await _create_payment()
 
     await query.message.answer(
-        f'<b>{stars} звёзд — {out_sum} ₽</b>\n{DIVIDER}\n'
-        'После оплаты звёзды будут начислены автоматически.',
+        f'<b>{stars} ₽ на баланс — {out_sum} ₽</b>\n{DIVIDER}\n'
+        'После оплаты средства будут зачислены на баланс автоматически.',
         parse_mode='HTML',
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
             InlineKeyboardButton(text=f'Оплатить {out_sum} ₽', url=pay_url)

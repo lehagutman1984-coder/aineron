@@ -645,13 +645,15 @@ def payment_success(request):
             try:
                 payment = PaymentHistory.objects.get(invoice_id=inv_id)
 
-                if payment.status == 'success':
+                # Атомарный гейт: два одновременных POST Result URL не пройдут оба —
+                # выигрывает один UPDATE, второй получает rowcount=0 и выходит.
+                claimed = PaymentHistory.objects.filter(
+                    pk=payment.pk,
+                ).exclude(status='success').update(status='success', paid_at=datetime.now())
+                if not claimed:
                     logger.info(f"[WARN] Платеж {inv_id} уже был обработан")
                     return HttpResponse(f"OK{inv_id}")
-
-                payment.status = 'success'
-                payment.paid_at = datetime.now()
-                payment.save()
+                payment.refresh_from_db(fields=['status', 'paid_at'])
 
                 user = payment.user
 
@@ -694,8 +696,11 @@ def payment_success(request):
                     if user.referrer:
                         referrer = user.referrer
                         if referrer.can_convert_to_rub and tariff.referral_bonus > 0:
-                            referrer.rub_balance += Decimal(str(tariff.referral_bonus))
-                            referrer.save(update_fields=['rub_balance'])
+                            from django.db.models import F as _F
+                            type(referrer).objects.filter(pk=referrer.pk).update(
+                                rub_balance=_F('rub_balance') + Decimal(str(tariff.referral_bonus))
+                            )
+                            referrer.refresh_from_db(fields=['rub_balance'])
                             amount_rub = tariff.referral_bonus
                             amount_stars = 0
                             logger.info(f"[PAY] Рефералу {referrer.email} начислено {tariff.referral_bonus} руб за покупку {tariff.display_name} пользователем {user.email}")
@@ -841,7 +846,7 @@ def buy_pages(request):
         if pages_to_buy <= 0:
             return JsonResponse({
                 'success': False,
-                'message': 'Укажите количество звезд'
+                'message': 'Укажите сумму пополнения'
             }, status=400)
 
         page_settings = PageSaleSettings.get_settings()
@@ -849,19 +854,19 @@ def buy_pages(request):
         if not page_settings.is_active:
             return JsonResponse({
                 'success': False,
-                'message': 'Продажа звезд временно недоступна'
+                'message': 'Пополнение баланса временно недоступно'
             }, status=400)
 
         if pages_to_buy < page_settings.min_pages_for_purchase:
             return JsonResponse({
                 'success': False,
-                'message': f'Минимальное количество: {page_settings.min_pages_for_purchase} звезд.'
+                'message': f'Минимальная сумма пополнения: {page_settings.min_pages_for_purchase} ₽.'
             }, status=400)
 
         if pages_to_buy > page_settings.max_pages_for_purchase:
             return JsonResponse({
                 'success': False,
-                'message': f'Максимальное количество: {page_settings.max_pages_for_purchase} звезд.'
+                'message': f'Максимальная сумма пополнения: {page_settings.max_pages_for_purchase} ₽.'
             }, status=400)
 
         total_price = pages_to_buy * page_settings.price_per_page
@@ -872,13 +877,13 @@ def buy_pages(request):
         password_1 = settings.ROBOKASSA_PASS1
 
         out_sum = f"{float(total_price):.2f}"
-        description = f"Покупка {pages_to_buy} звезд"
+        description = f"Пополнение баланса на {pages_to_buy} ₽"
 
         # [OK] Формируем чек
         receipt_data = {
             "items": [
                 {
-                    "name": f"Покупка звезд в кол-ве: ({pages_to_buy} шт.)"[:128],
+                    "name": f"Пополнение баланса ({pages_to_buy} ₽)"[:128],
                     "quantity": pages_to_buy,
                     "sum": float(total_price),
                     "tax": "none"
@@ -1253,12 +1258,20 @@ def apply_promo_code(request):
         if UsedPromoCode.objects.filter(user=request.user, promo_code=promo).exists():
             return JsonResponse({'success': False, 'message': 'Вы уже использовали этот промокод'})
 
-        # Начисляем звезды
-        request.user.add_pages(promo.stars)
-        # Сохраняем факт использования
-        UsedPromoCode.objects.create(user=request.user, promo_code=promo)
-        promo.used_count += 1
-        promo.save(update_fields=['used_count'])
+        # Фиксируем использование ДО начисления: unique-констрейнт (user, promo_code)
+        # гасит гонку двойного применения — параллельный запрос упадёт здесь,
+        # а не после того, как деньги уже начислены.
+        from django.db import IntegrityError
+        from django.db.models import F
+        try:
+            UsedPromoCode.objects.create(user=request.user, promo_code=promo)
+        except IntegrityError:
+            return JsonResponse({'success': False, 'message': 'Вы уже использовали этот промокод'})
+        request.user.add_kopecks(
+            promo.kopecks, type='promo',
+            reference=f'promo:{promo.id}:{request.user.id}',
+        )
+        PromoCode.objects.filter(pk=promo.pk).update(used_count=F('used_count') + 1)
 
         # Создаём запись в истории платежей
         PaymentHistory.objects.create(
@@ -1273,7 +1286,7 @@ def apply_promo_code(request):
 
         return JsonResponse({
             'success': True,
-            'message': f'Промокод активирован! +{promo.stars} звёзд',
+            'message': f'Промокод активирован! +{promo.stars} ₽',
             'new_balance': request.user.pages_count
         })
     except Exception as e:

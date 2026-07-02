@@ -90,8 +90,8 @@
                     <strong>${tariff.price} ₽</strong>
                 </div>
                 <div class="confirm-row">
-                    <span>Звезд по тарифу:</span>
-                    <strong>${tariff.pages} <i class="fas fa-star"></i></strong>
+                    <span>Начисление на баланс:</span>
+                    <strong>${tariff.pages} ₽</strong>
                 </div>
                 <div class="confirm-checkbox">
                     <label>
@@ -236,7 +236,7 @@
                 </div>
                 ${buttonHtml}
                 <ul class="tariff-features">
-                    <li><i class="fas fa-star"></i> ${tariff.pages} звезд ${!tariff.is_trial ? 'каждый месяц' : ''}</li>
+                    <li><i class="fas fa-star"></i> ${tariff.pages} ₽ на баланс ${!tariff.is_trial ? 'каждый месяц' : ''}</li>
                     <li><i class="fas fa-check-circle"></i> Доступ к ChatGPT, Gemini, Claude и еще 400 других нейросетей!</li>
                     ${unlimitedNetworksHtml}
                     ${trialNote}

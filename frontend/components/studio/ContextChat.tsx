@@ -90,7 +90,7 @@ export function ContextChat({ projectId, pauseReason, resumeHint, onResume }: Co
           value={chatInput}
           onChange={(e) => setChatInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendChat()}
-          placeholder="Спросите ассистента... (1 звезда)"
+          placeholder="Спросите ассистента... (1 ₽)"
           className={chat.input}
         />
         <button

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, BarChart2, Zap, Star, Activity } from "lucide-react";
+import { ArrowLeft, BarChart2, Zap, Wallet, Activity } from "lucide-react";
 import { getUsageStats, listOrgs } from "@/lib/api/client";
 import type { UsageStats, Organization } from "@/lib/api/types";
 import { formatRub } from "@/lib/money";
@@ -105,7 +105,7 @@ export default function UsagePage() {
               value={stats.totals.total_tokens.toLocaleString("ru-RU")}
             />
             <TotalCard
-              icon={<Star size={18} />}
+              icon={<Wallet size={18} />}
               label="Потрачено"
               value={formatRub(stats.totals.total_kopecks)}
             />

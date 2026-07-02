@@ -121,11 +121,13 @@ class ChatListCreateView(ListCreateAPIView):
         )
 
         if network.provider != 'fal-ai' and deduct_stars:
+            from aitext.billing import record_message_billing
             request.user.spend_kopecks(cost_kopecks, type='spend', reference=f'chat:{assistant_message.id}')
             UserSpending.objects.create(
-                user=request.user, amount=max(1, cost_kopecks // 100), amount_kopecks=cost_kopecks,
+                user=request.user, amount=cost_kopecks // 100, amount_kopecks=cost_kopecks,
                 description=f"Сообщение в чате с {network.name}",
             )
+            record_message_billing(assistant_message, f'chat:{assistant_message.id}', cost_kopecks)
 
         # Link pre-uploaded file attachments to this user message
         if attachment_ids:
@@ -250,11 +252,13 @@ class SendMessageView(APIView):
         )
 
         if network.provider != 'fal-ai' and deduct_stars:
+            from aitext.billing import record_message_billing
             request.user.spend_kopecks(cost_kopecks, type='spend', reference=f'chat:{assistant_message.id}')
             UserSpending.objects.create(
-                user=request.user, amount=max(1, cost_kopecks // 100), amount_kopecks=cost_kopecks,
+                user=request.user, amount=cost_kopecks // 100, amount_kopecks=cost_kopecks,
                 description=f"Сообщение в чате с {network.name}",
             )
+            record_message_billing(assistant_message, f'chat:{assistant_message.id}', cost_kopecks)
 
         # Link pre-uploaded file attachments to this user message
         if attachment_ids:
@@ -361,7 +365,7 @@ class StreamMessageView(APIView):
         if deduct_stars:
             request.user.spend_kopecks(cost_kopecks, type='spend', reference=f'chat:{assistant_message.id}')
             UserSpending.objects.create(
-                user=request.user, amount=max(1, cost_kopecks // 100), amount_kopecks=cost_kopecks,
+                user=request.user, amount=cost_kopecks // 100, amount_kopecks=cost_kopecks,
                 description=f"Сообщение в чате с {network.name}",
             )
 
@@ -602,7 +606,7 @@ class StreamMessageView(APIView):
                         try:
                             user.spend_kopecks(_extra_kopecks, type='spend', reference=f'chat-variants:{assist_msg_id}')
                             UserSpending.objects.create(
-                                user=user, amount=max(1, _extra_kopecks // 100), amount_kopecks=_extra_kopecks,
+                                user=user, amount=_extra_kopecks // 100, amount_kopecks=_extra_kopecks,
                                 description=f"Генерация вариантов ответа (×1.5) в чате с {network.name}",
                             )
                         except Exception:
@@ -722,11 +726,18 @@ class RegenerateView(APIView):
             }, status=402)
 
         if network.provider != 'fal-ai':
-            request.user.spend_kopecks(cost_kopecks, type='spend', reference=f'chat-regen:{last_assistant.id}')
+            import uuid as _uuid
+            from aitext.billing import record_message_billing
+            # Регенерации одного ответа легитимно повторяются — reference обязан
+            # быть уникальным на попытку, иначе повторные списания схлопываются
+            # в no-op по unique(type, reference) и регенерация становится бесплатной.
+            billing_ref = f'chat-regen:{last_assistant.id}:{_uuid.uuid4().hex[:12]}'
+            request.user.spend_kopecks(cost_kopecks, type='spend', reference=billing_ref)
             UserSpending.objects.create(
-                user=request.user, amount=max(1, cost_kopecks // 100), amount_kopecks=cost_kopecks,
+                user=request.user, amount=cost_kopecks // 100, amount_kopecks=cost_kopecks,
                 description=f"Повторная генерация в чате с {network.name}",
             )
+            record_message_billing(last_assistant, billing_ref, cost_kopecks)
 
         last_assistant.content = ''
         last_assistant.plain_text = ''

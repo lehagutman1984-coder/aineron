@@ -451,8 +451,8 @@
                     <strong>${tariff.price} ₽</strong>
                 </div>
                 <div class="confirm-row">
-                    <span>Звезд по тарифу:</span>
-                    <strong>${tariff.pages} <i class="fas fa-star"></i></strong>
+                    <span>Начисление на баланс:</span>
+                    <strong>${tariff.pages} ₽</strong>
                 </div>
                 <div class="confirm-checkbox">
                     <label>

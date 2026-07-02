@@ -139,6 +139,21 @@
 3. `manage.py test core users api aitext studio` — 184 теста, все новые биллинговые тесты (core money, users balance/ledger/tariff-sync/Robokassa-идемпотентность, api tokens_to_kopecks/charge_for_tokens, studio StarReservationTest) зелёные. Оставшиеся ~60 ошибок в studio/aitext — **предсуществующий технический долг**, не связанный с этой миграцией (отсутствие `username` в `create_user()` в ~55 старых тестах studio; 3 теста зависят от недоступного в этой среде Redis; 2 теста — таймингово-чувствительный мок сэндбокса).
 4. `cd frontend && npx tsc --noEmit` — 0 ошибок по всему проекту после правок 5 параллельных фронтенд-агентов.
 
+## Аудит после реализации (2026-07-02) — найдено и исправлено
+
+Полный аудит биллинга выявил и закрыл 13 багов (детали в истории коммитов):
+
+**Критические:**
+1. **Studio «чеканка денег»**: `reserve()` с фиксированным reference при цикле Run→Pause→Run инкрементировал фантомный резерв, который `release_reserve` реально начислял. Фикс: уникальный reference на запуск + guard на дубликат в `reserve()`.
+2. **Бесплатные регенерации**: reference `chat-regen:{id}` переиспользовался — повторные списания схлопывались в no-op. Фикс: uuid на попытку.
+3. **Бесплатный повторный upscale + фантомный refund**: reference `upscale:{generation_id}` не различал попытки. Фикс: `upscale:{generation_id}:{placeholder_id}`.
+4. **Нет возврата при провале текстовой генерации (polling)**: pre-charge в view, возврата в Celery-задаче не было. Фикс: `aitext/billing.py` — `record_message_billing`/`refund_message_billing` (метаданные в settings сообщения), возврат при `MaxRetriesExceededError`.
+5. **Мина двойного списания TEXT_BILLING_ENABLED**: при включении флага задача списала бы второй раз поверх pre-charge веба. Фикс: skip при `billing_reference`.
+
+**Высокие/средние:** Studio `cost=1` (копейка вместо 1 ₽, 3 view) → 100; орг-списание в группах до валидации текста → валидация до списания; утечка превью-резерва → `release_reserve_amount()` (частичный возврат) во всех 3 settle-точках; audio ASR/TTS гейт `balance>0` при цене 1 ₽ → `has_enough_kopecks(100)` + проверка результата spend; legacy-промокод → идемпотентный `add_kopecks(type='promo')` + `UsedPromoCode` до начисления; рублёвый реферальный бонус → атомарный гейт статуса платежа + `F()`; дрейф `pages_count` при дробных ценах → пересчёт от фактического баланса; дубль `PaymentHistory` при recurring-переходе тарифа → guard по invoice_id; `teams/admin.mark_paid` → атомарный статус-гейт + `F()`; завышение legacy-аналитики `max(1, …)` → честный floor.
+
+**Известное ограничение** (не критично, отложено): при провале асинхронной генерации в Telegram-группах с орг-биллингом возврат на орг-баланс не выполняется (требует прокидывания контекста организации в Celery-задачу).
+
 Ещё предстоит перед реальным деплоем:
 1. `cd frontend && npm run build && npm run lint`
 2. Прогон миграций на реальной копии продовой Postgres-БД (staging) + контрольный SQL: `SELECT COUNT(*) FROM users_customuser WHERE balance_kopecks <> pages_count*100` = 0

@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Star,
+  Wallet,
   Code2,
   User,
   Copy,
@@ -60,7 +60,7 @@ export default function AccountPage() {
         {/* Balance card */}
         <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-6">
           <div className="mb-4 flex items-center gap-2 text-[15px] font-medium text-[rgba(13,13,13,0.55)] uppercase tracking-wide">
-            <Star size={14} className="text-[#D97757]" />
+            <Wallet size={14} className="text-[#D97757]" />
             Баланс
           </div>
           <p className="mb-4 text-[36px] font-bold text-[#1A1A1A]">{formatRub(profile.balance_kopecks)}</p>

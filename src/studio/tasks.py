@@ -365,14 +365,23 @@ def run_pipeline(project_id):
         return
     planned = project.interview_data.get('planned_steps', 5)
     est = estimate_kopecks(project, planned_steps=planned)
-    # Фиксированный reference: старт кодинга — разовое событие в жизненном цикле проекта,
-    # повтор (ретрай таска) должен быть идемпотентным, а не резервировать баланс повторно.
-    if not reserve(project.user, est, project, reference=f'studio-reserve:{project.id}:initial'):
-        publish_event(project_id, {
-            'agent': 'system', 'level': 'error',
-            'text': f'Недостаточно средств для резервирования (~{format_rub(est)}). Пополните баланс.',
-        })
-        return
+    # Резерв нужен один на «запуск»: цикл Run -> Pause (release) -> Run легитимно
+    # резервирует заново, поэтому reference уникален для каждого запуска (номер по
+    # ledger). Дубликат доставки таска отсекается по живому резерву, ретрай с тем же
+    # reference дополнительно гасится внутри reserve().
+    project.refresh_from_db(fields=['stars_reserved_kopecks'])
+    if project.stars_reserved_kopecks <= 0:
+        from users.models import BalanceTransaction
+        run_no = BalanceTransaction.objects.filter(
+            user=project.user, type='spend',
+            reference__startswith=f'studio-reserve:{project.id}:',
+        ).count() + 1
+        if not reserve(project.user, est, project, reference=f'studio-reserve:{project.id}:run{run_no}'):
+            publish_event(project_id, {
+                'agent': 'system', 'level': 'error',
+                'text': f'Недостаточно средств для резервирования (~{format_rub(est)}). Пополните баланс.',
+            })
+            return
     project.status = 'coding'
     project.save(update_fields=['status'])
     state = project.pipeline
@@ -1594,12 +1603,19 @@ def reconcile_preview_billing():
 
 
 def _settle_preview_session(ps, rate):
-    """Charge actual duration from reserve and mark session as settled."""
+    """Charge actual duration from reserve, release the remainder, mark settled."""
     from django.utils import timezone as _tz
+    from .billing import release_reserve_amount
     duration_min = (_tz.now() - ps.started_at).total_seconds() / 60
     actual_stars = min(int(duration_min * rate) + 1, ps.reserved_stars)
     try:
         charge_from_reserve(actual_stars * 100, ps.project, reference=f'preview:{ps.session_id}')
+        # Остаток превью-резерва возвращаем сразу — иначе он зависает в общем
+        # котле проекта до случайного release_reserve пайплайна.
+        release_reserve_amount(
+            ps.project, (ps.reserved_stars - actual_stars) * 100,
+            reference=f'preview-release:{ps.session_id}',
+        )
     except Exception:
         pass
     ps.settled = True
