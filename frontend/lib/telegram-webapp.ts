@@ -5,8 +5,6 @@
  * версию, при отсутствии — graceful no-op / фолбэк.
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 export function getTg(): any | null {
   if (typeof window === "undefined") return null;
   return (window as any).Telegram?.WebApp ?? null;

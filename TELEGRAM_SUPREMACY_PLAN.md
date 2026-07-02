@@ -1,6 +1,12 @@
 # TELEGRAM SUPREMACY PLAN — супер-фичи бота, которых нет в России
 
-> Создан: 2026-07-02 | Статус: план к реализации
+> Создан: 2026-07-02 | Статус: **ВСЕ СПРИНТЫ S0–S8 РЕАЛИЗОВАНЫ (code-complete) 2026-07-02**
+> Фичи Bot API 9.3+/10.1 включаются env-флагами (по умолчанию ВЫКЛ):
+> TG_NATIVE_STREAMING, TG_RICH_MESSAGES, TG_STARS_SUBSCRIPTIONS, TG_BUSINESS,
+> TG_AFFILIATE, TG_GIFTS, TG_TOPICS, TG_MANAGED_BOTS, TG_STYLED_BUTTONS.
+> S2 (AI-задачи) и S3 (/research) работают сразу — без новых флагов.
+> После деплоя: migrate, setup_periodic_tasks, setup_webhook, setup_tariffs (тариф «Бизнес»).
+> Операционно (BotFather): партнёрская программа (S4), Main Mini App (S6).
 > Заменяет `TELEGRAM_BOT_PLAN.md` (все 6 сессий старого плана реализованы, см. MASTER_PLAN.md §1).
 > Цель: Telegram-бот aineron — не «ещё один GPT-бот», а **проактивный AI-агент в мессенджере**
 > уровня ChatGPT Tasks / Perplexity WhatsApp / Gemini Live. Ни одной из фич разделов S2–S5

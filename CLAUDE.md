@@ -303,9 +303,16 @@ OpenAI-совместимый API для внешних клиентов, IDE-и
 - `TelegramUser` — привязка к `CustomUser`, дефолтные модели (текст/изображение/видео), настройки (голос, веб-поиск, system_prompt, streaming), дневные счётчики
 - `TelegramChat` — FK на `aitext.Chat` (несколько чатов на пользователя, `is_active`)
 - `TelegramLinkToken` — одноразовый токен привязки аккаунта (TTL 15 мин)
-- `TelegramEvent` — аналитика событий (message/image/video/payment/inline/error/onboarding)
+- `TelegramEvent` — аналитика событий (message/image/video/payment/inline/error/onboarding/task_run/research/business_reply/subscription/affiliate_join)
+- `AITask` — проактивные AI-задачи по расписанию (S2, общие для веба и бота, лимиты по тарифам, идемпотентный биллинг `aitask:{id}:{run_iso}`)
+- `StarsSubscription` — подписка на тариф через Telegram Stars (S4)
+- `BusinessConnection` / `BusinessDraft` — AI-секретарь для Telegram Business (S5, черновики с TTL 7 дней)
+- `TelegramTopic` — топик в личке ↔ проект (S7), `GroupMessageLog` — лог для /summary (TTL 48 ч)
+- `ManagedBot` — персональные AI-боты пользователей (S8, webhook-мультиплексор `/telegram/managed/<id>/webhook/`)
 
-**Хендлеры (`handlers/`):** start, onboarding, menu, chat, images, video_cmd, voice, files, history, balance, payment, models_cmd, settings_cmd, prompts_cmd, referral, inline, group, admin.
+**Хендлеры (`handlers/`):** start, onboarding, menu, chat, images, video_cmd, voice, files, history, balance, payment (вкл. Stars-подписки /subscribe), models_cmd, settings_cmd, prompts_cmd, referral, inline, group, group2 (/summary, /quiz, /stat), admin (вкл. /paidpost, /affstats), tasks_cmd (/task, /tasks), research_cmd (/research), business (/secretary), topics (/topics), mybot_cmd (/mybot).
+
+**TELEGRAM_SUPREMACY_PLAN (S0–S8 реализованы):** фиче-флаги Bot API 9.3+/10.1 в env (`TG_NATIVE_STREAMING`, `TG_RICH_MESSAGES`, `TG_STARS_SUBSCRIPTIONS`, `TG_BUSINESS`, `TG_AFFILIATE`, `TG_GIFTS`, `TG_TOPICS`, `TG_MANAGED_BOTS` — все по умолчанию 0); `capabilities.py` (детект поддержки aiogram), `rich.py` (md→Rich-блоки, юнит-тесты `test_rich.py`), `notify.py` (`DraftStreamer` — нативный стриминг с edit-fallback, `send_rich_or_markdown`, реакции-статусы). AI-задачи: Celery `run_due_ai_tasks`/`execute_ai_task`, веб-зеркало `/api/v1/tasks/` + `/account/tasks/`. Deep Research в боте реюзает `deep_research_task` (цена `RESEARCH_PRICE_KOPECKS`). Mini App 2.0 (`/tg/`): экраны Баланс/Галерея/Чат, `lib/telegram-webapp.ts`, JWT добавлен в DRF-аутентификацию, эндпоинты `/telegram/webapp/files/` и `/telegram/webapp/prepare-share/`. Тариф «Бизнес» в `setup_tariffs`, лендинг `/business-bot/`.
 
 **Особенности:**
 - FSM на отдельной Redis-БД (`TELEGRAM_FSM_REDIS_URL`, db=2)
