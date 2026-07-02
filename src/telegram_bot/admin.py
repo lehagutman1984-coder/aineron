@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import TelegramUser, TelegramChat, TelegramLinkToken, TelegramGroup
+from .models import TelegramUser, TelegramChat, TelegramLinkToken, TelegramGroup, AITask
 
 
 @admin.register(TelegramUser)
@@ -23,6 +23,16 @@ class TelegramLinkTokenAdmin(admin.ModelAdmin):
     list_filter = ('used',)
     raw_id_fields = ('user',)
     readonly_fields = ('created_at',)
+
+
+@admin.register(AITask)
+class AITaskAdmin(admin.ModelAdmin):
+    list_display = ('user', 'title', 'schedule_type', 'next_run_at', 'is_active',
+                    'paused_reason', 'runs_count', 'created_from')
+    list_filter = ('schedule_type', 'is_active', 'created_from', 'use_web_search')
+    search_fields = ('title', 'prompt', 'user__email')
+    raw_id_fields = ('user', 'network')
+    readonly_fields = ('created_at', 'last_run_at', 'runs_count')
 
 
 @admin.register(TelegramGroup)

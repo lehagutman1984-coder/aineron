@@ -132,6 +132,12 @@ class TelegramEvent(models.Model):
         INLINE = 'inline', 'Inline-запрос'
         ERROR = 'error', 'Ошибка'
         ONBOARDING = 'onboarding', 'Онбординг'
+        # TELEGRAM_SUPREMACY_PLAN §4 — метрики супер-фич
+        TASK_RUN = 'task_run', 'AI-задача (запуск)'
+        RESEARCH = 'research', 'Deep Research'
+        BUSINESS_REPLY = 'business_reply', 'AI-секретарь (ответ)'
+        SUBSCRIPTION = 'subscription', 'Stars-подписка'
+        AFFILIATE_JOIN = 'affiliate_join', 'Партнёрская регистрация'
 
     telegram_user = models.ForeignKey(
         TelegramUser,
@@ -261,6 +267,170 @@ class Reminder(models.Model):
 
     def __str__(self):
         return f'{self.tg_user} — {self.remind_at}'
+
+
+class AITask(models.Model):
+    """S2 — проактивная AI-задача по расписанию (TELEGRAM_SUPREMACY_PLAN).
+
+    Обобщает Reminder (напоминание = задача без LLM) и digest (дайджест =
+    встроенная задача). Задачи общие для веба и бота, поэтому FK на CustomUser.
+    Времена run_time/weekday задаются по Москве, next_run_at хранится в UTC.
+    """
+    class Schedule(models.TextChoices):
+        ONCE = 'once', 'Один раз'
+        DAILY = 'daily', 'Ежедневно'
+        WEEKLY = 'weekly', 'Еженедельно'
+        CRON = 'cron', 'Cron-выражение'
+
+    class CreatedFrom(models.TextChoices):
+        BOT = 'bot', 'Telegram-бот'
+        WEB = 'web', 'Веб'
+
+    user = models.ForeignKey(
+        'users.CustomUser',
+        on_delete=models.CASCADE,
+        related_name='ai_tasks',
+        verbose_name='Пользователь',
+    )
+    title = models.CharField(max_length=120, blank=True, verbose_name='Название')
+    prompt = models.TextField(verbose_name='Промт задачи')
+    schedule_type = models.CharField(
+        max_length=10, choices=Schedule.choices, default=Schedule.DAILY,
+        verbose_name='Тип расписания',
+    )
+    run_time = models.TimeField(null=True, blank=True, verbose_name='Время запуска (МСК)')
+    weekday = models.SmallIntegerField(
+        null=True, blank=True, verbose_name='День недели (0=пн, для weekly)',
+    )
+    cron = models.CharField(max_length=120, blank=True, verbose_name='Cron-выражение (5 полей)')
+    next_run_at = models.DateTimeField(
+        null=True, blank=True, db_index=True, verbose_name='Следующий запуск (UTC)',
+    )
+    use_web_search = models.BooleanField(default=True, verbose_name='Веб-поиск (Tavily)')
+    network = models.ForeignKey(
+        'aitext.NeuralNetwork',
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='ai_tasks',
+        verbose_name='Модель (пусто = самая дешёвая текстовая)',
+    )
+    deliver_chat_id = models.BigIntegerField(
+        null=True, blank=True,
+        verbose_name='Чат доставки (пусто = личка пользователя)',
+    )
+    is_active = models.BooleanField(default=True, verbose_name='Активна')
+    paused_reason = models.CharField(
+        max_length=20, blank=True, default='',
+        verbose_name='Причина паузы (balance/user/max_runs)',
+    )
+    last_run_at = models.DateTimeField(null=True, blank=True, verbose_name='Последний запуск')
+    runs_count = models.PositiveIntegerField(default=0, verbose_name='Запусков всего')
+    max_runs = models.PositiveIntegerField(
+        null=True, blank=True, verbose_name='Максимум запусков (пусто = без лимита)',
+    )
+    created_from = models.CharField(
+        max_length=10, choices=CreatedFrom.choices, default=CreatedFrom.BOT,
+        verbose_name='Создана из',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'AI-задача'
+        verbose_name_plural = 'AI-задачи'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['is_active', 'next_run_at'], name='aitask_due_idx'),
+            models.Index(fields=['user', 'is_active'], name='aitask_user_idx'),
+        ]
+
+    def __str__(self):
+        return f'{self.user.email} — {self.title or self.prompt[:40]}'
+
+    MOSCOW_TZ = 'Europe/Moscow'
+
+    def compute_next_run(self, after=None):
+        """Следующий запуск в UTC после момента `after` (по умолчанию — сейчас).
+
+        once → None после первого запуска (вызывающий код деактивирует задачу).
+        """
+        import pytz
+        from datetime import datetime, timedelta
+
+        moscow = pytz.timezone(self.MOSCOW_TZ)
+        after = after or timezone.now()
+        after_msk = after.astimezone(moscow)
+
+        if self.schedule_type == self.Schedule.ONCE:
+            # Разовая задача: next_run_at задаётся при создании и не пересчитывается
+            return None
+
+        if self.schedule_type == self.Schedule.CRON and self.cron:
+            try:
+                from celery.schedules import crontab
+                fields = self.cron.split()
+                if len(fields) == 5:
+                    entry = crontab(
+                        minute=fields[0], hour=fields[1], day_of_month=fields[2],
+                        month_of_year=fields[3], day_of_week=fields[4],
+                        nowfun=lambda: after_msk,
+                    )
+                    delta = entry.remaining_estimate(after_msk)
+                    if delta is not None:
+                        next_msk = after_msk + max(delta, timedelta(minutes=1))
+                        return next_msk.astimezone(pytz.UTC)
+            except Exception:
+                pass
+            return None
+
+        run_time = self.run_time
+        if run_time is None:
+            return None
+
+        candidate = moscow.localize(datetime.combine(after_msk.date(), run_time))
+        if self.schedule_type == self.Schedule.DAILY:
+            if candidate <= after_msk:
+                candidate += timedelta(days=1)
+            return candidate.astimezone(pytz.UTC)
+
+        if self.schedule_type == self.Schedule.WEEKLY:
+            target = self.weekday if self.weekday is not None else 0
+            days_ahead = (target - candidate.weekday()) % 7
+            candidate += timedelta(days=days_ahead)
+            if candidate <= after_msk:
+                candidate += timedelta(days=7)
+            return candidate.astimezone(pytz.UTC)
+
+        return None
+
+    def schedule_human(self) -> str:
+        """Человекочитаемое расписание для карточек."""
+        t = self.run_time.strftime('%H:%M') if self.run_time else '—'
+        if self.schedule_type == self.Schedule.ONCE:
+            if self.next_run_at:
+                import pytz
+                msk = self.next_run_at.astimezone(pytz.timezone(self.MOSCOW_TZ))
+                return f'один раз, {msk.strftime("%d.%m %H:%M")} МСК'
+            return 'один раз'
+        if self.schedule_type == self.Schedule.DAILY:
+            return f'ежедневно в {t} МСК'
+        if self.schedule_type == self.Schedule.WEEKLY:
+            days = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс']
+            d = days[self.weekday] if self.weekday is not None and 0 <= self.weekday <= 6 else '?'
+            return f'еженедельно ({d}) в {t} МСК'
+        return f'cron: {self.cron}'
+
+
+def ai_task_limit(user) -> int:
+    """S2 — лимит активных AI-задач по тарифу: free 1, Старт 3, Стандарт 10, Про 30."""
+    tariff = getattr(user, 'tariff', None)
+    if tariff is None or getattr(tariff, 'is_free', True):
+        return 1
+    name = (getattr(tariff, 'display_name', '') or '').lower()
+    if 'про' in name or 'pro' in name:
+        return 30
+    if 'старт' in name or 'start' in name:
+        return 3
+    return 10
 
 
 class PollSession(models.Model):

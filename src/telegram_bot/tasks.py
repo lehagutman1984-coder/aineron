@@ -231,6 +231,183 @@ async def _bot_send_html(telegram_id: int, text: str):
         await bot.session.close()
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# S2 — AI-Задачи: проактивный агент по расписанию (TELEGRAM_SUPREMACY_PLAN)
+# ═══════════════════════════════════════════════════════════════════════════
+
+@shared_task(bind=True, max_retries=0, ignore_result=True,
+             name='telegram_bot.tasks.run_due_ai_tasks')
+def run_due_ai_tasks(self):
+    """Каждую минуту: находит просроченные AI-задачи и ставит их на исполнение.
+
+    Клейм атомарный (conditional UPDATE next_run_at) — двойной запуск при
+    перекрытии beat-тиков невозможен; списание дополнительно идемпотентно
+    по reference aitask:{id}:{run_iso}.
+    """
+    from django.utils import timezone as tz
+    from telegram_bot.models import AITask
+
+    now = tz.now()
+    due = list(
+        AITask.objects.filter(is_active=True, next_run_at__isnull=False, next_run_at__lte=now)
+        .order_by('next_run_at')[:500]
+    )
+    if not due:
+        return
+
+    logger.info(f'run_due_ai_tasks: {len(due)} due')
+    for task in due:
+        run_iso = task.next_run_at.isoformat()
+        next_run = task.compute_next_run(after=now)
+        update_fields = {'next_run_at': next_run}
+        if next_run is None:
+            update_fields['is_active'] = False
+            update_fields['paused_reason'] = 'completed'
+        # Атомарный клейм: обновится только если next_run_at не изменился
+        claimed = AITask.objects.filter(pk=task.pk, next_run_at=task.next_run_at).update(**update_fields)
+        if claimed:
+            execute_ai_task.delay(task.pk, run_iso)
+
+
+@shared_task(bind=True, max_retries=1, ignore_result=True,
+             name='telegram_bot.tasks.execute_ai_task')
+def execute_ai_task(self, task_id: int, run_iso: str):
+    """Исполнение одной AI-задачи: web-поиск → LLM → rich-доставка в Telegram.
+
+    Списание по цене модели, идемпотентно по reference aitask:{id}:{run_iso}.
+    При нехватке средств — авто-пауза с кнопкой «Пополнить».
+    """
+    from django.conf import settings as dj_settings
+    from django.core.cache import cache
+    from django.utils import timezone as tz
+    from telegram_bot.models import AITask, TelegramEvent
+    from telegram_bot.notify import notify_user_rich, notify_user
+    from aitext.models import NeuralNetwork
+    from aitext.tasks import get_laozhang_client
+    from core.money import format_rub
+
+    try:
+        task = AITask.objects.select_related('user', 'network').get(pk=task_id)
+    except AITask.DoesNotExist:
+        return
+
+    user = task.user
+    tg = getattr(user, 'telegram', None)
+    chat_id = task.deliver_chat_id or (tg.telegram_id if tg else None)
+    if chat_id is None:
+        logger.warning(f'execute_ai_task {task_id}: no delivery chat')
+        return
+
+    # Дневной cap исполнений на пользователя (юнит-экономика, риск §5.3)
+    cap = getattr(dj_settings, 'AITASK_DAILY_CAP', 30)
+    cap_key = f'aitask_cap:{user.pk}:{tz.now().date().isoformat()}'
+    ran_today = cache.get(cap_key, 0)
+    if ran_today >= cap:
+        logger.warning(f'execute_ai_task {task_id}: daily cap {cap} reached for user {user.pk}')
+        return
+
+    network = task.network
+    if network is None or not network.is_active:
+        network = (
+            NeuralNetwork.objects
+            .filter(is_active=True, provider='openrouter')
+            .order_by('cost_kopecks')
+            .first()
+        )
+    if network is None or not network.model_name:
+        logger.warning(f'execute_ai_task {task_id}: no network available')
+        return
+
+    cost = network.cost_kopecks
+    reference = f'aitask:{task_id}:{run_iso}'
+
+    # Авто-пауза при балансе ниже стоимости запуска
+    if not user.has_enough_kopecks(cost):
+        AITask.objects.filter(pk=task_id).update(is_active=False, paused_reason='balance')
+        try:
+            from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+            kb = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text='Пополнить', url=f'{dj_settings.SITE_URL}/account/billing/')],
+            ])
+        except Exception:
+            kb = None
+        notify_user_rich(
+            chat_id,
+            f'**Задача на паузе: недостаточно средств**\n\n'
+            f'«{task.title or task.prompt[:60]}» — нужно {format_rub(cost)} за запуск.\n'
+            f'Пополните баланс и включите задачу снова: /tasks',
+            reply_markup=kb,
+        )
+        return
+
+    if not user.spend_kopecks(cost, type='spend', reference=reference):
+        AITask.objects.filter(pk=task_id).update(is_active=False, paused_reason='balance')
+        return
+
+    # Web-поиск (Tavily) при флаге
+    search_context = ''
+    if task.use_web_search:
+        try:
+            from aitext.web_search import web_search
+            search_context = web_search(task.prompt, max_results=5) or ''
+        except Exception as e:
+            logger.warning(f'execute_ai_task {task_id}: web_search failed: {e}')
+
+    import pytz
+    from datetime import datetime
+    now_msk = datetime.now(pytz.timezone('Europe/Moscow'))
+    system = (
+        'Ты — проактивный AI-агент платформы aineron.ru, выполняющий задачу '
+        'пользователя по расписанию. Отвечай на русском, структурировано '
+        '(markdown: заголовки, списки, таблицы где уместно), лаконично и по делу. '
+        f'Сейчас {now_msk.strftime("%d.%m.%Y %H:%M")} МСК.'
+    )
+    user_content = task.prompt
+    if search_context:
+        user_content += f'\n\nАктуальные результаты веб-поиска:\n{search_context}'
+
+    try:
+        client = get_laozhang_client()
+        resp = client.chat.completions.create(
+            model=network.model_name,
+            messages=[
+                {'role': 'system', 'content': system},
+                {'role': 'user', 'content': user_content},
+            ],
+            max_tokens=1500,
+            temperature=0.6,
+        )
+        content = (resp.choices[0].message.content or '').strip()
+        if not content:
+            raise ValueError('empty LLM response')
+    except Exception as e:
+        logger.error(f'execute_ai_task {task_id}: LLM failed: {e}')
+        user.add_kopecks(cost, type='refund', reference=reference)
+        notify_user(chat_id, 'Не удалось выполнить AI-задачу — средства возвращены. Попробую в следующий раз.')
+        return
+
+    title = task.title or 'AI-задача'
+    md = f'**{title}**\n\n{content}\n\n_{network.name} · {format_rub(cost)} · управление: /tasks_'
+    notify_user_rich(chat_id, md)
+
+    cache.set(cap_key, ran_today + 1, timeout=86400)
+
+    from django.db.models import F
+    updates = {'last_run_at': tz.now(), 'runs_count': F('runs_count') + 1}
+    AITask.objects.filter(pk=task_id).update(**updates)
+    task.refresh_from_db(fields=['runs_count'])
+    if task.max_runs and task.runs_count >= task.max_runs:
+        AITask.objects.filter(pk=task_id).update(is_active=False, paused_reason='max_runs')
+
+    try:
+        TelegramEvent.objects.create(
+            telegram_user=tg, event_type='task_run', network=network,
+            cost_kopecks=cost, meta={'task_id': task_id, 'run': run_iso},
+        )
+    except Exception:
+        pass
+
+
 @shared_task(name='telegram_bot.tasks.broadcast_message', bind=True, max_retries=0)
 def broadcast_message(self, text: str, admin_tg_id: int):
     """Send broadcast to all linked Telegram users. ~20 msg/s."""

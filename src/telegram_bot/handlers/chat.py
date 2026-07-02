@@ -340,4 +340,20 @@ async def cb_del_msg(query: CallbackQuery, tg_user=None):
 async def handle_text_message(message: Message, tg_user=None):
     if tg_user is None:
         return
+    # S2: детект интента «задача по расписанию» — предложить создать AI-задачу
+    try:
+        from telegram_bot.handlers.tasks_cmd import looks_like_task_intent
+        if looks_like_task_intent(message.text):
+            from django.core.cache import cache
+            from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+            set_cached = sync_to_async(cache.set, thread_sensitive=True)
+            await set_cached(f'tg_task_intent:{tg_user.telegram_id}', message.text, 600)
+            await message.answer(
+                'Похоже на задачу по расписанию. Могу выполнять её автоматически.',
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+                    InlineKeyboardButton(text='Создать AI-задачу', callback_data='task_intent'),
+                ]]),
+            )
+    except Exception as e:
+        logger.debug(f'task intent detect skipped: {e}')
     await process_text(message, tg_user, message.text)

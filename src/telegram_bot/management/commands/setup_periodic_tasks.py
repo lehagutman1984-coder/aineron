@@ -20,6 +20,12 @@ TASKS = [
         "cron": True,
     },
     {
+        "name": "AI-задачи по расписанию (каждую минуту)",
+        "task": "telegram_bot.tasks.run_due_ai_tasks",
+        "schedule": {"minute": "*"},
+        "cron": True,
+    },
+    {
         "name": "Уведомление о низком балансе (ежедневно в 10:00 МСК)",
         "task": "telegram_bot.tasks.notify_low_balance",
         "schedule": {"hour": "7", "minute": "0"},  # UTC 07:00 = MSK 10:00

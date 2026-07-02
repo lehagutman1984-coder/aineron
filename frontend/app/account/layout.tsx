@@ -14,6 +14,7 @@ import {
   MessageCircle,
   AppWindow,
   Heart,
+  CalendarClock,
 } from "lucide-react";
 import { useAuthStore } from "@/lib/stores/auth";
 import { authLogout } from "@/lib/api/client";
@@ -24,6 +25,7 @@ const NAV = [
   { href: "/account/", label: "Обзор", icon: LayoutDashboard, exact: true },
   { href: "/account/analytics/", label: "Аналитика", icon: BarChart2 },
   { href: "/account/billing/", label: "Тарифы и платежи", icon: CreditCard },
+  { href: "/account/tasks/", label: "AI-задачи", icon: CalendarClock },
   { href: "/account/keys/", label: "API-ключи", icon: Key },
   { href: "/account/referral/", label: "Партнёрская программа", icon: Users },
   { href: "/account/files/", label: "Мои файлы", icon: FolderOpen },

@@ -76,6 +76,7 @@ from api.views.personas import PersonaListCreateView, PersonaDetailView
 from api.views.arena import ArenaVoteView, ArenaLeaderboardView
 from api.views.knowledge_graph import KnowledgeGraphView
 from api.views.branding import BrandingView
+from api.views.tasks import AITaskListCreateView, AITaskDetailView, AITaskRunNowView
 
 app_name = 'api'
 
@@ -257,6 +258,11 @@ urlpatterns = [
     # ========== AI Personas ==========
     path('v1/personas/', PersonaListCreateView.as_view(), name='persona_list_create'),
     path('v1/personas/<int:persona_id>/', PersonaDetailView.as_view(), name='persona_detail'),
+
+    # ========== AI-задачи по расписанию (S2, общие для веба и бота) ==========
+    path('v1/tasks/', AITaskListCreateView.as_view(), name='ai_tasks'),
+    path('v1/tasks/<int:pk>/', AITaskDetailView.as_view(), name='ai_task_detail'),
+    path('v1/tasks/<int:pk>/run/', AITaskRunNowView.as_view(), name='ai_task_run'),
 
     # ========== Telegram Bot ==========
     path('v1/telegram/link-token/', TelegramLinkTokenView.as_view(), name='telegram_link_token'),

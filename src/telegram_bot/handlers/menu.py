@@ -88,6 +88,8 @@ async def handle_menu_button(message: Message, tg_user=None):
             '/settings — настройки\n'
             '/newchat — начать новый диалог\n\n'
             '<b>Инструменты</b>\n'
+            '/task — AI-задачи по расписанию (утренний бриф, мониторинг)\n'
+            '/tasks — мои задачи\n'
             '/search &lt;запрос&gt; — поиск по истории\n'
             '/export — скачать текущий чат (.md)\n'
             '/digest — AI-дайджест\n'
