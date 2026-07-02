@@ -76,6 +76,10 @@ async def cmd_video(message: Message, tg_user=None):
         )
         return
 
+    # S1: реакция-статус «запрос принят» (результат придёт из Celery позже)
+    from telegram_bot.notify import set_status_reaction
+    await set_status_reaction(message.bot, message.chat.id, message.message_id, '👀')
+
     assistant_msg = await create_video_request(tg_user, network, prompt, message.chat.id)
 
     from aitext.tasks import generate_ai_response

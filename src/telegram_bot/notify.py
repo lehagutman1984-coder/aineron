@@ -144,6 +144,21 @@ def stream_draft_or_edit(tg_message, min_edit_interval: float = 3.5) -> DraftStr
     return DraftStreamer(tg_message, min_edit_interval=min_edit_interval)
 
 
+async def set_status_reaction(bot, chat_id: int, message_id: int, emoji: str = None):
+    """S1: реакция-статус на сообщение пользователя вместо служебных сообщений.
+
+    emoji='👀' — запрос принят; None — снять реакцию. Ошибки не критичны.
+    """
+    try:
+        from aiogram.types import ReactionTypeEmoji
+        reaction = [ReactionTypeEmoji(type='emoji', emoji=emoji)] if emoji else []
+        await bot.set_message_reaction(
+            chat_id=chat_id, message_id=message_id, reaction=reaction,
+        )
+    except Exception as e:
+        logger.debug(f'set_status_reaction skipped: {e}')
+
+
 def _send_sync(telegram_id: int, text: str, parse_mode: str = 'HTML') -> None:
     """Синхронная отправка уведомления — вызывается из Celery/Django views."""
     from django.conf import settings
@@ -268,21 +283,31 @@ def send_media_to_telegram(telegram_chat_id: int, generated_image, network_name:
             token=settings.TELEGRAM_BOT_TOKEN,
             default=DefaultBotProperties(parse_mode=ParseMode.HTML),
         ) as b:
-            try:
-                if is_video:
-                    await b.send_video(
-                        chat_id=telegram_chat_id,
-                        video=URLInputFile(media_url, filename='video.mp4'),
-                        caption=caption,
-                    )
-                else:
-                    await b.send_photo(
-                        chat_id=telegram_chat_id,
-                        photo=URLInputFile(media_url),
-                        caption=caption,
-                    )
-            except (TelegramForbiddenError, TelegramBadRequest) as e:
-                logger.warning(f'send_media_to_telegram failed for {telegram_chat_id}: {e}')
+            # S1: message effect при завершении долгой генерации (только личные чаты);
+            # при ошибке эффекта — повтор без него
+            for effect_kwargs in ({'message_effect_id': EFFECT_CELEBRATION}, {}):
+                try:
+                    if is_video:
+                        await b.send_video(
+                            chat_id=telegram_chat_id,
+                            video=URLInputFile(media_url, filename='video.mp4'),
+                            caption=caption,
+                            **effect_kwargs,
+                        )
+                    else:
+                        await b.send_photo(
+                            chat_id=telegram_chat_id,
+                            photo=URLInputFile(media_url),
+                            caption=caption,
+                            **effect_kwargs,
+                        )
+                    break
+                except (TelegramForbiddenError, TelegramBadRequest) as e:
+                    if not effect_kwargs:
+                        logger.warning(f'send_media_to_telegram failed for {telegram_chat_id}: {e}')
+                except TypeError:
+                    # старый aiogram без message_effect_id — повтор без эффекта
+                    continue
 
     try:
         _executor.submit(asyncio.run, _send())

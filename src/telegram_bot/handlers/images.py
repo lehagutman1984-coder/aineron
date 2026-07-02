@@ -90,6 +90,10 @@ async def cmd_image(message: Message, tg_user=None):
         )
         return
 
+    # S1: реакция-статус «запрос принят»
+    from telegram_bot.notify import set_status_reaction
+    await set_status_reaction(message.bot, message.chat.id, message.message_id, '👀')
+
     status_msg = await message.answer(
         f'Генерирую изображение...  ({network.name})'
     )
@@ -114,6 +118,7 @@ async def cmd_image(message: Message, tg_user=None):
             image = await get_img(msg)
 
             if image:
+                await set_status_reaction(message.bot, message.chat.id, message.message_id, None)
                 await status_msg.delete()
                 img_url = f"{settings.SITE_URL}{image.image.url}"
                 try:

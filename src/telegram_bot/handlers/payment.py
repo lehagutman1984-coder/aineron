@@ -82,13 +82,19 @@ async def on_successful_payment(message: Message, tg_user=None):
     logger.info(f'Telegram Stars payment: user={tg_user.user.email} pack={payload} rub={rub_amount} charge_id={charge_id}')
     await async_log_event(tg_user, 'payment', cost_kopecks=rub_amount * 100, payload=payload)
 
-    await message.answer(
+    # S1: message effect «праздник» при успешной оплате (fallback — без эффекта)
+    from telegram_bot.notify import EFFECT_CELEBRATION
+    success_text = (
         f"<b>Оплата прошла успешно!</b>\n\n"
         f"Начислено: <b>{format_rub(rub_amount * 100)}</b>\n"
         f"Текущий баланс: <b>{format_rub(new_balance_kopecks)}</b>\n\n"
-        f"Задавай вопросы — я готов!",
-        parse_mode='HTML',
+        f"Задавай вопросы — я готов!"
     )
+    try:
+        await message.answer(success_text, parse_mode='HTML',
+                             message_effect_id=EFFECT_CELEBRATION)
+    except Exception:
+        await message.answer(success_text, parse_mode='HTML')
 
 
 # ──── FSM-based /buy command ────

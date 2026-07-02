@@ -17,7 +17,8 @@ def main_reply_kb() -> ReplyKeyboardMarkup:
     )
 
 
-def after_answer_kb(message_id: int, has_tts: bool = True) -> InlineKeyboardMarkup:
+def after_answer_kb(message_id: int, has_tts: bool = True,
+                    copy_code: str = '') -> InlineKeyboardMarkup:
     row1 = [
         InlineKeyboardButton(text='👍', callback_data=f'react_like:{message_id}'),
         InlineKeyboardButton(text='👎', callback_data=f'react_dislike:{message_id}'),
@@ -30,7 +31,18 @@ def after_answer_kb(message_id: int, has_tts: bool = True) -> InlineKeyboardMark
         InlineKeyboardButton(text='✏', callback_data=f'edit_msg:{message_id}'),
         InlineKeyboardButton(text='✕', callback_data=f'del_msg:{message_id}'),
     ]
-    return InlineKeyboardMarkup(inline_keyboard=[row1, row2])
+    rows = [row1, row2]
+    # S1: нативная кнопка «Скопировать» (Bot API 7.11) под ответами с кодом
+    if copy_code:
+        try:
+            from aiogram.types import CopyTextButton
+            rows.append([InlineKeyboardButton(
+                text='Скопировать код',
+                copy_text=CopyTextButton(text=copy_code[:256]),
+            )])
+        except Exception:
+            pass
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def models_kb(networks: list, current_id: int | None = None) -> InlineKeyboardMarkup:

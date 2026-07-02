@@ -7,7 +7,12 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message, CallbackQuery
 
+from telegram_bot import capabilities
 from telegram_bot.keyboards import after_answer_kb, main_reply_kb
+from telegram_bot.notify import (
+    stream_draft_or_edit, set_status_reaction, send_rich_or_markdown,
+)
+from telegram_bot.rich import extract_first_code
 from telegram_bot.utils import telegram_format, split_message, DIVIDER
 from telegram_bot.analytics import async_log_event
 
@@ -136,12 +141,14 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
 
     generate_ai_response.delay(assistant_msg.id, web_search=getattr(tg_user, 'web_search', False))
 
+    # S1: реакция-статус «запрос принят» на сообщение пользователя
+    await set_status_reaction(tg_message.bot, tg_message.chat.id, tg_message.message_id, '👀')
+
     project = tg_user.active_project
     status_prefix = f'[{project.name}] ' if project else ''
-    sent = await tg_message.answer(f"{status_prefix}Генерирую ответ...")
-
-    last_content = ''
-    last_edit_time = 0.0
+    # S1: нативный стриминг через sendMessageDraft (fallback — edit с троттлингом)
+    streamer = stream_draft_or_edit(tg_message, min_edit_interval=EDIT_MIN_INTERVAL)
+    await streamer.start(f"{status_prefix}Генерирую ответ...")
 
     for i in range(POLL_MAX_TRIES):
         await asyncio.sleep(POLL_INTERVAL)
@@ -152,42 +159,44 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
 
         if msg.status == 'completed':
             full_text = msg.plain_text or msg.content or ''
-            parts = split_message(telegram_format(full_text))
-            for j, part in enumerate(parts):
-                if j == 0:
-                    try:
-                        await sent.edit_text(part, parse_mode='HTML',
-                                             reply_markup=after_answer_kb(msg.id))
-                    except Exception:
-                        await tg_message.answer(part, parse_mode='HTML',
-                                                reply_markup=after_answer_kb(msg.id))
-                else:
-                    await tg_message.answer(part, parse_mode='HTML',
-                                            reply_markup=after_answer_kb(msg.id))
+            markup = after_answer_kb(msg.id, copy_code=extract_first_code(full_text))
+            delivered = False
+            # S1: Rich Messages — таблицы, код, thinking-блоки (за флагом)
+            if capabilities.available('rich_messages', tg_message.bot):
+                try:
+                    await send_rich_or_markdown(
+                        tg_message.bot, tg_message.chat.id, full_text, reply_markup=markup,
+                    )
+                    if streamer.sent is not None:
+                        try:
+                            await streamer.sent.delete()
+                        except Exception:
+                            pass
+                    delivered = True
+                except Exception as e:
+                    logger.warning(f'rich delivery failed, fallback to HTML: {e}')
+            if not delivered:
+                parts = split_message(telegram_format(full_text))
+                await streamer.finish(parts, reply_markup=markup)
+            await set_status_reaction(tg_message.bot, tg_message.chat.id, tg_message.message_id, None)
             await async_log_event(tg_user, 'message', network=network,
                                   cost_kopecks=network.cost_kopecks)
             return
 
         elif msg.status == 'failed':
-            await sent.edit_text("Ошибка генерации. Попробуйте ещё раз.")
+            await streamer.fail("Ошибка генерации. Попробуйте ещё раз.")
+            await set_status_reaction(tg_message.bot, tg_message.chat.id, tg_message.message_id, None)
             await async_log_event(tg_user, 'error', network=network, reason='generation_failed')
             return
 
-        # Стриминг-эффект с троттлингом (не чаще EDIT_MIN_INTERVAL)
+        # Стриминг частичного ответа (draft или edit с троттлингом внутри стримера)
         if tg_user.streaming and i % STREAM_UPDATE_EVERY == 0:
             partial = (msg.plain_text or msg.content or '').strip()
-            now = asyncio.get_event_loop().time()
-            if (partial and partial != last_content and len(partial) > 20
-                    and now - last_edit_time >= EDIT_MIN_INTERVAL):
-                last_content = partial
-                last_edit_time = now
-                try:
-                    preview = telegram_format(partial[:3000]) + ' ...'
-                    await sent.edit_text(preview, parse_mode='HTML')
-                except Exception:
-                    pass
+            if partial:
+                await streamer.update(partial)
 
-    await sent.edit_text("Превышено время ожидания. Попробуйте ещё раз.")
+    await streamer.fail("Превышено время ожидания. Попробуйте ещё раз.")
+    await set_status_reaction(tg_message.bot, tg_message.chat.id, tg_message.message_id, None)
     await async_log_event(tg_user, 'error', network=network, reason='timeout')
 
 
