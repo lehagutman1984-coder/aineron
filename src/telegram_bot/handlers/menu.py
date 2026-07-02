@@ -8,11 +8,12 @@ from telegram_bot.utils import DIVIDER
 logger = logging.getLogger(__name__)
 router = Router()
 
-MENU_BUTTONS = {'Чат', 'Картинка', 'Видео', 'Баланс', 'Модели', 'Настройки', 'История', 'Помощь', 'Проекты'}
+MENU_BUTTONS = {'Чат', 'Картинка', 'Видео', 'Баланс', 'Модели', 'Настройки', 'История', 'Помощь',
+                'Проекты', 'Задачи', 'Исследование'}
 
 
 @router.message(F.text.in_(MENU_BUTTONS))
-async def handle_menu_button(message: Message, tg_user=None):
+async def handle_menu_button(message: Message, state=None, tg_user=None):
     text = message.text
 
     if text == 'Чат':
@@ -75,6 +76,20 @@ async def handle_menu_button(message: Message, tg_user=None):
         else:
             await message.answer('Привяжите аккаунт через /start')
 
+    elif text == 'Задачи':
+        if tg_user:
+            from telegram_bot.handlers.tasks_cmd import _send_task_list
+            await _send_task_list(message, tg_user)
+        else:
+            await message.answer('Привяжите аккаунт через /start')
+
+    elif text == 'Исследование':
+        if tg_user:
+            from telegram_bot.handlers.research_cmd import _ask_confirmation
+            await _ask_confirmation(message, state, tg_user, '')
+        else:
+            await message.answer('Привяжите аккаунт через /start')
+
     elif text == 'Помощь':
         await message.answer(
             f'<b>Aineron · Помощь</b>\n{DIVIDER}\n'
@@ -90,6 +105,7 @@ async def handle_menu_button(message: Message, tg_user=None):
             '<b>Инструменты</b>\n'
             '/task — AI-задачи по расписанию (утренний бриф, мониторинг)\n'
             '/tasks — мои задачи\n'
+            '/research &lt;вопрос&gt; — глубокое исследование с источниками\n'
             '/search &lt;запрос&gt; — поиск по истории\n'
             '/export — скачать текущий чат (.md)\n'
             '/digest — AI-дайджест\n'

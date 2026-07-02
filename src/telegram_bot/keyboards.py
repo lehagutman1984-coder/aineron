@@ -10,7 +10,8 @@ def main_reply_kb() -> ReplyKeyboardMarkup:
         keyboard=[
             [KeyboardButton(text='Чат'),     KeyboardButton(text='Картинка'), KeyboardButton(text='Видео')],
             [KeyboardButton(text='Баланс'),  KeyboardButton(text='Модели'),   KeyboardButton(text='Настройки')],
-            [KeyboardButton(text='Проекты'), KeyboardButton(text='История'),  KeyboardButton(text='Помощь')],
+            [KeyboardButton(text='Проекты'), KeyboardButton(text='История'),  KeyboardButton(text='Задачи')],
+            [KeyboardButton(text='Исследование'), KeyboardButton(text='Помощь')],
         ],
         resize_keyboard=True,
         input_field_placeholder='Напишите вопрос или выберите раздел',
