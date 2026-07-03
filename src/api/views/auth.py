@@ -12,6 +12,24 @@ from users.email_service import send_verification_email
 User = get_user_model()
 
 
+def apply_referral(user, request):
+    """
+    Привязка реферера при регистрации: ref_code берётся из тела запроса
+    или из cookie `ref_code` (её ставит Next.js middleware при заходе по ?ref=CODE).
+    """
+    ref_code = (request.data.get('ref_code') or request.COOKIES.get('ref_code') or '').strip()
+    if not ref_code:
+        return False
+    referrer = User.objects.filter(referral_code__iexact=ref_code).exclude(pk=user.pk).first()
+    if referrer is None:
+        return False
+    from django.db.models import F
+    user.referrer = referrer
+    user.save(update_fields=['referrer'])
+    User.objects.filter(pk=referrer.pk).update(referral_clicks=F('referral_clicks') + 1)
+    return True
+
+
 class MeView(APIView):
     authentication_classes = [CsrfExemptSessionAuthentication]
     permission_classes = [IsAuthenticated]
@@ -92,12 +110,16 @@ class RegisterView(APIView):
         user = User.objects.create_user(
             username=username, email=email, password=password
         )
+        apply_referral(user, request)
         try:
             send_verification_email(user, request)
         except Exception:
             pass
         login(request, user, backend='django.contrib.auth.backends.ModelBackend')
-        return Response(UserSerializer(user).data, status=201)
+        response = Response(UserSerializer(user).data, status=201)
+        if request.COOKIES.get('ref_code'):
+            response.delete_cookie('ref_code')
+        return response
 
 
 class VerifyEmailView(APIView):

@@ -161,14 +161,15 @@ def ajax_register(request):
             referral_code = ''.join(secrets.choice(alphabet) for _ in range(8))
             user.referral_code = referral_code
 
-            ref_code = request.session.get('ref_code')
+            # Реферальный код: из сессии (legacy) или cookie (ставит Next.js middleware)
+            ref_code = request.session.get('ref_code') or request.COOKIES.get('ref_code')
             if ref_code:
                 try:
-                    referrer = CustomUser.objects.get(referral_code=ref_code)
+                    referrer = CustomUser.objects.get(referral_code__iexact=ref_code)
                     user.referrer = referrer
                     referrer.referral_clicks += 1
                     referrer.save(update_fields=['referral_clicks'])
-                    del request.session['ref_code']
+                    request.session.pop('ref_code', None)
                 except CustomUser.DoesNotExist:
                     pass
 

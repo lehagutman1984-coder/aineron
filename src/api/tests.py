@@ -149,3 +149,46 @@ class ApplyPromoViewTests(TestCase):
         resp = self.client.post(self.URL, {'code': 'BONUS50'}, format='json')
         self.assertEqual(resp.status_code, 400)
         self.assertEqual(resp.json()['error']['code'], 'promo_expired')
+
+
+class RegisterReferralTests(TestCase):
+    URL = '/api/v1/auth/register/'
+
+    def setUp(self):
+        self.referrer = User.objects.create_user(username='ref', email='ref@t.ru', password='x')
+        self.referrer.referral_code = 'ABCD1234'
+        self.referrer.save(update_fields=['referral_code'])
+
+    def _client(self):
+        from rest_framework.test import APIClient
+        return APIClient()
+
+    def test_register_with_ref_cookie_sets_referrer(self):
+        client = self._client()
+        client.cookies['ref_code'] = 'ABCD1234'
+        resp = client.post(self.URL, {'email': 'new@t.ru', 'password': 'password123'}, format='json')
+        self.assertEqual(resp.status_code, 201)
+
+        new_user = User.objects.get(email='new@t.ru')
+        self.assertEqual(new_user.referrer_id, self.referrer.pk)
+        self.referrer.refresh_from_db(fields=['referral_clicks'])
+        self.assertEqual(self.referrer.referral_clicks, 1)
+
+    def test_register_with_ref_code_in_body(self):
+        client = self._client()
+        resp = client.post(
+            self.URL,
+            {'email': 'new2@t.ru', 'password': 'password123', 'ref_code': 'abcd1234'},
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 201)
+        new_user = User.objects.get(email='new2@t.ru')
+        self.assertEqual(new_user.referrer_id, self.referrer.pk)
+
+    def test_unknown_ref_code_ignored(self):
+        client = self._client()
+        client.cookies['ref_code'] = 'NOSUCH99'
+        resp = client.post(self.URL, {'email': 'new3@t.ru', 'password': 'password123'}, format='json')
+        self.assertEqual(resp.status_code, 201)
+        new_user = User.objects.get(email='new3@t.ru')
+        self.assertIsNone(new_user.referrer_id)
