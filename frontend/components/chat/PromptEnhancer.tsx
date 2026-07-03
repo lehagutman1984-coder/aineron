@@ -85,7 +85,7 @@ export function PromptEnhancer({ prompt, onAccept, disabled }: PromptEnhancerPro
       {open && (
         <div
           className="absolute bottom-full left-0 z-30 mb-2 w-[min(440px,calc(100vw-2rem))] rounded-[14px] bg-white p-3.5 shadow-xl dark:bg-[#1c1c1f]"
-          style={{ border: "1px solid rgba(13,13,13,0.12)" }}
+          style={{ border: "1px solid var(--border-primary)" }}
         >
           <div className="mb-2.5 flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-[14px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">

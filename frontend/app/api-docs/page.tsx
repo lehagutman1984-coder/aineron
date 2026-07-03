@@ -291,7 +291,7 @@ const GROUPS: DocGroup[] = [
                 <Link href="/api-docs/playground/" className="inline-flex items-center gap-2 rounded-[10px] bg-[#D97757] px-5 py-2.5 text-[15px] font-medium text-white transition-colors hover:bg-[#C4623E]">
                   <Play size={14} /> Playground
                 </Link>
-                <a href="/api/v1/docs/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-[10px] bg-[#1A1A1A] px-5 py-2.5 text-[15px] font-medium text-white dark:bg-[#EDE8E3] dark:text-[#1A1A1A]">
+                <a href="/api/v1/docs/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-[10px] bg-[#1A1A1A] px-5 py-2.5 text-[15px] font-medium text-white">
                   Swagger UI <ExternalLink size={14} />
                 </a>
                 <Link href="/account/keys/" className="inline-flex items-center gap-2 rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-white px-5 py-2.5 text-[15px] font-medium text-[rgba(13,13,13,0.7)] transition-colors hover:bg-[rgba(13,13,13,0.04)] dark:border-[rgba(255,255,255,0.14)] dark:bg-[#211E1B] dark:text-[rgba(236,236,236,0.7)]">

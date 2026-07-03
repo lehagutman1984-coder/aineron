@@ -154,7 +154,7 @@ export default function WelcomePage() {
       {/* Card */}
       <div
         className="w-full max-w-xl rounded-[20px] border bg-white p-8 shadow-sm"
-        style={{ borderColor: "rgba(13,13,13,0.10)" }}
+        style={{ borderColor: "var(--border-secondary)" }}
       >
         {step === 1 && (
           <Step1
@@ -285,7 +285,7 @@ function Step2({
             <div
               className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all"
               style={{
-                borderColor: pickedPrompt === prompt ? "#D97757" : "rgba(13,13,13,0.18)",
+                borderColor: pickedPrompt === prompt ? "#D97757" : "var(--border-primary)",
                 background: pickedPrompt === prompt ? "#D97757" : "transparent",
               }}
             >

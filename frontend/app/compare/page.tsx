@@ -124,7 +124,7 @@ export default function ComparePage() {
       <div className="mb-5 flex justify-center">
         <div
           className="inline-flex rounded-[12px] p-1"
-          style={{ background: "rgba(13,13,13,0.05)" }}
+          style={{ background: "var(--background-secondary)" }}
         >
           {([
             { key: "text" as const, label: "Текст", icon: MessageSquareText },
@@ -155,7 +155,7 @@ export default function ComparePage() {
       <div
         className="mb-5 overflow-hidden rounded-[14px]"
         style={{
-          border: "1px solid rgba(13,13,13,0.12)",
+          border: "1px solid var(--border-primary)",
           boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
         }}
       >
@@ -174,12 +174,12 @@ export default function ComparePage() {
       {/* Model picker */}
       <div
         className="mb-5 overflow-hidden rounded-[14px]"
-        style={{ border: "1px solid rgba(13,13,13,0.10)" }}
+        style={{ border: "1px solid var(--border-secondary)" }}
       >
         {/* Picker header */}
         <div
           className="flex items-center justify-between px-4 py-3"
-          style={{ borderBottom: "1px solid rgba(13,13,13,0.08)", background: "rgba(13,13,13,0.02)" }}
+          style={{ borderBottom: "1px solid var(--border-tertiary)", background: "var(--background-tertiary)" }}
         >
           <span className="text-[15px] font-medium text-[rgba(13,13,13,0.65)] dark:text-[rgba(236,236,236,0.55)]">
             Выберите модели{" "}
@@ -299,14 +299,14 @@ export default function ComparePage() {
           onClick={handleSubmit}
           disabled={!prompt.trim() || selected.length < 2 || isSubmitting}
           className="flex items-center gap-2 rounded-[10px] px-5 py-2.5 text-[16px] font-medium text-white transition-all disabled:cursor-not-allowed disabled:opacity-35"
-          style={{ background: "#1A1A1A" }}
+          style={{ background: "var(--surface-inverse)" }}
         >
           {isSubmitting ? (
             <span className="flex gap-1">
               {[0, 1, 2].map((i) => (
                 <span
                   key={i}
-                  className="h-1.5 w-1.5 animate-bounce rounded-full bg-white"
+                  className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#fff]"
                   style={{ animationDelay: `${i * 0.18}s` }}
                 />
               ))}
@@ -370,7 +370,7 @@ function ResultsView({
       {/* Top bar */}
       <div
         className="shrink-0 px-4 py-3"
-        style={{ borderBottom: "1px solid rgba(13,13,13,0.08)" }}
+        style={{ borderBottom: "1px solid var(--border-tertiary)" }}
       >
         <div className="mx-auto flex max-w-7xl items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
@@ -493,8 +493,8 @@ function CompareColumn({
       <div
         className="flex items-center justify-between px-4 py-3"
         style={{
-          borderBottom: "1px solid rgba(13,13,13,0.08)",
-          background: isWinner ? "rgba(244,160,23,0.07)" : "rgba(13,13,13,0.02)",
+          borderBottom: "1px solid var(--border-tertiary)",
+          background: isWinner ? "rgba(244,160,23,0.07)" : "var(--background-tertiary)",
         }}
       >
         <div className="flex min-w-0 items-center gap-2">
@@ -534,7 +534,7 @@ function CompareColumn({
       {done && message?.status === "completed" && (
         <div
           className="flex items-center gap-2 px-4 py-2"
-          style={{ borderTop: "1px solid rgba(13,13,13,0.07)" }}
+          style={{ borderTop: "1px solid var(--border-tertiary)" }}
         >
           <button
             onClick={handleCopy}

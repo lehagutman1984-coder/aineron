@@ -80,7 +80,7 @@ export function UseCaseTabs() {
               className={[
                 "flex items-center gap-1.5 rounded-[9px] px-4 py-2 text-[15px] font-medium transition-all",
                 active === c.key
-                  ? "bg-[#1A1A1A] text-white dark:bg-[#EDE8E3] dark:text-[#1A1A1A]"
+                  ? "bg-[#1A1A1A] text-white"
                   : "border border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.60)] hover:border-[rgba(13,13,13,0.25)] hover:text-[#1A1A1A]",
               ].join(" ")}
             >
@@ -94,7 +94,7 @@ export function UseCaseTabs() {
       {/* Content card */}
       <div
         className="overflow-hidden rounded-[16px] border bg-white"
-        style={{ borderColor: "rgba(13,13,13,0.10)" }}
+        style={{ borderColor: "var(--border-secondary)" }}
       >
         <div className="grid grid-cols-1 md:grid-cols-2">
           {/* Left — feature list */}
@@ -118,7 +118,7 @@ export function UseCaseTabs() {
           {/* Right — fake chat demo */}
           <div
             className="flex flex-col justify-between border-l p-7"
-            style={{ borderColor: "rgba(13,13,13,0.08)", background: "rgba(13,13,13,0.01)" }}
+            style={{ borderColor: "var(--border-tertiary)", background: "var(--background-tertiary)" }}
           >
             <p className="mb-3 text-[13px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.38)]">
               Пример запроса

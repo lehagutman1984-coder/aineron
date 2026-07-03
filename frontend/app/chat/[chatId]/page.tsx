@@ -1019,7 +1019,7 @@ export default function ChatPage() {
               <button
                 onClick={() => setShowPromptPicker(true)}
                 className="mt-5 flex items-center gap-1.5 rounded-[8px] border px-3.5 py-2 text-[15px] font-medium transition-colors"
-                style={{ borderColor: "var(--chat-input-border)", color: "rgba(13,13,13,0.55)" }}
+                style={{ borderColor: "var(--chat-input-border)", color: "var(--text-secondary)" }}
               >
                 <BookMarked size={13} />
                 Шаблоны промтов
@@ -1281,7 +1281,7 @@ export default function ChatPage() {
               type="submit"
               disabled={(text.trim() === "" && attachments.filter((a) => !a.error && !a.uploading).length === 0 && !sourceImage) || isBusy || sourceImage?.uploading === true}
               className="absolute bottom-2.5 right-2.5 flex h-9 w-9 items-center justify-center rounded-[10px] text-white transition-all disabled:cursor-not-allowed disabled:opacity-25"
-              style={{ background: "#1A1A1A" }}
+              style={{ background: "var(--surface-inverse)" }}
             >
               <Send size={15} />
             </button>
@@ -1534,7 +1534,7 @@ function BouncingDots() {
           key={i}
           className="h-2 w-2 animate-bounce rounded-full"
           style={{
-            background: "rgba(13,13,13,0.28)",
+            background: "var(--text-tertiary)",
             animationDelay: `${i * 0.18}s`,
             animationDuration: "1.1s",
           }}
@@ -1888,14 +1888,14 @@ function MessageRow({
                 <button
                   onClick={onRegenerate}
                   className="flex h-7 items-center gap-1.5 rounded-[6px] px-2 text-[14px] font-medium transition-colors"
-                  style={{ color: "rgba(13,13,13,0.42)" }}
+                  style={{ color: "var(--text-tertiary)" }}
                   onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.background = "rgba(13,13,13,0.06)";
-                    (e.currentTarget as HTMLButtonElement).style.color = "#1A1A1A";
+                    (e.currentTarget as HTMLButtonElement).style.background = "var(--background-secondary)";
+                    (e.currentTarget as HTMLButtonElement).style.color = "var(--text-primary)";
                   }}
                   onMouseLeave={(e) => {
                     (e.currentTarget as HTMLButtonElement).style.background = "";
-                    (e.currentTarget as HTMLButtonElement).style.color = "rgba(13,13,13,0.42)";
+                    (e.currentTarget as HTMLButtonElement).style.color = "var(--text-tertiary)";
                   }}
                   title="Повторить генерацию"
                 >
@@ -1971,17 +1971,17 @@ function SpeakButton({ text }: { text: string }) {
     <button
       onClick={handleClick}
       className="flex h-7 items-center gap-1.5 rounded-[6px] px-2 text-[14px] font-medium transition-colors"
-      style={{ color: state !== "idle" ? "#D97757" : "rgba(13,13,13,0.42)" }}
+      style={{ color: state !== "idle" ? "#D97757" : "var(--text-tertiary)" }}
       onMouseEnter={(e) => {
         if (state === "idle") {
-          (e.currentTarget as HTMLButtonElement).style.background = "rgba(13,13,13,0.06)";
-          (e.currentTarget as HTMLButtonElement).style.color = "#1A1A1A";
+          (e.currentTarget as HTMLButtonElement).style.background = "var(--background-secondary)";
+          (e.currentTarget as HTMLButtonElement).style.color = "var(--text-primary)";
         }
       }}
       onMouseLeave={(e) => {
         if (state === "idle") {
           (e.currentTarget as HTMLButtonElement).style.background = "";
-          (e.currentTarget as HTMLButtonElement).style.color = "rgba(13,13,13,0.42)";
+          (e.currentTarget as HTMLButtonElement).style.color = "var(--text-tertiary)";
         }
       }}
       title={state === "playing" ? "Остановить" : "Озвучить ответ (TTS)"}
@@ -2021,18 +2021,18 @@ function CopyButton({
     <button
       onClick={handleCopy}
       className="flex h-7 items-center gap-1.5 rounded-[6px] px-2 text-[14px] font-medium transition-colors"
-      style={{ color: copied ? "#D97757" : "rgba(13,13,13,0.42)" }}
+      style={{ color: copied ? "#D97757" : "var(--text-tertiary)" }}
       onMouseEnter={(e) => {
         if (!copied) {
-          (e.currentTarget as HTMLButtonElement).style.background = "rgba(13,13,13,0.06)";
-          (e.currentTarget as HTMLButtonElement).style.color = "#1A1A1A";
+          (e.currentTarget as HTMLButtonElement).style.background = "var(--background-secondary)";
+          (e.currentTarget as HTMLButtonElement).style.color = "var(--text-primary)";
         }
       }}
       onMouseLeave={(e) => {
         (e.currentTarget as HTMLButtonElement).style.background = "";
         (e.currentTarget as HTMLButtonElement).style.color = copied
           ? "#D97757"
-          : "rgba(13,13,13,0.42)";
+          : "var(--text-tertiary)";
       }}
       title="Скопировать"
     >
@@ -2095,7 +2095,7 @@ function StreamingDisplay({ text }: { text: string }) {
   return (
     <div
       className="text-[17px] leading-[1.75]"
-      style={{ color: "rgba(13,13,13,0.86)" }}
+      style={{ color: "var(--text-primary)" }}
     >
       <PlainText text={displayed || " "} />
       <span
@@ -2207,7 +2207,7 @@ function PlainTextAnimated({ content, shouldAnimate }: { content: string; should
   }, []); // intentionally runs once on mount — content is captured via closure at mount time
 
   return (
-    <div className="text-[17px] leading-[1.75]" style={{ color: "rgba(13,13,13,0.86)" }}>
+    <div className="text-[17px] leading-[1.75]" style={{ color: "var(--text-primary)" }}>
       <PlainText text={displayed} />
       {showCursor && (
         <span

@@ -62,7 +62,7 @@ export default function PersonasPage() {
           <button
             onClick={() => setShowCreate(true)}
             className="flex items-center gap-2 rounded-[10px] px-4 py-2 text-[15px] font-semibold text-white transition-all hover:opacity-90"
-            style={{ background: "#1A1A1A" }}
+            style={{ background: "var(--surface-inverse)" }}
           >
             <Plus size={14} />
             Создать персону
@@ -181,7 +181,7 @@ export default function PersonasPage() {
                   type="submit"
                   disabled={createMutation.isPending}
                   className="rounded-[8px] px-4 py-2 text-[15px] font-semibold text-white transition-opacity disabled:opacity-60"
-                  style={{ background: "#1A1A1A" }}
+                  style={{ background: "var(--surface-inverse)" }}
                 >
                   {createMutation.isPending ? "Создание..." : "Создать"}
                 </button>
@@ -200,7 +200,7 @@ function PersonaCard({ persona, onDelete }: { persona: Persona; onDelete?: () =>
       className="group relative flex flex-col gap-2 rounded-[12px] border p-4 transition-shadow hover:shadow-md"
       style={{
         background: "var(--surface, #fff)",
-        borderColor: "rgba(13,13,13,0.09)",
+        borderColor: "var(--border-secondary)",
       }}
     >
       <div className="flex items-start gap-3">

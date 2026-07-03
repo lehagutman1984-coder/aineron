@@ -34,7 +34,7 @@ export function FaqAccordion() {
   const [open, setOpen] = useState<number | null>(null);
 
   return (
-    <div className="flex flex-col divide-y" style={{ borderTop: "1px solid rgba(13,13,13,0.08)", borderBottom: "1px solid rgba(13,13,13,0.08)" }}>
+    <div className="flex flex-col divide-y" style={{ borderTop: "1px solid var(--border-tertiary)", borderBottom: "1px solid var(--border-tertiary)" }}>
       {FAQS.map((faq, i) => (
         <div key={i}>
           <button

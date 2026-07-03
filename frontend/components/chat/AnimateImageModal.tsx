@@ -284,7 +284,7 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
                         onClick={() => setCameraFixed((v) => !v)}
                         className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${cameraFixed ? "bg-[#D97757]" : "bg-[rgba(13,13,13,0.15)] dark:bg-[rgba(255,255,255,0.15)]"}`}
                       >
-                        <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${cameraFixed ? "translate-x-4" : "translate-x-0.5"}`} />
+                        <span className={`inline-block h-3.5 w-3.5 rounded-full bg-[#fff] shadow transition-transform ${cameraFixed ? "translate-x-4" : "translate-x-0.5"}`} />
                       </button>
                       <span className="text-[14px] text-[rgba(13,13,13,0.65)] dark:text-[rgba(236,236,236,0.6)]">Камера фиксирована</span>
                     </label>
@@ -297,7 +297,7 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
                       onClick={() => setGenerateAudio((v) => !v)}
                       className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${generateAudio ? "bg-[#D97757]" : "bg-[rgba(13,13,13,0.15)] dark:bg-[rgba(255,255,255,0.15)]"}`}
                     >
-                      <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${generateAudio ? "translate-x-4" : "translate-x-0.5"}`} />
+                      <span className={`inline-block h-3.5 w-3.5 rounded-full bg-[#fff] shadow transition-transform ${generateAudio ? "translate-x-4" : "translate-x-0.5"}`} />
                     </button>
                     <span className="text-[14px] text-[rgba(13,13,13,0.65)] dark:text-[rgba(236,236,236,0.6)]">Генерировать аудио</span>
                   </label>

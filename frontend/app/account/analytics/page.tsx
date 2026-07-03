@@ -53,7 +53,7 @@ export default function AnalyticsPage() {
               className={[
                 "rounded-[7px] px-3 py-1.5 text-[14px] font-medium transition-all",
                 days === p.value
-                  ? "bg-[#1A1A1A] text-white dark:bg-[#EDE8E3] dark:text-[#1A1A1A]"
+                  ? "bg-[#1A1A1A] text-white"
                   : "text-[rgba(13,13,13,0.55)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.45)]",
               ].join(" ")}
             >
@@ -91,7 +91,7 @@ export default function AnalyticsPage() {
       {/* Daily bar chart */}
       <div
         className="mb-6 rounded-[14px] border bg-white p-5 dark:bg-[#1C1917]"
-        style={{ borderColor: "rgba(13,13,13,0.10)" }}
+        style={{ borderColor: "var(--border-secondary)" }}
       >
         <h2 className="mb-4 text-[16px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
           Расходы по дням
@@ -108,7 +108,7 @@ export default function AnalyticsPage() {
       {/* Top models */}
       <div
         className="rounded-[14px] border bg-white p-5 dark:bg-[#1C1917]"
-        style={{ borderColor: "rgba(13,13,13,0.10)" }}
+        style={{ borderColor: "var(--border-secondary)" }}
       >
         <h2 className="mb-4 text-[16px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
           Топ моделей по расходу
@@ -147,7 +147,7 @@ function StatCard({
   return (
     <div
       className="rounded-[14px] border bg-white p-4 dark:bg-[#1C1917]"
-      style={{ borderColor: "rgba(13,13,13,0.10)" }}
+      style={{ borderColor: "var(--border-secondary)" }}
     >
       <div className="mb-2 flex items-center gap-2">
         {icon}
@@ -230,7 +230,7 @@ function BarChart({ days, period }: { days: StarsUsageDay[]; period: number }) {
                 height: `${pct}%`,
                 background: entry.kopecks > 0
                   ? "rgba(217,119,87,0.75)"
-                  : "rgba(13,13,13,0.07)",
+                  : "var(--background-secondary)",
                 minHeight: "2px",
               }}
             />

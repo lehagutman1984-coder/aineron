@@ -156,12 +156,12 @@ export function VoiceButton({
       {error && (
         <div
           className="absolute bottom-full left-0 mb-2 whitespace-nowrap rounded-[7px] px-2.5 py-1.5 text-[13px] text-white"
-          style={{ background: "#1A1A1A", boxShadow: "0 4px 12px rgba(0,0,0,0.18)" }}
+          style={{ background: "var(--surface-inverse)", boxShadow: "0 4px 12px rgba(0,0,0,0.18)" }}
         >
           {error}
           <div
             className="absolute left-3 top-full h-0 w-0"
-            style={{ borderLeft: "5px solid transparent", borderRight: "5px solid transparent", borderTop: "5px solid #1A1A1A" }}
+            style={{ borderLeft: "5px solid transparent", borderRight: "5px solid transparent", borderTop: "5px solid var(--surface-inverse)" }}
           />
         </div>
       )}

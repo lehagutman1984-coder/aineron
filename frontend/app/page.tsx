@@ -175,7 +175,7 @@ export default async function HomePage() {
               Пополняйте баланс и тратьте на любую модель. Средства не сгорают.
             </p>
           </div>
-          <div className="grid grid-cols-1 divide-y border-t border-[rgba(13,13,13,0.08)] sm:grid-cols-3 sm:divide-x sm:divide-y-0" style={{ borderColor: "rgba(13,13,13,0.08)" }}>
+          <div className="grid grid-cols-1 divide-y border-t border-[rgba(13,13,13,0.08)] sm:grid-cols-3 sm:divide-x sm:divide-y-0" style={{ borderColor: "var(--border-tertiary)" }}>
             {PRICING.map((p) => (
               <div key={p.title} className="px-7 py-6 text-center">
                 <p className="mb-1 text-[15px] font-medium text-[rgba(13,13,13,0.50)]">{p.title}</p>

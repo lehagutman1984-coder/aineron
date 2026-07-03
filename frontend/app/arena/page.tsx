@@ -63,7 +63,7 @@ export default function ArenaPage() {
             <thead>
               <tr
                 className="border-b border-[rgba(13,13,13,0.08)] text-left dark:border-[rgba(255,255,255,0.07)]"
-                style={{ background: "rgba(13,13,13,0.03)" }}
+                style={{ background: "var(--background-tertiary)" }}
               >
                 <th className="px-4 py-3 font-semibold text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.45)]">
                   #
@@ -93,7 +93,7 @@ export default function ArenaPage() {
           <Link
             href="/compare"
             className="flex items-center gap-2 rounded-[10px] px-5 py-2.5 text-[15px] font-semibold text-white transition-opacity hover:opacity-90"
-            style={{ background: "#1A1A1A" }}
+            style={{ background: "var(--surface-inverse)" }}
           >
             <Swords size={14} />
             Сыграть матч
@@ -120,7 +120,7 @@ function ArenaRow({ entry, rank }: { entry: ArenaEntry; rank: number }) {
       className="border-b border-[rgba(13,13,13,0.06)] transition-colors last:border-0 hover:bg-[rgba(13,13,13,0.02)] dark:border-[rgba(255,255,255,0.05)] dark:hover:bg-[rgba(255,255,255,0.03)]"
       style={{ background: isTop3 ? `${medal}08` : undefined }}
     >
-      <td className="px-4 py-3 font-bold" style={{ color: medal || "rgba(13,13,13,0.35)" }}>
+      <td className="px-4 py-3 font-bold" style={{ color: medal || "var(--text-tertiary)" }}>
         {rank}
       </td>
       <td className="px-4 py-3">

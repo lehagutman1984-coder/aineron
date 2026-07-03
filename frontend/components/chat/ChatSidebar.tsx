@@ -111,7 +111,7 @@ function ProjectModal({
                   return (
                     <button key={ic} type="button" onClick={() => setIcon(ic)}
                       className={["flex h-7 w-7 items-center justify-center rounded-[6px] transition-colors", icon === ic ? "ring-2 ring-[#D97757] ring-offset-1" : "border border-[rgba(13,13,13,0.12)] hover:bg-[rgba(13,13,13,0.05)]"].join(" ")}
-                      style={{ color: icon === ic ? color : "rgba(13,13,13,0.45)" }}
+                      style={{ color: icon === ic ? color : "var(--text-tertiary)" }}
                     >
                       <Icon size={13} />
                     </button>
@@ -417,7 +417,7 @@ function PreviewCard({
               <div className="flex justify-end">
                 <div
                   className="max-w-[85%] rounded-[10px] rounded-br-[3px] px-3 py-2 text-[13px] leading-[1.5] text-white"
-                  style={{ background: "#1A1A1A" }}
+                  style={{ background: "var(--surface-inverse)" }}
                 >
                   {chat.last_message.preview}
                 </div>

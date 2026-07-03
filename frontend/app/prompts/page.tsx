@@ -101,7 +101,7 @@ export default function PromptsPage() {
             className={[
               "flex shrink-0 items-center gap-1.5 rounded-[8px] px-3.5 py-1.5 text-[15px] font-medium transition-all",
               activeCategory === key
-                ? "bg-[#1A1A1A] text-white dark:bg-[#EDE8E3] dark:text-[#1A1A1A]"
+                ? "bg-[#1A1A1A] text-white"
                 : "text-[rgba(13,13,13,0.60)] hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.55)] dark:hover:bg-[rgba(255,255,255,0.07)]",
             ].join(" ")}
           >
@@ -157,7 +157,7 @@ function PromptCard({
   return (
     <div
       className="group flex flex-col rounded-[12px] border p-4 transition-all hover:shadow-[0_2px_12px_rgba(0,0,0,0.08)]"
-      style={{ borderColor: "rgba(13,13,13,0.10)" }}
+      style={{ borderColor: "var(--border-secondary)" }}
     >
       {/* Top row */}
       <div className="mb-2 flex items-start justify-between gap-2">
@@ -228,7 +228,7 @@ function AddPromptModal({ onClose }: { onClose: () => void }) {
       <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
       <div
         className="relative w-full max-w-lg rounded-[16px] bg-white p-6 shadow-2xl dark:bg-[#1C1917]"
-        style={{ border: "1px solid rgba(13,13,13,0.10)" }}
+        style={{ border: "1px solid var(--border-secondary)" }}
       >
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-[16px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">

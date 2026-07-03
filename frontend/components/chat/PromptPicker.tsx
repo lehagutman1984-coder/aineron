@@ -68,14 +68,14 @@ export function PromptPicker({
       <div
         className="relative flex w-full max-w-xl flex-col rounded-t-[20px] bg-white shadow-2xl dark:bg-[#1C1917] sm:rounded-[20px]"
         style={{
-          border: "1px solid rgba(13,13,13,0.10)",
+          border: "1px solid var(--border-secondary)",
           maxHeight: "80vh",
         }}
       >
         {/* Header */}
         <div
           className="flex shrink-0 items-center justify-between px-4 py-3.5"
-          style={{ borderBottom: "1px solid rgba(13,13,13,0.08)" }}
+          style={{ borderBottom: "1px solid var(--border-tertiary)" }}
         >
           <div className="flex items-center gap-2">
             <BookMarked size={15} className="text-[#D97757]" />
@@ -113,7 +113,7 @@ export function PromptPicker({
               className={[
                 "shrink-0 rounded-full px-3 py-1 text-[13px] font-medium transition-all",
                 cat === key
-                  ? "bg-[#1A1A1A] text-white dark:bg-[#EDE8E3] dark:text-[#1A1A1A]"
+                  ? "bg-[#1A1A1A] text-white"
                   : "border border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.60)] hover:border-[rgba(13,13,13,0.25)] dark:border-[rgba(255,255,255,0.10)] dark:text-[rgba(236,236,236,0.55)]",
               ].join(" ")}
             >

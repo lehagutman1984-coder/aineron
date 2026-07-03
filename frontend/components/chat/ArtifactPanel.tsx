@@ -141,7 +141,7 @@ export function ArtifactPanel({ artifact, onClose }: ArtifactPanelProps) {
   };
 
   return (
-    <div className="flex h-full flex-col" style={{ borderLeft: "1px solid var(--border-color, rgba(13,13,13,0.10))" }}>
+    <div className="flex h-full flex-col" style={{ borderLeft: "1px solid var(--border-secondary)" }}>
       {/* Header */}
       <div className="flex shrink-0 items-center gap-2 border-b border-[rgba(13,13,13,0.08)] px-3 py-2.5 dark:border-[rgba(255,255,255,0.08)]">
         <Code2 size={14} className="shrink-0 text-[#D97757]" />

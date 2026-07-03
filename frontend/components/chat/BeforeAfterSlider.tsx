@@ -99,7 +99,7 @@ export function BeforeAfterSlider({ beforeUrl, afterUrl, onClose }: Props) {
             className="absolute inset-y-0 z-10 flex w-[2px] items-center justify-center bg-white shadow-[0_0_8px_rgba(0,0,0,0.5)]"
             style={{ left: `${pos}%`, transform: 'translateX(-50%)' }}
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-lg">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#fff] shadow-lg">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M5 8l-3 0M14 8l-3 0M11 5l3 3-3 3M5 5L2 8l3 3" stroke="#333" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>

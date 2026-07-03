@@ -91,7 +91,7 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
                 {ICONS.map((ic) => (
                   <button key={ic} type="button" onClick={() => setIcon(ic)}
                     className={["flex h-8 w-8 items-center justify-center rounded-[7px] transition-colors", icon === ic ? "ring-2 ring-[#D97757] ring-offset-1" : "border border-[rgba(13,13,13,0.12)] hover:bg-[rgba(13,13,13,0.05)]"].join(" ")}
-                    style={{ color: icon === ic ? color : "rgba(13,13,13,0.45)" }}>
+                    style={{ color: icon === ic ? color : "var(--text-tertiary)" }}>
                     <ProjectIcon name={ic} size={15} />
                   </button>
                 ))}
