@@ -1,10 +1,11 @@
 ﻿"use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { User, Plus, Trash2, Bot, X, Check } from "lucide-react";
+import { Plus, Trash2, Bot, X, Send, MessageSquarePlus, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { listPersonas, createPersona, deletePersona } from "@/lib/api/client";
+import { listPersonas, createPersona, deletePersona, createChat } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 import type { Persona } from "@/lib/api/types";
 
@@ -82,7 +83,7 @@ export default function PersonasPage() {
           </h2>
           <div className="grid gap-3 sm:grid-cols-2">
             {systemPersonas.map((p) => (
-              <PersonaCard key={p.id} persona={p} />
+              <PersonaCard key={p.id} persona={p} canChat={!!user} />
             ))}
           </div>
         </section>
@@ -107,6 +108,7 @@ export default function PersonasPage() {
                 <PersonaCard
                   key={p.id}
                   persona={p}
+                  canChat={!!user}
                   onDelete={() => deleteMutation.mutate(p.id)}
                 />
               ))}
@@ -194,7 +196,38 @@ export default function PersonasPage() {
   );
 }
 
-function PersonaCard({ persona, onDelete }: { persona: Persona; onDelete?: () => void }) {
+function PersonaCard({
+  persona,
+  canChat,
+  onDelete,
+}: {
+  persona: Persona;
+  canChat: boolean;
+  onDelete?: () => void;
+}) {
+  const router = useRouter();
+  const [composing, setComposing] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  const startMutation = useMutation({
+    mutationFn: (message: string) =>
+      createChat({
+        network_slug: persona.chat_network_slug ?? "",
+        message,
+        settings: { system_prompt: persona.system_prompt, persona_id: persona.id },
+      }),
+    onSuccess: (res) => router.push(`/chat/${res.chat_id}`),
+  });
+
+  const canStart = !!persona.chat_network_slug;
+
+  const handleStart = (e: React.FormEvent) => {
+    e.preventDefault();
+    const text = msg.trim();
+    if (!text || startMutation.isPending) return;
+    startMutation.mutate(text);
+  };
+
   return (
     <div
       className="group relative flex flex-col gap-2 rounded-[12px] border p-4 transition-shadow hover:shadow-md"
@@ -232,6 +265,68 @@ function PersonaCard({ persona, onDelete }: { persona: Persona; onDelete?: () =>
       <p className="line-clamp-3 text-[13px] leading-relaxed text-[rgba(13,13,13,0.42)] dark:text-[rgba(236,236,236,0.38)] font-mono border-t border-[rgba(13,13,13,0.06)] pt-2 mt-1">
         {persona.system_prompt}
       </p>
+
+      {/* Start chat */}
+      {composing ? (
+        <form onSubmit={handleStart} className="mt-1 flex flex-col gap-2">
+          <textarea
+            autoFocus
+            value={msg}
+            onChange={(e) => setMsg(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) handleStart(e);
+            }}
+            rows={2}
+            placeholder="Напишите первое сообщение..."
+            className="w-full resize-none rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-transparent px-3 py-2 text-[14px] outline-none focus:border-[#D97757]"
+          />
+          {startMutation.isError && (
+            <p className="text-[13px] text-[#e74c3c]">
+              Не удалось начать чат. Попробуйте ещё раз.
+            </p>
+          )}
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setComposing(false)}
+              className="rounded-[8px] px-3 py-1.5 text-[14px] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.04)]"
+            >
+              Отмена
+            </button>
+            <button
+              type="submit"
+              disabled={!msg.trim() || startMutation.isPending}
+              className="flex items-center gap-1.5 rounded-[8px] px-3 py-1.5 text-[14px] font-semibold text-white transition-opacity disabled:opacity-60"
+              style={{ background: "var(--surface-inverse)" }}
+            >
+              {startMutation.isPending ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Send size={14} />
+              )}
+              Отправить
+            </button>
+          </div>
+        </form>
+      ) : canChat ? (
+        <button
+          onClick={() => setComposing(true)}
+          disabled={!canStart}
+          title={canStart ? undefined : "Нет доступной модели для чата"}
+          className="mt-1 flex items-center justify-center gap-2 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 py-2 text-[14px] font-medium text-[rgba(13,13,13,0.70)] transition-colors hover:border-[#D97757] hover:text-[#D97757] disabled:cursor-not-allowed disabled:opacity-50 dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.70)]"
+        >
+          <MessageSquarePlus size={15} />
+          Начать чат
+        </button>
+      ) : (
+        <Link
+          href="/login/?next=/personas/"
+          className="mt-1 flex items-center justify-center gap-2 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 py-2 text-[14px] font-medium text-[rgba(13,13,13,0.70)] transition-colors hover:border-[#D97757] hover:text-[#D97757] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.70)]"
+        >
+          <MessageSquarePlus size={15} />
+          Войдите, чтобы начать чат
+        </Link>
+      )}
 
       {onDelete && (
         <button

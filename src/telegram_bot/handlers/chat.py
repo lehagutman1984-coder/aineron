@@ -75,6 +75,17 @@ def _ensure_chat(tg_user, network):
 
 def _create_messages(chat, user_text, network, system_prompt='', extra_settings=None):
     from aitext.models import Message as AiMessage
+    # Персона / системный промт пользователя → на уровень чата (его читает генератор)
+    desired = (system_prompt or '').strip()
+    current = (chat.settings or {}).get('system_prompt', '') if isinstance(chat.settings, dict) else ''
+    if desired != current:
+        s = dict(chat.settings) if isinstance(chat.settings, dict) else {}
+        if desired:
+            s['system_prompt'] = desired
+        else:
+            s.pop('system_prompt', None)
+        chat.settings = s
+        chat.save(update_fields=['settings'])
     user_msg = AiMessage.objects.create(chat=chat, role='user', content=user_text)
     assistant_msg = AiMessage.objects.create(
         chat=chat, role='assistant',

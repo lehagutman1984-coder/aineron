@@ -51,6 +51,7 @@ export function Navbar() {
           <NavLink href="/compare/">Сравнение</NavLink>
           <NavLink href="/gallery/">Галерея</NavLink>
           <NavLink href="/projects/">Проекты</NavLink>
+          <NavLink href="/personas/">Персоны</NavLink>
           <NavLink href="/docs/">Документация</NavLink>
           <NavLink href="/api-docs/">API</NavLink>
           <NavLink href="/blog/">Блог</NavLink>
@@ -131,6 +132,7 @@ export function Navbar() {
             <MobileNavLink href="/compare/" onClick={() => setMobileOpen(false)}>Сравнение</MobileNavLink>
             <MobileNavLink href="/gallery/" onClick={() => setMobileOpen(false)}>Галерея</MobileNavLink>
             <MobileNavLink href="/projects/" onClick={() => setMobileOpen(false)}>Проекты</MobileNavLink>
+            <MobileNavLink href="/personas/" onClick={() => setMobileOpen(false)}>Персоны</MobileNavLink>
             <MobileNavLink href="/docs/" onClick={() => setMobileOpen(false)}>Документация</MobileNavLink>
             <MobileNavLink href="/api-docs/" onClick={() => setMobileOpen(false)}>API</MobileNavLink>
             <MobileNavLink href="/blog/" onClick={() => setMobileOpen(false)}>Блог</MobileNavLink>

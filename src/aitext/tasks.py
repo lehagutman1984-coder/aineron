@@ -825,6 +825,11 @@ def generate_ai_response(self, message_id, web_search=False):
             except Exception:
                 pass
 
+        # 1b. Системный промт чата (персона / кастомный system prompt пользователя)
+        chat_system_prompt = chat.settings.get('system_prompt') if isinstance(chat.settings, dict) else None
+        if chat_system_prompt:
+            messages_for_api.append({"role": "system", "content": chat_system_prompt})
+
         # 2. Network prompt (если есть)
         if network.has_prompt and network.prompt:
             messages_for_api.append({"role": "system", "content": network.prompt})

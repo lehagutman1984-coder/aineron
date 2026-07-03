@@ -970,6 +970,7 @@ export interface Persona {
   avatar_url: string;
   network: number | null;
   network_name: string | null;
+  chat_network_slug: string | null;
   is_public: boolean;
   is_active: boolean;
   order: number;

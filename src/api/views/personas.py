@@ -13,12 +13,13 @@ from api.authentication import CsrfExemptSessionAuthentication
 class PersonaSerializer(serializers.ModelSerializer):
     is_own = serializers.SerializerMethodField()
     network_name = serializers.SerializerMethodField()
+    chat_network_slug = serializers.SerializerMethodField()
 
     class Meta:
         model = Persona
         fields = [
             'id', 'name', 'slug', 'description', 'system_prompt',
-            'avatar_url', 'network', 'network_name',
+            'avatar_url', 'network', 'network_name', 'chat_network_slug',
             'is_public', 'is_active', 'order', 'is_own', 'created_at',
         ]
         read_only_fields = ['id', 'slug', 'is_own', 'created_at']
@@ -29,6 +30,22 @@ class PersonaSerializer(serializers.ModelSerializer):
 
     def get_network_name(self, obj):
         return obj.network.name if obj.network else None
+
+    def get_chat_network_slug(self, obj):
+        """Слаг модели для старта чата: своя модель персоны либо дефолтная текстовая."""
+        net = obj.network
+        if net and net.is_active:
+            return net.slug
+        if not hasattr(self, '_default_slug'):
+            from aitext.models import NeuralNetwork
+            default = (
+                NeuralNetwork.objects
+                .filter(is_active=True, provider='openrouter')
+                .order_by('id')
+                .first()
+            )
+            self._default_slug = default.slug if default else None
+        return self._default_slug
 
 
 class PersonaListCreateView(APIView):

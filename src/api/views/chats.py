@@ -406,6 +406,10 @@ class StreamMessageView(APIView):
             except Project.DoesNotExist:
                 pass
 
+        # 1b. Системный промт чата (персона / кастомный system prompt пользователя)
+        if isinstance(chat.settings, dict) and chat.settings.get('system_prompt'):
+            messages_for_api.append({"role": "system", "content": chat.settings['system_prompt']})
+
         # 2. Network prompt (если есть) + A/B тест промтов
         ab_variant = None
         ab_test_id = None
