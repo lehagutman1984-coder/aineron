@@ -51,7 +51,7 @@ async def pre_checkout(query: PreCheckoutQuery):
 # ─── S4: Stars-подписки (Bot API 8.0) ───
 # Месячный период подписки в секундах — константа Telegram
 STARS_SUBSCRIPTION_PERIOD = 2592000
-# Наценка Stars-тарифа к рублёвой цене (комиссия Telegram, см. PRICING.md риски S4)
+# Наценка Stars-тарифа к рублёвой цене (комиссия Telegram, см. TARIFFS.md)
 STARS_MARKUP = 1.18
 
 

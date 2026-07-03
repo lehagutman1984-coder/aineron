@@ -35,7 +35,7 @@
 32 хендлера: чат со стримингом, изображения/видео/стикеры, голос ASR+TTS, файлы,
 история, /memory (Persistent Memory + RAG), /persona, /projects (Project Spaces),
 /digest, /remind, /poll, inline, группы с орг-биллингом, admin/рассылка, Mini App,
-рублёвый биллинг в копейках (BILLING_MIGRATION_PLAN.md), конкурентные цены (PRICING.md).
+рублёвый биллинг в копейках (BILLING_MIGRATION_PLAN.md), конкурентные цены (TARIFFS.md).
 
 ### Технологическое окно возможностей
 
@@ -141,7 +141,7 @@ tasks / Gemini Scheduled Actions — а в русском Telegram этого н
    повторяющийся промт (пост в канал каждый понедельник).
 4. **Исполнение**: Celery-beat каждую минуту `run_due_ai_tasks()` → на задачу
    `execute_ai_task.delay(task_id)`: web-поиск (Tavily) при флаге → LLM → доставка
-   в Telegram (rich-сообщение). Списание = обычная цена сообщения модели (PRICING.md),
+   в Telegram (rich-сообщение). Списание = обычная цена сообщения модели (TARIFFS.md),
    идемпотентный reference `aitask:{task_id}:{run_iso}`.
 5. **Лимиты**: free — 1 активная задача, платные тарифы — 3/10/30 (Старт/Стандарт+/Про+).
    Дневной cap исполнений, авто-пауза при балансе ниже стоимости запуска (+уведомление
@@ -223,7 +223,7 @@ UserSubscription ↔ stars-подписка), `analytics.py`, BotFather-наст
 
 ### Риски
 Комиссия Telegram на Stars (~30% App Store / меньше через web) — цены Stars-тарифов
-выставить с учётом комиссии, чтобы маржа сходилась с PRICING.md (Stars-тариф допустимо
+выставить с учётом комиссии, чтобы маржа сходилась с TARIFFS.md (Stars-тариф допустимо
 делать на ~15–20% дороже рублёвого — стандартная практика).
 
 ---
