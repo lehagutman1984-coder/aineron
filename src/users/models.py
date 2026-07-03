@@ -16,7 +16,9 @@ class Tariff(models.Model):
         verbose_name='Название тарифа'
     )
     pages_count = models.PositiveIntegerField(
-        verbose_name='Количество звезд'
+        verbose_name='Начисление на баланс, ₽',
+        help_text='Сколько рублей зачисляется на баланс при покупке '
+                  '(legacy-название поля «звёзды»: 1 звезда = 1 ₽)'
     )
     price = models.DecimalField(
         max_digits=10,
@@ -60,13 +62,14 @@ class Tariff(models.Model):
     )
     referral_bonus = models.PositiveIntegerField(
         default=0,
-        verbose_name='Реферальный бонус',
-        help_text='Сколько рублей получит пригласивший пользователь при покупке этого тарифа'
+        verbose_name='Реф. бонус на вывод, ₽',
+        help_text='Сколько рублей на вывод (на карту) получит пригласивший при покупке этого тарифа'
     )
     referral_bonus_stars = models.PositiveIntegerField(
         default=0,
-        verbose_name='Реферальный бонус (звёзд)',
-        help_text='Сколько звёзд получит пригласивший пользователь при покупке этого тарифа'
+        verbose_name='Реф. бонус на баланс, ₽',
+        help_text='Сколько рублей на баланс получит пригласивший при покупке этого тарифа '
+                  '(legacy-название поля «звёзды»: 1 звезда = 1 ₽)'
     )
     balance_grant_kopecks = models.BigIntegerField(
         default=0,

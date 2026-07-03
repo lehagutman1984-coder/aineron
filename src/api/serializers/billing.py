@@ -1,8 +1,15 @@
+from django.utils.html import strip_tags
 from rest_framework import serializers
 from users.models import Tariff, PaymentHistory, PageSaleSettings, UserSubscription
 
 
 class TariffSerializer(serializers.ModelSerializer):
+    # Описания старых тарифов содержали HTML из legacy-шаблонов — отдаём чистый текст
+    description = serializers.SerializerMethodField()
+
+    def get_description(self, obj):
+        return strip_tags(obj.description or '').strip()
+
     class Meta:
         model = Tariff
         fields = [

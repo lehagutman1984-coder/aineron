@@ -348,15 +348,30 @@ function TariffCard({
           Текущий
         </span>
       )}
-      <div>
-        <p className="font-semibold text-[var(--color-text-primary)]">{tariff.display_name}</p>
-        <p className="text-sm text-[var(--color-text-secondary)] mt-0.5">
-          {formatRub(tariff.balance_grant_kopecks)}
-          {tariff.duration_days < 36500 && ` · ${tariff.duration_days} дней`}
-        </p>
+      <p className="font-semibold text-[var(--color-text-primary)]">{tariff.display_name}</p>
+      <div className="flex items-baseline gap-1.5">
+        <span className="text-2xl font-bold text-[var(--color-text-primary)]">
+          {tariff.is_free ? "Бесплатно" : `${parseFloat(tariff.price).toLocaleString("ru-RU")} ₽`}
+        </span>
+        {!tariff.is_free && tariff.duration_days < 36500 && (
+          <span className="text-sm text-[var(--color-text-secondary)]">
+            / {tariff.duration_days} дней
+          </span>
+        )}
       </div>
-      <p className="text-2xl font-bold text-[var(--color-text-primary)]">
-        {tariff.is_free ? "Бесплатно" : `${parseFloat(tariff.price).toLocaleString("ru-RU")} ₽`}
+      <p className="text-sm text-[var(--color-text-primary)]">
+        На баланс: <span className="font-medium">{formatRub(tariff.balance_grant_kopecks)}</span>
+        {(() => {
+          const priceRub = parseFloat(tariff.price);
+          const grantRub = tariff.balance_grant_kopecks / 100;
+          if (tariff.is_free || priceRub <= 0 || grantRub <= priceRub) return null;
+          const pct = Math.round(((grantRub - priceRub) / priceRub) * 100);
+          return (
+            <span className="ml-1.5 text-xs font-medium px-1.5 py-0.5 rounded bg-[var(--color-accent)]/10 text-[var(--color-accent)]">
+              +{pct}% бонус
+            </span>
+          );
+        })()}
       </p>
       {tariff.description && (
         <p className="text-xs leading-relaxed text-[var(--color-text-secondary)]">
