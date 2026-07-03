@@ -35,20 +35,37 @@ class Img2VideoFSM(StatesGroup):
     waiting_photo = State()
 
 
-def _get_img2video_network():
-    """Find best video network that accepts image_url input."""
+def _get_img2video_network(tg_user=None):
+    """Find best video network that accepts image_url input.
+
+    Видео-модель определяется по metadata.output_type == 'video' (как в /models);
+    handle_video здесь не подходит — это флаг «принимает видео-файлы на вход».
+    """
     from aitext.models import NeuralNetwork
-    nets = NeuralNetwork.objects.filter(
-        is_active=True, handle_video=True
-    ).order_by('order')
-    # Prefer Kling / Veo image-to-video models
+    nets = [
+        net for net in NeuralNetwork.objects.filter(
+            provider='fal-ai', is_active=True
+        ).order_by('order')
+        if (net.config_json or {}).get('metadata', {}).get('output_type') == 'video'
+    ]
+    if not nets:
+        return None
+    # Выбранная пользователем видео-модель (через /models)
+    if tg_user is not None and tg_user.default_video_network_id:
+        for net in nets:
+            if net.id == tg_user.default_video_network_id:
+                return net
+    # Явная пометка image-to-video в metadata
     for net in nets:
-        cfg = net.config_json or {}
-        meta = cfg.get('metadata', {})
+        meta = (net.config_json or {}).get('metadata', {})
         if meta.get('supports_image_to_video') or meta.get('image_to_video'):
             return net
-    # Fallback: any video model (may accept image_url field)
-    return nets.first()
+    # Модели, надёжно работающие с image_url через apimart
+    for key in ('kling', 'seedance', 'veo'):
+        for net in nets:
+            if key in (net.model_name or '').lower():
+                return net
+    return nets[0]
 
 
 def _create_video_request(tg_user, network, prompt: str, image_url: str):
@@ -107,7 +124,7 @@ async def cmd_img2video(message: Message, state: FSMContext, tg_user=None):
         )
         return
 
-    network = await get_img2video_network()
+    network = await get_img2video_network(tg_user)
     if not network:
         await message.answer(
             'Нет доступных видео-моделей. Попробуй позже или напиши /models.'
