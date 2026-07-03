@@ -643,6 +643,7 @@ export interface BlogPostDetail extends BlogPost {
 export interface Tariff {
   id: number;
   display_name: string;
+  description: string;
   /** @deprecated используйте balance_grant_kopecks */
   pages_count: number;
   balance_grant_kopecks: number;

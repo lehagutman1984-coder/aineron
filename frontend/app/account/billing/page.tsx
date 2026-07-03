@@ -358,6 +358,11 @@ function TariffCard({
       <p className="text-2xl font-bold text-[var(--color-text-primary)]">
         {tariff.is_free ? "Бесплатно" : `${parseFloat(tariff.price).toLocaleString("ru-RU")} ₽`}
       </p>
+      {tariff.description && (
+        <p className="text-xs leading-relaxed text-[var(--color-text-secondary)]">
+          {tariff.description}
+        </p>
+      )}
       {!tariff.is_free && (
         <button
           onClick={() => onPay(tariff.id)}
@@ -648,6 +653,11 @@ export default function BillingPage() {
       {/* Tariffs */}
       <section>
         <SectionHeader icon={CreditCard} title="Тарифы" />
+        <p className="text-sm text-[var(--color-text-secondary)] mb-4 -mt-2">
+          Тариф — это пополнение баланса с бонусом и подписка на 30 дней.
+          Баланс не сгорает: 30 дней — период продления подписки, неистраченный
+          остаток сохраняется. Все модели доступны на любом тарифе.
+        </p>
         {tariffsLoading && (
           <p className="text-[var(--color-text-secondary)] text-sm">Загрузка...</p>
         )}

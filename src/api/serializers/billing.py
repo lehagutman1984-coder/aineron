@@ -6,8 +6,8 @@ class TariffSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tariff
         fields = [
-            'id', 'display_name', 'pages_count', 'balance_grant_kopecks', 'price',
-            'is_free', 'is_trial', 'duration_days',
+            'id', 'display_name', 'description', 'pages_count', 'balance_grant_kopecks',
+            'price', 'is_free', 'is_trial', 'duration_days',
         ]
 
 
