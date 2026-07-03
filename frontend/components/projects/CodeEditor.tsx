@@ -6,7 +6,9 @@ import { GitCommit, Edit2, Eye, Loader2, X, Maximize2, Minimize2, Plus, Minus } 
 import { javascript } from "@codemirror/lang-javascript";
 import { html } from "@codemirror/lang-html";
 import { css } from "@codemirror/lang-css";
+import { oneDark } from "@codemirror/theme-one-dark";
 import type { Extension } from "@codemirror/state";
+import { useUIStore } from "@/lib/stores/ui";
 
 const CodeMirrorEditor = dynamic(
   async () => {
@@ -69,6 +71,18 @@ export default function CodeEditor({
   const [commitErr, setCommitErr] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [fontSizeIdx, setFontSizeIdx] = useState(2); // default: 15px
+
+  // CodeMirror не наследует цвета страницы — переключаем его тему вручную
+  const appTheme = useUIStore((s) => s.theme);
+  const [systemDark, setSystemDark] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    setSystemDark(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setSystemDark(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  const isDark = appTheme === "dark" || (appTheme === "system" && systemDark);
 
   const dirty = editMode && content !== initialContent;
   const lang = detectLanguage(filePath);
@@ -188,7 +202,7 @@ export default function CodeEditor({
         onChange={editMode ? setContent : undefined}
         readOnly={!editMode}
         height="100%"
-        theme="light"
+        theme={isDark ? oneDark : "light"}
         extensions={getLanguageExtensions(lang)}
         basicSetup={{
           lineNumbers: true,

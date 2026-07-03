@@ -79,6 +79,19 @@
   --hover:       rgba(26, 26, 26, 0.06);
   --text:        #1A1A1A;
   --input-bg:    #FFFFFF;
+
+  /* Aliases — старые имена, на которые ссылаются отдельные страницы.
+     Указывают на theme-switched переменные, поэтому сами адаптируются
+     к тёмной теме и не требуют дублирования в dark-блоке. */
+  --bg-primary:           var(--background-primary);
+  --surface:              var(--card-bg);
+  --sidebar:              var(--card-bg);
+  --muted:                var(--text-secondary);
+  --success:              #1abc9c;
+  --danger:               #e74c3c;
+  --color-bg:             var(--background-primary);
+  --color-text-primary:   var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
 }
 
 /* ===== Dark theme variables ===== */
@@ -109,6 +122,16 @@ html[data-theme="dark"] {
   --hover:       rgba(255, 255, 255, 0.06);
   --text:        #EDE8E3;
   --input-bg:    #272320;
+
+  /* @theme surface-токены (в @theme только светлые значения) */
+  --color-background:    #1C1917;
+  --color-foreground:    #EDE8E3;
+  --color-muted:         rgba(237, 232, 227, 0.58);
+  --color-subtle:        rgba(237, 232, 227, 0.4);
+  --color-surface:       rgba(255, 255, 255, 0.06);
+  --color-surface-hover: rgba(255, 255, 255, 0.10);
+  --color-border:        rgba(255, 255, 255, 0.10);
+  --color-border-subtle: rgba(255, 255, 255, 0.06);
 }
 
 *,
@@ -532,3 +555,18 @@ html[data-theme="dark"] .divide-\[rgba\(13\,13\,13\,0\.08\)\] > :not(:last-child
 html[data-theme="dark"] .ring-\[rgba\(13\,13\,13\,0\.25\)\] { --tw-ring-color: rgba(255, 255, 255, 0.25); }
 html[data-theme="dark"] .\[\&_pre\]\:bg-\[\#f5f5f5\] pre { background-color: #272320; }
 html[data-theme="dark"] .\[\&_code\]\:bg-\[\#f5f5f5\] code { background-color: rgba(255, 255, 255, 0.10); }
+/* rgba(0,0,0,α) — текст/границы (FILE/EDIT-блоки чата и т.п.); тени не трогаем */
+html[data-theme="dark"] .text-\[rgba\(0\,0\,0\,0\.30\)\] { color: rgba(236, 236, 236, 0.30); }
+html[data-theme="dark"] .text-\[rgba\(0\,0\,0\,0\.35\)\] { color: rgba(236, 236, 236, 0.40); }
+html[data-theme="dark"] .text-\[rgba\(0\,0\,0\,0\.38\)\] { color: rgba(236, 236, 236, 0.40); }
+html[data-theme="dark"] .text-\[rgba\(0\,0\,0\,0\.75\)\] { color: rgba(255, 255, 255, 0.82); }
+html[data-theme="dark"] .hover\:text-\[rgba\(0\,0\,0\,0\.65\)\]:hover { color: rgba(255, 255, 255, 0.80); }
+html[data-theme="dark"] .border-\[rgba\(0\,0\,0\,0\.10\)\] { border-color: rgba(255, 255, 255, 0.12); }
+html[data-theme="dark"] .hover\:bg-\[rgba\(0\,0\,0\,0\.06\)\]:hover { background-color: rgba(255, 255, 255, 0.08); }
+/* Diff-панели «Было/Стало»: светлые 0.05-тона не видны на тёмном — усиливаем */
+html[data-theme="dark"] .bg-\[rgba\(255\,60\,60\,0\.05\)\] { background-color: rgba(255, 60, 60, 0.12); }
+html[data-theme="dark"] .bg-\[rgba\(0\,200\,100\,0\.05\)\] { background-color: rgba(0, 200, 100, 0.10); }
+html[data-theme="dark"] .border-\[rgba\(255\,60\,60\,0\.12\)\] { border-color: rgba(255, 60, 60, 0.25); }
+html[data-theme="dark"] .border-\[rgba\(0\,200\,100\,0\.10\)\] { border-color: rgba(0, 200, 100, 0.18); }
+html[data-theme="dark"] .border-\[rgba\(0\,200\,100\,0\.12\)\] { border-color: rgba(0, 200, 100, 0.20); }
+html[data-theme="dark"] .border-\[rgba\(0\,200\,100\,0\.15\)\] { border-color: rgba(0, 200, 100, 0.22); }
