@@ -1,23 +1,28 @@
-﻿import type { Metadata } from "next";
+/* eslint-disable react/jsx-key -- ячейки таблиц/данные рендерятся внутри keyed .map() в DocKit */
+import type { Metadata } from "next";
 import Link from "next/link";
-import { Code2, ExternalLink, Play } from "lucide-react";
+import { Play, ExternalLink, Download } from "lucide-react";
+import { DocLayout, type DocGroup } from "@/components/docs/DocLayout";
+import {
+  DocSection, Lead, P, H3, IC, Kbd, A, UL, LI, Steps, Step, Callout,
+  FeatureGrid, FeatureCard, DataTable, InfoCard, Method, Path,
+} from "@/components/docs/DocKit";
 import { CodeTabs, StandaloneCodeBlock } from "@/components/docs/CodeTabs";
 import type { CodeTabItem } from "@/components/docs/CodeTabs";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "API для разработчиков",
+  title: "API и интеграции для разработчиков",
   description:
-    "OpenAI-совместимый API для доступа к GPT-4o, Claude, Gemini и генерации изображений без VPN. Документация, примеры кода и инструкции.",
+    "OpenAI- и Anthropic-совместимый API: GPT-5, Claude, Gemini, генерация изображений и видео, embeddings, аудио, batch. Интеграция с Cursor, Cline, Continue. Без VPN, из России.",
 };
 
-// ── Code snippets ─────────────────────────────────────────────────────────────
+// ── Snippets ──────────────────────────────────────────────────────────────────
 
 const QUICKSTART: CodeTabItem[] = [
   {
-    key: "curl",
-    label: "curl",
+    key: "curl", label: "curl",
     code: `curl https://aineron.ru/api/v1/chat/completions \\
   -H "Authorization: Bearer ak_ВАШ_КЛЮЧ" \\
   -H "Content-Type: application/json" \\
@@ -29,8 +34,7 @@ const QUICKSTART: CodeTabItem[] = [
   }'`,
   },
   {
-    key: "python",
-    label: "Python",
+    key: "python", label: "Python",
     code: [
       `from openai import OpenAI
 
@@ -47,7 +51,7 @@ response = client.chat.completions.create(
 )
 
 print(response.choices[0].message.content)`,
-      `# Стриминг
+      `# Стриминг ответа по мере генерации
 for chunk in client.chat.completions.create(
     model="gpt-4o",
     messages=[{"role": "user", "content": "Расскажи анекдот"}],
@@ -58,8 +62,7 @@ for chunk in client.chat.completions.create(
     ],
   },
   {
-    key: "nodejs",
-    label: "Node.js",
+    key: "nodejs", label: "Node.js",
     code: [
       `import OpenAI from "openai";
 
@@ -89,8 +92,7 @@ for await (const chunk of stream) {
     ],
   },
   {
-    key: "php",
-    label: "PHP",
+    key: "php", label: "PHP",
     code: `<?php
 $curl = curl_init();
 curl_setopt_array($curl, [
@@ -104,14 +106,12 @@ curl_setopt_array($curl, [
     CURLOPT_POSTFIELDS => json_encode([
         'model'    => 'gpt-4o',
         'messages' => [
-            ['role' => 'user', 'content' => 'Привет! Напиши Hello World на Python']
+            ['role' => 'user', 'content' => 'Привет!']
         ],
     ]),
 ]);
-
 $response = curl_exec($curl);
 curl_close($curl);
-
 $data = json_decode($response, true);
 echo $data['choices'][0]['message']['content'];`,
   },
@@ -119,8 +119,7 @@ echo $data['choices'][0]['message']['content'];`,
 
 const ANTHROPIC: CodeTabItem[] = [
   {
-    key: "python",
-    label: "Python",
+    key: "python", label: "Python",
     code: `import anthropic
 
 client = anthropic.Anthropic(
@@ -129,7 +128,7 @@ client = anthropic.Anthropic(
 )
 
 message = client.messages.create(
-    model="claude-3-5-sonnet-20241022",
+    model="claude-sonnet-4-6",
     max_tokens=1024,
     messages=[
         {"role": "user", "content": "Объясни теорему Пифагора"}
@@ -139,8 +138,7 @@ message = client.messages.create(
 print(message.content[0].text)`,
   },
   {
-    key: "nodejs",
-    label: "Node.js",
+    key: "nodejs", label: "Node.js",
     code: `import Anthropic from "@anthropic-ai/sdk";
 
 const client = new Anthropic({
@@ -149,11 +147,9 @@ const client = new Anthropic({
 });
 
 const message = await client.messages.create({
-  model: "claude-3-5-sonnet-20241022",
+  model: "claude-sonnet-4-6",
   max_tokens: 1024,
-  messages: [
-    { role: "user", content: "Объясни теорему Пифагора" }
-  ],
+  messages: [{ role: "user", content: "Объясни теорему Пифагора" }],
 });
 
 console.log(message.content[0].text);`,
@@ -162,21 +158,19 @@ console.log(message.content[0].text);`,
 
 const IMAGES: CodeTabItem[] = [
   {
-    key: "curl",
-    label: "curl",
+    key: "curl", label: "curl",
     code: `curl https://aineron.ru/api/v1/images/generations \\
   -H "Authorization: Bearer ak_ВАШ_КЛЮЧ" \\
   -H "Content-Type: application/json" \\
   -d '{
-    "model": "flux-1-schnell",
+    "model": "flux-2-pro",
     "prompt": "Горный пейзаж на закате, фотореализм, 8K",
     "n": 1,
     "size": "1024x1024"
   }'`,
   },
   {
-    key: "python",
-    label: "Python",
+    key: "python", label: "Python",
     code: `from openai import OpenAI
 
 client = OpenAI(
@@ -185,7 +179,7 @@ client = OpenAI(
 )
 
 image = client.images.generate(
-    model="flux-1-schnell",
+    model="flux-2-pro",
     prompt="Горный пейзаж на закате, фотореализм, 8K",
     n=1,
     size="1024x1024",
@@ -195,6 +189,25 @@ print(image.data[0].url)`,
   },
 ];
 
+const EMBEDDINGS = `curl https://aineron.ru/api/v1/embeddings \\
+  -H "Authorization: Bearer ak_ВАШ_КЛЮЧ" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "model": "text-embedding-3-small",
+    "input": "Текст для векторизации"
+  }'`;
+
+const AUDIO_TTS = `curl https://aineron.ru/api/v1/audio/speech \\
+  -H "Authorization: Bearer ak_ВАШ_КЛЮЧ" \\
+  -H "Content-Type: application/json" \\
+  -d '{"model": "tts-1", "voice": "alloy", "input": "Привет, это синтез речи"}' \\
+  --output speech.mp3`;
+
+const AUDIO_ASR = `curl https://aineron.ru/api/v1/audio/transcriptions \\
+  -H "Authorization: Bearer ak_ВАШ_КЛЮЧ" \\
+  -F model="whisper-1" \\
+  -F file="@audio.mp3"`;
+
 const ERROR_BODY = `{
   "error": {
     "message": "Недостаточно средств. Нужно 3 ₽, у вас 1,50 ₽.",
@@ -203,287 +216,549 @@ const ERROR_BODY = `{
   }
 }`;
 
-// ── Sub-components (server-renderable) ────────────────────────────────────────
+const CLINE_SETTINGS = `API Base URL:  https://aineron.ru/api/v1
+API Key:       ak_ВАШ_КЛЮЧ
+Model ID:      gpt-4o`;
 
-function InfoCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white p-4">
-      <p className="text-[13px] font-medium uppercase tracking-wider text-[rgba(13,13,13,0.35)]">
-        {label}
-      </p>
-      <p className="mt-1 font-mono text-[16px] font-semibold text-[#1A1A1A]">{value}</p>
-    </div>
-  );
-}
+const CONTINUE_CONFIG = `{
+  "models": [
+    {
+      "title": "GPT-4o (aineron.ru)",
+      "provider": "openai",
+      "model": "gpt-4o",
+      "apiBase": "https://aineron.ru/api/v1",
+      "apiKey": "ak_ВАШ_КЛЮЧ"
+    },
+    {
+      "title": "Claude Sonnet (aineron.ru)",
+      "provider": "openai",
+      "model": "claude-sonnet-4-6",
+      "apiBase": "https://aineron.ru/api/v1",
+      "apiKey": "ak_ВАШ_КЛЮЧ"
+    }
+  ],
+  "tabAutocompleteModel": {
+    "title": "GPT-4o Mini (aineron.ru)",
+    "provider": "openai",
+    "model": "gpt-4o-mini",
+    "apiBase": "https://aineron.ru/api/v1",
+    "apiKey": "ak_ВАШ_КЛЮЧ"
+  }
+}`;
 
-function Section({
-  id,
-  title,
-  children,
-}: {
-  id?: string;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section
-      id={id}
-      className="rounded-[16px] border border-[rgba(13,13,13,0.10)] bg-white p-6 shadow-sm"
-    >
-      <h2 className="mb-4 text-[18px] font-semibold text-[#1A1A1A]">{title}</h2>
-      {children}
-    </section>
-  );
-}
+const CHECK_MODELS = `curl https://aineron.ru/api/v1/models \\
+  -H "Authorization: Bearer ak_ВАШ_КЛЮЧ"`;
 
-function MethodBadge({ method }: { method: "GET" | "POST" | "DELETE" }) {
-  const cls = {
-    GET: "bg-[rgba(22,163,74,0.10)] text-[#16a34a]",
-    POST: "bg-[rgba(217,119,87,0.10)] text-[#D97757]",
-    DELETE: "bg-[rgba(220,38,38,0.10)] text-[#dc2626]",
-  }[method];
-  return (
-    <span
-      className={`inline-flex items-center rounded-[5px] px-2 py-0.5 font-mono text-[13px] font-semibold ${cls}`}
-    >
-      {method}
-    </span>
-  );
-}
+// ── Groups ────────────────────────────────────────────────────────────────────
 
-const ENDPOINTS: { method: "GET" | "POST" | "DELETE"; path: string; desc: string }[] = [
-  { method: "POST", path: "/api/v1/chat/completions", desc: "Chat completions (OpenAI-совместимый, stream)" },
-  { method: "POST", path: "/api/v1/messages", desc: "Messages API (Anthropic-совместимый)" },
-  { method: "GET", path: "/api/v1/models", desc: "Список доступных моделей" },
-  { method: "POST", path: "/api/v1/images/generations", desc: "Генерация изображений и видео" },
-  { method: "GET", path: "/api/v1/keys/", desc: "Список API-ключей" },
-  { method: "POST", path: "/api/v1/keys/", desc: "Создать API-ключ" },
-  { method: "DELETE", path: "/api/v1/keys/{id}/", desc: "Удалить API-ключ" },
-  { method: "GET", path: "/api/v1/schema/", desc: "OpenAPI схема (YAML/JSON)" },
-  { method: "GET", path: "/api/v1/docs/", desc: "Swagger UI" },
+const GROUPS: DocGroup[] = [
+  {
+    title: "Введение",
+    items: [
+      {
+        id: "overview",
+        label: "Обзор API",
+        content: (
+          <>
+            <DocSection title="OpenAI-совместимый API">
+              <Lead>
+                aineron предоставляет доступ к GPT-5, Claude, Gemini, Grok, DeepSeek,
+                генерации изображений и видео через <b>стандартный OpenAI-совместимый API</b> —
+                без VPN и зарубежных карт, напрямую из России. Если ваш код уже работает
+                с OpenAI SDK, достаточно сменить <IC>base_url</IC> и ключ.
+              </Lead>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <InfoCard label="Base URL" value="aineron.ru/api/v1" />
+                <InfoCard label="Аутентификация" value="Bearer ak_..." />
+                <InfoCard label="Формат" value="OpenAI + Anthropic" />
+                <InfoCard label="Биллинг" value="Рубли / токены" />
+              </div>
+              <P>
+                Поддерживаются два формата: <b>OpenAI</b> (<IC>/chat/completions</IC>,{" "}
+                <IC>/images/generations</IC>, <IC>/embeddings</IC>, <IC>/audio/*</IC>) и{" "}
+                <b>Anthropic</b> (<IC>/messages</IC>). Стриминг, батч-обработка, вебхуки —
+                на месте.
+              </P>
+            </DocSection>
+            <DocSection title="С чего начать">
+              <UL>
+                <LI><A href="#quickstart">Быстрый старт</A> — создать ключ и сделать первый запрос.</LI>
+                <LI><A href="#auth">Аутентификация</A> — как передавать ключ.</LI>
+                <LI><A href="#billing">Биллинг и лимиты</A> — сколько стоит и какие ограничения.</LI>
+                <LI><A href="#ide-cursor">Интеграция с IDE</A> — Cursor, Cline, Continue.</LI>
+              </UL>
+              <div className="flex flex-wrap gap-3 pt-1">
+                <Link href="/api-docs/playground/" className="inline-flex items-center gap-2 rounded-[10px] bg-[#D97757] px-5 py-2.5 text-[15px] font-medium text-white transition-colors hover:bg-[#C4623E]">
+                  <Play size={14} /> Playground
+                </Link>
+                <a href="/api/v1/docs/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-[10px] bg-[#1A1A1A] px-5 py-2.5 text-[15px] font-medium text-white dark:bg-[#EDE8E3] dark:text-[#1A1A1A]">
+                  Swagger UI <ExternalLink size={14} />
+                </a>
+                <Link href="/account/keys/" className="inline-flex items-center gap-2 rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-white px-5 py-2.5 text-[15px] font-medium text-[rgba(13,13,13,0.7)] transition-colors hover:bg-[rgba(13,13,13,0.04)] dark:border-[rgba(255,255,255,0.14)] dark:bg-[#211E1B] dark:text-[rgba(236,236,236,0.7)]">
+                  Создать API-ключ
+                </Link>
+              </div>
+            </DocSection>
+          </>
+        ),
+      },
+      {
+        id: "quickstart",
+        label: "Быстрый старт",
+        content: (
+          <DocSection title="Быстрый старт" intro="Три шага до первого ответа от нейросети.">
+            <Steps>
+              <Step n={1}>
+                <b>Создайте API-ключ</b> в кабинете — раздел{" "}
+                <A href="/account/keys/">API-ключи</A>. Ключ вида <IC>ak_...</IC>{" "}
+                показывается один раз, сохраните сразу.
+              </Step>
+              <Step n={2}>
+                <b>Укажите наш base_url</b> <IC>https://aineron.ru/api/v1</IC> вместо{" "}
+                <IC>api.openai.com</IC> в вашем SDK или HTTP-клиенте.
+              </Step>
+              <Step n={3}>
+                <b>Пополните баланс</b> и делайте запросы — списание по токенам автоматически.
+              </Step>
+            </Steps>
+            <div className="pt-2">
+              <CodeTabs tabs={QUICKSTART} />
+            </div>
+          </DocSection>
+        ),
+      },
+      {
+        id: "auth",
+        label: "Аутентификация",
+        content: (
+          <DocSection title="Аутентификация" intro="Все запросы к API требуют ключ в заголовке Authorization.">
+            <StandaloneCodeBlock code={`Authorization: Bearer ak_ВАШ_КЛЮЧ`} />
+            <UL>
+              <LI>Ключи создаются и удаляются в <A href="/account/keys/">кабинете</A>; можно завести несколько (например, отдельный для каждого инструмента).</LI>
+              <LI>Ключ привязан к вашему аккаунту и общему балансу.</LI>
+              <LI>Для Mini App и внутренних интеграций поддерживаются JWT-токены (выдаются при авторизации через Telegram).</LI>
+            </UL>
+            <Callout type="warn" title="Не публикуйте ключ">
+              Не храните <IC>ak_...</IC> в публичных репозиториях и клиентском коде браузера.
+              Если ключ скомпрометирован — удалите его в кабинете и создайте новый.
+            </Callout>
+          </DocSection>
+        ),
+      },
+      {
+        id: "billing",
+        label: "Биллинг и лимиты",
+        content: (
+          <DocSection title="Биллинг и лимиты" intro="Оплата в рублях, списание по токенам. Прозрачно и предсказуемо.">
+            <UL>
+              <LI>Стоимость зависит от модели и объёма (входные + выходные токены).</LI>
+              <LI>Баланс и траты видны в <A href="/account/analytics/">аналитике кабинета</A>.</LI>
+              <LI>Rate limit: до <b>120 запросов в минуту</b> на ключ (ошибка <IC>429</IC> при превышении — сделайте паузу/повтор).</LI>
+              <LI>При нехватке средств API вернёт <IC>402 insufficient_quota</IC>.</LI>
+            </UL>
+            <Callout type="tip">
+              Для автодополнения в IDE используйте быструю дешёвую модель (<IC>gpt-4o-mini</IC>),
+              а для сложных задач — мощную. Так вы экономите и снижаете задержку.
+            </Callout>
+          </DocSection>
+        ),
+      },
+      {
+        id: "errors",
+        label: "Коды ошибок",
+        content: (
+          <DocSection title="Коды ошибок" intro="Ошибки возвращаются в OpenAI-совместимом формате.">
+            <StandaloneCodeBlock code={ERROR_BODY} />
+            <div className="pt-2">
+              <DataTable
+                head={["HTTP", "type", "Причина"]}
+                rows={[
+                  ["401", <IC>authentication_error</IC>, "Неверный или отсутствующий ключ"],
+                  ["402", <IC>insufficient_quota</IC>, "Недостаточно средств на балансе"],
+                  ["403", <IC>permission_error</IC>, "Нет доступа к ресурсу"],
+                  ["429", <IC>rate_limit_exceeded</IC>, "Превышен лимит (120/мин)"],
+                  ["400", <IC>invalid_request_error</IC>, "Неверные параметры запроса"],
+                ]}
+              />
+            </div>
+          </DocSection>
+        ),
+      },
+    ],
+  },
+  {
+    title: "Эндпоинты",
+    items: [
+      {
+        id: "chat",
+        label: "Chat Completions",
+        content: (
+          <DocSection title="Chat Completions" intro="Основной эндпоинт для текстовых моделей. Полностью совместим с OpenAI, включая стриминг.">
+            <p className="flex flex-wrap items-center gap-2 text-[15px]">
+              <Method>POST</Method> <Path>/api/v1/chat/completions</Path>
+            </p>
+            <CodeTabs tabs={QUICKSTART} />
+            <H3>Популярные модели</H3>
+            <DataTable
+              head={["model", "Назначение"]}
+              rows={[
+                [<IC>gpt-4o</IC>, "Универсальная, хорошо следует инструкциям"],
+                [<IC>gpt-5</IC>, "Максимум качества и рассуждений"],
+                [<IC>gpt-4o-mini</IC>, "Быстрая и дешёвая, для автодополнения"],
+                [<IC>claude-sonnet-4-6</IC>, "Лучшая для кода и длинных файлов"],
+                [<IC>claude-opus-4-8</IC>, "Топ для сложных задач"],
+                [<IC>gemini-2.5-pro</IC>, "Большой контекст, мультимодальность"],
+                [<IC>deepseek-v3</IC>, "Очень дёшево, хорошее качество"],
+              ]}
+            />
+            <Callout type="info">
+              Полный актуальный список — запросом <IC>GET /api/v1/models</IC> или в{" "}
+              <A href="/models/">каталоге</A>.
+            </Callout>
+          </DocSection>
+        ),
+      },
+      {
+        id: "messages",
+        label: "Messages (Anthropic)",
+        content: (
+          <DocSection title="Messages API (Anthropic-совместимый)" intro="Если вы используете официальный Anthropic SDK — просто укажите наш base_url.">
+            <p className="flex flex-wrap items-center gap-2 text-[15px]">
+              <Method>POST</Method> <Path>/api/v1/messages</Path>
+            </p>
+            <CodeTabs tabs={ANTHROPIC} />
+          </DocSection>
+        ),
+      },
+      {
+        id: "models",
+        label: "Модели и каталог",
+        content: (
+          <DocSection title="Список моделей" intro="Получить актуальный список доступных моделей.">
+            <p className="flex flex-wrap items-center gap-2 text-[15px]">
+              <Method>GET</Method> <Path>/api/v1/models</Path>
+            </p>
+            <StandaloneCodeBlock code={CHECK_MODELS} />
+            <P>Также доступен публичный каталог с категориями и ценами:</P>
+            <UL>
+              <LI><Method>GET</Method> <Path>/api/v1/catalog/categories/</Path> — категории</LI>
+              <LI><Method>GET</Method> <Path>/api/v1/catalog/networks/</Path> — модели с ценами</LI>
+              <LI><Method>GET</Method> <Path>/api/v1/catalog/networks/{"{slug}"}/</Path> — детали модели</LI>
+            </UL>
+          </DocSection>
+        ),
+      },
+      {
+        id: "images",
+        label: "Изображения и видео",
+        content: (
+          <DocSection title="Генерация изображений и видео" intro="Через стандартный OpenAI Images API. Видео генерируется асинхронно.">
+            <p className="flex flex-wrap items-center gap-2 text-[15px]">
+              <Method>POST</Method> <Path>/api/v1/images/generations</Path>
+            </p>
+            <CodeTabs tabs={IMAGES} />
+            <UL>
+              <LI><Method>POST</Method> <Path>/api/v1/images/enhance-prompt/</Path> — усилить промпт</LI>
+              <LI><Method>GET</Method> <Path>/api/v1/generations/{"{id}"}/progress/</Path> — прогресс генерации (SSE)</LI>
+              <LI><Method>POST</Method> <Path>/api/v1/generations/{"{id}"}/upscale/</Path> — апскейл; <IC>/variations/</IC>, <IC>/remove-background/</IC></LI>
+            </UL>
+            <Callout type="info">
+              Видео-модели (Sora 2, Veo 3.1, Kling) работают через тот же интерфейс, но результат
+              готовится 5–15 минут — опрашивайте статус генерации.
+            </Callout>
+          </DocSection>
+        ),
+      },
+      {
+        id: "embeddings",
+        label: "Embeddings",
+        content: (
+          <DocSection title="Embeddings" intro="Векторные представления текста для поиска и RAG.">
+            <p className="flex flex-wrap items-center gap-2 text-[15px]">
+              <Method>POST</Method> <Path>/api/v1/embeddings</Path>
+            </p>
+            <StandaloneCodeBlock code={EMBEDDINGS} />
+          </DocSection>
+        ),
+      },
+      {
+        id: "audio",
+        label: "Аудио (TTS / ASR)",
+        content: (
+          <DocSection title="Аудио: синтез и распознавание речи">
+            <H3>Синтез речи (TTS)</H3>
+            <p className="mb-2 flex flex-wrap items-center gap-2 text-[15px]">
+              <Method>POST</Method> <Path>/api/v1/audio/speech</Path>
+            </p>
+            <StandaloneCodeBlock code={AUDIO_TTS} />
+            <H3>Распознавание речи (ASR / Whisper)</H3>
+            <p className="mb-2 flex flex-wrap items-center gap-2 text-[15px]">
+              <Method>POST</Method> <Path>/api/v1/audio/transcriptions</Path>
+            </p>
+            <StandaloneCodeBlock code={AUDIO_ASR} />
+          </DocSection>
+        ),
+      },
+      {
+        id: "batch",
+        label: "Batch API",
+        content: (
+          <DocSection title="Batch API" intro="Пакетная асинхронная обработка большого числа запросов.">
+            <UL>
+              <LI><Method>POST</Method> <Path>/api/v1/batches/</Path> — создать пакет</LI>
+              <LI><Method>GET</Method> <Path>/api/v1/batches/{"{id}"}/</Path> — статус</LI>
+              <LI><Method>GET</Method> <Path>/api/v1/batches/{"{id}"}/results/</Path> — результаты</LI>
+              <LI><Method>POST</Method> <Path>/api/v1/batches/{"{id}"}/cancel/</Path> — отменить</LI>
+            </UL>
+            <P>Подходит для массовой классификации, разметки, генерации — без ручного контроля rate limit.</P>
+          </DocSection>
+        ),
+      },
+    ],
+  },
+  {
+    title: "Ресурсы платформы",
+    items: [
+      {
+        id: "res-chats",
+        label: "Чаты и проекты",
+        content: (
+          <DocSection title="Чаты, проекты, файлы (API)" intro="Веб-функции доступны и программно — можно строить свои интерфейсы поверх платформы.">
+            <DataTable
+              head={["Метод", "Путь", "Назначение"]}
+              rows={[
+                [<Method>GET</Method>, <Path>/api/v1/chats/</Path>, "Список чатов"],
+                [<Method>POST</Method>, <Path>/api/v1/chats/</Path>, "Создать чат + сообщение"],
+                [<Method>POST</Method>, <Path>/api/v1/chats/{"{id}"}/messages/stream/</Path>, "Стриминг ответа (SSE)"],
+                [<Method>GET</Method>, <Path>/api/v1/chats/search/</Path>, "Поиск по истории (слова + смысл)"],
+                [<Method>GET</Method>, <Path>/api/v1/projects/</Path>, "Проекты и база знаний"],
+                [<Method>POST</Method>, <Path>/api/v1/projects/{"{id}"}/files/</Path>, "Загрузить файл в базу знаний"],
+                [<Method>GET</Method>, <Path>/api/v1/projects/{"{id}"}/kb/stats/</Path>, "Статус индексации базы знаний"],
+              ]}
+            />
+          </DocSection>
+        ),
+      },
+      {
+        id: "res-agent",
+        label: "Память, задачи, агент",
+        content: (
+          <DocSection title="Память, AI-задачи и Agent Mode (API)">
+            <DataTable
+              head={["Метод", "Путь", "Назначение"]}
+              rows={[
+                [<Method>GET</Method>, <Path>/api/v1/memory/</Path>, "Факты памяти (фильтр по скоупу)"],
+                [<Method>POST</Method>, <Path>/api/v1/memory/quick-save/</Path>, "Сохранить факт"],
+                [<Method>GET</Method>, <Path>/api/v1/orgs/{"{id}"}/memory/</Path>, "Общая память организации"],
+                [<Method>GET</Method>, <Path>/api/v1/tasks/</Path>, "AI-задачи по расписанию"],
+                [<Method>POST</Method>, <Path>/api/v1/tasks/{"{id}"}/run/</Path>, "Запустить задачу сейчас"],
+                [<Method>POST</Method>, <Path>/api/v1/agent/</Path>, "Запустить Agent Mode"],
+                [<Method>GET</Method>, <Path>/api/v1/agent/{"{id}"}/</Path>, "Статус и результат агента"],
+              ]}
+            />
+          </DocSection>
+        ),
+      },
+      {
+        id: "res-research",
+        label: "Deep Research API",
+        content: (
+          <DocSection title="Deep Research (API)" intro="Запуск исследования и опрос статуса из вашего кода.">
+            <DataTable
+              head={["Метод", "Путь", "Назначение"]}
+              rows={[
+                [<Method>POST</Method>, <Path>/api/v1/chats/{"{id}"}/research/</Path>, "Запустить исследование"],
+                [<Method>GET</Method>, <Path>/api/v1/research/{"{id}"}/</Path>, "Статус, шаги, отчёт"],
+                [<Method>POST</Method>, <Path>/api/v1/research/{"{id}"}/save/</Path>, "Сохранить отчёт в базу знаний"],
+              ]}
+            />
+          </DocSection>
+        ),
+      },
+      {
+        id: "res-webhooks",
+        label: "Webhooks, usage, audit",
+        content: (
+          <DocSection title="Вебхуки и наблюдаемость">
+            <H3>Исходящие вебхуки</H3>
+            <P>Получайте события платформы на свой URL (с HMAC-подписью).</P>
+            <UL>
+              <LI><Method>POST</Method> <Path>/api/v1/webhooks/</Path> — создать вебхук</LI>
+              <LI><Method>POST</Method> <Path>/api/v1/webhooks/{"{id}"}/test/</Path> — тестовое событие</LI>
+            </UL>
+            <H3>Использование и аудит</H3>
+            <UL>
+              <LI><Method>GET</Method> <Path>/api/v1/usage/</Path> — статистика трат</LI>
+              <LI><Method>GET</Method> <Path>/api/v1/audit/</Path> — журнал действий</LI>
+              <LI><Method>GET</Method> <Path>/api/v1/status/</Path> — статус сервиса</LI>
+            </UL>
+          </DocSection>
+        ),
+      },
+    ],
+  },
+  {
+    title: "Интеграция с IDE",
+    items: [
+      {
+        id: "ide-cursor",
+        label: "Cursor",
+        content: (
+          <DocSection title="Cursor" intro="AI-редактор на базе VS Code. Поддерживает кастомные OpenAI-провайдеры с версии 0.40.">
+            <Steps>
+              <Step n={1}>
+                <Kbd>Ctrl+Shift+J</Kbd> (или <Kbd>Cmd+Shift+J</Kbd>) → вкладка <b>Models</b> → <b>Add Model</b>.
+              </Step>
+              <Step n={2}>
+                В разделе <b>OpenAI API Key</b> включите <b>Override OpenAI Base URL</b> и введите{" "}
+                <IC>https://aineron.ru/api/v1</IC>. В поле <b>API Key</b> — ваш <IC>ak_...</IC>.
+              </Step>
+              <Step n={3}>
+                В <b>Model Name</b> укажите модель, например <IC>gpt-4o</IC> или{" "}
+                <IC>claude-sonnet-4-6</IC>. Список — запросом:
+                <div className="mt-3"><StandaloneCodeBlock code={CHECK_MODELS} /></div>
+              </Step>
+              <Step n={4}>
+                <b>Save</b> → выберите модель в правом нижнем углу → чат <Kbd>Ctrl+L</Kbd>. Готово.
+              </Step>
+            </Steps>
+            <Callout type="info">
+              При нехватке средств автодополнение временно отключится — пополните баланс в кабинете.
+            </Callout>
+          </DocSection>
+        ),
+      },
+      {
+        id: "ide-cline",
+        label: "Cline",
+        content: (
+          <DocSection title="Cline" intro="Агент-расширение VS Code: сам создаёт и редактирует файлы, выполняет команды.">
+            <Steps>
+              <Step n={1}>Установите <b>Cline</b> из маркетплейса VS Code.</Step>
+              <Step n={2}>
+                Настройки Cline → <b>API Provider</b> → <b>OpenAI Compatible</b>. Заполните:
+                <div className="mt-3"><StandaloneCodeBlock code={CLINE_SETTINGS} /></div>
+              </Step>
+              <Step n={3}>
+                Рекомендованные модели для агентских задач: <IC>claude-sonnet-4-6</IC> (лучшая для кода),{" "}
+                <IC>gpt-4o</IC>, <IC>claude-opus-4-8</IC>.
+              </Step>
+              <Step n={4}>Опишите задачу на русском или английском. Cline спросит разрешение перед каждым изменением файла.</Step>
+            </Steps>
+            <Callout type="warn">
+              Агентские сессии читают контекст файлов и расходуют больше токенов, чем обычный чат.
+              Следите за балансом.
+            </Callout>
+          </DocSection>
+        ),
+      },
+      {
+        id: "ide-continue",
+        label: "Continue",
+        content: (
+          <DocSection title="Continue" intro="Открытый AI-ассистент для VS Code и JetBrains. Конфигурируется JSON-файлом.">
+            <Steps>
+              <Step n={1}>
+                Установите <b>Continue</b>, откройте <IC>~/.continue/config.json</IC> (команда{" "}
+                <b>Continue: Open Config</b>).
+              </Step>
+              <Step n={2}>
+                Добавьте блок <IC>models</IC>:
+                <div className="mt-3"><StandaloneCodeBlock code={CONTINUE_CONFIG} /></div>
+              </Step>
+              <Step n={3}>Сохраните — Continue применит конфигурацию. Выберите модель в выпадающем меню чата.</Step>
+            </Steps>
+            <H3>Горячие клавиши</H3>
+            <DataTable
+              head={["Сочетание", "Действие"]}
+              rows={[
+                [<Kbd>Ctrl+L</Kbd>, "Открыть чат / добавить выделение в контекст"],
+                [<Kbd>Ctrl+I</Kbd>, "Редактировать выделенный код"],
+                [<Kbd>Tab</Kbd>, "Принять автодополнение"],
+                [<Kbd>Ctrl+Shift+R</Kbd>, "Выбрать другую модель"],
+              ]}
+            />
+          </DocSection>
+        ),
+      },
+    ],
+  },
+  {
+    title: "Ещё",
+    items: [
+      {
+        id: "telegram",
+        label: "Telegram-интеграция",
+        content: (
+          <DocSection title="Telegram (для интеграций)" intro="Эндпоинты для привязки аккаунта и авторизации Mini App.">
+            <UL>
+              <LI><Method>POST</Method> <Path>/api/v1/telegram/link-token/</Path> — одноразовый токен привязки аккаунта</LI>
+              <LI><Method>POST</Method> <Path>/api/v1/telegram/webapp-auth/</Path> — обмен initData на JWT (для Mini App)</LI>
+            </UL>
+            <P>Как пользователю подключить бота — см. <A href="/docs/#tg-start">руководство пользователя</A>.</P>
+          </DocSection>
+        ),
+      },
+      {
+        id: "tools",
+        label: "Инструменты",
+        content: (
+          <DocSection title="Инструменты разработчика">
+            <FeatureGrid>
+              <FeatureCard icon={<Play size={16} />} title="Playground">
+                Интерактивная песочница — пробуйте запросы в браузере. <A href="/api-docs/playground/">Открыть →</A>
+              </FeatureCard>
+              <FeatureCard icon={<ExternalLink size={16} />} title="Swagger UI">
+                Полная интерактивная схема всех эндпоинтов. <A href="/api/v1/docs/">Открыть →</A>
+              </FeatureCard>
+              <FeatureCard icon={<Download size={16} />} title="Postman-коллекция">
+                Готовые запросы для Postman. <A href="/static/docs/postman_collection.json">Скачать →</A>
+              </FeatureCard>
+              <FeatureCard icon={<ExternalLink size={16} />} title="OpenAPI-схема">
+                Машиночитаемая спецификация. <A href="/api/v1/schema/">/api/v1/schema/</A>
+              </FeatureCard>
+            </FeatureGrid>
+          </DocSection>
+        ),
+      },
+      {
+        id: "dev-faq",
+        label: "FAQ разработчика",
+        content: (
+          <DocSection title="Частые вопросы разработчиков">
+            <H3>Какую модель выбрать для кода?</H3>
+            <P><IC>claude-sonnet-4-6</IC> или <IC>gpt-4o</IC>. Для быстрого автодополнения — <IC>gpt-4o-mini</IC>.</P>
+            <H3>Что делать при ошибке 429?</H3>
+            <P>Лимит 120 запросов/мин на ключ. IDE обычно повторяют запрос сами. Если упираетесь
+              постоянно — заведите несколько ключей под разные инструменты.</P>
+            <H3>Работает ли стриминг?</H3>
+            <P>Да, передайте <IC>stream: true</IC> — как в OpenAI SDK. Поддерживается везде,
+              где есть <IC>/chat/completions</IC>.</P>
+            <H3>Как проверить баланс из кода?</H3>
+            <P>Запрос <Method>GET</Method> <Path>/api/v1/usage/</Path> или смотрите в{" "}
+              <A href="/account/analytics/">аналитике</A>.</P>
+            <H3>Совместимо ли с LangChain / LlamaIndex?</H3>
+            <P>Да — это OpenAI-совместимый провайдер. Укажите <IC>base_url</IC> и ключ в настройках
+              OpenAI-клиента внутри фреймворка.</P>
+            <Callout type="info" title="Нужна помощь?">
+              Контакты поддержки — в подвале сайта. Для пользовательских функций смотрите{" "}
+              <A href="/docs/">руководство пользователя</A>.
+            </Callout>
+          </DocSection>
+        ),
+      },
+    ],
+  },
 ];
-
-const ERRORS: { code: number; type: string; desc: string }[] = [
-  { code: 401, type: "authentication_error", desc: "Неверный или отсутствующий API-ключ" },
-  { code: 402, type: "insufficient_quota", desc: "Недостаточно средств на балансе" },
-  { code: 403, type: "permission_error", desc: "Нет доступа к ресурсу" },
-  { code: 429, type: "rate_limit_exceeded", desc: "Превышен лимит запросов (120/мин)" },
-  { code: 400, type: "invalid_request_error", desc: "Неверные параметры запроса" },
-];
-
-// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ApiDocsPage() {
   return (
-    <div className="min-h-screen bg-[#FAF9F7] px-4 py-12">
-      <div className="mx-auto max-w-4xl space-y-6">
-        {/* Breadcrumb */}
-        <nav className="flex items-center gap-2">
-          <Code2 size={15} className="text-[rgba(13,13,13,0.35)]" />
-          <Link
-            href="/"
-            className="text-[15px] text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A] transition-colors"
-          >
-            Главная
-          </Link>
-          <span className="text-[15px] text-[rgba(13,13,13,0.25)]">/</span>
-          <span className="text-[15px] text-[rgba(13,13,13,0.65)]">API для разработчиков</span>
-        </nav>
-
-        {/* Hero */}
-        <div>
-          <h1 className="text-[30px] font-bold leading-tight text-[#1A1A1A]">
-            API для разработчиков
-          </h1>
-          <p className="mt-2 max-w-2xl text-[17px] text-[rgba(13,13,13,0.55)]">
-            OpenAI-совместимый API для доступа к GPT-4o, Claude, Gemini, Mistral и генерации
-            изображений — без VPN, без санкций, из России. Работает с openai SDK простой сменой{" "}
-            <code className="rounded-[4px] bg-[rgba(13,13,13,0.07)] px-1.5 py-0.5 font-mono text-[15px]">
-              base_url
-            </code>
-            .
-          </p>
-        </div>
-
-        {/* Info cards */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <InfoCard label="Base URL" value="aineron.ru/api/v1" />
-          <InfoCard label="Аутентификация" value="Bearer ak_..." />
-          <InfoCard label="Формат ошибок" value="OpenAI-совместимый" />
-          <InfoCard label="Биллинг" value="Рубли / 1 000 токенов" />
-        </div>
-
-        {/* Quick start */}
-        <Section title="Быстрый старт">
-          <ol className="mb-5 space-y-3 text-[16px]">
-            {[
-              <>
-                <strong className="text-[#1A1A1A]">Создайте API-ключ</strong> в личном кабинете
-                — раздел{" "}
-                <Link href="/account/keys/" className="text-[#D97757] hover:underline">
-                  API-ключи
-                </Link>
-                . Ключ показывается один раз, сохраните его сразу.
-              </>,
-              <>
-                <strong className="text-[#1A1A1A]">Укажите наш base_url</strong> вместо{" "}
-                <code className="rounded-[4px] bg-[rgba(13,13,13,0.07)] px-1.5 py-0.5 font-mono text-[14px]">
-                  api.openai.com
-                </code>{" "}
-                в вашем SDK или HTTP-клиенте.
-              </>,
-              <>
-                <strong className="text-[#1A1A1A]">Пополните баланс</strong> и начните
-                запросы — списание по токенам автоматически.
-              </>,
-            ].map((step, i) => (
-              <li key={i} className="flex gap-3 text-[rgba(13,13,13,0.75)]">
-                <span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-[#1A1A1A] text-[13px] font-bold text-white">
-                  {i + 1}
-                </span>
-                <span>{step}</span>
-              </li>
-            ))}
-          </ol>
-          <CodeTabs tabs={QUICKSTART} />
-        </Section>
-
-        {/* Anthropic SDK */}
-        <Section title="Anthropic SDK (Claude-модели)">
-          <p className="mb-4 text-[16px] text-[rgba(13,13,13,0.65)]">
-            Если вы используете официальный Anthropic SDK, достаточно указать наш{" "}
-            <code className="rounded-[4px] bg-[rgba(13,13,13,0.07)] px-1.5 py-0.5 font-mono text-[14px]">
-              base_url
-            </code>{" "}
-            — API полностью совместим с{" "}
-            <code className="rounded-[4px] bg-[rgba(13,13,13,0.07)] px-1.5 py-0.5 font-mono text-[14px]">
-              POST /api/v1/messages
-            </code>
-            .
-          </p>
-          <CodeTabs tabs={ANTHROPIC} />
-        </Section>
-
-        {/* Images */}
-        <Section title="Генерация изображений и видео">
-          <p className="mb-4 text-[16px] text-[rgba(13,13,13,0.65)]">
-            Доступ к Flux, SDXL, Wan, Kling и другим медиа-моделям через стандартный OpenAI Images
-            API.
-          </p>
-          <CodeTabs tabs={IMAGES} />
-        </Section>
-
-        {/* Endpoints */}
-        <Section title="Список эндпоинтов">
-          <div className="overflow-x-auto">
-            <table className="w-full text-[15px]">
-              <thead>
-                <tr className="border-b border-[rgba(13,13,13,0.08)]">
-                  <th className="pb-2.5 text-left font-medium text-[rgba(13,13,13,0.40)]">
-                    Метод
-                  </th>
-                  <th className="pb-2.5 pl-4 text-left font-medium text-[rgba(13,13,13,0.40)]">
-                    Путь
-                  </th>
-                  <th className="pb-2.5 pl-4 text-left font-medium text-[rgba(13,13,13,0.40)]">
-                    Описание
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[rgba(13,13,13,0.06)]">
-                {ENDPOINTS.map((e, i) => (
-                  <tr key={i}>
-                    <td className="py-2.5">
-                      <MethodBadge method={e.method} />
-                    </td>
-                    <td className="py-2.5 pl-4 font-mono text-[14px] text-[rgba(13,13,13,0.70)]">
-                      {e.path}
-                    </td>
-                    <td className="py-2.5 pl-4 text-[rgba(13,13,13,0.65)]">{e.desc}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Section>
-
-        {/* Error codes */}
-        <Section title="Коды ошибок">
-          <p className="mb-4 text-[16px] text-[rgba(13,13,13,0.65)]">
-            Все ошибки возвращаются в OpenAI-совместимом формате:
-          </p>
-          <div className="mb-5">
-            <StandaloneCodeBlock code={ERROR_BODY} />
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-[15px]">
-              <thead>
-                <tr className="border-b border-[rgba(13,13,13,0.08)]">
-                  <th className="pb-2.5 text-left font-medium text-[rgba(13,13,13,0.40)]">
-                    HTTP
-                  </th>
-                  <th className="pb-2.5 pl-4 text-left font-medium text-[rgba(13,13,13,0.40)]">
-                    type
-                  </th>
-                  <th className="pb-2.5 pl-4 text-left font-medium text-[rgba(13,13,13,0.40)]">
-                    Причина
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[rgba(13,13,13,0.06)]">
-                {ERRORS.map((e) => (
-                  <tr key={e.code}>
-                    <td className="py-2.5 font-semibold text-[#1A1A1A]">{e.code}</td>
-                    <td className="py-2.5 pl-4 font-mono text-[14px] text-[rgba(13,13,13,0.70)]">
-                      {e.type}
-                    </td>
-                    <td className="py-2.5 pl-4 text-[rgba(13,13,13,0.65)]">{e.desc}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Section>
-
-        {/* Action links */}
-        <div className="flex flex-wrap gap-3 pb-4">
-          <Link
-            href="/api-docs/playground/"
-            className="inline-flex items-center gap-2 rounded-[10px] bg-[#D97757] px-5 py-2.5 text-[16px] font-medium text-white hover:bg-[#C4623E] transition-colors"
-          >
-            <Play size={14} />
-            Playground
-          </Link>
-          <a
-            href="/api/v1/docs/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-[10px] bg-[#1A1A1A] px-5 py-2.5 text-[16px] font-medium text-white hover:bg-[#1a1a1a] transition-colors"
-          >
-            Swagger UI
-            <ExternalLink size={14} />
-          </a>
-          <a
-            href="/static/docs/postman_collection.json"
-            download="aineron_api.postman_collection.json"
-            className="inline-flex items-center gap-2 rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-white px-5 py-2.5 text-[16px] font-medium text-[rgba(13,13,13,0.70)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
-          >
-            Postman-коллекция
-          </a>
-          <Link
-            href="/ide/"
-            className="inline-flex items-center gap-2 rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-white px-5 py-2.5 text-[16px] font-medium text-[rgba(13,13,13,0.70)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
-          >
-            Интеграция с IDE
-          </Link>
-          <Link
-            href="/account/keys/"
-            className="inline-flex items-center gap-2 rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-white px-5 py-2.5 text-[16px] font-medium text-[rgba(13,13,13,0.70)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
-          >
-            Создать API-ключ
-          </Link>
-        </div>
-      </div>
-    </div>
+    <DocLayout
+      eyebrow="Для разработчиков"
+      title="API и интеграции"
+      subtitle="OpenAI- и Anthropic-совместимый API к GPT-5, Claude, Gemini и генерации медиа — без VPN. Плюс интеграции с Cursor, Cline, Continue. Выбирайте раздел слева."
+      breadcrumb={[{ label: "Главная", href: "/" }, { label: "API для разработчиков" }]}
+      groups={GROUPS}
+    />
   );
 }

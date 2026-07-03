@@ -4,18 +4,18 @@ const COLUMNS = [
   {
     title: "Продукт",
     links: [
+      { label: "Документация", href: "/docs/" },
       { label: "Каталог моделей", href: "/models/" },
       { label: "Сравнение моделей", href: "/compare/" },
       { label: "Проекты", href: "/projects/" },
-      { label: "Промты", href: "/prompts/" },
       { label: "Статус сервиса", href: "/status/" },
     ],
   },
   {
     title: "Разработчикам",
     links: [
-      { label: "API документация", href: "/api-docs/" },
-      { label: "IDE интеграция", href: "/ide/" },
+      { label: "API и интеграции", href: "/api-docs/" },
+      { label: "Playground", href: "/api-docs/playground/" },
       { label: "Личный кабинет", href: "/account/" },
     ],
   },

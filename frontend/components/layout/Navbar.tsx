@@ -49,9 +49,9 @@ export function Navbar() {
         <nav className="hidden items-center gap-1 md:flex">
           <NavLink href="/models/">Каталог</NavLink>
           <NavLink href="/compare/">Сравнение</NavLink>
-          <NavLink href="/blog/">Блог</NavLink>
+          <NavLink href="/docs/">Документация</NavLink>
           <NavLink href="/api-docs/">API</NavLink>
-          <NavLink href="/ide/">IDE</NavLink>
+          <NavLink href="/blog/">Блог</NavLink>
         </nav>
 
         {/* Desktop auth + theme toggle */}
@@ -127,9 +127,9 @@ export function Navbar() {
           <div className="flex flex-col gap-1">
             <MobileNavLink href="/models/" onClick={() => setMobileOpen(false)}>Каталог</MobileNavLink>
             <MobileNavLink href="/compare/" onClick={() => setMobileOpen(false)}>Сравнение</MobileNavLink>
-            <MobileNavLink href="/blog/" onClick={() => setMobileOpen(false)}>Блог</MobileNavLink>
+            <MobileNavLink href="/docs/" onClick={() => setMobileOpen(false)}>Документация</MobileNavLink>
             <MobileNavLink href="/api-docs/" onClick={() => setMobileOpen(false)}>API</MobileNavLink>
-            <MobileNavLink href="/ide/" onClick={() => setMobileOpen(false)}>IDE</MobileNavLink>
+            <MobileNavLink href="/blog/" onClick={() => setMobileOpen(false)}>Блог</MobileNavLink>
             <div className="my-2 border-t border-[rgba(13,13,13,0.08)] dark:border-[rgba(255,255,255,0.06)]" />
             {user ? (
               <>
