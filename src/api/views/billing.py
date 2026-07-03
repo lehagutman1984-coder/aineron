@@ -226,22 +226,27 @@ class ApplyPromoView(APIView):
 
     @extend_schema(summary='Применить промокод', tags=['Billing'])
     def post(self, request):
-        code_str = (request.data.get('code') or '').strip().upper()
+        code_str = (request.data.get('code') or '').strip()
         if not code_str:
             return Response({'error': {'message': 'Promo code is required', 'type': 'invalid_request_error', 'code': 'missing_code'}}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            promo = PromoCode.objects.get(code=code_str)
+            promo = PromoCode.objects.get(code__iexact=code_str)
         except PromoCode.DoesNotExist:
             return Response({'error': {'message': 'Промокод не найден', 'type': 'invalid_request_error', 'code': 'promo_not_found'}}, status=status.HTTP_400_BAD_REQUEST)
 
         if not promo.is_valid():
             return Response({'error': {'message': 'Промокод недействителен или истёк', 'type': 'invalid_request_error', 'code': 'promo_expired'}}, status=status.HTTP_400_BAD_REQUEST)
 
-        if UsedPromoCode.objects.filter(user=request.user, promo_code=promo).exists():
+        # Фиксируем использование ДО начисления: unique (user, promo_code)
+        # гасит гонку двойного применения (как в legacy users/views.py)
+        from django.db import IntegrityError
+        from django.db.models import F
+        try:
+            UsedPromoCode.objects.create(user=request.user, promo_code=promo)
+        except IntegrityError:
             return Response({'error': {'message': 'Промокод уже был использован', 'type': 'invalid_request_error', 'code': 'promo_already_used'}}, status=status.HTTP_400_BAD_REQUEST)
-
-        UsedPromoCode.objects.create(user=request.user, promo_code=promo)
+        PromoCode.objects.filter(pk=promo.pk).update(used_count=F('used_count') + 1)
         request.user.add_kopecks(promo.kopecks, type='promo', reference=f'promo:{promo.pk}:{request.user.id}')
         PaymentHistory.objects.create(
             user=request.user,

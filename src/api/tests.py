@@ -91,3 +91,61 @@ class ChargeForTokensPersonalTests(TestCase):
         refund_kopecks(self.user, kopecks, reason='test', reference='req:1')
         self.user.refresh_from_db(fields=['balance_kopecks'])
         self.assertEqual(self.user.balance_kopecks, balance_after_charge + kopecks)
+
+
+class ApplyPromoViewTests(TestCase):
+    URL = '/api/v1/billing/promo/'
+
+    def setUp(self):
+        from rest_framework.test import APIClient
+        from users.models import PromoCode
+
+        self.user = User.objects.create_user(username='promo', email='promo@t.ru', password='x')
+        self.user.set_kopecks(0)
+        self.promo = PromoCode.objects.create(code='BONUS50', stars=50, usage_limit=2)
+        self.client = APIClient()
+        self.client.force_authenticate(self.user)
+
+    def test_apply_credits_balance_and_increments_used_count(self):
+        resp = self.client.post(self.URL, {'code': 'BONUS50'}, format='json')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['kopecks_added'], 5000)
+
+        self.user.refresh_from_db(fields=['balance_kopecks'])
+        self.assertEqual(self.user.balance_kopecks, 5000)
+        self.promo.refresh_from_db(fields=['used_count'])
+        self.assertEqual(self.promo.used_count, 1)
+
+    def test_code_lookup_is_case_insensitive(self):
+        resp = self.client.post(self.URL, {'code': 'bonus50'}, format='json')
+        self.assertEqual(resp.status_code, 200)
+
+    def test_second_apply_by_same_user_rejected_without_double_credit(self):
+        self.client.post(self.URL, {'code': 'BONUS50'}, format='json')
+        resp = self.client.post(self.URL, {'code': 'BONUS50'}, format='json')
+        self.assertEqual(resp.status_code, 400)
+        self.user.refresh_from_db(fields=['balance_kopecks'])
+        self.assertEqual(self.user.balance_kopecks, 5000)
+
+    def test_usage_limit_exhausts_code(self):
+        from rest_framework.test import APIClient
+
+        self.client.post(self.URL, {'code': 'BONUS50'}, format='json')
+        other = User.objects.create_user(username='promo2', email='promo2@t.ru', password='x')
+        other_client = APIClient()
+        other_client.force_authenticate(other)
+        self.assertEqual(other_client.post(self.URL, {'code': 'BONUS50'}, format='json').status_code, 200)
+
+        third = User.objects.create_user(username='promo3', email='promo3@t.ru', password='x')
+        third_client = APIClient()
+        third_client.force_authenticate(third)
+        resp = third_client.post(self.URL, {'code': 'BONUS50'}, format='json')
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json()['error']['code'], 'promo_expired')
+
+    def test_deactivated_code_rejected(self):
+        self.promo.is_active = False
+        self.promo.save()
+        resp = self.client.post(self.URL, {'code': 'BONUS50'}, format='json')
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json()['error']['code'], 'promo_expired')
