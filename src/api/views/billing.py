@@ -44,6 +44,29 @@ def _robokassa_signature(merchant_login, out_sum, inv_id, receipt_json, password
     return hashlib.md5(sig_str.encode('cp1251')).hexdigest()
 
 
+def _discounted_price(price, percent):
+    from decimal import Decimal, ROUND_HALF_UP
+    return (Decimal(price) * (100 - percent) / 100).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+
+def _resolve_discount_promo(user, code_str):
+    """
+    Валидация скидочного промокода при оплате тарифа.
+    Возвращает (promo, None) или (None, Response с ошибкой).
+    """
+    try:
+        promo = PromoCode.objects.get(code__iexact=code_str)
+    except PromoCode.DoesNotExist:
+        return None, Response({'error': {'message': 'Промокод не найден', 'type': 'invalid_request_error', 'code': 'promo_not_found'}}, status=status.HTTP_400_BAD_REQUEST)
+    if not promo.is_valid():
+        return None, Response({'error': {'message': 'Промокод недействителен или истёк', 'type': 'invalid_request_error', 'code': 'promo_expired'}}, status=status.HTTP_400_BAD_REQUEST)
+    if promo.discount_percent <= 0:
+        return None, Response({'error': {'message': 'Этот промокод начисляет баланс — примените его в разделе «Промокод»', 'type': 'invalid_request_error', 'code': 'promo_not_discount'}}, status=status.HTTP_400_BAD_REQUEST)
+    if UsedPromoCode.objects.filter(user=user, promo_code=promo).exists():
+        return None, Response({'error': {'message': 'Промокод уже был использован', 'type': 'invalid_request_error', 'code': 'promo_already_used'}}, status=status.HTTP_400_BAD_REQUEST)
+    return promo, None
+
+
 class TariffListView(APIView):
     """GET /api/v1/billing/tariffs/"""
     permission_classes = [IsAuthenticated]
@@ -75,17 +98,30 @@ class TariffPayView(APIView):
         except Tariff.DoesNotExist:
             return Response({'error': {'message': 'Tariff not found', 'type': 'not_found', 'code': 'not_found'}}, status=status.HTTP_404_NOT_FOUND)
 
+        # Скидочный промокод: снижает сумму первого платежа, кредит тарифа — полный.
+        # Использование фиксируется в вебхуке после успешной оплаты.
+        promo = None
+        promo_code_str = (request.data.get('promo_code') or '').strip()
+        if promo_code_str:
+            promo, promo_error = _resolve_discount_promo(request.user, promo_code_str)
+            if promo_error:
+                return promo_error
+
+        price = _discounted_price(tariff.price, promo.discount_percent) if promo else tariff.price
+
         merchant_login = settings.ROBOKASSA_LOGIN
         password1 = settings.ROBOKASSA_PASS1
         inv_id = _make_invoice_id()
-        out_sum = f"{float(tariff.price):.2f}"
+        out_sum = f"{float(price):.2f}"
         description = f"Тариф {tariff.display_name}"
+        if promo:
+            description += f" (промокод −{promo.discount_percent}%)"
 
         receipt_data = {
             "items": [{
                 "name": tariff.display_name[:128],
                 "quantity": 1,
-                "sum": float(tariff.price),
+                "sum": float(price),
                 "tax": "none",
             }]
         }
@@ -97,9 +133,10 @@ class TariffPayView(APIView):
             user=request.user,
             payment_type='subscription',
             tariff=tariff,
+            promo_code=promo,
             invoice_id=str(inv_id),
-            amount=tariff.price,
-            amount_kopecks=rub_to_kopecks(tariff.price),
+            amount=price,
+            amount_kopecks=rub_to_kopecks(price),
             pages_count=tariff.pages_count,
             status='pending',
             description=description,
@@ -109,6 +146,8 @@ class TariffPayView(APIView):
         return Response({
             'payment_id': payment.id,
             'invoice_id': inv_id,
+            'amount': str(price),
+            'discount_percent': promo.discount_percent if promo else 0,
             'form': {
                 'action': 'https://auth.robokassa.ru/Merchant/Index.aspx',
                 'method': 'POST',
@@ -238,6 +277,9 @@ class ApplyPromoView(APIView):
         if not promo.is_valid():
             return Response({'error': {'message': 'Промокод недействителен или истёк', 'type': 'invalid_request_error', 'code': 'promo_expired'}}, status=status.HTTP_400_BAD_REQUEST)
 
+        if promo.discount_percent > 0:
+            return Response({'error': {'message': f'Это скидочный промокод (−{promo.discount_percent}% на тариф) — введите его при покупке тарифа', 'type': 'invalid_request_error', 'code': 'promo_is_discount'}}, status=status.HTTP_400_BAD_REQUEST)
+
         # Фиксируем использование ДО начисления: unique (user, promo_code)
         # гасит гонку двойного применения (как в legacy users/views.py)
         from django.db import IntegrityError
@@ -268,6 +310,50 @@ class ApplyPromoView(APIView):
             'new_balance_kopecks': request.user.balance_kopecks,
             'message': f'Промокод принят! Начислено {format_rub(promo.kopecks)}.',
         })
+
+
+class PromoCheckView(APIView):
+    """
+    POST /api/v1/billing/promo/check/ — проверить промокод перед оплатой.
+    body: {"code": "...", "tariff_id": 3}  (tariff_id опционален)
+    Ничего не списывает и не фиксирует — только валидация и расчёт цены.
+    """
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(summary='Проверить промокод', tags=['Billing'])
+    def post(self, request):
+        code_str = (request.data.get('code') or '').strip()
+        if not code_str:
+            return Response({'error': {'message': 'Promo code is required', 'type': 'invalid_request_error', 'code': 'missing_code'}}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            promo = PromoCode.objects.get(code__iexact=code_str)
+        except PromoCode.DoesNotExist:
+            return Response({'error': {'message': 'Промокод не найден', 'type': 'invalid_request_error', 'code': 'promo_not_found'}}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not promo.is_valid():
+            return Response({'error': {'message': 'Промокод недействителен или истёк', 'type': 'invalid_request_error', 'code': 'promo_expired'}}, status=status.HTTP_400_BAD_REQUEST)
+
+        if UsedPromoCode.objects.filter(user=request.user, promo_code=promo).exists():
+            return Response({'error': {'message': 'Промокод уже был использован', 'type': 'invalid_request_error', 'code': 'promo_already_used'}}, status=status.HTTP_400_BAD_REQUEST)
+
+        result = {
+            'ok': True,
+            'code': promo.code,
+            'type': 'discount' if promo.discount_percent > 0 else 'balance',
+            'discount_percent': promo.discount_percent,
+            'kopecks': promo.kopecks,
+        }
+        tariff_id = request.data.get('tariff_id')
+        if promo.discount_percent > 0 and tariff_id:
+            try:
+                tariff = Tariff.objects.get(id=tariff_id, is_active=True, is_free=False)
+            except (Tariff.DoesNotExist, ValueError, TypeError):
+                return Response({'error': {'message': 'Tariff not found', 'type': 'not_found', 'code': 'not_found'}}, status=status.HTTP_404_NOT_FOUND)
+            price = _discounted_price(tariff.price, promo.discount_percent)
+            result['price'] = str(tariff.price)
+            result['discounted_price'] = str(price)
+        return Response(result)
 
 
 class StarsUsageView(APIView):

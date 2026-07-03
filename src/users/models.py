@@ -1,4 +1,5 @@
 from django.contrib.auth.models import AbstractUser
+from django.core.validators import MaxValueValidator
 from django.db import models
 from django.utils import timezone
 from datetime import timedelta
@@ -313,6 +314,16 @@ class PaymentHistory(models.Model):
         null=True,
         blank=True,
         verbose_name='Тариф'
+    )
+    promo_code = models.ForeignKey(
+        'PromoCode',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='payments',
+        verbose_name='Промокод (скидка)',
+        help_text='Скидочный промокод, применённый к этому платежу. '
+                  'Использование фиксируется после успешной оплаты.'
     )
     payment_type = models.CharField(
         max_length=20,
@@ -959,7 +970,10 @@ class LegalDocument(models.Model):
 
 class PromoCode(models.Model):
     """
-    Модель промокодов для начисления звезд
+    Промокоды двух типов:
+    - начисление на баланс (stars > 0, discount_percent = 0) — применяется в кабинете
+    - процентная скидка на покупку тарифа (discount_percent > 0) — вводится при оплате,
+      снижает сумму первого платежа; продление идёт по полной цене тарифа
     """
     code = models.CharField(
         max_length=50,
@@ -967,12 +981,22 @@ class PromoCode(models.Model):
         verbose_name='Промокод'
     )
     stars = models.PositiveIntegerField(
-        verbose_name='Количество звезд'
+        default=0,
+        verbose_name='Начисление на баланс, ₽'
     )
     kopecks = models.BigIntegerField(
         default=0,
         verbose_name='Начисление, копейки',
         help_text='Авто-синхронизируется с stars ×100 при сохранении'
+    )
+    discount_percent = models.PositiveSmallIntegerField(
+        default=0,
+        validators=[MaxValueValidator(50)],
+        verbose_name='Скидка на тариф, %',
+        help_text='0 — обычный промокод (начисляет баланс). 1–50 — процентная скидка '
+                  'на покупку тарифа: вводится при оплате, действует на первый платёж, '
+                  'продление по полной цене. Безопасно по марже: Старт/Стандарт до 15%, '
+                  'Про до 10%, Бизнес/Макс до 5–8%.'
     )
     usage_limit = models.PositiveIntegerField(
         default=1,
@@ -1001,7 +1025,10 @@ class PromoCode(models.Model):
         verbose_name_plural = 'Промокоды'
 
     def __str__(self):
-        return f"{self.code} (+{self.stars} зв.) использован {self.used_count}/{self.usage_limit if self.usage_limit > 0 else 'inf'}"
+        usage = f"{self.used_count}/{self.usage_limit if self.usage_limit > 0 else 'inf'}"
+        if self.discount_percent:
+            return f"{self.code} (скидка {self.discount_percent}% на тариф) использован {usage}"
+        return f"{self.code} (+{self.stars} ₽) использован {usage}"
 
     def save(self, *args, **kwargs):
         self.kopecks = self.stars * 100

@@ -151,6 +151,124 @@ class ApplyPromoViewTests(TestCase):
         self.assertEqual(resp.json()['error']['code'], 'promo_expired')
 
 
+@override_settings(ROBOKASSA_LOGIN='testlogin', ROBOKASSA_PASS1='testpass1', ROBOKASSA_PASS2='testpass2')
+class DiscountPromoTests(TestCase):
+    """Процентная скидка на тариф через промокод."""
+
+    PAY_URL = '/api/v1/billing/tariffs/{id}/pay/'
+    CHECK_URL = '/api/v1/billing/promo/check/'
+    APPLY_URL = '/api/v1/billing/promo/'
+    WEBHOOK_URL = '/users/api/payment-success/'
+
+    def setUp(self):
+        from decimal import Decimal as D
+        from rest_framework.test import APIClient
+        from users.models import PromoCode, Tariff
+
+        self.user = User.objects.create_user(username='disc', email='disc@t.ru', password='x')
+        self.user.set_kopecks(0)
+        self.tariff = Tariff.objects.create(
+            display_name='Про', price=D('899.00'), pages_count=1150, duration_days=30,
+        )
+        self.promo = PromoCode.objects.create(code='SALE10', discount_percent=10, usage_limit=5)
+        self.client = APIClient()
+        self.client.force_authenticate(self.user)
+
+    def test_pay_with_discount_promo_reduces_out_sum(self):
+        from users.models import PaymentHistory
+
+        resp = self.client.post(
+            self.PAY_URL.format(id=self.tariff.id), {'promo_code': 'sale10'}, format='json',
+        )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data['form']['fields']['OutSum'], '809.10')
+        self.assertEqual(data['discount_percent'], 10)
+
+        payment = PaymentHistory.objects.get(invoice_id=str(data['invoice_id']))
+        self.assertEqual(payment.amount_kopecks, 80910)
+        self.assertEqual(payment.promo_code_id, self.promo.pk)
+        # Кредит тарифа — полный, скидка только на цену
+        self.assertEqual(payment.pages_count, 1150)
+
+    def test_pay_without_promo_keeps_full_price(self):
+        resp = self.client.post(self.PAY_URL.format(id=self.tariff.id), {}, format='json')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['form']['fields']['OutSum'], '899.00')
+
+    def test_balance_promo_rejected_at_checkout(self):
+        from users.models import PromoCode
+
+        PromoCode.objects.create(code='BAL100', stars=100)
+        resp = self.client.post(
+            self.PAY_URL.format(id=self.tariff.id), {'promo_code': 'BAL100'}, format='json',
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json()['error']['code'], 'promo_not_discount')
+
+    def test_discount_promo_rejected_in_balance_apply(self):
+        resp = self.client.post(self.APPLY_URL, {'code': 'SALE10'}, format='json')
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json()['error']['code'], 'promo_is_discount')
+        self.user.refresh_from_db(fields=['balance_kopecks'])
+        self.assertEqual(self.user.balance_kopecks, 0)
+
+    def test_promo_check_returns_discounted_price(self):
+        resp = self.client.post(
+            self.CHECK_URL, {'code': 'SALE10', 'tariff_id': self.tariff.id}, format='json',
+        )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data['type'], 'discount')
+        self.assertEqual(data['discount_percent'], 10)
+        self.assertEqual(data['discounted_price'], '809.10')
+
+    def test_used_discount_promo_rejected(self):
+        from users.models import UsedPromoCode
+
+        UsedPromoCode.objects.create(user=self.user, promo_code=self.promo)
+        resp = self.client.post(
+            self.PAY_URL.format(id=self.tariff.id), {'promo_code': 'SALE10'}, format='json',
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json()['error']['code'], 'promo_already_used')
+
+    def test_webhook_marks_promo_used_once(self):
+        import hashlib as _hashlib
+        from django.test import Client as DjangoClient
+        from users.models import UsedPromoCode
+
+        resp = self.client.post(
+            self.PAY_URL.format(id=self.tariff.id), {'promo_code': 'SALE10'}, format='json',
+        )
+        data = resp.json()
+        inv_id = str(data['invoice_id'])
+        out_sum = data['form']['fields']['OutSum']
+        signature = _hashlib.md5(f'{out_sum}:{inv_id}:testpass2'.encode()).hexdigest().upper()
+
+        webhook = DjangoClient()
+        payload = {'OutSum': out_sum, 'InvId': inv_id, 'SignatureValue': signature}
+        result = webhook.post(self.WEBHOOK_URL, payload)
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.content.decode(), f'OK{inv_id}')
+
+        self.assertTrue(
+            UsedPromoCode.objects.filter(user=self.user, promo_code=self.promo).exists()
+        )
+        self.promo.refresh_from_db(fields=['used_count'])
+        self.assertEqual(self.promo.used_count, 1)
+
+        # Полный кредит тарифа начислен, несмотря на скидку
+        self.user.refresh_from_db(fields=['balance_kopecks'])
+        self.assertEqual(self.user.balance_kopecks, 1150 * 100)
+
+        # Повтор вебхука не двигает счётчик
+        result2 = webhook.post(self.WEBHOOK_URL, payload)
+        self.assertEqual(result2.status_code, 200)
+        self.promo.refresh_from_db(fields=['used_count'])
+        self.assertEqual(self.promo.used_count, 1)
+
+
 class RegisterReferralTests(TestCase):
     URL = '/api/v1/auth/register/'
 

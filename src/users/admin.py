@@ -598,13 +598,21 @@ class SiteCounterAdmin(admin.ModelAdmin):
 
 @admin.register(PromoCode)
 class PromoCodeAdmin(admin.ModelAdmin):
-    list_display = ('code', 'stars', 'usage_limit', 'used_count', 'is_active', 'expires_at', 'created_at')
+    list_display = ('code', 'stars', 'discount_percent', 'usage_limit', 'used_count', 'is_active', 'expires_at', 'created_at')
     list_filter = ('is_active', 'expires_at')
     search_fields = ('code',)
-    list_editable = ('stars', 'usage_limit', 'is_active')
+    list_editable = ('stars', 'discount_percent', 'usage_limit', 'is_active')
     readonly_fields = ('used_count', 'created_at')
     fieldsets = (
-        (None, {'fields': ('code', 'stars')}),
+        (None, {'fields': ('code',)}),
+        ('Тип промокода', {
+            'fields': ('stars', 'discount_percent'),
+            'description': 'Заполните ОДНО из двух: stars — начисление на баланс в ₽ '
+                           '(пользователь применяет в кабинете, раздел «Промокод»); '
+                           'discount_percent — процентная скидка на покупку тарифа '
+                           '(вводится при оплате, действует на первый платёж, продление по полной цене). '
+                           'Безопасно по марже: Старт/Стандарт до 15%, Про до 10%, Бизнес/Макс до 5–8%.',
+        }),
         ('Ограничения', {'fields': ('usage_limit', 'expires_at', 'is_active')}),
         ('Статистика', {'fields': ('used_count', 'created_at')}),
     )

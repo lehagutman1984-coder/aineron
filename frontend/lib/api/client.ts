@@ -471,9 +471,32 @@ export const getBlogPost = (slug: string): Promise<BlogPostDetail> =>
 export const getTariffs = (): Promise<TariffsResponse> =>
   request<TariffsResponse>("/billing/tariffs/");
 
-export const payTariff = (tariffId: number): Promise<CreatePaymentResponse> =>
+export const payTariff = (
+  tariffId: number,
+  promoCode?: string,
+): Promise<CreatePaymentResponse> =>
   request<CreatePaymentResponse>(`/billing/tariffs/${tariffId}/pay/`, {
     method: "POST",
+    body: JSON.stringify(promoCode ? { promo_code: promoCode } : {}),
+  });
+
+export interface PromoCheckResponse {
+  ok: boolean;
+  code: string;
+  type: "discount" | "balance";
+  discount_percent: number;
+  kopecks: number;
+  price?: string;
+  discounted_price?: string;
+}
+
+export const checkPromoCode = (
+  code: string,
+  tariffId?: number,
+): Promise<PromoCheckResponse> =>
+  request<PromoCheckResponse>("/billing/promo/check/", {
+    method: "POST",
+    body: JSON.stringify({ code, tariff_id: tariffId }),
   });
 
 export const updateAutoRenew = (autoRenew: boolean): Promise<AutoRenewResponse> =>

@@ -693,6 +693,20 @@ def payment_success(request):
                     user.refresh_from_db(fields=['balance_kopecks', 'pages_count'])
                     logger.info(f"[PAY] У пользователя {user.email} теперь {user.pages_count} страниц")
 
+                    # Скидочный промокод: фиксируем использование после успешной оплаты
+                    # (get_or_create идемпотентен, счётчик растёт только при первой фиксации)
+                    if payment.promo_code_id:
+                        from django.db.models import F as _Fp
+                        from users.models import PromoCode, UsedPromoCode
+                        _, promo_first_use = UsedPromoCode.objects.get_or_create(
+                            user=user, promo_code_id=payment.promo_code_id,
+                        )
+                        if promo_first_use:
+                            PromoCode.objects.filter(pk=payment.promo_code_id).update(
+                                used_count=_Fp('used_count') + 1,
+                            )
+                            logger.info(f"[PAY] Промокод #{payment.promo_code_id} использован ({user.email}, счёт {inv_id})")
+
                     # ========== РЕФЕРАЛЬНЫЙ БОНУС ==========
                     if user.referrer:
                         referrer = user.referrer
@@ -1254,6 +1268,9 @@ def apply_promo_code(request):
 
         if not promo.is_valid():
             return JsonResponse({'success': False, 'message': 'Промокод недействителен'})
+
+        if promo.discount_percent > 0:
+            return JsonResponse({'success': False, 'message': f'Это скидочный промокод (−{promo.discount_percent}% на тариф) — введите его при покупке тарифа'})
 
         # Проверяем, не использовал ли пользователь этот промокод ранее
         if UsedPromoCode.objects.filter(user=request.user, promo_code=promo).exists():

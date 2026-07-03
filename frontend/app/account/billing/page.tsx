@@ -24,8 +24,10 @@ import {
   buyPages,
   getPaymentHistory,
   applyPromoCode,
+  checkPromoCode,
   updateAutoRenew,
 } from "@/lib/api/client";
+import type { PromoCheckResponse } from "@/lib/api/client";
 import type { Tariff, PaymentHistory, RobokassaForm, UserSubscription } from "@/lib/api/types";
 import { formatRub } from "@/lib/money";
 import { useAuthStore } from "@/lib/stores/auth";
@@ -57,18 +59,51 @@ export interface PurchaseInfo {
 
 function ConfirmPurchaseModal({
   purchase,
+  tariffId,
   loading,
   onConfirm,
   onClose,
 }: {
   purchase: PurchaseInfo;
+  tariffId?: number;
   loading: boolean;
-  onConfirm: () => void;
+  onConfirm: (promoCode?: string) => void;
   onClose: () => void;
 }) {
   const [agreed, setAgreed] = useState(false);
-  const amountLabel = purchase.amount.toLocaleString("ru-RU");
   const isSub = purchase.mode === "subscription";
+
+  // Скидочный промокод (только для тарифов)
+  const [promoInput, setPromoInput] = useState("");
+  const [promoApplied, setPromoApplied] = useState<PromoCheckResponse | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [promoChecking, setPromoChecking] = useState(false);
+
+  async function handleCheckPromo() {
+    if (!promoInput.trim() || !tariffId) return;
+    setPromoChecking(true);
+    setPromoError(null);
+    try {
+      const result = await checkPromoCode(promoInput.trim(), tariffId);
+      if (result.type === "balance") {
+        setPromoError(
+          `Этот промокод начисляет ${formatRub(result.kopecks)} на баланс — примените его в разделе «Промокод»`,
+        );
+      } else {
+        setPromoApplied(result);
+      }
+    } catch (err) {
+      setPromoError((err as Error).message);
+    } finally {
+      setPromoChecking(false);
+    }
+  }
+
+  const effectiveAmount = promoApplied?.discounted_price
+    ? parseFloat(promoApplied.discounted_price)
+    : purchase.amount;
+  const amountLabel = effectiveAmount.toLocaleString("ru-RU");
+  const fullAmountLabel = purchase.amount.toLocaleString("ru-RU");
 
   return (
     <div
@@ -110,24 +145,92 @@ function ConfirmPurchaseModal({
               {isSub ? "Стоимость тарифа" : "Сумма пополнения"}
             </span>
             <span className="text-[var(--color-text-primary)]">
-              {amountLabel} ₽{isSub && " / мес"}
+              {fullAmountLabel} ₽{isSub && " / мес"}
             </span>
           </div>
+          {promoApplied && (
+            <div className="flex items-center justify-between">
+              <span className="text-[var(--color-text-secondary)]">
+                Промокод {promoApplied.code}
+              </span>
+              <span className="text-green-600 font-medium">
+                −{promoApplied.discount_percent}%
+              </span>
+            </div>
+          )}
           <div className="flex items-center justify-between">
             <span className="text-[var(--color-text-secondary)]">Способ оплаты</span>
             <span className="text-[var(--color-text-primary)]">Банковская карта</span>
           </div>
           <div className="flex items-center justify-between font-semibold">
             <span className="text-[var(--color-text-primary)]">Итого к оплате</span>
-            <span className="text-[var(--color-text-primary)]">{amountLabel} ₽</span>
+            <span className="text-[var(--color-text-primary)]">
+              {promoApplied && (
+                <span className="mr-2 font-normal text-[var(--color-text-secondary)] line-through">
+                  {fullAmountLabel} ₽
+                </span>
+              )}
+              {amountLabel} ₽
+            </span>
           </div>
         </div>
 
+        {isSub && tariffId && (
+          <div className="mb-4">
+            {promoApplied ? (
+              <p className="flex items-center justify-between gap-2 rounded-lg bg-green-500/8 border border-green-500/20 px-3 py-2 text-sm text-green-700">
+                <span className="flex items-center gap-1.5 min-w-0">
+                  <CheckCircle size={14} className="shrink-0" />
+                  <span className="truncate">Скидка {promoApplied.discount_percent}% применена</span>
+                </span>
+                <button
+                  onClick={() => {
+                    setPromoApplied(null);
+                    setPromoInput("");
+                  }}
+                  className="shrink-0 text-xs underline hover:no-underline"
+                >
+                  Убрать
+                </button>
+              </p>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Промокод на скидку"
+                  value={promoInput}
+                  onChange={(e) => {
+                    setPromoInput(e.target.value.toUpperCase());
+                    setPromoError(null);
+                  }}
+                  className="flex-1 min-w-0 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)]
+                    px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none
+                    focus:border-[var(--color-accent)]"
+                />
+                <button
+                  onClick={handleCheckPromo}
+                  disabled={!promoInput.trim() || promoChecking}
+                  className="shrink-0 px-3 py-2 rounded-lg text-sm font-medium border border-[var(--color-border)]
+                    text-[var(--color-text-primary)] hover:bg-[var(--color-bg)] transition-colors
+                    disabled:opacity-40"
+                >
+                  {promoChecking ? "..." : "Применить"}
+                </button>
+              </div>
+            )}
+            {promoError && (
+              <p className="mt-2 text-xs text-red-500 flex items-start gap-1.5">
+                <AlertCircle size={13} className="shrink-0 mt-0.5" /> {promoError}
+              </p>
+            )}
+          </div>
+        )}
+
         {isSub && (
           <p className="mb-4 text-xs leading-relaxed text-[var(--color-text-secondary)]">
-            Оплачивая, вы соглашаетесь на ежемесячное автоматическое списание {amountLabel} ₽
-            с вашей банковской карты до отмены подписки. Отменить подписку можно в любой момент
-            в личном кабинете — раздел «Тарифы и платежи».
+            {promoApplied
+              ? `Оплачивая, вы соглашаетесь на автоматическое продление подписки: первый платёж ${amountLabel} ₽ со скидкой, далее ежемесячно ${fullAmountLabel} ₽ с вашей банковской карты до отмены подписки. Отменить подписку можно в любой момент в личном кабинете — раздел «Тарифы и платежи».`
+              : `Оплачивая, вы соглашаетесь на ежемесячное автоматическое списание ${amountLabel} ₽ с вашей банковской карты до отмены подписки. Отменить подписку можно в любой момент в личном кабинете — раздел «Тарифы и платежи».`}
           </p>
         )}
 
@@ -159,7 +262,7 @@ function ConfirmPurchaseModal({
             Отмена
           </button>
           <button
-            onClick={onConfirm}
+            onClick={() => onConfirm(promoApplied?.code)}
             disabled={!agreed || loading}
             className="flex-1 py-2.5 rounded-lg text-sm font-medium bg-[var(--color-accent)] text-white
               hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
@@ -620,11 +723,11 @@ export default function BillingPage() {
   const [payError, setPayError] = useState<string | null>(null);
   const [pendingTariff, setPendingTariff] = useState<Tariff | null>(null);
 
-  async function handlePay(tariffId: number) {
+  async function handlePay(tariffId: number, promoCode?: string) {
     setPayLoading(tariffId);
     setPayError(null);
     try {
-      const data = await payTariff(tariffId);
+      const data = await payTariff(tariffId, promoCode);
       submitRobokassaForm(data.form);
     } catch (err) {
       setPayError((err as Error).message);
@@ -734,8 +837,9 @@ export default function BillingPage() {
             title: pendingTariff.display_name,
             amount: parseFloat(pendingTariff.price),
           }}
+          tariffId={pendingTariff.id}
           loading={payLoading === pendingTariff.id}
-          onConfirm={() => handlePay(pendingTariff.id)}
+          onConfirm={(promoCode) => handlePay(pendingTariff.id, promoCode)}
           onClose={() => {
             if (payLoading === null) setPendingTariff(null);
           }}
