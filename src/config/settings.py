@@ -482,9 +482,9 @@ TG_XTR_RATE_KOPECKS = int(os.getenv('TG_XTR_RATE_KOPECKS', '200'))
 AITASK_DAILY_CAP = int(os.getenv('AITASK_DAILY_CAP', '30'))
 # Deep Research (S3): фиксированная цена запуска в боте, копейки (10 ₽)
 RESEARCH_PRICE_KOPECKS = int(os.getenv('RESEARCH_PRICE_KOPECKS', '1000'))
-# AI-секретарь (S5): цена ответа сверх лимита тарифа «Бизнес», копейки (1 ₽)
+# AI-секретарь (S5): цена ответа сверх лимита тарифов «Бизнес»/«Макс», копейки (1 ₽)
 BUSINESS_REPLY_PRICE_KOPECKS = int(os.getenv('BUSINESS_REPLY_PRICE_KOPECKS', '100'))
-# Сколько авто-ответов в месяц включено в тариф «Бизнес»
+# Сколько авто-ответов в месяц включено в тарифы «Бизнес» и «Макс»
 BUSINESS_TARIFF_ALLOWANCE = int(os.getenv('BUSINESS_TARIFF_ALLOWANCE', '300'))
 # Managed Bots (S8): дневной cap сообщений гостей на одного бота (антиспам)
 MANAGEDBOT_DAILY_CAP = int(os.getenv('MANAGEDBOT_DAILY_CAP', '300'))

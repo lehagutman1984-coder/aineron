@@ -170,8 +170,8 @@ def _get_draft(draft_id: int, tg_user):
 
 
 def _charge_reply(conn, draft_id: int) -> tuple:
-    """Биллинг ответа: тариф «Бизнес» — 300/мес включено, сверх — по цене
-    BUSINESS_REPLY_PRICE_KOPECKS; без тарифа — каждый ответ платный.
+    """Биллинг ответа: тарифы «Бизнес» и «Макс» — 300/мес включено, сверх —
+    по цене BUSINESS_REPLY_PRICE_KOPECKS; без тарифа — каждый ответ платный.
 
     Возвращает (ok, paid): paid=True если было реальное списание —
     при неудачной отправке вызывающий код обязан вызвать _refund_reply.
@@ -191,8 +191,8 @@ def _charge_reply(conn, draft_id: int) -> tuple:
         conn.replies_month, conn.replies_this_month = month, 0
 
     tariff_name = (getattr(user.tariff, 'display_name', '') or '').lower()
-    is_business_tariff = 'бизнес' in tariff_name or 'business' in tariff_name
-    free = is_business_tariff and conn.replies_this_month < allowance
+    has_secretary = any(k in tariff_name for k in ('бизнес', 'business', 'макс', 'max'))
+    free = has_secretary and conn.replies_this_month < allowance
 
     paid = False
     if not free:
@@ -703,7 +703,7 @@ async def cmd_secretary(message: Message, tg_user=None):
         card('AI-секретарь',
              f'Статус: <b>{status}</b>\n'
              f'Режим: <b>{mode_h}</b>\n'
-             f'Ответов в этом месяце: {replies} (в тарифе «Бизнес» {allowance} включено)\n'
+             f'Ответов в этом месяце: {replies} (в тарифах «Бизнес» и «Макс» {allowance} включено)\n'
              f'Стоп-слово клиента: «{conn.stop_word}»'),
         parse_mode='HTML',
         reply_markup=_secretary_kb(conn),
