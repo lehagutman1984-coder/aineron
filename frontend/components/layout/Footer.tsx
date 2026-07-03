@@ -4,18 +4,23 @@ const COLUMNS = [
   {
     title: "Продукт",
     links: [
-      { label: "Документация", href: "/docs/" },
       { label: "Каталог моделей", href: "/models/" },
       { label: "Сравнение моделей", href: "/compare/" },
+      { label: "Галерея", href: "/gallery/" },
       { label: "Проекты", href: "/projects/" },
-      { label: "Статус сервиса", href: "/status/" },
+      { label: "Промты", href: "/prompts/" },
+      { label: "Персоны", href: "/personas/" },
+      { label: "Арена моделей", href: "/arena/" },
     ],
   },
   {
     title: "Разработчикам",
     links: [
+      { label: "Документация", href: "/docs/" },
       { label: "API и интеграции", href: "/api-docs/" },
       { label: "Playground", href: "/api-docs/playground/" },
+      { label: "IDE-интеграции", href: "/ide/" },
+      { label: "Статус сервиса", href: "/status/" },
       { label: "Личный кабинет", href: "/account/" },
     ],
   },

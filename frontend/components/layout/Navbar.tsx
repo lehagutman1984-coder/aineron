@@ -49,6 +49,8 @@ export function Navbar() {
         <nav className="hidden items-center gap-1 md:flex">
           <NavLink href="/models/">Каталог</NavLink>
           <NavLink href="/compare/">Сравнение</NavLink>
+          <NavLink href="/gallery/">Галерея</NavLink>
+          <NavLink href="/projects/">Проекты</NavLink>
           <NavLink href="/docs/">Документация</NavLink>
           <NavLink href="/api-docs/">API</NavLink>
           <NavLink href="/blog/">Блог</NavLink>
@@ -127,6 +129,8 @@ export function Navbar() {
           <div className="flex flex-col gap-1">
             <MobileNavLink href="/models/" onClick={() => setMobileOpen(false)}>Каталог</MobileNavLink>
             <MobileNavLink href="/compare/" onClick={() => setMobileOpen(false)}>Сравнение</MobileNavLink>
+            <MobileNavLink href="/gallery/" onClick={() => setMobileOpen(false)}>Галерея</MobileNavLink>
+            <MobileNavLink href="/projects/" onClick={() => setMobileOpen(false)}>Проекты</MobileNavLink>
             <MobileNavLink href="/docs/" onClick={() => setMobileOpen(false)}>Документация</MobileNavLink>
             <MobileNavLink href="/api-docs/" onClick={() => setMobileOpen(false)}>API</MobileNavLink>
             <MobileNavLink href="/blog/" onClick={() => setMobileOpen(false)}>Блог</MobileNavLink>

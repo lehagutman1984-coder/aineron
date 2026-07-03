@@ -15,6 +15,9 @@ import {
   AppWindow,
   Heart,
   CalendarClock,
+  Brain,
+  Folder,
+  Images,
 } from "lucide-react";
 import { useAuthStore } from "@/lib/stores/auth";
 import { authLogout } from "@/lib/api/client";
@@ -23,6 +26,9 @@ import { useEffect } from "react";
 
 const NAV = [
   { href: "/account/", label: "Обзор", icon: LayoutDashboard, exact: true },
+  { href: "/account/memory/", label: "Память", icon: Brain },
+  { href: "/projects/", label: "Проекты", icon: Folder },
+  { href: "/gallery/", label: "Галерея", icon: Images },
   { href: "/account/analytics/", label: "Аналитика", icon: BarChart2 },
   { href: "/account/billing/", label: "Тарифы и платежи", icon: CreditCard },
   { href: "/account/tasks/", label: "AI-задачи", icon: CalendarClock },

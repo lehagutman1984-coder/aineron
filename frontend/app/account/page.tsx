@@ -12,6 +12,8 @@ import {
   ExternalLink,
   Key,
   Brain,
+  Folder,
+  Images,
 } from "lucide-react";
 import { getMe, listChats } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
@@ -137,6 +139,42 @@ export default function AccountPage() {
           >
             <Brain size={13} />
             Открыть память
+          </Link>
+        </div>
+
+        {/* Projects card */}
+        <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-6">
+          <div className="mb-4 flex items-center gap-2 text-[15px] font-medium text-[rgba(13,13,13,0.55)] uppercase tracking-wide">
+            <Folder size={14} className="text-[#D97757]" />
+            Проекты
+          </div>
+          <p className="mb-4 text-[15px] text-[rgba(13,13,13,0.6)]">
+            Организуйте чаты по папкам с общим контекстом.
+          </p>
+          <Link
+            href="/projects/"
+            className="inline-flex h-9 items-center gap-2 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[15px] text-[rgba(13,13,13,0.7)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
+          >
+            <Folder size={13} />
+            Открыть проекты
+          </Link>
+        </div>
+
+        {/* Gallery card */}
+        <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-6">
+          <div className="mb-4 flex items-center gap-2 text-[15px] font-medium text-[rgba(13,13,13,0.55)] uppercase tracking-wide">
+            <Images size={14} className="text-[#D97757]" />
+            Галерея
+          </div>
+          <p className="mb-4 text-[15px] text-[rgba(13,13,13,0.6)]">
+            Витрина работ сообщества — изображения и видео.
+          </p>
+          <Link
+            href="/gallery/"
+            className="inline-flex h-9 items-center gap-2 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[15px] text-[rgba(13,13,13,0.7)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
+          >
+            <Images size={13} />
+            Открыть галерею
           </Link>
         </div>
 
