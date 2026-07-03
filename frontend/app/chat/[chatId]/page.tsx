@@ -793,7 +793,7 @@ export default function ChatPage() {
     const t = textareaRef.current;
     if (!t) return;
     t.style.height = "auto";
-    t.style.height = Math.min(t.scrollHeight, 200) + "px";
+    t.style.height = Math.min(t.scrollHeight, window.innerWidth >= 1024 ? 320 : 200) + "px";
   };
 
   const scrollToBottom = useCallback(() => {
@@ -1240,7 +1240,7 @@ export default function ChatPage() {
               rows={1}
               disabled={isBusy}
               className="block w-full resize-none bg-transparent px-4 py-3.5 pr-24 text-[16px] leading-relaxed text-[#1A1A1A] outline-none disabled:opacity-50 dark:text-[#EDE8E3] dark:placeholder:text-[rgba(236,236,236,0.35)]"
-              style={{ maxHeight: "200px", caretColor: "#D97757" }}
+              style={{ maxHeight: "320px", caretColor: "#D97757" }}
             />
             <input
               ref={fileInputRef}

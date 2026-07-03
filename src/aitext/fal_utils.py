@@ -16,12 +16,15 @@ _image_client = None
 
 
 def get_laozhang_image_client():
+    """
+    Клиент для генерации изображений. Возвращает FallbackClient: основной сервис —
+    laozhang, при его недоступности прозрачно переключается на apimart.
+    Управляется флагом settings.AI_PROVIDER_FALLBACK.
+    """
     global _image_client
     if _image_client is None:
-        _image_client = OpenAI(
-            api_key=settings.LAOZHANG_API_KEY,
-            base_url=settings.LAOZHANG_API_URL,
-        )
+        from aitext.providers import FallbackClient
+        _image_client = FallbackClient('laozhang')
     return _image_client
 
 
@@ -1643,7 +1646,27 @@ def generate_with_falai(network, user_msg, message, user_settings=None):
     if config.get('metadata', {}).get('output_type') == 'video':
         video_api = config.get('metadata', {}).get('video_api', '')
         if video_api == 'apimart':
-            return generate_video_apimart(network, user_msg, message, user_settings)
+            # apimart — основной сервис для видео. При его недоступности пробуем
+            # laozhang, но только если админ задал laozhang-эквивалент модели в
+            # metadata.laozhang_fallback_model (имена моделей у сервисов разные).
+            try:
+                return generate_video_apimart(network, user_msg, message, user_settings)
+            except Exception as e:
+                fb_model = config.get('metadata', {}).get('laozhang_fallback_model')
+                fallback_on = getattr(settings, 'AI_PROVIDER_FALLBACK', True)
+                # Ошибки валидации настроек — не повод для фолбэка.
+                is_settings_err = str(e).startswith('Ошибки в настройках')
+                if fallback_on and fb_model and not is_settings_err:
+                    logger.warning(
+                        "APIMart видео недоступно (%s); фолбэк → laozhang model=%s", e, fb_model
+                    )
+                    orig_model = network.model_name
+                    try:
+                        network.model_name = fb_model
+                        return generate_video_laozhang(network, user_msg, message, user_settings)
+                    finally:
+                        network.model_name = orig_model
+                raise
         if video_api == 'seedance':
             return generate_seedance_video(network, user_msg, message, user_settings)
         return generate_video_laozhang(network, user_msg, message, user_settings)

@@ -513,12 +513,15 @@ def _auto_max_tokens(model_name: str) -> int:
 
 
 def get_laozhang_client():
+    """
+    Клиент для текстовых запросов. Возвращает FallbackClient: основной сервис —
+    laozhang, при его недоступности прозрачно переключается на apimart (тем же
+    именем модели). Управляется флагом settings.AI_PROVIDER_FALLBACK.
+    """
     global _client
     if _client is None:
-        _client = OpenAI(
-            base_url=settings.LAOZHANG_API_URL,
-            api_key=settings.LAOZHANG_API_KEY,
-        )
+        from aitext.providers import FallbackClient
+        _client = FallbackClient('laozhang')
     return _client
 
 

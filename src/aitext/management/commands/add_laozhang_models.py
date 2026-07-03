@@ -139,6 +139,21 @@ IMAGE_CONFIG = {
         "constraints": {},
         "metadata": {"requires_input_images": False}
     },
+    # Seedream (ByteDance) и Gemini Image не принимают size/n — minimal_params.
+    'seedream': {
+        "name": "Seedream",
+        "api_defaults": {},
+        "ui_settings": {"sections": []},
+        "constraints": {},
+        "metadata": {"requires_input_images": False, "minimal_params": True}
+    },
+    'gemini_image': {
+        "name": "Gemini Image",
+        "api_defaults": {},
+        "ui_settings": {"sections": []},
+        "constraints": {},
+        "metadata": {"requires_input_images": False, "minimal_params": True}
+    },
 }
 
 # Sprint 4: поля Creative Controls для миграции уже задеплоенных строк
@@ -264,6 +279,50 @@ TEXT_MODELS = [
          description='Умная китайская модель от Zhipu AI для разнообразных задач.'),
     dict(name='GPT-3.5 Turbo', slug='gpt-3-5-turbo', model_name='gpt-3.5-turbo', cost_per_message=1, cost_kopecks=50, order=80,
          description='Классическая быстрая модель OpenAI. Идеально для простых чатов.'),
+
+    # ── Новые флагманы (2026) ────────────────────────────────────────────────
+    # OpenAI GPT-5.x
+    dict(name='GPT-5.2', slug='gpt-5-2', model_name='gpt-5.2', cost_per_message=14, cost_kopecks=1400, order=5,
+         description='Новейшая флагманская модель OpenAI. Максимальный интеллект и мультимодальность.',
+         handle_photo=True, is_popular=True),
+    dict(name='GPT-5.1', slug='gpt-5-1', model_name='gpt-5.1', cost_per_message=12, cost_kopecks=1200, order=6,
+         description='Улучшенный GPT-5 с более точными ответами и рассуждением.',
+         handle_photo=True, is_popular=True),
+    # Claude нового поколения
+    dict(name='Claude Sonnet 5', slug='claude-sonnet-5', model_name='claude-sonnet-5', cost_per_message=6, cost_kopecks=600, order=19,
+         description='Новейший Claude Sonnet 5 — топовый баланс скорости и интеллекта от Anthropic.',
+         handle_photo=True, is_popular=True),
+    dict(name='Claude Opus 4.7', slug='claude-opus-4-7', model_name='claude-opus-4-7', cost_per_message=18, cost_kopecks=1800, order=24,
+         description='Мощнейший Claude Opus для глубокого анализа, кода и длинных текстов.',
+         handle_photo=True),
+    # Gemini 3.x
+    dict(name='Gemini 3 Pro', slug='gemini-3-pro', model_name='gemini-3.1-pro-preview', cost_per_message=6, cost_kopecks=600, order=33,
+         description='Флагман Google нового поколения — огромный контекст и мультимодальность.',
+         handle_photo=True, is_popular=True),
+    dict(name='Gemini 3.5 Flash', slug='gemini-3-5-flash', model_name='gemini-3.5-flash', cost_per_message=2, cost_kopecks=150, order=34,
+         description='Сверхбыстрый Gemini Flash последнего поколения.',
+         handle_photo=True),
+    # DeepSeek
+    dict(name='DeepSeek V3.2', slug='deepseek-v3-2', model_name='deepseek-v3.2', cost_per_message=1, cost_kopecks=100, order=43,
+         description='Новейшая версия DeepSeek V3 — умнее и эффективнее.',
+         is_popular=True),
+    # Qwen
+    dict(name='Qwen3 Coder Plus', slug='qwen3-coder-plus', model_name='qwen3-coder-plus', cost_per_message=2, cost_kopecks=200, order=53,
+         description='Специализированная модель Qwen для программирования — быстрая и точная в коде.',
+         is_popular=True),
+    # Grok
+    dict(name='Grok 4.3', slug='grok-4-3', model_name='grok-4.3', cost_per_message=10, cost_kopecks=1000, order=63,
+         description='Новейший флагман xAI с доступом к интернету в реальном времени.',
+         is_popular=True),
+    dict(name='Grok 4.1 Fast', slug='grok-4-1-fast', model_name='grok-4-1-fast', cost_per_message=2, cost_kopecks=200, order=64,
+         description='Быстрая версия Grok 4.1 для оперативных ответов.'),
+    # Прочие топ-модели
+    dict(name='Kimi K2.5', slug='kimi-k2-5', model_name='kimi-k2.5', cost_per_message=2, cost_kopecks=200, order=72,
+         description='Новейшая модель Moonshot AI с огромным контекстом.'),
+    dict(name='GLM 4.6', slug='glm-4-6', model_name='glm-4.6', cost_per_message=1, cost_kopecks=100, order=73,
+         description='Обновлённая модель Zhipu AI — умная и доступная.'),
+    dict(name='MiniMax M2.5', slug='minimax-m2-5', model_name='MiniMax-M2.5', cost_per_message=2, cost_kopecks=150, order=74,
+         description='Мощная модель MiniMax для разнообразных задач.'),
 ]
 
 IMAGE_MODELS = [
@@ -294,6 +353,23 @@ IMAGE_MODELS = [
     dict(name='Flux 2 Flex', slug='flux-2-flex', model_name='flux-2-flex', cost_per_message=8, cost_kopecks=800, order=14,
          description='Гибкая и быстрая версия Flux 2 по доступной цене.',
          config_key='flux'),
+
+    # ── Новые топ-модели изображений (2026) ──────────────────────────────────
+    dict(name='GPT Image 1.5', slug='gpt-image-1-5', model_name='gpt-image-1.5', cost_per_message=13, cost_kopecks=1300, order=5,
+         description='Обновлённая модель генерации изображений OpenAI с улучшенной детализацией.',
+         config_key='gpt_image'),
+    dict(name='Nano Banana (Gemini 2.5 Flash Image)', slug='gemini-2-5-flash-image', model_name='gemini-2.5-flash-image', cost_per_message=6, cost_kopecks=600, order=20,
+         description='Быстрая модель генерации и редактирования изображений Google. Точное следование промту.',
+         config_key='gemini_image', is_popular=True),
+    dict(name='Gemini 3 Pro Image', slug='gemini-3-pro-image', model_name='gemini-3-pro-image', cost_per_message=12, cost_kopecks=1200, order=21,
+         description='Флагманская модель генерации изображений Google нового поколения.',
+         config_key='gemini_image', is_popular=True),
+    dict(name='Seedream 4.5', slug='seedream-4-5', model_name='seedream-4-5-251128', cost_per_message=10, cost_kopecks=1000, order=30,
+         description='Новейшая модель ByteDance для фотореалистичной генерации изображений.',
+         config_key='seedream', is_popular=True),
+    dict(name='Seedream 4.0', slug='seedream-4-0', model_name='seedream-4-0-250828', cost_per_message=8, cost_kopecks=800, order=31,
+         description='Мощная модель генерации изображений ByteDance с высокой детализацией.',
+         config_key='seedream'),
 ]
 
 

@@ -357,6 +357,11 @@ SEEDANCE_API_KEY = os.environ.get('SEEDANCE_API_KEY', '')
 APIMART_API_KEY = os.environ.get('APIMART_API_KEY', '')
 APIMART_API_URL = "https://api.apimart.ai/v1"
 
+# Автоматический фолбэк между сервисами (laozhang ↔ apimart).
+# Текст/изображения: laozhang → apimart; видео: apimart → laozhang.
+# При недоступности сервиса/модели запрос прозрачно повторяется на резервном.
+AI_PROVIDER_FALLBACK = os.getenv('AI_PROVIDER_FALLBACK', '1') == '1'
+
 
 # ========== VIBE-CODING STUDIO ==========
 STUDIO_SANDBOX_IMAGE = os.getenv('STUDIO_SANDBOX_IMAGE', 'aineron-sandbox:latest')
