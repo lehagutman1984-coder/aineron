@@ -348,3 +348,52 @@ class StarsUsageView(APIView):
             ],
             'by_model': sorted(by_model.values(), key=lambda x: -x['kopecks'])[:10],
         })
+
+
+class SubscriptionAutoRenewView(APIView):
+    """
+    GET   /api/v1/billing/subscription/  — текущая подписка
+    PATCH /api/v1/billing/subscription/  — включить/отключить автопродление
+                                           body: {"auto_renew": true|false}
+
+    Отключение автопродления = отмена подписки (требование Робокассы):
+    последующие рекуррентные списания не производятся, доступ сохраняется
+    до конца оплаченного периода.
+    """
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(summary='Текущая подписка', tags=['Billing'])
+    def get(self, request):
+        subscription = request.user.active_subscription
+        if not subscription:
+            return Response({'subscription': None})
+        return Response({'subscription': UserSubscriptionSerializer(subscription).data})
+
+    @extend_schema(summary='Управление автопродлением подписки', tags=['Billing'])
+    def patch(self, request):
+        auto_renew = request.data.get('auto_renew')
+        if not isinstance(auto_renew, bool):
+            return Response(
+                {'error': {'message': 'Поле auto_renew (bool) обязательно', 'type': 'invalid_request', 'code': 'invalid_request'}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        subscription = request.user.active_subscription
+        if not subscription or not subscription.is_active:
+            return Response(
+                {'error': {'message': 'У вас нет активной подписки', 'type': 'invalid_request', 'code': 'no_subscription'}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        subscription.auto_renew = auto_renew
+        subscription.save(update_fields=['auto_renew', 'updated_at'])
+        logger.info(
+            "Автопродление %s для %s (подписка %s)",
+            'включено' if auto_renew else 'отключено', request.user.email, subscription.id,
+        )
+        return Response({
+            'success': True,
+            'auto_renew': subscription.auto_renew,
+            'message': 'Автопродление включено' if auto_renew else 'Автопродление отключено. Тариф будет активен до конца оплаченного периода.',
+            'subscription': UserSubscriptionSerializer(subscription).data,
+        })

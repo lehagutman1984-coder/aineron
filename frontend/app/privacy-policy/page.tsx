@@ -5,7 +5,7 @@ const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "https://aineron.ru/api/v1"
 
 async function getLegalDoc(type: "privacy" | "terms") {
   try {
-    const res = await fetch(`${API_BASE}/v1/legal/${type}/`, { next: { revalidate: 3600 } });
+    const res = await fetch(`${API_BASE}/legal/${type}/`, { next: { revalidate: 3600 } });
     if (!res.ok) return null;
     return res.json() as Promise<{ title: string; content: string; last_updated: string }>;
   } catch {
@@ -58,7 +58,7 @@ export default async function PrivacyPolicyPage() {
 
           {doc ? (
             <div
-              className="prose prose-sm max-w-none text-[rgba(13,13,13,0.75)] [&_h2]:text-[18px] [&_h2]:font-semibold [&_h2]:text-[#1A1A1A] [&_h2]:mt-6 [&_h2]:mb-3 [&_p]:mb-3 [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:pl-5"
+              className="prose prose-sm max-w-none text-[rgba(13,13,13,0.75)] [&_h2]:text-[18px] [&_h2]:font-semibold [&_h2]:text-[#1A1A1A] [&_h2]:mt-6 [&_h2]:mb-3 [&_p]:mb-3 [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:mb-1 [&_strong]:text-[#1A1A1A] [&_a]:text-[#D97757] [&_a:hover]:underline"
               dangerouslySetInnerHTML={{ __html: doc.content }}
             />
           ) : (

@@ -17,7 +17,10 @@ class UserSubscriptionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserSubscription
-        fields = ['id', 'tariff', 'started_at', 'expires_at', 'is_active', 'auto_renew', 'days_left']
+        fields = [
+            'id', 'tariff', 'started_at', 'expires_at', 'is_active',
+            'auto_renew', 'status', 'next_payment_date', 'days_left',
+        ]
 
     def get_days_left(self, obj):
         return obj.days_until_expiration()

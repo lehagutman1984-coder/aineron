@@ -30,6 +30,7 @@ import type {
   BlogPost,
   BlogPostDetail,
   TariffsResponse,
+  AutoRenewResponse,
   CreatePaymentResponse,
   PageSaleSettings,
   PaymentHistory,
@@ -473,6 +474,12 @@ export const getTariffs = (): Promise<TariffsResponse> =>
 export const payTariff = (tariffId: number): Promise<CreatePaymentResponse> =>
   request<CreatePaymentResponse>(`/billing/tariffs/${tariffId}/pay/`, {
     method: "POST",
+  });
+
+export const updateAutoRenew = (autoRenew: boolean): Promise<AutoRenewResponse> =>
+  request<AutoRenewResponse>("/billing/subscription/", {
+    method: "PATCH",
+    body: JSON.stringify({ auto_renew: autoRenew }),
   });
 
 export const getPageSaleSettings = (): Promise<PageSaleSettings> =>

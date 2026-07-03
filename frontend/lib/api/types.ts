@@ -659,7 +659,16 @@ export interface UserSubscription {
   expires_at: string;
   is_active: boolean;
   auto_renew: boolean;
+  status: "active" | "expired" | "cancelled" | "pending";
+  next_payment_date: string | null;
   days_left: number;
+}
+
+export interface AutoRenewResponse {
+  success: boolean;
+  auto_renew: boolean;
+  message: string;
+  subscription: UserSubscription;
 }
 
 export interface TariffsResponse {

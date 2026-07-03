@@ -183,3 +183,50 @@ class RobokassaWebhookIdempotencyTests(TestCase):
             'OutSum': '100.00', 'InvId': 'rbk-2', 'SignatureValue': 'WRONG',
         })
         self.assertEqual(r.status_code, 400)
+
+
+class LegalDocumentsCommandTests(TestCase):
+    """setup_legal_documents: заполнение оферты и политики конфиденциальности."""
+
+    def test_creates_documents(self):
+        from django.core.management import call_command
+        from users.models import LegalDocument
+
+        call_command('setup_legal_documents')
+
+        terms = LegalDocument.objects.get(document_type='terms')
+        privacy = LegalDocument.objects.get(document_type='privacy')
+
+        for doc in (terms, privacy):
+            self.assertIn('aineron.ru', doc.content)
+            self.assertNotIn('yurist', doc.content)
+            self.assertIn('ИВАЩЕНКО', doc.content)
+            self.assertIn('220805856949', doc.content)  # ИНН
+            self.assertIn('support@aineron.ru', doc.content)
+
+        # Условия Робокассы: рекуррентные платежи и отказ от подписки в оферте
+        self.assertIn('рекуррентные платежи', terms.content)
+        self.assertIn('автоматическое списание', terms.content)
+        self.assertIn('отказаться от подписки', terms.content)
+
+    def test_does_not_overwrite_admin_edits(self):
+        from django.core.management import call_command
+        from users.models import LegalDocument
+
+        LegalDocument.objects.create(
+            document_type='terms', title='Правки из админки', content='<p>Кастом</p>',
+        )
+        call_command('setup_legal_documents')
+        self.assertEqual(LegalDocument.objects.get(document_type='terms').content, '<p>Кастом</p>')
+
+        call_command('setup_legal_documents', '--force')
+        self.assertIn('aineron.ru', LegalDocument.objects.get(document_type='terms').content)
+
+    def test_fills_placeholder(self):
+        from django.core.management import call_command
+        from users.models import LegalDocument
+
+        # get_privacy() создаёт документ с placeholder — команда должна его заполнить
+        LegalDocument.get_privacy()
+        call_command('setup_legal_documents')
+        self.assertIn('aineron.ru', LegalDocument.objects.get(document_type='privacy').content)

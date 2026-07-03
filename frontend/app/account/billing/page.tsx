@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   CreditCard,
@@ -13,6 +14,8 @@ import {
   XCircle,
   RefreshCw,
   AlertCircle,
+  X,
+  Star,
 } from "lucide-react";
 import {
   getTariffs,
@@ -21,8 +24,9 @@ import {
   buyPages,
   getPaymentHistory,
   applyPromoCode,
+  updateAutoRenew,
 } from "@/lib/api/client";
-import type { Tariff, PaymentHistory, RobokassaForm } from "@/lib/api/types";
+import type { Tariff, PaymentHistory, RobokassaForm, UserSubscription } from "@/lib/api/types";
 import { formatRub } from "@/lib/money";
 import { useAuthStore } from "@/lib/stores/auth";
 
@@ -41,6 +45,131 @@ function submitRobokassaForm(form: RobokassaForm) {
   });
   document.body.appendChild(f);
   f.submit();
+}
+
+// ── Purchase confirmation modal (условия Робокассы) ─────────────────────────
+
+export interface PurchaseInfo {
+  mode: "subscription" | "topup";
+  title: string;
+  amount: number; // руб
+}
+
+function ConfirmPurchaseModal({
+  purchase,
+  loading,
+  onConfirm,
+  onClose,
+}: {
+  purchase: PurchaseInfo;
+  loading: boolean;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  const [agreed, setAgreed] = useState(false);
+  const amountLabel = purchase.amount.toLocaleString("ru-RU");
+  const isSub = purchase.mode === "subscription";
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-[16px] bg-[var(--color-surface)] border border-[var(--color-border)] p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between mb-4">
+          <h3 className="text-xl font-bold text-[var(--color-text-primary)]">
+            Подтверждение покупки
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+            aria-label="Закрыть"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-border)]">
+            <Star size={16} className="text-[var(--color-accent)]" />
+          </div>
+          <div>
+            <p className="font-semibold text-[var(--color-text-primary)]">{purchase.title}</p>
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              {isSub ? "Ежемесячная подписка с автопродлением" : "Разовое пополнение баланса"}
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-2 text-sm mb-4">
+          <div className="flex items-center justify-between">
+            <span className="text-[var(--color-text-secondary)]">
+              {isSub ? "Стоимость тарифа" : "Сумма пополнения"}
+            </span>
+            <span className="text-[var(--color-text-primary)]">
+              {amountLabel} ₽{isSub && " / мес"}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[var(--color-text-secondary)]">Способ оплаты</span>
+            <span className="text-[var(--color-text-primary)]">Банковская карта</span>
+          </div>
+          <div className="flex items-center justify-between font-semibold">
+            <span className="text-[var(--color-text-primary)]">Итого к оплате</span>
+            <span className="text-[var(--color-text-primary)]">{amountLabel} ₽</span>
+          </div>
+        </div>
+
+        {isSub && (
+          <p className="mb-4 text-xs leading-relaxed text-[var(--color-text-secondary)]">
+            Оплачивая, вы соглашаетесь на ежемесячное автоматическое списание {amountLabel} ₽
+            с вашей банковской карты до отмены подписки. Отменить подписку можно в любой момент
+            в личном кабинете — раздел «Тарифы и платежи».
+          </p>
+        )}
+
+        <label className="flex items-start gap-2.5 mb-5 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={agreed}
+            onChange={(e) => setAgreed(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-accent)]"
+          />
+          <span className="text-sm text-[var(--color-text-primary)]">
+            Я согласен с{" "}
+            <Link href="/terms/" target="_blank" className="underline hover:text-[var(--color-accent)]">
+              условиями использования
+            </Link>{" "}
+            и{" "}
+            <Link href="/privacy-policy/" target="_blank" className="underline hover:text-[var(--color-accent)]">
+              политикой конфиденциальности
+            </Link>
+          </span>
+        </label>
+
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 rounded-lg text-sm font-medium border border-[var(--color-border)]
+              text-[var(--color-text-primary)] hover:bg-[var(--color-bg)] transition-colors"
+          >
+            Отмена
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={!agreed || loading}
+            className="flex-1 py-2.5 rounded-lg text-sm font-medium bg-[var(--color-accent)] text-white
+              hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {loading ? "Перенаправление..." : `Оплатить ${amountLabel} ₽`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -93,6 +222,103 @@ function SectionHeader({ icon: Icon, title }: { icon: React.ElementType; title: 
       <Icon size={20} className="text-[var(--color-accent)]" />
       <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">{title}</h2>
     </div>
+  );
+}
+
+// ── Subscription management (автопродление / отмена) ────────────────────────
+
+function SubscriptionSection({ subscription }: { subscription: UserSubscription }) {
+  const queryClient = useQueryClient();
+  const [message, setMessage] = useState<string | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: (autoRenew: boolean) => updateAutoRenew(autoRenew),
+    onSuccess: (data) => {
+      setMessage(data.message);
+      queryClient.invalidateQueries({ queryKey: ["tariffs"] });
+    },
+  });
+
+  const nextCharge = subscription.next_payment_date ?? subscription.expires_at;
+
+  return (
+    <section>
+      <SectionHeader icon={RefreshCw} title="Тарифный план" />
+      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)]">
+              <Star size={16} className="text-[var(--color-accent)]" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="font-semibold text-[var(--color-text-primary)]">
+                  {subscription.tariff.display_name}
+                </p>
+                {subscription.auto_renew ? (
+                  <span className="text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-green-500/10 text-green-600">
+                    Автопродление
+                  </span>
+                ) : (
+                  <span className="text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600">
+                    Отменено
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-[var(--color-text-secondary)] mt-0.5">
+                {subscription.auto_renew
+                  ? `Следующее списание: ${formatDate(nextCharge)}`
+                  : `Активен до: ${formatDate(subscription.expires_at)}`}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              setMessage(null);
+              mutation.mutate(!subscription.auto_renew);
+            }}
+            disabled={mutation.isPending}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${
+              subscription.auto_renew
+                ? "border border-[var(--color-border)] text-[var(--color-text-primary)] hover:border-red-400 hover:text-red-500"
+                : "bg-[var(--color-accent)] text-white hover:opacity-90"
+            }`}
+          >
+            {mutation.isPending
+              ? "..."
+              : subscription.auto_renew
+                ? "Отменить подписку"
+                : "Возобновить"}
+          </button>
+        </div>
+
+        {!subscription.auto_renew && (
+          <p className="flex items-center gap-2 rounded-lg bg-green-500/8 border border-green-500/20 px-3 py-2.5 text-sm text-green-700">
+            <CheckCircle size={14} className="shrink-0" />
+            Автопродление отключено. Тариф будет активен до конца оплаченного периода.
+          </p>
+        )}
+
+        {message && subscription.auto_renew && (
+          <p className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
+            <CheckCircle size={14} className="text-green-500 shrink-0" />
+            {message}
+          </p>
+        )}
+
+        {mutation.error && (
+          <p className="flex items-center gap-2 text-sm text-red-500">
+            <AlertCircle size={14} className="shrink-0" />
+            {(mutation.error as Error).message}
+          </p>
+        )}
+
+        <p className="text-xs text-[var(--color-text-secondary)]">
+          При включённом автопродлении подписка продлевается автоматически каждый месяц.
+          Средства списываются за 3 дня до окончания оплаченного периода.
+        </p>
+      </div>
+    </section>
   );
 }
 
@@ -156,6 +382,7 @@ function StarsSection() {
   });
   const [count, setCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const mutation = useMutation({
     mutationFn: buyPages,
@@ -164,6 +391,7 @@ function StarsSection() {
     },
     onError: (err: Error) => {
       setError(err.message);
+      setConfirmOpen(false);
     },
   });
 
@@ -210,7 +438,7 @@ function StarsSection() {
         <button
           onClick={() => {
             setError(null);
-            mutation.mutate(count || settings.min_pages_for_purchase);
+            setConfirmOpen(true);
           }}
           disabled={mutation.isPending}
           className="px-4 py-2 rounded-lg text-sm font-medium bg-[var(--color-accent)] text-white
@@ -223,6 +451,20 @@ function StarsSection() {
         <p className="text-red-500 text-sm flex items-center gap-1.5">
           <AlertCircle size={14} /> {error}
         </p>
+      )}
+      {confirmOpen && (
+        <ConfirmPurchaseModal
+          purchase={{
+            mode: "topup",
+            title: "Пополнение баланса",
+            amount: parseFloat(total),
+          }}
+          loading={mutation.isPending}
+          onConfirm={() => mutation.mutate(count || settings.min_pages_for_purchase)}
+          onClose={() => {
+            if (!mutation.isPending) setConfirmOpen(false);
+          }}
+        />
       )}
     </div>
   );
@@ -356,6 +598,7 @@ export default function BillingPage() {
 
   const [payLoading, setPayLoading] = useState<number | null>(null);
   const [payError, setPayError] = useState<string | null>(null);
+  const [pendingTariff, setPendingTariff] = useState<Tariff | null>(null);
 
   async function handlePay(tariffId: number) {
     setPayLoading(tariffId);
@@ -366,10 +609,14 @@ export default function BillingPage() {
     } catch (err) {
       setPayError((err as Error).message);
       setPayLoading(null);
+      setPendingTariff(null);
     }
   }
 
   const activeTariffId = tariffsData?.current_subscription?.tariff?.id ?? null;
+  const currentSubscription = tariffsData?.current_subscription ?? null;
+  const showSubscription =
+    currentSubscription && currentSubscription.is_active && !currentSubscription.tariff.is_free;
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-10">
@@ -395,6 +642,9 @@ export default function BillingPage() {
         )}
       </div>
 
+      {/* Subscription management */}
+      {showSubscription && <SubscriptionSection subscription={currentSubscription} />}
+
       {/* Tariffs */}
       <section>
         <SectionHeader icon={CreditCard} title="Тарифы" />
@@ -417,7 +667,10 @@ export default function BillingPage() {
                 key={t.id}
                 tariff={t}
                 isActive={t.id === activeTariffId}
-                onPay={handlePay}
+                onPay={() => {
+                  setPayError(null);
+                  setPendingTariff(t);
+                }}
                 loading={payLoading === t.id}
               />
             ))}
@@ -447,6 +700,22 @@ export default function BillingPage() {
           <HistorySection />
         </div>
       </section>
+
+      {/* Purchase confirmation modal (условия Робокассы) */}
+      {pendingTariff && (
+        <ConfirmPurchaseModal
+          purchase={{
+            mode: "subscription",
+            title: pendingTariff.display_name,
+            amount: parseFloat(pendingTariff.price),
+          }}
+          loading={payLoading === pendingTariff.id}
+          onConfirm={() => handlePay(pendingTariff.id)}
+          onClose={() => {
+            if (payLoading === null) setPendingTariff(null);
+          }}
+        />
+      )}
     </div>
   );
 }
