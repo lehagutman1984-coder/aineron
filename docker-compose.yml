@@ -129,6 +129,9 @@ services:
     environment:
       - NODE_ENV=production
       - DJANGO_INTERNAL_URL=http://web:8000
+      # false = /studio редиректит на главную (читается в app/studio/layout.tsx
+      # на каждый запрос — работает без пересборки образа)
+      - STUDIO_ENABLED=${STUDIO_ENABLED:-true}
     ports:
       - "3000:3000"
     depends_on:
