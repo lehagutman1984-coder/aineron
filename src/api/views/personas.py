@@ -6,8 +6,21 @@ from django.shortcuts import get_object_or_404
 from django.utils.text import slugify
 import uuid
 
-from aitext.models import Persona
+from aitext.models import Persona, NeuralNetwork
 from api.authentication import CsrfExemptSessionAuthentication
+
+
+def _resolve_text_network(raw):
+    """id/slug текстовой модели -> NeuralNetwork | None. ValueError, если модель не подходит."""
+    if raw in (None, '', 0):
+        return None
+    lookup = {'id': raw} if isinstance(raw, int) or str(raw).isdigit() else {'slug': raw}
+    network = NeuralNetwork.objects.filter(
+        is_active=True, provider='openrouter', **lookup,
+    ).first()
+    if network is None:
+        raise ValueError('network must be an active text model')
+    return network
 
 
 class PersonaSerializer(serializers.ModelSerializer):
@@ -74,6 +87,11 @@ class PersonaListCreateView(APIView):
         if not system_prompt:
             return Response({'detail': 'system_prompt is required'}, status=status.HTTP_400_BAD_REQUEST)
 
+        try:
+            network = _resolve_text_network(request.data.get('network'))
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
         base_slug = slugify(name, allow_unicode=False) or 'persona'
         slug = f"{base_slug}-{uuid.uuid4().hex[:6]}"
 
@@ -83,6 +101,7 @@ class PersonaListCreateView(APIView):
             description=(request.data.get('description') or '').strip(),
             system_prompt=system_prompt,
             avatar_url=(request.data.get('avatar_url') or '').strip(),
+            network=network,
             user=request.user,
             is_public=False,
         )
@@ -104,5 +123,10 @@ class PersonaDetailView(APIView):
         for field in allowed:
             if field in request.data:
                 setattr(persona, field, request.data[field])
+        if 'network' in request.data:
+            try:
+                persona.network = _resolve_text_network(request.data.get('network'))
+            except ValueError as e:
+                return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         persona.save()
         return Response(PersonaSerializer(persona, context={'request': request}).data)

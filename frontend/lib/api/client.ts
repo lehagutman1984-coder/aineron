@@ -936,6 +936,7 @@ export const createPersona = (body: {
   description?: string;
   system_prompt: string;
   avatar_url?: string;
+  network?: number | string | null;
 }): Promise<import("./types").Persona> =>
   request("/personas/", { method: "POST", body: JSON.stringify(body) });
 
