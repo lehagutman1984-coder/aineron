@@ -11,6 +11,7 @@ Sprint 4.2 — Inbound sync: репозиторий → база знаний п
 import base64
 import logging
 import os
+import re
 
 import requests
 from django.conf import settings
@@ -217,6 +218,12 @@ def sync_connector(connector_id: int) -> dict:
         connector.save(update_fields=['sync_status', 'last_sync_report', 'last_synced_at'])
         return report
 
+    # U5: не-git источники — сайт (краулер) и RSS-лента, токен не нужен
+    if connector.connector_type == 'website':
+        return _sync_website(connector, _fail)
+    if connector.connector_type == 'rss':
+        return _sync_rss(connector, _fail)
+
     try:
         token = decrypt_token(connector.access_token_enc)
     except Exception as e:
@@ -336,3 +343,197 @@ def get_repo_head_sha(connector) -> str | None:
     except Exception as e:
         logger.warning(f'[poll] HEAD check failed for connector {connector.id}: {e}')
         return None
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# U5 (UNIFIED_SUPREMACY) — коннекторы знаний 2.0: сайт (краулер) и RSS
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _upsert_web_file(connector, url: str, filename: str, content: str,
+                     source: str) -> str:
+    """Создаёт/обновляет ProjectFile для web/rss источника.
+
+    Возвращает 'created' | 'updated' | 'skipped'."""
+    from django.conf import settings
+    from aitext.models import ProjectFile
+    from aitext.tasks import embed_project_file
+
+    existing = ProjectFile.objects.filter(
+        project=connector.project, connector=connector, repo_path=url,
+    ).first()
+    if existing:
+        if (existing.extracted_text or '') == content:
+            return 'skipped'
+        existing.extracted_text = content
+        existing.file_size = len(content.encode('utf-8'))
+        existing.embed_status = 'none'
+        existing.status = 'ready'
+        existing.save(update_fields=['extracted_text', 'file_size',
+                                     'embed_status', 'status'])
+        if getattr(settings, 'PROJECT_VECTOR_RAG', False):
+            embed_project_file.delay(existing.id)
+        return 'updated'
+
+    pf = ProjectFile.objects.create(
+        project=connector.project,
+        connector=connector,
+        filename=filename[:255],
+        repo_path=url[:500],
+        source=source,
+        file_type='text',
+        status='ready',
+        extracted_text=content,
+        file_size=len(content.encode('utf-8')),
+    )
+    if getattr(settings, 'PROJECT_VECTOR_RAG', False):
+        embed_project_file.delay(pf.id)
+    return 'created'
+
+
+def _sync_website(connector, _fail) -> dict:
+    """Краулит сайт (repo_url) в базу знаний: BFS по внутренним ссылкам,
+    лимит CONNECTOR_CRAWL_LIMIT страниц. SSRF-guard — studio.crawler.crawl."""
+    from urllib.parse import urljoin, urlparse
+    from django.conf import settings
+    from bs4 import BeautifulSoup
+
+    if not getattr(settings, 'CONNECTOR_WEBSITE', True):
+        return _fail('disabled')
+    try:
+        from studio.crawler import crawl
+    except Exception as e:
+        return _fail('crawler_unavailable', e)
+
+    limit = int(getattr(settings, 'CONNECTOR_CRAWL_LIMIT', 50))
+    start = connector.repo_url.rstrip('/')
+    host = urlparse(start).netloc
+    seen = set()
+    queue = [start]
+    created = updated = skipped = errors = 0
+
+    while queue and len(seen) < limit:
+        url = queue.pop(0).split('#')[0].rstrip('/')
+        if not url or url in seen:
+            continue
+        seen.add(url)
+        try:
+            page = crawl(url)
+        except Exception:
+            errors += 1
+            continue
+
+        # Расширяем очередь внутренними ссылками того же хоста
+        try:
+            soup = BeautifulSoup(page.get('html', ''), 'html.parser')
+            for a in soup.find_all('a', href=True):
+                nxt = urljoin(url, a['href']).split('#')[0].rstrip('/')
+                parsed = urlparse(nxt)
+                if (parsed.scheme in ('http', 'https') and parsed.netloc == host
+                        and nxt not in seen and len(queue) < limit * 3):
+                    queue.append(nxt)
+        except Exception:
+            pass
+
+        text = (page.get('text') or '').strip()
+        title = (page.get('title') or '').strip()
+        if len(text) < 100:
+            skipped += 1
+            continue
+        path = urlparse(url).path.strip('/') or 'index'
+        filename = 'web-' + path.replace('/', '-')[:80] + '.md'
+        content = f'# {title or url}\nURL: {url}\n\n{text}'
+        try:
+            result = _upsert_web_file(connector, url, filename, content, 'web')
+            created += result == 'created'
+            updated += result == 'updated'
+            skipped += result == 'skipped'
+        except Exception as e:
+            logger.error(f'[sync-web] save {url}: {e}')
+            errors += 1
+
+    report = {'created': created, 'updated': updated, 'deleted': 0,
+              'skipped': skipped, 'errors': errors, 'pages': len(seen)}
+    connector.last_synced_at = timezone.now()
+    connector.sync_status = 'error' if errors and not (created + updated) else 'ok'
+    connector.last_sync_report = report
+    connector.save(update_fields=['last_synced_at', 'sync_status', 'last_sync_report'])
+    logger.info(f'[sync-web] connector {connector.id}: {report}')
+    return report
+
+
+def _sync_rss(connector, _fail) -> dict:
+    """RSS/Atom-лента (repo_url) → записи в базу знаний (компаундинг новостей).
+
+    Без новых зависимостей: xml.etree, поддержка RSS 2.0 и Atom."""
+    import requests
+    import xml.etree.ElementTree as ET
+    from django.conf import settings
+
+    if not getattr(settings, 'CONNECTOR_WEBSITE', True):
+        return _fail('disabled')
+    try:
+        from studio.security import is_safe_url
+        if not is_safe_url(connector.repo_url):
+            return _fail('unsafe_url')
+    except ImportError:
+        pass
+
+    try:
+        r = requests.get(connector.repo_url, timeout=15,
+                         headers={'User-Agent': 'aineron-kb-bot'})
+        r.raise_for_status()
+        root = ET.fromstring(r.content)
+    except Exception as e:
+        return _fail('fetch_error', e)
+
+    ns_atom = '{http://www.w3.org/2005/Atom}'
+    items = root.findall('.//item')[:30]  # RSS 2.0
+    if not items:
+        items = root.findall(f'.//{ns_atom}entry')[:30]  # Atom
+
+    def _child_text(el, *names):
+        for name in names:
+            child = el.find(name)
+            if child is not None and (child.text or '').strip():
+                return child.text.strip()
+        return ''
+
+    created = updated = skipped = errors = 0
+    for item in items:
+        title = _child_text(item, 'title', f'{ns_atom}title')
+        link = _child_text(item, 'link', 'guid')
+        if not link:  # Atom: link в атрибуте href
+            link_el = item.find(f'{ns_atom}link')
+            link = link_el.get('href', '') if link_el is not None else ''
+        desc = _child_text(item, 'description', f'{ns_atom}summary',
+                           f'{ns_atom}content')
+        pub = _child_text(item, 'pubDate', f'{ns_atom}updated')
+        if not title or not link:
+            skipped += 1
+            continue
+        # Убираем HTML из description
+        try:
+            from bs4 import BeautifulSoup
+            desc = BeautifulSoup(desc, 'html.parser').get_text(
+                separator='\n', strip=True)
+        except Exception:
+            pass
+        content = f'# {title}\nURL: {link}\nДата: {pub}\n\n{desc[:15000]}'
+        filename = 'rss-' + re.sub(r'[^\w-]+', '-', title.lower())[:70] + '.md'
+        try:
+            result = _upsert_web_file(connector, link, filename, content, 'rss')
+            created += result == 'created'
+            updated += result == 'updated'
+            skipped += result == 'skipped'
+        except Exception as e:
+            logger.error(f'[sync-rss] save {link}: {e}')
+            errors += 1
+
+    report = {'created': created, 'updated': updated, 'deleted': 0,
+              'skipped': skipped, 'errors': errors}
+    connector.last_synced_at = timezone.now()
+    connector.sync_status = 'error' if errors and not (created + updated) else 'ok'
+    connector.last_sync_report = report
+    connector.save(update_fields=['last_synced_at', 'sync_status', 'last_sync_report'])
+    logger.info(f'[sync-rss] connector {connector.id}: {report}')
+    return report

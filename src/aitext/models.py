@@ -380,8 +380,11 @@ class ProjectFile(models.Model):
 
 
 class ProjectConnector(models.Model):
-    """Git-коннектор проекта (GitHub / Gitea)"""
-    TYPES = [('github', 'GitHub'), ('gitea', 'Gitea')]
+    """Коннектор источника знаний проекта: git-репозиторий, сайт или RSS (U5)"""
+    TYPES = [
+        ('github', 'GitHub'), ('gitea', 'Gitea'),
+        ('website', 'Сайт (краулер)'), ('rss', 'RSS-лента'),  # U5
+    ]
 
     project = models.ForeignKey(
         Project, on_delete=models.CASCADE, related_name='connectors',

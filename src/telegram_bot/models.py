@@ -501,6 +501,14 @@ class BusinessConnection(models.Model):
     tone = models.TextField(blank=True, verbose_name='Тон ответов (инструкция AI)')
     stop_word = models.CharField(max_length=50, default='оператор',
                                  verbose_name='Стоп-слово клиента (передать человеку)')
+    # U4 (Ш8): база знаний секретаря — прайс/FAQ/условия из файлов проекта
+    project = models.ForeignKey(
+        'aitext.Project',
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='business_connections',
+        verbose_name='Проект (база знаний секретаря)',
+    )
     can_reply = models.BooleanField(default=False, verbose_name='Право отвечать (rights)')
     replies_month = models.CharField(max_length=7, blank=True, default='',
                                      verbose_name='Месяц счётчика (YYYY-MM)')
@@ -636,6 +644,15 @@ class AgentRun(models.Model):
         on_delete=models.CASCADE,
         related_name='agent_runs',
         verbose_name='Пользователь',
+    )
+    # U4: проект — открывает агенту инструменты базы знаний (kb_search,
+    # read_file, propose_edit через ProjectCommit с подтверждением)
+    project = models.ForeignKey(
+        'aitext.Project',
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='agent_runs',
+        verbose_name='Проект (инструменты KB)',
     )
     goal = models.TextField(verbose_name='Задача')
     status = models.CharField(max_length=10, choices=Status.choices,

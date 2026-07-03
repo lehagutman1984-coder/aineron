@@ -57,6 +57,7 @@ import {
   GitPullRequest,
   ExternalLink,
   Database,
+  Rss,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -912,7 +913,7 @@ function TreeNode({ item, depth, childrenMap, connId, openDirs, selectedFile, on
 function ConnectorsTab({ projectId }: { projectId: number }) {
   const qc = useQueryClient();
   const [showConnectForm, setShowConnectForm] = useState(false);
-  const [connType, setConnType] = useState<"github" | "gitea">("github");
+  const [connType, setConnType] = useState<"github" | "gitea" | "website" | "rss">("github");
   const [repoUrl, setRepoUrl] = useState("");
   const [pat, setPat] = useState("");
   const [branch, setBranch] = useState("main");
@@ -1008,11 +1009,12 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
     setConnectErr(null);
     setConnectLoading(true);
     try {
+      const isGit = connType === "github" || connType === "gitea";
       const conn = await createConnector(projectId, {
         connector_type: connType,
         repo_url: repoUrl.trim(),
-        access_token: pat.trim(),
-        branch: branch.trim() || "main",
+        access_token: isGit ? pat.trim() : "",
+        branch: isGit ? branch.trim() || "main" : "",
       });
       qc.setQueryData<ProjectConnector[]>(["connectors", projectId], (prev) =>
         prev ? [...prev.filter((c) => c.id !== conn.id), conn] : [conn]
@@ -1128,6 +1130,10 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                 <div className="flex items-start gap-3 min-w-0 flex-1">
                   {conn.connector_type === "github"
                     ? <Github size={16} className="mt-0.5 shrink-0 text-[#1A1A1A]" />
+                    : conn.connector_type === "website"
+                    ? <Globe size={16} className="mt-0.5 shrink-0 text-[#2980b9]" />
+                    : conn.connector_type === "rss"
+                    ? <Rss size={16} className="mt-0.5 shrink-0 text-[#e67e22]" />
                     : <GitBranch size={16} className="mt-0.5 shrink-0 text-[#e67e22]" />
                   }
                   <div className="min-w-0 flex-1">
@@ -1148,7 +1154,11 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                       )}
                     </div>
                     <p className="mt-0.5 text-[13px] leading-relaxed text-[rgba(13,13,13,0.45)]">
-                      {conn.connector_type === "github" ? "GitHub" : "Gitea"} · ветка {conn.branch}
+                      {conn.connector_type === "github" ? "GitHub"
+                        : conn.connector_type === "website" ? "Сайт"
+                        : conn.connector_type === "rss" ? "RSS"
+                        : "Gitea"}
+                      {(conn.connector_type === "github" || conn.connector_type === "gitea") && <> · ветка {conn.branch}</>}
                       {conn.last_synced_at && <> · синхронизировано {new Date(conn.last_synced_at).toLocaleString("ru")}</>}
                       {conn.last_sync_report?.created != null && conn.last_sync_report.created > 0 && (
                         <> · <span className="text-[#22a85a]">{conn.last_sync_report.created} новых файлов</span></>
@@ -1335,8 +1345,8 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
             {/* Type */}
             <div>
               <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.55)]">Тип</label>
-              <div className="flex gap-2">
-                {(["github", "gitea"] as const).map((t) => (
+              <div className="flex flex-wrap gap-2">
+                {(["github", "gitea", "website", "rss"] as const).map((t) => (
                   <button key={t} type="button" onClick={() => setConnType(t)}
                     className={[
                       "flex items-center gap-1.5 rounded-[7px] border px-3 py-1.5 text-[15px] font-medium transition-colors",
@@ -1345,19 +1355,39 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                         : "border-[rgba(13,13,13,0.14)] text-[rgba(13,13,13,0.65)] hover:border-[rgba(13,13,13,0.25)]",
                     ].join(" ")}
                   >
-                    {t === "github" ? <Github size={13} /> : <GitBranch size={13} />}
-                    {t === "github" ? "GitHub" : "Gitea"}
+                    {t === "github" ? <Github size={13} /> : t === "gitea" ? <GitBranch size={13} />
+                      : t === "website" ? <Globe size={13} /> : <Rss size={13} />}
+                    {t === "github" ? "GitHub" : t === "gitea" ? "Gitea"
+                      : t === "website" ? "Сайт" : "RSS"}
                   </button>
                 ))}
               </div>
             </div>
             {/* URL */}
             <div>
-              <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.55)]">URL репозитория</label>
+              <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.55)]">
+                {connType === "website" ? "URL сайта" : connType === "rss" ? "URL RSS-ленты" : "URL репозитория"}
+              </label>
               <input value={repoUrl} onChange={(e) => setRepoUrl(e.target.value)} required
-                placeholder={connType === "github" ? "https://github.com/owner/repo" : "https://gitea.example.com/owner/repo"}
+                placeholder={
+                  connType === "github" ? "https://github.com/owner/repo"
+                    : connType === "gitea" ? "https://gitea.example.com/owner/repo"
+                    : connType === "website" ? "https://docs.example.com"
+                    : "https://example.com/feed.xml"
+                }
                 className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[15px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all" />
+              {connType === "website" && (
+                <p className="mt-1 text-[13px] text-[rgba(13,13,13,0.40)]">
+                  Страницы сайта попадут в базу знаний и будут пересканироваться раз в сутки
+                </p>
+              )}
+              {connType === "rss" && (
+                <p className="mt-1 text-[13px] text-[rgba(13,13,13,0.40)]">
+                  Новые записи ленты будут добавляться в базу знаний ежедневно
+                </p>
+              )}
             </div>
+            {(connType === "github" || connType === "gitea") && (<>
             {/* PAT */}
             <div>
               <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.55)]">Personal Access Token</label>
@@ -1373,6 +1403,7 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                 placeholder="main"
                 className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[15px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all" />
             </div>
+            </>)}
             {connectErr && (
               <div className="flex items-center gap-2 rounded-[7px] bg-[rgba(231,76,60,0.08)] px-3 py-2 text-[14px] text-[#e74c3c]">
                 <AlertCircle size={12} /> {connectErr}
@@ -1383,7 +1414,9 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                 className="rounded-[7px] px-4 py-2 text-[15px] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.05)] transition-colors">
                 Отмена
               </button>
-              <button type="submit" disabled={connectLoading || !repoUrl.trim() || !pat.trim()}
+              <button type="submit"
+                disabled={connectLoading || !repoUrl.trim()
+                  || ((connType === "github" || connType === "gitea") && !pat.trim())}
                 className="flex items-center gap-1.5 rounded-[7px] bg-[#D97757] px-4 py-2 text-[15px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 transition-colors">
                 {connectLoading ? <><Loader2 size={12} className="animate-spin" />Подключение...</> : <><Link2 size={12} />Подключить</>}
               </button>

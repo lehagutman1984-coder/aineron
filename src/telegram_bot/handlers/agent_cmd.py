@@ -35,9 +35,9 @@ def _price_kopecks() -> int:
     return getattr(settings, 'AGENT_PRICE_KOPECKS', 500)
 
 
-def _create_run(user, goal: str):
+def _create_run(user, goal: str, project=None):
     from telegram_bot.models import AgentRun
-    return AgentRun.objects.create(user=user, goal=goal)
+    return AgentRun.objects.create(user=user, goal=goal, project=project)
 
 
 def _get_run(run_id: int):
@@ -122,7 +122,8 @@ async def cb_agent_go(query: CallbackQuery, state: FSMContext, tg_user=None):
     except Exception:
         pass
 
-    run = await create_run(tg_user.user, goal)
+    # U4: активный проект открывает агенту инструменты базы знаний
+    run = await create_run(tg_user.user, goal, tg_user.active_project)
     from telegram_bot.tasks import run_agent
     run_agent.delay(run.pk)
 

@@ -105,10 +105,41 @@ class ConnectorListCreateView(APIView):
         access_token = request.data.get('access_token', '').strip()
         branch = request.data.get('branch', 'main').strip() or 'main'
 
-        if connector_type not in ('github', 'gitea'):
-            return Response({'error': 'Тип коннектора: github или gitea'}, status=400)
+        if connector_type not in ('github', 'gitea', 'website', 'rss'):
+            return Response({'error': 'Тип коннектора: github, gitea, website или rss'}, status=400)
         if not repo_url:
-            return Response({'error': 'Укажите URL репозитория'}, status=400)
+            return Response({'error': 'Укажите URL'}, status=400)
+
+        # U5: сайт/RSS — источники знаний без токена; owner/repo для уникальности
+        if connector_type in ('website', 'rss'):
+            from django.conf import settings as dj
+            if not getattr(dj, 'CONNECTOR_WEBSITE', True):
+                return Response({'error': 'Website/RSS коннекторы отключены'}, status=403)
+            from urllib.parse import urlparse
+            parsed = urlparse(repo_url)
+            if parsed.scheme not in ('http', 'https') or not parsed.netloc:
+                return Response({'error': 'Некорректный URL'}, status=400)
+            import hashlib
+            owner = parsed.netloc[:100]
+            repo = hashlib.md5(repo_url.encode()).hexdigest()[:12] + '-' + connector_type
+            connector, created = ProjectConnector.objects.get_or_create(
+                project=project, owner=owner, repo=repo,
+                defaults={
+                    'connector_type': connector_type,
+                    'repo_url': repo_url,
+                    'branch': '',
+                    'access_token_enc': '',
+                },
+            )
+            if not created:
+                return Response({'error': 'Этот источник уже подключён'}, status=400)
+            from aitext.tasks import sync_connector_task
+            sync_connector_task.delay(connector.id)
+            return Response(
+                ConnectorSerializer(connector, context={'request': request}).data,
+                status=201,
+            )
+
         if not access_token:
             return Response({'error': 'Укажите Personal Access Token'}, status=400)
 

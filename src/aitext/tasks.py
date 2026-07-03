@@ -811,6 +811,10 @@ def generate_ai_response(self, message_id, web_search=False):
                 )
                 if knowledge_ctx:
                     messages_for_api.append({"role": "system", "content": knowledge_ctx})
+                # U6: источники и в Celery-пути (бот/поллинг видят их на Message)
+                if _kb_sources:
+                    message.kb_sources = _kb_sources
+                    message.save(update_fields=['kb_sources'])
                 # AI-коммиты: инструкция о FILE-формате (Sprint 4.3)
                 if getattr(settings, 'PROJECT_AI_COMMITS', False):
                     from .commit_extract import inject_commit_instruction
@@ -1322,6 +1326,22 @@ def extract_memory_facts(self, chat_id: int):
             import json as _json
             from django.core.cache import cache as _cache
             _cache.set(f"memory:toast:{user.id}", _json.dumps({'count': added, 'facts': new_labels[:5]}), timeout=120)
+        except Exception:
+            pass
+        # U6: тост и в боте (диалог шёл в Telegram) — не чаще раза в 6 часов
+        try:
+            from django.core.cache import cache as _cache
+            if (chat.title or '').startswith('Telegram') and hasattr(user, 'telegram'):
+                rate_key = f'tg_mem_toast:{user.id}'
+                if not _cache.get(rate_key):
+                    _cache.set(rate_key, True, timeout=6 * 3600)
+                    from telegram_bot.notify import notify_user
+                    import html as _html
+                    preview = '; '.join(_html.escape(x) for x in new_labels[:2])
+                    notify_user(
+                        user.telegram.telegram_id,
+                        f'Запомнил: {preview}\nУправление памятью: /memory',
+                    )
         except Exception:
             pass
 
@@ -1837,6 +1857,15 @@ def poll_connectors():
 
     for connector in connectors:
         try:
+            # U5: website/rss — нет HEAD SHA; ресинк раз в сутки
+            if connector.connector_type in ('website', 'rss'):
+                from django.utils import timezone as _tz
+                from datetime import timedelta as _td
+                if (connector.last_synced_at is None
+                        or _tz.now() - connector.last_synced_at > _td(hours=24)):
+                    sync_connector_task.delay(connector.id)
+                    triggered += 1
+                continue
             head_sha = get_repo_head_sha(connector)
             if not head_sha:
                 continue

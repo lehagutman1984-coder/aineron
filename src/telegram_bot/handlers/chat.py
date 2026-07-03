@@ -161,6 +161,18 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
 
         if msg.status == 'completed':
             full_text = msg.plain_text or msg.content or ''
+            # U6: источники базы знаний под ответом (паритет с вебом)
+            kb_sources = getattr(msg, 'kb_sources', None) or []
+            if kb_sources:
+                names = []
+                for s in kb_sources[:4]:
+                    n = s.get('filename') if isinstance(s, dict) else str(s)
+                    if n and n not in names:
+                        names.append(n)
+                if names:
+                    import html as _html
+                    full_text += ('\n\n— Источники: '
+                                  + ', '.join(_html.escape(n) for n in names))
             markup = after_answer_kb(msg.id, copy_code=extract_first_code(full_text))
             delivered = False
             # S1: Rich Messages — таблицы, код, thinking-блоки (за флагом)
@@ -262,7 +274,10 @@ async def cb_regen(query: CallbackQuery, tg_user=None):
 
 @router.callback_query(F.data.startswith('react_like:'))
 async def cb_react_like(query: CallbackQuery, tg_user=None):
-    """👍 — positive reaction, just acknowledge."""
+    """👍 — positive reaction: логируем для feedback-петли качества (U6)."""
+    if tg_user is not None:
+        await async_log_event(tg_user, 'message', feedback='like',
+                              message_id=query.data.split(':')[1])
     await query.answer("Рад помочь!")
 
 
@@ -284,6 +299,8 @@ async def cb_react_dislike(query: CallbackQuery, tg_user=None):
         return user_msg.content if user_msg else None
 
     get_orig = sync_to_async(_get_original_text, thread_sensitive=True)
+    # U6: негативный фидбек — сырьё для тюнинга retrieval и выбора моделей
+    await async_log_event(tg_user, 'message', feedback='dislike', message_id=msg_id)
     text = await get_orig(msg_id)
     if text:
         await query.answer("Пересматриваю ответ...")

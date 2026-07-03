@@ -603,31 +603,121 @@ def admin_weekly_report(self):
 # S9 — Agent Mode: многошаговый агент с инструментами
 # ═══════════════════════════════════════════════════════════════════════════
 
+def _agent_can_edit_project(user, project) -> bool:
+    """U4: владелец или editor-коллаборатор — только им агент даёт KB-инструменты."""
+    if project.user_id == user.id:
+        return True
+    try:
+        from aitext.models import ProjectCollaborator
+        return ProjectCollaborator.objects.filter(
+            project=project, user=user, role='editor').exists()
+    except Exception:
+        return False
+
+
+def _agent_kb_tool(action: dict, project, user) -> str:
+    """U4: исполнение KB-инструментов агента. Возвращает наблюдение (строку)."""
+    if project is None:
+        return 'Инструменты проекта недоступны: проект не подключён.'
+    from aitext.models import ProjectFile
+
+    kind = action['action']
+    if kind == 'kb_search':
+        try:
+            from aitext.search import hybrid_search
+            chunks = hybrid_search(project, [str(action['input'])], top_k=6)
+        except Exception as e:
+            return f'Поиск по базе знаний недоступен: {e}'
+        if not chunks:
+            return 'В базе знаний ничего не найдено по этому запросу.'
+        return '\n\n'.join(
+            f"[{c.get('filename', '?')}] {str(c.get('text', ''))[:500]}"
+            for c in chunks
+        )
+
+    if kind == 'list_files':
+        names = list(
+            ProjectFile.objects.filter(project=project, enabled=True)
+            .order_by('-created_at').values_list('filename', flat=True)[:40]
+        )
+        return 'Файлы проекта:\n' + '\n'.join(f'- {n}' for n in names) if names \
+            else 'База знаний проекта пуста.'
+
+    if kind == 'read_file':
+        name = str(action['input']).strip()
+        pf = (ProjectFile.objects.filter(project=project, filename=name).first()
+              or ProjectFile.objects.filter(project=project,
+                                            filename__icontains=name).first())
+        if pf is None:
+            return f'Файл «{name}» не найден. Используй list_files.'
+        text = (pf.extracted_text or '').strip()
+        return f'=== {pf.filename} ===\n{text[:8000]}' if text \
+            else f'Файл «{pf.filename}» пуст или текст не извлечён.'
+
+    if kind == 'propose_edit':
+        params = action['input'] if isinstance(action['input'], dict) else {}
+        path = str(params.get('path') or '').strip()
+        search = str(params.get('search') or '')
+        replace = str(params.get('replace') or '')
+        message = str(params.get('message') or f'AI-агент: правка {path}')[:500]
+        if not path or not search:
+            return 'propose_edit: нужны path и search.'
+        if not _agent_can_edit_project(user, project):
+            return 'Нет прав на правки в этом проекте.'
+        pf = (ProjectFile.objects.filter(project=project, filename=path).first()
+              or ProjectFile.objects.filter(project=project,
+                                            filename__icontains=path).first())
+        if pf is None:
+            return f'Файл «{path}» не найден.'
+        from telegram_bot.agent import apply_search_replace
+        new_text, err = apply_search_replace(pf.extracted_text or '', search, replace)
+        if err:
+            return f'propose_edit: {err}. Прочитай файл (read_file) и уточни фрагмент.'
+        from aitext.models import ProjectCommit
+        connector = project.connectors.first()
+        commit = ProjectCommit.objects.create(
+            project=project,
+            connector=connector,
+            commit_message=message,
+            files=[{'path': pf.repo_path or pf.filename, 'content': new_text}],
+            kind='commit',
+        )
+        note = '' if connector else ' (внимание: у проекта нет git-коннектора — пуш будет недоступен)'
+        return (f'Коммит #{commit.pk} создан и ждёт подтверждения владельца '
+                f'на странице проекта{note}. Ничего не изменено без одобрения.')
+
+    return 'Неизвестный инструмент.'
+
+
 @shared_task(bind=True, max_retries=0, ignore_result=True, soft_time_limit=240,
              name='telegram_bot.tasks.run_agent')
 def run_agent(self, agent_run_id: int):
-    """Цикл агента: LLM планирует шаг → инструмент (search/calc) → наблюдение →
-    ... → finish с отчётом. Списание фиксированное (AGENT_PRICE_KOPECKS),
-    идемпотентно agent:{run_id}; при ошибке или недоставке — возврат."""
+    """Цикл агента: LLM планирует шаг → инструмент → наблюдение → ... → finish.
+
+    U4: при подключённом проекте — инструменты базы знаний (kb_search,
+    read_file, propose_edit через ProjectCommit). Запуск из бота (доставка
+    в Telegram) или с веба (chat_id нет — результат читают из AgentRun).
+    Списание фиксированное (AGENT_PRICE_KOPECKS), идемпотентно agent:{run_id}.
+    """
     from django.conf import settings as dj
     from django.utils import timezone as tz
     from telegram_bot.models import AgentRun, TelegramEvent
     from telegram_bot.notify import notify_user_rich, notify_user
-    from telegram_bot.agent import AGENT_SYSTEM, MAX_STEPS, safe_calc, parse_action, step_human
+    from telegram_bot.agent import (
+        build_agent_system, MAX_STEPS, safe_calc, parse_action, step_human,
+    )
     from aitext.models import NeuralNetwork
     from aitext.tasks import get_laozhang_client
     from core.money import format_rub
 
     try:
-        run = AgentRun.objects.select_related('user').get(pk=agent_run_id)
+        run = AgentRun.objects.select_related('user', 'project').get(pk=agent_run_id)
     except AgentRun.DoesNotExist:
         return
 
     user = run.user
     tg = getattr(user, 'telegram', None)
-    if tg is None:
-        return
-    chat_id = tg.telegram_id
+    chat_id = tg.telegram_id if tg else None  # None → веб-запуск, без доставки в TG
     price = getattr(dj, 'AGENT_PRICE_KOPECKS', 500)
     reference = f'agent:{agent_run_id}'
 
@@ -637,16 +727,18 @@ def run_agent(self, agent_run_id: int):
         AgentRun.objects.filter(pk=agent_run_id).update(
             status='error', error=msg[:500], finished_at=tz.now(),
         )
-        notify_user(chat_id, f'{msg} Средства возвращены.' if refund else msg)
+        if chat_id:
+            notify_user(chat_id, f'{msg} Средства возвращены.' if refund else msg)
 
     if not user.spend_kopecks(price, type='spend', reference=reference):
         AgentRun.objects.filter(pk=agent_run_id).update(status='error', error='no_balance')
-        notify_user(chat_id, 'Недостаточно средств для Agent Mode. Пополните баланс: /balance')
+        if chat_id:
+            notify_user(chat_id, 'Недостаточно средств для Agent Mode. Пополните баланс: /balance')
         return
 
     network = (
         tg.default_network
-        if tg.default_network and tg.default_network.is_active
+        if tg and tg.default_network and tg.default_network.is_active
         else NeuralNetwork.objects.filter(is_active=True, provider='openrouter')
         .order_by('cost_kopecks').first()
     )
@@ -654,13 +746,20 @@ def run_agent(self, agent_run_id: int):
         _fail('Нет доступных моделей.')
         return
 
+    # U4: контекст проекта — из запуска или активного проекта бота
+    project = run.project
+    if project is None and tg is not None:
+        project = tg.active_project
+    if project is not None and not getattr(dj, 'AGENT_TOOLS_KB', True):
+        project = None
+
     run.status = 'running'
     run.save(update_fields=['status'])
     run.append_step('start', 'Планирую выполнение задачи...')
 
     client = get_laozhang_client()
     messages = [
-        {'role': 'system', 'content': AGENT_SYSTEM},
+        {'role': 'system', 'content': build_agent_system(project.name if project else '')},
         {'role': 'user', 'content': run.goal[:2000]},
     ]
     report = ''
@@ -691,11 +790,14 @@ def run_agent(self, agent_run_id: int):
             if action['action'] == 'search':
                 try:
                     from aitext.web_search import web_search
-                    observation = web_search(action['input'], max_results=5) or 'Ничего не найдено.'
+                    observation = web_search(str(action['input']), max_results=5) or 'Ничего не найдено.'
                 except Exception as e:
                     observation = f'Поиск недоступен: {e}'
-            else:  # calc
-                observation = safe_calc(action['input'])
+            elif action['action'] == 'calc':
+                observation = safe_calc(str(action['input']))
+            else:
+                # U4: инструменты базы знаний проекта
+                observation = _agent_kb_tool(action, project, user)
 
             messages.append({
                 'role': 'user',
@@ -726,18 +828,21 @@ def run_agent(self, agent_run_id: int):
         status='done', result_md=report, finished_at=tz.now(),
     )
 
-    delivered = notify_user_rich(
-        chat_id,
-        f'{report}\n\n_Agent Mode · {format_rub(price)} · {network.name}_',
-    )
-    if not delivered:
-        user.add_kopecks(price, type='refund', reference=reference)
-        return
+    if chat_id:
+        delivered = notify_user_rich(
+            chat_id,
+            f'{report}\n\n_Agent Mode · {format_rub(price)} · {network.name}_',
+        )
+        if not delivered:
+            user.add_kopecks(price, type='refund', reference=reference)
+            return
+    # Веб-запуск: результат читают из AgentRun (status=done, result_md)
 
     try:
         TelegramEvent.objects.create(
             telegram_user=tg, event_type='agent', network=network,
-            cost_kopecks=price, meta={'run_id': agent_run_id, 'steps': len(run.steps)},
+            cost_kopecks=price, meta={'run_id': agent_run_id, 'steps': len(run.steps),
+                                      'project_id': project.pk if project else None},
         )
     except Exception:
         pass

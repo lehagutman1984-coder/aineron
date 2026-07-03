@@ -768,7 +768,7 @@ export const listConnectors = (projectId: number): Promise<ProjectConnector[]> =
 
 export const createConnector = (
   projectId: number,
-  data: { connector_type: "github" | "gitea"; repo_url: string; access_token: string; branch?: string }
+  data: { connector_type: "github" | "gitea" | "website" | "rss"; repo_url: string; access_token: string; branch?: string }
 ): Promise<ProjectConnector> =>
   request<ProjectConnector>(`/projects/${projectId}/connectors/`, {
     method: "POST",

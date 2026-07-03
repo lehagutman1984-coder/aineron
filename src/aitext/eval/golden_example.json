@@ -1,0 +1,14 @@
+[
+  {
+    "query": "как настроить биллинг и цены",
+    "expected_files": ["billing", "pricing"]
+  },
+  {
+    "query": "какие условия доставки",
+    "expected_files": ["delivery", "faq"]
+  },
+  {
+    "query": "архитектура авторизации пользователей",
+    "expected_files": ["auth", "users"]
+  }
+]

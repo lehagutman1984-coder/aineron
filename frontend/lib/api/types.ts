@@ -455,7 +455,7 @@ export interface ChatSearchResponse {
 
 export interface ProjectConnector {
   id: number;
-  connector_type: "github" | "gitea";
+  connector_type: "github" | "gitea" | "website" | "rss";
   repo_url: string;
   owner: string;
   repo: string;

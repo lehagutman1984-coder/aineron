@@ -52,7 +52,8 @@ def _get_connection(connection_id: str):
     from telegram_bot.models import BusinessConnection
     return (
         BusinessConnection.objects.select_related('tg_user', 'tg_user__user',
-                                                  'tg_user__default_network')
+                                                  'tg_user__default_network',
+                                                  'project')
         .filter(connection_id=connection_id).first()
     )
 
@@ -60,7 +61,8 @@ def _get_connection(connection_id: str):
 def _get_owner_connection(tg_user):
     from telegram_bot.models import BusinessConnection
     return (
-        BusinessConnection.objects.filter(tg_user=tg_user, is_enabled=True)
+        BusinessConnection.objects.select_related('project')
+        .filter(tg_user=tg_user, is_enabled=True)
         .order_by('-updated_at').first()
     )
 
@@ -75,6 +77,25 @@ def _memory_context(user) -> str:
         )
         return '\n'.join(f'- {f.content}' for f in facts)
     except Exception:
+        return ''
+
+
+def _project_kb_context(conn, client_text: str) -> str:
+    """U4 (Ш8): база знаний секретаря — RAG по файлам подключённого проекта
+    (прайс, FAQ, условия — главный B2B-запрос к секретарю)."""
+    if conn.project_id is None:
+        return ''
+    try:
+        from aitext.search import hybrid_search
+        chunks = hybrid_search(conn.project, [client_text[:300]], top_k=4)
+        if not chunks:
+            return ''
+        return '\n'.join(
+            f"- [{c.get('filename', '?')}] {str(c.get('text', ''))[:350]}"
+            for c in chunks
+        )
+    except Exception as e:
+        logger.warning(f'business kb context failed: {e}')
         return ''
 
 
@@ -93,12 +114,15 @@ def _generate_reply(conn, client_text: str, client_name: str) -> dict | None:
         return None
 
     kb = _memory_context(conn.tg_user.user)
+    project_kb = _project_kb_context(conn, client_text)  # U4: файлы проекта
     tone = conn.tone or 'вежливо, коротко и по делу'
     system = (
         'Ты — AI-секретарь владельца этого Telegram-аккаунта. Клиент написал '
         'сообщение — подготовь ответ ОТ ИМЕНИ владельца (первое лицо). '
         f'Тон: {tone}. Отвечай на языке клиента.\n'
         + (f'\nБаза знаний владельца:\n{kb}\n' if kb else '')
+        + (f'\nДокументы бизнеса (прайс/FAQ/условия — приоритетный источник):\n'
+           f'{project_kb}\n' if project_kb else '')
         + '\nВерни ТОЛЬКО JSON: {"reply": "текст ответа", '
         '"confident": true/false — уверен ли ты, что это типовой вопрос, '
         'на который можно ответить без владельца (часы, цены, услуги, FAQ)}. '
@@ -564,10 +588,85 @@ async def cb_bizdraft_check(query: CallbackQuery, tg_user=None):
 def _secretary_kb(conn) -> InlineKeyboardMarkup:
     mode_label = 'Режим: Черновики' if conn.mode == 'drafts' else 'Режим: Автопилот'
     toggle_label = 'Выключить секретаря' if conn.secretary_on else 'Включить секретаря'
+    kb_label = (f'База знаний: {conn.project.name[:25]}'
+                if conn.project_id and conn.project else 'Подключить базу знаний')
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=mode_label, callback_data='biz_mode')],
+        [InlineKeyboardButton(text=kb_label, callback_data='biz_kb')],
         [InlineKeyboardButton(text=toggle_label, callback_data='biz_toggle')],
     ])
+
+
+@router.callback_query(F.data == 'biz_kb')
+async def cb_biz_kb(query: CallbackQuery, tg_user=None):
+    """U4: выбор проекта — база знаний секретаря (прайс, FAQ, условия)."""
+    if tg_user is None:
+        await query.answer()
+        return
+    conn = await get_owner_connection(tg_user)
+    if conn is None:
+        await query.answer('Подключение не найдено')
+        return
+
+    @sync_to_async
+    def _projects():
+        from aitext.models import Project
+        return list(Project.objects.filter(user=tg_user.user)
+                    .order_by('-created_at')[:10])
+
+    projects = await _projects()
+    if not projects:
+        await query.answer('Сначала создайте проект и загрузите файлы: /projects',
+                           show_alert=True)
+        return
+    rows = [[InlineKeyboardButton(text=p.name[:40], callback_data=f'biz_kb_set:{p.pk}')]
+            for p in projects]
+    rows.append([InlineKeyboardButton(text='Отключить базу знаний',
+                                      callback_data='biz_kb_set:0')])
+    await query.answer()
+    await query.message.answer(
+        'Выберите проект — его файлы (прайс, FAQ, условия) станут базой знаний '
+        'секретаря при ответах клиентам:',
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=rows),
+    )
+
+
+@router.callback_query(F.data.startswith('biz_kb_set:'))
+async def cb_biz_kb_set(query: CallbackQuery, tg_user=None):
+    if tg_user is None:
+        await query.answer()
+        return
+    project_id = int(query.data.split(':')[1])
+    conn = await get_owner_connection(tg_user)
+    if conn is None:
+        await query.answer('Подключение не найдено')
+        return
+
+    @sync_to_async
+    def _set():
+        from telegram_bot.models import BusinessConnection
+        from aitext.models import Project
+        if project_id == 0:
+            BusinessConnection.objects.filter(pk=conn.pk).update(project=None)
+            return 'off'
+        project = Project.objects.filter(user=tg_user.user, pk=project_id).first()
+        if project is None:
+            return None
+        BusinessConnection.objects.filter(pk=conn.pk).update(project=project)
+        return project.name
+
+    result = await _set()
+    if result is None:
+        await query.answer('Проект не найден')
+    elif result == 'off':
+        await query.answer('База знаний отключена')
+        await query.message.edit_text('База знаний секретаря отключена.')
+    else:
+        await query.answer('База знаний подключена')
+        await query.message.edit_text(
+            f'Секретарь теперь отвечает клиентам с опорой на файлы проекта '
+            f'«{result}». Проверьте, что там есть прайс/FAQ.',
+        )
 
 
 @router.message(Command('secretary'))

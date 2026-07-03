@@ -1,6 +1,14 @@
 # UNIFIED SUPREMACY PLAN — связать всё, что построено, и выйти в топ-1
 
-> Создан: 2026-07-03 | Статус: план к реализации
+> Создан: 2026-07-03 | Статус: **ВОЛНЫ U1–U6 РЕАЛИЗОВАНЫ (code-complete) 2026-07-03**
+> Миграции: aitext 0047 (память/recall/research/коннекторы), telegram_bot 0016–0017.
+> Флаги (все вкл. в .env, откат без кода): MEMORY_PROJECT_SCOPE, MEMORY_ORG_SCOPE,
+> RECALL_CHATS, RESEARCH_TO_KB, AGENT_TOOLS_KB, CONNECTOR_WEBSITE.
+> После деплоя: migrate + `backfill_summary_embeddings` (эмбеддинги старых резюме).
+> RAG-качество: `python manage.py rag_eval --project <id> --golden <json>` (порог recall@15 ≥ 0.85).
+> Осталось из плана: веб-панель Agent на странице проекта (API `/v1/agent/` готов),
+> вкладка орг-памяти в дашборде (API `/v1/orgs/<id>/memory/` готов), Ш7 клик
+> цитаты → подсветка узла графа (research-отчёты уже попадают в граф через KB).
 > Синтез и продолжение: `MEMORY_SUPREMACY_PLAN.md` (7/7 спринтов реализованы),
 > `PROJECT_SPACES_PLAN.md` (8/8 фаз реализованы), `TELEGRAM_SUPREMACY_PLAN.md` (S0–S12 реализованы).
 > Вопрос пользователя: «можно ли ещё? чего не хватает? есть ли смысл — или остановиться?»

@@ -81,6 +81,7 @@ from api.views.arena import ArenaVoteView, ArenaLeaderboardView
 from api.views.knowledge_graph import KnowledgeGraphView
 from api.views.branding import BrandingView
 from api.views.tasks import AITaskListCreateView, AITaskDetailView, AITaskRunNowView
+from api.views.agent import AgentStartView, AgentStatusView
 
 app_name = 'api'
 
@@ -264,6 +265,10 @@ urlpatterns = [
     # ========== AI Personas ==========
     path('v1/personas/', PersonaListCreateView.as_view(), name='persona_list_create'),
     path('v1/personas/<int:persona_id>/', PersonaDetailView.as_view(), name='persona_detail'),
+
+    # ========== Agent Mode на вебе (U4) ==========
+    path('v1/agent/', AgentStartView.as_view(), name='agent_start'),
+    path('v1/agent/<int:run_id>/', AgentStatusView.as_view(), name='agent_status'),
 
     # ========== AI-задачи по расписанию (S2, общие для веба и бота) ==========
     path('v1/tasks/', AITaskListCreateView.as_view(), name='ai_tasks'),

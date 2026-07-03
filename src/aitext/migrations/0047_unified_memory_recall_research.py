@@ -79,6 +79,16 @@ class Migration(migrations.Migration):
             field=models.BooleanField(default=False,
                                       verbose_name='Автосохранять research-отчёты в базу знаний'),
         ),
+        # U5 — типы коннекторов website/rss
+        migrations.AlterField(
+            model_name='projectconnector',
+            name='connector_type',
+            field=models.CharField(choices=[
+                ('github', 'GitHub'), ('gitea', 'Gitea'),
+                ('website', 'Сайт (краулер)'), ('rss', 'RSS-лента'),
+            ], max_length=10, verbose_name='Тип'),
+        ),
+
         # U3/U5 — новые источники файлов базы знаний
         migrations.AlterField(
             model_name='projectfile',
