@@ -1,6 +1,13 @@
 # Память и Пространства проектов: план лидерства в России
 **Версия 1.0 — 2026-06-27**
 
+> **СТАТУС (2026-07-03): ВСЕ 7 СПРИНТОВ РЕАЛИЗОВАНЫ** (проверено по коду:
+> kb_sources в SSE, DeepResearch+панель, ResponseVariants, MemoryToast/QuickSave,
+> KB-дашборд (kb_stats), багфиксы Ш1–Ш4 (existing_keys, MEMORY_PAST_SESSIONS),
+> ветвление (branch.py)). Продолжение — `UNIFIED_SUPREMACY_PLAN.md`:
+> сшивка памяти × Spaces × агентов (project-memory, total recall,
+> research→KB, agent tools, коннекторы 2.0).
+
 ---
 
 ## Краткое резюме
