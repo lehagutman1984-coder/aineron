@@ -98,9 +98,74 @@ def invalidate_memory_cache(user_id: int) -> None:
         pass
 
 
-def build_memory_context(user, chat: 'Chat') -> str:
+# U2 — Total Recall: интент «вопрос о прошлом» (только тогда лезем в recall,
+# чтобы не раздувать контекст и не жечь эмбеддинг на каждый запрос)
+import re as _re
+
+_RECALL_RE = _re.compile(
+    r'(помнишь|мы (уже )?(обсуждали|говорили|решали|разбирали)|'
+    r'в прошл(ый|ом) раз|ранее (ты|мы|я)|напомни|о ч[её]м мы|'
+    r'что мы (решили|выбрали|договорились)|'
+    r'do you remember|we (discussed|talked about)|last time)',
+    _re.IGNORECASE,
+)
+
+
+def is_recall_query(text: str) -> bool:
+    """Похоже ли сообщение на вопрос о прошлых разговорах."""
+    return bool(text and _RECALL_RE.search(text))
+
+
+def _org_facts_block(user) -> str:
+    """U1 — общая память организаций пользователя (кэш 5 мин).
+
+    Факты пишут owner/editor через /dashboard/organization/ или /account/memory/;
+    видят все члены во всех своих чатах (командный контекст: стек, процессы, сроки).
+    """
+    from django.core.cache import cache
+    from aitext.models import UserMemory
+
+    cache_key = f'memfacts:org:{user.id}'
+    block = cache.get(cache_key)
+    if block is not None:
+        return block
+
+    org_ids = list(user.org_memberships.values_list('organization_id', flat=True))
+    owned = list(user.owned_organizations.values_list('id', flat=True))
+    org_ids = list({*org_ids, *owned})
+    if not org_ids:
+        cache.set(cache_key, '', MEMORY_CACHE_TTL)
+        return ''
+
+    memories = list(
+        UserMemory.objects
+        .filter(organization_id__in=org_ids, is_active=True)
+        .select_related('organization')
+        .order_by('-is_pinned', '-created_at')[:15]
+    )
+    if not memories:
+        cache.set(cache_key, '', MEMORY_CACHE_TTL)
+        return ''
+
+    lines = '\n'.join(f'- [{m.organization.name}] {m.content}' for m in memories)
+    block = f'Память команды (общие факты организации):\n{lines}'
+    cache.set(cache_key, block, MEMORY_CACHE_TTL)
+    return block
+
+
+def invalidate_org_memory_cache(user_ids) -> None:
+    """Сброс кэша орг-памяти для списка пользователей (при изменении фактов)."""
+    from django.core.cache import cache
+    for uid in user_ids:
+        cache.delete(f'memfacts:org:{uid}')
+
+
+def build_memory_context(user, chat: 'Chat', user_message: str = '') -> str:
     """
     Возвращает строку для инжекции в system-prompt перед историей.
+
+    user_message (U2): текущий вопрос — при recall-интенте («помнишь…»)
+    добавляется семантический поиск по резюме всех чатов пользователя.
 
     Факты пользователя кэшируются в Redis (memfacts:{user_id}, 5 мин) — они
     не зависят от текущего чата, поэтому общий ключ безопасен.
@@ -120,13 +185,15 @@ def build_memory_context(user, chat: 'Chat') -> str:
     if not chat_settings.get('memory_enabled', True):
         return ''
 
-    # --- Факты: кэшируем per-user (стабильны между чатами) ---
+    # --- Глобальные факты: кэшируем per-user (стабильны между чатами) ---
+    # U1: в глобальный блок идут только факты без project-скоупа
     facts_key = _facts_cache_key(user.id)
     facts_block = cache.get(facts_key)
     if facts_block is None:
         memories = list(
             UserMemory.objects
-            .filter(user=user, is_active=True)
+            .filter(user=user, is_active=True, project__isnull=True,
+                    organization__isnull=True)
             .order_by('-is_pinned', '-created_at')[:MAX_MEMORY_FACTS]
         )
         if memories:
@@ -136,11 +203,36 @@ def build_memory_context(user, chat: 'Chat') -> str:
             facts_block = ''
         cache.set(facts_key, facts_block, MEMORY_CACHE_TTL)
 
-    # --- Резюме прошлых сессий: всегда свежо (один лёгкий запрос) ---
     parts: list[str] = []
     if facts_block:
         parts.append(facts_block)
 
+    # --- U1: факты текущего проекта (приоритетный блок, лёгкий запрос) ---
+    if getattr(settings, 'MEMORY_PROJECT_SCOPE', True) and getattr(chat, 'project_id', None):
+        try:
+            proj_memories = list(
+                UserMemory.objects
+                .filter(user=user, project_id=chat.project_id, is_active=True)
+                .order_by('-is_pinned', '-created_at')[:20]
+            )
+            if proj_memories:
+                lines = '\n'.join(f'- {m.content}' for m in proj_memories)
+                parts.append(
+                    f'Контекст проекта «{chat.project.name}» (важнее общих фактов):\n{lines}'
+                )
+        except Exception as e:
+            logger.warning(f'[memory] project facts error: {e}')
+
+    # --- U1: общая память организации (факты команды) ---
+    if getattr(settings, 'MEMORY_ORG_SCOPE', True):
+        try:
+            org_block = _org_facts_block(user)
+            if org_block:
+                parts.append(org_block)
+        except Exception as e:
+            logger.warning(f'[memory] org facts error: {e}')
+
+    recent_chat_ids = {chat.id}
     try:
         past_summaries = list(
             ChatSummary.objects
@@ -153,12 +245,31 @@ def build_memory_context(user, chat: 'Chat') -> str:
             text = (s.summary_text or s.rolling_summary or '').strip()
             if not text:
                 continue
+            recent_chat_ids.add(s.chat_id)
             dt = s.updated_at
             date_str = f"{dt.day} {dt.strftime('%b %Y')}" if hasattr(dt, 'strftime') else ''
             label = f'[Прошлая сессия, {date_str}]' if date_str else '[Прошлая сессия]'
             parts.append(f'{label}: {text[:500]}')
     except Exception as e:
         logger.warning(f'[memory] build_memory_context past_summaries error: {e}')
+
+    # --- U2: Total Recall — семантический поиск по всей истории при интенте ---
+    if (user_message and getattr(settings, 'RECALL_CHATS', True)
+            and is_recall_query(user_message)):
+        try:
+            from aitext.embeddings import recall_search
+            hits = recall_search(user, user_message, top_k=3,
+                                 exclude_chat_ids=recent_chat_ids)
+            for h in hits:
+                dt = h['updated_at']
+                date_str = f"{dt.day} {dt.strftime('%b %Y')}" if hasattr(dt, 'strftime') else ''
+                title = (h['title'] or 'Без названия')[:60]
+                parts.append(
+                    f'[Из прошлых разговоров, {date_str}, «{title}»]: '
+                    f'{h["summary"][:450]}'
+                )
+        except Exception as e:
+            logger.warning(f'[memory] recall error: {e}')
 
     return '\n\n'.join(parts)
 

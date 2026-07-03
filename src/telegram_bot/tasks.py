@@ -289,8 +289,13 @@ def execute_ai_task(self, task_id: int, run_iso: str):
     from core.money import format_rub
 
     try:
-        task = AITask.objects.select_related('user', 'network').get(pk=task_id)
+        task = AITask.objects.select_related('user', 'network', 'project').get(pk=task_id)
     except AITask.DoesNotExist:
+        return
+
+    # U3: research-задача — автономный мониторинг темы (отдельный пайплайн)
+    if getattr(task, 'kind', 'llm') == 'research':
+        _execute_research_task(task, run_iso)
         return
 
     user = task.user
@@ -946,6 +951,111 @@ def models_q_or(streak_tg_user_ids, referrer_user_ids):
     if referrer_user_ids:
         q = q | Q(user_id__in=list(referrer_user_ids))
     return q
+
+
+def _execute_research_task(task, run_iso: str):
+    """U3 — исполнение research-задачи: движок deep_research по расписанию.
+
+    Цена — RESEARCH_PRICE_KOPECKS (как ручной /research), идемпотентно
+    aitask:{id}:{run_iso}. Отчёт: доставка в Telegram + автосохранение в базу
+    знаний проекта (компаундинг — следующий запуск видит прошлые отчёты).
+    """
+    from django.conf import settings as dj
+    from django.utils import timezone as tz
+    from django.db.models import F
+    from telegram_bot.models import AITask, TelegramEvent
+    from telegram_bot.notify import notify_user_rich, notify_user
+    from aitext.models import Chat, Message as AiMsg, NeuralNetwork, DeepResearch
+    from core.money import format_rub
+
+    user = task.user
+    tg = getattr(user, 'telegram', None)
+    chat_id = task.deliver_chat_id or (tg.telegram_id if tg else None)
+    if chat_id is None:
+        return
+
+    price = getattr(dj, 'RESEARCH_PRICE_KOPECKS', 1000)
+    reference = f'aitask:{task.pk}:{run_iso}'
+
+    if not user.has_enough_kopecks(price):
+        AITask.objects.filter(pk=task.pk).update(is_active=False, paused_reason='balance')
+        notify_user(chat_id,
+                    f'Research-задача «{task.title or ""}» на паузе: нужно '
+                    f'{format_rub(price)} за запуск. Пополните баланс: /balance')
+        return
+    if not user.spend_kopecks(price, type='spend', reference=reference):
+        AITask.objects.filter(pk=task.pk).update(is_active=False, paused_reason='balance')
+        return
+
+    network = task.network if (task.network and task.network.is_active) else (
+        NeuralNetwork.objects.filter(is_active=True, provider='openrouter')
+        .order_by('cost_kopecks').first()
+    )
+    if network is None:
+        user.add_kopecks(price, type='refund', reference=reference)
+        return
+
+    # Research-чат в проекте задачи (компаундинг: KB проекта участвует в поиске)
+    chat = Chat.objects.create(
+        user=user, network=network, project=task.project,
+        title=f'Monitor: {task.title or task.prompt[:50]}',
+    )
+    AiMsg.objects.create(chat=chat, role='user', content=task.prompt,
+                         plain_text=task.prompt, status='completed')
+    assistant_msg = AiMsg.objects.create(chat=chat, role='assistant',
+                                         content='', plain_text='', status='pending')
+    research = DeepResearch.objects.create(chat=chat, message=assistant_msg,
+                                           question=task.prompt)
+
+    # Синхронный запуск движка (мы уже в Celery-воркере)
+    from aitext.tasks import deep_research_task
+    try:
+        deep_research_task.apply(args=[research.pk])
+    except Exception as e:
+        logger.error(f'_execute_research_task {task.pk}: engine failed: {e}')
+
+    research.refresh_from_db()
+    if research.status != 'done':
+        user.add_kopecks(price, type='refund', reference=reference)
+        notify_user(chat_id, f'Research-задача «{task.title or ""}»: ошибка '
+                             f'исследования — средства возвращены.')
+        return
+
+    report_md = (assistant_msg.__class__.objects.filter(pk=assistant_msg.pk)
+                 .values_list('plain_text', flat=True).first() or '')
+
+    # Компаундинг: сохранить в KB проекта (если задан)
+    saved_note = ''
+    if task.project_id and getattr(dj, 'RESEARCH_TO_KB', True):
+        try:
+            from aitext.tasks import save_research_to_kb
+            pf = save_research_to_kb(research.pk)
+            if pf is not None:
+                saved_note = f'\n\n_Отчёт сохранён в базу знаний проекта: {pf.filename}_'
+        except Exception as e:
+            logger.warning(f'_execute_research_task save to KB failed: {e}')
+
+    title = task.title or 'Мониторинг'
+    delivered = notify_user_rich(
+        chat_id,
+        f'**{title}**\n\n{report_md[:3500]}{saved_note}\n\n'
+        f'_Research · {format_rub(price)} · управление: /tasks_',
+    )
+    if not delivered:
+        user.add_kopecks(price, type='refund', reference=reference)
+        AITask.objects.filter(pk=task.pk).update(is_active=False, paused_reason='delivery')
+        return
+
+    AITask.objects.filter(pk=task.pk).update(
+        last_run_at=tz.now(), runs_count=F('runs_count') + 1,
+    )
+    try:
+        TelegramEvent.objects.create(
+            telegram_user=tg, event_type='research', network=network,
+            cost_kopecks=price, meta={'task_id': task.pk, 'run': run_iso},
+        )
+    except Exception:
+        pass
 
 
 @shared_task(name='telegram_bot.tasks.broadcast_message', bind=True, max_retries=0)

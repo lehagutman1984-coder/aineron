@@ -102,9 +102,33 @@ class ChatSearchView(APIView):
                 }
             )
 
+        # U2 (Total Recall): семантический слой поверх FTS — находит чаты
+        # по смыслу, когда точных слов в тексте нет (первая страница)
+        semantic = []
+        if page == 1:
+            try:
+                from aitext.embeddings import recall_search
+                seen_chats = {r["chat_id"] for r in results}
+                for h in recall_search(request.user, q, top_k=3):
+                    if h["chat_id"] in seen_chats:
+                        continue
+                    semantic.append(
+                        {
+                            "chat_id": h["chat_id"],
+                            "chat_title": h["title"] or "Без названия",
+                            "snippet": h["summary"][:150],
+                            "semantic": True,
+                            "updated_at": h["updated_at"].isoformat()
+                            if hasattr(h["updated_at"], "isoformat") else None,
+                        }
+                    )
+            except Exception:
+                pass
+
         return Response(
             {
                 "results": results,
+                "semantic": semantic,
                 "count": total,
                 "page": page,
                 "has_more": (offset + page_size) < total,

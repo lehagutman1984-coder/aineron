@@ -5,15 +5,26 @@ from aitext.memory import normalize_fact
 
 class UserMemorySerializer(serializers.ModelSerializer):
     category_display = serializers.CharField(source='get_category_display', read_only=True)
+    # U1: скоуп памяти — проект (записываемый) и организация (read-only;
+    # орг-факты создаются через /orgs/<id>/memory/)
+    project_name = serializers.CharField(source='project.name', read_only=True, default=None)
+    organization_name = serializers.CharField(source='organization.name', read_only=True, default=None)
 
     class Meta:
         model = UserMemory
         fields = [
             'id', 'category', 'category_display', 'content',
             'source', 'is_active', 'is_pinned',
+            'project', 'project_name', 'organization', 'organization_name',
             'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'source', 'created_at', 'updated_at', 'category_display']
+        read_only_fields = ['id', 'source', 'organization', 'organization_name',
+                            'project_name', 'created_at', 'updated_at', 'category_display']
+
+    def validate_project(self, value):
+        if value is not None and value.user_id != self.context['request'].user.id:
+            raise serializers.ValidationError('Проект не принадлежит пользователю')
+        return value
 
     def create(self, validated_data):
         content = validated_data.get('content', '')

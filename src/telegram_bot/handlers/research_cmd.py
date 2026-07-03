@@ -49,6 +49,7 @@ def _start_research(tg_user, question: str):
     from aitext.tasks import deep_research_task
 
     user = tg_user.user
+    project = tg_user.active_project  # U3: research в контексте активного проекта
     network = tg_user.default_network
     if network is None or not network.is_active:
         network = (
@@ -59,7 +60,7 @@ def _start_research(tg_user, question: str):
         return None, 'no_network'
 
     chat = Chat.objects.create(
-        user=user, network=network,
+        user=user, network=network, project=project,
         title=f'Research: {question[:60]}',
     )
     AiMsg.objects.create(chat=chat, role='user', content=question,
@@ -224,6 +225,13 @@ async def _watch_research(tg_message: Message, tg_user, research_id: int,
                 parts = split_message(telegram_format(report_md))
                 await streamer.finish(parts)
 
+            # U3: сохранить отчёт в базу знаний активного проекта одним тапом
+            save_kb = None
+            if tg_user.active_project_id:
+                save_kb = InlineKeyboardMarkup(inline_keyboard=[[
+                    InlineKeyboardButton(text='Сохранить в базу знаний проекта',
+                                         callback_data=f'research_save:{research_id}'),
+                ]])
             try:
                 doc = BufferedInputFile(
                     report_md.encode('utf-8'),
@@ -232,6 +240,7 @@ async def _watch_research(tg_message: Message, tg_user, research_id: int,
                 await tg_message.answer_document(
                     doc,
                     caption=f'Deep Research · {format_rub(_price_kopecks())}',
+                    reply_markup=save_kb,
                 )
             except Exception as e:
                 logger.warning(f'research export failed: {e}')
@@ -261,3 +270,36 @@ async def _watch_research(tg_message: Message, tg_user, research_id: int,
 
     await streamer.fail('Исследование заняло слишком много времени — средства возвращены.')
     await refund(tg_user.user, message_id)
+
+
+@router.callback_query(F.data.startswith('research_save:'))
+async def cb_research_save(query: CallbackQuery, tg_user=None):
+    """U3: отчёт → ProjectFile — знания проекта компаундируются."""
+    if tg_user is None:
+        await query.answer()
+        return
+    research_id = int(query.data.split(':')[1])
+
+    @sync_to_async
+    def _save():
+        from aitext.models import DeepResearch
+        research = DeepResearch.objects.filter(
+            pk=research_id, chat__user=tg_user.user).first()
+        if research is None:
+            return None
+        from aitext.tasks import save_research_to_kb
+        return save_research_to_kb(research_id)
+
+    pf = await _save()
+    if pf is None:
+        await query.answer('Не удалось сохранить (нет проекта или отчёта)', show_alert=True)
+        return
+    await query.answer('Сохранено в базу знаний')
+    try:
+        await query.message.edit_reply_markup(reply_markup=None)
+    except Exception:
+        pass
+    await query.message.answer(
+        f'Отчёт сохранён в базу знаний проекта: {pf.filename}\n'
+        f'Теперь ответы и исследования этого проекта будут его учитывать.',
+    )

@@ -287,11 +287,26 @@ class AITask(models.Model):
         BOT = 'bot', 'Telegram-бот'
         WEB = 'web', 'Веб'
 
+    class Kind(models.TextChoices):
+        LLM = 'llm', 'LLM-ответ'
+        RESEARCH = 'research', 'Deep Research (мониторинг)'
+
     user = models.ForeignKey(
         'users.CustomUser',
         on_delete=models.CASCADE,
         related_name='ai_tasks',
         verbose_name='Пользователь',
+    )
+    # U3 (UNIFIED_SUPREMACY): research-задачи — автономный мониторинг темы;
+    # project — отчёты сохраняются в базу знаний проекта (компаундинг)
+    kind = models.CharField(max_length=10, choices=Kind.choices, default=Kind.LLM,
+                            verbose_name='Тип задачи')
+    project = models.ForeignKey(
+        'aitext.Project',
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='ai_tasks',
+        verbose_name='Проект (для research-отчётов)',
     )
     title = models.CharField(max_length=120, blank=True, verbose_name='Название')
     prompt = models.TextField(verbose_name='Промт задачи')

@@ -419,3 +419,111 @@ def file_level_search(project, query: str, top_files: int = 5) -> list:
 
     files_by_id = {f.id: f for f in ProjectFile.objects.filter(id__in=file_ids)}
     return [files_by_id[fid] for fid in file_ids if fid in files_by_id]
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# U2 (UNIFIED_SUPREMACY) — Total Recall: эмбеддинги резюме чатов
+# ═══════════════════════════════════════════════════════════════════════════
+
+def embed_chat_summary(summary_id: int) -> bool:
+    """Пишет эмбеддинг summary_text в raw-колонку aitext_chatsummary.embedding.
+
+    Postgres-only (как ProjectChunk); на SQLite — no-op. Возвращает успех.
+    """
+    if not getattr(settings, 'RECALL_CHATS', True):
+        return False
+    if connection.vendor != 'postgresql':
+        return False
+
+    from .models import ChatSummary
+    from .tasks import get_laozhang_client
+
+    cs = ChatSummary.objects.filter(pk=summary_id).first()
+    if cs is None:
+        return False
+    text = (cs.summary_text or cs.rolling_summary or '').strip()
+    if not text:
+        return False
+
+    try:
+        client = get_laozhang_client()
+        model = _get_embed_model()
+        resp = client.embeddings.create(model=model, input=[text[:6000]])
+        emb = resp.data[0].embedding
+    except Exception as e:
+        logger.warning(f'[recall] embed summary {summary_id} failed: {e}')
+        return False
+
+    q_str = '[' + ','.join(str(round(v, 7)) for v in emb) + ']'
+    try:
+        with connection.cursor() as cur:
+            cur.execute(
+                'UPDATE aitext_chatsummary SET embedding = %s::vector WHERE id = %s',
+                [q_str, summary_id],
+            )
+        return True
+    except Exception as e:
+        logger.warning(f'[recall] embedding write failed for summary {summary_id}: {e}')
+        return False
+
+
+def recall_search(user, query: str, top_k: int = 3,
+                  exclude_chat_ids=None) -> list[dict]:
+    """U2: семантический поиск по резюме ВСЕХ чатов пользователя.
+
+    Возвращает [{'chat_id', 'title', 'summary', 'updated_at', 'distance'}].
+    Пусто на SQLite / без эмбеддингов / при выключенном RECALL_CHATS.
+    """
+    if not getattr(settings, 'RECALL_CHATS', True):
+        return []
+    if connection.vendor != 'postgresql' or not query or not query.strip():
+        return []
+
+    from .tasks import get_laozhang_client
+    client = get_laozhang_client()
+    model = _get_embed_model()
+    q_emb = _get_query_embedding(query, model, client)
+    if q_emb is None:
+        return []
+
+    q_str = '[' + ','.join(str(round(v, 7)) for v in q_emb) + ']'
+    exclude_chat_ids = [int(x) for x in (exclude_chat_ids or [])]
+    exclude_sql = ''
+    params = [q_str, user.id]
+    if exclude_chat_ids:
+        placeholders = ','.join(['%s'] * len(exclude_chat_ids))
+        exclude_sql = f'AND cs.chat_id NOT IN ({placeholders})'
+        params.extend(exclude_chat_ids)
+    params.append(top_k)
+
+    try:
+        with connection.cursor() as cur:
+            cur.execute(
+                f"""
+                SELECT cs.chat_id, c.title, cs.summary_text, cs.rolling_summary,
+                       cs.updated_at, cs.embedding <=> %s::vector AS distance
+                FROM aitext_chatsummary cs
+                JOIN aitext_chat c ON c.id = cs.chat_id
+                WHERE c.user_id = %s AND cs.embedding IS NOT NULL
+                  {exclude_sql}
+                ORDER BY distance
+                LIMIT %s
+                """,
+                params,
+            )
+            rows = cur.fetchall()
+    except Exception as e:
+        logger.warning(f'[recall] recall_search failed: {e}')
+        return []
+
+    return [
+        {
+            'chat_id': r[0],
+            'title': r[1] or '',
+            'summary': (r[2] or r[3] or '').strip(),
+            'updated_at': r[4],
+            'distance': float(r[5]),
+        }
+        for r in rows
+        if (r[2] or r[3])
+    ]

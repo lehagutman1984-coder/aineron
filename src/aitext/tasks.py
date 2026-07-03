@@ -781,7 +781,9 @@ def generate_ai_response(self, message_id, web_search=False):
         from .memory import (
             build_memory_context, get_history_with_compression, should_compress,
         )
-        memory_ctx = build_memory_context(user, chat)
+        # U2: текущий вопрос — для Total Recall при интенте «помнишь…»
+        _recall_msg = (user_msg.plain_text or user_msg.content or '') if user_msg else ''
+        memory_ctx = build_memory_context(user, chat, user_message=_recall_msg[:500])
 
         messages_for_api = []
 
@@ -1288,7 +1290,7 @@ def extract_memory_facts(self, chat_id: int):
 
         try:
             # update_or_create сохраняет переформулированные факты с тем же ключом
-            _, was_created = UserMemory.objects.update_or_create(
+            obj, was_created = UserMemory.objects.update_or_create(
                 user=user,
                 content_key=content_key,
                 defaults={
@@ -1300,6 +1302,12 @@ def extract_memory_facts(self, chat_id: int):
                 },
             )
             if was_created:
+                # U1: НОВЫЙ факт, извлечённый в чате проекта, скоупится на проект
+                # (существующие глобальные факты не перескоупливаются — иначе они
+                # исчезли бы из остальных чатов пользователя)
+                if chat.project_id and getattr(settings, 'MEMORY_PROJECT_SCOPE', True):
+                    obj.project_id = chat.project_id
+                    obj.save(update_fields=['project'])
                 existing_keys.add(content_key)
                 added += 1
                 new_labels.append(content[:80])
@@ -1430,8 +1438,20 @@ def generate_chat_summary(self, chat_id: int):
             f'[memory] chat={chat_id}: summary {"created" if created else "updated"} '
             f'({msg_count} msgs, incremental={bool(existing_rolling and last_compressed_id is not None)})'
         )
+        # U2: Total Recall — эмбеддинг резюме для семантического поиска по истории
+        try:
+            embed_chat_summary_task.delay(cs.pk)
+        except Exception:
+            pass
     except Exception as e:
         logger.warning(f'[memory] save summary error for chat {chat_id}: {e}')
+
+
+@shared_task(bind=True, max_retries=1, default_retry_delay=60, ignore_result=True)
+def embed_chat_summary_task(self, summary_id: int):
+    """U2 — Total Recall: эмбеддинг ChatSummary для семантического recall."""
+    from aitext.embeddings import embed_chat_summary
+    embed_chat_summary(summary_id)
 
 
 @shared_task(bind=True, max_retries=2, default_retry_delay=60, ignore_result=True)
@@ -1933,6 +1953,61 @@ def _synthesize_report(question: str, chunks: list[dict], model_name: str) -> st
         return f"Ошибка синтеза: {e}"
 
 
+def save_research_to_kb(research_id: int):
+    """U3 (UNIFIED_SUPREMACY) — сохраняет отчёт Deep Research в базу знаний
+    проекта как ProjectFile(source='research'): отчёт индексируется в RAG,
+    и следующие ответы/исследования проекта опираются на него (компаундинг).
+
+    Идемпотентно: повторный вызов возвращает уже сохранённый файл.
+    Возвращает ProjectFile или None (нет проекта / нет отчёта).
+    """
+    from django.core.files.base import ContentFile
+    from django.utils.text import slugify
+    from aitext.models import DeepResearch, ProjectFile
+
+    research = (
+        DeepResearch.objects.select_related('chat', 'chat__project', 'message',
+                                            'saved_file')
+        .filter(pk=research_id).first()
+    )
+    if research is None or research.saved_file_id:
+        return research.saved_file if research else None
+
+    project = getattr(research.chat, 'project', None)
+    if project is None or research.message is None:
+        return None
+    report_md = (research.message.plain_text or '').strip()
+    if not report_md:
+        return None
+
+    slug = slugify(research.question[:60], allow_unicode=False) or 'report'
+    filename = f'research-{research.pk}-{slug}.md'
+    content = f'# Research: {research.question}\n\n{report_md}'
+
+    pf = ProjectFile(
+        project=project,
+        filename=filename,
+        file_type='text',
+        source='research',
+        status='ready',
+        extracted_text=content,
+        file_size=len(content.encode('utf-8')),
+    )
+    pf.file.save(filename, ContentFile(content.encode('utf-8')), save=False)
+    pf.save()
+
+    research.saved_file = pf
+    research.save(update_fields=['saved_file'])
+
+    # Индексация в RAG (вектор + summary для two-level)
+    try:
+        embed_project_file.delay(pf.pk)
+    except Exception:
+        pass
+    logger.info(f'[research_to_kb] research {research_id} → ProjectFile {pf.pk}')
+    return pf
+
+
 @shared_task(bind=True, max_retries=1, soft_time_limit=300)
 def deep_research_task(self, research_id: int):
     """Sprint 2 — multi-step autonomous research with KB + web, stores progress in DeepResearch.steps."""
@@ -2012,6 +2087,14 @@ def deep_research_task(self, research_id: int):
         research.finished_at = timezone.now()
         research.append_step('done', 'Исследование завершено')
         research.save(update_fields=['status', 'finished_at'])
+
+        # U3: компаундинг — автосохранение отчёта в базу знаний проекта
+        try:
+            if (project is not None and getattr(project, 'auto_save_research', False)
+                    and getattr(settings, 'RESEARCH_TO_KB', True)):
+                save_research_to_kb(research.id)
+        except Exception as e:
+            logger.warning(f'[deep_research] auto-save to KB failed: {e}')
 
     except Exception as e:
         logger.error(f"[deep_research] task {research_id} failed: {e}", exc_info=True)

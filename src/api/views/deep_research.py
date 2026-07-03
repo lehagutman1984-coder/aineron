@@ -50,6 +50,31 @@ class DeepResearchStartView(APIView):
         }, status=status.HTTP_201_CREATED)
 
 
+class DeepResearchSaveView(APIView):
+    """POST /v1/research/<research_id>/save/ — U3: сохранить отчёт в базу
+    знаний проекта (ProjectFile source='research', индексируется в RAG)."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, research_id):
+        research = get_object_or_404(
+            DeepResearch, id=research_id, chat__user=request.user,
+        )
+        if research.status != 'done':
+            return Response({'error': 'Исследование ещё не завершено'}, status=400)
+        if getattr(research.chat, 'project_id', None) is None:
+            return Response({'error': 'Чат не принадлежит проекту'}, status=400)
+
+        from aitext.tasks import save_research_to_kb
+        pf = save_research_to_kb(research.id)
+        if pf is None:
+            return Response({'error': 'Нет отчёта для сохранения'}, status=400)
+        return Response({
+            'file_id': pf.id,
+            'filename': pf.filename,
+            'already_saved': research.saved_file_id == pf.id and research.saved_file_id is not None,
+        })
+
+
 class DeepResearchStatusView(APIView):
     """GET /v1/research/<research_id>/ — poll research status and steps."""
     permission_classes = [IsAuthenticated]

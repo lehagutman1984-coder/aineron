@@ -53,6 +53,14 @@ PRESETS = {
         'prompt': None,  # тема запрашивается через FSM
         'schedule_type': 'weekly', 'time': '10:00', 'weekday': 0, 'use_web_search': True,
     },
+    # U3: автономный мониторинг — полный Deep Research по расписанию,
+    # отчёт в Telegram + база знаний активного проекта (компаундинг)
+    'monitor': {
+        'title': 'Мониторинг темы (research)',
+        'prompt': None,  # тема запрашивается через FSM
+        'schedule_type': 'weekly', 'time': '09:00', 'weekday': 0,
+        'use_web_search': True, 'kind': 'research',
+    },
 }
 
 
@@ -97,6 +105,8 @@ def _create_task(user, parsed: dict):
         weekday=parsed.get('weekday'),
         cron=parsed.get('cron') or '',
         use_web_search=bool(parsed.get('use_web_search', True)),
+        kind=parsed.get('kind') or 'llm',           # U3
+        project_id=parsed.get('project_id'),        # U3: отчёты → KB проекта
         created_from='bot',
     )
     if task.schedule_type == 'once':
@@ -218,6 +228,7 @@ def _presets_kb() -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text='Курс валют и крипты (9:00)', callback_data='task_preset:currency')],
         [InlineKeyboardButton(text='Мониторинг новостей по теме', callback_data='task_preset:news')],
         [InlineKeyboardButton(text='Еженедельный пост по теме', callback_data='task_preset:post')],
+        [InlineKeyboardButton(text='Мониторинг темы (research)', callback_data='task_preset:monitor')],
         [InlineKeyboardButton(text='Мои задачи', callback_data='task_list')],
     ])
 
@@ -408,9 +419,16 @@ async def cb_task_preset(query: CallbackQuery, state: FSMContext, tg_user=None):
     if preset['prompt'] is None:
         await state.set_state(TaskFSM.preset_topic)
         await state.update_data(preset_key=key)
-        ask = ('О какой теме следить? Например: «квантовые компьютеры», «рынок недвижимости Москвы»'
-               if key == 'news' else
-               'На какую тему готовить еженедельный пост? Например: «новости AI для маркетологов»')
+        if key == 'news':
+            ask = 'О какой теме следить? Например: «квантовые компьютеры», «рынок недвижимости Москвы»'
+        elif key == 'monitor':
+            ask = ('Какую тему исследовать каждую неделю? Полный Deep Research '
+                   'с источниками; отчёт придёт сюда'
+                   + (' и сохранится в базу знаний активного проекта'
+                      if tg_user.active_project_id else '')
+                   + '. Например: «конкуренты в нише X», «регуляции AI в РФ»')
+        else:
+            ask = 'На какую тему готовить еженедельный пост? Например: «новости AI для маркетологов»'
         await query.message.answer(ask)
         return
     await _start_confirmation(query.message, state, tg_user, dict(preset))
@@ -435,6 +453,13 @@ async def on_preset_topic(message: Message, state: FSMContext, tg_user=None):
             f'Найди и перескажи главные новости по теме «{topic}» за последние сутки. '
             f'Если новостей нет — так и скажи одной строкой. Формат: краткий список с сутью.'
         )
+    elif key == 'monitor':
+        preset['title'] = f'Мониторинг: {topic[:90]}'
+        preset['prompt'] = (
+            f'Что изменилось по теме «{topic}» за последнюю неделю: новые факты, '
+            f'события, тренды, риски. Сравни с прошлыми отчётами, если они есть в базе знаний.'
+        )
+        preset['project_id'] = tg_user.active_project_id  # U3: компаундинг в KB
     else:
         preset['title'] = f'Пост: {topic[:90]}'
         preset['prompt'] = (

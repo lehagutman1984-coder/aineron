@@ -69,11 +69,13 @@ from api.views.telegram_webapp import (
 from api.views.memory import (
     MemoryListCreateView, MemoryDetailView,
     MemoryClearView, MemorySummariesView, MemorySettingsView,
-    QuickSaveFactView, MemoryToastView,
+    QuickSaveFactView, MemoryToastView, OrgMemoryView,
 )
 from api.views.branch import BranchChatView
 from api.views.kb_stats import ProjectKBStatsView, ProjectFileReindexView, ProjectFileChunksView
-from api.views.deep_research import DeepResearchStartView, DeepResearchStatusView
+from api.views.deep_research import (
+    DeepResearchStartView, DeepResearchStatusView, DeepResearchSaveView,
+)
 from api.views.personas import PersonaListCreateView, PersonaDetailView
 from api.views.arena import ArenaVoteView, ArenaLeaderboardView
 from api.views.knowledge_graph import KnowledgeGraphView
@@ -111,6 +113,7 @@ urlpatterns = [
     path('v1/chats/<int:chat_id>/branch/', BranchChatView.as_view(), name='chat_branch'),
     path('v1/chats/<int:chat_id>/research/', DeepResearchStartView.as_view(), name='deep_research_start'),
     path('v1/research/<int:research_id>/', DeepResearchStatusView.as_view(), name='deep_research_status'),
+    path('v1/research/<int:research_id>/save/', DeepResearchSaveView.as_view(), name='deep_research_save'),
     path('v1/chats/<int:chat_id>/upload/', ChatFileUploadView.as_view(), name='chat_file_upload'),
     path('v1/messages/<int:message_id>/status/', MessageStatusView.as_view(), name='message_status'),
 
@@ -130,6 +133,7 @@ urlpatterns = [
     path('v1/orgs/<int:org_id>/invites/', OrgInviteListCreateView.as_view(), name='org_invites'),
     path('v1/orgs/<int:org_id>/invoices/', InvoiceListCreateView.as_view(), name='org_invoices'),
     path('v1/orgs/invites/<str:token>/accept/', InviteAcceptView.as_view(), name='invite_accept'),
+    path('v1/orgs/<int:org_id>/memory/', OrgMemoryView.as_view(), name='org_memory'),
     path('v1/orgs/<int:pk>/tg-token/', OrgTgTokenView.as_view(), name='org_tg_token'),
     path('v1/orgs/<int:pk>/tg-groups/', OrgTgGroupsView.as_view(), name='org_tg_groups'),
 

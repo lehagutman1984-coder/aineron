@@ -381,7 +381,9 @@ class StreamMessageView(APIView):
         from aitext.memory import (
             build_memory_context, get_history_with_compression, should_compress,
         )
-        memory_ctx = build_memory_context(request.user, chat)
+        # U2: текущий вопрос — для Total Recall при интенте «помнишь…»
+        memory_ctx = build_memory_context(request.user, chat,
+                                          user_message=message_text[:500])
 
         messages_for_api = []
 

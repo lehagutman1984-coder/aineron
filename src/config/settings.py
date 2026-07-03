@@ -487,6 +487,20 @@ MANAGEDBOT_DAILY_CAP = int(os.getenv('MANAGEDBOT_DAILY_CAP', '300'))
 # до 7 LLM-вызовов дешёвой модели + до 5 Tavily-запросов ≈ 1–2 ₽)
 AGENT_PRICE_KOPECKS = int(os.getenv('AGENT_PRICE_KOPECKS', '500'))
 
+# ========== UNIFIED_SUPREMACY (U1-U6) — сшивка память × Spaces × агенты ==========
+# U1: скоуп памяти на проект/организацию
+MEMORY_PROJECT_SCOPE = os.getenv('MEMORY_PROJECT_SCOPE', '1') == '1'
+MEMORY_ORG_SCOPE     = os.getenv('MEMORY_ORG_SCOPE', '1') == '1'
+# U2: Total Recall — семантическая память всех чатов (эмбеддинги резюме)
+RECALL_CHATS         = os.getenv('RECALL_CHATS', '1') == '1'
+# U3: сохранение research-отчётов в базу знаний
+RESEARCH_TO_KB       = os.getenv('RESEARCH_TO_KB', '1') == '1'
+# U4: инструменты агента над Spaces (kb_search/read_file/propose_edit)
+AGENT_TOOLS_KB       = os.getenv('AGENT_TOOLS_KB', '1') == '1'
+# U5: website/rss коннекторы базы знаний
+CONNECTOR_WEBSITE    = os.getenv('CONNECTOR_WEBSITE', '1') == '1'
+CONNECTOR_CRAWL_LIMIT = int(os.getenv('CONNECTOR_CRAWL_LIMIT', '50'))  # страниц на проект
+
 
 # ========== БИЛЛИНГ (единый рублёвый баланс, копейки) ==========
 # Инвариант: 1 звезда (legacy) = 1 рубль = 100 копеек. См. src/core/money.py и BILLING_MIGRATION_PLAN.md

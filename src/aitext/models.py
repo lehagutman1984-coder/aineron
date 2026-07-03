@@ -267,6 +267,10 @@ class Project(models.Model):
     public_show_chats = models.BooleanField(default=False, verbose_name='Показывать чаты')
     public_views = models.PositiveIntegerField(default=0, verbose_name='Просмотры публичного Space')
     yjs_state = models.BinaryField(null=True, blank=True, verbose_name='Yjs документ (бинарный снапшот)')
+    # U3 (UNIFIED_SUPREMACY): автосохранение отчётов Deep Research в базу знаний
+    auto_save_research = models.BooleanField(
+        default=False, verbose_name='Автосохранять research-отчёты в базу знаний',
+    )
 
     class Meta:
         verbose_name = 'Проект'
@@ -336,6 +340,9 @@ class ProjectFile(models.Model):
     SOURCE_CHOICES = [
         ('upload', 'Загружен'),
         ('repo', 'Из репозитория'),
+        ('research', 'Deep Research'),   # U3: сохранённый отчёт исследования
+        ('web', 'Сайт (краулер)'),       # U5: website-коннектор
+        ('rss', 'RSS-лента'),            # U5: rss-коннектор
     ]
 
     project = models.ForeignKey(
@@ -976,6 +983,18 @@ class UserMemory(models.Model):
         'Chat', on_delete=models.SET_NULL, null=True, blank=True,
         related_name='extracted_memories',
     )
+    # U1 (UNIFIED_SUPREMACY): скоуп памяти. project — факт виден только в чатах
+    # этого проекта (приоритетный блок «Контекст проекта»); organization —
+    # общий факт команды (виден всем членам в орг-контекстах). Оба NULL =
+    # глобальный личный факт (прежнее поведение).
+    project = models.ForeignKey(
+        'Project', on_delete=models.CASCADE, null=True, blank=True,
+        related_name='memories', verbose_name='Проект (скоуп)',
+    )
+    organization = models.ForeignKey(
+        'teams.Organization', on_delete=models.CASCADE, null=True, blank=True,
+        related_name='memories', verbose_name='Организация (общая память)',
+    )
     is_active = models.BooleanField(default=True, verbose_name='Активен')
     is_pinned = models.BooleanField(default=False, verbose_name='Закреплён')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -991,6 +1010,12 @@ class UserMemory(models.Model):
                 name='unique_user_memory_content_key',
                 condition=models.Q(content_key__gt=''),
             )
+        ]
+        indexes = [
+            models.Index(fields=['user', 'project', 'is_active'],
+                         name='usermem_user_proj_idx'),
+            models.Index(fields=['organization', 'is_active'],
+                         name='usermem_org_idx'),
         ]
 
     def __str__(self):
@@ -1021,6 +1046,12 @@ class DeepResearch(models.Model):
     status   = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
     steps    = models.JSONField(default=list, blank=True, verbose_name='Шаги выполнения')
     error    = models.TextField(blank=True, verbose_name='Ошибка')
+    # U3 (UNIFIED_SUPREMACY): отчёт, сохранённый в базу знаний проекта, —
+    # знания компаундируются (следующие research/ответы видят прошлые отчёты)
+    saved_file = models.ForeignKey(
+        'ProjectFile', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='research_reports', verbose_name='Сохранён в базу знаний',
+    )
     created_at  = models.DateTimeField(auto_now_add=True)
     finished_at = models.DateTimeField(null=True, blank=True)
 
