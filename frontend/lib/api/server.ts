@@ -53,3 +53,21 @@ export const serverListBlogPosts = (params?: {
 
 export const serverGetBlogPost = (slug: string) =>
   serverFetch<BlogPostDetail>(`/blog/posts/${slug}/`);
+
+export interface LegalDoc {
+  title: string;
+  content: string;
+  last_updated: string;
+}
+
+const LEGAL_PLACEHOLDER = "Содержание будет добавлено через админку";
+
+export const serverGetLegalDoc = async (
+  type: "privacy" | "terms"
+): Promise<LegalDoc | null> => {
+  const doc = await serverFetch<LegalDoc>(`/legal/${type}/`);
+  if (!doc || !doc.content?.trim() || doc.content.includes(LEGAL_PLACEHOLDER)) {
+    return null;
+  }
+  return doc;
+};

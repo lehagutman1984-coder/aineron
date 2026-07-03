@@ -1,27 +1,18 @@
 ﻿import { FileText } from "lucide-react";
 import Link from "next/link";
+import { serverGetLegalDoc } from "@/lib/api/server";
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "https://aineron.ru/api/v1").replace(/\/$/, "");
-
-async function getLegalDoc(type: "privacy" | "terms") {
-  try {
-    const res = await fetch(`${API_BASE}/legal/${type}/`, { next: { revalidate: 3600 } });
-    if (!res.ok) return null;
-    return res.json() as Promise<{ title: string; content: string; last_updated: string }>;
-  } catch {
-    return null;
-  }
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata() {
-  const doc = await getLegalDoc("terms");
+  const doc = await serverGetLegalDoc("terms");
   return {
     title: doc?.title ?? "Пользовательское соглашение",
   };
 }
 
 export default async function TermsPage() {
-  const doc = await getLegalDoc("terms");
+  const doc = await serverGetLegalDoc("terms");
 
   const date = doc?.last_updated
     ? new Date(doc.last_updated).toLocaleDateString("ru-RU", {
