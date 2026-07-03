@@ -95,6 +95,16 @@ class Tariff(models.Model):
         # переходного периода, balance_grant_kopecks/referral_bonus_kopecks — производные.
         self.balance_grant_kopecks = self.pages_count * 100
         self.referral_bonus_kopecks = self.referral_bonus_stars * 100
+        # Django 4.2 update_or_create() сохраняет с update_fields=ключи defaults —
+        # производные поля надо дописать, иначе они не попадут в UPDATE.
+        update_fields = kwargs.get('update_fields')
+        if update_fields is not None:
+            update_fields = set(update_fields)
+            if 'pages_count' in update_fields:
+                update_fields.add('balance_grant_kopecks')
+            if 'referral_bonus_stars' in update_fields:
+                update_fields.add('referral_bonus_kopecks')
+            kwargs['update_fields'] = update_fields
         super().save(*args, **kwargs)
 
     @classmethod
@@ -995,6 +1005,9 @@ class PromoCode(models.Model):
 
     def save(self, *args, **kwargs):
         self.kopecks = self.stars * 100
+        update_fields = kwargs.get('update_fields')
+        if update_fields is not None and 'stars' in update_fields:
+            kwargs['update_fields'] = set(update_fields) | {'kopecks'}
         super().save(*args, **kwargs)
 
     def is_valid(self):
