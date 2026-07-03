@@ -41,7 +41,7 @@ echo -e "${YELLOW}Регистрируем периодические задач
 docker-compose exec -T web python manage.py setup_periodic_tasks
 
 echo -e "${YELLOW}Заполняем юридические документы (оферта, политика)...${NC}"
-docker-compose exec -T web python manage.py setup_legal_documents || echo -e "${YELLOW}setup_legal_documents пропущен${NC}"
+docker-compose exec -T web python manage.py setup_legal_documents --force || echo -e "${YELLOW}setup_legal_documents пропущен${NC}"
 
 echo -e "${YELLOW}Собираем статические файлы...${NC}"
 docker-compose exec -T web python manage.py collectstatic --noinput

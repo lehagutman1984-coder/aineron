@@ -569,17 +569,16 @@ class LegalDocumentAdmin(admin.ModelAdmin):
     )
     def document_type_display(self, obj):
         colors = {'privacy': '#2563eb', 'terms': '#9333ea'}
-        icons = {'privacy': '', 'terms': ''}
-        return format_html('<span style="color: {}; font-weight: bold;">{} {}</span>', colors.get(obj.document_type, '#000'), icons.get(obj.document_type, ''), obj.get_document_type_display())
+        return format_html('<span style="color: {}; font-weight: bold;">{}</span>', colors.get(obj.document_type, '#000'), obj.get_document_type_display())
     document_type_display.short_description = 'Тип документа'
     def last_updated_display(self, obj):
         return format_html('<span title="{}">{}</span>', obj.last_updated.strftime('%d.%m.%Y %H:%M'), obj.last_updated.strftime('%d.%m.%Y'))
     last_updated_display.short_description = 'Обновлено'
     def document_type_info(self, obj):
         if obj.document_type == 'privacy':
-            return mark_safe('<div style="background: #dbeafe; padding: 10px; border-radius: 8px; border-left: 4px solid #2563eb;"> ПОЛИТИКА КОНФИДЕНЦИАЛЬНОСТИ<br>Страница /privacy-policy/</div>')
+            return mark_safe('<div style="background: #dbeafe; padding: 10px; border-radius: 8px; border-left: 4px solid #2563eb;">ПОЛИТИКА КОНФИДЕНЦИАЛЬНОСТИ<br>Страница на сайте: <a href="https://aineron.ru/privacy-policy/" target="_blank">aineron.ru/privacy-policy/</a><br>Внимание: содержимое перезаписывается при деплое командой setup_legal_documents. Правьте текст в src/users/management/commands/setup_legal_documents.py</div>')
         elif obj.document_type == 'terms':
-            return mark_safe('<div style="background: #f3e8ff; padding: 10px; border-radius: 8px; border-left: 4px solid #9333ea;"> ПОЛЬЗОВАТЕЛЬСКОЕ СОГЛАШЕНИЕ<br>Страница /terms-of-service/</div>')
+            return mark_safe('<div style="background: #f3e8ff; padding: 10px; border-radius: 8px; border-left: 4px solid #9333ea;">ПОЛЬЗОВАТЕЛЬСКОЕ СОГЛАШЕНИЕ (ОФЕРТА)<br>Страница на сайте: <a href="https://aineron.ru/terms/" target="_blank">aineron.ru/terms/</a><br>Внимание: содержимое перезаписывается при деплое командой setup_legal_documents. Правьте текст в src/users/management/commands/setup_legal_documents.py</div>')
         return '-'
     document_type_info.short_description = 'Информация'
     def has_add_permission(self, request):
