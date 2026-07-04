@@ -28,7 +28,9 @@ logger = logging.getLogger(__name__)
 router = Router()
 
 POLL_INTERVAL = 5
-POLL_MAX_TRIES = 60  # 5 мин
+# 15 мин — столько же ждёт apimart-polling в fal_utils; раньше бот сдавался
+# через 5 мин, хотя сам обещал «3-8 минут», и видео пропадало для пользователя
+POLL_MAX_TRIES = 180
 
 
 class Img2VideoFSM(StatesGroup):
@@ -235,17 +237,20 @@ async def handle_img2video_photo(message: Message, state: FSMContext, tg_user=No
                 return
 
             if i % 6 == 0 and i > 0:
-                elapsed = i * POLL_INTERVAL
+                elapsed_min = (i * POLL_INTERVAL) // 60
                 try:
                     await status_msg.edit_text(
-                        f'Генерирую видео... ({elapsed}с из ~300с)\n'
+                        f'Генерирую видео... (~{elapsed_min} мин, обычно 3-8 мин)\n'
                         f'Промт: <i>{prompt}</i>',
                         parse_mode='HTML',
                     )
                 except Exception:
                     pass
 
-        await status_msg.edit_text('Превышено время ожидания (5 мин). Попробуй ещё раз.')
+        await status_msg.edit_text(
+            'Превышено время ожидания (15 мин). Если видео сгенерировалось, '
+            'оно появится в aineron.ru/account/files/'
+        )
 
     except Exception as e:
         logger.error(f'img2video error: {e}')

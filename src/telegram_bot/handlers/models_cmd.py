@@ -140,11 +140,16 @@ async def cb_models_tab(query: CallbackQuery, tg_user=None):
     if tab not in ('text', 'image', 'video'):
         await query.answer('Неизвестная вкладка')
         return
+    # Сначала снимаем «часики» с кнопки, потом рисуем вкладку
+    await query.answer()
     try:
         await _send_tab(query.message, tg_user, tab, edit=True)
     except Exception as e:
-        logger.warning('cb_models_tab error: %s', e)
-    await query.answer()
+        logger.warning('cb_models_tab error: %s', e, exc_info=True)
+        try:
+            await query.message.answer('Не удалось открыть вкладку. Попробуй /models ещё раз.')
+        except Exception:
+            pass
 
 
 # ---------------------------------------------------------------------------
@@ -187,11 +192,16 @@ async def cb_set_model(query: CallbackQuery, tg_user=None):
 
     await query.answer(f'Выбрана: {net.name}')
     try:
-        def _reload(tg_user_obj):
-            tg_user_obj.refresh_from_db()
-            return tg_user_obj
+        # refresh_from_db() сбрасывает кэш FK — доступ к default_*_network в
+        # async-коде после него ронял SynchronousOnlyOperation. Перечитываем
+        # объект целиком с select_related, как это делает AuthMiddleware.
+        def _reload(telegram_id):
+            from telegram_bot.models import TelegramUser
+            return TelegramUser.objects.select_related(
+                'user', 'default_network', 'default_image_network', 'default_video_network',
+            ).get(telegram_id=telegram_id)
         reload_tg_user = sync_to_async(_reload, thread_sensitive=True)
-        tg_user = await reload_tg_user(tg_user)
+        tg_user = await reload_tg_user(tg_user.telegram_id)
         await _send_tab(query.message, tg_user, tab, edit=True)
     except Exception:
         await query.message.edit_text(

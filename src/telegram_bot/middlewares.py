@@ -44,14 +44,15 @@ class AuthMiddleware(BaseMiddleware):
         if tg_user.user.shadow_banned:
             await asyncio.sleep(random.uniform(5, 10))
 
-        # Antispam: 30 сообщений/мин через Django cache (Redis)
+        # Antispam: 30 сообщений/мин через Django cache (Redis).
+        # cache.* — блокирующие вызовы, поэтому уводим их с event loop.
         rate_key = f'tg_rate:{tg_user.telegram_id}'
-        count = cache.get(rate_key, 0)
+        count = await sync_to_async(cache.get, thread_sensitive=False)(rate_key, 0)
         if count >= RATE_LIMIT_PER_MINUTE:
             if hasattr(event, 'answer'):
                 await event.answer("Слишком много запросов. Подожди минуту и попробуй снова.")
             return
-        cache.set(rate_key, count + 1, timeout=60)
+        await sync_to_async(cache.set, thread_sensitive=False)(rate_key, count + 1, 60)
 
         data['tg_user'] = tg_user
         return await handler(event, data)
@@ -60,9 +61,12 @@ class AuthMiddleware(BaseMiddleware):
     def _get_tg_user(telegram_id):
         from telegram_bot.models import TelegramUser
         try:
-            return TelegramUser.objects.select_related('user', 'default_network', 'default_image_network').get(
-                telegram_id=telegram_id
-            )
+            # ВСЕ default_* FK обязаны быть в select_related: хендлеры работают
+            # в async-контексте, и ленивая загрузка FK там бросает
+            # SynchronousOnlyOperation (вкладка «Видео» в /models так и умерла).
+            return TelegramUser.objects.select_related(
+                'user', 'default_network', 'default_image_network', 'default_video_network',
+            ).get(telegram_id=telegram_id)
         except TelegramUser.DoesNotExist:
             return None
 

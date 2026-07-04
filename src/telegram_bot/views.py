@@ -1,5 +1,4 @@
 import asyncio
-import concurrent.futures
 import json
 import logging
 import threading
@@ -15,6 +14,9 @@ logger = logging.getLogger(__name__)
 _bot_loop: asyncio.AbstractEventLoop | None = None
 _bot_loop_lock = threading.Lock()
 _routers_registered = False
+# Singleton Bot: одна aiohttp-сессия с keep-alive вместо TLS-хендшейка
+# к api.telegram.org на каждый апдейт. Создаётся только в потоке bot loop.
+_bot_instance = None
 
 
 def _get_bot_loop() -> asyncio.AbstractEventLoop:
@@ -31,7 +33,7 @@ def _get_bot_loop() -> asyncio.AbstractEventLoop:
 
 
 async def _process_update(update_data: dict) -> None:
-    global _routers_registered
+    global _routers_registered, _bot_instance
     from aiogram import Bot, types
     from aiogram.client.default import DefaultBotProperties
     from aiogram.enums import ParseMode
@@ -41,15 +43,19 @@ async def _process_update(update_data: dict) -> None:
         register_routers()
         _routers_registered = True
 
-    bot = Bot(
-        token=settings.TELEGRAM_BOT_TOKEN,
-        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
-    )
+    # Все апдейты исполняются на одном loop-потоке — гонки при создании нет
+    if _bot_instance is None:
+        _bot_instance = Bot(
+            token=settings.TELEGRAM_BOT_TOKEN,
+            default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+        )
+
     try:
         update = types.Update.model_validate(update_data)
-        await dp.feed_update(bot, update)
-    finally:
-        await bot.session.close()
+        await dp.feed_update(_bot_instance, update)
+    except Exception:
+        # Fire-and-forget: результат future никто не читает, поэтому логируем здесь
+        logger.exception('Telegram update processing error')
 
 
 @csrf_exempt
@@ -122,12 +128,12 @@ def telegram_webhook(request):
     except (json.JSONDecodeError, ValueError):
         return HttpResponse(status=400)
 
+    # Fire-and-forget: Telegram нужен только быстрый 200 OK. Ожидание
+    # обработки здесь блокировало gunicorn-поток до 25 с на каждый апдейт —
+    # кнопки и сообщения других пользователей вставали в очередь.
     try:
         loop = _get_bot_loop()
-        future = asyncio.run_coroutine_threadsafe(_process_update(data), loop)
-        future.result(timeout=25)
-    except concurrent.futures.TimeoutError:
-        logger.error('Telegram webhook timeout')
+        asyncio.run_coroutine_threadsafe(_process_update(data), loop)
     except Exception as e:
         logger.exception(f'Telegram webhook error: {e}')
 
