@@ -111,7 +111,7 @@ function ConfirmPurchaseModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-[16px] bg-[var(--color-surface)] border border-[var(--color-border)] p-6 shadow-xl"
+        className="w-full max-w-md rounded-[16px] bg-[var(--card-bg)] border border-[var(--color-border)] p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between mb-4">
