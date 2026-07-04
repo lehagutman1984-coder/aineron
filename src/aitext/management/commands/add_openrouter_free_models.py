@@ -56,6 +56,31 @@ FREE_MODELS = [
         15, 6,
         'Модель Google DeepMind с поддержкой изображений — универсальный чат и код.',
     ),
+    (
+        'free-qwen3-coder', 'Qwen3 Coder 480B — бесплатно', 'qwen/qwen3-coder:free',
+        15, 7,
+        'Флагманская модель Qwen для кода и агентных задач, контекст 1M токенов.',
+    ),
+    (
+        'free-nemotron-3-nano-30b', 'Nemotron 3 Nano 30B — бесплатно', 'nvidia/nemotron-3-nano-30b-a3b:free',
+        15, 8,
+        'Компактная эффективная модель NVIDIA для агентных задач.',
+    ),
+    (
+        'free-qwen3-next-80b', 'Qwen3 Next 80B — бесплатно', 'qwen/qwen3-next-80b-a3b-instruct:free',
+        15, 9,
+        'Быстрые и стабильные ответы без «размышлений» — код, знания, много языков.',
+    ),
+    (
+        'free-laguna-xs21', 'Laguna XS 2.1 — бесплатно', 'poolside/laguna-xs-2.1:free',
+        15, 10,
+        'Компактная модель Poolside для кода — быстрая и экономичная.',
+    ),
+    (
+        'free-nemotron-nano-9b', 'Nemotron Nano 9B — бесплатно', 'nvidia/nemotron-nano-9b-v2:free',
+        15, 11,
+        'Универсальная модель NVIDIA с настраиваемым режимом рассуждений.',
+    ),
 ]
 
 # Слаги старых бесплатных моделей Groq (add_groq_free_models) — деактивируем,
@@ -66,9 +91,9 @@ OLD_GROQ_FREE_SLUGS = [
 ]
 
 # Слаги первой (неверенной) партии OpenRouter-моделей, заменённой списком выше.
+# 'free-qwen3-coder' сюда не входит — модель осталась в FREE_MODELS (тот же слаг).
 OLD_OPENROUTER_FREE_SLUGS = [
-    'free-qwen3-coder', 'free-deepseek-v4-flash',
-    'free-llama-3-3-70b-or', 'free-glm-4-5-air',
+    'free-deepseek-v4-flash', 'free-llama-3-3-70b-or', 'free-glm-4-5-air',
 ]
 
 

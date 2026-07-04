@@ -18,6 +18,11 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_EMBEDDING_MODEL = 'text-embedding-3-small'
 
+# Бесплатная модель эмбеддингов (OpenRouter, $0) — доступна всем через API без
+# учёта баланса и без биллинга. Не входит в каталог NeuralNetwork/вкладку
+# «Бесплатные» (эмбеддинги нельзя «чатить», это отдельная developer-фича).
+FREE_EMBEDDING_MODEL = 'nvidia/llama-nemotron-embed-vl-1b-v2:free'
+
 
 def _resolve_embedding_model(model_id: str):
     """Поиск модели эмбеддингов в БД или возврат дефолтной."""
@@ -60,15 +65,20 @@ class EmbeddingsView(APIView):
 
         user = request.user
         api_key = getattr(request, 'api_key', None)
+        is_free_model = model_id == FREE_EMBEDDING_MODEL
 
-        if user.balance_kopecks <= 0:
+        if not is_free_model and user.balance_kopecks <= 0:
             from core.money import format_rub
             return Response(
                 {'error': {'message': f'Insufficient balance: {format_rub(user.balance_kopecks)}.', 'type': 'insufficient_quota', 'code': 'insufficient_quota'}},
                 status=status.HTTP_402_PAYMENT_REQUIRED,
             )
 
-        client = get_laozhang_client()
+        if is_free_model:
+            from aitext.providers import get_openrouter_free_client
+            client = get_openrouter_free_client()
+        else:
+            client = get_laozhang_client()
         try:
             response_obj = client.embeddings.create(
                 model=model_id,
@@ -87,13 +97,15 @@ class EmbeddingsView(APIView):
         total_tokens = usage_obj.total_tokens if usage_obj else len(' '.join(inputs)) // 4
         usage = {'prompt_tokens': total_tokens, 'completion_tokens': 0, 'total_tokens': total_tokens}
 
-        # Для эмбеддингов ищем сеть или биллим по минимуму
-        network = _resolve_embedding_model(model_id)
-        if network:
-            try:
-                charge_for_tokens(user, network, usage, api_key=api_key)
-            except Exception:
-                pass  # Не блокируем ответ из-за ошибки биллинга
+        # Для эмбеддингов ищем сеть или биллим по минимуму. Бесплатная модель —
+        # без списаний.
+        if not is_free_model:
+            network = _resolve_embedding_model(model_id)
+            if network:
+                try:
+                    charge_for_tokens(user, network, usage, api_key=api_key)
+                except Exception:
+                    pass  # Не блокируем ответ из-за ошибки биллинга
 
         result = {
             'object': 'list',
