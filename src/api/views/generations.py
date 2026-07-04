@@ -12,9 +12,22 @@ from django.db.models import Q
 from django.http import StreamingHttpResponse, JsonResponse
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.renderers import BaseRenderer, JSONRenderer
 
 from api.authentication import CsrfExemptSessionAuthentication
 from aitext.models import GeneratedImage
+
+
+class EventStreamRenderer(BaseRenderer):
+    """EventSource шлёт Accept: text/event-stream — без этого рендерера DRF
+    отвечает 406 на этапе content negotiation, до вызова get()."""
+    media_type = 'text/event-stream'
+    format = 'sse'
+
+    def render(self, data, accepted_media_type=None, renderer_context=None):
+        if isinstance(data, (bytes, str)):
+            return data
+        return json.dumps(data, ensure_ascii=False)
 
 
 def _user_gens_q(user):
@@ -29,6 +42,7 @@ class GenerationProgressView(APIView):
     """GET /v1/generations/<pk>/progress/ — SSE-стрим прогресса генерации."""
     authentication_classes = [CsrfExemptSessionAuthentication]
     permission_classes = [IsAuthenticated]
+    renderer_classes = [EventStreamRenderer, JSONRenderer]
 
     def get(self, request, pk):
         # Проверяем владение до открытия стрима (404/403 нельзя отдать после старта SSE).

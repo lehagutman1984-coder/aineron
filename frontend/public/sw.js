@@ -1,5 +1,5 @@
-const CACHE = "aineron-v2";
-const PRECACHE = ["/", "/catalog/", "/account/"];
+const CACHE = "aineron-v3";
+const PRECACHE = ["/", "/models/", "/account/"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -20,16 +20,37 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+// Cache.put() принимает только http(s)-запросы и полные (не 206) ответы.
+function cacheable(request, response) {
+  return (
+    request.url.startsWith("http") &&
+    response.status === 200 &&
+    response.type === "basic"
+  );
+}
+
+function putSafe(request, response) {
+  const clone = response.clone();
+  caches
+    .open(CACHE)
+    .then((c) => c.put(request, clone))
+    .catch(() => {});
+}
+
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
-  // Skip: non-GET, API, admin, auth
+  // Skip: non-http(s) (chrome-extension и т.п.), non-GET, cross-origin,
+  // API, admin, auth, media (Range-запросы видео/аудио дают 206)
   if (
+    (url.protocol !== "http:" && url.protocol !== "https:") ||
     event.request.method !== "GET" ||
+    url.origin !== self.location.origin ||
     url.pathname.startsWith("/api/") ||
     url.pathname.startsWith("/admin/") ||
     url.pathname.startsWith("/users/") ||
-    url.pathname.startsWith("/accounts/")
+    url.pathname.startsWith("/accounts/") ||
+    url.pathname.startsWith("/media/")
   ) {
     return;
   }
@@ -41,9 +62,8 @@ self.addEventListener("fetch", (event) => {
         (cached) =>
           cached ||
           fetch(event.request).then((res) => {
-            if (res.ok) {
-              const clone = res.clone();
-              caches.open(CACHE).then((c) => c.put(event.request, clone));
+            if (cacheable(event.request, res)) {
+              putSafe(event.request, res);
             }
             return res;
           })
@@ -56,9 +76,8 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     fetch(event.request)
       .then((res) => {
-        if (res.ok) {
-          const clone = res.clone();
-          caches.open(CACHE).then((c) => c.put(event.request, clone));
+        if (cacheable(event.request, res)) {
+          putSafe(event.request, res);
         }
         return res;
       })
