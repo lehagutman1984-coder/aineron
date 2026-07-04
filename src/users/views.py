@@ -650,7 +650,7 @@ def payment_success(request):
                 # выигрывает один UPDATE, второй получает rowcount=0 и выходит.
                 claimed = PaymentHistory.objects.filter(
                     pk=payment.pk,
-                ).exclude(status='success').update(status='success', paid_at=datetime.now())
+                ).exclude(status='success').update(status='success', paid_at=timezone.now())
                 if not claimed:
                     logger.info(f"[WARN] Платеж {inv_id} уже был обработан")
                     return HttpResponse(f"OK{inv_id}")
@@ -666,7 +666,7 @@ def payment_success(request):
 
                     if user.active_subscription:
                         subscription = user.active_subscription
-                        subscription.expires_at = datetime.now() + timedelta(days=tariff.duration_days)
+                        subscription.expires_at = timezone.now() + timedelta(days=tariff.duration_days)
                         subscription.tariff = tariff
                         subscription.robokassa_invoice_id = inv_id
                         subscription.status = 'active'
@@ -677,7 +677,7 @@ def payment_success(request):
                         subscription = UserSubscription.objects.create(
                             user=user,
                             tariff=tariff,
-                            expires_at=datetime.now() + timedelta(days=tariff.duration_days),
+                            expires_at=timezone.now() + timedelta(days=tariff.duration_days),
                             auto_renew=True,
                             robokassa_invoice_id=inv_id,
                             status='active',
@@ -738,7 +738,10 @@ def payment_success(request):
                             )
 
                 elif payment.payment_type == 'pages':
-                    user.add_kopecks(payment.pages_count * 100, type='topup', reference=inv_id)
+                    # Кредитуем ровно уплаченную сумму. pages_count*100 совпадал бы с ней
+                    # только при price_per_page=1.00; amount_kopecks корректен при любой цене.
+                    topup_kopecks = payment.amount_kopecks or (payment.pages_count * 100)
+                    user.add_kopecks(topup_kopecks, type='topup', reference=inv_id)
                     user.refresh_from_db(fields=['balance_kopecks', 'pages_count'])
                     logger.info(f"[OK] Пользователь {user.email} купил {payment.pages_count} страниц, теперь всего: {user.pages_count}")
 
@@ -751,7 +754,7 @@ def payment_success(request):
                         if payment.payment_type == 'pages':
                             msg = (
                                 f"<b>Оплата прошла успешно!</b>\n\n"
-                                f"Начислено: <b>{format_rub(payment.pages_count * 100)}</b>\n"
+                                f"Начислено: <b>{format_rub(payment.amount_kopecks or payment.pages_count * 100)}</b>\n"
                                 f"Баланс: <b>{format_rub(user.balance_kopecks)}</b>"
                             )
                         else:

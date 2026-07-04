@@ -36,12 +36,17 @@ logger = logging.getLogger(__name__)
 
 
 def _make_invoice_id() -> int:
-    return int(time.time() * 1000) % 10_000_000 + random.randint(1, 999)
+    # Уникальный (проверка в БД) числовой InvId — защита от коллизий Robokassa.
+    from users.invoice import make_unique_invoice_id
+    return make_unique_invoice_id()
 
 
 def _robokassa_signature(merchant_login, out_sum, inv_id, receipt_json, password1) -> str:
+    # Форма отправляется с Encoding=utf-8 и Receipt содержит кириллицу, поэтому
+    # подпись ОБЯЗАНА считаться по utf-8 (recurring-путь в users/tasks.py — тоже utf-8).
+    # cp1251 давал несовпадение подписи на стороне Robokassa для кириллических чеков.
     sig_str = f"{merchant_login}:{out_sum}:{inv_id}:{receipt_json}:{password1}"
-    return hashlib.md5(sig_str.encode('cp1251')).hexdigest()
+    return hashlib.md5(sig_str.encode('utf-8')).hexdigest()
 
 
 def _discounted_price(price, percent):
@@ -65,6 +70,45 @@ def _resolve_discount_promo(user, code_str):
     if UsedPromoCode.objects.filter(user=user, promo_code=promo).exists():
         return None, Response({'error': {'message': 'Промокод уже был использован', 'type': 'invalid_request_error', 'code': 'promo_already_used'}}, status=status.HTTP_400_BAD_REQUEST)
     return promo, None
+
+
+class _PromoLimitReached(Exception):
+    """Внутренний сигнал: глобальный usage_limit промокода исчерпан (для отката atomic)."""
+
+
+def _reserve_discount_promo(user, promo):
+    """
+    Атомарно бронирует скидочный промокод за пользователем В МОМЕНТ создания платежа.
+
+    Без брони пользователь мог применить скидку повторно (или несколько инвойсов
+    подряд превышали usage_limit), т.к. UsedPromoCode раньше писался только в вебхуке
+    payment_success. Бронь: UsedPromoCode (unique user+promo) + инкремент used_count
+    под условием used_count < usage_limit.
+
+    Побочный эффект: бронь расходует использование даже если платёж не завершён —
+    скидочный промокод по замыслу одноразовый на пользователя. payment_success затем
+    видит уже существующий UsedPromoCode (get_or_create) и used_count повторно НЕ растит.
+
+    Возвращает None (успех) или Response с ошибкой.
+    """
+    from django.db import IntegrityError, transaction
+    from django.db.models import F
+    try:
+        with transaction.atomic():
+            UsedPromoCode.objects.create(user=user, promo_code=promo)
+            if promo.usage_limit > 0:
+                claimed = PromoCode.objects.filter(
+                    pk=promo.pk, used_count__lt=F('usage_limit'),
+                ).update(used_count=F('used_count') + 1)
+                if not claimed:
+                    raise _PromoLimitReached()
+            else:
+                PromoCode.objects.filter(pk=promo.pk).update(used_count=F('used_count') + 1)
+    except IntegrityError:
+        return Response({'error': {'message': 'Промокод уже был использован', 'type': 'invalid_request_error', 'code': 'promo_already_used'}}, status=status.HTTP_400_BAD_REQUEST)
+    except _PromoLimitReached:
+        return Response({'error': {'message': 'Лимит использований промокода исчерпан', 'type': 'invalid_request_error', 'code': 'promo_limit_reached'}}, status=status.HTTP_400_BAD_REQUEST)
+    return None
 
 
 class TariffListView(APIView):
@@ -106,6 +150,11 @@ class TariffPayView(APIView):
             promo, promo_error = _resolve_discount_promo(request.user, promo_code_str)
             if promo_error:
                 return promo_error
+            # Бронируем использование сразу — иначе скидку можно применить повторно
+            # или превысить usage_limit несколькими неоплаченными инвойсами.
+            reserve_error = _reserve_discount_promo(request.user, promo)
+            if reserve_error:
+                return reserve_error
 
         price = _discounted_price(tariff.price, promo.discount_percent) if promo else tariff.price
 

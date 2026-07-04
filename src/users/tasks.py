@@ -2,6 +2,7 @@
 from django.utils import timezone
 from datetime import timedelta
 from .models import UserSubscription, CustomUser, PaymentHistory, Tariff
+from .invoice import make_unique_invoice_id
 from django.conf import settings
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
@@ -152,7 +153,7 @@ def attempt_auto_renewal(subscription):
             }
             receipt_json = json.dumps(receipt_data, separators=(',', ':'), ensure_ascii=False)
 
-            new_inv_id = int(time.time() * 1000) % 10000000
+            new_inv_id = make_unique_invoice_id()
             merchant_login = settings.ROBOKASSA_LOGIN
             password_1 = settings.ROBOKASSA_PASS1
             out_sum = f"{amount:.2f}"
@@ -228,7 +229,7 @@ def attempt_auto_renewal(subscription):
         }
         receipt_json = json.dumps(receipt_data, separators=(',', ':'), ensure_ascii=False)
 
-        new_inv_id = int(time.time() * 1000) % 10000000
+        new_inv_id = make_unique_invoice_id()
         merchant_login = settings.ROBOKASSA_LOGIN
         password_1 = settings.ROBOKASSA_PASS1
         out_sum = f"{amount:.2f}"
