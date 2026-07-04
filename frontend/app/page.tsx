@@ -1,7 +1,7 @@
 import Link from "next/link";
 import {
-  ArrowRight, Zap, Globe, Code2, ImageIcon, Check, X,
-  Users, MessageSquare, Wallet, ShieldCheck, Layers,
+  ArrowRight, Code2, ImageIcon, Check, X,
+  Wallet, ShieldCheck, Layers,
 } from "lucide-react";
 import { serverListNetworks } from "@/lib/api/server";
 import type { NetworkListItem } from "@/lib/api/types";
@@ -42,25 +42,9 @@ export default async function HomePage() {
         <HomeCta placement="hero" />
       </section>
 
-      {/* ── Social proof bar ──────────────────────────────────────────────────── */}
-      <section className="border-y border-[var(--border-tertiary)] bg-[var(--card-bg)]">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-10 gap-y-4 px-4 py-5">
-          {STATS.map((s) => {
-            const Icon = s.icon;
-            return (
-              <div key={s.label} className="flex items-center gap-2.5">
-                <Icon size={16} className="text-[#D97757]" />
-                <span className="text-[16px] font-semibold text-[var(--text-primary)]">{s.value}</span>
-                <span className="text-[15px] text-[var(--text-tertiary)]">{s.label}</span>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
       {/* ── Popular models ────────────────────────────────────────────────────── */}
       {popular.length > 0 && (
-        <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
+        <section className="mx-auto max-w-7xl px-4 pb-16 pt-4 sm:px-6">
           <div className="mb-8 flex items-end justify-between">
             <div>
               <h2 className="text-[22px] font-bold text-[var(--text-primary)]">Популярные модели</h2>
@@ -262,13 +246,6 @@ function FeatureCard({ icon: Icon, title, text }: { icon: React.ElementType; tit
 }
 
 // ── Data ──────────────────────────────────────────────────────────────────────
-const STATS = [
-  { icon: Globe, value: "200+", label: "нейросетей" },
-  { icon: Users, value: "10 000+", label: "пользователей" },
-  { icon: MessageSquare, value: "1 млн+", label: "сообщений обработано" },
-  { icon: Zap, value: "< 1 сек", label: "среднее время ответа" },
-];
-
 const FEATURES = [
   { icon: Layers, title: "Все модели сразу", text: "GPT-4o, Claude, Gemini, Midjourney и 200+ моделей — один аккаунт и общий баланс." },
   { icon: ShieldCheck, title: "Без VPN", text: "Серверы в России, оплата рублями. Работает с любого устройства в РФ." },
