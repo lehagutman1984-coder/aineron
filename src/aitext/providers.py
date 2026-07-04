@@ -34,6 +34,7 @@ _raw_clients = {}
 _groq_client = None
 _openrouter_free_client = None
 _zai_client = None
+_cloudflare_client = None
 
 
 def get_groq_client():
@@ -81,6 +82,21 @@ def get_zai_client():
             api_key=getattr(settings, 'ZAI_API_KEY', ''),
         )
     return _zai_client
+
+
+def get_cloudflare_client():
+    """
+    «Сырой» OpenAI-совместимый клиент Cloudflare Workers AI для бесплатных
+    моделей (10 000 «нейронов»/день на аккаунт, общий пул). Доступность из РФ
+    подтверждена вручную (curl с боевого окружения, 2026-07-04). Без фолбэка.
+    """
+    global _cloudflare_client
+    if _cloudflare_client is None:
+        _cloudflare_client = OpenAI(
+            base_url=getattr(settings, 'CLOUDFLARE_API_URL', ''),
+            api_key=getattr(settings, 'CLOUDFLARE_API_TOKEN', ''),
+        )
+    return _cloudflare_client
 
 
 def _get_raw_client(provider):

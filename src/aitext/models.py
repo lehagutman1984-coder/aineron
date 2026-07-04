@@ -29,6 +29,7 @@ class NeuralNetwork(models.Model):
         ('groq', 'Groq (бесплатные текстовые модели, заблокирован из РФ)'),
         ('openrouter_free', 'OpenRouter (бесплатные текстовые модели :free)'),
         ('zai_free', 'Z.ai (бесплатные модели GLM-*-Flash)'),
+        ('cloudflare_free', 'Cloudflare Workers AI (бесплатные модели)'),
     ]
     """Модель нейросети"""
     name = models.CharField(max_length=100, verbose_name='Название нейросети')

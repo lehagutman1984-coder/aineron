@@ -376,6 +376,17 @@ OPENROUTER_API_URL = os.environ.get('OPENROUTER_API_URL', 'https://openrouter.ai
 ZAI_API_KEY = os.environ.get('ZAI_API_KEY', '')
 ZAI_API_URL = os.environ.get('ZAI_API_URL', 'https://api.z.ai/api/paas/v4')
 
+# Cloudflare Workers AI — бесплатные модели (10 000 "нейронов"/день на аккаунт).
+# Проверено вручную curl-запросами с боевого окружения 2026-07-04: подключение
+# и токен рабочие (5 из 6 протестированных моделей ответили корректно).
+# OpenAI-совместимый эндпоинт требует Account ID прямо в URL.
+CLOUDFLARE_ACCOUNT_ID = os.environ.get('CLOUDFLARE_ACCOUNT_ID', '')
+CLOUDFLARE_API_TOKEN = os.environ.get('CLOUDFLARE_API_TOKEN', '')
+CLOUDFLARE_API_URL = (
+    f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1"
+    if CLOUDFLARE_ACCOUNT_ID else ''
+)
+
 # Автоматический фолбэк между сервисами (laozhang ↔ apimart).
 # Текст/изображения: laozhang → apimart; видео: apimart → laozhang.
 # При недоступности сервиса/модели запрос прозрачно повторяется на резервном.

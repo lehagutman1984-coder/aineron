@@ -52,6 +52,9 @@ docker-compose exec -T web python manage.py add_openrouter_free_models || echo -
 echo -e "${YELLOW}Засеиваем бесплатные модели Z.ai (GLM-*-Flash)...${NC}"
 docker-compose exec -T web python manage.py add_zai_free_models || echo -e "${YELLOW}add_zai_free_models пропущен${NC}"
 
+echo -e "${YELLOW}Засеиваем бесплатные модели Cloudflare Workers AI...${NC}"
+docker-compose exec -T web python manage.py add_cloudflare_free_models || echo -e "${YELLOW}add_cloudflare_free_models пропущен${NC}"
+
 echo -e "${YELLOW}Собираем статические файлы...${NC}"
 docker-compose exec -T web python manage.py collectstatic --noinput
 

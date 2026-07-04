@@ -558,6 +558,9 @@ def get_client_for_network(network):
     if provider == 'zai_free':
         from aitext.providers import get_zai_client
         return get_zai_client()
+    if provider == 'cloudflare_free':
+        from aitext.providers import get_cloudflare_client
+        return get_cloudflare_client()
     return get_laozhang_client()
 
 
