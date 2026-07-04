@@ -558,6 +558,15 @@ def get_client_for_network(network):
     return get_laozhang_client()
 
 
+def _is_rate_limit_error(exc) -> bool:
+    """429 / upstream rate-limit — типично для бесплатного пула моделей OpenRouter/Groq."""
+    status = getattr(exc, 'status_code', None)
+    if status == 429:
+        return True
+    msg = str(exc).lower()
+    return 'rate' in msg and ('limit' in msg or '429' in msg) or 'too many requests' in msg
+
+
 def translate_to_english(text, network_name):
     """Переводит текст на английский через DeepSeek (laozhang.ai)"""
     if not text or not text.strip():
@@ -1129,8 +1138,16 @@ def generate_ai_response(self, message_id, web_search=False):
         logger.error(f"Ошибка генерации AI ответа для сообщения {message_id}: {e}")
         try:
             message = Message.objects.get(id=message_id)
+            is_free_network = bool(getattr(message.chat.network, 'is_free', False))
+            if is_free_network and _is_rate_limit_error(e):
+                message.error_message = (
+                    "Эта бесплатная модель сейчас перегружена (лимит провайдера исчерпан). "
+                    "Попробуйте отправить сообщение ещё раз через минуту или выберите другую "
+                    "бесплатную модель."
+                )
+            else:
+                message.error_message = str(e)
             message.status = Message.Status.FAILED
-            message.error_message = str(e)
             message.save()
         except Message.DoesNotExist:
             message = None

@@ -724,7 +724,15 @@ class StreamMessageView(APIView):
                     user.add_kopecks(cost_kopecks, type='refund', reference=f'chat:{assist_msg_id}')
                     from core.money import format_rub
                     logger.info(f"Refunded {format_rub(cost_kopecks)} to {user.email} after streaming error")
-                user_msg = f"Ошибка при генерации ответа. Попробуйте ещё раз."
+                from aitext.tasks import _is_rate_limit_error
+                if network.is_free and _is_rate_limit_error(e):
+                    user_msg = (
+                        "Эта бесплатная модель сейчас перегружена (лимит провайдера исчерпан). "
+                        "Попробуйте отправить сообщение ещё раз через минуту или выберите другую "
+                        "бесплатную модель."
+                    )
+                else:
+                    user_msg = "Ошибка при генерации ответа. Попробуйте ещё раз."
                 assistant_message.status = Message.Status.FAILED
                 assistant_message.error_message = user_msg
                 assistant_message.save()
