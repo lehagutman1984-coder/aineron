@@ -33,6 +33,7 @@ _PROVIDER_META = {
 _raw_clients = {}
 _groq_client = None
 _openrouter_free_client = None
+_zai_client = None
 
 
 def get_groq_client():
@@ -65,6 +66,21 @@ def get_openrouter_free_client():
             api_key=getattr(settings, 'OPENROUTER_API_KEY', ''),
         )
     return _openrouter_free_client
+
+
+def get_zai_client():
+    """
+    «Сырой» OpenAI-совместимый клиент Z.ai (Zhipu AI, Китай) для бесплатных
+    моделей GLM-*-Flash. Китайский провайдер — доступен из РФ без прокси
+    (в отличие от Groq). Без фолбэка.
+    """
+    global _zai_client
+    if _zai_client is None:
+        _zai_client = OpenAI(
+            base_url=getattr(settings, 'ZAI_API_URL', 'https://api.z.ai/api/paas/v4'),
+            api_key=getattr(settings, 'ZAI_API_KEY', ''),
+        )
+    return _zai_client
 
 
 def _get_raw_client(provider):

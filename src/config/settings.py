@@ -369,6 +369,13 @@ GROQ_API_URL = os.environ.get('GROQ_API_URL', 'https://api.groq.com/openai/v1')
 OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY', '')
 OPENROUTER_API_URL = os.environ.get('OPENROUTER_API_URL', 'https://openrouter.ai/api/v1')
 
+# Z.ai (Zhipu AI, Китай) — бесплатные модели GLM-*-Flash (GLM-4.7-Flash,
+# GLM-4.5-Flash, GLM-4.6V-Flash), доступно из РФ без прокси (китайский, а не
+# западный провайдер — не подпадает под то же гео-ограничение, что Groq).
+# OpenAI-совместимый эндпоинт. Ключ — z.ai/manage-apikey.
+ZAI_API_KEY = os.environ.get('ZAI_API_KEY', '')
+ZAI_API_URL = os.environ.get('ZAI_API_URL', 'https://api.z.ai/api/paas/v4')
+
 # Автоматический фолбэк между сервисами (laozhang ↔ apimart).
 # Текст/изображения: laozhang → apimart; видео: apimart → laozhang.
 # При недоступности сервиса/модели запрос прозрачно повторяется на резервном.

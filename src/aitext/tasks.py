@@ -555,6 +555,9 @@ def get_client_for_network(network):
     if provider == 'openrouter_free':
         from aitext.providers import get_openrouter_free_client
         return get_openrouter_free_client()
+    if provider == 'zai_free':
+        from aitext.providers import get_zai_client
+        return get_zai_client()
     return get_laozhang_client()
 
 
