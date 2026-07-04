@@ -521,6 +521,11 @@ def _model_max_tokens_cap(model_name: str) -> int:
         return 16384
     if 'deepseek' in m:
         return 8192
+    if 'qwen3-30b-a3b' in m:
+        # Cloudflare @cf/qwen/qwen3-30b-a3b-fp8: контекст всего 32 768 токенов
+        # (вход+выход суммарно) — иначе 400 «total X exceeds 32768» почти на
+        # любом реальном сообщении с историей.
+        return 12000
     return 1_000_000  # прочие семейства — известного потолка нет
 
 

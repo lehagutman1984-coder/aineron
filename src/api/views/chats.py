@@ -550,11 +550,14 @@ class StreamMessageView(APIView):
         user_msg_id = user_message.id
         assist_msg_id = assistant_message.id
         model_name = network.model_name
-        # network.max_tokens == 0 means "no explicit limit in DB" — fall back to
-        # laozhang.ai proxy cap (16384). Passing 16384 explicitly is equivalent
-        # but makes intent clear and avoids relying on proxy defaults.
-        _auto_max = 32000
-        max_tokens = network.max_tokens if network.max_tokens > 0 else _auto_max
+        # network.max_tokens == 0 means "no explicit limit в БД" — считаем как
+        # generate_ai_response (tasks.py): авто-лимит по семейству модели,
+        # клампится к жёсткому потолку модели (иначе 400 у моделей с маленьким
+        # контекстом, например Cloudflare qwen3-30b-a3b: 32768 суммарно).
+        from aitext.tasks import _auto_max_tokens, _model_max_tokens_cap
+        auto_max = _auto_max_tokens(model_name)
+        requested_max = max(network.max_tokens, auto_max) if network.max_tokens > 0 else auto_max
+        max_tokens = min(requested_max, _model_max_tokens_cap(model_name))
 
         def _sse(data):
             return f"data: {json.dumps(data, ensure_ascii=False)}\n\n".encode('utf-8')
