@@ -70,7 +70,7 @@ def _get_img2video_network(tg_user=None):
     return nets[0]
 
 
-def _create_video_request(tg_user, network, prompt: str, image_url: str):
+def _create_video_request(tg_user, network, prompt: str, image_url: str, extra_settings=None):
     from aitext.models import Chat, Message as AiMsg
     chat = Chat.objects.create(
         user=tg_user.user,
@@ -78,9 +78,10 @@ def _create_video_request(tg_user, network, prompt: str, image_url: str):
         title=f'Img2Video: {prompt[:50]}',
         settings={'telegram_chat_id': tg_user.telegram_id},
     )
+    # Настройки из /videoset (длительность, качество, звук) + фото
     user_msg = AiMsg.objects.create(
         chat=chat, role='user', content=prompt,
-        settings={"image_url": image_url},
+        settings={**(extra_settings or {}), "image_url": image_url},
     )
     assistant_msg = AiMsg.objects.create(
         chat=chat, role='assistant',
@@ -133,11 +134,15 @@ async def cmd_img2video(message: Message, state: FSMContext, tg_user=None):
         )
         return
 
-    if not tg_user.user.has_enough_kopecks(network.cost_kopecks):
+    from telegram_bot.handlers.video_cmd import get_stored_video_settings
+    _, extra_rub = get_stored_video_settings(tg_user, network)
+    total_kopecks = network.cost_kopecks + extra_rub * 100
+
+    if not tg_user.user.has_enough_kopecks(total_kopecks):
         from core.money import format_rub
         await message.answer(
             f'Недостаточно средств.\n'
-            f'Нужно: {format_rub(network.cost_kopecks)}, у вас: {format_rub(tg_user.user.balance_kopecks)}\n\n'
+            f'Нужно: {format_rub(total_kopecks)}, у вас: {format_rub(tg_user.user.balance_kopecks)}\n\n'
             '/balance — пополнить'
         )
         return
@@ -191,7 +196,12 @@ async def handle_img2video_photo(message: Message, state: FSMContext, tg_user=No
             return NeuralNetwork.objects.get(id=nid)
         network = await sync_to_async(_get_net, thread_sensitive=True)(network_id)
 
-        assistant_msg = await create_video_request(tg_user, network, prompt, image_url)
+        from telegram_bot.handlers.video_cmd import get_stored_video_settings
+        stored_settings, _ = get_stored_video_settings(tg_user, network)
+
+        assistant_msg = await create_video_request(
+            tg_user, network, prompt, image_url, extra_settings=stored_settings,
+        )
 
         from aitext.tasks import generate_ai_response
         generate_ai_response.delay(assistant_msg.id)

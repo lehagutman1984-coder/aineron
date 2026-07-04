@@ -48,6 +48,8 @@ class TelegramUser(models.Model):
     web_search = models.BooleanField(default=False, verbose_name='Веб-поиск')
     system_prompt = models.TextField(blank=True, verbose_name='Системный промт')
     streaming = models.BooleanField(default=True, verbose_name='Streaming (edit_message)')
+    # Настройки видео-генерации per-модель: {str(network_id): {field: value}}
+    video_settings = models.JSONField(default=dict, blank=True, verbose_name='Настройки видео')
 
     # Daily digest settings
     digest_enabled = models.BooleanField(default=False, verbose_name='Дайджест включён')

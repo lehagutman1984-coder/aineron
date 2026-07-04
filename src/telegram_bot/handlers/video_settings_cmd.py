@@ -1,0 +1,270 @@
+"""
+/videoset — настройки видео-генерации для текущей видео-модели.
+
+Настройки хранятся per-модель в TelegramUser.video_settings
+({str(network_id): {field: value}}) и применяются в /video и /img2video:
+они кладутся в settings пользовательского сообщения, где их читает
+validate_and_merge_settings в Celery-задаче (та же схема, что на сайте).
+
+UI строится из config_json.ui_settings модели: select-поля — кнопки-циклы
+(нажатие переключает на следующее значение), checkbox — тумблеры.
+Текстовые поля (negative_prompt) в боте не редактируются.
+"""
+import logging
+
+from aiogram import Router, F
+from aiogram.filters import Command
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from asgiref.sync import sync_to_async
+
+from telegram_bot.utils import DIVIDER
+
+logger = logging.getLogger(__name__)
+router = Router()
+
+
+# ---------------------------------------------------------------------------
+# Config helpers (чистые функции — БД не трогают)
+# ---------------------------------------------------------------------------
+
+def _editable_fields(config: dict) -> list[dict]:
+    """Select/checkbox поля из ui_settings — то, что можно крутить кнопками."""
+    fields = []
+    for section in (config.get('ui_settings') or {}).get('sections', []):
+        for f in section.get('fields', []):
+            if f.get('type') in ('select', 'checkbox') and f.get('name'):
+                fields.append(f)
+    return fields
+
+
+def _effective_value(field: dict, stored: dict, api_defaults: dict):
+    name = field['name']
+    if name in stored:
+        return stored[name]
+    if name in api_defaults:
+        return api_defaults[name]
+    options = field.get('options') or []
+    return options[0]['value'] if options else None
+
+
+def _value_label(field: dict, value) -> str:
+    if field.get('type') == 'checkbox':
+        return 'вкл' if value else 'выкл'
+    for opt in field.get('options') or []:
+        if str(opt.get('value')) == str(value):
+            return str(opt.get('label', value))
+    return str(value)
+
+
+def _calc_extra_cost(config: dict, stored: dict) -> int:
+    """Доплата за настройки в рублях (та же логика, что при списании)."""
+    if not stored:
+        return 0
+    from aitext.fal_utils import validate_and_merge_settings
+    try:
+        _, errors, extra = validate_and_merge_settings(config, stored)
+        return 0 if errors else int(extra)
+    except Exception:
+        return 0
+
+
+# ---------------------------------------------------------------------------
+# DB helpers
+# ---------------------------------------------------------------------------
+
+def _get_video_network(tg_user):
+    from aitext.models import NeuralNetwork
+    if tg_user.default_video_network_id:
+        net = tg_user.default_video_network
+        cfg = net.config_json or {}
+        if net.is_active and cfg.get('metadata', {}).get('output_type') == 'video':
+            return net
+    for net in NeuralNetwork.objects.filter(provider='fal-ai', is_active=True).order_by('order'):
+        if (net.config_json or {}).get('metadata', {}).get('output_type') == 'video':
+            return net
+    return None
+
+
+def _get_stored(telegram_id: int, network_id: int) -> dict:
+    from telegram_bot.models import TelegramUser
+    tg = TelegramUser.objects.only('id', 'video_settings').get(telegram_id=telegram_id)
+    return dict((tg.video_settings or {}).get(str(network_id), {}))
+
+
+def _apply_change(telegram_id: int, network, field_name: str, kind: str) -> dict:
+    """Read-modify-write настроек одной кнопки. Возвращает новый stored."""
+    from telegram_bot.models import TelegramUser
+    tg = TelegramUser.objects.get(telegram_id=telegram_id)
+    all_settings = dict(tg.video_settings or {})
+    stored = dict(all_settings.get(str(network.id), {}))
+
+    config = network.config_json or {}
+    api_defaults = config.get('api_defaults') or {}
+    field = next((f for f in _editable_fields(config) if f['name'] == field_name), None)
+    if field is None:
+        return stored
+
+    if kind == 'toggle':
+        current = bool(_effective_value(field, stored, api_defaults))
+        stored[field_name] = not current
+    else:  # cycle
+        options = field.get('options') or []
+        values = [str(o.get('value')) for o in options]
+        if not values:
+            return stored
+        current = str(_effective_value(field, stored, api_defaults))
+        idx = (values.index(current) + 1) % len(values) if current in values else 0
+        stored[field_name] = values[idx]
+
+    all_settings[str(network.id)] = stored
+    tg.video_settings = all_settings
+    tg.save(update_fields=['video_settings'])
+    return stored
+
+
+def _reset_settings(telegram_id: int, network_id: int) -> dict:
+    from telegram_bot.models import TelegramUser
+    tg = TelegramUser.objects.get(telegram_id=telegram_id)
+    all_settings = dict(tg.video_settings or {})
+    all_settings.pop(str(network_id), None)
+    tg.video_settings = all_settings
+    tg.save(update_fields=['video_settings'])
+    return {}
+
+
+get_video_network = sync_to_async(_get_video_network, thread_sensitive=True)
+get_stored = sync_to_async(_get_stored, thread_sensitive=True)
+apply_change = sync_to_async(_apply_change, thread_sensitive=True)
+reset_settings = sync_to_async(_reset_settings, thread_sensitive=True)
+
+
+# ---------------------------------------------------------------------------
+# Rendering
+# ---------------------------------------------------------------------------
+
+def _build_screen(network, stored: dict):
+    from core.money import format_rub
+
+    config = network.config_json or {}
+    api_defaults = config.get('api_defaults') or {}
+    fields = _editable_fields(config)
+
+    extra = _calc_extra_cost(config, stored)
+    total_kopecks = network.cost_kopecks + extra * 100
+
+    price_line = f'Цена за видео: <b>{format_rub(total_kopecks)}</b>'
+    if extra:
+        price_line += f' (базовая {format_rub(network.cost_kopecks)} + опции {extra} ₽)'
+
+    text = (
+        f'<b>Aineron · Настройки видео</b>\n{DIVIDER}\n'
+        f'Модель: <b>{network.name}</b>\n'
+        f'{price_line}\n\n'
+        'Нажатие на кнопку переключает значение. Настройки сохраняются '
+        'для этой модели и применяются в /video и /img2video.'
+    )
+
+    rows = []
+    for f in fields:
+        value = _effective_value(f, stored, api_defaults)
+        label = f"{f.get('label', f['name'])}: {_value_label(f, value)}"
+        action = 't' if f.get('type') == 'checkbox' else 'c'
+        rows.append([InlineKeyboardButton(
+            text=label[:60],
+            callback_data=f"vset:{action}:{f['name']}"[:64],
+        )])
+
+    rows.append([
+        InlineKeyboardButton(text='Сбросить', callback_data='vset:r'),
+        InlineKeyboardButton(text='К моделям', callback_data='models_tab:video'),
+    ])
+    return text, InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+async def _render(target, tg_user, edit: bool):
+    network = await get_video_network(tg_user)
+    if network is None:
+        text = f'<b>Aineron · Настройки видео</b>\n{DIVIDER}\nНет доступных видео-моделей.'
+        if edit:
+            await target.edit_text(text, parse_mode='HTML')
+        else:
+            await target.answer(text, parse_mode='HTML')
+        return
+
+    stored = await get_stored(tg_user.telegram_id, network.id)
+    text, kb = _build_screen(network, stored)
+    if edit:
+        await target.edit_text(text, parse_mode='HTML', reply_markup=kb)
+    else:
+        await target.answer(text, parse_mode='HTML', reply_markup=kb)
+
+
+# ---------------------------------------------------------------------------
+# Handlers
+# ---------------------------------------------------------------------------
+
+@router.message(Command('videoset'))
+async def cmd_videoset(message: Message, tg_user=None):
+    if tg_user is None:
+        return
+    await _render(message, tg_user, edit=False)
+
+
+@router.callback_query(F.data == 'vset:o')
+async def cb_vset_open(query: CallbackQuery, tg_user=None):
+    if tg_user is None:
+        return
+    await query.answer()
+    try:
+        await _render(query.message, tg_user, edit=True)
+    except Exception as e:
+        logger.warning('vset open error: %s', e, exc_info=True)
+
+
+@router.callback_query(F.data == 'vset:r')
+async def cb_vset_reset(query: CallbackQuery, tg_user=None):
+    if tg_user is None:
+        return
+    network = await get_video_network(tg_user)
+    if network is None:
+        await query.answer('Нет видео-модели')
+        return
+    await reset_settings(tg_user.telegram_id, network.id)
+    await query.answer('Настройки сброшены')
+    try:
+        text, kb = _build_screen(network, {})
+        await query.message.edit_text(text, parse_mode='HTML', reply_markup=kb)
+    except Exception as e:
+        logger.warning('vset reset render error: %s', e)
+
+
+@router.callback_query(F.data.startswith('vset:c:') | F.data.startswith('vset:t:'))
+async def cb_vset_change(query: CallbackQuery, tg_user=None):
+    if tg_user is None:
+        return
+    parts = query.data.split(':', 2)
+    if len(parts) != 3:
+        await query.answer('Неверный формат')
+        return
+    kind = 'toggle' if parts[1] == 't' else 'cycle'
+    field_name = parts[2]
+
+    network = await get_video_network(tg_user)
+    if network is None:
+        await query.answer('Нет видео-модели')
+        return
+
+    try:
+        stored = await apply_change(tg_user.telegram_id, network, field_name, kind)
+    except Exception as e:
+        logger.warning('vset change error: %s', e, exc_info=True)
+        await query.answer('Ошибка, попробуй ещё раз')
+        return
+
+    await query.answer()
+    try:
+        text, kb = _build_screen(network, stored)
+        await query.message.edit_text(text, parse_mode='HTML', reply_markup=kb)
+    except Exception as e:
+        # «message is not modified» — если значение не поменялось
+        logger.debug('vset render skip: %s', e)

@@ -22,7 +22,7 @@ def register_routers():
     from telegram_bot.handlers import (
         menu, onboarding, start, history, files,
         chat, balance, payment, models_cmd, voice, images,
-        video_cmd, prompts_cmd, settings_cmd, referral,
+        video_cmd, video_settings_cmd, prompts_cmd, settings_cmd, referral,
         inline, group, admin, projects_cmd,
         search_cmd, export_cmd, img2img_cmd, img2video_cmd, digest_cmd, scenarios_cmd,
         reggroup_cmd, sticker_cmd, memory_cmd, persona_cmd,
@@ -46,6 +46,7 @@ def register_routers():
     dp.include_router(voice.router)
     dp.include_router(images.router)
     dp.include_router(video_cmd.router)
+    dp.include_router(video_settings_cmd.router)  # /videoset — настройки видео-генерации
     dp.include_router(prompts_cmd.router)
     dp.include_router(settings_cmd.router)
     dp.include_router(referral.router)

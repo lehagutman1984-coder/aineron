@@ -82,6 +82,7 @@ class Command(BaseCommand):
                 BotCommand(command='video', description='Создать видео'),
                 BotCommand(command='img2img', description='Редактировать фото через AI'),
                 BotCommand(command='img2video', description='Оживить фото — фото → видео'),
+                BotCommand(command='videoset', description='Настройки видео: длительность, качество, звук'),
                 BotCommand(command='sticker', description='Создать AI-стикер'),
                 BotCommand(command='ai', description='AI-агенты: пост, код-ревью, перевод'),
                 BotCommand(command='task', description='AI-задача по расписанию'),

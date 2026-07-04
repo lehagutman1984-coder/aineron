@@ -113,6 +113,7 @@ async def handle_menu_button(message: Message, state=None, tg_user=None):
             '/digest — AI-дайджест\n'
             '/ai — AI-агенты: пост, код-ревью, перевод\n'
             '/img2video &lt;промт&gt; — фото → анимация\n'
+            '/videoset — настройки видео: длительность, качество, звук\n'
             '/sticker &lt;промт&gt; — AI-стикер\n'
             '/memory — что бот помнит о вас\n'
             '/projects — проекты и база знаний\n'

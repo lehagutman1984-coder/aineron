@@ -26,7 +26,7 @@ def _get_video_network(tg_user):
     return None
 
 
-def _create_video_request(tg_user, network, prompt, telegram_chat_id):
+def _create_video_request(tg_user, network, prompt, telegram_chat_id, user_settings=None):
     from aitext.models import Chat, Message as AiMsg
     chat = Chat.objects.create(
         user=tg_user.user,
@@ -34,7 +34,10 @@ def _create_video_request(tg_user, network, prompt, telegram_chat_id):
         title=f'Telegram video: {prompt[:50]}',
         settings={'telegram_chat_id': telegram_chat_id},
     )
-    AiMsg.objects.create(chat=chat, role='user', content=prompt)
+    # settings пользовательского сообщения читает validate_and_merge_settings
+    # в Celery — так настройки из /videoset влияют на генерацию и цену
+    AiMsg.objects.create(chat=chat, role='user', content=prompt,
+                         settings=user_settings or {})
     assistant_msg = AiMsg.objects.create(
         chat=chat, role='assistant',
         status=AiMsg.Status.PENDING, content='',
@@ -44,6 +47,15 @@ def _create_video_request(tg_user, network, prompt, telegram_chat_id):
 
 get_video_network = sync_to_async(_get_video_network, thread_sensitive=True)
 create_video_request = sync_to_async(_create_video_request, thread_sensitive=True)
+
+
+def get_stored_video_settings(tg_user, network) -> tuple[dict, int]:
+    """Настройки /videoset для модели + доплата в рублях (чистая функция)."""
+    stored = dict((getattr(tg_user, 'video_settings', None) or {}).get(str(network.id), {}))
+    if not stored:
+        return {}, 0
+    from telegram_bot.handlers.video_settings_cmd import _calc_extra_cost
+    return stored, _calc_extra_cost(network.config_json or {}, stored)
 
 
 @router.message(Command('video'))
@@ -56,7 +68,8 @@ async def cmd_video(message: Message, tg_user=None):
         await message.answer(
             f'<b>Aineron · Видео</b>\n{DIVIDER}\n'
             'Опишите видео:\n\n'
-            '<code>/video закат над морем, медленный полёт камеры</code>',
+            '<code>/video закат над морем, медленный полёт камеры</code>\n\n'
+            'Длительность, качество и звук: /videoset',
             parse_mode='HTML',
         )
         return
@@ -66,11 +79,14 @@ async def cmd_video(message: Message, tg_user=None):
         await message.answer('Нет доступных моделей для генерации видео. Выберите модель: /models')
         return
 
-    if not tg_user.user.has_enough_kopecks(network.cost_kopecks):
+    stored_settings, extra_rub = get_stored_video_settings(tg_user, network)
+    total_kopecks = network.cost_kopecks + extra_rub * 100
+
+    if not tg_user.user.has_enough_kopecks(total_kopecks):
         from core.money import format_rub
         await message.answer(
             f'<b>Недостаточно средств</b>\n{DIVIDER}\n'
-            f'Нужно: <b>{format_rub(network.cost_kopecks)}</b>   У вас: {format_rub(tg_user.user.balance_kopecks)}\n\n'
+            f'Нужно: <b>{format_rub(total_kopecks)}</b>   У вас: {format_rub(tg_user.user.balance_kopecks)}\n\n'
             'Пополните баланс: /balance',
             parse_mode='HTML',
         )
@@ -80,18 +96,21 @@ async def cmd_video(message: Message, tg_user=None):
     from telegram_bot.notify import set_status_reaction
     await set_status_reaction(message.bot, message.chat.id, message.message_id, '👀')
 
-    assistant_msg = await create_video_request(tg_user, network, prompt, message.chat.id)
+    assistant_msg = await create_video_request(
+        tg_user, network, prompt, message.chat.id, user_settings=stored_settings,
+    )
 
     from aitext.tasks import generate_ai_response
     generate_ai_response.delay(assistant_msg.id)
 
     from core.money import format_rub
+    settings_line = '\nНастройки из /videoset применены.' if stored_settings else ''
     await message.answer(
         f'<b>Aineron · Видео</b>\n{DIVIDER}\n'
         f'Запрос принят.\n\n'
-        f'Модель: <b>{network.name}</b>  ·  {format_rub(network.cost_kopecks)}\n'
+        f'Модель: <b>{network.name}</b>  ·  {format_rub(total_kopecks)}{settings_line}\n'
         f'Готово через 5–15 минут — пришлю результат.',
         parse_mode='HTML',
     )
     await async_log_event(tg_user, 'video', network=network,
-                          cost_kopecks=network.cost_kopecks)
+                          cost_kopecks=total_kopecks)

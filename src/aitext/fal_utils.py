@@ -1474,9 +1474,15 @@ def generate_video_apimart(network, user_msg, message, user_settings=None):
     body = {"model": model_id, "prompt": prompt}
     for param in ['duration', 'aspect_ratio', 'resolution', 'audio', 'mode',
                   'negative_prompt', 'generation_type', 'enable_gif', 'official_fallback',
-                  'size', 'generate_audio', 'camerafixed']:
+                  'size', 'generate_audio', 'camerafixed', 'quality', 'template',
+                  'shot_type', 'prompt_optimizer']:
         if param in final_args and final_args[param] is not None:
             body[param] = final_args[param]
+
+    # Пустые строки и «нулевые» select-значения apimart не принимает — не шлём
+    for param in ['negative_prompt', 'template']:
+        if param in body and (not body[param] or body[param] == 'none'):
+            del body[param]
 
     # duration должен быть integer (apimart ожидает число, select возвращает строку)
     if 'duration' in body:
@@ -1485,14 +1491,42 @@ def generate_video_apimart(network, user_msg, message, user_settings=None):
         except (ValueError, TypeError):
             pass
 
-    # Kling: аудио работает только в pro mode — принудительно переключаем
-    if body.get('audio'):
+    model_lower = (model_id or '').lower()
+
+    # Kling v2.6: аудио работает только в pro mode — принудительно переключаем.
+    # Только для этой модели: у kling-v3 звук есть во всех режимах, а у
+    # wan/vidu/pixverse параметра mode нет вовсе — лишний mode ломает запрос.
+    if body.get('audio') and model_lower == 'kling-v2-6':
         body['mode'] = 'pro'
 
-    # img2video: image_url приходит только через user_settings
+    # Hailuo: 1080p доступен только для роликов 6 сек — иначе провайдер отклонит
+    if 'hailuo' in model_lower and body.get('resolution') == '1080p':
+        if isinstance(body.get('duration'), int) and body['duration'] > 6:
+            logger.info("APIMart Hailuo: 1080p поддерживает только 6 сек, duration понижен")
+            body['duration'] = 6
+
+    # img2video: image_url приходит только через user_settings.
+    # Имя параметра у моделей разное: большинство ждёт МАССИВ image_urls,
+    # Hailuo — строку first_frame_image. Берём из metadata.i2v_param
+    # (add_video_models), фолбэк — по имени модели.
     image_url = final_args.get('image_url') or (user_settings or {}).get('image_url', '')
     if image_url:
-        body['image_url'] = image_url
+        i2v_param = (config.get('metadata') or {}).get('i2v_param')
+        if not i2v_param:
+            i2v_param = 'first_frame_image' if 'hailuo' in model_lower else 'image_urls'
+        if i2v_param == 'image_urls':
+            body['image_urls'] = [image_url]
+        else:
+            body[i2v_param] = image_url
+        # Формат кадра при оживлении фото определяется самим фото; часть
+        # моделей (wan, pixverse, sora) отклоняет size/aspect_ratio вместе с
+        # изображением — убираем, кроме adaptive-подобных дефолтов
+        body.pop('aspect_ratio', None)
+        if body.get('size') and body['size'] != 'adaptive':
+            body.pop('size', None)
+    else:
+        # template у wan — эффект оживления фото, без фото не имеет смысла
+        body.pop('template', None)
 
     # Placeholder для трекинга прогресса (SSE). При рестарте воркера переиспользуется
     # (reuse по image=''). Краевой случай: если воркер умер ПОСЛЕ записи видео, но ДО

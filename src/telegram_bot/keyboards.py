@@ -86,6 +86,9 @@ def models_tabs_kb(active_tab: str, networks: list, current_id: int | None = Non
     if row:
         rows.append(row)
 
+    if active_tab == 'video' and networks:
+        rows.append([InlineKeyboardButton(text='Настройки видео', callback_data='vset:o')])
+
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
