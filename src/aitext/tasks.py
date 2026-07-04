@@ -542,6 +542,18 @@ def get_laozhang_client():
     return _client
 
 
+def get_client_for_network(network):
+    """
+    Выбор LLM-клиента по провайдеру нейросети.
+    Groq (бесплатные модели) → отдельный клиент Groq; остальное — laozhang
+    с прозрачным фолбэком на apimart.
+    """
+    if getattr(network, 'provider', '') == 'groq':
+        from aitext.providers import get_groq_client
+        return get_groq_client()
+    return get_laozhang_client()
+
+
 def translate_to_english(text, network_name):
     """Переводит текст на английский через DeepSeek (laozhang.ai)"""
     if not text or not text.strip():
@@ -958,7 +970,7 @@ def generate_ai_response(self, message_id, web_search=False):
                 return
 
         effective_model = network.model_name  # всегда используем выбранную пользователем модель
-        client = get_laozhang_client()
+        client = get_client_for_network(network)
         completion_kwargs = {
             "model": effective_model,
             "messages": messages_for_api,

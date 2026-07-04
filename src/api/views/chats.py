@@ -13,7 +13,8 @@ from rest_framework import status
 from aitext.models import (
     NeuralNetwork, Chat, Message, NeuralNetworkDailyUsage, FileAttachment,
 )
-from aitext.tasks import generate_ai_response, get_laozhang_client
+from aitext.tasks import generate_ai_response, get_client_for_network
+from aitext.limits import consume_free_message
 from aitext.code_formatter import CodeFormatter
 from users.models import UserSpending
 from api.serializers.chats import (
@@ -84,6 +85,18 @@ class ChatListCreateView(ListCreateAPIView):
                 deduct_stars = False
                 usage.count += 1
                 usage.save()
+
+        # Бесплатные модели (Groq): без списания, но с дневным лимитом на пользователя
+        if network.is_free:
+            deduct_stars = False
+            if not consume_free_message(request.user, network):
+                return Response({
+                    'error': {
+                        'message': f'Дневной лимит бесплатных сообщений для «{network.name}» исчерпан. Попробуйте завтра или выберите другую модель.',
+                        'type': 'rate_limit_exceeded',
+                        'code': 'free_limit_reached',
+                    }
+                }, status=429)
 
         if deduct_stars and not request.user.has_enough_kopecks(cost_kopecks):
             from core.money import format_rub
@@ -232,6 +245,18 @@ class SendMessageView(APIView):
                 usage.count += 1
                 usage.save()
 
+        # Бесплатные модели (Groq): без списания, но с дневным лимитом на пользователя
+        if network.is_free:
+            deduct_stars = False
+            if not consume_free_message(request.user, network):
+                return Response({
+                    'error': {
+                        'message': f'Дневной лимит бесплатных сообщений для «{network.name}» исчерпан. Попробуйте завтра или выберите другую модель.',
+                        'type': 'rate_limit_exceeded',
+                        'code': 'free_limit_reached',
+                    }
+                }, status=429)
+
         if deduct_stars and not request.user.has_enough_kopecks(cost_kopecks):
             from core.money import format_rub
             return Response({
@@ -335,6 +360,18 @@ class StreamMessageView(APIView):
                 deduct_stars = False
                 usage.count += 1
                 usage.save()
+
+        # Бесплатные модели (Groq): без списания, но с дневным лимитом на пользователя
+        if network.is_free:
+            deduct_stars = False
+            if not consume_free_message(request.user, network):
+                return Response({
+                    'error': {
+                        'message': f'Дневной лимит бесплатных сообщений для «{network.name}» исчерпан. Попробуйте завтра или выберите другую модель.',
+                        'type': 'rate_limit_exceeded',
+                        'code': 'free_limit_reached',
+                    }
+                }, status=429)
 
         if deduct_stars and not request.user.has_enough_kopecks(cost_kopecks):
             from core.money import format_rub
@@ -541,7 +578,7 @@ class StreamMessageView(APIView):
             full_text = ""
             try:
                 # ── Шаг 2: основная модель (выбранная пользователем) ────────────
-                client = get_laozhang_client()
+                client = get_client_for_network(network)
                 kwargs = {
                     "model": model_name,
                     "messages": messages_for_api,
@@ -578,7 +615,7 @@ class StreamMessageView(APIView):
                                 {"role": "system", "content": suffix_text},
                                 {"role": "user", "content": message_text or "Привет"},
                             ]
-                            _c = get_laozhang_client()
+                            _c = get_client_for_network(network)
                             _r = _c.chat.completions.create(
                                 model=model_name,
                                 messages=_msgs,

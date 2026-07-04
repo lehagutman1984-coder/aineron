@@ -187,6 +187,7 @@ export interface NetworkListItem {
   cost_kopecks: number;
   provider: string;
   is_popular: boolean;
+  is_free: boolean;
   unlimited: boolean;
   messages_limit: number;
   handle_photo: boolean;

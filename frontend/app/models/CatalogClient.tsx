@@ -8,12 +8,15 @@ import { formatRub } from "@/lib/money";
 
 interface Props {
   networks: NetworkListItem[];
+  freeNetworks?: NetworkListItem[];
   categories: Category[];
   initialCategory?: string;
   projectId?: number;
 }
 
-export function CatalogClient({ networks, categories, initialCategory, projectId }: Props) {
+const FREE_TAB = "__free__";
+
+export function CatalogClient({ networks, freeNetworks = [], categories, initialCategory, projectId }: Props) {
   const [activeCategory, setActiveCategory] = useState(initialCategory ?? "");
   const [query, setQuery] = useState("");
   // Ожидающее изображение из «Мои файлы» (кнопки «Редактировать» / «Стиль»):
@@ -44,8 +47,8 @@ export function CatalogClient({ networks, categories, initialCategory, projectId
   };
 
   const filtered = useMemo(() => {
-    let list = networks;
-    if (activeCategory) {
+    let list = activeCategory === FREE_TAB ? freeNetworks : networks;
+    if (activeCategory && activeCategory !== FREE_TAB) {
       list = list.filter((n) => n.category.slug === activeCategory);
     }
     if (query.trim()) {
@@ -57,7 +60,7 @@ export function CatalogClient({ networks, categories, initialCategory, projectId
       );
     }
     return list;
-  }, [networks, activeCategory, query]);
+  }, [networks, freeNetworks, activeCategory, query]);
 
   return (
     <>
@@ -99,6 +102,13 @@ export function CatalogClient({ networks, categories, initialCategory, projectId
           active={activeCategory === ""}
           onClick={() => setActiveCategory("")}
         />
+        {freeNetworks.length > 0 && (
+          <CategoryTab
+            label="Бесплатные"
+            active={activeCategory === FREE_TAB}
+            onClick={() => setActiveCategory(FREE_TAB)}
+          />
+        )}
         {categories.map((c) => (
           <CategoryTab
             key={c.id}
@@ -231,7 +241,7 @@ function NetworkCard({ network, projectId }: { network: NetworkListItem; project
       )}
       <div className="mt-auto flex items-center justify-between pt-1">
         <span className="text-[14px] text-[rgba(13,13,13,0.45)]">
-          {network.unlimited ? "Безлимит" : formatRub(network.cost_kopecks)}
+          {network.is_free ? "Бесплатно" : network.unlimited ? "Безлимит" : formatRub(network.cost_kopecks)}
         </span>
         <ArrowRight
           size={14}

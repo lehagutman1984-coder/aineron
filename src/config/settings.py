@@ -357,6 +357,11 @@ SEEDANCE_API_KEY = os.environ.get('SEEDANCE_API_KEY', '')
 APIMART_API_KEY = os.environ.get('APIMART_API_KEY', '')
 APIMART_API_URL = "https://api.apimart.ai/v1"
 
+# Groq — бесплатные текстовые модели (llama, qwen, groq/compound).
+# OpenAI-совместимый эндпоинт. Ключ хранится в .env (console.groq.com).
+GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
+GROQ_API_URL = os.environ.get('GROQ_API_URL', 'https://api.groq.com/openai/v1')
+
 # Автоматический фолбэк между сервисами (laozhang ↔ apimart).
 # Текст/изображения: laozhang → apimart; видео: apimart → laozhang.
 # При недоступности сервиса/модели запрос прозрачно повторяется на резервном.

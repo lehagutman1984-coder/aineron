@@ -26,6 +26,7 @@ class NeuralNetwork(models.Model):
     PROVIDER_CHOICES = [
         ('openrouter', 'laozhang.ai (текст)'),
         ('fal-ai', 'laozhang.ai (изображения/видео)'),
+        ('groq', 'Groq (бесплатные текстовые модели)'),
     ]
     """Модель нейросети"""
     name = models.CharField(max_length=100, verbose_name='Название нейросети')
@@ -118,6 +119,13 @@ class NeuralNetwork(models.Model):
         default=False,
         verbose_name='Популярная модель',
         help_text='Отображать в блоке "Популярные модели" на странице выбора'
+    )
+    is_free = models.BooleanField(
+        default=False,
+        verbose_name='Бесплатная модель',
+        help_text='Показывать только во вкладке «Бесплатные» (скрыта из общего каталога). '
+                  'Бесплатна для всех пользователей в пределах дневного лимита (messages_limit). '
+                  'Обычно провайдер = Groq, стоимость = 0.'
     )
     translate_to_english = models.BooleanField(
         default=False,

@@ -17,8 +17,9 @@ export default async function ModelsPage({
 }: {
   searchParams: { category?: string; project_id?: string };
 }) {
-  const [networks, categories] = await Promise.all([
+  const [networks, freeNetworks, categories] = await Promise.all([
     serverListNetworks(),
+    serverListNetworks({ is_free: true }),
     serverListCategories(),
   ]);
 
@@ -35,6 +36,7 @@ export default async function ModelsPage({
 
       <CatalogClient
         networks={networks ?? []}
+        freeNetworks={freeNetworks ?? []}
         categories={categories ?? []}
         initialCategory={searchParams.category}
         projectId={projectId}

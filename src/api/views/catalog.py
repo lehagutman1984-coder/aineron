@@ -23,6 +23,13 @@ class NetworkListView(ListAPIView):
         category = self.request.query_params.get('category')
         provider = self.request.query_params.get('provider')
         popular = self.request.query_params.get('is_popular')
+        free = self.request.query_params.get('is_free')
+        # Бесплатные модели живут в отдельной вкладке «Бесплатные»: по умолчанию
+        # скрыты из общего каталога, показываются только при ?is_free=1.
+        if free in ('1', 'true', 'True'):
+            qs = qs.filter(is_free=True)
+        else:
+            qs = qs.filter(is_free=False)
         if category:
             qs = qs.filter(category__slug=category)
         if provider:

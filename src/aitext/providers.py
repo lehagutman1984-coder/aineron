@@ -31,6 +31,21 @@ _PROVIDER_META = {
 }
 
 _raw_clients = {}
+_groq_client = None
+
+
+def get_groq_client():
+    """
+    «Сырой» OpenAI-совместимый клиент Groq (console.groq.com) для бесплатных
+    текстовых моделей. Без фолбэка — Groq единственный источник этих моделей.
+    """
+    global _groq_client
+    if _groq_client is None:
+        _groq_client = OpenAI(
+            base_url=getattr(settings, 'GROQ_API_URL', 'https://api.groq.com/openai/v1'),
+            api_key=getattr(settings, 'GROQ_API_KEY', ''),
+        )
+    return _groq_client
 
 
 def _get_raw_client(provider):

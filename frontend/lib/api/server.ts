@@ -22,10 +22,12 @@ async function serverFetch<T>(
 
 export const serverListNetworks = (params?: {
   is_popular?: boolean;
+  is_free?: boolean;
   category?: string;
 }) => {
   const qs = new URLSearchParams();
   if (params?.is_popular) qs.set("is_popular", "1");
+  if (params?.is_free) qs.set("is_free", "1");
   if (params?.category) qs.set("category", params.category);
   const query = qs.toString();
   return serverFetch<NetworkListItem[]>(`/catalog/networks/${query ? "?" + query : ""}`);
