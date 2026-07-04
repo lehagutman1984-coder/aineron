@@ -3,6 +3,7 @@ import os
 import tempfile
 import uuid
 from aiogram import Router, F
+from aiogram.filters import StateFilter
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from asgiref.sync import sync_to_async
 
@@ -72,7 +73,10 @@ async def _download_and_save(bot, file_id: str, original_name: str, mime_type: s
     return await _save_file_async(file_bytes, original_name, mime_type, user, media_type)
 
 
-@router.message(F.photo)
+# StateFilter(None): роутер подключён в bot.py раньше FSM-роутеров (img2img,
+# img2video, admin-рассылка) — без фильтра он перехватывал фото, отправленные
+# внутри FSM-сценария, и отдавал их в текстовый чат вместо нужного шага.
+@router.message(F.photo, StateFilter(None))
 async def handle_photo(message: Message, tg_user=None):
     if tg_user is None:
         return
@@ -99,7 +103,7 @@ async def handle_photo(message: Message, tg_user=None):
         await status.edit_text('Не удалось обработать изображение. Попробуй ещё раз.')
 
 
-@router.message(F.document)
+@router.message(F.document, StateFilter(None))
 async def handle_document(message: Message, tg_user=None):
     if tg_user is None:
         return

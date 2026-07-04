@@ -507,9 +507,26 @@ def _write_audit(project, actor, action: str, target: str = '', files_used: list
         logger.warning(f"_write_audit failed: {e}")
 
 
+def _model_max_tokens_cap(model_name: str) -> int:
+    """Жёсткий потолок completion-токенов по семейству моделей.
+
+    Провайдер возвращает 400 invalid_value, если max_tokens превышает лимит
+    модели (GPT-4o: «max_tokens is too large: 32000. This model supports at
+    most 16384 completion tokens»). Значение из БД тоже клампится к потолку.
+    """
+    m = (model_name or '').lower()
+    if 'gpt-3.5' in m:
+        return 4096
+    if 'gpt-4o' in m or 'chatgpt-4o' in m or 'gpt-4.1' in m or 'gpt-4-turbo' in m:
+        return 16384
+    if 'deepseek' in m:
+        return 8192
+    return 1_000_000  # прочие семейства — известного потолка нет
+
+
 def _auto_max_tokens(model_name: str) -> int:
     """Auto max_tokens by model family when not set in DB."""
-    return 32000
+    return min(32000, _model_max_tokens_cap(model_name))
 
 
 def get_laozhang_client():
@@ -948,7 +965,8 @@ def generate_ai_response(self, message_id, web_search=False):
             "temperature": 0.7,
         }
         auto_max = _auto_max_tokens(effective_model)
-        completion_kwargs["max_tokens"] = max(network.max_tokens, auto_max) if network.max_tokens > 0 else auto_max
+        requested_max = max(network.max_tokens, auto_max) if network.max_tokens > 0 else auto_max
+        completion_kwargs["max_tokens"] = min(requested_max, _model_max_tokens_cap(effective_model))
 
         # Обёртка для обработки ошибки deprecated модели
         try:
