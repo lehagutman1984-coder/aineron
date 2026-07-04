@@ -13,11 +13,13 @@ import type { ModelConfigJson } from "@/lib/api/types";
 interface Props {
   networkSlug: string;
   isMedia: boolean;
+  /** true — модель генерирует видео (output_type === 'video') */
+  isVideo?: boolean;
   configJson?: ModelConfigJson | null;
   projectId?: number;
 }
 
-export function ChatStartForm({ networkSlug, isMedia, configJson, projectId }: Props) {
+export function ChatStartForm({ networkSlug, isMedia, isVideo, configJson, projectId }: Props) {
   const router = useRouter();
   const qc = useQueryClient();
   const { user, setBalance } = useAuthStore();
@@ -52,9 +54,11 @@ export function ChatStartForm({ networkSlug, isMedia, configJson, projectId }: P
     } catch {}
   }, []);
 
-  // img2img: подхватываем изображение из localStorage (только для медиа-моделей)
+  // img2img: подхватываем изображение из localStorage только на моделях
+  // генерации изображений (не на видео и не на текстовых) — иначе ключ
+  // «съедается» не той моделью и редактирование молча не срабатывает.
   useEffect(() => {
-    if (!isMedia) return;
+    if (!isMedia || isVideo) return;
     try {
       const url = localStorage.getItem("aineron_edit_image");
       if (url) {
@@ -67,7 +71,7 @@ export function ChatStartForm({ networkSlug, isMedia, configJson, projectId }: P
         localStorage.removeItem("aineron_style_image");
       }
     } catch {}
-  }, [isMedia]);
+  }, [isMedia, isVideo]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

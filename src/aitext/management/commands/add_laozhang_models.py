@@ -45,7 +45,7 @@ IMAGE_CONFIG = {
             }]
         },
         "constraints": {},
-        "metadata": {"requires_input_images": False}
+        "metadata": {"requires_input_images": False, "output_type": "image"}
     },
     'gpt_image': {
         "name": "GPT Image",
@@ -81,7 +81,7 @@ IMAGE_CONFIG = {
             }]
         },
         "constraints": {},
-        "metadata": {"requires_input_images": False}
+        "metadata": {"requires_input_images": False, "output_type": "image"}
     },
     'flux': {
         "name": "Flux",
@@ -137,7 +137,7 @@ IMAGE_CONFIG = {
             }]
         },
         "constraints": {},
-        "metadata": {"requires_input_images": False}
+        "metadata": {"requires_input_images": False, "output_type": "image"}
     },
     # Seedream (ByteDance) и Gemini Image не принимают size/n — minimal_params.
     'seedream': {
@@ -145,14 +145,14 @@ IMAGE_CONFIG = {
         "api_defaults": {},
         "ui_settings": {"sections": []},
         "constraints": {},
-        "metadata": {"requires_input_images": False, "minimal_params": True}
+        "metadata": {"requires_input_images": False, "minimal_params": True, "output_type": "image"}
     },
     'gemini_image': {
         "name": "Gemini Image",
         "api_defaults": {},
         "ui_settings": {"sections": []},
         "constraints": {},
-        "metadata": {"requires_input_images": False, "minimal_params": True}
+        "metadata": {"requires_input_images": False, "minimal_params": True, "output_type": "image"}
     },
 }
 

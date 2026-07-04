@@ -63,7 +63,7 @@ class ChatListCreateView(ListCreateAPIView):
         # Медиа-генерация доступна только на платных тарифах
         is_media = network.handle_video or network.handle_photo or (
             (network.config_json or {}).get('metadata', {}).get('output_type') in ('image', 'video')
-        )
+        ) or network.provider == 'fal-ai'
         if is_media and getattr(request.user.tariff, 'is_free', True):
             return Response({
                 'error': {
@@ -210,7 +210,7 @@ class SendMessageView(APIView):
         # Медиа-генерация доступна только на платных тарифах
         is_media = network.handle_video or network.handle_photo or (
             (network.config_json or {}).get('metadata', {}).get('output_type') in ('image', 'video')
-        )
+        ) or network.provider == 'fal-ai'
         if is_media and getattr(request.user.tariff, 'is_free', True):
             return Response({
                 'error': {

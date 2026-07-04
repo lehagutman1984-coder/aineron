@@ -92,7 +92,10 @@ export default async function ModelDetailPage({ params, searchParams }: Props) {
     )
     .slice(0, 4);
 
-  const isMedia = network.handle_photo || network.handle_video;
+  // Медиа-генерация = provider 'fal-ai' (изображения/видео). handle_photo/handle_video
+  // означают «принимает файлы на вход» и стоят у текстовых vision-моделей — не подходят.
+  const isMedia = network.provider === "fal-ai" || Boolean(network.output_type);
+  const isVideoModel = network.output_type === "video";
 
   return (
     <>
@@ -190,6 +193,7 @@ export default async function ModelDetailPage({ params, searchParams }: Props) {
           <ChatStartForm
             networkSlug={network.slug}
             isMedia={isMedia}
+            isVideo={isVideoModel}
             configJson={network.config_json as import("@/lib/api/types").ModelConfigJson | null}
             projectId={searchParams?.project_id ? parseInt(searchParams.project_id, 10) : undefined}
           />

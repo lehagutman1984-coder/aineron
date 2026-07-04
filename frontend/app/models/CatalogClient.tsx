@@ -1,8 +1,8 @@
 ﻿"use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
-import { ArrowRight, Code2, ImageIcon } from "lucide-react";
+import { ArrowRight, Code2, ImageIcon, ImagePlus, Palette, X } from "lucide-react";
 import type { NetworkListItem, Category } from "@/lib/api/types";
 import { formatRub } from "@/lib/money";
 
@@ -16,6 +16,32 @@ interface Props {
 export function CatalogClient({ networks, categories, initialCategory, projectId }: Props) {
   const [activeCategory, setActiveCategory] = useState(initialCategory ?? "");
   const [query, setQuery] = useState("");
+  // Ожидающее изображение из «Мои файлы» (кнопки «Редактировать» / «Стиль»):
+  // показываем подсказку и сразу фильтруем каталог на модели изображений.
+  const [pendingEdit, setPendingEdit] = useState<string | null>(null);
+  const [pendingStyle, setPendingStyle] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const edit = localStorage.getItem("aineron_edit_image");
+      const style = localStorage.getItem("aineron_style_image");
+      setPendingEdit(edit);
+      setPendingStyle(style);
+      if ((edit || style) && !initialCategory) {
+        const imagesCat = categories.find((c) => c.slug === "images");
+        if (imagesCat) setActiveCategory(imagesCat.slug);
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const cancelPending = (key: "aineron_edit_image" | "aineron_style_image") => {
+    try {
+      localStorage.removeItem(key);
+    } catch {}
+    if (key === "aineron_edit_image") setPendingEdit(null);
+    else setPendingStyle(null);
+  };
 
   const filtered = useMemo(() => {
     let list = networks;
@@ -35,6 +61,26 @@ export function CatalogClient({ networks, categories, initialCategory, projectId
 
   return (
     <>
+      {/* Ожидающее редактирование / референс стиля из «Мои файлы» */}
+      {pendingEdit && (
+        <PendingImageBanner
+          imageUrl={pendingEdit}
+          icon={<ImagePlus size={13} className="text-[#D97757]" />}
+          title="Редактирование изображения"
+          hint="Выберите модель изображений — она применит ваши изменения к этому файлу"
+          onCancel={() => cancelPending("aineron_edit_image")}
+        />
+      )}
+      {pendingStyle && (
+        <PendingImageBanner
+          imageUrl={pendingStyle}
+          icon={<Palette size={13} className="text-[#D97757]" />}
+          title="Референс стиля"
+          hint="Выберите модель изображений — новые генерации переймут стиль этого файла"
+          onCancel={() => cancelPending("aineron_style_image")}
+        />
+      )}
+
       {/* Search */}
       <div className="mb-5 relative max-w-sm">
         <input
@@ -76,6 +122,45 @@ export function CatalogClient({ networks, categories, initialCategory, projectId
         </div>
       )}
     </>
+  );
+}
+
+function PendingImageBanner({
+  imageUrl,
+  icon,
+  title,
+  hint,
+  onCancel,
+}: {
+  imageUrl: string;
+  icon: React.ReactNode;
+  title: string;
+  hint: string;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="mb-5 flex items-center gap-3 rounded-[12px] border border-[rgba(217,119,87,0.20)] bg-[rgba(217,119,87,0.04)] p-3">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={imageUrl}
+        alt={title}
+        className="h-12 w-12 shrink-0 rounded-[8px] border border-[rgba(13,13,13,0.10)] object-cover"
+      />
+      <div className="min-w-0 flex-1">
+        <p className="flex items-center gap-1.5 text-[15px] font-medium text-[#1A1A1A]">
+          {icon}
+          {title}
+        </p>
+        <p className="mt-0.5 text-[14px] text-[rgba(13,13,13,0.55)]">{hint}</p>
+      </div>
+      <button
+        onClick={onCancel}
+        title="Отменить"
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] border border-[rgba(13,13,13,0.10)] bg-white transition-colors hover:bg-[rgba(13,13,13,0.04)]"
+      >
+        <X size={13} className="text-[rgba(13,13,13,0.55)]" />
+      </button>
+    </div>
   );
 }
 
@@ -123,7 +208,7 @@ function NetworkCard({ network, projectId }: { network: NetworkListItem; project
           />
         ) : (
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-[rgba(217,119,87,0.10)] text-[#D97757]">
-            {network.handle_photo || network.handle_video ? (
+            {network.provider === "fal-ai" || network.output_type ? (
               <ImageIcon size={20} />
             ) : (
               <Code2 size={20} />

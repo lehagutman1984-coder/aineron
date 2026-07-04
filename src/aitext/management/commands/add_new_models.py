@@ -15,7 +15,7 @@ IMAGE_CONFIG = {
         "api_defaults": {},
         "ui_settings": {"sections": []},
         "constraints": {},
-        "metadata": {"requires_input_images": False, "minimal_params": True}
+        "metadata": {"requires_input_images": False, "minimal_params": True, "output_type": "image"}
     },
 
     # Gemini Image — Google Imagen, фотореализм и художественный стиль
@@ -25,7 +25,7 @@ IMAGE_CONFIG = {
         "api_defaults": {},
         "ui_settings": {"sections": []},
         "constraints": {},
-        "metadata": {"requires_input_images": False, "minimal_params": True}
+        "metadata": {"requires_input_images": False, "minimal_params": True, "output_type": "image"}
     },
 
     # GPT Image — OpenAI, используем существующий конфиг
@@ -63,7 +63,7 @@ IMAGE_CONFIG = {
             }]
         },
         "constraints": {},
-        "metadata": {"requires_input_images": False}
+        "metadata": {"requires_input_images": False, "output_type": "image"}
     },
 }
 
