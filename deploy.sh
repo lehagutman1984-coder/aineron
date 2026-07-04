@@ -46,8 +46,8 @@ docker-compose exec -T web python manage.py setup_legal_documents --force || ech
 echo -e "${YELLOW}Засеиваем системные AI-персоны...${NC}"
 docker-compose exec -T web python manage.py seed_personas || echo -e "${YELLOW}seed_personas пропущен${NC}"
 
-echo -e "${YELLOW}Засеиваем бесплатные модели Groq...${NC}"
-docker-compose exec -T web python manage.py add_groq_free_models || echo -e "${YELLOW}add_groq_free_models пропущен${NC}"
+echo -e "${YELLOW}Засеиваем бесплатные модели OpenRouter (Groq заблокирован из РФ)...${NC}"
+docker-compose exec -T web python manage.py add_openrouter_free_models || echo -e "${YELLOW}add_openrouter_free_models пропущен${NC}"
 
 echo -e "${YELLOW}Собираем статические файлы...${NC}"
 docker-compose exec -T web python manage.py collectstatic --noinput

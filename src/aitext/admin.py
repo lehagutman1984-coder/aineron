@@ -11,9 +11,9 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(NeuralNetwork)
 class NeuralNetworkAdmin(admin.ModelAdmin):
-    list_display = ('avatar_image', 'name', 'category', 'model_name', 'cost_per_message', 'is_popular', 'unlimited', 'is_default', 'is_active', 'order', 'translate_to_english', 'is_direct', 'is_custom', 'max_tokens', 'max_input_tokens')
+    list_display = ('avatar_image', 'name', 'category', 'provider', 'model_name', 'cost_per_message', 'is_free', 'is_popular', 'unlimited', 'is_default', 'is_active', 'order', 'translate_to_english', 'is_direct', 'is_custom', 'max_tokens', 'max_input_tokens')
     list_editable = ('model_name', 'cost_per_message', 'is_popular', 'unlimited', 'is_default', 'is_active', 'order', 'translate_to_english', 'is_direct', 'is_custom', 'max_tokens', 'max_input_tokens')
-    list_filter = ('category', 'provider', 'is_active', 'unlimited', 'is_popular', 'is_default', 'translate_to_english', 'is_direct', 'is_custom')
+    list_filter = ('category', 'provider', 'is_active', 'is_free', 'unlimited', 'is_popular', 'is_default', 'translate_to_english', 'is_direct', 'is_custom')
     search_fields = ('name', 'description', 'seo_title', 'seo_keywords', 'model_name')
     readonly_fields = ('id',)
     filter_horizontal = ('tariffs',)
@@ -21,7 +21,7 @@ class NeuralNetworkAdmin(admin.ModelAdmin):
         (None, {'fields': ('name', 'slug', 'category', 'description')}),
         ('Визуальное оформление', {'fields': ('avatar', 'avatar_url')}),
         ('Стоимость и статус', {
-            'fields': ('cost_per_message', 'is_active', 'is_popular', 'is_default', 'order', 'translate_to_english', 'max_tokens', 'max_input_tokens')
+            'fields': ('cost_per_message', 'is_active', 'is_free', 'is_popular', 'is_default', 'order', 'translate_to_english', 'max_tokens', 'max_input_tokens')
         }),
         ('Безлимитные сообщения', {
             'fields': ('unlimited', 'tariffs', 'messages_limit'),

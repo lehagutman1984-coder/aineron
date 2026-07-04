@@ -545,12 +545,16 @@ def get_laozhang_client():
 def get_client_for_network(network):
     """
     Выбор LLM-клиента по провайдеру нейросети.
-    Groq (бесплатные модели) → отдельный клиент Groq; остальное — laozhang
-    с прозрачным фолбэком на apimart.
+    Groq / OpenRouter (бесплатные модели) → отдельные клиенты без фолбэка;
+    остальное — laozhang с прозрачным фолбэком на apimart.
     """
-    if getattr(network, 'provider', '') == 'groq':
+    provider = getattr(network, 'provider', '')
+    if provider == 'groq':
         from aitext.providers import get_groq_client
         return get_groq_client()
+    if provider == 'openrouter_free':
+        from aitext.providers import get_openrouter_free_client
+        return get_openrouter_free_client()
     return get_laozhang_client()
 
 

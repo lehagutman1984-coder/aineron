@@ -359,8 +359,15 @@ APIMART_API_URL = "https://api.apimart.ai/v1"
 
 # Groq — бесплатные текстовые модели (llama, qwen, groq/compound).
 # OpenAI-совместимый эндпоинт. Ключ хранится в .env (console.groq.com).
+# ВАЖНО: Groq блокирует запросы из РФ (гео-блок на уровне сети, 403 Forbidden
+# даже с валидным ключом) — оставлено на случай проксирования через VPS вне РФ.
 GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
 GROQ_API_URL = os.environ.get('GROQ_API_URL', 'https://api.groq.com/openai/v1')
+
+# OpenRouter — бесплатные текстовые модели (:free), доступно из РФ без прокси.
+# OpenAI-совместимый эндпоинт. Ключ — console.openrouter.ai.
+OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY', '')
+OPENROUTER_API_URL = os.environ.get('OPENROUTER_API_URL', 'https://openrouter.ai/api/v1')
 
 # Автоматический фолбэк между сервисами (laozhang ↔ apimart).
 # Текст/изображения: laozhang → apimart; видео: apimart → laozhang.

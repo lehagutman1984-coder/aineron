@@ -32,12 +32,17 @@ _PROVIDER_META = {
 
 _raw_clients = {}
 _groq_client = None
+_openrouter_free_client = None
 
 
 def get_groq_client():
     """
     «Сырой» OpenAI-совместимый клиент Groq (console.groq.com) для бесплатных
-    текстовых моделей. Без фолбэка — Groq единственный источник этих моделей.
+    текстовых моделей.
+
+    ВНИМАНИЕ: Groq блокирует запросы из РФ на уровне сети (403 Forbidden ещё
+    до проверки ключа). Рабочий вариант только через прокси/VPS вне РФ.
+    Без фолбэка — Groq единственный источник этих моделей.
     """
     global _groq_client
     if _groq_client is None:
@@ -46,6 +51,20 @@ def get_groq_client():
             api_key=getattr(settings, 'GROQ_API_KEY', ''),
         )
     return _groq_client
+
+
+def get_openrouter_free_client():
+    """
+    «Сырой» OpenAI-совместимый клиент OpenRouter (openrouter.ai) для бесплатных
+    моделей (`:free`). Доступен из РФ без прокси. Без фолбэка.
+    """
+    global _openrouter_free_client
+    if _openrouter_free_client is None:
+        _openrouter_free_client = OpenAI(
+            base_url=getattr(settings, 'OPENROUTER_API_URL', 'https://openrouter.ai/api/v1'),
+            api_key=getattr(settings, 'OPENROUTER_API_KEY', ''),
+        )
+    return _openrouter_free_client
 
 
 def _get_raw_client(provider):

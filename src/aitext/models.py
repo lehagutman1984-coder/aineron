@@ -26,7 +26,8 @@ class NeuralNetwork(models.Model):
     PROVIDER_CHOICES = [
         ('openrouter', 'laozhang.ai (текст)'),
         ('fal-ai', 'laozhang.ai (изображения/видео)'),
-        ('groq', 'Groq (бесплатные текстовые модели)'),
+        ('groq', 'Groq (бесплатные текстовые модели, заблокирован из РФ)'),
+        ('openrouter_free', 'OpenRouter (бесплатные текстовые модели :free)'),
     ]
     """Модель нейросети"""
     name = models.CharField(max_length=100, verbose_name='Название нейросети')
