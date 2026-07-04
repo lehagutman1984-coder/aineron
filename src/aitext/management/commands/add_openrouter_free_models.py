@@ -12,7 +12,10 @@ OpenRouter (OpenAI-совместимый эндпоинт, ключ OPENROUTER_
 
 Также деактивирует ранее засеянные бесплатные модели Groq (add_groq_free_models) —
 Groq блокирует запросы из РФ (403 Forbidden), поэтому эти модели больше не
-рабочие и не должны показываться пользователям.
+рабочие и не должны показываться пользователям — и первую (неверенную) партию
+моделей OpenRouter, заменённую этим списком, отобранным по реальному объёму
+недельного использования на openrouter.ai/models (топ по токенам = наиболее
+стабильные и часто доступные провайдеры).
 
 Повторный запуск обновляет метаданные и лимиты, но НЕ трогает уже вручную
 выставленные значения цены.
@@ -24,29 +27,34 @@ from aitext.models import Category, NeuralNetwork
 # slug, name, model_name (OpenRouter), messages_limit (в день на пользователя), order, description
 FREE_MODELS = [
     (
-        'free-qwen3-coder', 'Qwen3 Coder — бесплатно', 'qwen/qwen3-coder:free',
-        20, 1,
-        'Лучшая бесплатная модель для кода, структурного текста и агентных задач.',
-    ),
-    (
-        'free-deepseek-v4-flash', 'DeepSeek V4 Flash — бесплатно', 'deepseek/deepseek-v4-flash:free',
-        20, 2,
-        'Длинный контекст и рассуждения — хороша для больших текстов и документов.',
+        'free-nemotron-3-ultra', 'Nemotron 3 Ultra — бесплатно', 'nvidia/nemotron-3-ultra-550b-a55b:free',
+        15, 1,
+        'Флагманская модель для сложных рассуждений и многошаговых задач, контекст 1M токенов.',
     ),
     (
         'free-nemotron-3-super', 'Nemotron 3 Super — бесплатно', 'nvidia/nemotron-3-super-120b-a12b:free',
+        15, 2,
+        'Структурированные ответы и сложные многошаговые рассуждения, контекст 1M токенов.',
+    ),
+    (
+        'free-laguna-m1', 'Laguna M.1 — бесплатно', 'poolside/laguna-m.1:free',
         15, 3,
-        'Структурированные ответы и сложные многошаговые рассуждения.',
+        'Флагманская модель для кода и агентной разработки от Poolside.',
     ),
     (
-        'free-llama-3-3-70b-or', 'Llama 3.3 70B — бесплатно', 'meta-llama/llama-3.3-70b-instruct:free',
+        'free-north-mini-code', 'North Mini Code — бесплатно', 'cohere/north-mini-code:free',
         15, 4,
-        'Универсальный стабильный чат — хороший запасной вариант на все случаи.',
+        'Агентная модель Cohere для кода, terminal-задач и разработки.',
     ),
     (
-        'free-glm-4-5-air', 'GLM 4.5 Air — бесплатно', 'z-ai/glm-4.5-air:free',
+        'free-gpt-oss-120b', 'GPT-OSS 120B — бесплатно', 'openai/gpt-oss-120b:free',
         15, 5,
-        'Лёгкая и быстрая модель — удобна, когда более тяжёлые модели недоступны.',
+        'Открытая модель OpenAI для рассуждений и агентных задач общего назначения.',
+    ),
+    (
+        'free-gemma-4-31b', 'Gemma 4 31B — бесплатно', 'google/gemma-4-31b-it:free',
+        15, 6,
+        'Модель Google DeepMind с поддержкой изображений — универсальный чат и код.',
     ),
 ]
 
@@ -55,6 +63,12 @@ FREE_MODELS = [
 OLD_GROQ_FREE_SLUGS = [
     'free-llama-3-1-8b', 'free-llama-3-3-70b', 'free-qwen3-32b',
     'free-groq-compound', 'free-groq-compound-mini',
+]
+
+# Слаги первой (неверенной) партии OpenRouter-моделей, заменённой списком выше.
+OLD_OPENROUTER_FREE_SLUGS = [
+    'free-qwen3-coder', 'free-deepseek-v4-flash',
+    'free-llama-3-3-70b-or', 'free-glm-4-5-air',
 ]
 
 
@@ -80,6 +94,12 @@ class Command(BaseCommand):
             slug__in=OLD_GROQ_FREE_SLUGS, is_active=True,
         ).update(is_active=False)
         self.stdout.write(f'  деактивировано: {deactivated}')
+
+        self.stdout.write('\n=== Деактивация первой партии OpenRouter-моделей (заменены) ===')
+        deactivated_or = NeuralNetwork.objects.filter(
+            slug__in=OLD_OPENROUTER_FREE_SLUGS, is_active=True,
+        ).update(is_active=False)
+        self.stdout.write(f'  деактивировано: {deactivated_or}')
 
         self.stdout.write('\n=== Бесплатные модели (OpenRouter) ===')
         for slug, name, model_name, limit, order, description in FREE_MODELS:
