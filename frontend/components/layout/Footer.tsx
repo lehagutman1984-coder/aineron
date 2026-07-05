@@ -76,9 +76,20 @@ export function Footer() {
 
         {/* Bottom bar */}
         <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-[rgba(13,13,13,0.08)] pt-6 dark:border-[rgba(255,255,255,0.07)] sm:flex-row">
-          <p className="text-[14px] text-[rgba(13,13,13,0.40)] dark:text-[rgba(236,236,236,0.30)]">
-            &copy; {new Date().getFullYear()} aineron.ru
-          </p>
+          <div className="flex flex-col gap-1 text-center sm:text-left">
+            <p className="text-[14px] text-[rgba(13,13,13,0.40)] dark:text-[rgba(236,236,236,0.30)]">
+              &copy; {new Date().getFullYear()} aineron.ru
+            </p>
+            <p className="text-[13px] text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.25)]">
+              ИНН 220805856949 ·{" "}
+              <a
+                href="mailto:support@aineron.ru"
+                className="transition-colors hover:text-[#1A1A1A] dark:hover:text-[#EDE8E3]"
+              >
+                support@aineron.ru
+              </a>
+            </p>
+          </div>
           <div className="flex items-center gap-4">
             <Link
               href="/privacy-policy/"
