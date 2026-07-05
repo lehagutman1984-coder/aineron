@@ -584,7 +584,7 @@ def create_robokassa_payment(request):
         )
 
         robokassa_url = "https://auth.robokassa.ru/Merchant/Index.aspx"
-        success_url = f"{settings.SITE_URL}/users/pages/payment-success/"
+        success_url = f"{settings.SITE_URL}/payment-success/"
         fail_url = f"{settings.SITE_URL}/users/pages/payment-fail/"
 
         form_html = f"""
@@ -940,7 +940,7 @@ def buy_pages(request):
 
         robokassa_url = "https://auth.robokassa.ru/Merchant/Index.aspx"
 
-        success_url = f"{settings.SITE_URL}/users/pages/payment-success/"
+        success_url = f"{settings.SITE_URL}/payment-success/"
         fail_url = f"{settings.SITE_URL}/users/pages/payment-fail/"
 
         form_html = f"""
