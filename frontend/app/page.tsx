@@ -1,7 +1,7 @@
 import Link from "next/link";
 import {
   ArrowRight, Code2, ImageIcon, Check, X,
-  Wallet, ShieldCheck, Layers,
+  Wallet, ShieldCheck, Layers, Sparkles,
 } from "lucide-react";
 import { serverListNetworks } from "@/lib/api/server";
 import type { NetworkListItem } from "@/lib/api/types";
@@ -16,8 +16,16 @@ async function getPopularNetworks(): Promise<NetworkListItem[]> {
   return (await serverListNetworks({ is_popular: true }).catch(() => [])) ?? [];
 }
 
+async function getFreeNetworks(): Promise<NetworkListItem[]> {
+  return (await serverListNetworks({ is_free: true }).catch(() => [])) ?? [];
+}
+
 export default async function HomePage() {
-  const popular = await getPopularNetworks();
+  const [popular, freeNetworks] = await Promise.all([
+    getPopularNetworks(),
+    getFreeNetworks(),
+  ]);
+  const freeCount = freeNetworks.length;
 
   return (
     <>
@@ -64,6 +72,35 @@ export default async function HomePage() {
             {popular.slice(0, 6).map((n) => (
               <NetworkCard key={n.id} network={n} />
             ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Free text models ──────────────────────────────────────────────────── */}
+      {freeCount > 0 && (
+        <section className="mx-auto max-w-7xl px-4 pb-16 sm:px-6">
+          <div className="flex flex-col items-start gap-5 rounded-[20px] border border-[rgba(217,119,87,0.30)] bg-[rgba(217,119,87,0.06)] px-7 py-7 sm:flex-row sm:items-center sm:justify-between sm:px-9">
+            <div className="flex items-start gap-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[12px] bg-[rgba(217,119,87,0.12)] text-[#D97757]">
+                <Sparkles size={22} />
+              </div>
+              <div>
+                <h2 className="text-[20px] font-bold text-[var(--text-primary)] sm:text-[22px]">
+                  {freeCount} бесплатных текстовых моделей
+                </h2>
+                <p className="mt-1.5 max-w-xl text-[16px] leading-relaxed text-[var(--text-secondary)]">
+                  GPT-OSS, Qwen3, Gemma, DeepSeek R1 и другие нейросети для чата — 0 ₽,
+                  без пополнения баланса. Доступны сразу после регистрации.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/models/?category=__free__"
+              className="inline-flex shrink-0 items-center gap-2 rounded-[12px] bg-[#D97757] px-5 py-3 text-[15px] font-medium text-white transition-colors hover:bg-[#C4623E]"
+            >
+              Открыть бесплатные модели
+              <ArrowRight size={16} />
+            </Link>
           </div>
         </section>
       )}

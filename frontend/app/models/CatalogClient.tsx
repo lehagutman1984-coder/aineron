@@ -109,14 +109,18 @@ export function CatalogClient({ networks, freeNetworks = [], categories, initial
             onClick={() => setActiveCategory(FREE_TAB)}
           />
         )}
-        {categories.map((c) => (
-          <CategoryTab
-            key={c.id}
-            label={c.name}
-            active={activeCategory === c.slug}
-            onClick={() => setActiveCategory(c.slug)}
-          />
-        ))}
+        {categories
+          // Категория «Бесплатно/Бесплатные» дублирует синтетическую вкладку
+          // «Бесплатные» (is_free) и обычно пуста — не показываем её.
+          .filter((c) => !/^бесплат/i.test(c.name.trim()))
+          .map((c) => (
+            <CategoryTab
+              key={c.id}
+              label={c.name}
+              active={activeCategory === c.slug}
+              onClick={() => setActiveCategory(c.slug)}
+            />
+          ))}
       </div>
 
       {/* Grid */}
