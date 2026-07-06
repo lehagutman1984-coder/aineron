@@ -20,7 +20,6 @@ const COLUMNS = [
       { label: "API и интеграции", href: "/api-docs/" },
       { label: "Playground", href: "/api-docs/playground/" },
       { label: "IDE-интеграции", href: "/ide/" },
-      { label: "Статус сервиса", href: "/status/" },
       { label: "Личный кабинет", href: "/account/" },
     ],
   },
@@ -102,12 +101,6 @@ export function Footer() {
               className="text-[14px] text-[rgba(13,13,13,0.40)] transition-colors hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.30)] dark:hover:text-[#EDE8E3]"
             >
               Условия
-            </Link>
-            <Link
-              href="/status/"
-              className="text-[14px] text-[rgba(13,13,13,0.40)] transition-colors hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.30)] dark:hover:text-[#EDE8E3]"
-            >
-              Статус
             </Link>
           </div>
         </div>
