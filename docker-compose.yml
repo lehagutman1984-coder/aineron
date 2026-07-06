@@ -164,6 +164,9 @@ services:
     # Studio заморожена: сервис отключён (E2B-аккаунт заблокирован → warm-pool
     # спамил 403 "team is blocked: missing payment method"). Спрятан за profile,
     # чтобы обычный `up -d` его не поднимал. Вернуть: docker-compose --profile studio up -d
+    # ВАЖНО: Sandbox API (SANDBOX_API_PLAN.md) тоже работает через этот сервис —
+    # перед SANDBOX_API_ENABLED=1 нужно разблокировать E2B (платёжный метод)
+    # и поднять сервис этим профилем.
     profiles: ["studio"]
     build:
       context: ./preview-service

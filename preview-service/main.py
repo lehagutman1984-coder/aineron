@@ -21,7 +21,9 @@ from pydantic import BaseModel
 import settings
 from runtime.base import Stack
 from runtime.e2b_runtime import E2BRuntime, POOL_LIST_PREFIX, POOL_TARGET_PREFIX, CLAIMS_PREFIX
+from runtime.sandbox_runtime import start_reaper as start_sandbox_reaper
 from db.proxy import router as db_router
+from sandbox_api import router as sandbox_router
 
 from concurrent.futures import ThreadPoolExecutor as _TPE
 _PREWARM_EXECUTOR = _TPE(max_workers=4, thread_name_prefix="prewarm")
@@ -31,6 +33,8 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="aineron preview-service", version="0.4.0")
 _runtime = E2BRuntime()
 app.include_router(db_router)
+app.include_router(sandbox_router)
+start_sandbox_reaper()
 
 _r = _redis_module.from_url(settings.REDIS_URL, decode_responses=True)
 

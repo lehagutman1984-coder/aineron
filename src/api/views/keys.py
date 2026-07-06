@@ -25,6 +25,7 @@ class APIKeyListCreateView(APIView):
                 'name': k.name,
                 'prefix': f'ak_{k.key_prefix}...',
                 'is_active': k.is_active,
+                'scopes': k.scopes or [],
                 'created_at': k.created_at.isoformat(),
                 'last_used_at': k.last_used_at.isoformat() if k.last_used_at else None,
             }
@@ -57,7 +58,16 @@ class APIKeyListCreateView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        api_key, plaintext = APIKey.generate(request.user, name)
+        # Дополнительные скоупы — выключены по умолчанию, включаются явно
+        ALLOWED_SCOPES = {'sandboxes'}
+        scopes = request.data.get('scopes', [])
+        if not isinstance(scopes, list) or not set(map(str, scopes)) <= ALLOWED_SCOPES:
+            return Response(
+                {'error': {'message': f'scopes must be a subset of {sorted(ALLOWED_SCOPES)}', 'type': 'invalid_request_error', 'code': 'invalid_scopes'}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        api_key, plaintext = APIKey.generate(request.user, name, scopes=[str(s) for s in scopes])
         logger.info(f'[API] Создан ключ {api_key.pk} для {request.user.email}')
         return Response(
             {
@@ -65,6 +75,7 @@ class APIKeyListCreateView(APIView):
                 'name': api_key.name,
                 'key': plaintext,  # показывается только один раз
                 'prefix': f'ak_{api_key.key_prefix}...',
+                'scopes': api_key.scopes or [],
                 'created_at': api_key.created_at.isoformat(),
                 'warning': 'Save this key now — it will not be shown again.',
             },

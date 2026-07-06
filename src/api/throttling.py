@@ -17,6 +17,18 @@ class APIKeyRateThrottle(SimpleRateThrottle):
         return self.cache_format % {'ident': ident}
 
 
+class SandboxCreateThrottle(APIKeyRateThrottle):
+    """Создание песочниц: 10/мин на ключ/пользователя."""
+    scope = 'sandbox_create'
+    cache_format = 'throttle_sandbox_create_%(ident)s'
+
+
+class SandboxExecThrottle(APIKeyRateThrottle):
+    """Exec в песочницах: 30/мин на ключ/пользователя."""
+    scope = 'sandbox_exec'
+    cache_format = 'throttle_sandbox_exec_%(ident)s'
+
+
 class PublicSpaceThrottle(SimpleRateThrottle):
     """60 req/min per IP для анонимов, 300/min для авторизованных."""
     scope = 'public_space'

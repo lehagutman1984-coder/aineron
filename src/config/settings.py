@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     'teams',
     'studio',
     'telegram_bot',
+    'sandboxes',
 ]
 
 OAUTH2_PROVIDER = {
@@ -333,6 +334,21 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': crontab(minute='*/5'),
         'options': {'queue': 'studio_queue'},
     },
+    # Sandbox API: закрыть подвешенные сессии + финальный биллинг
+    'reconcile-sandbox-billing': {
+        'task': 'sandboxes.tasks.reconcile_sandbox_billing',
+        'schedule': crontab(minute='*/5'),
+    },
+    # Sandbox API: анти-abuse (майнинг/прокси-паттерны)
+    'check-sandbox-abuse': {
+        'task': 'sandboxes.tasks.check_sandbox_abuse',
+        'schedule': crontab(minute='*/10'),
+    },
+    # Sandbox API: алерт на суммарный run-rate активных сессий
+    'check-sandbox-runrate': {
+        'task': 'sandboxes.tasks.check_sandbox_runrate',
+        'schedule': crontab(minute='*/15'),
+    },
 }
 
 # Sprint 8: E2B preview billing rate (stars per minute of sandbox time)
@@ -340,6 +356,21 @@ CELERY_BEAT_SCHEDULE = {
 E2B_PREVIEW_STARS_PER_MIN = int(os.environ.get('E2B_PREVIEW_STARS_PER_MIN', '1'))
 PREVIEW_SERVICE_URL = os.environ.get('PREVIEW_SERVICE_URL', 'http://preview_service:8001')
 PREVIEW_INTERNAL_TOKEN = os.environ.get('PREVIEW_INTERNAL_TOKEN', '')
+
+# ========== SANDBOX API (публичный продукт /api/v1/sandboxes/, SANDBOX_API_PLAN.md) ==========
+SANDBOX_API_ENABLED = os.environ.get('SANDBOX_API_ENABLED', '0') == '1'
+SANDBOX_PRICE_KOPECKS = {
+    'small': int(os.environ.get('SANDBOX_PRICE_SMALL_KOPECKS', '50')),        # 0,50 ₽/мин (1 vCPU / 1 GiB)
+    'standard': int(os.environ.get('SANDBOX_PRICE_STANDARD_KOPECKS', '100')),  # 1 ₽/мин (2 vCPU / 2 GiB)
+}
+SANDBOX_DAILY_CAP_MIN = int(os.environ.get('SANDBOX_DAILY_CAP_MIN', '240'))
+SANDBOX_MAX_CONCURRENT_PER_USER = int(os.environ.get('SANDBOX_MAX_CONCURRENT_PER_USER', '3'))
+SANDBOX_DEFAULT_TTL = int(os.environ.get('SANDBOX_DEFAULT_TTL', '300'))
+SANDBOX_MAX_TTL = int(os.environ.get('SANDBOX_MAX_TTL', '3600'))
+SANDBOX_EXEC_TIMEOUT_MAX = int(os.environ.get('SANDBOX_EXEC_TIMEOUT_MAX', '300'))
+SANDBOX_ABUSE_RUNTIME_MIN = int(os.environ.get('SANDBOX_ABUSE_RUNTIME_MIN', '20'))
+SANDBOX_ABUSE_EXEC_COUNT = int(os.environ.get('SANDBOX_ABUSE_EXEC_COUNT', '50'))
+SANDBOX_RUNRATE_ALERT_RUB = int(os.environ.get('SANDBOX_RUNRATE_ALERT_RUB', '500'))
 
 
 # ========== API КЛЮЧИ ==========
@@ -592,6 +623,8 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'api_key': '120/min',
         'public_space': '60/min',
+        'sandbox_create': '10/min',
+        'sandbox_exec': '30/min',
     },
     'EXCEPTION_HANDLER': 'api.exceptions.openai_exception_handler',
 }

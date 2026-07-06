@@ -86,6 +86,18 @@ class APIStatusView(APIView):
         except Exception as exc:
             checks['preview'] = {'status': 'unknown', 'error': str(exc)[:100]}
 
+        # Sandbox API — informational, не влияет на overall
+        try:
+            from django.conf import settings as _settings
+            if getattr(_settings, 'SANDBOX_API_ENABLED', False):
+                from sandboxes.models import SandboxSession
+                active = SandboxSession.objects.filter(
+                    state__in=SandboxSession.ACTIVE_STATES,
+                ).count()
+                checks['sandboxes'] = {'status': 'operational', 'active_sessions': active}
+        except Exception as exc:
+            checks['sandboxes'] = {'status': 'unknown', 'error': str(exc)[:100]}
+
         return Response({
             'status': overall,
             'checks': checks,

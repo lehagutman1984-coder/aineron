@@ -36,6 +36,10 @@ from api.views.audio import AudioTranscriptionsView, AudioSpeechView
 from api.views.batch import BatchListCreateView, BatchDetailView, BatchResultsView, BatchCancelView
 from api.views.webhooks import WebhookListCreateView, WebhookDetailView, WebhookTestView
 from api.views.audit import AuditLogListView
+from api.views.sandboxes import (
+    SandboxListCreateView, SandboxDetailView, SandboxExecView,
+    SandboxFilesView, SandboxLogsView, SandboxLogsStreamView, SandboxTimeoutView,
+)
 from api.views.api_status import APIStatusView
 from api.views.legal import LegalPrivacyView, LegalTermsView
 from api.views.referral import ReferralView, ReferralWithdrawView
@@ -171,6 +175,15 @@ urlpatterns = [
     path('v1/webhooks/<int:pk>/test/', WebhookTestView.as_view(), name='webhook_test'),
     path('v1/audit/', AuditLogListView.as_view(), name='audit_log'),
     path('v1/status/', APIStatusView.as_view(), name='api_status'),
+
+    # ========== Sandbox API (SANDBOX_API_PLAN.md) ==========
+    path('v1/sandboxes/', SandboxListCreateView.as_view(), name='sandbox_list_create'),
+    path('v1/sandboxes/<str:sandbox_id>/', SandboxDetailView.as_view(), name='sandbox_detail'),
+    path('v1/sandboxes/<str:sandbox_id>/exec/', SandboxExecView.as_view(), name='sandbox_exec'),
+    path('v1/sandboxes/<str:sandbox_id>/files/', SandboxFilesView.as_view(), name='sandbox_files'),
+    path('v1/sandboxes/<str:sandbox_id>/logs/', SandboxLogsView.as_view(), name='sandbox_logs'),
+    path('v1/sandboxes/<str:sandbox_id>/logs/stream/', SandboxLogsStreamView.as_view(), name='sandbox_logs_stream'),
+    path('v1/sandboxes/<str:sandbox_id>/timeout/', SandboxTimeoutView.as_view(), name='sandbox_timeout'),
 
     # ========== Юридические документы ==========
     path('v1/legal/privacy/', LegalPrivacyView.as_view(), name='legal_privacy'),

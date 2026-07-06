@@ -1265,6 +1265,7 @@ class BalanceTransaction(models.Model):
         REFERRAL = 'referral', 'Реферальный бонус'
         XTR = 'xtr', 'Telegram Stars'
         ADMIN = 'admin', 'Ручное начисление'
+        SANDBOX = 'sandbox', 'Sandbox API'
 
     user = models.ForeignKey(
         'CustomUser',

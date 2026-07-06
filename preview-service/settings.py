@@ -46,3 +46,8 @@ MAX_POOL_SIZE: int = int(os.environ.get("PREVIEW_MAX_POOL_SIZE", "6"))
 # L5 pause/resume
 PAUSE_ENABLED: bool = os.environ.get("PREVIEW_PAUSE_ENABLED", "1") == "1"
 PAUSE_GRACE: int = int(os.environ.get("PREVIEW_PAUSE_GRACE", "1800"))    # 30 min
+
+# ── Sandbox API (публичный продукт /api/v1/sandboxes/) ─────────────────────────
+SANDBOX_MAX_CONCURRENT: int = int(os.environ.get("SANDBOX_MAX_CONCURRENT", "10"))
+SANDBOX_EXEC_TIMEOUT_MAX: int = int(os.environ.get("SANDBOX_EXEC_TIMEOUT_MAX", "300"))
+SANDBOX_OUTPUT_LIMIT_KB: int = int(os.environ.get("SANDBOX_OUTPUT_LIMIT_KB", "256"))

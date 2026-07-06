@@ -42,7 +42,7 @@ class APIKey(models.Model):
         return hashlib.sha256(raw_key.encode()).hexdigest()
 
     @classmethod
-    def generate(cls, user, name: str) -> tuple['APIKey', str]:
+    def generate(cls, user, name: str, scopes: list | None = None) -> tuple['APIKey', str]:
         """Создаёт новый ключ. Возвращает (instance, plaintext). Plaintext показывается один раз."""
         raw = 'ak_' + secrets.token_urlsafe(32)
         prefix = raw[3:11]  # 8 символов после ak_
@@ -52,6 +52,7 @@ class APIKey(models.Model):
             name=name,
             key_prefix=prefix,
             hashed_key=hashed,
+            scopes=scopes or [],
         )
         return instance, raw
 
@@ -262,6 +263,8 @@ class AuditLog(models.Model):
         WEBHOOK_DELETED = 'webhook.deleted', 'Webhook удалён'
         BATCH_CREATED = 'batch.created', 'Пакет создан'
         BATCH_CANCELLED = 'batch.cancelled', 'Пакет отменён'
+        SANDBOX_CREATED = 'sandbox.created', 'Песочница создана'
+        SANDBOX_DELETED = 'sandbox.deleted', 'Песочница остановлена'
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
