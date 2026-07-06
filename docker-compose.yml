@@ -140,6 +140,9 @@ services:
       - web
 
   celery_studio:
+    # Studio заморожена — воркер studio_queue простаивает. Спрятан за profile.
+    # Вернуть вместе с preview: docker-compose --profile studio up -d
+    profiles: ["studio"]
     build: .
     container_name: neiro_celery_studio
     restart: unless-stopped
@@ -158,6 +161,10 @@ services:
         condition: service_healthy
 
   preview_service:
+    # Studio заморожена: сервис отключён (E2B-аккаунт заблокирован → warm-pool
+    # спамил 403 "team is blocked: missing payment method"). Спрятан за profile,
+    # чтобы обычный `up -d` его не поднимал. Вернуть: docker-compose --profile studio up -d
+    profiles: ["studio"]
     build:
       context: ./preview-service
       dockerfile: Dockerfile
