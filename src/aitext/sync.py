@@ -111,10 +111,25 @@ def _github_file(connector, token: str, path: str) -> str:
 
 # ── Gitea helpers ──────────────────────────────────────────────────────────────
 
-def _gitea_base(connector) -> str:
+def gitea_base_from_repo_url(repo_url: str) -> str | None:
+    """Base URL Gitea из repo_url с сохранением подпути.
+
+    Gitea может жить не на корне домена (например https://host/git/):
+    https://host/git/owner/repo → https://host/git (а не https://host,
+    иначе API-запросы /api/v1/... уйдут мимо Gitea).
+    """
     from urllib.parse import urlparse
-    parsed = urlparse(connector.repo_url)
-    return f'{parsed.scheme}://{parsed.netloc}' if parsed.netloc else getattr(settings, 'STUDIO_GITEA_URL', 'http://gitea:3000')
+    parsed = urlparse(repo_url)
+    if not parsed.netloc:
+        return None
+    segs = [s for s in parsed.path.split('/') if s]
+    prefix = '/'.join(segs[:-2])  # отрезаем два последних сегмента: owner/repo
+    base = f'{parsed.scheme}://{parsed.netloc}'
+    return f'{base}/{prefix}' if prefix else base
+
+
+def _gitea_base(connector) -> str:
+    return gitea_base_from_repo_url(connector.repo_url) or getattr(settings, 'STUDIO_GITEA_URL', 'http://gitea:3000')
 
 
 def _gitea_headers(token: str) -> dict:

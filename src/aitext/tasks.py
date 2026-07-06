@@ -1818,8 +1818,8 @@ def push_project_commit(self, commit_id: int):
     try:
         from urllib.parse import urlparse
         is_pr = commit.kind == 'pull_request'
-        parsed = urlparse(connector.repo_url)
-        ext_base = f'{parsed.scheme}://{parsed.netloc}' if parsed.netloc else None
+        from .sync import gitea_base_from_repo_url
+        ext_base = gitea_base_from_repo_url(connector.repo_url)  # сохраняет подпуть (…/git/)
 
         if is_pr:
             # Sprint 5.2: create a new branch, push files there, then open PR

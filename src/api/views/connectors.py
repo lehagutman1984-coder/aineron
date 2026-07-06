@@ -17,11 +17,9 @@ from api.views._project_access import get_project_for_user
 
 
 def _gitea_base_url(connector: 'ProjectConnector') -> str | None:
-    """Extract base URL (scheme+host) from Gitea connector repo_url."""
-    parsed = urlparse(connector.repo_url)
-    if parsed.netloc:
-        return f'{parsed.scheme}://{parsed.netloc}'
-    return None
+    """Base URL Gitea из repo_url (с сохранением подпути, напр. /git/)."""
+    from aitext.sync import gitea_base_from_repo_url
+    return gitea_base_from_repo_url(connector.repo_url)
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
