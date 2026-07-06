@@ -10,6 +10,7 @@ GET /v1/arena/leaderboard/
     Список моделей, отсортированный по elo_rating (убывание).
 """
 import logging
+from django.core.cache import cache
 from django.db import transaction
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -75,6 +76,8 @@ class ArenaVoteView(APIView):
             )
             _update_elo(winner, loser)
 
+        cache.delete(_LEADERBOARD_CACHE_KEY)  # рейтинг обновился — сбросить кэш
+
         return Response({
             'match_id': match.id,
             'winner': {
@@ -92,14 +95,23 @@ class ArenaVoteView(APIView):
         }, status=201)
 
 
+_LEADERBOARD_CACHE_KEY = 'arena:leaderboard'
+_LEADERBOARD_CACHE_TTL = 60
+
+
 class ArenaLeaderboardView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
+        cached = cache.get(_LEADERBOARD_CACHE_KEY)
+        if cached is not None:
+            return Response(cached)
         networks = (
             NeuralNetwork.objects
             .filter(is_active=True, provider='openrouter')
             .order_by('-elo_rating')
             .values('slug', 'name', 'elo_rating', 'elo_matches', 'avatar_url', 'description')
         )
-        return Response({'results': list(networks)})
+        data = {'results': list(networks)}
+        cache.set(_LEADERBOARD_CACHE_KEY, data, _LEADERBOARD_CACHE_TTL)
+        return Response(data)

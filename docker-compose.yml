@@ -45,7 +45,7 @@ services:
       sh -c "
       python manage.py migrate --noinput &&
       python manage.py collectstatic --noinput &&
-      gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 8 --threads 4 --timeout 300"
+      gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --threads 12 --timeout 300 --max-requests 500 --max-requests-jitter 50"
     volumes:
       - ./src:/app
       - static_volume:/app/staticfiles
@@ -87,7 +87,7 @@ services:
     restart: unless-stopped
     env_file:
       - .env
-    command: celery -A config worker --loglevel=info --pool=gevent --concurrency=200
+    command: celery -A config worker --loglevel=info --pool=gevent --concurrency=50
     volumes:
       - ./src:/app
     dns:

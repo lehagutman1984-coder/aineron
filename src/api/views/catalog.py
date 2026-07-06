@@ -1,5 +1,7 @@
+from django.core.cache import cache
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
 from aitext.models import Category, NeuralNetwork
 from api.serializers.catalog import (
     CategorySerializer,
@@ -7,16 +9,40 @@ from api.serializers.catalog import (
     NeuralNetworkDetailSerializer,
 )
 
+# Каталог публичный и не зависит от пользователя — кэшируем целиком.
+# Модели меняются только через админку, 60 сек устаревания не критичны.
+_CATALOG_CACHE_TTL = 60
+
 
 class CategoryListView(ListAPIView):
     permission_classes = [AllowAny]
     serializer_class = CategorySerializer
     queryset = Category.objects.all().order_by('order', 'name')
 
+    def list(self, request, *args, **kwargs):
+        cache_key = 'catalog:categories'
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached)
+        response = super().list(request, *args, **kwargs)
+        cache.set(cache_key, response.data, _CATALOG_CACHE_TTL)
+        return response
+
 
 class NetworkListView(ListAPIView):
     permission_classes = [AllowAny]
     serializer_class = NeuralNetworkListSerializer
+
+    def list(self, request, *args, **kwargs):
+        # Ключ учитывает все фильтры (category/provider/is_popular/is_free)
+        params = '&'.join(f'{k}={v}' for k, v in sorted(request.query_params.items()))
+        cache_key = f'catalog:networks:{params}'
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached)
+        response = super().list(request, *args, **kwargs)
+        cache.set(cache_key, response.data, _CATALOG_CACHE_TTL)
+        return response
 
     def get_queryset(self):
         qs = NeuralNetwork.objects.filter(is_active=True).select_related('category')
