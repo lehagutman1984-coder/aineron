@@ -15,7 +15,10 @@ import {
   ArrowLeft,
   Key,
   Globe,
+  MessageSquare,
+  Box,
 } from "lucide-react";
+import { SandboxPlayground } from "@/components/docs/SandboxPlayground";
 
 const PRESET_MODELS = [
   { id: "gpt-4o", label: "GPT-4o" },
@@ -58,6 +61,7 @@ function RoleTag({ role, onChange }: { role: Role; onChange: () => void }) {
 }
 
 export default function PlaygroundPage() {
+  const [playgroundTab, setPlaygroundTab] = useState<"chat" | "sandbox">("chat");
   const [authMode, setAuthMode] = useState<AuthMode>("session");
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState("gpt-4o");
@@ -243,11 +247,43 @@ export default function PlaygroundPage() {
       <h1 className="mb-1 text-[24px] font-bold text-[#1A1A1A]">
         API Playground
       </h1>
-      <p className="mb-8 text-[16px] text-[rgba(13,13,13,0.55)]">
+      <p className="mb-6 text-[16px] text-[rgba(13,13,13,0.55)]">
         Тестируйте запросы к API прямо в браузере — без curl и Postman
       </p>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1fr]">
+      {/* Tab switcher: Chat / Sandbox */}
+      <div className="mb-8 flex gap-2">
+        {(
+          [
+            { id: "chat", label: "Chat Completions", icon: MessageSquare },
+            { id: "sandbox", label: "Sandboxes", icon: Box },
+          ] as const
+        ).map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setPlaygroundTab(tab.id)}
+            className={[
+              "flex items-center gap-2 rounded-[10px] border px-4 py-2 text-[15px] font-medium transition-colors",
+              playgroundTab === tab.id
+                ? "border-[#D97757] bg-[rgba(217,119,87,0.06)] text-[#D97757]"
+                : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.55)] hover:border-[rgba(13,13,13,0.25)]",
+            ].join(" ")}
+          >
+            <tab.icon size={14} />
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {playgroundTab === "sandbox" && <SandboxPlayground />}
+
+      <div
+        className={
+          playgroundTab === "chat"
+            ? "grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1fr]"
+            : "hidden"
+        }
+      >
         {/* LEFT: Request builder */}
         <div className="flex flex-col gap-4">
           {/* Auth */}

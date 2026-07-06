@@ -11,6 +11,7 @@ import type { APIKey } from "@/lib/api/types";
 export default function KeysPage() {
   const qc = useQueryClient();
   const [newKeyName, setNewKeyName] = useState("");
+  const [withSandboxes, setWithSandboxes] = useState(false);
   const [createdKey, setCreatedKey] = useState<string | null>(null);
   const [showKey, setShowKey] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
@@ -22,10 +23,15 @@ export default function KeysPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: () => createAPIKey({ name: newKeyName.trim() }),
+    mutationFn: () =>
+      createAPIKey({
+        name: newKeyName.trim(),
+        scopes: withSandboxes ? ["sandboxes"] : [],
+      }),
     onSuccess: (res) => {
       setCreatedKey(res.key);
       setNewKeyName("");
+      setWithSandboxes(false);
       setFormOpen(false);
       qc.invalidateQueries({ queryKey: ["api-keys"] });
     },
@@ -84,35 +90,52 @@ export default function KeysPage() {
       {formOpen ? (
         <form
           onSubmit={handleCreate}
-          className="mb-5 flex items-end gap-3 rounded-[12px] border border-[rgba(13,13,13,0.12)] bg-white p-4"
+          className="mb-5 flex flex-col gap-3 rounded-[12px] border border-[rgba(13,13,13,0.12)] bg-white p-4"
         >
-          <div className="flex-1">
-            <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.6)]">
-              Название ключа
-            </label>
-            <input
-              type="text"
-              value={newKeyName}
-              onChange={(e) => setNewKeyName(e.target.value)}
-              placeholder="Например: VS Code, Cursor, Prod"
-              autoFocus
-              className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[16px] text-[#1A1A1A] placeholder-[rgba(13,13,13,0.38)] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
-            />
+          <div className="flex items-end gap-3">
+            <div className="flex-1">
+              <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.6)]">
+                Название ключа
+              </label>
+              <input
+                type="text"
+                value={newKeyName}
+                onChange={(e) => setNewKeyName(e.target.value)}
+                placeholder="Например: VS Code, Cursor, Prod"
+                autoFocus
+                className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[16px] text-[#1A1A1A] placeholder-[rgba(13,13,13,0.38)] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={!newKeyName.trim() || createMutation.isPending}
+              className="h-9 rounded-[8px] bg-[#D97757] px-4 text-[15px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 transition-colors"
+            >
+              {createMutation.isPending ? "Создание..." : "Создать"}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setFormOpen(false); setError(null); }}
+              className="h-9 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[15px] text-[rgba(13,13,13,0.6)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
+            >
+              Отмена
+            </button>
           </div>
-          <button
-            type="submit"
-            disabled={!newKeyName.trim() || createMutation.isPending}
-            className="h-9 rounded-[8px] bg-[#D97757] px-4 text-[15px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 transition-colors"
-          >
-            {createMutation.isPending ? "Создание..." : "Создать"}
-          </button>
-          <button
-            type="button"
-            onClick={() => { setFormOpen(false); setError(null); }}
-            className="h-9 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[15px] text-[rgba(13,13,13,0.6)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
-          >
-            Отмена
-          </button>
+          <label className="flex cursor-pointer items-start gap-2.5 text-[14px] text-[rgba(13,13,13,0.6)]">
+            <input
+              type="checkbox"
+              checked={withSandboxes}
+              onChange={(e) => setWithSandboxes(e.target.checked)}
+              className="mt-0.5 h-4 w-4 accent-[#D97757]"
+            />
+            <span>
+              <span className="font-medium text-[#1A1A1A]">Доступ к Sandboxes</span>{" "}
+              — исполнение кода в изолированных microVM (списание поминутно).{" "}
+              <Link href="/api-docs/" className="text-[#D97757] hover:underline underline-offset-2">
+                Подробнее
+              </Link>
+            </span>
+          </label>
         </form>
       ) : (
         <button
@@ -190,7 +213,14 @@ function KeyRow({
     <div className="flex items-center gap-3 rounded-[10px] border border-[rgba(13,13,13,0.10)] bg-white px-4 py-3">
       <Key size={15} className="shrink-0 text-[rgba(13,13,13,0.4)]" />
       <div className="min-w-0 flex-1">
-        <p className="text-[15px] font-medium text-[#1A1A1A]">{apiKey.name}</p>
+        <p className="flex items-center gap-2 text-[15px] font-medium text-[#1A1A1A]">
+          {apiKey.name}
+          {(apiKey.scopes ?? []).includes("sandboxes") && (
+            <span className="rounded-[5px] border border-[rgba(217,119,87,0.35)] bg-[rgba(217,119,87,0.08)] px-1.5 py-0.5 text-[11px] font-medium text-[#D97757]">
+              sandboxes
+            </span>
+          )}
+        </p>
         <p className="text-[14px] text-[rgba(13,13,13,0.45)]">
           {apiKey.key_prefix}... · создан{" "}
           {new Date(apiKey.created_at).toLocaleDateString("ru-RU")}

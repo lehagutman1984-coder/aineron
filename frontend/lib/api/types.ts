@@ -146,6 +146,8 @@ export interface APIKey {
 
 export interface APIKeyCreateRequest {
   name: string;
+  /** Дополнительные скоупы (например "sandboxes") — по умолчанию пусто */
+  scopes?: string[];
 }
 
 export interface APIKeyCreateResponse extends APIKey {

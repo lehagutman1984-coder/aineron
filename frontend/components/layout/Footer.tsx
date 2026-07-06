@@ -18,6 +18,7 @@ const COLUMNS = [
     links: [
       { label: "Документация", href: "/docs/" },
       { label: "API и интеграции", href: "/api-docs/" },
+      { label: "Sandboxes", href: "/sandbox/" },
       { label: "Playground", href: "/api-docs/playground/" },
       { label: "IDE-интеграции", href: "/ide/" },
       { label: "Личный кабинет", href: "/account/" },

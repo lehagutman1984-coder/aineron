@@ -249,6 +249,78 @@ const CONTINUE_CONFIG = `{
 const CHECK_MODELS = `curl https://aineron.ru/api/v1/models \\
   -H "Authorization: Bearer ak_ВАШ_КЛЮЧ"`;
 
+// ── Sandboxes snippets ────────────────────────────────────────────────────────
+
+const SANDBOX_QUICKSTART: CodeTabItem[] = [
+  {
+    key: "python", label: "Python SDK",
+    code: `# pip install aineron
+from aineron import Sandbox
+
+with Sandbox(template="python") as sbx:
+    result = sbx.exec(code="print(2 + 2)")
+    print(result.stdout)   # 4
+# Песочница остановлена автоматически — биллинг завершён`,
+  },
+  {
+    key: "curl", label: "curl",
+    code: `# 1. Создать песочницу (TTL 5 минут)
+curl -X POST https://aineron.ru/api/v1/sandboxes/ \\
+  -H "Authorization: Bearer ak_ВАШ_КЛЮЧ" \\
+  -H "Content-Type: application/json" \\
+  -d '{"template": "python", "timeout_seconds": 300}'
+# → {"id": "sbx_...", "state": "running", ...}
+
+# 2. Выполнить код
+curl -X POST https://aineron.ru/api/v1/sandboxes/sbx_.../exec/ \\
+  -H "Authorization: Bearer ak_ВАШ_КЛЮЧ" \\
+  -H "Content-Type: application/json" \\
+  -d '{"code": "print(2 + 2)", "language": "python"}'
+# → {"exit_code": 0, "stdout": "4\\n", ...}
+
+# 3. Остановить (иначе умрёт сама по TTL)
+curl -X DELETE https://aineron.ru/api/v1/sandboxes/sbx_.../ \\
+  -H "Authorization: Bearer ak_ВАШ_КЛЮЧ"`,
+  },
+];
+
+const SANDBOX_FILES = `# Записать файлы
+curl -X POST https://aineron.ru/api/v1/sandboxes/sbx_.../files/ \\
+  -H "Authorization: Bearer ak_ВАШ_КЛЮЧ" \\
+  -H "Content-Type: application/json" \\
+  -d '{"files": [{"path": "main.py", "content": "print(42)"}]}'
+
+# Прочитать файл
+curl "https://aineron.ru/api/v1/sandboxes/sbx_.../files/?path=/home/user/main.py" \\
+  -H "Authorization: Bearer ak_ВАШ_КЛЮЧ"
+
+# Листинг директории
+curl "https://aineron.ru/api/v1/sandboxes/sbx_.../files/?path=/home/user&op=list" \\
+  -H "Authorization: Bearer ak_ВАШ_КЛЮЧ"`;
+
+const SANDBOX_AGENT = `from openai import OpenAI
+from aineron import Sandbox
+
+llm = OpenAI(base_url="https://aineron.ru/api/v1", api_key="ak_ВАШ_КЛЮЧ")
+
+def solve_with_code(task: str) -> str:
+    """LLM пишет код → песочница выполняет → результат возвращается."""
+    code = llm.chat.completions.create(
+        model="deepseek-v3",
+        messages=[{
+            "role": "user",
+            "content": f"Реши задачу кодом на Python. Верни ТОЛЬКО код: {task}",
+        }],
+    ).choices[0].message.content.strip().strip("\`").removeprefix("python")
+
+    with Sandbox(template="python", timeout=120) as sbx:
+        result = sbx.exec(code=code, timeout=60)
+        if result.ok:
+            return result.stdout
+        return f"Ошибка выполнения: {result.stderr}"
+
+print(solve_with_code("Найди 100-е число Фибоначчи"))`;
+
 // ── Groups ────────────────────────────────────────────────────────────────────
 
 const GROUPS: DocGroup[] = [
@@ -511,6 +583,112 @@ const GROUPS: DocGroup[] = [
               <LI><Method>POST</Method> <Path>/api/v1/batches/{"{id}"}/cancel/</Path> — отменить</LI>
             </UL>
             <P>Подходит для массовой классификации, разметки, генерации — без ручного контроля rate limit.</P>
+          </DocSection>
+        ),
+      },
+    ],
+  },
+  {
+    title: "Sandboxes",
+    items: [
+      {
+        id: "sandboxes",
+        label: "Обзор и быстрый старт",
+        content: (
+          <>
+            <DocSection title="Sandboxes — исполнение кода в microVM">
+              <Lead>
+                Изолированные песочницы для безопасного выполнения недоверенного кода —
+                того, что пишут AI-агенты или ваши пользователи. Каждая песочница — это
+                отдельная <b>Firecracker microVM</b> с собственным ядром, готовая за секунды.
+                Единственный такой API в России: рубли, оферта РФ, один ключ с чатами и генерацией.
+              </Lead>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <InfoCard label="Изоляция" value="microVM" />
+                <InfoCard label="Старт" value="1–5 секунд" />
+                <InfoCard label="small" value="0,50 ₽/мин" />
+                <InfoCard label="standard" value="1 ₽/мин" />
+              </div>
+              <P>
+                Типовые сценарии: агент «LLM пишет код → песочница выполняет», проверка
+                кода студентов, запуск сниппетов из вашего продукта, дев-серверы с публичным URL.
+              </P>
+            </DocSection>
+            <DocSection title="Быстрый старт" intro="Ключ должен иметь скоуп «sandboxes» — включается при создании ключа в кабинете.">
+              <CodeTabs tabs={SANDBOX_QUICKSTART} />
+              <Callout type="tip" title="Биллинг честный">
+                Резерв списывается при создании (TTL × цена), при остановке неиспользованные
+                минуты возвращаются автоматически. Ошибка запуска — полный возврат.
+              </Callout>
+            </DocSection>
+          </>
+        ),
+      },
+      {
+        id: "sandboxes-ref",
+        label: "Справочник эндпоинтов",
+        content: (
+          <DocSection title="Справочник Sandboxes API">
+            <DataTable
+              head={["Метод", "Путь", "Назначение"]}
+              rows={[
+                [<Method>POST</Method>, <Path>/api/v1/sandboxes/</Path>, "Создать песочницу"],
+                [<Method>GET</Method>, <Path>/api/v1/sandboxes/</Path>, "Список (активные; ?all=1 — история)"],
+                [<Method>GET</Method>, <Path>/api/v1/sandboxes/{"{id}"}/</Path>, "Статус"],
+                [<Method>POST</Method>, <Path>/api/v1/sandboxes/{"{id}"}/exec/</Path>, "Выполнить команду или код"],
+                [<Method>POST</Method>, <Path>/api/v1/sandboxes/{"{id}"}/files/</Path>, "Записать файлы"],
+                [<Method>GET</Method>, <Path>/api/v1/sandboxes/{"{id}"}/files/</Path>, "Прочитать файл / листинг"],
+                [<Method>GET</Method>, <Path>/api/v1/sandboxes/{"{id}"}/logs/</Path>, "Логи background-процессов"],
+                [<Method>GET</Method>, <Path>/api/v1/sandboxes/{"{id}"}/logs/stream/</Path>, "Логи в реальном времени (SSE)"],
+                [<Method>POST</Method>, <Path>/api/v1/sandboxes/{"{id}"}/timeout/</Path>, "Продлить TTL"],
+                [<Method>DELETE</Method>, <Path>/api/v1/sandboxes/{"{id}"}/</Path>, "Остановить + финальный расчёт"],
+              ]}
+            />
+            <H3>Работа с файлами</H3>
+            <StandaloneCodeBlock code={SANDBOX_FILES} />
+            <H3>Параметры создания</H3>
+            <DataTable
+              head={["Параметр", "Значения", "По умолчанию"]}
+              rows={[
+                [<IC>template</IC>, "base | python | nodejs | nextjs | django", <IC>base</IC>],
+                [<IC>size</IC>, "small (1 vCPU/1 GiB) | standard (2 vCPU/2 GiB)", <IC>standard</IC>],
+                [<IC>timeout_seconds</IC>, "60–3600", "300"],
+                [<IC>env</IC>, "до 20 переменных окружения", "—"],
+                [<IC>metadata</IC>, "ваши теги (вернутся в списке)", "—"],
+              ]}
+            />
+            <H3>Лимиты</H3>
+            <UL>
+              <LI>3 одновременные песочницы на пользователя; 240 минут в день.</LI>
+              <LI>exec: таймаут до 300 с, вывод до 256 KB (флаг <IC>truncated</IC>), 30 запусков/мин.</LI>
+              <LI>Файлы: до 5 MB на файл, до 50 файлов за запрос; пути — под <IC>/home/user</IC>, <IC>/tmp</IC>, <IC>/app</IC>.</LI>
+              <LI>Сеть изнутри песочницы: allowlist (pypi, npm и т.п.); нужен домен — напишите в поддержку.</LI>
+            </UL>
+            <Callout type="warn" title="Idempotency-Key">
+              POST-создание и DELETE принимают заголовок <IC>Idempotency-Key</IC> — повтор
+              с тем же ключом вернёт первый результат и не создаст дубль (важно при ретраях).
+            </Callout>
+          </DocSection>
+        ),
+      },
+      {
+        id: "sandboxes-agent",
+        label: "Туториал: AI-агент с кодом",
+        content: (
+          <DocSection
+            title="AI-агент, который пишет и выполняет код"
+            intro="Полный цикл на одном ключе aineron: LLM генерирует решение через /chat/completions, песочница безопасно его выполняет, результат возвращается агенту."
+          >
+            <StandaloneCodeBlock code={SANDBOX_AGENT} />
+            <P>
+              Паттерн расширяется до полноценного tool use: опишите песочницу как инструмент
+              (<IC>run_python</IC>) в параметре <IC>tools</IC> запроса к модели — и модель сама
+              решит, когда выполнять код, а когда отвечать текстом.
+            </P>
+            <Callout type="tip">
+              Держите одну песочницу на диалог (а не на каждый вызов): состояние — переменные,
+              установленные пакеты, файлы — сохраняется между <IC>exec</IC>, а старт не тратится повторно.
+            </Callout>
           </DocSection>
         ),
       },
