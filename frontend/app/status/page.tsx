@@ -8,6 +8,7 @@ interface ServiceCheck {
   latency_ms?: number;
   error?: string;
   active_models?: number;
+  active_sessions?: number;
   p95_s?: number;
   hit_rate?: number;
   slots_used?: number;
@@ -21,15 +22,18 @@ interface StatusData {
     cache?: ServiceCheck;
     upstream?: ServiceCheck;
     preview?: ServiceCheck;
+    sandboxes?: ServiceCheck;
   };
   timestamp: number;
 }
 
-const SERVICES: { key: keyof StatusData["checks"]; label: string }[] = [
+const SERVICES: { key: keyof StatusData["checks"]; label: string; optional?: boolean }[] = [
   { key: "database", label: "База данных" },
   { key: "cache", label: "Кэш / очередь (Redis)" },
   { key: "upstream", label: "AI-сервис" },
   { key: "preview", label: "Studio Preview (E2B)" },
+  // Показывается только когда Sandbox API включён (бэкенд отдаёт check)
+  { key: "sandboxes", label: "Sandbox API", optional: true },
 ];
 
 function StatusIcon({ status }: { status: string }) {
@@ -115,14 +119,16 @@ export default function StatusPage() {
 
       {/* Services list */}
       <div className="mb-6 overflow-hidden rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white">
-        {SERVICES.map((svc, idx) => {
+        {SERVICES.filter(
+          (svc) => !svc.optional || data?.checks[svc.key] !== undefined
+        ).map((svc, idx, visible) => {
           const check = data?.checks[svc.key];
           return (
             <div
               key={svc.key}
               className={[
                 "flex items-center justify-between px-5 py-4",
-                idx < SERVICES.length - 1
+                idx < visible.length - 1
                   ? "border-b border-[rgba(13,13,13,0.06)]"
                   : "",
               ].join(" ")}
@@ -139,6 +145,9 @@ export default function StatusPage() {
                 )}
                 {check?.active_models !== undefined && (
                   <span>{check.active_models} моделей</span>
+                )}
+                {check?.active_sessions !== undefined && (
+                  <span>{check.active_sessions} активных</span>
                 )}
                 {svc.key === "preview" && check && (
                   <PreviewMeta check={check} />

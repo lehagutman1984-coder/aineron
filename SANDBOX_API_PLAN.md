@@ -315,7 +315,7 @@ with Sandbox(template="python") as sbx:          # ключ из env AINERON_API
 
 ---
 
-### Sprint SB-1 — Runtime-ядро в preview-service (2–3 дня)
+### Sprint SB-1 — Runtime-ядро в preview-service (2–3 дня) — ✅ CODE-COMPLETE 2026-07-06
 
 **Результат:** `curl` с внутренним токеном может создать голую VM, записать файл,
 выполнить код, прочитать логи и убить сессию. Django ещё не тронут.
@@ -371,7 +371,7 @@ sandbox:user:{uid}      → счётчик активных (INCR-first патт
 
 ---
 
-### Sprint SB-2 — Django-слой: биллинг, квоты, публичный API (2–3 дня)
+### Sprint SB-2 — Django-слой: биллинг, квоты, публичный API (2–3 дня) — ✅ CODE-COMPLETE 2026-07-06 (36 тестов OK)
 
 **Результат:** внешний запрос с Bearer APIKey проходит весь путь; деньги списываются
 корректно во всех сценариях. Флаг `SANDBOX_API_ENABLED` ещё = 0 (тестим на стейдже/локально).
@@ -435,7 +435,7 @@ sandbox:user:{uid}      → счётчик активных (INCR-first патт
 
 ---
 
-### Sprint SB-3 — DX: SDK, доки, playground, лендинг (3–4 дня)
+### Sprint SB-3 — DX: SDK, доки, playground, лендинг (3–4 дня) — ✅ CODE-COMPLETE 2026-07-06 (PyPI-публикация — при запуске)
 
 **Результат:** незнакомый разработчик проходит путь «регистрация → первый stdout» за < 5 минут.
 
@@ -460,7 +460,7 @@ sandbox:user:{uid}      → счётчик активных (INCR-first патт
 
 ---
 
-### Sprint SB-4 — Hardening и запуск (2–3 дня)
+### Sprint SB-4 — Hardening и запуск (2–3 дня) — ✅ CODE-COMPLETE 2026-07-06 (сам запуск — по чеклисту §10 после разблокировки E2B)
 
 **Результат:** `SANDBOX_API_ENABLED=1` в проде, метрики и алерты живые.
 

@@ -54,9 +54,22 @@ def settle(session, duration_seconds: float) -> int:
         session.user.add_kopecks(
             refund, type='refund', reference=f'sandbox:{session.pk}:settle',
         )
+    already_settled = session.charged_kopecks > 0
     session.charged_kopecks = charged
     session.stopped_at = session.stopped_at or timezone.now()
     session.save(update_fields=['charged_kopecks', 'stopped_at'])
+    # Запись в аналитику трат (/account/analytics/) — один раз на сессию
+    if charged > 0 and not already_settled:
+        try:
+            from users.models import UserSpending
+            UserSpending.objects.create(
+                user=session.user,
+                amount=charged // 100,
+                amount_kopecks=charged,
+                description=f'Песочница Sandbox API ({session.size}, {minutes} мин)',
+            )
+        except Exception:
+            logger.warning('[sandbox] UserSpending write failed for %s', session.public_id)
     logger.info('[sandbox] settle %s: charged=%s refund=%s', session.public_id, charged, refund)
     return charged
 
