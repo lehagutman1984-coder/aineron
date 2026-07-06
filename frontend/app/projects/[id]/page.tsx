@@ -1369,6 +1369,8 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                 {connType === "website" ? "URL сайта" : connType === "rss" ? "URL RSS-ленты" : "URL репозитория"}
               </label>
               <input value={repoUrl} onChange={(e) => setRepoUrl(e.target.value)} required
+                pattern={connType === "github" || connType === "gitea" ? "https?://.+/.+/.+" : undefined}
+                title={connType === "github" || connType === "gitea" ? "Полная ссылка на репозиторий: https://домен/владелец/репозиторий" : undefined}
                 placeholder={
                   connType === "github" ? "https://github.com/owner/repo"
                     : connType === "gitea" ? "https://gitea.example.com/owner/repo"
@@ -1376,6 +1378,16 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
                     : "https://example.com/feed.xml"
                 }
                 className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[15px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all" />
+              {connType === "github" && (
+                <p className="mt-1 text-[13px] text-[rgba(13,13,13,0.40)]">
+                  Ссылка на репозиторий, например https://github.com/company/project
+                </p>
+              )}
+              {connType === "gitea" && (
+                <p className="mt-1 text-[13px] text-[rgba(13,13,13,0.40)]">
+                  Ссылка на репозиторий в вашей Gitea, например https://git.company.ru/team/project
+                </p>
+              )}
               {connType === "website" && (
                 <p className="mt-1 text-[13px] text-[rgba(13,13,13,0.40)]">
                   Страницы сайта попадут в базу знаний и будут пересканироваться раз в сутки
