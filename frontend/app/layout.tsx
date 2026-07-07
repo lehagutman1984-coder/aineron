@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages } from "next-intl/server";
+import { RTL_LOCALES } from "@/i18n/request";
 import "./globals.css";
 import { Providers } from "./providers";
 import { Navbar } from "@/components/layout/Navbar";
@@ -49,13 +52,19 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
+  const messages = await getMessages();
   return (
-    <html lang="ru" className={inter.variable}>
+    <html
+      lang={locale}
+      dir={RTL_LOCALES.includes(locale) ? "rtl" : "ltr"}
+      className={inter.variable}
+    >
       <head>
         {/* Anti-FOUC: apply theme before React hydrates to avoid flash */}
         <script
@@ -65,6 +74,7 @@ export default function RootLayout({
         />
       </head>
       <body>
+        <NextIntlClientProvider locale={locale} messages={messages}>
         <Providers>
           <ThemeProvider />
           <AuthInit />
@@ -75,6 +85,7 @@ export default function RootLayout({
           <Analytics />
           <PWAProvider />
         </Providers>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

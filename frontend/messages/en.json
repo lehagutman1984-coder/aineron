@@ -1,0 +1,33 @@
+{
+  "footer": {
+    "description": "All AI models in one place. GPT-4o, Claude, Gemini and more — pay per message, no subscription.",
+    "product": {
+      "title": "Product",
+      "catalog": "Model catalog",
+      "compare": "Compare models",
+      "gallery": "Gallery",
+      "projects": "Projects",
+      "prompts": "Prompts",
+      "personas": "Personas",
+      "arena": "Model arena"
+    },
+    "developers": {
+      "title": "Developers",
+      "docs": "Documentation",
+      "api": "API & integrations",
+      "sandboxes": "Sandboxes",
+      "playground": "Playground",
+      "ide": "IDE integrations",
+      "account": "Dashboard"
+    },
+    "company": {
+      "title": "Company",
+      "blog": "Blog",
+      "privacy": "Privacy policy",
+      "terms": "Terms of service"
+    },
+    "legal": "Ivashchenko Alexey · TIN 220805856949",
+    "privacyShort": "Privacy",
+    "termsShort": "Terms"
+  }
+}

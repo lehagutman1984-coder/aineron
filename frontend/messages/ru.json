@@ -1,0 +1,33 @@
+{
+  "footer": {
+    "description": "AI-нейросети без VPN. GPT-4o, Claude, Gemini и другие — в одном месте.",
+    "product": {
+      "title": "Продукт",
+      "catalog": "Каталог моделей",
+      "compare": "Сравнение моделей",
+      "gallery": "Галерея",
+      "projects": "Проекты",
+      "prompts": "Промты",
+      "personas": "Персоны",
+      "arena": "Арена моделей"
+    },
+    "developers": {
+      "title": "Разработчикам",
+      "docs": "Документация",
+      "api": "API и интеграции",
+      "sandboxes": "Sandboxes",
+      "playground": "Playground",
+      "ide": "IDE-интеграции",
+      "account": "Личный кабинет"
+    },
+    "company": {
+      "title": "Компания",
+      "blog": "Блог",
+      "privacy": "Политика конфиденциальности",
+      "terms": "Условия использования"
+    },
+    "legal": "Иващенко Алексей Анатольевич · ИНН 220805856949",
+    "privacyShort": "Конфиденциальность",
+    "termsShort": "Условия"
+  }
+}

@@ -1,40 +1,42 @@
-﻿import Link from "next/link";
+import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 const COLUMNS = [
   {
-    title: "Продукт",
+    key: "product",
     links: [
-      { label: "Каталог моделей", href: "/models/" },
-      { label: "Сравнение моделей", href: "/compare/" },
-      { label: "Галерея", href: "/gallery/" },
-      { label: "Проекты", href: "/projects/" },
-      { label: "Промты", href: "/prompts/" },
-      { label: "Персоны", href: "/personas/" },
-      { label: "Арена моделей", href: "/arena/" },
+      { label: "catalog", href: "/models/" },
+      { label: "compare", href: "/compare/" },
+      { label: "gallery", href: "/gallery/" },
+      { label: "projects", href: "/projects/" },
+      { label: "prompts", href: "/prompts/" },
+      { label: "personas", href: "/personas/" },
+      { label: "arena", href: "/arena/" },
     ],
   },
   {
-    title: "Разработчикам",
+    key: "developers",
     links: [
-      { label: "Документация", href: "/docs/" },
-      { label: "API и интеграции", href: "/api-docs/" },
-      { label: "Sandboxes", href: "/sandbox/" },
-      { label: "Playground", href: "/api-docs/playground/" },
-      { label: "IDE-интеграции", href: "/ide/" },
-      { label: "Личный кабинет", href: "/account/" },
+      { label: "docs", href: "/docs/" },
+      { label: "api", href: "/api-docs/" },
+      { label: "sandboxes", href: "/sandbox/" },
+      { label: "playground", href: "/api-docs/playground/" },
+      { label: "ide", href: "/ide/" },
+      { label: "account", href: "/account/" },
     ],
   },
   {
-    title: "Компания",
+    key: "company",
     links: [
-      { label: "Блог", href: "/blog/" },
-      { label: "Политика конфиденциальности", href: "/privacy-policy/" },
-      { label: "Условия использования", href: "/terms/" },
+      { label: "blog", href: "/blog/" },
+      { label: "privacy", href: "/privacy-policy/" },
+      { label: "terms", href: "/terms/" },
     ],
   },
-];
+] as const;
 
 export function Footer() {
+  const t = useTranslations("footer");
   return (
     <footer className="border-t border-[rgba(13,13,13,0.10)] bg-white dark:border-[rgba(255,255,255,0.08)] dark:bg-[#1C1917]">
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
@@ -48,15 +50,15 @@ export function Footer() {
               aineron.ru
             </Link>
             <p className="mt-2 text-[15px] leading-relaxed text-[rgba(13,13,13,0.50)] dark:text-[rgba(236,236,236,0.40)]">
-              AI-нейросети без VPN. GPT-4o, Claude, Gemini и другие — в одном месте.
+              {t("description")}
             </p>
           </div>
 
           {/* Columns */}
           {COLUMNS.map((col) => (
-            <div key={col.title}>
+            <div key={col.key}>
               <p className="mb-3 text-[13px] font-semibold uppercase tracking-wider text-[rgba(13,13,13,0.40)] dark:text-[rgba(236,236,236,0.35)]">
-                {col.title}
+                {t(`${col.key}.title`)}
               </p>
               <ul className="flex flex-col gap-2">
                 {col.links.map((link) => (
@@ -65,7 +67,7 @@ export function Footer() {
                       href={link.href}
                       className="text-[15px] text-[rgba(13,13,13,0.65)] transition-colors hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.50)] dark:hover:text-[#EDE8E3]"
                     >
-                      {link.label}
+                      {t(`${col.key}.${link.label}`)}
                     </Link>
                   </li>
                 ))}
@@ -81,7 +83,7 @@ export function Footer() {
               &copy; {new Date().getFullYear()} aineron.ru
             </p>
             <p className="text-[13px] text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.25)]">
-              Иващенко Алексей Анатольевич · ИНН 220805856949 ·{" "}
+              {t("legal")} ·{" "}
               <a
                 href="mailto:support@aineron.ru"
                 className="transition-colors hover:text-[#1A1A1A] dark:hover:text-[#EDE8E3]"
@@ -95,13 +97,13 @@ export function Footer() {
               href="/privacy-policy/"
               className="text-[14px] text-[rgba(13,13,13,0.40)] transition-colors hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.30)] dark:hover:text-[#EDE8E3]"
             >
-              Конфиденциальность
+              {t("privacyShort")}
             </Link>
             <Link
               href="/terms/"
               className="text-[14px] text-[rgba(13,13,13,0.40)] transition-colors hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.30)] dark:hover:text-[#EDE8E3]"
             >
-              Условия
+              {t("termsShort")}
             </Link>
           </div>
         </div>

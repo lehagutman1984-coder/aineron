@@ -1,0 +1,28 @@
+{
+  "_comment": "Глоссарий для LLM-пайплайна переводов (scripts/translate-locales.mjs). Термины подаются в system prompt переводчика. Ключи do_not_translate не переводятся никогда.",
+  "do_not_translate": [
+    "aineron",
+    "GPT-4o",
+    "Claude",
+    "Gemini",
+    "API",
+    "Sandboxes",
+    "Playground",
+    "Telegram",
+    "@CryptoBot",
+    "USDT",
+    "TON"
+  ],
+  "terms": {
+    "баланс": { "en": "balance", "note": "user's prepaid balance, not 'account'" },
+    "кредиты": { "en": "credits", "note": "internal currency on the international instance" },
+    "пополнить": { "en": "top up", "note": "adding funds, not 'refill'" },
+    "тариф": { "en": "plan", "note": "subscription plan, not 'tariff'" },
+    "нейросеть": { "en": "AI model", "note": "prefer 'model' over literal 'neural network'" },
+    "промт": { "en": "prompt" },
+    "чат": { "en": "chat" },
+    "подписка": { "en": "subscription" },
+    "личный кабинет": { "en": "dashboard" }
+  },
+  "tone": "Professional, concise product UI. No exclamation marks, no emoji. Match the register of Linear/Vercel/Stripe interfaces. Button labels are short verbs."
+}
