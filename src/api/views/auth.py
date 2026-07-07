@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth import get_user_model
 from rest_framework.views import APIView
@@ -111,10 +112,16 @@ class RegisterView(APIView):
             username=username, email=email, password=password
         )
         apply_referral(user, request)
-        try:
-            send_verification_email(user, request)
-        except Exception:
-            pass
+        if settings.INTL_MODE:
+            # Международный инстанс: SMTP недоступен (порты хостера закрыты) —
+            # верифицируем email сразу, чтобы не заводить пользователя в тупик.
+            user.email_verified = True
+            user.save(update_fields=['email_verified'])
+        else:
+            try:
+                send_verification_email(user, request)
+            except Exception:
+                pass
         login(request, user, backend='django.contrib.auth.backends.ModelBackend')
         response = Response(UserSerializer(user).data, status=201)
         if request.COOKIES.get('ref_code'):

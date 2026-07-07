@@ -239,5 +239,18 @@
       "docs": "Documentation",
       "recentChats": "Recent chats"
     }
+  },
+  "billing": {
+    "statusSuccess": "Paid",
+    "statusPending": "Pending",
+    "statusFailed": "Failed",
+    "statusRefunded": "Refunded",
+    "typeSubscription": "Plan",
+    "typePages": "Top-up",
+    "typePromo": "Promo code",
+    "promoPlaceholder": "Enter promo code",
+    "promoApply": "Apply",
+    "historyEmpty": "No payments yet.",
+    "loading": "Loading..."
   }
 }

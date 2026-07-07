@@ -34,7 +34,8 @@ function RegisterForm() {
     try {
       const user = await authRegister(email.trim().toLowerCase(), password);
       setUser(user);
-      router.push("/verify-email/");
+      // На intl-инстансе email верифицируется при регистрации — сразу в кабинет
+      router.push(user.email_verified ? next : "/verify-email/");
     } catch (err) {
       setError(
         err instanceof APIError ? err.message : t("registerError")

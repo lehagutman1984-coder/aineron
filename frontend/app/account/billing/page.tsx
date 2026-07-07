@@ -36,6 +36,7 @@ import type { CryptoTopupResponse } from "@/lib/api/client";
 import type { PromoCheckResponse } from "@/lib/api/client";
 import type { Tariff, PaymentHistory, RobokassaForm, UserSubscription } from "@/lib/api/types";
 import { formatMoney, CURRENCY } from "@/lib/money";
+import { useTranslations } from "next-intl";
 import { useAuthStore } from "@/lib/stores/auth";
 
 // ── Robokassa redirect ───────────────────────────────────────────────────────
@@ -304,21 +305,21 @@ function paymentStatusIcon(status: PaymentHistory["status"]) {
   }
 }
 
-function paymentStatusLabel(status: PaymentHistory["status"]) {
+function paymentStatusLabel(status: PaymentHistory["status"], t: (k: string) => string) {
   const map: Record<PaymentHistory["status"], string> = {
-    success: "Оплачено",
-    pending: "Ожидает",
-    failed: "Ошибка",
-    refunded: "Возврат",
+    success: t("statusSuccess"),
+    pending: t("statusPending"),
+    failed: t("statusFailed"),
+    refunded: t("statusRefunded"),
   };
   return map[status];
 }
 
-function paymentTypeLabel(type: PaymentHistory["payment_type"]) {
+function paymentTypeLabel(type: PaymentHistory["payment_type"], t: (k: string) => string) {
   const map: Record<PaymentHistory["payment_type"], string> = {
-    subscription: "Тариф",
-    pages: "Пополнение",
-    promo: "Промокод",
+    subscription: t("typeSubscription"),
+    pages: t("typePages"),
+    promo: t("typePromo"),
   };
   return map[type];
 }
@@ -803,6 +804,7 @@ function CryptoSection() {
 // ── Promo code form ───────────────────────────────────────────────────────────
 
 function PromoSection() {
+  const t = useTranslations("billing");
   const queryClient = useQueryClient();
   const setBalance = useAuthStore((s) => s.setBalance);
   const [code, setCode] = useState("");
@@ -826,7 +828,7 @@ function PromoSection() {
       <div className="flex gap-2">
         <input
           type="text"
-          placeholder="Введите промокод"
+          placeholder={t("promoPlaceholder")}
           value={code}
           onChange={(e) => {
             setCode(e.target.value.toUpperCase());
@@ -842,7 +844,7 @@ function PromoSection() {
           className="px-4 py-2 rounded-lg text-sm font-medium bg-[var(--color-accent)] text-white
             hover:opacity-90 transition-opacity disabled:opacity-50"
         >
-          {mutation.isPending ? "..." : "Применить"}
+          {mutation.isPending ? "..." : t("promoApply")}
         </button>
       </div>
       {mutation.error && (
@@ -862,6 +864,7 @@ function PromoSection() {
 // ── Payment history ───────────────────────────────────────────────────────────
 
 function HistorySection() {
+  const t = useTranslations("billing");
   const { data: payments, isLoading } = useQuery({
     queryKey: ["payment-history"],
     queryFn: getPaymentHistory,
@@ -874,7 +877,7 @@ function HistorySection() {
   if (!payments?.length) {
     return (
       <p className="text-[var(--color-text-secondary)] text-sm">
-        История платежей пуста.
+        {t("historyEmpty")}
       </p>
     );
   }
@@ -887,10 +890,10 @@ function HistorySection() {
             {paymentStatusIcon(p.status)}
             <div className="min-w-0">
               <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">
-                {p.description || paymentTypeLabel(p.payment_type)}
+                {p.description || paymentTypeLabel(p.payment_type, t)}
               </p>
               <p className="text-xs text-[var(--color-text-secondary)]">
-                {formatDate(p.created_at)} · {paymentTypeLabel(p.payment_type)}
+                {formatDate(p.created_at)} · {paymentTypeLabel(p.payment_type, t)}
               </p>
             </div>
           </div>
@@ -904,7 +907,7 @@ function HistorySection() {
               {p.amount_kopecks != null
                 ? `+${formatMoney(p.amount_kopecks)}`
                 : `+${p.pages_count} ₽`}{" "}
-              · {paymentStatusLabel(p.status)}
+              · {paymentStatusLabel(p.status, t)}
             </p>
           </div>
         </div>

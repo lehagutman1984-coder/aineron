@@ -239,5 +239,18 @@
       "docs": "Документация",
       "recentChats": "Последние чаты"
     }
+  },
+  "billing": {
+    "statusSuccess": "Оплачено",
+    "statusPending": "Ожидает",
+    "statusFailed": "Ошибка",
+    "statusRefunded": "Возврат",
+    "typeSubscription": "Тариф",
+    "typePages": "Пополнение",
+    "typePromo": "Промокод",
+    "promoPlaceholder": "Введите промокод",
+    "promoApply": "Применить",
+    "historyEmpty": "История платежей пуста.",
+    "loading": "Загрузка..."
   }
 }
