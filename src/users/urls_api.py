@@ -1,5 +1,6 @@
 from django.urls import path, include
 from . import views
+from .crypto_payments import crypto_pay_webhook
 
 app_name = 'users_api'
 
@@ -21,6 +22,7 @@ urlpatterns = [
     path('create-payment/', views.create_robokassa_payment, name='create_payment'),
     path('payment-success/', views.payment_success, name='payment_success'),
     path('payment-fail/', views.payment_fail, name='payment_fail'),
+    path('payment/crypto/webhook/', crypto_pay_webhook, name='crypto_pay_webhook'),
 
     # ========== ПОКУПКА ЗВЕЗД ==========
     path('page-settings/', views.get_page_sale_settings, name='page_sale_settings'),

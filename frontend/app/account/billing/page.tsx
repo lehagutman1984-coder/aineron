@@ -16,6 +16,8 @@ import {
   AlertCircle,
   X,
   Star,
+  Bitcoin,
+  ExternalLink,
 } from "lucide-react";
 import {
   getTariffs,
@@ -26,7 +28,11 @@ import {
   applyPromoCode,
   checkPromoCode,
   updateAutoRenew,
+  getCryptoConfig,
+  createCryptoTopup,
+  getCryptoTopupStatus,
 } from "@/lib/api/client";
+import type { CryptoTopupResponse } from "@/lib/api/client";
 import type { PromoCheckResponse } from "@/lib/api/client";
 import type { Tariff, PaymentHistory, RobokassaForm, UserSubscription } from "@/lib/api/types";
 import { formatRub } from "@/lib/money";
@@ -593,6 +599,147 @@ function StarsSection() {
   );
 }
 
+// ── Crypto payment (Crypto Pay / @CryptoBot) ─────────────────────────────────
+
+function CryptoSection() {
+  const queryClient = useQueryClient();
+  const setBalance = useAuthStore((s) => s.setBalance);
+
+  const { data: config } = useQuery({
+    queryKey: ["crypto-config"],
+    queryFn: getCryptoConfig,
+  });
+
+  const [amount, setAmount] = useState<number | null>(null);
+  const [invoice, setInvoice] = useState<CryptoTopupResponse | null>(null);
+  const [paid, setPaid] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: createCryptoTopup,
+    onSuccess: (data) => {
+      setInvoice(data);
+      setPaid(false);
+      window.open(data.pay_url, "_blank", "noopener");
+    },
+    onError: (err: Error) => setError(err.message),
+  });
+
+  // Поллинг статуса, пока счёт не оплачен/не истёк
+  useQuery({
+    queryKey: ["crypto-status", invoice?.payment_id],
+    queryFn: async () => {
+      const status = await getCryptoTopupStatus(invoice!.payment_id);
+      if (status.status === "success") {
+        setPaid(true);
+        setInvoice(null);
+        setBalance(status.balance_kopecks);
+        queryClient.invalidateQueries({ queryKey: ["tariffs"] });
+        queryClient.invalidateQueries({ queryKey: ["payment-history"] });
+      } else if (status.status === "failed") {
+        setInvoice(null);
+        setError("Счёт истёк или отменён. Создайте новый.");
+      }
+      return status;
+    },
+    enabled: invoice !== null,
+    refetchInterval: 5000,
+  });
+
+  // Канал выключен на бэкенде (CRYPTO_PAY_ENABLED=0) — блок скрыт целиком
+  if (!config?.enabled) return null;
+
+  const value = amount ?? config.min_amount;
+
+  return (
+    <section>
+      <SectionHeader icon={Bitcoin} title="Оплата криптовалютой" />
+      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 space-y-4">
+        <p className="text-sm text-[var(--color-text-secondary)]">
+          Пополнение баланса через {config.assets.join(", ")} — счёт выставляется в @CryptoBot,
+          зачисление в рублях по номиналу счёта.
+        </p>
+
+        {invoice ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm text-[var(--color-text-primary)]">
+              <Clock size={16} className="text-yellow-500 shrink-0 animate-pulse" />
+              Ожидаем оплату счёта на {parseFloat(invoice.amount).toLocaleString("ru-RU")} ₽...
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <a
+                href={invoice.pay_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium
+                  bg-[var(--color-accent)] text-white hover:opacity-90 transition-opacity"
+              >
+                Открыть счёт <ExternalLink size={14} />
+              </a>
+              <button
+                onClick={() => setInvoice(null)}
+                className="px-4 py-2 rounded-lg text-sm font-medium border border-[var(--color-border)]
+                  text-[var(--color-text-primary)] hover:bg-[var(--color-bg)] transition-colors"
+              >
+                Отмена
+              </button>
+            </div>
+            <p className="text-xs text-[var(--color-text-secondary)]">
+              Счёт действителен 30 минут. Баланс пополнится автоматически после оплаты.
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="flex-1 min-w-[160px]">
+              <label className="block text-xs text-[var(--color-text-secondary)] mb-1.5">
+                Сумма, ₽ (от {config.min_amount} до {config.max_amount})
+              </label>
+              <input
+                type="number"
+                min={config.min_amount}
+                max={config.max_amount}
+                value={value}
+                onChange={(e) => {
+                  setAmount(parseInt(e.target.value) || 0);
+                  setError(null);
+                }}
+                className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)]
+                  px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none
+                  focus:border-[var(--color-accent)]"
+              />
+            </div>
+            <button
+              onClick={() => {
+                setError(null);
+                setPaid(false);
+                mutation.mutate(value);
+              }}
+              disabled={
+                mutation.isPending || value < config.min_amount || value > config.max_amount
+              }
+              className="px-4 py-2 rounded-lg text-sm font-medium bg-[var(--color-accent)] text-white
+                hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              {mutation.isPending ? "Создание счёта..." : "Выставить счёт"}
+            </button>
+          </div>
+        )}
+
+        {paid && (
+          <p className="text-green-500 text-sm flex items-center gap-1.5">
+            <CheckCircle size={14} /> Оплата получена, баланс пополнен.
+          </p>
+        )}
+        {error && (
+          <p className="text-red-500 text-sm flex items-center gap-1.5">
+            <AlertCircle size={14} /> {error}
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
 // ── Promo code form ───────────────────────────────────────────────────────────
 
 function PromoSection() {
@@ -812,6 +959,9 @@ export default function BillingPage() {
           <StarsSection />
         </div>
       </section>
+
+      {/* Crypto payment (скрыт при CRYPTO_PAY_ENABLED=0) */}
+      <CryptoSection />
 
       {/* Promo code */}
       <section>

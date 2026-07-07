@@ -462,6 +462,8 @@ E2B microVM для исполнения недоверенного кода (AI-
 
 **Telegram Stars (XTR, в боте):** покупка звёзд через нативные платежи Telegram (`handlers/payment.py`), поддержка кастомной суммы.
 
+**Криптовалюта (Crypto Pay / @CryptoBot):** пополнение баланса в USDT/TON, фиатный инвойс в RUB (`src/users/crypto_payments.py`, views `src/api/views/crypto.py`). Включается `CRYPTO_PAY_ENABLED=1` — при 0 фронт скрывает блок оплаты (флаг отдаётся через `GET /api/v1/billing/crypto/`). Зачисление идемпотентно (`reference='crypto:{invoice_id}'`) и работает двумя путями: вебхук `/users/api/payment/crypto/webhook/` (HMAC-подпись) и поллинг статуса фронтом (сам опрашивает Crypto Pay — вебхук не обязателен). Тесты: `api/tests_crypto.py`.
+
 ---
 
 ## Конфигурация моделей изображений/видео (`config_json`)
@@ -522,6 +524,12 @@ ROBOKASSA_LOGIN=
 ROBOKASSA_PASS1=
 ROBOKASSA_PASS2=
 ROBOKASSA_TEST_MODE=0
+
+# Платежи (криптовалюта, Crypto Pay / @CryptoBot)
+CRYPTO_PAY_ENABLED=0           # 1 = включить оплату криптой (фронт показывает блок по флагу из API)
+CRYPTO_PAY_TOKEN=              # токен приложения из @CryptoBot → Crypto Pay
+CRYPTO_PAY_ASSETS=USDT,TON     # принимаемые активы
+# CRYPTO_PAY_API_URL=https://pay.crypt.bot/api  (testnet: https://testnet-pay.crypt.bot/api)
 
 # AI провайдер (laozhang.ai) — текст и изображения
 LAOZHANG_API_KEY=

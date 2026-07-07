@@ -581,6 +581,15 @@ ROBOKASSA_PASS2 = os.environ.get('ROBOKASSA_PASS2', '')
 ROBOKASSA_TEST_MODE = int(os.environ.get('ROBOKASSA_TEST_MODE', 0))
 
 
+# ========== CRYPTO PAY (@CryptoBot) ==========
+# Оплата криптовалютой (USDT/TON) через Crypto Pay API. CRYPTO_PAY_ENABLED=0
+# полностью выключает канал: API отвечает enabled=false, фронт скрывает блок.
+CRYPTO_PAY_ENABLED = os.environ.get('CRYPTO_PAY_ENABLED', '0') == '1'
+CRYPTO_PAY_TOKEN = os.environ.get('CRYPTO_PAY_TOKEN', '')
+CRYPTO_PAY_API_URL = os.environ.get('CRYPTO_PAY_API_URL', 'https://pay.crypt.bot/api')
+CRYPTO_PAY_ASSETS = os.environ.get('CRYPTO_PAY_ASSETS', 'USDT,TON')
+
+
 # ========== ОБРАБОТЧИК 404 ==========
 handler404 = 'landing.views.custom_404_view'
 

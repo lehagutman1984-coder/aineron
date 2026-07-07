@@ -517,6 +517,42 @@ export const buyPages = (pages: number): Promise<CreatePaymentResponse> =>
 export const getPaymentHistory = (): Promise<PaymentHistory[]> =>
   request<PaymentHistory[]>("/billing/history/");
 
+// ── Crypto Pay (оплата криптовалютой) ──────────────────────────────────────
+
+export interface CryptoConfig {
+  enabled: boolean;
+  assets: string[];
+  min_amount: number;
+  max_amount: number;
+}
+
+export interface CryptoTopupResponse {
+  payment_id: number;
+  invoice_id: number;
+  amount: string;
+  pay_url: string;
+  web_url: string | null;
+  expires_in: number;
+}
+
+export interface CryptoStatusResponse {
+  payment_id: number;
+  status: "pending" | "success" | "failed" | "refunded";
+  balance_kopecks: number;
+}
+
+export const getCryptoConfig = (): Promise<CryptoConfig> =>
+  request<CryptoConfig>("/billing/crypto/");
+
+export const createCryptoTopup = (amount: number): Promise<CryptoTopupResponse> =>
+  request<CryptoTopupResponse>("/billing/crypto/topup/", {
+    method: "POST",
+    body: JSON.stringify({ amount }),
+  });
+
+export const getCryptoTopupStatus = (paymentId: number): Promise<CryptoStatusResponse> =>
+  request<CryptoStatusResponse>(`/billing/crypto/status/${paymentId}/`);
+
 export const getStarsUsage = (days?: number): Promise<StarsUsage> =>
   request<StarsUsage>(`/billing/stars-usage/${days ? `?days=${days}` : ""}`);
 
