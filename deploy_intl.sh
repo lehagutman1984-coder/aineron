@@ -1,0 +1,20 @@
+#!/bin/bash
+# Деплой международного инстанса (aineron.net) — GLOBAL_EXPANSION_PLAN.md, G3.
+# Запускается на intl-сервере из /opt/aineron: bash deploy_intl.sh
+set -e
+cd "$(dirname "$0")"
+
+echo "=== aineron.net: деплой международного инстанса ==="
+
+if [ -d .git ]; then
+    git pull origin main || echo "[WARN] git pull не удался — деплою текущее состояние"
+fi
+
+docker compose -f docker-compose.intl.yml up -d --build
+
+echo "=== Ожидание web-контейнера (миграции идут при старте) ==="
+sleep 10
+docker compose -f docker-compose.intl.yml exec -T web python manage.py migrate --noinput
+
+echo "=== Готово. Статус: ==="
+docker compose -f docker-compose.intl.yml ps

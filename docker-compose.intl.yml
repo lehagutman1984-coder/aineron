@@ -1,0 +1,152 @@
+# Международный инстанс (aineron.net) — GLOBAL_EXPANSION_PLAN.md, фаза G3.
+# Отдельный сервер, отдельная БД, свой .env. Без Studio/Gitea/Telegram-бота.
+# Запуск: docker compose -f docker-compose.intl.yml up -d --build
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: neiro_redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  db:
+    image: pgvector/pgvector:pg15
+    container_name: neiro_db
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    command: postgres -c shared_buffers=512MB -c effective_cache_size=1536MB
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build: .
+    container_name: neiro_web
+    restart: unless-stopped
+    env_file:
+      - .env
+    command: >
+      sh -c "
+      python manage.py migrate --noinput &&
+      python manage.py collectstatic --noinput &&
+      gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --threads 12 --timeout 300 --max-requests 500 --max-requests-jitter 50"
+    volumes:
+      - ./src:/app
+      - static_volume:/app/staticfiles
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  daphne:
+    build: .
+    container_name: neiro_daphne
+    restart: unless-stopped
+    env_file:
+      - .env
+    command: daphne -b 0.0.0.0 -p 9000 config.asgi:application
+    volumes:
+      - ./src:/app
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery_worker:
+    build: .
+    container_name: neiro_celery_worker
+    restart: unless-stopped
+    env_file:
+      - .env
+    command: celery -A config worker --loglevel=info --pool=gevent --concurrency=50
+    volumes:
+      - ./src:/app
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    ulimits:
+      nofile: 65535
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery_beat:
+    build: .
+    container_name: neiro_celery_beat
+    restart: unless-stopped
+    env_file:
+      - .env
+    command: celery -A config beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    volumes:
+      - ./src:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../Dockerfile.frontend
+      args:
+        NEXT_PUBLIC_API_URL: https://aineron.net/api/v1
+        NEXT_PUBLIC_SITE_URL: https://aineron.net
+        NEXT_PUBLIC_E2B_PREVIEW: "0"
+        NEXT_PUBLIC_DEFAULT_LOCALE: en
+    container_name: neiro_frontend
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - DJANGO_INTERNAL_URL=http://web:8000
+      - STUDIO_ENABLED=false
+    depends_on:
+      - web
+
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: neiro_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.intl.conf:/etc/nginx/conf.d/default.conf
+      - static_volume:/static
+      - ./src/media:/media
+      - ./ssl:/etc/nginx/ssl
+      - ./certbot-webroot:/var/www/certbot
+    depends_on:
+      - web
+      - frontend
+      - daphne
+
+volumes:
+  postgres_data:
+  redis_data:
+  static_volume:
