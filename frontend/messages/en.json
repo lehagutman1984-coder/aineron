@@ -1,4 +1,92 @@
 {
+  "nav": {
+    "catalog": "Models",
+    "compare": "Compare",
+    "gallery": "Gallery",
+    "projects": "Projects",
+    "personas": "Personas",
+    "docs": "Docs",
+    "api": "API",
+    "blog": "Blog",
+    "account": "Dashboard",
+    "accountFull": "Dashboard",
+    "logout": "Sign out",
+    "login": "Sign in",
+    "startFree": "Start for free",
+    "menu": "Menu",
+    "themeSystem": "System theme",
+    "themeLight": "Light theme",
+    "themeDark": "Dark theme"
+  },
+  "home": {
+    "badge": "Every top AI model — one account, pay as you go",
+    "title": "All AI models in one place",
+    "subtitle": "GPT-4o, Claude, Gemini, Midjourney and 200+ models. One account, pay per message — no subscription.",
+    "typewriter": [
+      "GPT-4o writes code in seconds",
+      "Claude explains complex things simply",
+      "Gemini analyzes your documents",
+      "Midjourney draws on demand",
+      "DeepSeek solves math problems",
+      "Perplexity finds up-to-date answers"
+    ],
+    "popularTitle": "Popular models",
+    "popularSubtitle": "The most in-demand AI models",
+    "allModels": "All models",
+    "freeTitle": "{count} free text models",
+    "freeText": "GPT-OSS, Qwen3, Gemma, DeepSeek R1 and other chat models — completely free, no top-up needed. Available right after sign-up.",
+    "freeCta": "Open free models",
+    "whyTitle": "Why aineron",
+    "features": [
+      { "title": "All models at once", "text": "GPT-4o, Claude, Gemini, Midjourney and 200+ models — one account and a shared balance." },
+      { "title": "No subscription", "text": "Pay per message with credits. No $20/month plans — spend only on what you use." },
+      { "title": "API for developers", "text": "OpenAI-compatible API. Plug in Cursor, VS Code or your own product." },
+      { "title": "Text, images and video", "text": "Chat, image and video generation — in a single interface." }
+    ],
+    "comparisonTitle": "An honest comparison",
+    "comparisonSubtitle": "aineron versus the market leaders",
+    "comparisonFeatureCol": "Feature",
+    "comparisonRows": [
+      "No credit card required",
+      "Pay with crypto (USDT, TON)",
+      "GPT, Claude and Gemini in one place",
+      "Side-by-side model comparison",
+      "Image and video generation",
+      "File uploads and web search",
+      "OpenAI-compatible API",
+      "Pay per message, no subscription"
+    ],
+    "pricingTitle": "Simple pay-as-you-go pricing",
+    "pricingSubtitle": "Top up your balance and spend it on any model. Credits never expire.",
+    "pricing": [
+      { "title": "Start", "price": "1,000 credits", "sub": "free after sign-up" },
+      { "title": "Top up", "price": "with crypto", "sub": "USDT or TON, from $1" },
+      { "title": "Rate", "price": "$1 = 10,000", "sub": "credits — a message costs a few hundred" }
+    ],
+    "pricingNote": "No card required to start",
+    "faqTitle": "Frequently asked questions",
+    "faq": [
+      { "q": "How does the balance work?", "a": "Your balance is measured in credits. Each message costs a few hundred credits depending on the model. Credits never expire, and you can top up any amount starting from $1." },
+      { "q": "How do I pay?", "a": "With cryptocurrency: USDT or TON via @CryptoBot in Telegram. Choose an amount, pay the invoice, and your balance updates automatically within seconds." },
+      { "q": "Which AI models are available?", "a": "GPT-4o, GPT-4o mini, Claude 3.5 Sonnet, Gemini 1.5 Pro, DeepSeek V3, Mistral, Llama and 200+ more. For images: Stable Diffusion, Flux and Midjourney-compatible models. For video: Sora, Veo and Kling." },
+      { "q": "Is there an API for developers?", "a": "Yes. The API is OpenAI-compatible — just change the base_url and API key. Works with Cursor, VS Code (Continue) and any OpenAI-compatible application." },
+      { "q": "Do I need a subscription?", "a": "No. There are no monthly plans — you pay only for the messages you send. Top up once and use any model until your credits run out." },
+      { "q": "What if the AI gives a bad answer?", "a": "Every message has a Regenerate button — the AI produces a new answer at no extra charge. If a technical error occurs, your credits are refunded automatically." }
+    ],
+    "finalTitle": "Start right now",
+    "finalText": "1,000 credits free. No card, no subscription.",
+    "perMessage": "{price} / message",
+    "cta": {
+      "topUp": "Top up balance",
+      "startFreeAmount": "Start with 1,000 free credits",
+      "openAccount": "Open dashboard",
+      "createAccount": "Create account",
+      "viewModels": "Browse models",
+      "startFree": "Start for free",
+      "newChat": "New chat",
+      "viewCatalog": "Browse catalog"
+    }
+  },
   "footer": {
     "description": "All AI models in one place. GPT-4o, Claude, Gemini and more — pay per message, no subscription.",
     "product": {

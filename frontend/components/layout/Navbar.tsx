@@ -8,6 +8,7 @@ import { useUIStore, type Theme } from "@/lib/stores/ui";
 import { authLogout } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/money";
+import { useTranslations } from "next-intl";
 
 const THEME_CYCLE: Theme[] = ["system", "light", "dark"];
 
@@ -18,6 +19,7 @@ function ThemeIcon({ theme }: { theme: Theme }) {
 }
 
 export function Navbar() {
+  const t = useTranslations("nav");
   const { user, balanceKopecks, logout } = useAuthStore();
   const { theme, setTheme } = useUIStore();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -47,14 +49,14 @@ export function Navbar() {
 
         {/* Desktop nav */}
         <nav className="hidden items-center gap-1 md:flex">
-          <NavLink href="/models/">Каталог</NavLink>
-          <NavLink href="/compare/">Сравнение</NavLink>
-          <NavLink href="/gallery/">Галерея</NavLink>
-          <NavLink href="/projects/">Проекты</NavLink>
-          <NavLink href="/personas/">Персоны</NavLink>
-          <NavLink href="/docs/">Документация</NavLink>
-          <NavLink href="/api-docs/">API</NavLink>
-          <NavLink href="/blog/">Блог</NavLink>
+          <NavLink href="/models/">{t("catalog")}</NavLink>
+          <NavLink href="/compare/">{t("compare")}</NavLink>
+          <NavLink href="/gallery/">{t("gallery")}</NavLink>
+          <NavLink href="/projects/">{t("projects")}</NavLink>
+          <NavLink href="/personas/">{t("personas")}</NavLink>
+          <NavLink href="/docs/">{t("docs")}</NavLink>
+          <NavLink href="/api-docs/">{t("api")}</NavLink>
+          <NavLink href="/blog/">{t("blog")}</NavLink>
         </nav>
 
         {/* Desktop auth + theme toggle */}
@@ -63,7 +65,7 @@ export function Navbar() {
           <button
             onClick={cycleTheme}
             className="flex h-8 w-8 items-center justify-center rounded-[8px] text-[rgba(13,13,13,0.55)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.50)] dark:hover:bg-[rgba(255,255,255,0.07)] dark:hover:text-[#EDE8E3]"
-            title={theme === "system" ? "Системная тема" : theme === "light" ? "Светлая тема" : "Тёмная тема"}
+            title={theme === "system" ? t("themeSystem") : theme === "light" ? t("themeLight") : t("themeDark")}
           >
             <ThemeIcon theme={theme} />
           </button>
@@ -79,13 +81,13 @@ export function Navbar() {
                 className="flex items-center gap-1.5 rounded-[8px] px-3 py-1.5 text-[15px] text-[rgba(13,13,13,0.7)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.65)] dark:hover:bg-[rgba(255,255,255,0.07)] dark:hover:text-[#EDE8E3]"
               >
                 <User size={15} />
-                Кабинет
+                {t("account")}
               </Link>
               <button
                 onClick={handleLogout}
                 className="px-2 py-1.5 text-[15px] text-[rgba(13,13,13,0.5)] transition-colors hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.4)] dark:hover:text-[#EDE8E3]"
               >
-                Выйти
+                {t("logout")}
               </button>
             </>
           ) : (
@@ -94,13 +96,13 @@ export function Navbar() {
                 href="/login/"
                 className="rounded-[8px] px-3 py-1.5 text-[15px] text-[rgba(13,13,13,0.7)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.65)] dark:hover:bg-[rgba(255,255,255,0.07)] dark:hover:text-[#EDE8E3]"
               >
-                Войти
+                {t("login")}
               </Link>
               <Link
                 href="/register/"
                 className="rounded-[8px] bg-[#D97757] px-3 py-1.5 text-[15px] font-medium text-white transition-colors hover:bg-[#C4623E]"
               >
-                Начать бесплатно
+                {t("startFree")}
               </Link>
             </>
           )}
@@ -117,7 +119,7 @@ export function Navbar() {
           <button
             className="flex items-center justify-center rounded-[8px] p-2 text-[rgba(13,13,13,0.7)] transition-colors hover:bg-[rgba(13,13,13,0.06)] dark:text-[rgba(236,236,236,0.65)] dark:hover:bg-[rgba(255,255,255,0.07)]"
             onClick={() => setMobileOpen((v) => !v)}
-            aria-label="Меню"
+            aria-label={t("menu")}
           >
             {mobileOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
@@ -128,14 +130,14 @@ export function Navbar() {
       {mobileOpen && (
         <div className="border-t border-[rgba(13,13,13,0.10)] bg-white px-4 py-3 dark:border-[rgba(255,255,255,0.08)] dark:bg-[#1C1917] md:hidden">
           <div className="flex flex-col gap-1">
-            <MobileNavLink href="/models/" onClick={() => setMobileOpen(false)}>Каталог</MobileNavLink>
-            <MobileNavLink href="/compare/" onClick={() => setMobileOpen(false)}>Сравнение</MobileNavLink>
-            <MobileNavLink href="/gallery/" onClick={() => setMobileOpen(false)}>Галерея</MobileNavLink>
-            <MobileNavLink href="/projects/" onClick={() => setMobileOpen(false)}>Проекты</MobileNavLink>
-            <MobileNavLink href="/personas/" onClick={() => setMobileOpen(false)}>Персоны</MobileNavLink>
-            <MobileNavLink href="/docs/" onClick={() => setMobileOpen(false)}>Документация</MobileNavLink>
-            <MobileNavLink href="/api-docs/" onClick={() => setMobileOpen(false)}>API</MobileNavLink>
-            <MobileNavLink href="/blog/" onClick={() => setMobileOpen(false)}>Блог</MobileNavLink>
+            <MobileNavLink href="/models/" onClick={() => setMobileOpen(false)}>{t("catalog")}</MobileNavLink>
+            <MobileNavLink href="/compare/" onClick={() => setMobileOpen(false)}>{t("compare")}</MobileNavLink>
+            <MobileNavLink href="/gallery/" onClick={() => setMobileOpen(false)}>{t("gallery")}</MobileNavLink>
+            <MobileNavLink href="/projects/" onClick={() => setMobileOpen(false)}>{t("projects")}</MobileNavLink>
+            <MobileNavLink href="/personas/" onClick={() => setMobileOpen(false)}>{t("personas")}</MobileNavLink>
+            <MobileNavLink href="/docs/" onClick={() => setMobileOpen(false)}>{t("docs")}</MobileNavLink>
+            <MobileNavLink href="/api-docs/" onClick={() => setMobileOpen(false)}>{t("api")}</MobileNavLink>
+            <MobileNavLink href="/blog/" onClick={() => setMobileOpen(false)}>{t("blog")}</MobileNavLink>
             <div className="my-2 border-t border-[rgba(13,13,13,0.08)] dark:border-[rgba(255,255,255,0.06)]" />
             {user ? (
               <>
@@ -143,23 +145,23 @@ export function Navbar() {
                   <Wallet size={13} className="text-[#D97757]" />
                   <span>{formatMoney(balanceKopecks)}</span>
                 </div>
-                <MobileNavLink href="/account/" onClick={() => setMobileOpen(false)}>Личный кабинет</MobileNavLink>
+                <MobileNavLink href="/account/" onClick={() => setMobileOpen(false)}>{t("accountFull")}</MobileNavLink>
                 <button
                   onClick={() => { setMobileOpen(false); handleLogout(); }}
                   className="py-2 text-left text-[16px] text-[rgba(13,13,13,0.6)] dark:text-[rgba(236,236,236,0.5)]"
                 >
-                  Выйти
+                  {t("logout")}
                 </button>
               </>
             ) : (
               <>
-                <MobileNavLink href="/login/" onClick={() => setMobileOpen(false)}>Войти</MobileNavLink>
+                <MobileNavLink href="/login/" onClick={() => setMobileOpen(false)}>{t("login")}</MobileNavLink>
                 <Link
                   href="/register/"
                   onClick={() => setMobileOpen(false)}
                   className="mt-1 block rounded-[8px] bg-[#D97757] px-3 py-2 text-center text-[16px] font-medium text-white"
                 >
-                  Начать бесплатно
+                  {t("startFree")}
                 </Link>
               </>
             )}

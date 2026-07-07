@@ -1,17 +1,11 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
-
-const PHRASES = [
-  "GPT-4o пишет код за секунды",
-  "Claude объясняет сложное просто",
-  "Gemini анализирует документы",
-  "Midjourney рисует по запросу",
-  "DeepSeek решает задачи по математике",
-  "Perplexity ищет актуальную информацию",
-];
+import { useTranslations } from "next-intl";
 
 export function HeroTypewriter() {
+  const t = useTranslations("home");
+  const PHRASES = t.raw("typewriter") as string[];
   const [idx, setIdx] = useState(0);
   const [displayed, setDisplayed] = useState("");
   const [deleting, setDeleting] = useState(false);

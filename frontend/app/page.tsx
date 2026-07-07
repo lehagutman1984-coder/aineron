@@ -3,6 +3,7 @@ import {
   ArrowRight, Code2, ImageIcon, Check, X,
   Wallet, ShieldCheck, Layers, Sparkles,
 } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { serverListNetworks } from "@/lib/api/server";
 import type { NetworkListItem } from "@/lib/api/types";
 import { formatMoney } from "@/lib/money";
@@ -20,12 +21,31 @@ async function getFreeNetworks(): Promise<NetworkListItem[]> {
   return (await serverListNetworks({ is_free: true }).catch(() => [])) ?? [];
 }
 
+const FEATURE_ICONS = [Layers, ShieldCheck, Code2, ImageIcon];
+
+// Матрица сравнения (галочки/крестики) — тексты строк в словаре home.comparisonRows
+const COMPARISON_MARKS: { aineron: boolean; chatgpt: boolean; gemini: boolean }[] = [
+  { aineron: true, chatgpt: false, gemini: false },
+  { aineron: true, chatgpt: false, gemini: false },
+  { aineron: true, chatgpt: false, gemini: false },
+  { aineron: true, chatgpt: false, gemini: false },
+  { aineron: true, chatgpt: true, gemini: true },
+  { aineron: true, chatgpt: true, gemini: true },
+  { aineron: true, chatgpt: true, gemini: false },
+  { aineron: true, chatgpt: false, gemini: false },
+];
+
 export default async function HomePage() {
+  const t = await getTranslations("home");
   const [popular, freeNetworks] = await Promise.all([
     getPopularNetworks(),
     getFreeNetworks(),
   ]);
   const freeCount = freeNetworks.length;
+
+  const features = t.raw("features") as { title: string; text: string }[];
+  const comparisonRows = t.raw("comparisonRows") as string[];
+  const pricing = t.raw("pricing") as { title: string; price: string; sub: string }[];
 
   return (
     <>
@@ -33,18 +53,18 @@ export default async function HomePage() {
       <section className="mx-auto max-w-4xl px-4 pb-16 pt-24 text-center sm:px-6">
         <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[rgba(217,119,87,0.25)] bg-[rgba(217,119,87,0.06)] px-3.5 py-1 text-[15px] text-[#D97757]">
           <ShieldCheck size={13} />
-          Российский сервис — без VPN и зарубежных карт
+          {t("badge")}
         </div>
 
         <h1 className="mb-4 text-[40px] font-bold leading-tight tracking-tight text-[var(--text-primary)] sm:text-[54px]">
-          Все нейросети в одном окне
+          {t("title")}
         </h1>
 
         <p className="mx-auto mb-3 max-w-2xl text-[18px] leading-relaxed text-[var(--text-secondary)]">
           <HeroTypewriter />
         </p>
         <p className="mx-auto mb-9 max-w-xl text-[17px] text-[var(--text-tertiary)]">
-          GPT-4o, Claude, Gemini, Midjourney и 200+ моделей. Один аккаунт, оплата рублями.
+          {t("subtitle")}
         </p>
 
         <HomeCta placement="hero" />
@@ -55,22 +75,22 @@ export default async function HomePage() {
         <section className="mx-auto max-w-7xl px-4 pb-16 pt-4 sm:px-6">
           <div className="mb-8 flex items-end justify-between">
             <div>
-              <h2 className="text-[22px] font-bold text-[var(--text-primary)]">Популярные модели</h2>
+              <h2 className="text-[22px] font-bold text-[var(--text-primary)]">{t("popularTitle")}</h2>
               <p className="mt-1 text-[16px] text-[var(--text-tertiary)]">
-                Самые востребованные нейросети
+                {t("popularSubtitle")}
               </p>
             </div>
             <Link
               href="/models/"
               className="flex items-center gap-1 text-[15px] text-[#D97757] transition-colors hover:text-[#C4623E]"
             >
-              Все модели
+              {t("allModels")}
               <ArrowRight size={14} />
             </Link>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {popular.slice(0, 6).map((n) => (
-              <NetworkCard key={n.id} network={n} />
+              <NetworkCard key={n.id} network={n} perMessage={t("perMessage", { price: formatMoney(n.cost_kopecks) })} />
             ))}
           </div>
         </section>
@@ -86,11 +106,10 @@ export default async function HomePage() {
               </div>
               <div>
                 <h2 className="text-[20px] font-bold text-[var(--text-primary)] sm:text-[22px]">
-                  {freeCount} бесплатных текстовых моделей
+                  {t("freeTitle", { count: freeCount })}
                 </h2>
                 <p className="mt-1.5 max-w-xl text-[16px] leading-relaxed text-[var(--text-secondary)]">
-                  GPT-OSS, Qwen3, Gemma, DeepSeek R1 и другие нейросети для чата — 0 ₽,
-                  без пополнения баланса. Доступны сразу после регистрации.
+                  {t("freeText")}
                 </p>
               </div>
             </div>
@@ -98,7 +117,7 @@ export default async function HomePage() {
               href="/models/?category=__free__"
               className="inline-flex shrink-0 items-center gap-2 rounded-[12px] bg-[#D97757] px-5 py-3 text-[15px] font-medium text-white transition-colors hover:bg-[#C4623E]"
             >
-              Открыть бесплатные модели
+              {t("freeCta")}
               <ArrowRight size={16} />
             </Link>
           </div>
@@ -109,11 +128,11 @@ export default async function HomePage() {
       <section className="border-t border-[var(--border-tertiary)] bg-[var(--background-tertiary)]">
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
           <h2 className="mb-10 text-center text-[24px] font-bold text-[var(--text-primary)]">
-            Почему aineron.ru
+            {t("whyTitle")}
           </h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {FEATURES.map((f) => (
-              <FeatureCard key={f.title} {...f} />
+            {features.map((f, i) => (
+              <FeatureCard key={f.title} icon={FEATURE_ICONS[i] ?? Layers} title={f.title} text={f.text} />
             ))}
           </div>
         </div>
@@ -122,9 +141,9 @@ export default async function HomePage() {
       {/* ── Comparison table ──────────────────────────────────────────────────── */}
       <section className="mx-auto max-w-4xl px-4 py-16 sm:px-6">
         <div className="mb-10 text-center">
-          <h2 className="text-[26px] font-bold text-[var(--text-primary)]">Честное сравнение</h2>
+          <h2 className="text-[26px] font-bold text-[var(--text-primary)]">{t("comparisonTitle")}</h2>
           <p className="mt-2 text-[17px] text-[var(--text-secondary)]">
-            aineron.ru против мировых лидеров
+            {t("comparisonSubtitle")}
           </p>
         </div>
 
@@ -133,23 +152,23 @@ export default async function HomePage() {
             <thead>
               <tr className="border-b border-[var(--border-secondary)]">
                 <th className="px-5 py-3.5 text-left font-medium text-[var(--text-tertiary)]">
-                  Возможность
+                  {t("comparisonFeatureCol")}
                 </th>
-                <th className="px-4 py-3.5 text-center font-bold text-[#D97757]">aineron.ru</th>
+                <th className="px-4 py-3.5 text-center font-bold text-[#D97757]">aineron</th>
                 <th className="px-4 py-3.5 text-center font-medium text-[var(--text-secondary)]">ChatGPT</th>
                 <th className="px-4 py-3.5 text-center font-medium text-[var(--text-secondary)]">Gemini</th>
               </tr>
             </thead>
             <tbody>
-              {COMPARISON.map((row, i) => (
+              {comparisonRows.map((feature, i) => (
                 <tr
-                  key={row.feature}
+                  key={feature}
                   className={i % 2 === 0 ? "bg-[var(--background-tertiary)]" : ""}
                 >
-                  <td className="px-5 py-3 text-[var(--text-primary)]">{row.feature}</td>
-                  <td className="px-4 py-3 text-center"><Cell val={row.aineron} /></td>
-                  <td className="px-4 py-3 text-center"><Cell val={row.chatgpt} /></td>
-                  <td className="px-4 py-3 text-center"><Cell val={row.gemini} /></td>
+                  <td className="px-5 py-3 text-[var(--text-primary)]">{feature}</td>
+                  <td className="px-4 py-3 text-center"><Cell val={COMPARISON_MARKS[i]?.aineron ?? true} /></td>
+                  <td className="px-4 py-3 text-center"><Cell val={COMPARISON_MARKS[i]?.chatgpt ?? false} /></td>
+                  <td className="px-4 py-3 text-center"><Cell val={COMPARISON_MARKS[i]?.gemini ?? false} /></td>
                 </tr>
               ))}
             </tbody>
@@ -164,13 +183,13 @@ export default async function HomePage() {
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-[14px] bg-[rgba(217,119,87,0.10)]">
               <Wallet size={22} className="text-[#D97757]" />
             </div>
-            <h2 className="text-[24px] font-bold text-[var(--text-primary)]">Простая оплата в рублях</h2>
+            <h2 className="text-[24px] font-bold text-[var(--text-primary)]">{t("pricingTitle")}</h2>
             <p className="mt-2 text-[17px] text-[var(--text-secondary)]">
-              Пополняйте баланс и тратьте на любую модель. Средства не сгорают.
+              {t("pricingSubtitle")}
             </p>
           </div>
           <div className="grid grid-cols-1 divide-y divide-[var(--border-tertiary)] border-t border-[var(--border-secondary)] sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-            {PRICING.map((p) => (
+            {pricing.map((p) => (
               <div key={p.title} className="px-7 py-6 text-center">
                 <p className="mb-1 text-[15px] font-medium text-[var(--text-tertiary)]">{p.title}</p>
                 <p className="text-[28px] font-bold text-[var(--text-primary)]">{p.price}</p>
@@ -181,7 +200,7 @@ export default async function HomePage() {
           <div className="border-t border-[var(--border-secondary)] px-8 py-5 text-center">
             <HomeCta placement="pricing" />
             <p className="mt-2 text-[14px] text-[var(--text-tertiary)]">
-              Не нужна карта для старта
+              {t("pricingNote")}
             </p>
           </div>
         </div>
@@ -190,7 +209,7 @@ export default async function HomePage() {
       {/* ── FAQ ───────────────────────────────────────────────────────────────── */}
       <section className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
         <h2 className="mb-8 text-center text-[24px] font-bold text-[var(--text-primary)]">
-          Частые вопросы
+          {t("faqTitle")}
         </h2>
         <FaqAccordion />
       </section>
@@ -199,10 +218,10 @@ export default async function HomePage() {
       <section className="border-t border-[var(--border-tertiary)] bg-[#1A1A1A]">
         <div className="mx-auto max-w-3xl px-4 py-20 text-center sm:px-6">
           <h2 className="mb-3 text-[28px] font-bold text-white">
-            Начните прямо сейчас
+            {t("finalTitle")}
           </h2>
           <p className="mb-8 text-[16px] text-[rgba(255,255,255,0.55)]">
-            10 ₽ бесплатно. Без VPN, без зарубежных карт.
+            {t("finalText")}
           </p>
           <HomeCta placement="final" />
         </div>
@@ -219,7 +238,7 @@ function Cell({ val }: { val: boolean | string }) {
 }
 
 // ── Network card ──────────────────────────────────────────────────────────────
-function NetworkCard({ network }: { network: NetworkListItem }) {
+function NetworkCard({ network, perMessage }: { network: NetworkListItem; perMessage: string }) {
   return (
     <Link
       href={`/models/${network.slug}/`}
@@ -258,7 +277,7 @@ function NetworkCard({ network }: { network: NetworkListItem }) {
       )}
       <div className="mt-auto flex items-center justify-between pt-1">
         <span className="text-[14px] text-[var(--text-tertiary)]">
-          {formatMoney(network.cost_kopecks)} / сообщение
+          {perMessage}
         </span>
         <ArrowRight
           size={14}
@@ -281,33 +300,3 @@ function FeatureCard({ icon: Icon, title, text }: { icon: React.ElementType; tit
     </div>
   );
 }
-
-// ── Data ──────────────────────────────────────────────────────────────────────
-const FEATURES = [
-  { icon: Layers, title: "Все модели сразу", text: "GPT-4o, Claude, Gemini, Midjourney и 200+ моделей — один аккаунт и общий баланс." },
-  { icon: ShieldCheck, title: "Без VPN", text: "Серверы в России, оплата рублями. Работает с любого устройства в РФ." },
-  { icon: Code2, title: "API для разработчиков", text: "OpenAI-совместимый API. Подключите Cursor, VS Code или свой продукт." },
-  { icon: ImageIcon, title: "Текст, фото и видео", text: "Чат, генерация изображений и видео — в одном интерфейсе." },
-];
-
-const COMPARISON: {
-  feature: string;
-  aineron: boolean | string;
-  chatgpt: boolean | string;
-  gemini: boolean | string;
-}[] = [
-  { feature: "Работает в России без VPN", aineron: true, chatgpt: false, gemini: false },
-  { feature: "Оплата рублями и картой РФ", aineron: true, chatgpt: false, gemini: false },
-  { feature: "GPT, Claude, Gemini в одном окне", aineron: true, chatgpt: false, gemini: false },
-  { feature: "Сравнение моделей бок о бок", aineron: true, chatgpt: false, gemini: false },
-  { feature: "Генерация изображений и видео", aineron: true, chatgpt: true, gemini: true },
-  { feature: "Загрузка файлов и веб-поиск", aineron: true, chatgpt: true, gemini: true },
-  { feature: "OpenAI-совместимый API", aineron: true, chatgpt: true, gemini: false },
-  { feature: "Telegram-бот с нейросетями", aineron: true, chatgpt: false, gemini: false },
-];
-
-const PRICING = [
-  { title: "Старт", price: "10 ₽", sub: "бесплатно после регистрации" },
-  { title: "Пополнение", price: "рублями", sub: "картой РФ или Telegram Stars" },
-  { title: "Подписки", price: "со скидкой", sub: "пакеты для активных пользователей" },
-];
