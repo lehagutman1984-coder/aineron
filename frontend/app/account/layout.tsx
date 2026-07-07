@@ -23,28 +23,30 @@ import {
 import { useAuthStore } from "@/lib/stores/auth";
 import { authLogout } from "@/lib/api/client";
 import { formatMoney } from "@/lib/money";
+import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 
 const NAV = [
-  { href: "/account/", label: "Обзор", icon: LayoutDashboard, exact: true },
-  { href: "/account/memory/", label: "Память", icon: Brain },
-  { href: "/projects/", label: "Проекты", icon: Folder },
-  { href: "/personas/", label: "AI-персоны", icon: Drama },
-  { href: "/gallery/", label: "Галерея", icon: Images },
-  { href: "/account/analytics/", label: "Аналитика", icon: BarChart2 },
-  { href: "/account/billing/", label: "Тарифы и платежи", icon: CreditCard },
-  { href: "/account/tasks/", label: "AI-задачи", icon: CalendarClock },
-  { href: "/account/keys/", label: "API-ключи", icon: Key },
-  { href: "/account/referral/", label: "Партнёрская программа", icon: Users },
-  { href: "/account/files/", label: "Мои файлы", icon: FolderOpen },
-  { href: "/account/favorites/", label: "Избранное", icon: Heart },
-  { href: "/account/telegram/", label: "Telegram", icon: MessageCircle },
-  { href: "/account/oauth-apps/", label: "OAuth-приложения", icon: AppWindow },
+  { href: "/account/", label: "overview", icon: LayoutDashboard, exact: true },
+  { href: "/account/memory/", label: "memory", icon: Brain },
+  { href: "/projects/", label: "projects", icon: Folder },
+  { href: "/personas/", label: "personas", icon: Drama },
+  { href: "/gallery/", label: "gallery", icon: Images },
+  { href: "/account/analytics/", label: "analytics", icon: BarChart2 },
+  { href: "/account/billing/", label: "billing", icon: CreditCard },
+  { href: "/account/tasks/", label: "tasks", icon: CalendarClock },
+  { href: "/account/keys/", label: "keys", icon: Key },
+  { href: "/account/referral/", label: "referral", icon: Users },
+  { href: "/account/files/", label: "files", icon: FolderOpen },
+  { href: "/account/favorites/", label: "favorites", icon: Heart },
+  { href: "/account/telegram/", label: "telegram", icon: MessageCircle },
+  { href: "/account/oauth-apps/", label: "oauth", icon: AppWindow },
 ];
 
 export default function AccountLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const t = useTranslations("account.nav");
   const { user, balanceKopecks, isLoading, logout } = useAuthStore();
 
   useEffect(() => {
@@ -84,7 +86,7 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
                 }`}
               >
                 <Icon size={13} />
-                {item.label}
+                {t(item.label)}
               </Link>
             );
           })}
@@ -128,7 +130,7 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
                       size={15}
                       className={active ? "text-[#D97757]" : "text-[rgba(13,13,13,0.38)]"}
                     />
-                    {item.label}
+                    {t(item.label)}
                   </Link>
                 );
               })}
@@ -140,7 +142,7 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
               className="flex w-full items-center gap-3 rounded-[10px] px-4 py-2.5 text-[15px] text-[rgba(13,13,13,0.45)] hover:bg-white hover:text-[rgba(13,13,13,0.75)] transition-colors"
             >
               <LogOut size={15} />
-              Выйти
+              {t("logout")}
             </button>
           </aside>
 

@@ -18,9 +18,11 @@ import {
 import { getMe, listChats } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 import { formatMoney } from "@/lib/money";
+import { useTranslations } from "next-intl";
 import type { ChatListItem } from "@/lib/api/types";
 
 export default function AccountPage() {
+  const t = useTranslations("account.overview");
   const { user, isLoading, setUser } = useAuthStore();
 
   const { data: me, isLoading: meLoading } = useQuery({
@@ -45,7 +47,7 @@ export default function AccountPage() {
   if (!profile) {
     return (
       <div className="flex h-[calc(100vh-56px)] items-center justify-center text-[16px] text-[rgba(13,13,13,0.45)]">
-        Загрузка...
+        {t("loading")}
       </div>
     );
   }
@@ -56,21 +58,21 @@ export default function AccountPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
-      <h1 className="mb-8 text-[24px] font-bold text-[#1A1A1A]">Личный кабинет</h1>
+      <h1 className="mb-8 text-[24px] font-bold text-[#1A1A1A]">{t("title")}</h1>
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         {/* Balance card */}
         <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-6">
           <div className="mb-4 flex items-center gap-2 text-[15px] font-medium text-[rgba(13,13,13,0.55)] uppercase tracking-wide">
             <Wallet size={14} className="text-[#D97757]" />
-            Баланс
+            {t("balance")}
           </div>
           <p className="mb-4 text-[36px] font-bold text-[#1A1A1A]">{formatMoney(profile.balance_kopecks)}</p>
           <Link
             href="/account/billing/"
             className="inline-flex h-9 items-center gap-2 rounded-[8px] bg-[#D97757] px-4 text-[15px] font-medium text-white hover:bg-[#C4623E] transition-colors"
           >
-            Пополнить
+            {t("topUp")}
           </Link>
         </div>
 
@@ -78,18 +80,18 @@ export default function AccountPage() {
         <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-6">
           <div className="mb-4 flex items-center gap-2 text-[15px] font-medium text-[rgba(13,13,13,0.55)] uppercase tracking-wide">
             <User size={14} />
-            Профиль
+            {t("profile")}
           </div>
           <p className="mb-1 truncate text-[17px] font-medium text-[#1A1A1A]">{profile.email}</p>
           <p className="mb-4 text-[15px] text-[rgba(13,13,13,0.5)]">
-            {"tariff_name" in profile ? profile.tariff_name : "Бесплатный тариф"}
+            {"tariff_name" in profile ? profile.tariff_name : t("freeTariff")}
           </p>
           <div className="flex flex-wrap gap-2">
             <Link
               href="/account/billing/"
               className="inline-flex h-9 items-center rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[15px] text-[rgba(13,13,13,0.7)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
             >
-              Тарифы и платежи
+              {t("billingLink")}
             </Link>
           </div>
         </div>
@@ -99,9 +101,9 @@ export default function AccountPage() {
           <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-6">
             <div className="mb-4 flex items-center gap-2 text-[15px] font-medium text-[rgba(13,13,13,0.55)] uppercase tracking-wide">
               <ExternalLink size={14} />
-              Реферальная программа
+              {t("referralTitle")}
             </div>
-            <p className="mb-2 text-[15px] text-[rgba(13,13,13,0.6)]">Ваша реферальная ссылка:</p>
+            <p className="mb-2 text-[15px] text-[rgba(13,13,13,0.6)]">{t("referralLink")}</p>
             <div className="flex items-center gap-2">
               <code className="flex-1 truncate rounded-[6px] bg-[rgba(13,13,13,0.05)] px-3 py-2 text-[14px] text-[#1A1A1A]">
                 {typeof window !== "undefined"
@@ -128,17 +130,17 @@ export default function AccountPage() {
         <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-6">
           <div className="mb-4 flex items-center gap-2 text-[15px] font-medium text-[rgba(13,13,13,0.55)] uppercase tracking-wide">
             <Brain size={14} className="text-[#D97757]" />
-            Память
+            {t("memoryTitle")}
           </div>
           <p className="mb-4 text-[15px] text-[rgba(13,13,13,0.6)]">
-            Факты о вас и история сессий.
+            {t("memoryText")}
           </p>
           <Link
             href="/account/memory/"
             className="inline-flex h-9 items-center gap-2 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[15px] text-[rgba(13,13,13,0.7)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
           >
             <Brain size={13} />
-            Открыть память
+            {t("memoryOpen")}
           </Link>
         </div>
 
@@ -146,17 +148,17 @@ export default function AccountPage() {
         <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-6">
           <div className="mb-4 flex items-center gap-2 text-[15px] font-medium text-[rgba(13,13,13,0.55)] uppercase tracking-wide">
             <Folder size={14} className="text-[#D97757]" />
-            Проекты
+            {t("projectsTitle")}
           </div>
           <p className="mb-4 text-[15px] text-[rgba(13,13,13,0.6)]">
-            Организуйте чаты по папкам с общим контекстом.
+            {t("projectsText")}
           </p>
           <Link
             href="/projects/"
             className="inline-flex h-9 items-center gap-2 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[15px] text-[rgba(13,13,13,0.7)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
           >
             <Folder size={13} />
-            Открыть проекты
+            {t("projectsOpen")}
           </Link>
         </div>
 
@@ -164,17 +166,17 @@ export default function AccountPage() {
         <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-6">
           <div className="mb-4 flex items-center gap-2 text-[15px] font-medium text-[rgba(13,13,13,0.55)] uppercase tracking-wide">
             <Images size={14} className="text-[#D97757]" />
-            Галерея
+            {t("galleryTitle")}
           </div>
           <p className="mb-4 text-[15px] text-[rgba(13,13,13,0.6)]">
-            Витрина работ сообщества — изображения и видео.
+            {t("galleryText")}
           </p>
           <Link
             href="/gallery/"
             className="inline-flex h-9 items-center gap-2 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[15px] text-[rgba(13,13,13,0.7)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
           >
             <Images size={13} />
-            Открыть галерею
+            {t("galleryOpen")}
           </Link>
         </div>
 
@@ -182,10 +184,10 @@ export default function AccountPage() {
         <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-6">
           <div className="mb-4 flex items-center gap-2 text-[15px] font-medium text-[rgba(13,13,13,0.55)] uppercase tracking-wide">
             <Key size={14} />
-            Для разработчиков
+            {t("devTitle")}
           </div>
           <p className="mb-4 text-[15px] text-[rgba(13,13,13,0.6)]">
-            OpenAI-совместимый API. Подключите к Cursor, VS Code, Continue.
+            {t("devText")}
           </p>
           <div className="flex gap-2">
             <Link
@@ -193,14 +195,14 @@ export default function AccountPage() {
               className="inline-flex h-9 items-center gap-2 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[15px] text-[rgba(13,13,13,0.7)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
             >
               <Key size={13} />
-              API-ключи
+              {t("apiKeys")}
             </Link>
             <Link
               href="/api-docs/"
               className="inline-flex h-9 items-center gap-2 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[15px] text-[rgba(13,13,13,0.7)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
             >
               <ExternalLink size={13} />
-              Документация
+              {t("docs")}
             </Link>
           </div>
         </div>
@@ -209,7 +211,7 @@ export default function AccountPage() {
       {/* Recent chats */}
       {chats && chats.length > 0 && (
         <div className="mt-8">
-          <h2 className="mb-4 text-[18px] font-semibold text-[#1A1A1A]">Последние чаты</h2>
+          <h2 className="mb-4 text-[18px] font-semibold text-[#1A1A1A]">{t("recentChats")}</h2>
           <div className="flex flex-col gap-2">
             {chats.slice(0, 10).map((chat) => (
               <Link

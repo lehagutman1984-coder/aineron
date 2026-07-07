@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight, Code2, ImageIcon, ImagePlus, Palette, X } from "lucide-react";
 import type { NetworkListItem, Category } from "@/lib/api/types";
 import { formatMoney } from "@/lib/money";
+import { useTranslations } from "next-intl";
 
 interface Props {
   networks: NetworkListItem[];
@@ -17,6 +18,7 @@ interface Props {
 const FREE_TAB = "__free__";
 
 export function CatalogClient({ networks, freeNetworks = [], categories, initialCategory, projectId }: Props) {
+  const t = useTranslations("catalog");
   const [activeCategory, setActiveCategory] = useState(initialCategory ?? "");
   const [query, setQuery] = useState("");
   // Ожидающее изображение из «Мои файлы» (кнопки «Редактировать» / «Стиль»):
@@ -69,8 +71,8 @@ export function CatalogClient({ networks, freeNetworks = [], categories, initial
         <PendingImageBanner
           imageUrl={pendingEdit}
           icon={<ImagePlus size={13} className="text-[#D97757]" />}
-          title="Редактирование изображения"
-          hint="Выберите модель изображений — она применит ваши изменения к этому файлу"
+          title={t("editImageTitle")}
+          hint={t("editImageHint")}
           onCancel={() => cancelPending("aineron_edit_image")}
         />
       )}
@@ -78,8 +80,8 @@ export function CatalogClient({ networks, freeNetworks = [], categories, initial
         <PendingImageBanner
           imageUrl={pendingStyle}
           icon={<Palette size={13} className="text-[#D97757]" />}
-          title="Референс стиля"
-          hint="Выберите модель изображений — новые генерации переймут стиль этого файла"
+          title={t("styleRefTitle")}
+          hint={t("styleRefHint")}
           onCancel={() => cancelPending("aineron_style_image")}
         />
       )}
@@ -88,7 +90,7 @@ export function CatalogClient({ networks, freeNetworks = [], categories, initial
       <div className="mb-5 relative max-w-sm">
         <input
           type="search"
-          placeholder="Поиск по моделям..."
+          placeholder={t("search")}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-4 py-2.5 text-[16px] text-[#1A1A1A] placeholder-[rgba(13,13,13,0.38)] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
@@ -98,13 +100,13 @@ export function CatalogClient({ networks, freeNetworks = [], categories, initial
       {/* Category tabs */}
       <div className="mb-6 flex flex-wrap gap-2">
         <CategoryTab
-          label="Все"
+          label={t("all")}
           active={activeCategory === ""}
           onClick={() => setActiveCategory("")}
         />
         {freeNetworks.length > 0 && (
           <CategoryTab
-            label="Бесплатные"
+            label={t("free")}
             active={activeCategory === FREE_TAB}
             onClick={() => setActiveCategory(FREE_TAB)}
           />
@@ -112,7 +114,7 @@ export function CatalogClient({ networks, freeNetworks = [], categories, initial
         {categories
           // Категория «Бесплатно/Бесплатные» дублирует синтетическую вкладку
           // «Бесплатные» (is_free) и обычно пуста — не показываем её.
-          .filter((c) => !/^бесплат/i.test(c.name.trim()))
+          .filter((c) => !/^(бесплат|free)/i.test(c.name.trim()))
           .map((c) => (
             <CategoryTab
               key={c.id}
@@ -126,7 +128,7 @@ export function CatalogClient({ networks, freeNetworks = [], categories, initial
       {/* Grid */}
       {filtered.length === 0 ? (
         <div className="py-16 text-center text-[17px] text-[rgba(13,13,13,0.45)]">
-          Ничего не найдено
+          {t("empty")}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -169,7 +171,6 @@ function PendingImageBanner({
       </div>
       <button
         onClick={onCancel}
-        title="Отменить"
         className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] border border-[rgba(13,13,13,0.10)] bg-white transition-colors hover:bg-[rgba(13,13,13,0.04)]"
       >
         <X size={13} className="text-[rgba(13,13,13,0.55)]" />
@@ -203,6 +204,7 @@ function CategoryTab({
 }
 
 function NetworkCard({ network, projectId }: { network: NetworkListItem; projectId?: number }) {
+  const t = useTranslations("catalog");
   const href = projectId
     ? `/models/${network.slug}/?project_id=${projectId}`
     : `/models/${network.slug}/`;
@@ -245,7 +247,7 @@ function NetworkCard({ network, projectId }: { network: NetworkListItem; project
       )}
       <div className="mt-auto flex items-center justify-between pt-1">
         <span className="text-[14px] text-[rgba(13,13,13,0.45)]">
-          {network.is_free ? "Бесплатно" : network.unlimited ? "Безлимит" : formatMoney(network.cost_kopecks)}
+          {network.is_free ? t("priceFree") : network.unlimited ? t("priceUnlimited") : formatMoney(network.cost_kopecks)}
         </span>
         <ArrowRight
           size={14}

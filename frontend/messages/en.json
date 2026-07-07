@@ -38,10 +38,22 @@
     "freeCta": "Open free models",
     "whyTitle": "Why aineron",
     "features": [
-      { "title": "All models at once", "text": "GPT-4o, Claude, Gemini, Midjourney and 200+ models — one account and a shared balance." },
-      { "title": "No subscription", "text": "Pay per message with credits. No $20/month plans — spend only on what you use." },
-      { "title": "API for developers", "text": "OpenAI-compatible API. Plug in Cursor, VS Code or your own product." },
-      { "title": "Text, images and video", "text": "Chat, image and video generation — in a single interface." }
+      {
+        "title": "All models at once",
+        "text": "GPT-4o, Claude, Gemini, Midjourney and 200+ models — one account and a shared balance."
+      },
+      {
+        "title": "No subscription",
+        "text": "Pay per message with credits. No $20/month plans — spend only on what you use."
+      },
+      {
+        "title": "API for developers",
+        "text": "OpenAI-compatible API. Plug in Cursor, VS Code or your own product."
+      },
+      {
+        "title": "Text, images and video",
+        "text": "Chat, image and video generation — in a single interface."
+      }
     ],
     "comparisonTitle": "An honest comparison",
     "comparisonSubtitle": "aineron versus the market leaders",
@@ -59,19 +71,49 @@
     "pricingTitle": "Simple pay-as-you-go pricing",
     "pricingSubtitle": "Top up your balance and spend it on any model. Credits never expire.",
     "pricing": [
-      { "title": "Start", "price": "1,000 credits", "sub": "free after sign-up" },
-      { "title": "Top up", "price": "with crypto", "sub": "USDT or TON, from $1" },
-      { "title": "Rate", "price": "$1 = 10,000", "sub": "credits — a message costs a few hundred" }
+      {
+        "title": "Start",
+        "price": "1,000 credits",
+        "sub": "free after sign-up"
+      },
+      {
+        "title": "Top up",
+        "price": "with crypto",
+        "sub": "USDT or TON, from $1"
+      },
+      {
+        "title": "Rate",
+        "price": "$1 = 10,000",
+        "sub": "credits — a message costs a few hundred"
+      }
     ],
     "pricingNote": "No card required to start",
     "faqTitle": "Frequently asked questions",
     "faq": [
-      { "q": "How does the balance work?", "a": "Your balance is measured in credits. Each message costs a few hundred credits depending on the model. Credits never expire, and you can top up any amount starting from $1." },
-      { "q": "How do I pay?", "a": "With cryptocurrency: USDT or TON via @CryptoBot in Telegram. Choose an amount, pay the invoice, and your balance updates automatically within seconds." },
-      { "q": "Which AI models are available?", "a": "GPT-4o, GPT-4o mini, Claude 3.5 Sonnet, Gemini 1.5 Pro, DeepSeek V3, Mistral, Llama and 200+ more. For images: Stable Diffusion, Flux and Midjourney-compatible models. For video: Sora, Veo and Kling." },
-      { "q": "Is there an API for developers?", "a": "Yes. The API is OpenAI-compatible — just change the base_url and API key. Works with Cursor, VS Code (Continue) and any OpenAI-compatible application." },
-      { "q": "Do I need a subscription?", "a": "No. There are no monthly plans — you pay only for the messages you send. Top up once and use any model until your credits run out." },
-      { "q": "What if the AI gives a bad answer?", "a": "Every message has a Regenerate button — the AI produces a new answer at no extra charge. If a technical error occurs, your credits are refunded automatically." }
+      {
+        "q": "How does the balance work?",
+        "a": "Your balance is measured in credits. Each message costs a few hundred credits depending on the model. Credits never expire, and you can top up any amount starting from $1."
+      },
+      {
+        "q": "How do I pay?",
+        "a": "With cryptocurrency: USDT or TON via @CryptoBot in Telegram. Choose an amount, pay the invoice, and your balance updates automatically within seconds."
+      },
+      {
+        "q": "Which AI models are available?",
+        "a": "GPT-4o, GPT-4o mini, Claude 3.5 Sonnet, Gemini 1.5 Pro, DeepSeek V3, Mistral, Llama and 200+ more. For images: Stable Diffusion, Flux and Midjourney-compatible models. For video: Sora, Veo and Kling."
+      },
+      {
+        "q": "Is there an API for developers?",
+        "a": "Yes. The API is OpenAI-compatible — just change the base_url and API key. Works with Cursor, VS Code (Continue) and any OpenAI-compatible application."
+      },
+      {
+        "q": "Do I need a subscription?",
+        "a": "No. There are no monthly plans — you pay only for the messages you send. Top up once and use any model until your credits run out."
+      },
+      {
+        "q": "What if the AI gives a bad answer?",
+        "a": "Every message has a Regenerate button — the AI produces a new answer at no extra charge. If a technical error occurs, your credits are refunded automatically."
+      }
     ],
     "finalTitle": "Start right now",
     "finalText": "1,000 credits free. No card, no subscription.",
@@ -86,6 +128,26 @@
       "newChat": "New chat",
       "viewCatalog": "Browse catalog"
     }
+  },
+  "auth": {
+    "loginTitle": "Sign in",
+    "noAccount": "No account yet?",
+    "registerLink": "Create one",
+    "email": "Email",
+    "password": "Password",
+    "passwordPlaceholder": "At least 8 characters",
+    "loginError": "Sign-in failed. Please try again.",
+    "loggingIn": "Signing in...",
+    "loginButton": "Sign in",
+    "forgotPassword": "Forgot password?",
+    "registerTitle": "Create account",
+    "haveAccount": "Already have an account?",
+    "loginLink": "Sign in",
+    "bonus": "1,000 credits free on sign-up",
+    "passwordTooShort": "Password must be at least 8 characters",
+    "registerError": "Registration failed. Please try again.",
+    "registering": "Creating account...",
+    "registerButton": "Create account"
   },
   "footer": {
     "description": "All AI models in one place. GPT-4o, Claude, Gemini and more — pay per message, no subscription.",
@@ -117,5 +179,65 @@
     "legal": "Ivashchenko Alexey · TIN 220805856949",
     "privacyShort": "Privacy",
     "termsShort": "Terms"
+  },
+  "catalog": {
+    "search": "Search models...",
+    "all": "All",
+    "free": "Free",
+    "empty": "Nothing found",
+    "editImageTitle": "Image editing",
+    "editImageHint": "Pick an image model — it will apply your edits to this file",
+    "styleRefTitle": "Style reference",
+    "styleRefHint": "Pick an image model — new generations will adopt this file's style",
+    "cancel": "Cancel",
+    "priceFree": "Free",
+    "priceUnlimited": "Unlimited",
+    "pageTitle": "AI model catalog",
+    "pageDescription": "GPT-4o, Claude, Gemini, image generation and dozens of other AI models. Pick a model and start chatting.",
+    "modelsAvailable": "{count} models available"
+  },
+  "account": {
+    "nav": {
+      "overview": "Overview",
+      "memory": "Memory",
+      "projects": "Projects",
+      "personas": "AI personas",
+      "gallery": "Gallery",
+      "analytics": "Analytics",
+      "billing": "Billing",
+      "tasks": "AI tasks",
+      "keys": "API keys",
+      "referral": "Referral program",
+      "files": "My files",
+      "favorites": "Favorites",
+      "telegram": "Telegram",
+      "oauth": "OAuth apps",
+      "logout": "Sign out"
+    },
+    "overview": {
+      "loading": "Loading...",
+      "title": "Dashboard",
+      "balance": "Balance",
+      "topUp": "Top up",
+      "profile": "Profile",
+      "freeTariff": "Free plan",
+      "billingLink": "Billing",
+      "referralTitle": "Referral program",
+      "referralLink": "Your referral link:",
+      "memoryTitle": "Memory",
+      "memoryText": "Facts about you and session history.",
+      "memoryOpen": "Open memory",
+      "projectsTitle": "Projects",
+      "projectsText": "Organize chats into folders with shared context.",
+      "projectsOpen": "Open projects",
+      "galleryTitle": "Gallery",
+      "galleryText": "Community showcase — images and videos.",
+      "galleryOpen": "Open gallery",
+      "devTitle": "For developers",
+      "devText": "OpenAI-compatible API. Connect Cursor, VS Code, Continue.",
+      "apiKeys": "API keys",
+      "docs": "Documentation",
+      "recentChats": "Recent chats"
+    }
   }
 }

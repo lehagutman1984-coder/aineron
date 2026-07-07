@@ -7,8 +7,10 @@ import { Check } from "lucide-react";
 import { authRegister } from "@/lib/api/client";
 import { APIError } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
+import { useTranslations } from "next-intl";
 
 function RegisterForm() {
+  const t = useTranslations("auth");
   const router = useRouter();
   const params = useSearchParams();
   const { setUser } = useAuthStore();
@@ -24,7 +26,7 @@ function RegisterForm() {
     e.preventDefault();
     if (loading) return;
     if (password.length < 8) {
-      setError("Пароль должен содержать минимум 8 символов");
+      setError(t("passwordTooShort"));
       return;
     }
     setLoading(true);
@@ -35,7 +37,7 @@ function RegisterForm() {
       router.push("/verify-email/");
     } catch (err) {
       setError(
-        err instanceof APIError ? err.message : "Ошибка регистрации. Попробуйте снова."
+        err instanceof APIError ? err.message : t("registerError")
       );
       setLoading(false);
     }
@@ -43,23 +45,23 @@ function RegisterForm() {
 
   return (
     <div className="rounded-[16px] border border-[rgba(13,13,13,0.10)] bg-white p-8 shadow-sm">
-      <h1 className="mb-1 text-[22px] font-bold text-[#1A1A1A]">Создать аккаунт</h1>
+      <h1 className="mb-1 text-[22px] font-bold text-[#1A1A1A]">{t("registerTitle")}</h1>
       <p className="mb-6 text-[16px] text-[rgba(13,13,13,0.55)]">
-        Уже есть аккаунт?{" "}
+        {t("haveAccount")}{" "}
         <Link href="/login/" className="text-[#D97757] hover:underline underline-offset-2">
-          Войти
+          {t("loginLink")}
         </Link>
       </p>
 
       <div className="mb-5 flex items-center gap-2 rounded-[8px] bg-[rgba(217,119,87,0.10)] px-3.5 py-2.5 text-[15px] text-[#D97757]">
         <Check size={14} />
-        10 ₽ бесплатно при регистрации
+        {t("bonus")}
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div>
           <label className="mb-1.5 block text-[15px] font-medium text-[#1A1A1A]">
-            Email
+            {t("email")}
           </label>
           <input
             type="email"
@@ -73,7 +75,7 @@ function RegisterForm() {
         </div>
         <div>
           <label className="mb-1.5 block text-[15px] font-medium text-[#1A1A1A]">
-            Пароль
+            {t("password")}
           </label>
           <input
             type="password"
@@ -81,7 +83,7 @@ function RegisterForm() {
             onChange={(e) => setPassword(e.target.value)}
             required
             autoComplete="new-password"
-            placeholder="Минимум 8 символов"
+            placeholder={t("passwordPlaceholder")}
             className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3.5 py-2.5 text-[16px] text-[#1A1A1A] placeholder-[rgba(13,13,13,0.38)] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
           />
         </div>
@@ -97,7 +99,7 @@ function RegisterForm() {
           disabled={loading}
           className="mt-1 h-10 w-full rounded-[8px] bg-[#D97757] text-[16px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          {loading ? "Создаём аккаунт..." : "Создать аккаунт"}
+          {loading ? t("registering") : t("registerButton")}
         </button>
       </form>
     </div>

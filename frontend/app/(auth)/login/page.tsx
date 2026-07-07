@@ -6,8 +6,10 @@ import Link from "next/link";
 import { authLogin } from "@/lib/api/client";
 import { APIError } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
+import { useTranslations } from "next-intl";
 
 function LoginForm() {
+  const t = useTranslations("auth");
   const router = useRouter();
   const params = useSearchParams();
   const { setUser } = useAuthStore();
@@ -30,7 +32,7 @@ function LoginForm() {
       router.push(next);
     } catch (err) {
       setError(
-        err instanceof APIError ? err.message : "Ошибка входа. Попробуйте снова."
+        err instanceof APIError ? err.message : t("loginError")
       );
       setLoading(false);
     }
@@ -38,18 +40,18 @@ function LoginForm() {
 
   return (
     <div className="rounded-[16px] border border-[rgba(13,13,13,0.10)] bg-white p-8 shadow-sm">
-      <h1 className="mb-1 text-[22px] font-bold text-[#1A1A1A]">Войти</h1>
+      <h1 className="mb-1 text-[22px] font-bold text-[#1A1A1A]">{t("loginTitle")}</h1>
       <p className="mb-6 text-[16px] text-[rgba(13,13,13,0.55)]">
-        Нет аккаунта?{" "}
+        {t("noAccount")}{" "}
         <Link href="/register/" className="text-[#D97757] hover:underline underline-offset-2">
-          Зарегистрироваться
+          {t("registerLink")}
         </Link>
       </p>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div>
           <label className="mb-1.5 block text-[15px] font-medium text-[#1A1A1A]">
-            Email
+            {t("email")}
           </label>
           <input
             type="email"
@@ -63,7 +65,7 @@ function LoginForm() {
         </div>
         <div>
           <label className="mb-1.5 block text-[15px] font-medium text-[#1A1A1A]">
-            Пароль
+            {t("password")}
           </label>
           <input
             type="password"
@@ -71,7 +73,7 @@ function LoginForm() {
             onChange={(e) => setPassword(e.target.value)}
             required
             autoComplete="current-password"
-            placeholder="Минимум 8 символов"
+            placeholder={t("passwordPlaceholder")}
             className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3.5 py-2.5 text-[16px] text-[#1A1A1A] placeholder-[rgba(13,13,13,0.38)] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
           />
         </div>
@@ -87,7 +89,7 @@ function LoginForm() {
           disabled={loading}
           className="mt-1 h-10 w-full rounded-[8px] bg-[#D97757] text-[16px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          {loading ? "Вход..." : "Войти"}
+          {loading ? t("loggingIn") : t("loginButton")}
         </button>
       </form>
 
@@ -96,7 +98,7 @@ function LoginForm() {
           href="/users/pages/auth/?tab=reset"
           className="block text-center text-[15px] text-[rgba(13,13,13,0.5)] hover:text-[#D97757] transition-colors"
         >
-          Забыли пароль?
+          {t("forgotPassword")}
         </a>
       </div>
     </div>
