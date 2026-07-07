@@ -81,7 +81,7 @@ export function Footer() {
               &copy; {new Date().getFullYear()} aineron.ru
             </p>
             <p className="text-[13px] text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.25)]">
-              ИНН 220805856949 ·{" "}
+              Иващенко Алексей Анатольевич · ИНН 220805856949 ·{" "}
               <a
                 href="mailto:support@aineron.ru"
                 className="transition-colors hover:text-[#1A1A1A] dark:hover:text-[#EDE8E3]"
