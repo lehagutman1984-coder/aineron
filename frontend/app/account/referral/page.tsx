@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Copy, Check, Users, Wallet, Banknote, ArrowDownToLine } from "lucide-react";
 import { getReferral, requestReferralWithdrawal } from "@/lib/api/client";
 import type { ReferralData } from "@/lib/api/types";
-import { formatRub } from "@/lib/money";
+import { formatMoney } from "@/lib/money";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("ru-RU", {
@@ -104,7 +104,7 @@ export default function ReferralPage() {
           <div className="text-[24px] font-bold text-[#1A1A1A]">
             {data.balance_type === "rub"
               ? `${data.balance.toFixed(2)} ₽`
-              : formatRub(data.balance_kopecks ?? 0)}
+              : formatMoney(data.balance_kopecks ?? 0)}
           </div>
         </div>
 

@@ -137,6 +137,9 @@ class TariffPayView(APIView):
     @extend_schema(summary='Создать платёж (Robokassa)', tags=['Billing'],
                    description='Возвращает параметры формы Robokassa. Фронтенд сам отправляет форму.')
     def post(self, request, tariff_id):
+        if settings.INTL_MODE:
+            # Международный инстанс: карточные платежи отключены, только крипта
+            return Response({'error': {'message': 'Card payments are not available. Use crypto top-up.', 'type': 'unavailable', 'code': 'intl_card_disabled'}}, status=status.HTTP_404_NOT_FOUND)
         try:
             tariff = Tariff.objects.get(id=tariff_id, is_active=True, is_free=False)
         except Tariff.DoesNotExist:
@@ -234,6 +237,9 @@ class BuyPagesView(APIView):
 
     @extend_schema(summary='Пополнить баланс (Robokassa)', tags=['Billing'])
     def post(self, request):
+        if settings.INTL_MODE:
+            # Международный инстанс: карточные платежи отключены, только крипта
+            return Response({'error': {'message': 'Card payments are not available. Use crypto top-up.', 'type': 'unavailable', 'code': 'intl_card_disabled'}}, status=status.HTTP_404_NOT_FOUND)
         pages = int(request.data.get('pages', 0))
         s = PageSaleSettings.get_settings()
         if not s.is_active:

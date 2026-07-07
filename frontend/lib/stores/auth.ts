@@ -4,7 +4,7 @@ import type { AuthUser } from "../api/types";
 
 interface AuthState {
   user: AuthUser | null;
-  /** Баланс в копейках (1 звезда legacy = 100 коп.). Источник истины для отображения — см. lib/money.ts formatRub(). */
+  /** Баланс в копейках (1 звезда legacy = 100 коп.). Источник истины для отображения — см. lib/money.ts formatMoney(). */
   balanceKopecks: number;
   isLoading: boolean;
 

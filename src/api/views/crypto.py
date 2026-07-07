@@ -22,6 +22,10 @@ from users.crypto_payments import (
 
 logger = logging.getLogger(__name__)
 
+# Лимиты пополнения в USD-режиме (INTL_MODE)
+USD_MIN = 1
+USD_MAX = 1000
+
 
 class CryptoConfigView(APIView):
     """GET /api/v1/billing/crypto/"""
@@ -31,12 +35,20 @@ class CryptoConfigView(APIView):
     def get(self, request):
         s = PageSaleSettings.get_settings()
         enabled = crypto_pay_enabled() and s.is_active
-        return Response({
+        data = {
             'enabled': enabled,
             'assets': [a.strip() for a in settings.CRYPTO_PAY_ASSETS.split(',') if a.strip()],
+            'mode': 'usd' if settings.INTL_MODE else 'rub',
             'min_amount': s.min_pages_for_purchase,
             'max_amount': s.max_pages_for_purchase,
-        })
+        }
+        if settings.INTL_MODE:
+            data.update({
+                'kopecks_per_usd': settings.INTL_KOPECKS_PER_USD,
+                'min_amount': USD_MIN,
+                'max_amount': USD_MAX,
+            })
+        return Response(data)
 
 
 class CryptoTopupView(APIView):
@@ -52,31 +64,45 @@ class CryptoTopupView(APIView):
         if not s.is_active:
             return Response({'error': {'message': 'Пополнение баланса временно недоступно', 'type': 'unavailable', 'code': 'disabled'}}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
-        try:
-            amount = int(request.data.get('amount', 0))
-        except (TypeError, ValueError):
-            amount = 0
-        if amount < s.min_pages_for_purchase or amount > s.max_pages_for_purchase:
-            return Response({'error': {'message': f'Сумма должна быть от {s.min_pages_for_purchase} до {s.max_pages_for_purchase} ₽', 'type': 'invalid_request_error', 'code': 'invalid_amount'}}, status=status.HTTP_400_BAD_REQUEST)
-
-        price = float(s.price_per_page) * amount
-        description = f"Пополнение баланса aineron.ru на {amount} ₽"
-
         from core.money import rub_to_kopecks
+        if settings.INTL_MODE:
+            # Международный инстанс: пополнение в USD-номинале, зачисление в кредитах
+            try:
+                amount_usd = float(request.data.get('amount_usd', 0))
+            except (TypeError, ValueError):
+                amount_usd = 0
+            if amount_usd < USD_MIN or amount_usd > USD_MAX:
+                return Response({'error': {'message': f'Amount must be between ${USD_MIN} and ${USD_MAX}', 'type': 'invalid_request_error', 'code': 'invalid_amount'}}, status=status.HTTP_400_BAD_REQUEST)
+            price = round(amount_usd, 2)
+            fiat = 'USD'
+            credit_kopecks = int(round(price * settings.INTL_KOPECKS_PER_USD))
+            description = f"aineron.net balance top-up: {credit_kopecks:,} credits (${price:g})"
+        else:
+            try:
+                amount = int(request.data.get('amount', 0))
+            except (TypeError, ValueError):
+                amount = 0
+            if amount < s.min_pages_for_purchase or amount > s.max_pages_for_purchase:
+                return Response({'error': {'message': f'Сумма должна быть от {s.min_pages_for_purchase} до {s.max_pages_for_purchase} ₽', 'type': 'invalid_request_error', 'code': 'invalid_amount'}}, status=status.HTTP_400_BAD_REQUEST)
+            price = float(s.price_per_page) * amount
+            fiat = 'RUB'
+            credit_kopecks = rub_to_kopecks(price)
+            description = f"Пополнение баланса aineron.ru на {amount} ₽"
+
         payment = PaymentHistory.objects.create(
             user=request.user,
             payment_type='pages',
             payment_method='crypto',
             invoice_id=f'crypto-pending-{request.user.id}',
             amount=price,
-            amount_kopecks=rub_to_kopecks(price),
-            pages_count=amount,
+            amount_kopecks=credit_kopecks,
+            pages_count=credit_kopecks // 100,
             status='pending',
             description=description,
         )
 
         try:
-            invoice = create_invoice(price, description, payload=str(payment.id))
+            invoice = create_invoice(price, description, payload=str(payment.id), fiat=fiat)
         except CryptoPayError as e:
             payment.status = 'failed'
             payment.save(update_fields=['status', 'updated_at'])
@@ -91,6 +117,8 @@ class CryptoTopupView(APIView):
             'payment_id': payment.id,
             'invoice_id': invoice['invoice_id'],
             'amount': f"{price:.2f}",
+            'currency': fiat,
+            'credits': credit_kopecks,
             'pay_url': invoice.get('bot_invoice_url'),
             'web_url': invoice.get('web_app_invoice_url') or invoice.get('mini_app_invoice_url'),
             'expires_in': 1800,

@@ -18,7 +18,7 @@ import {
   Sparkles,
   SmartphoneNfc,
 } from "lucide-react";
-import { formatRub } from "@/lib/money";
+import { formatMoney } from "@/lib/money";
 import {
   initMiniApp,
   promptAddToHomeScreen,
@@ -246,7 +246,7 @@ function HomeScreen({
           Баланс
         </div>
         <div style={{ fontSize: 34, fontWeight: 700 }}>
-          {formatRub(user.balance_kopecks)}
+          {formatMoney(user.balance_kopecks)}
         </div>
       </div>
 

@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import { serverListNetworks } from "@/lib/api/server";
 import type { NetworkListItem } from "@/lib/api/types";
-import { formatRub } from "@/lib/money";
+import { formatMoney } from "@/lib/money";
 import { HeroTypewriter } from "@/components/landing/HeroTypewriter";
 import { FaqAccordion } from "@/components/landing/FaqAccordion";
 import { HomeCta } from "@/components/landing/HomeCta";
@@ -258,7 +258,7 @@ function NetworkCard({ network }: { network: NetworkListItem }) {
       )}
       <div className="mt-auto flex items-center justify-between pt-1">
         <span className="text-[14px] text-[var(--text-tertiary)]">
-          {formatRub(network.cost_kopecks)} / сообщение
+          {formatMoney(network.cost_kopecks)} / сообщение
         </span>
         <ArrowRight
           size={14}

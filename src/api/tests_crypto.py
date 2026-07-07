@@ -128,6 +128,61 @@ class CryptoTopupTests(APITestCase):
         self.assertEqual(resp.status_code, 404)
 
 
+@override_settings(**_CRYPTO_ON, INTL_MODE=True, INTL_KOPECKS_PER_USD=10000)
+class IntlModeTests(APITestCase):
+    """INTL_MODE: пополнение в USD-номинале, Robokassa отключена."""
+
+    def setUp(self):
+        self.user = make_user('intl@test.ru')
+        self.client.force_authenticate(user=self.user)
+
+    def test_config_usd_mode(self):
+        resp = self.client.get('/api/v1/billing/crypto/')
+        data = resp.json()
+        self.assertEqual(data['mode'], 'usd')
+        self.assertEqual(data['kopecks_per_usd'], 10000)
+        self.assertEqual(data['min_amount'], 1)
+
+    def test_usd_topup_credits(self):
+        with mock.patch('users.crypto_payments._api_call', return_value=_INVOICE_OK):
+            resp = self.client.post('/api/v1/billing/crypto/topup/', {'amount_usd': 5}, format='json')
+        self.assertEqual(resp.status_code, 200, resp.content)
+        data = resp.json()
+        self.assertEqual(data['currency'], 'USD')
+        self.assertEqual(data['credits'], 50_000)
+        payment = PaymentHistory.objects.get(id=data['payment_id'])
+        self.assertEqual(payment.amount_kopecks, 50_000)
+
+    def test_usd_topup_settle_credits_balance(self):
+        with mock.patch('users.crypto_payments._api_call', return_value=_INVOICE_OK):
+            payment_id = self.client.post(
+                '/api/v1/billing/crypto/topup/', {'amount_usd': 10}, format='json',
+            ).json()['payment_id']
+        paid = dict(_INVOICE_OK, status='paid')
+        with mock.patch('users.crypto_payments._api_call', return_value={'items': [paid]}):
+            resp = self.client.get(f'/api/v1/billing/crypto/status/{payment_id}/')
+        self.assertEqual(resp.json()['status'], 'success')
+        self.assertEqual(resp.json()['balance_kopecks'], 100_000)
+
+    def test_usd_topup_out_of_range(self):
+        resp = self.client.post('/api/v1/billing/crypto/topup/', {'amount_usd': 0.5}, format='json')
+        self.assertEqual(resp.status_code, 400)
+
+    def test_robokassa_tariff_pay_disabled(self):
+        from users.models import Tariff
+        tariff = Tariff.objects.create(
+            display_name='Test', price=100, pages_count=100, is_active=True,
+        )
+        resp = self.client.post(f'/api/v1/billing/tariffs/{tariff.id}/pay/', {}, format='json')
+        self.assertEqual(resp.status_code, 404)
+        self.assertEqual(resp.json()['error']['code'], 'intl_card_disabled')
+
+    def test_robokassa_buy_pages_disabled(self):
+        resp = self.client.post('/api/v1/billing/pages/buy/', {'pages': 100}, format='json')
+        self.assertEqual(resp.status_code, 404)
+        self.assertEqual(resp.json()['error']['code'], 'intl_card_disabled')
+
+
 @override_settings(**_CRYPTO_ON)
 class CryptoWebhookTests(APITestCase):
     WEBHOOK = '/users/api/payment/crypto/webhook/'

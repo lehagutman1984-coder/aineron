@@ -55,15 +55,15 @@ def _api_call(method: str, params: dict | None = None) -> dict:
     return data['result']
 
 
-def create_invoice(amount_rub, description: str, payload: str) -> dict:
+def create_invoice(amount, description: str, payload: str, fiat: str = 'RUB') -> dict:
     """
-    Создаёт фиатный инвойс (номинал в RUB, оплата принимается в крипте).
+    Создаёт фиатный инвойс (номинал в RUB или USD, оплата принимается в крипте).
     Возвращает объект Invoice: invoice_id, bot_invoice_url, web_app_invoice_url...
     """
     return _api_call('createInvoice', {
         'currency_type': 'fiat',
-        'fiat': 'RUB',
-        'amount': f"{float(amount_rub):.2f}",
+        'fiat': fiat,
+        'amount': f"{float(amount):.2f}",
         'accepted_assets': settings.CRYPTO_PAY_ASSETS,
         'description': description[:1024],
         'payload': payload,

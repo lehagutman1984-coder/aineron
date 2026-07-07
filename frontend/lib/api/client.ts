@@ -522,14 +522,18 @@ export const getPaymentHistory = (): Promise<PaymentHistory[]> =>
 export interface CryptoConfig {
   enabled: boolean;
   assets: string[];
+  mode: "rub" | "usd";
   min_amount: number;
   max_amount: number;
+  kopecks_per_usd?: number;
 }
 
 export interface CryptoTopupResponse {
   payment_id: number;
   invoice_id: number;
   amount: string;
+  currency: "RUB" | "USD";
+  credits: number;
   pay_url: string;
   web_url: string | null;
   expires_in: number;
@@ -544,10 +548,12 @@ export interface CryptoStatusResponse {
 export const getCryptoConfig = (): Promise<CryptoConfig> =>
   request<CryptoConfig>("/billing/crypto/");
 
-export const createCryptoTopup = (amount: number): Promise<CryptoTopupResponse> =>
+export const createCryptoTopup = (
+  body: { amount?: number; amount_usd?: number },
+): Promise<CryptoTopupResponse> =>
   request<CryptoTopupResponse>("/billing/crypto/topup/", {
     method: "POST",
-    body: JSON.stringify({ amount }),
+    body: JSON.stringify(body),
   });
 
 export const getCryptoTopupStatus = (paymentId: number): Promise<CryptoStatusResponse> =>

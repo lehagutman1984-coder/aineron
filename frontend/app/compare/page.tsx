@@ -9,7 +9,7 @@ import Link from "next/link";
 import { listNetworks, compareModels, compareImages, getMessageStatus, voteArena, APIError } from "@/lib/api/client";
 import { MarkdownContent } from "@/components/chat/MarkdownContent";
 import { useAuthStore } from "@/lib/stores/auth";
-import { formatRub } from "@/lib/money";
+import { formatMoney } from "@/lib/money";
 import type { NetworkListItem, WebMessage, CompareItem } from "@/lib/api/types";
 import { Trophy, Image as ImageIcon, MessageSquareText } from "lucide-react";
 
@@ -242,7 +242,7 @@ export default function ComparePage() {
                         {network.name}
                       </p>
                       <p className="text-[13px] text-[rgba(13,13,13,0.40)] dark:text-[rgba(236,236,236,0.35)]">
-                        {formatRub(network.cost_kopecks)}
+                        {formatMoney(network.cost_kopecks)}
                       </p>
                     </div>
                     {isSelected && (
@@ -292,8 +292,8 @@ export default function ComparePage() {
           {selected.length < 2
             ? "Выберите минимум 2 модели"
             : isImage
-            ? `~${formatRub(totalCostKopecks)} (списывается за каждое изображение)`
-            : `Стоимость: ${formatRub(totalCostKopecks)}`}
+            ? `~${formatMoney(totalCostKopecks)} (списывается за каждое изображение)`
+            : `Стоимость: ${formatMoney(totalCostKopecks)}`}
         </p>
         <button
           onClick={handleSubmit}
@@ -505,7 +505,7 @@ function CompareColumn({
           {isWinner && <Trophy size={13} className="shrink-0 text-[#f4a017]" />}
         </div>
         <span className="ml-2 shrink-0 rounded-full bg-[rgba(13,13,13,0.06)] px-2 py-0.5 text-[13px] text-[rgba(13,13,13,0.48)] dark:bg-[rgba(255,255,255,0.06)] dark:text-[rgba(236,236,236,0.40)]">
-          {formatRub(item.cost_kopecks)}
+          {formatMoney(item.cost_kopecks)}
         </span>
       </div>
 

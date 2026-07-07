@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2, Bot, X, Send, MessageSquarePlus, Loader2, Cpu } from "lucide-react";
 import Link from "next/link";
 import { listPersonas, createPersona, deletePersona, createChat, listNetworks } from "@/lib/api/client";
-import { formatRub } from "@/lib/money";
+import { formatMoney } from "@/lib/money";
 import { useAuthStore } from "@/lib/stores/auth";
 import type { Persona, NetworkListItem } from "@/lib/api/types";
 
@@ -189,7 +189,7 @@ export default function PersonasPage() {
                   <option value="">Спрашивать при старте чата</option>
                   {textNetworks.map((n) => (
                     <option key={n.slug} value={n.slug}>
-                      {n.name} — {formatRub(n.cost_kopecks)}/сообщение
+                      {n.name} — {formatMoney(n.cost_kopecks)}/сообщение
                     </option>
                   ))}
                 </select>
@@ -319,7 +319,7 @@ function PersonaCard({
             >
               {networks.map((n) => (
                 <option key={n.slug} value={n.slug}>
-                  {n.name} — {formatRub(n.cost_kopecks)}/сообщение
+                  {n.name} — {formatMoney(n.cost_kopecks)}/сообщение
                 </option>
               ))}
             </select>

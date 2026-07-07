@@ -35,7 +35,7 @@ import {
 import type { CryptoTopupResponse } from "@/lib/api/client";
 import type { PromoCheckResponse } from "@/lib/api/client";
 import type { Tariff, PaymentHistory, RobokassaForm, UserSubscription } from "@/lib/api/types";
-import { formatRub } from "@/lib/money";
+import { formatMoney, CURRENCY } from "@/lib/money";
 import { useAuthStore } from "@/lib/stores/auth";
 
 // ── Robokassa redirect ───────────────────────────────────────────────────────
@@ -93,7 +93,7 @@ function ConfirmPurchaseModal({
       const result = await checkPromoCode(promoInput.trim(), tariffId);
       if (result.type === "balance") {
         setPromoError(
-          `Этот промокод начисляет ${formatRub(result.kopecks)} на баланс — примените его в разделе «Промокод»`,
+          `Этот промокод начисляет ${formatMoney(result.kopecks)} на баланс — примените его в разделе «Промокод»`,
         );
       } else {
         setPromoApplied(result);
@@ -469,7 +469,7 @@ function TariffCard({
         )}
       </div>
       <p className="text-sm text-[var(--color-text-primary)]">
-        На баланс: <span className="font-medium">{formatRub(tariff.balance_grant_kopecks)}</span>
+        На баланс: <span className="font-medium">{formatMoney(tariff.balance_grant_kopecks)}</span>
         {(() => {
           const priceRub = parseFloat(tariff.price);
           const grantRub = tariff.balance_grant_kopecks / 100;
@@ -638,7 +638,11 @@ function CryptoSection() {
         queryClient.invalidateQueries({ queryKey: ["payment-history"] });
       } else if (status.status === "failed") {
         setInvoice(null);
-        setError("Счёт истёк или отменён. Создайте новый.");
+        setError(
+          config?.mode === "usd"
+            ? "The invoice expired or was cancelled. Create a new one."
+            : "Счёт истёк или отменён. Создайте новый.",
+        );
       }
       return status;
     },
@@ -649,22 +653,53 @@ function CryptoSection() {
   // Канал выключен на бэкенде (CRYPTO_PAY_ENABLED=0) — блок скрыт целиком
   if (!config?.enabled) return null;
 
+  const isUsd = config.mode === "usd";
   const value = amount ?? config.min_amount;
+  // Локализация блока: usd-режим = международный инстанс (английский),
+  // rub-режим = aineron.ru (русский). До полного i18n-извлечения (G2).
+  const L = isUsd
+    ? {
+        title: "Pay with crypto",
+        intro: `Top up your balance with ${config.assets.join(", ")} via @CryptoBot. Invoice is issued in USD.`,
+        waiting: (a: string) => `Waiting for payment of $${a}...`,
+        open: "Open invoice",
+        cancel: "Cancel",
+        note: "The invoice is valid for 30 minutes. Your balance updates automatically after payment.",
+        label: `Amount, $ (${config.min_amount}–${config.max_amount})`,
+        pay: "Create invoice",
+        creating: "Creating invoice...",
+        paid: "Payment received — balance updated.",
+        failed: "The invoice expired or was cancelled. Create a new one.",
+        receive: (c: number) => `You will receive ${c.toLocaleString("en-US")} credits`,
+      }
+    : {
+        title: "Оплата криптовалютой",
+        intro: `Пополнение баланса через ${config.assets.join(", ")} — счёт выставляется в @CryptoBot, зачисление в рублях по номиналу счёта.`,
+        waiting: (a: string) => `Ожидаем оплату счёта на ${parseFloat(a).toLocaleString("ru-RU")} ₽...`,
+        open: "Открыть счёт",
+        cancel: "Отмена",
+        note: "Счёт действителен 30 минут. Баланс пополнится автоматически после оплаты.",
+        label: `Сумма, ₽ (от ${config.min_amount} до ${config.max_amount})`,
+        pay: "Выставить счёт",
+        creating: "Создание счёта...",
+        paid: "Оплата получена, баланс пополнен.",
+        failed: "Счёт истёк или отменён. Создайте новый.",
+        receive: () => "",
+      };
+
+  const USD_PACKAGES = [5, 10, 25, 50];
 
   return (
     <section>
-      <SectionHeader icon={Bitcoin} title="Оплата криптовалютой" />
+      <SectionHeader icon={Bitcoin} title={L.title} />
       <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 space-y-4">
-        <p className="text-sm text-[var(--color-text-secondary)]">
-          Пополнение баланса через {config.assets.join(", ")} — счёт выставляется в @CryptoBot,
-          зачисление в рублях по номиналу счёта.
-        </p>
+        <p className="text-sm text-[var(--color-text-secondary)]">{L.intro}</p>
 
         {invoice ? (
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm text-[var(--color-text-primary)]">
               <Clock size={16} className="text-yellow-500 shrink-0 animate-pulse" />
-              Ожидаем оплату счёта на {parseFloat(invoice.amount).toLocaleString("ru-RU")} ₽...
+              {L.waiting(invoice.amount)}
             </div>
             <div className="flex flex-wrap gap-3">
               <a
@@ -674,60 +709,85 @@ function CryptoSection() {
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium
                   bg-[var(--color-accent)] text-white hover:opacity-90 transition-opacity"
               >
-                Открыть счёт <ExternalLink size={14} />
+                {L.open} <ExternalLink size={14} />
               </a>
               <button
                 onClick={() => setInvoice(null)}
                 className="px-4 py-2 rounded-lg text-sm font-medium border border-[var(--color-border)]
                   text-[var(--color-text-primary)] hover:bg-[var(--color-bg)] transition-colors"
               >
-                Отмена
+                {L.cancel}
               </button>
             </div>
-            <p className="text-xs text-[var(--color-text-secondary)]">
-              Счёт действителен 30 минут. Баланс пополнится автоматически после оплаты.
-            </p>
+            <p className="text-xs text-[var(--color-text-secondary)]">{L.note}</p>
           </div>
         ) : (
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="flex-1 min-w-[160px]">
-              <label className="block text-xs text-[var(--color-text-secondary)] mb-1.5">
-                Сумма, ₽ (от {config.min_amount} до {config.max_amount})
-              </label>
-              <input
-                type="number"
-                min={config.min_amount}
-                max={config.max_amount}
-                value={value}
-                onChange={(e) => {
-                  setAmount(parseInt(e.target.value) || 0);
+          <div className="space-y-3">
+            {isUsd && (
+              <div className="flex flex-wrap gap-2">
+                {USD_PACKAGES.map((usd) => (
+                  <button
+                    key={usd}
+                    onClick={() => {
+                      setAmount(usd);
+                      setError(null);
+                    }}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                      value === usd
+                        ? "border-[var(--color-accent)] text-[var(--color-accent)] bg-[var(--color-accent)]/5"
+                        : "border-[var(--color-border)] text-[var(--color-text-primary)] hover:border-[var(--color-accent)]"
+                    }`}
+                  >
+                    ${usd}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="flex-1 min-w-[160px]">
+                <label className="block text-xs text-[var(--color-text-secondary)] mb-1.5">
+                  {L.label}
+                </label>
+                <input
+                  type="number"
+                  min={config.min_amount}
+                  max={config.max_amount}
+                  value={value}
+                  onChange={(e) => {
+                    setAmount(parseInt(e.target.value) || 0);
+                    setError(null);
+                  }}
+                  className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)]
+                    px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none
+                    focus:border-[var(--color-accent)]"
+                />
+              </div>
+              <button
+                onClick={() => {
                   setError(null);
+                  setPaid(false);
+                  mutation.mutate(isUsd ? { amount_usd: value } : { amount: value });
                 }}
-                className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)]
-                  px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none
-                  focus:border-[var(--color-accent)]"
-              />
+                disabled={
+                  mutation.isPending || value < config.min_amount || value > config.max_amount
+                }
+                className="px-4 py-2 rounded-lg text-sm font-medium bg-[var(--color-accent)] text-white
+                  hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {mutation.isPending ? L.creating : L.pay}
+              </button>
             </div>
-            <button
-              onClick={() => {
-                setError(null);
-                setPaid(false);
-                mutation.mutate(value);
-              }}
-              disabled={
-                mutation.isPending || value < config.min_amount || value > config.max_amount
-              }
-              className="px-4 py-2 rounded-lg text-sm font-medium bg-[var(--color-accent)] text-white
-                hover:opacity-90 transition-opacity disabled:opacity-50"
-            >
-              {mutation.isPending ? "Создание счёта..." : "Выставить счёт"}
-            </button>
+            {isUsd && config.kopecks_per_usd && value >= config.min_amount && (
+              <p className="text-xs text-[var(--color-text-secondary)]">
+                {L.receive(value * config.kopecks_per_usd)}
+              </p>
+            )}
           </div>
         )}
 
         {paid && (
           <p className="text-green-500 text-sm flex items-center gap-1.5">
-            <CheckCircle size={14} /> Оплата получена, баланс пополнен.
+            <CheckCircle size={14} /> {L.paid}
           </p>
         )}
         {error && (
@@ -842,7 +902,7 @@ function HistorySection() {
             )}
             <p className="text-xs text-[var(--color-text-secondary)]">
               {p.amount_kopecks != null
-                ? `+${formatRub(p.amount_kopecks)}`
+                ? `+${formatMoney(p.amount_kopecks)}`
                 : `+${p.pages_count} ₽`}{" "}
               · {paymentStatusLabel(p.status)}
             </p>
@@ -887,19 +947,24 @@ export default function BillingPage() {
   const currentSubscription = tariffsData?.current_subscription ?? null;
   const showSubscription =
     currentSubscription && currentSubscription.is_active && !currentSubscription.tariff.is_free;
+  // Кредитная витрина (международный инстанс): тарифы, Robokassa и подписки скрыты,
+  // остаются крипто-пополнение, промокоды и история.
+  const isCredits = CURRENCY === "credits";
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-10">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Баланс и тарифы</h1>
+        <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">
+          {isCredits ? "Balance & billing" : "Баланс и тарифы"}
+        </h1>
         {tariffsData && (
           <p className="mt-1 text-[var(--color-text-secondary)]">
-            Текущий баланс:{" "}
+            {isCredits ? "Current balance: " : "Текущий баланс: "}
             <span className="font-semibold text-[var(--color-text-primary)]">
-              {formatRub(tariffsData.balance_kopecks)}
+              {formatMoney(tariffsData.balance_kopecks)}
             </span>
-            {tariffsData.current_subscription && (
+            {!isCredits && tariffsData.current_subscription && (
               <>
                 {" "}
                 · Подписка до{" "}
@@ -913,9 +978,10 @@ export default function BillingPage() {
       </div>
 
       {/* Subscription management */}
-      {showSubscription && <SubscriptionSection subscription={currentSubscription} />}
+      {!isCredits && showSubscription && <SubscriptionSection subscription={currentSubscription} />}
 
       {/* Tariffs */}
+      {!isCredits && (
       <section>
         <SectionHeader icon={CreditCard} title="Тарифы" />
         <p className="text-sm text-[var(--color-text-secondary)] mb-4 -mt-2">
@@ -951,21 +1017,24 @@ export default function BillingPage() {
             ))}
         </div>
       </section>
+      )}
 
-      {/* Buy stars */}
+      {/* Buy stars (Robokassa — только rub-витрина) */}
+      {!isCredits && (
       <section>
         <SectionHeader icon={Wallet} title="Пополнить баланс" />
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
           <StarsSection />
         </div>
       </section>
+      )}
 
       {/* Crypto payment (скрыт при CRYPTO_PAY_ENABLED=0) */}
       <CryptoSection />
 
       {/* Promo code */}
       <section>
-        <SectionHeader icon={Tag} title="Промокод" />
+        <SectionHeader icon={Tag} title={isCredits ? "Promo code" : "Промокод"} />
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
           <PromoSection />
         </div>
@@ -973,7 +1042,7 @@ export default function BillingPage() {
 
       {/* Payment history */}
       <section>
-        <SectionHeader icon={History} title="История платежей" />
+        <SectionHeader icon={History} title={isCredits ? "Payment history" : "История платежей"} />
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-5">
           <HistorySection />
         </div>

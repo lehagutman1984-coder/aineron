@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { getMe, listChats } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
-import { formatRub } from "@/lib/money";
+import { formatMoney } from "@/lib/money";
 import type { ChatListItem } from "@/lib/api/types";
 
 export default function AccountPage() {
@@ -65,7 +65,7 @@ export default function AccountPage() {
             <Wallet size={14} className="text-[#D97757]" />
             Баланс
           </div>
-          <p className="mb-4 text-[36px] font-bold text-[#1A1A1A]">{formatRub(profile.balance_kopecks)}</p>
+          <p className="mb-4 text-[36px] font-bold text-[#1A1A1A]">{formatMoney(profile.balance_kopecks)}</p>
           <Link
             href="/account/billing/"
             className="inline-flex h-9 items-center gap-2 rounded-[8px] bg-[#D97757] px-4 text-[15px] font-medium text-white hover:bg-[#C4623E] transition-colors"

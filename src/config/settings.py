@@ -590,6 +590,14 @@ CRYPTO_PAY_API_URL = os.environ.get('CRYPTO_PAY_API_URL', 'https://pay.crypt.bot
 CRYPTO_PAY_ASSETS = os.environ.get('CRYPTO_PAY_ASSETS', 'USDT,TON')
 
 
+# ========== INTL MODE (международный инстанс, GLOBAL_EXPANSION_PLAN.md) ==========
+# INTL_MODE=1: витрина в кредитах, пополнение в USD-номинале (только крипта),
+# Robokassa-эндпоинты отключены. На aineron.ru всегда 0.
+INTL_MODE = os.environ.get('INTL_MODE', '0') == '1'
+# Кредитов (внутренних копеек) за 1 USD при пополнении: 10000 = $1 -> 10 000 кредитов
+INTL_KOPECKS_PER_USD = int(os.environ.get('INTL_KOPECKS_PER_USD', 10000))
+
+
 # ========== ОБРАБОТЧИК 404 ==========
 handler404 = 'landing.views.custom_404_view'
 

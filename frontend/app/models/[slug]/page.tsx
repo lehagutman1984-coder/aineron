@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Coins, MessageSquare, ImageIcon, Code2, ChevronDown } from "lucide-react";
 import { serverGetNetwork, serverListNetworks } from "@/lib/api/server";
-import { formatRub, kopecksToRub } from "@/lib/money";
+import { formatMoney, kopecksToRub } from "@/lib/money";
 import { ChatStartForm } from "./ChatStartForm";
 
 interface Props {
@@ -168,7 +168,7 @@ export default async function ModelDetailPage({ params, searchParams }: Props) {
             label={
               network.unlimited
                 ? "Безлимит"
-                : `${formatRub(network.cost_kopecks)} / сообщение`
+                : `${formatMoney(network.cost_kopecks)} / сообщение`
             }
           />
           {network.unlimited && network.messages_limit > 0 && (

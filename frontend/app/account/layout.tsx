@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "@/lib/stores/auth";
 import { authLogout } from "@/lib/api/client";
-import { formatRub } from "@/lib/money";
+import { formatMoney } from "@/lib/money";
 import { useEffect } from "react";
 
 const NAV = [
@@ -104,7 +104,7 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
               <div className="mt-1.5 flex items-center gap-1.5">
                 <Wallet size={12} className="text-[#D97757]" />
                 <span className="text-[14px] text-[rgba(13,13,13,0.50)]">
-                  {formatRub(balanceKopecks ?? 0)}
+                  {formatMoney(balanceKopecks ?? 0)}
                 </span>
               </div>
             </div>

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Coins, ExternalLink, Loader2, Monitor, RefreshCw, Smartphone, StopCircle, Tablet, Terminal, XCircle, Zap } from 'lucide-react';
 import { studioApi } from '@/lib/api/studio';
 import { APIError } from '@/lib/api/client';
-import { formatRub } from '@/lib/money';
+import { formatMoney } from '@/lib/money';
 import { SessionTimer } from './SessionTimer';
 
 type E2BState = 'idle' | 'starting' | 'running' | 'failed' | 'expired' | 'capped';
@@ -326,7 +326,7 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
         <div>
           <p className="text-sm font-medium text-[var(--text)]">Сессия завершена</p>
           <p className="text-xs text-[var(--text-secondary)] mt-1">
-            15 мин истекли{sessionCost > 0 ? ` · потрачено ~${formatRub(sessionCost * 100)}` : ''}
+            15 мин истекли{sessionCost > 0 ? ` · потрачено ~${formatMoney(sessionCost * 100)}` : ''}
           </p>
         </div>
         <button
@@ -420,7 +420,7 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
         {costStars > 0 && (
           <span className="flex items-center gap-1 text-[12px] text-[var(--text-secondary)]" title="Потрачено за сессию">
             <Coins size={11} />
-            {formatRub(costStars * 100)}
+            {formatMoney(costStars * 100)}
           </span>
         )}
 

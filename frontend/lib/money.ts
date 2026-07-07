@@ -24,3 +24,25 @@ export function formatRub(kopecks: number): string {
   }
   return `${rub.toFixed(2).replace(".", ",")} ₽`;
 }
+
+/**
+ * Валюта витрины инстанса (build-time):
+ *   rub     — aineron.ru (рубли, как раньше)
+ *   credits — международный инстанс (кредиты: 1 кредит = 1 внутренняя единица)
+ */
+export const CURRENCY = (process.env.NEXT_PUBLIC_CURRENCY ?? "rub") as
+  | "rub"
+  | "credits";
+
+/** 50000 -> "50,000 credits" */
+export function formatCredits(kopecks: number): string {
+  return `${Math.round(kopecks).toLocaleString("en-US")} credits`;
+}
+
+/**
+ * Универсальное форматирование денежной величины по валюте инстанса.
+ * В rub-режиме идентична formatRub — на aineron.ru ничего не меняется.
+ */
+export function formatMoney(kopecks: number): string {
+  return CURRENCY === "credits" ? formatCredits(kopecks) : formatRub(kopecks);
+}

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Coins, CheckCircle2, GitBranch, Globe, Loader2, ExternalLink } from 'lucide-react';
 import { studioApi } from '@/lib/api/studio';
-import { formatRub } from '@/lib/money';
+import { formatMoney } from '@/lib/money';
 import { card, btn } from './styles';
 
 interface BillingEstimateProps {
@@ -48,7 +48,7 @@ export function BillingEstimate({
         <div className="space-y-2 text-sm">
           <div className="flex items-center gap-2 text-[var(--text-secondary)]">
             <Coins size={14} className="text-yellow-400" />
-            Потрачено: <strong className="text-[var(--text)]">{formatRub(spentKopecks ?? 0)}</strong>
+            Потрачено: <strong className="text-[var(--text)]">{formatMoney(spentKopecks ?? 0)}</strong>
           </div>
           {plannedSteps !== undefined && (
             <div className="flex items-center gap-2 text-[var(--text-secondary)]">
@@ -106,11 +106,11 @@ export function BillingEstimate({
       <div className="flex-1">
         {spentKopecks !== undefined ? (
           <span>
-            Потрачено: <strong>{formatRub(spentKopecks)}</strong>
+            Потрачено: <strong>{formatMoney(spentKopecks)}</strong>
           </span>
         ) : (
           <span>
-            Примерная стоимость: <strong>~{estimatedKopecks !== undefined ? formatRub(estimatedKopecks) : '?'}</strong>
+            Примерная стоимость: <strong>~{estimatedKopecks !== undefined ? formatMoney(estimatedKopecks) : '?'}</strong>
             {plannedSteps ? ` за ${plannedSteps} шагов` : ''}
           </span>
         )}

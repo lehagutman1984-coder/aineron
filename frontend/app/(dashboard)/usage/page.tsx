@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, BarChart2, Zap, Wallet, Activity } from "lucide-react";
 import { getUsageStats, listOrgs } from "@/lib/api/client";
 import type { UsageStats, Organization } from "@/lib/api/types";
-import { formatRub } from "@/lib/money";
+import { formatMoney } from "@/lib/money";
 
 const PERIOD_OPTIONS = [
   { label: "7 дней", value: 7 },
@@ -107,7 +107,7 @@ export default function UsagePage() {
             <TotalCard
               icon={<Wallet size={18} />}
               label="Потрачено"
-              value={formatRub(stats.totals.total_kopecks)}
+              value={formatMoney(stats.totals.total_kopecks)}
             />
           </div>
 
@@ -181,7 +181,7 @@ export default function UsagePage() {
                           {row.total_tokens.toLocaleString("ru-RU")}
                         </td>
                         <td className="py-2 text-right text-[rgba(13,13,13,0.65)]">
-                          {formatRub(row.cost_kopecks)}
+                          {formatMoney(row.cost_kopecks)}
                         </td>
                       </tr>
                     ))}

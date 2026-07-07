@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { TrendingUp, TrendingDown, Minus, Wallet, Zap, BarChart2 } from "lucide-react";
 import { getStarsUsage } from "@/lib/api/client";
 import type { StarsUsageDay, StarsUsageModel } from "@/lib/api/types";
-import { formatRub } from "@/lib/money";
+import { formatMoney } from "@/lib/money";
 
 const PERIODS = [
   { label: "7 дней", value: 7 },
@@ -68,7 +68,7 @@ export default function AnalyticsPage() {
         <StatCard
           label="Потрачено"
           value={data?.totals.total_kopecks ?? 0}
-          display={formatRub(data?.totals.total_kopecks ?? 0)}
+          display={formatMoney(data?.totals.total_kopecks ?? 0)}
           delta={delta}
           icon={<Wallet size={15} className="text-[#D97757]" />}
           loading={isLoading}
@@ -82,7 +82,7 @@ export default function AnalyticsPage() {
         <StatCard
           label="Среднее в день"
           value={data?.totals.avg_per_day_kopecks ?? 0}
-          display={formatRub(data?.totals.avg_per_day_kopecks ?? 0)}
+          display={formatMoney(data?.totals.avg_per_day_kopecks ?? 0)}
           icon={<BarChart2 size={15} className="text-[#D97757]" />}
           loading={isLoading}
         />
@@ -139,7 +139,7 @@ function StatCard({
   value: number;
   delta?: number | null;
   suffix?: string;
-  /** Готовая отформатированная строка (например, formatRub) — если задана, переопределяет value+suffix */
+  /** Готовая отформатированная строка (например, formatMoney) — если задана, переопределяет value+suffix */
   display?: string;
   icon: React.ReactNode;
   loading: boolean;
@@ -222,7 +222,7 @@ function BarChart({ days, period }: { days: StarsUsageDay[]; period: number }) {
           <div
             key={entry.date}
             className="group relative flex flex-1 flex-col items-center justify-end"
-            title={`${label}: ${formatRub(entry.kopecks)}, ${entry.requests} запр.`}
+            title={`${label}: ${formatMoney(entry.kopecks)}, ${entry.requests} запр.`}
           >
             <div
               className="w-full rounded-t-[3px] transition-all duration-200"
@@ -237,7 +237,7 @@ function BarChart({ days, period }: { days: StarsUsageDay[]; period: number }) {
             {/* Tooltip */}
             {entry.kopecks > 0 && (
               <div className="pointer-events-none absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 z-10 hidden rounded-[7px] bg-[#1A1A1A] px-2 py-1 text-[12px] text-white whitespace-nowrap group-hover:block">
-                {label}<br />{formatRub(entry.kopecks)}, {entry.requests} запр.
+                {label}<br />{formatMoney(entry.kopecks)}, {entry.requests} запр.
               </div>
             )}
           </div>
@@ -288,7 +288,7 @@ function ModelList({ models }: { models: StarsUsageModel[] }) {
                   {m.name}
                 </span>
                 <span className="shrink-0 text-[14px] font-medium text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.45)]">
-                  {formatRub(m.kopecks)}
+                  {formatMoney(m.kopecks)}
                 </span>
               </div>
               <div className="h-[5px] w-full overflow-hidden rounded-full bg-[rgba(13,13,13,0.07)] dark:bg-[rgba(255,255,255,0.07)]">
