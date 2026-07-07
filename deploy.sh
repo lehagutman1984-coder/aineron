@@ -34,6 +34,9 @@ sleep 10
 echo -e "${YELLOW}Применяем миграции (если нужно)...${NC}"
 docker-compose exec -T web python manage.py migrate --noinput
 
+# modeltranslation: заполнить *_ru из исходных колонок (идемпотентно)
+docker-compose exec -T web python manage.py update_translation_fields || true
+
 echo -e "${YELLOW}Устанавливаем Telegram webhook...${NC}"
 docker-compose exec -T web python manage.py setup_webhook || echo -e "${YELLOW}setup_webhook пропущен (нет токена или команды)${NC}"
 

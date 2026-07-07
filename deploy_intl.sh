@@ -15,6 +15,8 @@ docker compose -f docker-compose.intl.yml up -d --build
 echo "=== Ожидание web-контейнера (миграции идут при старте) ==="
 sleep 10
 docker compose -f docker-compose.intl.yml exec -T web python manage.py migrate --noinput
+# modeltranslation: заполнить *_ru из исходных колонок (идемпотентно)
+docker compose -f docker-compose.intl.yml exec -T web python manage.py update_translation_fields || true
 
 echo "=== Готово. Статус: ==="
 docker compose -f docker-compose.intl.yml ps

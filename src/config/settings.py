@@ -24,6 +24,7 @@ if '*' not in ALLOWED_HOSTS:
 
 # Application definition
 INSTALLED_APPS = [
+    'modeltranslation',  # ДО contrib.admin (переводы контента БД, GLOBAL_EXPANSION_PLAN §4.3)
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -166,7 +167,19 @@ AUTH_PASSWORD_VALIDATORS = [
 
 
 # ========== INTERNATIONALIZATION ==========
-LANGUAGE_CODE = 'ru'
+# Язык инстанса: ru — aineron.ru, en — международный (INTL_MODE).
+# Определяет, какие поля modeltranslation отдаются в API (с fallback на ru).
+# env читается напрямую: настройка INTL_MODE объявлена ниже по файлу.
+LANGUAGE_CODE = 'en' if os.environ.get('INTL_MODE', '0') == '1' else 'ru'
+LANGUAGES = [
+    ('ru', 'Russian'),
+    ('en', 'English'),
+]
+MODELTRANSLATION_DEFAULT_LANGUAGE = 'ru'
+MODELTRANSLATION_FALLBACK_LANGUAGES = ('ru',)
+# USE_I18N в проекте выключен (gettext не используется) — включаем регистрацию
+# переводимых полей явно, иначе modeltranslation молча ничего не делает.
+MODELTRANSLATION_ENABLE_REGISTRATIONS = True
 TIME_ZONE = 'Europe/Moscow'
 USE_I18N = False
 USE_L10N = True
