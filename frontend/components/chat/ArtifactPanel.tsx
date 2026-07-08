@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { X, Code2, Eye, Copy, Check, ExternalLink } from "lucide-react";
 
 export type ArtifactType = "react" | "html" | "svg" | "mermaid" | "code";
@@ -13,7 +14,7 @@ export interface Artifact {
 }
 
 /** Extract the first renderable artifact from an assistant message's plain text. */
-export function extractArtifact(content: string): Artifact | null {
+export function extractArtifact(content: string, t: (key: string) => string): Artifact | null {
   if (!content) return null;
 
   // Strip HTML tags to get plain code text (messages are stored as HTML)
@@ -31,7 +32,7 @@ export function extractArtifact(content: string): Artifact | null {
     const code = match[2].trim();
 
     if (["jsx", "tsx", "react"].includes(lang)) {
-      return { type: "react", lang, code, title: "React компонент" };
+      return { type: "react", lang, code, title: t("artifactPanel.reactComponent") };
     }
     if (lang === "html") {
       return { type: "html", lang, code, title: "HTML preview" };
@@ -40,7 +41,7 @@ export function extractArtifact(content: string): Artifact | null {
       return { type: "svg", lang, code, title: "SVG" };
     }
     if (lang === "mermaid") {
-      return { type: "mermaid", lang, code, title: "Диаграмма" };
+      return { type: "mermaid", lang, code, title: t("artifactPanel.diagram") };
     }
   }
 
@@ -129,6 +130,7 @@ interface ArtifactPanelProps {
 }
 
 export function ArtifactPanel({ artifact, onClose }: ArtifactPanelProps) {
+  const t = useTranslations("chat.artifactPanel");
   const [tab, setTab] = useState<"preview" | "code">(
     artifact.type === "mermaid" ? "preview" : "preview"
   );
@@ -146,7 +148,7 @@ export function ArtifactPanel({ artifact, onClose }: ArtifactPanelProps) {
       <div className="flex shrink-0 items-center gap-2 border-b border-[rgba(13,13,13,0.08)] px-3 py-2.5 dark:border-[rgba(255,255,255,0.08)]">
         <Code2 size={14} className="shrink-0 text-[#D97757]" />
         <span className="flex-1 truncate text-[15px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
-          {artifact.title || "Артефакт"}
+          {artifact.title || t("artifact")}
         </span>
         <div className="flex items-center gap-1">
           {/* Tab switcher */}
@@ -163,13 +165,13 @@ export function ArtifactPanel({ artifact, onClose }: ArtifactPanelProps) {
               className={`flex items-center gap-1 rounded-[4px] px-2 py-0.5 text-[13px] font-medium transition-all ${tab === "code" ? "bg-white text-[#1A1A1A] shadow-sm dark:bg-[rgba(255,255,255,0.12)] dark:text-[#EDE8E3]" : "text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.4)]"}`}
             >
               <Code2 size={11} />
-              Код
+              {t("code")}
             </button>
           </div>
           <button
             onClick={handleCopy}
             className="flex h-6 w-6 items-center justify-center rounded-[5px] text-[rgba(13,13,13,0.4)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.4)] dark:hover:bg-[rgba(255,255,255,0.08)]"
-            title="Скопировать код"
+            title={t("copyCode")}
           >
             {copied ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
           </button>

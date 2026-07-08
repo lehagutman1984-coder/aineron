@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
 
 interface Props {
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export function BeforeAfterSlider({ beforeUrl, afterUrl, onClose }: Props) {
+  const t = useTranslations("chat.beforeAfterSlider");
   const [pos, setPos] = useState(50); // 0-100%
   const containerRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
@@ -62,10 +64,10 @@ export function BeforeAfterSlider({ beforeUrl, afterUrl, onClose }: Props) {
 
         {/* Labels */}
         <div className="absolute left-3 top-3 z-10 rounded-[6px] bg-black/60 px-2 py-1 text-[13px] font-medium text-white">
-          До
+          {t("before")}
         </div>
         <div className="absolute right-3 top-3 z-10 rounded-[6px] bg-black/60 px-2 py-1 text-[13px] font-medium text-white">
-          После
+          {t("after")}
         </div>
 
         {/* Slider container */}
@@ -77,7 +79,7 @@ export function BeforeAfterSlider({ beforeUrl, afterUrl, onClose }: Props) {
         >
           {/* After image (full) */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={afterUrl} alt="После" className="block max-h-[80vh] w-auto max-w-[85vw] select-none" draggable={false} />
+          <img src={afterUrl} alt={t("after")} className="block max-h-[80vh] w-auto max-w-[85vw] select-none" draggable={false} />
 
           {/* Before image (clipped) */}
           <div
@@ -87,7 +89,7 @@ export function BeforeAfterSlider({ beforeUrl, afterUrl, onClose }: Props) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={beforeUrl}
-              alt="До"
+              alt={t("before")}
               className="block h-full select-none object-cover"
               style={{ maxWidth: 'none', width: containerRef.current?.offsetWidth ?? 'auto' }}
               draggable={false}
@@ -108,7 +110,7 @@ export function BeforeAfterSlider({ beforeUrl, afterUrl, onClose }: Props) {
         </div>
 
         <p className="mt-2 text-center text-[14px] text-white/60">
-          Перетащите разделитель для сравнения
+          {t("hint")}
         </p>
       </div>
     </div>

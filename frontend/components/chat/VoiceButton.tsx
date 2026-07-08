@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState, useRef, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Mic, MicOff, Loader } from "lucide-react";
 import { transcribeAudio } from "@/lib/api/client";
 
@@ -24,6 +25,7 @@ export function VoiceButton({
   onTranscript: (text: string) => void;
   disabled?: boolean;
 }) {
+  const t = useTranslations("chat.voiceButton");
   const [state, setState] = useState<RecordState>("idle");
   const [error, setError] = useState<string | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -44,7 +46,7 @@ export function VoiceButton({
     setError(null);
     const mimeType = getSupportedMimeType();
     if (!mimeType) {
-      setError("Запись не поддерживается в этом браузере");
+      setError(t("recordingNotSupported"));
       return;
     }
 
@@ -55,10 +57,10 @@ export function VoiceButton({
       const name = (err as Error).name;
       setError(
         name === "NotAllowedError"
-          ? "Нет доступа к микрофону"
+          ? t("micAccessDenied")
           : name === "NotFoundError"
-          ? "Микрофон не найден"
-          : "Ошибка микрофона"
+          ? t("micNotFound")
+          : t("micError")
       );
       return;
     }
@@ -87,9 +89,9 @@ export function VoiceButton({
       try {
         const text = await transcribeAudio(blob);
         if (text.trim()) onTranscript(text.trim());
-        else setError("Ничего не распознано");
+        else setError(t("nothingRecognized"));
       } catch {
-        setError("Не удалось распознать речь");
+        setError(t("recognitionFailed"));
       } finally {
         setState("idle");
       }
@@ -97,7 +99,7 @@ export function VoiceButton({
 
     recorder.start();
     setState("recording");
-  }, [onTranscript]);
+  }, [onTranscript, t]);
 
   const stopRecording = useCallback(() => {
     recorderRef.current?.stop();
@@ -121,10 +123,10 @@ export function VoiceButton({
         disabled={disabled || state === "transcribing"}
         title={
           state === "recording"
-            ? "Остановить запись (Whisper распознает речь)"
+            ? t("titleStopRecording")
             : state === "transcribing"
-            ? "Распознаю речь..."
-            : "Голосовой ввод (без Google)"
+            ? t("titleTranscribing")
+            : t("titleVoiceInput")
         }
         className={[
           "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[13px] font-medium transition-all",
@@ -147,10 +149,10 @@ export function VoiceButton({
           <Mic size={12} />
         )}
         {state === "recording"
-          ? "Остановить"
+          ? t("stop")
           : state === "transcribing"
-          ? "Распознаю..."
-          : "Голос"}
+          ? t("transcribing")
+          : t("voice")}
       </button>
 
       {error && (

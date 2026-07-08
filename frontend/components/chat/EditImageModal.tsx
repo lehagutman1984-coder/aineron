@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState, useRef } from "react";
+import { useTranslations } from "next-intl";
 import {
   X,
   Brush,
@@ -34,23 +35,22 @@ type Direction = "left" | "right" | "up" | "down" | "all";
 
 const EXPAND_RATIOS = ["16:9", "4:3", "1:1", "3:4", "9:16", "21:9"];
 
-const ASPECT_HINT: Record<Direction, string> = {
-  left: "→ финальное: ~4:3",
-  right: "→ финальное: ~4:3",
-  up: "→ финальное: ~3:4",
-  down: "→ финальное: ~3:4",
-  all: "→ финальное: ~1:1",
-};
-
-const OUTPAINT_BTNS: { dir: Direction; icon: typeof ArrowLeft; label: string }[] = [
-  { dir: "left", icon: ArrowLeft, label: "Влево" },
-  { dir: "up", icon: ArrowUp, label: "Вверх" },
-  { dir: "down", icon: ArrowDown, label: "Вниз" },
-  { dir: "right", icon: ArrowRight, label: "Вправо" },
-  { dir: "all", icon: Maximize2, label: "Со всех сторон" },
-];
-
 export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
+  const t = useTranslations("chat.editImageModal");
+  const ASPECT_HINT: Record<Direction, string> = {
+    left: t("aspectHintLeft"),
+    right: t("aspectHintRight"),
+    up: t("aspectHintUp"),
+    down: t("aspectHintDown"),
+    all: t("aspectHintAll"),
+  };
+  const OUTPAINT_BTNS: { dir: Direction; icon: typeof ArrowLeft; label: string }[] = [
+    { dir: "left", icon: ArrowLeft, label: t("directionLeft") },
+    { dir: "up", icon: ArrowUp, label: t("directionUp") },
+    { dir: "down", icon: ArrowDown, label: t("directionDown") },
+    { dir: "right", icon: ArrowRight, label: t("directionRight") },
+    { dir: "all", icon: Maximize2, label: t("directionAll") },
+  ];
   const [prompt, setPrompt] = useState("");
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const [maskMode, setMaskMode] = useState(false);
@@ -109,7 +109,7 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[rgba(13,13,13,0.08)] px-4 py-3 dark:border-[rgba(255,255,255,0.08)]">
           <p className="text-[16px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
-            Редактирование изображения
+            {t("title")}
           </p>
           <button
             type="button"
@@ -134,7 +134,7 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={imageUrl}
-                alt="Исходное изображение"
+                alt={t("altSourceImage")}
                 className="mx-auto block max-h-[45vh] w-auto object-contain"
               />
             </div>
@@ -145,8 +145,8 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
             {/* Quick presets */}
             <div className="flex flex-wrap gap-1.5 mb-3">
               {[
-                { label: "Убрать фон", prompt: "Remove background, make it transparent or white" },
-                { label: "Ярче и чётче", prompt: "Enhance sharpness, increase brightness and contrast, professional photo editing" },
+                { label: t("presetRemoveBackground"), prompt: "Remove background, make it transparent or white" },
+                { label: t("presetEnhance"), prompt: "Enhance sharpness, increase brightness and contrast, professional photo editing" },
               ].map(({ label, prompt: p }) => (
                 <button
                   key={label}
@@ -163,7 +163,7 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
                 onClick={() => {
                   setOutpaint(null);
                   setTargetRatio(null);
-                  const prefix = 'Добавь надпись "';
+                  const prefix = t("addCaptionPrefix");
                   if (!prompt.startsWith(prefix)) setPrompt(prefix);
                   setTimeout(() => {
                     const el = promptRef.current;
@@ -174,7 +174,7 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
                 }}
                 className="h-8 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 text-[14px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:bg-[rgba(13,13,13,0.04)] hover:border-[rgba(13,13,13,0.25)] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.65)]"
               >
-                Добавить текст
+                {t("addText")}
               </button>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -188,18 +188,18 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
                 }`}
               >
                 <Brush size={14} />
-                {maskMode ? "Скрыть маску" : "Нарисовать маску"}
+                {maskMode ? t("hideMask") : t("drawMask")}
               </button>
               {maskUrl && !maskMode && (
                 <span className="flex items-center gap-1 text-[14px] font-medium text-[#D97757]">
                   <Check size={13} />
-                  Маска готова
+                  {t("maskReady")}
                 </span>
               )}
             </div>
             {outpaint && (
               <p className="mt-1 text-[13px] text-[rgba(13,13,13,0.4)] dark:text-[rgba(236,236,236,0.4)]">
-                Недоступно: выбрано расширение холста
+                {t("outpaintDisabledHint")}
               </p>
             )}
           </div>
@@ -207,7 +207,7 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
           {/* Outpaint */}
           <div className={(maskMode || maskUrl || Boolean(targetRatio)) ? "opacity-40 pointer-events-none select-none" : ""}>
             <p className="mb-2 text-[14px] font-medium text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.55)]">
-              Расширить холст (outpaint)
+              {t("expandCanvasTitle")}
             </p>
             <div className="flex flex-wrap gap-1.5">
               {OUTPAINT_BTNS.map(({ dir, icon: Icon, label }) => (
@@ -230,7 +230,7 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
             </div>
             {(maskMode || maskUrl) && (
               <p className="mt-1 text-[13px] text-[rgba(13,13,13,0.4)] dark:text-[rgba(236,236,236,0.4)]">
-                Недоступно: активна маска редактирования
+                {t("maskActiveHint")}
               </p>
             )}
           </div>
@@ -238,7 +238,7 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
           {/* Generative Expand — расширение до целевого соотношения */}
           <div className={(maskMode || maskUrl || Boolean(outpaint)) ? "opacity-40 pointer-events-none select-none" : ""}>
             <p className="mb-2 text-[14px] font-medium text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.55)]">
-              Расширить до соотношения
+              {t("expandToRatioTitle")}
             </p>
             <div className="flex flex-wrap gap-1.5">
               {EXPAND_RATIOS.map((r) => (
@@ -257,7 +257,7 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
               ))}
             </div>
             <p className="mt-1 text-[13px] text-[rgba(13,13,13,0.38)] dark:text-[rgba(236,236,236,0.35)]">
-              AI равномерно расширит края до выбранного формата
+              {t("expandRatioHint")}
             </p>
           </div>
 
@@ -270,16 +270,16 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
               rows={3}
               placeholder={
                 outpaint || targetRatio
-                  ? "Опишите, чем заполнить новую область (необязательно)..."
+                  ? t("placeholderOutpaint")
                   : maskUrl
-                    ? "Опишите, что разместить в закрашенной области..."
-                    : "Опишите, что изменить на изображении..."
+                    ? t("placeholderMask")
+                    : t("placeholderDefault")
               }
               className="w-full resize-none rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-3 py-2.5 text-[15px] text-[#1A1A1A] outline-none transition-all focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] dark:border-[rgba(255,255,255,0.12)] dark:bg-[rgba(255,255,255,0.04)] dark:text-[#EDE8E3]"
             />
             {outpaint && (
               <p className="mt-1 text-[13px] text-[rgba(13,13,13,0.4)] dark:text-[rgba(236,236,236,0.4)]">
-                Холст расширяется на 25% в выбранном направлении. Промпт описывает чем заполнить новую область — не добавляет текст на изображение.
+                {t("outpaintPromptHint")}
               </p>
             )}
           </div>
@@ -292,7 +292,7 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
             onClick={onClose}
             className="h-9 rounded-[8px] px-4 text-[15px] font-medium text-[rgba(13,13,13,0.6)] transition-colors hover:bg-[rgba(13,13,13,0.05)] dark:text-[rgba(236,236,236,0.6)] dark:hover:bg-[rgba(255,255,255,0.08)]"
           >
-            Отмена
+            {t("cancel")}
           </button>
           <button
             type="button"
@@ -301,7 +301,7 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
             className="flex h-9 items-center gap-1.5 rounded-[8px] bg-[#D97757] px-4 text-[15px] font-medium text-white transition-colors hover:bg-[#C4623E] disabled:cursor-not-allowed disabled:opacity-40"
           >
             {submitting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-            Сгенерировать
+            {t("generate")}
           </button>
         </div>
       </div>

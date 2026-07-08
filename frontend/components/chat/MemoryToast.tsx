@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Brain, X } from "lucide-react";
 
 interface Props {
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export function MemoryToast({ count, facts, onDismiss }: Props) {
+  const t = useTranslations("chat.memoryToast");
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -34,7 +36,7 @@ export function MemoryToast({ count, facts, onDismiss }: Props) {
       <Brain size={15} className="mt-0.5 shrink-0 text-[#D97757]" />
       <div className="min-w-0 flex-1">
         <div className="text-[14px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
-          Запомнено: {count} {count === 1 ? "факт" : count < 5 ? "факта" : "фактов"}
+          {t("saved", { count })}
         </div>
         {facts.length > 0 && (
           <div className="mt-1 flex flex-col gap-0.5">
@@ -43,7 +45,7 @@ export function MemoryToast({ count, facts, onDismiss }: Props) {
                 key={i}
                 className="truncate text-[13px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]"
               >
-                — {f}
+                {t("bullet", { fact: f })}
               </div>
             ))}
           </div>

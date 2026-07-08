@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations, useLocale } from "next-intl";
 import { Search, X, MessageSquare, Bot, Clock } from "lucide-react";
 import { searchChats } from "@/lib/api/client";
 import type { ChatSearchResult } from "@/lib/api/types";
@@ -16,6 +17,8 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 export function GlobalSearch() {
+  const t = useTranslations("chat.globalSearch");
+  const locale = useLocale();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<ChatSearchResult[]>([]);
@@ -99,7 +102,7 @@ export function GlobalSearch() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Поиск по истории чатов..."
+            placeholder={t("searchPlaceholder")}
             className="flex-1 bg-transparent text-sm outline-none text-[#1A1A1A] placeholder:text-[rgba(13,13,13,0.32)]"
           />
           {loading && (
@@ -136,7 +139,7 @@ export function GlobalSearch() {
                   <div className="flex-shrink-0 flex items-center gap-0.5 text-[rgba(13,13,13,0.30)]">
                     <Clock size={10} />
                     <span className="text-[12px]">
-                      {new Date(r.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
+                      {new Date(r.created_at).toLocaleDateString(locale, { day: "numeric", month: "short" })}
                     </span>
                   </div>
                 </button>
@@ -147,20 +150,20 @@ export function GlobalSearch() {
 
         {!loading && query.length >= 2 && results.length === 0 && (
           <div className="px-4 py-8 text-center text-sm text-[rgba(13,13,13,0.45)]">
-            Ничего не найдено по запросу «{query}»
+            {t("noResults", { query })}
           </div>
         )}
 
         {!query && (
           <div className="px-4 py-5 text-[14px] text-[rgba(13,13,13,0.40)] text-center">
-            Введите запрос для поиска по истории всех чатов
+            {t("emptyHint")}
           </div>
         )}
 
         <div className="px-4 py-2 border-t border-[rgba(13,13,13,0.06)] flex items-center gap-3 text-[12px] text-[rgba(13,13,13,0.30)]">
-          <span><kbd className="bg-[rgba(13,13,13,0.07)] px-1 py-0.5 rounded text-[11px]">↑↓</kbd> навигация</span>
-          <span><kbd className="bg-[rgba(13,13,13,0.07)] px-1 py-0.5 rounded text-[11px]">Enter</kbd> открыть</span>
-          <span><kbd className="bg-[rgba(13,13,13,0.07)] px-1 py-0.5 rounded text-[11px]">Esc</kbd> закрыть</span>
+          <span><kbd className="bg-[rgba(13,13,13,0.07)] px-1 py-0.5 rounded text-[11px]">↑↓</kbd> {t("hintNavigate")}</span>
+          <span><kbd className="bg-[rgba(13,13,13,0.07)] px-1 py-0.5 rounded text-[11px]">Enter</kbd> {t("hintOpen")}</span>
+          <span><kbd className="bg-[rgba(13,13,13,0.07)] px-1 py-0.5 rounded text-[11px]">Esc</kbd> {t("hintClose")}</span>
         </div>
       </div>
     </div>

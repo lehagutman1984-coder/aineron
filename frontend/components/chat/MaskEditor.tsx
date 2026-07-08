@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Eraser, Check, Loader2, Brush, RotateCcw } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { uploadFile } from "@/lib/api/client";
 
 // Конвенция маски: БЕЛОЕ = область редактирования, ЧЁРНОЕ = сохранить.
@@ -16,12 +17,6 @@ const BRUSH_RATIO: Record<BrushKey, number> = {
   large: 0.1,
 };
 
-const BRUSH_LABEL: Record<BrushKey, string> = {
-  small: "Маленькая",
-  medium: "Средняя",
-  large: "Большая",
-};
-
 interface Props {
   imageUrl: string;
   chatId: number;
@@ -30,6 +25,13 @@ interface Props {
 }
 
 export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
+  const t = useTranslations("chat.maskEditor");
+  const BRUSH_LABEL: Record<BrushKey, string> = {
+    small: t("brushSizeSmall"),
+    medium: t("brushSizeMedium"),
+    large: t("brushSizeLarge"),
+  };
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -226,7 +228,7 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
       out.toBlob((b) => resolve(b), "image/png")
     );
     if (!blob) {
-      setError("Не удалось сформировать маску");
+      setError(t("errorMaskFailed"));
       return;
     }
 
@@ -236,11 +238,11 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
       const res = await uploadFile(chatId, file);
       onApply(res.url);
     } catch {
-      setError("Ошибка загрузки маски");
+      setError(t("errorUploadFailed"));
     } finally {
       setUploading(false);
     }
-  }, [hasStrokes, chatId, onApply]);
+  }, [hasStrokes, chatId, onApply, t]);
 
   return (
     <div className="space-y-3">
@@ -254,7 +256,7 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
         <img
           ref={imgRef}
           src={imageUrl}
-          alt="Изображение для маски"
+          alt={t("imageAlt")}
           onLoad={syncCanvasSize}
           className="block max-h-[55vh] w-auto max-w-full select-none"
           draggable={false}
@@ -304,18 +306,18 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
         <p className="text-[14px] text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.55)]">
           {mode === "draw" ? (
             <>
-              <span className="font-medium text-[#1A1A1A] dark:text-white">Кисть:</span>
-              {" "}закрасьте область, которую нужно изменить — белая подсветка показывает выделение
+              <span className="font-medium text-[#1A1A1A] dark:text-white">{t("brushLabel")}</span>
+              {" "}{t("brushHint")}
             </>
           ) : (
             <>
-              <span className="font-medium text-[#e74c3c]">Ластик:</span>
-              {" "}стирает уже закрашенные области — водите по белым пятнам чтобы убрать выделение
+              <span className="font-medium text-[#e74c3c]">{t("eraseLabel")}</span>
+              {" "}{t("eraseHint")}
             </>
           )}
         </p>
         <p className="text-[13px] text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.3)]">
-          Маска работает только с GPT Image 1
+          {t("modelHint")}
         </p>
       </div>
 
@@ -326,7 +328,7 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
           <button
             type="button"
             onClick={() => setMode("draw")}
-            title="Рисовать маску"
+            title={t("drawTooltip")}
             className={`rounded-[6px] px-2.5 py-1 text-[14px] font-medium transition-colors flex items-center gap-1 ${
               mode === "draw"
                 ? "bg-white text-[#1A1A1A] shadow-sm dark:bg-[rgba(255,255,255,0.12)] dark:text-white"
@@ -334,12 +336,12 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
             }`}
           >
             <Brush size={12} />
-            Кисть
+            {t("drawButton")}
           </button>
           <button
             type="button"
             onClick={() => setMode("erase")}
-            title="Стереть часть маски"
+            title={t("eraseTooltip")}
             className={`rounded-[6px] px-2.5 py-1 text-[14px] font-medium transition-colors flex items-center gap-1 ${
               mode === "erase"
                 ? "bg-white text-[#1A1A1A] shadow-sm dark:bg-[rgba(255,255,255,0.12)] dark:text-white"
@@ -347,7 +349,7 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
             }`}
           >
             <Eraser size={12} />
-            Ластик
+            {t("eraseButton")}
           </button>
         </div>
 
@@ -375,11 +377,11 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
           type="button"
           onClick={handleUndo}
           disabled={historyRef.current.length === 0}
-          title="Отменить последний штрих (Ctrl+Z)"
+          title={t("undoTooltip")}
           className="flex h-9 items-center gap-1.5 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 text-[14px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:bg-[rgba(13,13,13,0.04)] disabled:opacity-40 dark:border-[rgba(236,236,236,0.12)] dark:text-[rgba(236,236,236,0.65)] dark:hover:bg-[rgba(236,236,236,0.06)]"
         >
           <RotateCcw size={14} />
-          Отменить
+          {t("undoButton")}
         </button>
 
         {/* Очистить */}
@@ -390,7 +392,7 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
           className="flex h-9 items-center gap-1.5 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 text-[14px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:bg-[rgba(13,13,13,0.04)] disabled:opacity-40 dark:border-[rgba(236,236,236,0.12)] dark:text-[rgba(236,236,236,0.65)] dark:hover:bg-[rgba(236,236,236,0.06)]"
         >
           <Eraser size={14} />
-          Очистить
+          {t("clearButton")}
         </button>
 
         {/* Применить */}
@@ -401,7 +403,7 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
           className="flex h-9 items-center gap-1.5 rounded-[8px] bg-[#D97757] px-4 text-[14px] font-medium text-white transition-colors hover:bg-[#C4623E] disabled:opacity-40"
         >
           {uploading ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-          Применить маску
+          {t("applyButton")}
         </button>
       </div>
 

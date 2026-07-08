@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState, useRef } from "react";
+import { useTranslations } from "next-intl";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
@@ -11,6 +12,7 @@ import type { ComponentPropsWithoutRef } from "react";
 // ── Fullscreen modal overlay ─────────────────────────────────────────────────
 
 function FullscreenModal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  const t = useTranslations("chat.markdownContent");
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
@@ -23,7 +25,7 @@ function FullscreenModal({ title, onClose, children }: { title: string; onClose:
             onClick={onClose}
             className="flex items-center gap-1.5 rounded-[5px] border border-[rgba(255,255,255,0.10)] px-2.5 py-1 text-[13px] text-[rgba(255,255,255,0.45)] transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-white"
           >
-            <X size={12} /> Закрыть
+            <X size={12} /> {t("close")}
           </button>
         </div>
         <div className="flex-1 overflow-auto">
@@ -37,6 +39,7 @@ function FullscreenModal({ title, onClose, children }: { title: string; onClose:
 // ── Code block with language label + copy button ────────────────────────────
 
 function PreBlock({ children, ...props }: ComponentPropsWithoutRef<"pre">) {
+  const t = useTranslations("chat.markdownContent");
   const ref = useRef<HTMLPreElement>(null);
   const [copied, setCopied] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
@@ -86,20 +89,20 @@ function PreBlock({ children, ...props }: ComponentPropsWithoutRef<"pre">) {
         onClick={download}
         className="flex items-center gap-1.5 rounded-[5px] border border-[rgba(255,255,255,0.10)] px-2 py-1 text-[13px] font-medium text-[rgba(255,255,255,0.45)] transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-[rgba(255,255,255,0.82)]"
       >
-        <Download size={11} /> Скачать
+        <Download size={11} /> {t("download")}
       </button>
       <button
         onClick={copy}
         className="flex items-center gap-1.5 rounded-[5px] border border-[rgba(255,255,255,0.10)] px-2 py-1 text-[13px] font-medium text-[rgba(255,255,255,0.45)] transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-[rgba(255,255,255,0.82)]"
       >
         {copied ? <Check size={11} /> : <Copy size={11} />}
-        {copied ? "Скопировано" : "Копировать"}
+        {copied ? t("copied") : t("copy")}
       </button>
       <button
         onClick={() => setFullscreen(true)}
         className="flex items-center gap-1.5 rounded-[5px] border border-[rgba(255,255,255,0.10)] px-2 py-1 text-[13px] font-medium text-[rgba(255,255,255,0.45)] transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-[rgba(255,255,255,0.82)]"
       >
-        <Maximize2 size={11} /> Развернуть
+        <Maximize2 size={11} /> {t("expand")}
       </button>
     </div>
   );
@@ -249,6 +252,7 @@ const EXT_LANG: Record<string, string> = {
 };
 
 function FileBlock({ filePath, code, truncated }: { filePath: string; code: string; truncated?: boolean }) {
+  const t = useTranslations("chat.markdownContent");
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
   const lineCount = code.split("\n").length;
@@ -275,7 +279,7 @@ function FileBlock({ filePath, code, truncated }: { filePath: string; code: stri
     <div className="my-3 overflow-hidden rounded-[10px] border border-[rgba(0,122,255,0.25)] bg-[rgba(0,122,255,0.04)]">
       {truncated && (
         <div className="px-4 py-1.5 bg-[rgba(255,149,0,0.08)] border-b border-[rgba(255,149,0,0.20)]">
-          <span className="text-[13px] text-[#ff9500]">Файл обрезан API (лимит ~55K симв.) — кнопка коммита недоступна. Запросите конкретную функцию.</span>
+          <span className="text-[13px] text-[#ff9500]">{t("truncatedNotice")}</span>
         </div>
       )}
       {/* Header — always visible */}
@@ -288,7 +292,7 @@ function FileBlock({ filePath, code, truncated }: { filePath: string; code: stri
           {filePath}
         </span>
         <span className="text-[13px] text-[rgba(0,0,0,0.38)]">
-          {lineCount} строк
+          {t("lineCount", { count: lineCount })}
         </span>
         {expanded ? (
           <ChevronUp size={14} className="text-[rgba(0,0,0,0.38)]" />
@@ -310,14 +314,14 @@ function FileBlock({ filePath, code, truncated }: { filePath: string; code: stri
                 className="flex items-center gap-1.5 rounded-[5px] border border-[rgba(255,255,255,0.10)] px-2 py-1 text-[13px] font-medium text-[rgba(255,255,255,0.45)] transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-[rgba(255,255,255,0.82)]"
               >
                 <Download size={11} />
-                Скачать
+                {t("download")}
               </button>
               <button
                 onClick={copy}
                 className="flex items-center gap-1.5 rounded-[5px] border border-[rgba(255,255,255,0.10)] px-2 py-1 text-[13px] font-medium text-[rgba(255,255,255,0.45)] transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-[rgba(255,255,255,0.82)]"
               >
                 {copied ? <Check size={11} /> : <Copy size={11} />}
-                {copied ? "Скопировано" : "Копировать"}
+                {copied ? t("copied") : t("copy")}
               </button>
             </div>
           </div>
@@ -338,6 +342,7 @@ interface EditHunk {
 }
 
 function DiffHunk({ hunk, dark }: { hunk: EditHunk; dark: boolean }) {
+  const t = useTranslations("chat.markdownContent");
   const [copiedSearch, setCopiedSearch] = useState(false);
   const [copiedReplace, setCopiedReplace] = useState(false);
 
@@ -361,10 +366,10 @@ function DiffHunk({ hunk, dark }: { hunk: EditHunk; dark: boolean }) {
       <div className="grid grid-cols-2">
         <div className={`border-r ${dark ? "border-[rgba(255,255,255,0.08)] bg-[rgba(255,60,60,0.12)]" : "border-[rgba(0,200,100,0.15)] bg-[rgba(255,60,60,0.05)]"}`}>
           <div className={`flex items-center justify-between border-b px-3 py-1 ${dark ? "border-[rgba(255,60,60,0.20)]" : "border-[rgba(255,60,60,0.12)]"}`}>
-            <span className="text-[12px] font-semibold uppercase tracking-wider text-[rgba(220,80,80,0.9)]">Было</span>
+            <span className="text-[12px] font-semibold uppercase tracking-wider text-[rgba(220,80,80,0.9)]">{t("before")}</span>
             <button onClick={copySearch} className={btnCls}>
               {copiedSearch ? <Check size={10} /> : <Copy size={10} />}
-              {copiedSearch ? "Скопировано" : "Копировать"}
+              {copiedSearch ? t("copied") : t("copy")}
             </button>
           </div>
           <pre className={`m-0 overflow-x-auto px-3 py-2.5 font-mono text-[14px] leading-relaxed ${dark ? "text-[rgba(255,255,255,0.82)]" : "text-[rgba(0,0,0,0.75)]"}`}>
@@ -373,14 +378,14 @@ function DiffHunk({ hunk, dark }: { hunk: EditHunk; dark: boolean }) {
         </div>
         <div className={dark ? "bg-[rgba(0,200,100,0.12)]" : "bg-[rgba(0,200,100,0.05)]"}>
           <div className={`flex items-center justify-between border-b px-3 py-1 ${dark ? "border-[rgba(0,200,100,0.20)]" : "border-[rgba(0,200,100,0.12)]"}`}>
-            <span className="text-[12px] font-semibold uppercase tracking-wider text-[rgba(0,200,100,0.9)]">Стало</span>
+            <span className="text-[12px] font-semibold uppercase tracking-wider text-[rgba(0,200,100,0.9)]">{t("after")}</span>
             <button onClick={copyReplace} className={btnCls}>
               {copiedReplace ? <Check size={10} /> : <Copy size={10} />}
-              {copiedReplace ? "Скопировано" : "Копировать"}
+              {copiedReplace ? t("copied") : t("copy")}
             </button>
           </div>
           <pre className={`m-0 overflow-x-auto px-3 py-2.5 font-mono text-[14px] leading-relaxed ${dark ? "text-[rgba(255,255,255,0.82)]" : "text-[rgba(0,0,0,0.75)]"}`}>
-            {hunk.replace.trimEnd() || "(удалено)"}
+            {hunk.replace.trimEnd() || t("deleted")}
           </pre>
         </div>
       </div>
@@ -389,6 +394,7 @@ function DiffHunk({ hunk, dark }: { hunk: EditHunk; dark: boolean }) {
 }
 
 function EditBlock({ filePath, hunks }: { filePath: string; hunks: EditHunk[] }) {
+  const t = useTranslations("chat.markdownContent");
   const [expanded, setExpanded] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
 
@@ -418,12 +424,12 @@ function EditBlock({ filePath, hunks }: { filePath: string; hunks: EditHunk[] })
           {filePath}
         </span>
         <span className="text-[13px] text-[rgba(0,0,0,0.38)]">
-          {hunks.length} {hunks.length === 1 ? "правка" : "правок"}
+          {t("editsCount", { count: hunks.length })}
         </span>
         <button
           onClick={(e) => { e.stopPropagation(); setFullscreen(true); }}
           className="rounded-[4px] p-1 text-[rgba(0,0,0,0.30)] transition-colors hover:bg-[rgba(0,200,100,0.12)] hover:text-[#D97757]"
-          title="Развернуть"
+          title={t("expand")}
         >
           <Maximize2 size={13} />
         </button>

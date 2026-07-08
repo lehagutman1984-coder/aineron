@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { Brain, X, Loader2 } from "lucide-react";
 import { getMemoryFacts, deactivateMemoryFact } from "@/lib/api/client";
 
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export function ForgetMemoryPanel({ onClose }: Props) {
+  const t = useTranslations("chat.forgetMemoryPanel");
   const [facts, setFacts] = useState<Fact[]>([]);
   const [loading, setLoading] = useState(true);
   const [deactivating, setDeactivating] = useState<Set<number>>(new Set());
@@ -50,13 +52,13 @@ export function ForgetMemoryPanel({ onClose }: Props) {
     >
       <div className="flex items-center gap-2 border-b border-[rgba(13,13,13,0.07)] px-3 py-2.5 dark:border-[rgba(255,255,255,0.07)]">
         <Brain size={13} className="text-[#D97757]" />
-        <span className="flex-1 text-[14px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">Забыть из памяти</span>
+        <span className="flex-1 text-[14px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">{t("title")}</span>
         <button onClick={onClose} className="text-[rgba(13,13,13,0.35)] hover:text-[#1A1A1A]"><X size={12} /></button>
       </div>
       <div className="max-h-[240px] overflow-y-auto px-2 py-1.5">
         {loading && <div className="flex justify-center py-4"><Loader2 size={16} className="animate-spin text-[rgba(13,13,13,0.35)]" /></div>}
         {!loading && facts.length === 0 && (
-          <p className="py-3 text-center text-[14px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.4)]">Нет сохранённых фактов</p>
+          <p className="py-3 text-center text-[14px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.4)]">{t("noFacts")}</p>
         )}
         {facts.map((f) => (
           <div key={f.id} className="group flex items-start gap-2 rounded-[7px] px-2 py-1.5 hover:bg-[rgba(217,119,87,0.05)]">
@@ -65,7 +67,7 @@ export function ForgetMemoryPanel({ onClose }: Props) {
               onClick={() => handleDeactivate(f.id)}
               disabled={deactivating.has(f.id)}
               className="mt-0.5 shrink-0 rounded-[5px] p-0.5 text-[rgba(13,13,13,0.3)] hover:bg-red-50 hover:text-red-500 disabled:opacity-40 dark:text-[rgba(236,236,236,0.3)]"
-              title="Забыть"
+              title={t("forget")}
             >
               {deactivating.has(f.id) ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />}
             </button>
@@ -73,7 +75,7 @@ export function ForgetMemoryPanel({ onClose }: Props) {
         ))}
       </div>
       <div className="border-t border-[rgba(13,13,13,0.07)] px-3 py-2 dark:border-[rgba(255,255,255,0.07)]">
-        <a href="/account/memory/" className="text-[13px] text-[rgba(217,119,87,0.8)] hover:text-[#D97757]">Управление памятью →</a>
+        <a href="/account/memory/" className="text-[13px] text-[rgba(217,119,87,0.8)] hover:text-[#D97757]">{t("manageMemory")}</a>
       </div>
     </div>
   );

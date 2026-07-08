@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { Search, CheckCircle, AlertCircle, Loader2, BookOpen } from "lucide-react";
 import type { DeepResearchStep, DeepResearchStatus } from "@/lib/api/types";
 
@@ -21,6 +22,7 @@ interface Props {
 }
 
 export function DeepResearchPanel({ steps, status, error }: Props) {
+  const t = useTranslations("chat.deepResearchPanel");
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -35,7 +37,7 @@ export function DeepResearchPanel({ steps, status, error }: Props) {
       <div className="flex items-center gap-2 border-b border-[rgba(217,119,87,0.12)] px-3 py-2.5">
         <BookOpen size={13} className="text-[#D97757]" />
         <span className="text-[14px] font-semibold uppercase tracking-wide text-[#D97757]">
-          Глубокое исследование
+          {t("title")}
         </span>
         {isRunning && (
           <Loader2 size={11} className="ml-auto animate-spin text-[#D97757]" />
@@ -64,7 +66,7 @@ export function DeepResearchPanel({ steps, status, error }: Props) {
         {isRunning && steps.length === 0 && (
           <div className="flex items-center gap-2 py-2 text-[14px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.4)]">
             <Loader2 size={12} className="animate-spin" />
-            Запуск исследования...
+            {t("starting")}
           </div>
         )}
         {status === "error" && error && (

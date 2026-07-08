@@ -1866,7 +1866,7 @@ function MessageRow({
             <div className="mt-1.5 flex items-center gap-0.5">
               <CopyButton plainText={message.plain_text} htmlContent={message.content} />
               {(() => {
-                const artifact = onOpenArtifact ? extractArtifact(message.plain_text || message.content) : null;
+                const artifact = onOpenArtifact ? extractArtifact(message.plain_text || message.content, t) : null;
                 return artifact && onOpenArtifact ? (
                   <button
                     onClick={() => onOpenArtifact(artifact)}

@@ -1,20 +1,21 @@
 ﻿"use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Wand2, Check, X, Loader2, RefreshCw } from "lucide-react";
 import { enhanceImagePrompt, APIError } from "@/lib/api/client";
 
-const STYLES: { value: string; label: string }[] = [
-  { value: "", label: "Авто" },
-  { value: "photorealistic", label: "Фотореализм" },
-  { value: "anime", label: "Аниме" },
-  { value: "oil_painting", label: "Масло" },
-  { value: "watercolor", label: "Акварель" },
-  { value: "digital_art", label: "Цифровой арт" },
-  { value: "cinematic", label: "Кинематограф" },
-  { value: "3d_render", label: "3D-рендер" },
-  { value: "pixel_art", label: "Пиксель-арт" },
-  { value: "minimalist", label: "Минимализм" },
+const STYLE_KEYS: { value: string; key: string }[] = [
+  { value: "", key: "styleAuto" },
+  { value: "photorealistic", key: "stylePhotorealistic" },
+  { value: "anime", key: "styleAnime" },
+  { value: "oil_painting", key: "styleOilPainting" },
+  { value: "watercolor", key: "styleWatercolor" },
+  { value: "digital_art", key: "styleDigitalArt" },
+  { value: "cinematic", key: "styleCinematic" },
+  { value: "3d_render", key: "style3dRender" },
+  { value: "pixel_art", key: "stylePixelArt" },
+  { value: "minimalist", key: "styleMinimalist" },
 ];
 
 interface PromptEnhancerProps {
@@ -24,6 +25,7 @@ interface PromptEnhancerProps {
 }
 
 export function PromptEnhancer({ prompt, onAccept, disabled }: PromptEnhancerProps) {
+  const t = useTranslations("chat.promptEnhancer");
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [style, setStyle] = useState("");
@@ -46,7 +48,7 @@ export function PromptEnhancer({ prompt, onAccept, disabled }: PromptEnhancerPro
       setOriginal(res.original_prompt);
       setOpen(true);
     } catch (err) {
-      setError(err instanceof APIError ? err.message : "Не удалось улучшить промпт.");
+      setError(err instanceof APIError ? err.message : t("enhanceError"));
       setOpen(true);
     } finally {
       setLoading(false);
@@ -70,7 +72,7 @@ export function PromptEnhancer({ prompt, onAccept, disabled }: PromptEnhancerPro
         type="button"
         disabled={!canEnhance || loading}
         onClick={() => (open ? close() : run())}
-        title="Улучшить промпт с помощью ИИ"
+        title={t("enhanceTitle")}
         className={[
           "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[13px] font-medium transition-all disabled:cursor-not-allowed disabled:opacity-40",
           open
@@ -79,7 +81,7 @@ export function PromptEnhancer({ prompt, onAccept, disabled }: PromptEnhancerPro
         ].join(" ")}
       >
         {loading ? <Loader2 size={12} className="animate-spin" /> : <Wand2 size={12} />}
-        Улучшить
+        {t("enhanceButton")}
       </button>
 
       {open && (
@@ -90,7 +92,7 @@ export function PromptEnhancer({ prompt, onAccept, disabled }: PromptEnhancerPro
           <div className="mb-2.5 flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-[14px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
               <Wand2 size={13} className="text-[#D97757]" />
-              Улучшенный промпт
+              {t("enhancedPromptTitle")}
             </span>
             <button
               type="button"
@@ -103,7 +105,7 @@ export function PromptEnhancer({ prompt, onAccept, disabled }: PromptEnhancerPro
 
           {/* Style picker */}
           <div className="mb-2.5 flex flex-wrap gap-1.5">
-            {STYLES.map((s) => (
+            {STYLE_KEYS.map((s) => (
               <button
                 key={s.value}
                 type="button"
@@ -119,7 +121,7 @@ export function PromptEnhancer({ prompt, onAccept, disabled }: PromptEnhancerPro
                     : "bg-[rgba(13,13,13,0.05)] text-[rgba(13,13,13,0.6)] hover:bg-[rgba(13,13,13,0.09)] dark:bg-[rgba(255,255,255,0.07)] dark:text-[rgba(236,236,236,0.6)]",
                 ].join(" ")}
               >
-                {s.label}
+                {t(s.key)}
               </button>
             ))}
           </div>
@@ -129,13 +131,13 @@ export function PromptEnhancer({ prompt, onAccept, disabled }: PromptEnhancerPro
           ) : loading ? (
             <div className="flex items-center gap-2 py-3 text-[15px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">
               <Loader2 size={14} className="animate-spin" />
-              Генерируем улучшенный промпт...
+              {t("generating")}
             </div>
           ) : (
             <>
               <div className="mb-2">
                 <p className="mb-1 text-[12px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.38)] dark:text-[rgba(236,236,236,0.35)]">
-                  Было
+                  {t("before")}
                 </p>
                 <p className="rounded-[8px] bg-[rgba(13,13,13,0.04)] px-2.5 py-1.5 text-[14px] leading-relaxed text-[rgba(13,13,13,0.6)] dark:bg-[rgba(255,255,255,0.05)] dark:text-[rgba(236,236,236,0.55)]">
                   {original}
@@ -143,7 +145,7 @@ export function PromptEnhancer({ prompt, onAccept, disabled }: PromptEnhancerPro
               </div>
               <div className="mb-3">
                 <p className="mb-1 text-[12px] font-medium uppercase tracking-wide text-[#D97757]">
-                  Стало
+                  {t("after")}
                 </p>
                 <p className="max-h-[180px] overflow-y-auto rounded-[8px] bg-[rgba(217,119,87,0.06)] px-2.5 py-1.5 text-[14px] leading-relaxed text-[#1A1A1A] ring-1 ring-[rgba(217,119,87,0.18)] dark:text-[#EDE8E3]">
                   {enhanced}
@@ -157,14 +159,14 @@ export function PromptEnhancer({ prompt, onAccept, disabled }: PromptEnhancerPro
                   className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[14px] font-medium text-[rgba(13,13,13,0.55)] transition-colors hover:bg-[rgba(13,13,13,0.05)] dark:text-[rgba(236,236,236,0.5)] dark:hover:bg-[rgba(255,255,255,0.08)]"
                 >
                   <RefreshCw size={12} />
-                  Ещё раз
+                  {t("retry")}
                 </button>
                 <button
                   type="button"
                   onClick={close}
                   className="rounded-[8px] px-2.5 py-1.5 text-[14px] font-medium text-[rgba(13,13,13,0.55)] transition-colors hover:bg-[rgba(13,13,13,0.05)] dark:text-[rgba(236,236,236,0.5)] dark:hover:bg-[rgba(255,255,255,0.08)]"
                 >
-                  Отмена
+                  {t("cancel")}
                 </button>
                 <button
                   type="button"
@@ -173,7 +175,7 @@ export function PromptEnhancer({ prompt, onAccept, disabled }: PromptEnhancerPro
                   className="flex items-center gap-1.5 rounded-[8px] bg-[#D97757] px-3 py-1.5 text-[14px] font-medium text-white transition-all hover:bg-[#C4623E] disabled:opacity-40"
                 >
                   <Check size={12} />
-                  Применить
+                  {t("apply")}
                 </button>
               </div>
             </>

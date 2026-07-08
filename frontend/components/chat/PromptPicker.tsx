@@ -2,21 +2,22 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { BookMarked, Code2, Globe, BarChart2, Mail, BookOpen, Pencil, FileText, X, Search } from "lucide-react";
 import { listPrompts } from "@/lib/api/client";
 import type { PromptTemplate } from "@/lib/api/types";
 
-const CATS = [
-  { key: "all", label: "Все" },
-  { key: "code", label: "Код" },
-  { key: "translate", label: "Перевод" },
-  { key: "analyze", label: "Анализ" },
-  { key: "email", label: "Письма" },
-  { key: "study", label: "Учёба" },
-  { key: "creative", label: "Творчество" },
+const CAT_KEYS = [
+  { key: "all", labelKey: "catAll" },
+  { key: "code", labelKey: "catCode" },
+  { key: "translate", labelKey: "catTranslate" },
+  { key: "analyze", labelKey: "catAnalyze" },
+  { key: "email", labelKey: "catEmail" },
+  { key: "study", labelKey: "catStudy" },
+  { key: "creative", labelKey: "catCreative" },
 ] as const;
 
-type CatKey = (typeof CATS)[number]["key"];
+type CatKey = (typeof CAT_KEYS)[number]["key"];
 
 function CatIcon({ category, size = 13 }: { category: string; size?: number }) {
   const cls = "shrink-0 text-[#D97757]";
@@ -38,6 +39,7 @@ export function PromptPicker({
   onSelect: (content: string) => void;
   onClose: () => void;
 }) {
+  const t = useTranslations("chat.promptPicker");
   const [cat, setCat] = useState<CatKey>("all");
   const [search, setSearch] = useState("");
 
@@ -80,7 +82,7 @@ export function PromptPicker({
           <div className="flex items-center gap-2">
             <BookMarked size={15} className="text-[#D97757]" />
             <span className="text-[16px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
-              Шаблоны промтов
+              {t("title")}
             </span>
           </div>
           <button
@@ -98,7 +100,7 @@ export function PromptPicker({
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Поиск..."
+              placeholder={t("searchPlaceholder")}
               className="h-8 w-full rounded-[8px] border border-[rgba(13,13,13,0.12)] bg-transparent pl-7 pr-3 text-[14px] text-[#1A1A1A] outline-none focus:border-[#D97757] dark:border-[rgba(255,255,255,0.12)] dark:text-[#EDE8E3]"
             />
           </div>
@@ -106,7 +108,7 @@ export function PromptPicker({
 
         {/* Category chips */}
         <div className="flex shrink-0 gap-1.5 overflow-x-auto px-4 pb-3 pt-1">
-          {CATS.map(({ key, label }) => (
+          {CAT_KEYS.map(({ key, labelKey }) => (
             <button
               key={key}
               onClick={() => setCat(key)}
@@ -117,7 +119,7 @@ export function PromptPicker({
                   : "border border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.60)] hover:border-[rgba(13,13,13,0.25)] dark:border-[rgba(255,255,255,0.10)] dark:text-[rgba(236,236,236,0.55)]",
               ].join(" ")}
             >
-              {label}
+              {t(labelKey)}
             </button>
           ))}
         </div>
@@ -132,7 +134,7 @@ export function PromptPicker({
             </div>
           ) : filtered.length === 0 ? (
             <p className="py-8 text-center text-[15px] text-[rgba(13,13,13,0.40)]">
-              Ничего не найдено
+              {t("noResults")}
             </p>
           ) : (
             <div className="flex flex-col gap-1.5">

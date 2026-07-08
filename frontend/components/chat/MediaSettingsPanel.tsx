@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Dices, Lock, Unlock, ChevronDown, ChevronRight } from "lucide-react";
 import type { UiField, UiSection } from "@/lib/api/types";
 
@@ -95,6 +96,7 @@ function SeedField({
   value: unknown;
   onSet: (v: unknown) => void;
 }) {
+  const t = useTranslations("chat.mediaSettingsPanel");
   const locked = value !== undefined && value !== null && value !== "";
 
   return (
@@ -105,7 +107,7 @@ function SeedField({
       <div className="flex items-center gap-1.5">
         <button
           type="button"
-          title={locked ? "Seed закреплён" : "Seed случайный"}
+          title={locked ? t("seedLocked") : t("seedRandom")}
           aria-pressed={locked}
           onClick={() => onSet(locked ? null : randomSeed(field.max))}
           className={[
@@ -123,7 +125,7 @@ function SeedField({
           max={field.max ?? undefined}
           disabled={!locked}
           value={locked ? String(value) : ""}
-          placeholder="случайный"
+          placeholder={t("randomPlaceholder")}
           onChange={(e) => {
             const raw = e.target.value;
             onSet(raw === "" ? null : Math.floor(Number(raw)));
@@ -132,7 +134,7 @@ function SeedField({
         />
         <button
           type="button"
-          title="Случайный seed"
+          title={t("randomSeedTitle")}
           onClick={() => onSet(randomSeed(field.max))}
           className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] border border-[rgba(13,13,13,0.15)] text-[rgba(13,13,13,0.5)] hover:text-[#D97757] transition-colors dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.5)]"
         >

@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Film, CheckCircle2, Loader2 } from "lucide-react";
 import { BASE_URL } from "@/lib/api/client";
 
@@ -18,6 +19,7 @@ interface Props {
  * этот компонент лишь визуализирует прогресс и ускоряет перезагрузку по onComplete.
  */
 export function GenerationProgress({ generationId, onComplete }: Props) {
+  const t = useTranslations("chat.generationProgress");
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<string>("running");
   // держим onComplete в ref, чтобы не пересоздавать EventSource на каждый рендер
@@ -64,7 +66,7 @@ export function GenerationProgress({ generationId, onComplete }: Props) {
         )}
         <span className="flex items-center gap-1.5 text-[15px] font-medium text-[rgba(13,13,13,0.7)] dark:text-[rgba(236,236,236,0.7)]">
           <Film size={13} className="opacity-60" />
-          {done ? "Готово!" : "Генерация видео"}
+          {done ? t("done") : t("generatingVideo")}
         </span>
         <span className="ml-auto text-[14px] tabular-nums text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.45)]">
           {pct}%
@@ -80,7 +82,7 @@ export function GenerationProgress({ generationId, onComplete }: Props) {
       </div>
       {!done && (
         <p className="mt-1.5 text-[13px] text-[rgba(13,13,13,0.4)] dark:text-[rgba(236,236,236,0.4)]">
-          Это может занять несколько минут. Можно не закрывать вкладку.
+          {t("hint")}
         </p>
       )}
     </div>

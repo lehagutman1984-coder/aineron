@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -62,6 +63,7 @@ function ProjectModal({
   const [icon, setIcon] = useState(initial?.icon ?? "Folder");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const t = useTranslations("chat.sidebar");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,7 +73,7 @@ function ProjectModal({
     try {
       await onSave({ name: name.trim(), system_prompt: systemPrompt.trim(), color, icon });
     } catch {
-      setError(mode === "create" ? "Не удалось создать проект" : "Не удалось сохранить");
+      setError(mode === "create" ? t("createProjectError") : t("saveProjectError"));
       setLoading(false);
     }
   };
@@ -84,7 +86,7 @@ function ProjectModal({
       >
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-[17px] font-semibold text-[#1A1A1A]">
-            {mode === "create" ? "Новый проект" : "Настройки проекта"}
+            {mode === "create" ? t("newProjectTitle") : t("projectSettingsTitle")}
           </h2>
           <button onClick={onClose} className="rounded-[7px] p-1 text-[rgba(13,13,13,0.4)] hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A] transition-colors">
             <X size={15} />
@@ -92,19 +94,19 @@ function ProjectModal({
         </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
-            <label className="mb-1.5 block text-[13px] font-medium text-[rgba(13,13,13,0.55)]">Название</label>
+            <label className="mb-1.5 block text-[13px] font-medium text-[rgba(13,13,13,0.55)]">{t("nameLabel")}</label>
             <input
               autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Мой проект"
+              placeholder={t("namePlaceholder")}
               maxLength={100}
               className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[15px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-[rgba(13,13,13,0.55)]">Иконка</label>
+              <label className="mb-1.5 block text-[13px] font-medium text-[rgba(13,13,13,0.55)]">{t("iconLabel")}</label>
               <div className="flex flex-wrap gap-1.5">
                 {PROJECT_ICONS.map((ic) => {
                   const Icon = PROJECT_ICON_MAP[ic];
@@ -120,7 +122,7 @@ function ProjectModal({
               </div>
             </div>
             <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-[rgba(13,13,13,0.55)]">Цвет</label>
+              <label className="mb-1.5 block text-[13px] font-medium text-[rgba(13,13,13,0.55)]">{t("colorLabel")}</label>
               <div className="flex flex-wrap gap-1.5">
                 {PROJECT_COLORS.map((c) => (
                   <button key={c} type="button" onClick={() => setColor(c)}
@@ -133,12 +135,12 @@ function ProjectModal({
           </div>
           <div>
             <label className="mb-1.5 block text-[13px] font-medium text-[rgba(13,13,13,0.55)]">
-              Системный промт <span className="text-[rgba(13,13,13,0.35)]">(необязательно)</span>
+              {t("systemPromptLabel")} <span className="text-[rgba(13,13,13,0.35)]">{t("optionalHint")}</span>
             </label>
             <textarea
               value={systemPrompt}
               onChange={(e) => setSystemPrompt(e.target.value)}
-              placeholder="Ты — помощник-программист..."
+              placeholder={t("systemPromptPlaceholder")}
               rows={3}
               className="w-full resize-none rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[14px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
             />
@@ -149,11 +151,11 @@ function ProjectModal({
           <div className="flex justify-end gap-2">
             <button type="button" onClick={onClose}
               className="rounded-[8px] px-3 py-1.5 text-[14px] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.06)] transition-colors">
-              Отмена
+              {t("cancel")}
             </button>
             <button type="submit" disabled={!name.trim() || loading}
               className="rounded-[8px] bg-[#D97757] px-3 py-1.5 text-[14px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 transition-colors">
-              {loading ? (mode === "create" ? "Создание..." : "Сохранение...") : (mode === "create" ? "Создать" : "Сохранить")}
+              {loading ? (mode === "create" ? t("creating") : t("saving")) : (mode === "create" ? t("create") : t("save"))}
             </button>
           </div>
         </form>
@@ -181,6 +183,7 @@ function ProjectSidebarRow({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const t = useTranslations("chat.sidebar");
 
   const { data: projectChats = [], isLoading } = useQuery({
     queryKey: ["chats", "project", project.id],
@@ -232,7 +235,7 @@ function ProjectSidebarRow({
                   className="flex w-full items-center gap-2 px-3 py-2 text-left text-[14px] text-[rgba(13,13,13,0.70)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
                 >
                   <Edit3 size={12} />
-                  Переименовать
+                  {t("rename")}
                 </button>
                 {!confirmDelete ? (
                   <button
@@ -240,22 +243,22 @@ function ProjectSidebarRow({
                     className="flex w-full items-center gap-2 px-3 py-2 text-left text-[14px] text-[#e74c3c] hover:bg-[rgba(231,76,60,0.05)] transition-colors"
                   >
                     <Trash2 size={12} />
-                    Удалить
+                    {t("delete")}
                   </button>
                 ) : (
                   <div className="flex items-center gap-1 px-2 py-1.5">
-                    <span className="flex-1 text-[13px] text-[rgba(13,13,13,0.55)]">Удалить?</span>
+                    <span className="flex-1 text-[13px] text-[rgba(13,13,13,0.55)]">{t("deleteQuestion")}</span>
                     <button
                       onClick={() => { setMenuOpen(false); onDelete(); }}
                       className="rounded-[4px] bg-[#e74c3c] px-2 py-0.5 text-[13px] font-medium text-white hover:bg-[#c0392b] transition-colors"
                     >
-                      Да
+                      {t("yes")}
                     </button>
                     <button
                       onClick={() => setConfirmDelete(false)}
                       className="rounded-[4px] px-1.5 py-0.5 text-[13px] text-[rgba(13,13,13,0.45)] hover:bg-[rgba(13,13,13,0.07)] transition-colors"
                     >
-                      Нет
+                      {t("no")}
                     </button>
                   </div>
                 )}
@@ -269,9 +272,9 @@ function ProjectSidebarRow({
       {isExpanded && (
         <div className="ml-6 pb-0.5 pt-0.5">
           {isLoading ? (
-            <div className="px-2 py-1.5 text-[13px] text-[rgba(13,13,13,0.35)]">Загрузка...</div>
+            <div className="px-2 py-1.5 text-[13px] text-[rgba(13,13,13,0.35)]">{t("loading")}</div>
           ) : projectChats.length === 0 ? (
-            <p className="px-2 py-1 text-[13px] text-[rgba(13,13,13,0.35)]">Нет чатов</p>
+            <p className="px-2 py-1 text-[13px] text-[rgba(13,13,13,0.35)]">{t("noChats")}</p>
           ) : (
             projectChats.slice(0, 6).map((chat) => {
               const active = currentPath === `/chat/${chat.id}/` || currentPath === `/chat/${chat.id}`;
@@ -296,7 +299,7 @@ function ProjectSidebarRow({
               href={`/projects/${project.id}/`}
               className="flex items-center gap-1 rounded-[6px] px-2 py-1 text-[13px] text-[rgba(13,13,13,0.40)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#D97757] transition-colors"
             >
-              Все {projectChats.length} чатов
+              {t("viewAllChats", { count: projectChats.length })}
               <ChevronRight size={10} />
             </Link>
           )}
@@ -305,7 +308,7 @@ function ProjectSidebarRow({
             className="flex items-center gap-1.5 rounded-[6px] px-2 py-1.5 text-[13px] text-[rgba(13,13,13,0.38)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#D97757] transition-colors"
           >
             <Plus size={10} />
-            Новый чат
+            {t("newChat")}
           </Link>
         </div>
       )}
@@ -315,7 +318,7 @@ function ProjectSidebarRow({
 
 // ── Date grouping ────────────────────────────────────────────
 
-type Group = "Сегодня" | "Вчера" | "Эта неделя" | "Ранее";
+type Group = "today" | "yesterday" | "week" | "earlier";
 
 function getGroup(dateStr: string): Group {
   const now = new Date();
@@ -323,14 +326,14 @@ function getGroup(dateStr: string): Group {
   const nowDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const targetDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   const diffDays = Math.round((nowDay.getTime() - targetDay.getTime()) / 86400000);
-  if (diffDays === 0) return "Сегодня";
-  if (diffDays === 1) return "Вчера";
-  if (diffDays < 7) return "Эта неделя";
-  return "Ранее";
+  if (diffDays === 0) return "today";
+  if (diffDays === 1) return "yesterday";
+  if (diffDays < 7) return "week";
+  return "earlier";
 }
 
 function groupChats(chats: ChatListItem[]): { group: Group; items: ChatListItem[] }[] {
-  const ORDER: Group[] = ["Сегодня", "Вчера", "Эта неделя", "Ранее"];
+  const ORDER: Group[] = ["today", "yesterday", "week", "earlier"];
   const map = new Map<Group, ChatListItem[]>();
   for (const chat of chats) {
     const g = getGroup(chat.updated_at);
@@ -340,15 +343,15 @@ function groupChats(chats: ChatListItem[]): { group: Group; items: ChatListItem[
   return ORDER.filter((g) => map.has(g)).map((g) => ({ group: g, items: map.get(g)! }));
 }
 
-function timeAgo(dateStr: string): string {
+function timeAgo(dateStr: string, t: ReturnType<typeof useTranslations>): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const m = Math.floor(diff / 60000);
   const h = Math.floor(diff / 3600000);
   const d = Math.floor(diff / 86400000);
-  if (m < 1) return "только что";
-  if (m < 60) return `${m} мин.`;
-  if (h < 24) return `${h} ч.`;
-  if (d < 7) return `${d} дн.`;
+  if (m < 1) return t("justNow");
+  if (m < 60) return t("minutesAgo", { count: m });
+  if (h < 24) return t("hoursAgo", { count: h });
+  if (d < 7) return t("daysAgo", { count: d });
   return new Date(dateStr).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
 }
 
@@ -370,6 +373,7 @@ function PreviewCard({
   onMouseEnter: () => void;
   onMouseLeave: () => void;
 }) {
+  const t = useTranslations("chat.sidebar");
   const clampedY = Math.max(8, Math.min(y - 8, (typeof window !== "undefined" ? window.innerHeight : 600) - 200));
 
   return (
@@ -405,7 +409,7 @@ function PreviewCard({
               {chat.title || chat.network.name}
             </p>
             <p className="text-[12px] text-[rgba(13,13,13,0.42)]">
-              {chat.network.name} · {timeAgo(chat.updated_at)}
+              {chat.network.name} · {timeAgo(chat.updated_at, t)}
             </p>
           </div>
         </div>
@@ -433,14 +437,14 @@ function PreviewCard({
               </div>
             )
           ) : (
-            <p className="text-[13px] text-[rgba(13,13,13,0.35)]">Чат пустой</p>
+            <p className="text-[13px] text-[rgba(13,13,13,0.35)]">{t("chatEmpty")}</p>
           )}
         </div>
 
         {/* CTA */}
         <div className="border-t border-[rgba(13,13,13,0.06)] px-3 py-2">
           <p className="text-[12px] font-medium text-[rgba(217,119,87,0.75)]">
-            Нажмите, чтобы продолжить
+            {t("previewCta")}
           </p>
         </div>
       </div>
@@ -451,6 +455,7 @@ function PreviewCard({
 // ── Main component ───────────────────────────────────────────
 
 export function ChatSidebar() {
+  const t = useTranslations("chat.sidebar");
   const pathname = usePathname();
   const router = useRouter();
   const qc = useQueryClient();
@@ -630,6 +635,12 @@ export function ChatSidebar() {
     : chats;
   const grouped = groupChats(filtered);
   const previewChat = preview ? chats.find((c) => c.id === preview.chatId) ?? null : null;
+  const groupLabels: Record<Group, string> = {
+    today: t("groupToday"),
+    yesterday: t("groupYesterday"),
+    week: t("groupWeek"),
+    earlier: t("groupEarlier"),
+  };
 
   // ── Collapsed mode ──────────────────────────────────────────
   if (collapsed) {
@@ -638,21 +649,21 @@ export function ChatSidebar() {
         <div className="flex flex-col items-center gap-1 px-1.5 pt-2.5">
           <button
             onClick={toggleCollapse}
-            title="Развернуть"
+            title={t("expand")}
             className="flex h-8 w-8 items-center justify-center rounded-[7px] text-[rgba(13,13,13,0.4)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A]"
           >
             <ChevronRight size={15} />
           </button>
           <Link
             href="/models/"
-            title="Новый чат"
+            title={t("newChat")}
             className="flex h-8 w-8 items-center justify-center rounded-[7px] bg-[#D97757] text-white transition-colors hover:bg-[#C4623E]"
           >
             <PenSquare size={14} />
           </Link>
           <Link
             href="/models/"
-            title="Каталог"
+            title={t("catalog")}
             className="flex h-8 w-8 items-center justify-center rounded-[7px] text-[rgba(13,13,13,0.4)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A]"
           >
             <LayoutGrid size={14} />
@@ -698,18 +709,18 @@ export function ChatSidebar() {
             className="flex h-8 flex-1 items-center gap-1.5 rounded-[7px] bg-[#D97757] px-3 text-[14px] font-medium text-white transition-colors hover:bg-[#C4623E]"
           >
             <PenSquare size={13} />
-            Новый чат
+            {t("newChat")}
           </Link>
           <Link
             href="/models/"
-            title="Каталог"
+            title={t("catalog")}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] border border-[rgba(13,13,13,0.11)] text-[rgba(13,13,13,0.42)] transition-colors hover:bg-[rgba(13,13,13,0.05)] hover:text-[#1A1A1A]"
           >
             <LayoutGrid size={14} />
           </Link>
           <button
             onClick={toggleCollapse}
-            title="Свернуть"
+            title={t("collapse")}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] border border-[rgba(13,13,13,0.11)] text-[rgba(13,13,13,0.42)] transition-colors hover:bg-[rgba(13,13,13,0.05)] hover:text-[#1A1A1A]"
           >
             <ChevronLeft size={14} />
@@ -727,7 +738,7 @@ export function ChatSidebar() {
               ref={searchRef}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Поиск чатов…"
+              placeholder={t("searchPlaceholder")}
               className="w-full rounded-[8px] border border-[rgba(13,13,13,0.11)] bg-[rgba(13,13,13,0.03)] py-[6px] pl-7 pr-7 text-[14px] text-[#1A1A1A] outline-none placeholder:text-[rgba(13,13,13,0.32)] focus:border-[rgba(217,119,87,0.4)] focus:bg-white"
             />
             {search ? (
@@ -741,7 +752,7 @@ export function ChatSidebar() {
               <button
                 onClick={() => window.dispatchEvent(new Event("open-global-search"))}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-[12px] font-medium text-[rgba(13,13,13,0.25)] hover:text-[rgba(217,119,87,0.7)] transition-colors"
-                title="Поиск по истории (Ctrl+K)"
+                title={t("searchHistoryTitle")}
               >
                 ⌘K
               </button>
@@ -756,7 +767,7 @@ export function ChatSidebar() {
               onClick={() => setProjectsOpen((v) => !v)}
               className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wider text-[rgba(13,13,13,0.28)] hover:text-[rgba(13,13,13,0.5)] transition-colors"
             >
-              Проекты
+              {t("projectsTitle")}
               <ChevronDown
                 size={10}
                 className="transition-transform duration-150"
@@ -765,7 +776,7 @@ export function ChatSidebar() {
             </button>
             <button
               onClick={() => setShowProjectModal("create")}
-              title="Новый проект"
+              title={t("newProjectTitle")}
               className="flex h-5 w-5 items-center justify-center rounded-[4px] text-[rgba(13,13,13,0.30)] hover:bg-[rgba(13,13,13,0.07)] hover:text-[#D97757] transition-colors"
             >
               <Plus size={12} />
@@ -779,7 +790,7 @@ export function ChatSidebar() {
                   className="mx-1 flex w-[calc(100%-8px)] items-center gap-2 rounded-[7px] px-2.5 py-1.5 text-[13px] text-[rgba(13,13,13,0.38)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#D97757] transition-colors"
                 >
                   <Plus size={11} />
-                  Создать проект
+                  {t("createProjectButton")}
                 </button>
               ) : (
                 projects.map((project: Project) => (
@@ -803,13 +814,13 @@ export function ChatSidebar() {
           {filtered.length === 0 && (
             <div className="px-4 py-10 text-center text-[14px] text-[rgba(13,13,13,0.38)]">
               {search ? (
-                "Ничего не найдено"
+                t("nothingFound")
               ) : (
                 <>
-                  Чатов пока нет.
+                  {t("noChatsYet")}
                   <br />
                   <Link href="/models/" className="mt-1 inline-block text-[#D97757] hover:underline">
-                    Выбрать модель
+                    {t("chooseModel")}
                   </Link>
                 </>
               )}
@@ -819,7 +830,7 @@ export function ChatSidebar() {
           {grouped.map(({ group, items }) => (
             <div key={group}>
               <p className="px-3 pb-0.5 pt-3 text-[12px] font-semibold uppercase tracking-wider text-[rgba(13,13,13,0.28)]">
-                {group}
+                {groupLabels[group]}
               </p>
 
               {items.map((chat) => {
@@ -875,7 +886,7 @@ export function ChatSidebar() {
                       {isDeleting ? (
                         <div className="py-0.5">
                           <p className="mb-1.5 text-[13px] font-medium text-[rgba(13,13,13,0.65)]">
-                            Удалить чат?
+                            {t("deleteChatQuestion")}
                           </p>
                           <div className="flex gap-1.5">
                             <button
@@ -884,13 +895,13 @@ export function ChatSidebar() {
                               className="flex h-[22px] items-center gap-1 rounded-[5px] bg-[#e74c3c] px-2 text-[13px] font-medium text-white transition-colors hover:bg-[#c0392b] disabled:opacity-50"
                             >
                               <Trash2 size={10} />
-                              Удалить
+                              {t("delete")}
                             </button>
                             <button
                               onClick={() => setDeletingId(null)}
                               className="flex h-[22px] items-center rounded-[5px] px-2 text-[13px] text-[rgba(13,13,13,0.5)] transition-colors hover:bg-[rgba(13,13,13,0.06)]"
                             >
-                              Отмена
+                              {t("cancel")}
                             </button>
                           </div>
                         </div>
@@ -927,18 +938,18 @@ export function ChatSidebar() {
                               {chat.title || chat.network.name}
                             </p>
                             <span className="shrink-0 text-[12px] text-[rgba(13,13,13,0.28)]">
-                              {timeAgo(chat.updated_at)}
+                              {timeAgo(chat.updated_at, t)}
                             </span>
                           </div>
 
                           {chat.last_message ? (
                             <p className="mt-0.5 truncate text-[13px] leading-[1.4] text-[rgba(13,13,13,0.42)]">
-                              {chat.last_message.role === "user" ? "Вы: " : ""}
+                              {chat.last_message.role === "user" ? t("youPrefix") : ""}
                               {chat.last_message.preview}
                             </p>
                           ) : (
                             <p className="mt-0.5 text-[13px] leading-[1.4] text-[rgba(13,13,13,0.27)]">
-                              Пустой чат
+                              {t("emptyChat")}
                             </p>
                           )}
                         </Link>
@@ -956,7 +967,7 @@ export function ChatSidebar() {
                             setEditingId(chat.id);
                             setEditTitle(chat.title || chat.network.name);
                           }}
-                          title="Переименовать"
+                          title={t("rename")}
                           className="flex h-6 w-6 items-center justify-center rounded-[5px] text-[rgba(13,13,13,0.4)] transition-colors hover:bg-[rgba(13,13,13,0.07)] hover:text-[#1A1A1A]"
                         >
                           <Edit3 size={11} />
@@ -968,7 +979,7 @@ export function ChatSidebar() {
                             setPreview(null);
                             setDeletingId(chat.id);
                           }}
-                          title="Удалить"
+                          title={t("delete")}
                           className="flex h-6 w-6 items-center justify-center rounded-[5px] text-[rgba(13,13,13,0.4)] transition-colors hover:bg-[rgba(231,76,60,0.09)] hover:text-[#e74c3c]"
                         >
                           <Trash2 size={11} />

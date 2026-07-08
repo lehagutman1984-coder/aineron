@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { X, Film, Loader2, Sparkles } from "lucide-react";
 import { listNetworks, createChat } from "@/lib/api/client";
@@ -22,13 +23,9 @@ const SORA_ASPECTS = ["16:9", "9:16", "1:1"] as const;
  * Создаёт новый чат с выбранной видео-моделью и image_url в settings,
  * затем переходит в этот чат (генерация идёт через обычный fal-ai pipeline).
  */
-const CAMERA_TYPES = [
-  { value: "close_up", label: "Крупный план" },
-  { value: "medium", label: "Средний" },
-  { value: "wide_angle", label: "Широкий" },
-];
 
 export function AnimateImageModal({ imageUrl, onClose }: Props) {
+  const t = useTranslations("chat.animateImageModal");
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
   const [duration, setDuration] = useState<number>(5);
@@ -50,6 +47,15 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
   const videoModels = useMemo(
     () => (networks ?? []).filter((n: NetworkListItem) => n.output_type === "video"),
     [networks]
+  );
+
+  const CAMERA_TYPES = useMemo(
+    () => [
+      { value: "close_up", label: t("cameraTypeCloseUp") },
+      { value: "medium", label: t("cameraTypeMedium") },
+      { value: "wide_angle", label: t("cameraTypeWide") },
+    ],
+    [t]
   );
 
   // авто-выбор первой модели
@@ -102,7 +108,7 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
         <div className="flex items-center justify-between border-b border-[rgba(13,13,13,0.08)] px-4 py-3 dark:border-[rgba(255,255,255,0.08)]">
           <p className="flex items-center gap-2 text-[16px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
             <Film size={16} className="text-[#D97757]" />
-            Оживить изображение
+            {t("title")}
           </p>
           <button
             type="button"
@@ -120,7 +126,7 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={imageUrl}
-              alt="Кадр-источник"
+              alt={t("sourceAlt")}
               className="mx-auto block max-h-[34vh] w-auto object-contain"
             />
           </div>
@@ -128,16 +134,16 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
           {/* Model picker */}
           <div>
             <p className="mb-2 text-[14px] font-medium text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.55)]">
-              Видео-модель
+              {t("videoModelLabel")}
             </p>
             {isLoading ? (
               <div className="flex items-center gap-2 py-2 text-[15px] text-[rgba(13,13,13,0.45)]">
                 <Loader2 size={14} className="animate-spin" />
-                Загрузка моделей...
+                {t("loadingModels")}
               </div>
             ) : videoModels.length === 0 ? (
               <p className="py-2 text-[15px] text-[rgba(13,13,13,0.45)]">
-                Видео-модели недоступны.
+                {t("noVideoModels")}
               </p>
             ) : (
               <div className="grid grid-cols-2 gap-1.5">
@@ -167,7 +173,7 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
           {/* Duration (hidden for Sora — uses its own duration in per-model settings) */}
           {!isSora && <div>
             <p className="mb-2 text-[14px] font-medium text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.55)]">
-              Длительность
+              {t("durationLabel")}
             </p>
             <div className="flex gap-1.5">
               {DURATIONS.map((d) => (
@@ -181,7 +187,7 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
                       : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.65)] hover:bg-[rgba(13,13,13,0.04)] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.65)]"
                   }`}
                 >
-                  {d} сек
+                  {t("durationSeconds", { seconds: d })}
                 </button>
               ))}
             </div>
@@ -191,12 +197,12 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
           {(isKling || isSeedance || isSora || isVeo) && (
             <div className="space-y-3 rounded-[10px] border border-[rgba(13,13,13,0.08)] bg-[rgba(13,13,13,0.02)] p-3 dark:border-[rgba(255,255,255,0.08)] dark:bg-[rgba(255,255,255,0.03)]">
               <p className="text-[13px] font-semibold uppercase tracking-wide text-[rgba(13,13,13,0.38)] dark:text-[rgba(236,236,236,0.35)]">
-                Настройки модели
+                {t("modelSettingsTitle")}
               </p>
               {isKling && (
                 <>
                   <div className="flex flex-col gap-1">
-                    <label className="text-[13px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">Камера</label>
+                    <label className="text-[13px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">{t("cameraLabel")}</label>
                     <div className="flex gap-1.5">
                       {CAMERA_TYPES.map((ct) => (
                         <button
@@ -216,7 +222,7 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="flex items-center justify-between text-[13px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">
-                      <span>Интенсивность движения</span>
+                      <span>{t("motionStrengthLabel")}</span>
                       <span className="font-medium text-[#1A1A1A] dark:text-[#EDE8E3]">{motionStrength.toFixed(1)}</span>
                     </label>
                     <input
@@ -234,7 +240,7 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
               {isSora && (
                 <>
                   <div className="flex flex-col gap-1">
-                    <label className="text-[13px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">Длительность</label>
+                    <label className="text-[13px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">{t("durationLabel")}</label>
                     <div className="flex gap-1.5">
                       {SORA_DURATIONS.map((d) => (
                         <button
@@ -247,13 +253,13 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
                               : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.65)] hover:bg-[rgba(13,13,13,0.04)] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.65)]"
                           }`}
                         >
-                          {d} сек
+                          {t("durationSeconds", { seconds: d })}
                         </button>
                       ))}
                     </div>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-[13px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">Соотношение сторон</label>
+                    <label className="text-[13px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.45)]">{t("aspectRatioLabel")}</label>
                     <div className="flex gap-1.5">
                       {SORA_ASPECTS.map((r) => (
                         <button
@@ -286,7 +292,7 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
                       >
                         <span className={`inline-block h-3.5 w-3.5 rounded-full bg-[#fff] shadow transition-transform ${cameraFixed ? "translate-x-4" : "translate-x-0.5"}`} />
                       </button>
-                      <span className="text-[14px] text-[rgba(13,13,13,0.65)] dark:text-[rgba(236,236,236,0.6)]">Камера фиксирована</span>
+                      <span className="text-[14px] text-[rgba(13,13,13,0.65)] dark:text-[rgba(236,236,236,0.6)]">{t("cameraFixedLabel")}</span>
                     </label>
                   )}
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -299,7 +305,7 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
                     >
                       <span className={`inline-block h-3.5 w-3.5 rounded-full bg-[#fff] shadow transition-transform ${generateAudio ? "translate-x-4" : "translate-x-0.5"}`} />
                     </button>
-                    <span className="text-[14px] text-[rgba(13,13,13,0.65)] dark:text-[rgba(236,236,236,0.6)]">Генерировать аудио</span>
+                    <span className="text-[14px] text-[rgba(13,13,13,0.65)] dark:text-[rgba(236,236,236,0.6)]">{t("generateAudioLabel")}</span>
                   </label>
                 </div>
               )}
@@ -309,13 +315,13 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
           {/* Motion prompt */}
           <div>
             <p className="mb-2 text-[14px] font-medium text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.55)]">
-              Описание движения (необязательно)
+              {t("motionPromptLabel")}
             </p>
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               rows={3}
-              placeholder="Например: плавный наезд камеры, лёгкий ветер, движение облаков..."
+              placeholder={t("motionPromptPlaceholder")}
               className="w-full resize-none rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-3 py-2.5 text-[15px] text-[#1A1A1A] outline-none transition-all focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] dark:border-[rgba(255,255,255,0.12)] dark:bg-[rgba(255,255,255,0.04)] dark:text-[#EDE8E3]"
             />
           </div>
@@ -324,7 +330,7 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
             <p className="text-[14px] text-[#e74c3c]">
               {createMutation.error instanceof Error
                 ? createMutation.error.message
-                : "Не удалось запустить генерацию. Попробуйте снова."}
+                : t("genericError")}
             </p>
           )}
         </div>
@@ -336,7 +342,7 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
             onClick={onClose}
             className="h-9 rounded-[8px] px-4 text-[15px] font-medium text-[rgba(13,13,13,0.6)] transition-colors hover:bg-[rgba(13,13,13,0.05)] dark:text-[rgba(236,236,236,0.6)] dark:hover:bg-[rgba(255,255,255,0.08)]"
           >
-            Отмена
+            {t("cancel")}
           </button>
           <button
             type="button"
@@ -349,7 +355,7 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
             ) : (
               <Sparkles size={14} />
             )}
-            Оживить
+            {t("animate")}
           </button>
         </div>
       </div>

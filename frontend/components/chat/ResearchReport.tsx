@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { ChevronDown, ChevronRight, BookOpen, Download } from "lucide-react";
 
 interface Props {
@@ -49,6 +50,7 @@ function parseReportSections(html: string): Array<{ title: string; html: string 
 }
 
 export function ResearchReport({ html, plainText }: Props) {
+  const t = useTranslations("chat.researchReport");
   const sections = parseReportSections(html);
 
   const handleExport = useCallback(() => {
@@ -68,11 +70,11 @@ export function ResearchReport({ html, plainText }: Props) {
         <div className="flex items-center gap-2 border-b border-[rgba(217,119,87,0.1)] px-4 py-2.5">
           <BookOpen size={13} className="text-[#D97757]" />
           <span className="flex-1 text-[13px] font-semibold uppercase tracking-wide text-[#D97757]">
-            Отчёт исследования
+            {t("title")}
           </span>
           <button
             onClick={handleExport}
-            title="Скачать как Markdown"
+            title={t("downloadTitle")}
             className="flex items-center gap-1 rounded-[5px] px-2 py-1 text-[13px] text-[rgba(13,13,13,0.45)] transition hover:bg-[rgba(217,119,87,0.08)] hover:text-[#D97757] dark:text-[rgba(236,236,236,0.4)]"
           >
             <Download size={11} />
@@ -92,11 +94,11 @@ export function ResearchReport({ html, plainText }: Props) {
       <div className="flex items-center gap-2 border-b border-[rgba(217,119,87,0.1)] px-4 py-2.5">
         <BookOpen size={13} className="text-[#D97757]" />
         <span className="flex-1 text-[13px] font-semibold uppercase tracking-wide text-[#D97757]">
-          Отчёт исследования
+          {t("title")}
         </span>
         <button
           onClick={handleExport}
-          title="Скачать как Markdown"
+          title={t("downloadTitle")}
           className="flex items-center gap-1 rounded-[5px] px-2 py-1 text-[13px] text-[rgba(13,13,13,0.45)] transition hover:bg-[rgba(217,119,87,0.08)] hover:text-[#D97757] dark:text-[rgba(236,236,236,0.4)]"
         >
           <Download size={11} />

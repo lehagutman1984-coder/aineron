@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { useTranslations } from "next-intl";
 import { ZoomIn, ZoomOut, RotateCcw, X, Maximize2, Download } from "lucide-react";
 
 interface Props {
@@ -12,6 +13,7 @@ interface Props {
 }
 
 function FullscreenOverlay({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
+  const t = useTranslations("chat.zoomableImage");
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
@@ -103,10 +105,10 @@ function FullscreenOverlay({ src, alt, onClose }: { src: string; alt: string; on
       {/* Controls */}
       <div className="pointer-events-none absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-[10px] bg-black/60 p-1.5 backdrop-blur-md">
         {[
-          { icon: ZoomOut, onClick: () => setScale((s) => { const n = Math.max(0.4, +(s / 1.3).toFixed(2)); if (n <= 1) setOffset({ x: 0, y: 0 }); return n; }), title: "Уменьшить", cls: "pointer-events-auto" },
-          { icon: ZoomIn, onClick: () => setScale((s) => Math.min(8, +(s * 1.3).toFixed(2))), title: "Увеличить", cls: "pointer-events-auto" },
-          { icon: RotateCcw, onClick: reset, title: "Сбросить", cls: `pointer-events-auto transition-opacity ${scale > 1.05 ? "opacity-100" : "opacity-30"}` },
-          { icon: Download, onClick: handleDownload, title: "Скачать", cls: "pointer-events-auto" },
+          { icon: ZoomOut, onClick: () => setScale((s) => { const n = Math.max(0.4, +(s / 1.3).toFixed(2)); if (n <= 1) setOffset({ x: 0, y: 0 }); return n; }), title: t("zoomOut"), cls: "pointer-events-auto" },
+          { icon: ZoomIn, onClick: () => setScale((s) => Math.min(8, +(s * 1.3).toFixed(2))), title: t("zoomIn"), cls: "pointer-events-auto" },
+          { icon: RotateCcw, onClick: reset, title: t("reset"), cls: `pointer-events-auto transition-opacity ${scale > 1.05 ? "opacity-100" : "opacity-30"}` },
+          { icon: Download, onClick: handleDownload, title: t("download"), cls: "pointer-events-auto" },
         ].map(({ icon: Icon, onClick, title, cls }) => (
           <button
             key={title}
@@ -125,7 +127,7 @@ function FullscreenOverlay({ src, alt, onClose }: { src: string; alt: string; on
         type="button"
         onClick={onClose}
         className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-sm hover:bg-black/75 transition-colors"
-        title="Закрыть (Esc)"
+        title={t("closeEsc")}
       >
         <X size={17} />
       </button>
@@ -135,6 +137,7 @@ function FullscreenOverlay({ src, alt, onClose }: { src: string; alt: string; on
 }
 
 export function ZoomableImage({ src, alt = "", className = "", maxZoom = 4 }: Props) {
+  const t = useTranslations("chat.zoomableImage");
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
@@ -201,7 +204,7 @@ export function ZoomableImage({ src, alt = "", className = "", maxZoom = 4 }: Pr
         onMouseUp={stopDrag}
         onMouseLeave={() => { setDragging(false); dragStart.current = null; }}
         style={{ cursor: scale > 1 ? (dragging ? "grabbing" : "grab") : "zoom-in", touchAction: "none" }}
-        title="Нажмите для просмотра"
+        title={t("clickToView")}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -223,7 +226,7 @@ export function ZoomableImage({ src, alt = "", className = "", maxZoom = 4 }: Pr
             type="button"
             onClick={(e) => { e.stopPropagation(); setFullscreen(true); }}
             className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-black/55 text-white backdrop-blur-sm hover:bg-black/75 transition-colors"
-            title="Открыть на весь экран"
+            title={t("openFullscreen")}
           >
             <Maximize2 size={12} />
           </button>
@@ -231,7 +234,7 @@ export function ZoomableImage({ src, alt = "", className = "", maxZoom = 4 }: Pr
             type="button"
             onClick={(e) => { e.stopPropagation(); setScale((s) => Math.min(maxZoom, +(s * 1.3).toFixed(2))); }}
             className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-black/55 text-white backdrop-blur-sm hover:bg-black/75 transition-colors"
-            title="Увеличить"
+            title={t("zoomIn")}
           >
             <ZoomIn size={13} />
           </button>
@@ -239,7 +242,7 @@ export function ZoomableImage({ src, alt = "", className = "", maxZoom = 4 }: Pr
             type="button"
             onClick={(e) => { e.stopPropagation(); setScale((s) => { const n = Math.max(0.4, +(s / 1.3).toFixed(2)); if (n <= 1) setOffset({ x: 0, y: 0 }); return n; }); }}
             className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-black/55 text-white backdrop-blur-sm hover:bg-black/75 transition-colors"
-            title="Уменьшить"
+            title={t("zoomOut")}
           >
             <ZoomOut size={13} />
           </button>
@@ -248,7 +251,7 @@ export function ZoomableImage({ src, alt = "", className = "", maxZoom = 4 }: Pr
               type="button"
               onClick={(e) => { e.stopPropagation(); reset(); }}
               className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-black/55 text-white backdrop-blur-sm hover:bg-black/75 transition-colors"
-              title="Сбросить масштаб"
+              title={t("resetZoom")}
             >
               <RotateCcw size={13} />
             </button>
