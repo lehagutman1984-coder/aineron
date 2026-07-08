@@ -19,9 +19,9 @@
     "themeDark": "Dark theme"
   },
   "home": {
-    "badge": "Russian service — no VPN or foreign cards",
+    "badge": "No VPN needed — pay with crypto",
     "title": "All AI models in one window",
-    "subtitle": "GPT-4o, Claude, Gemini, Midjourney, and 200+ models. One account, pay in rubles.",
+    "subtitle": "GPT-4o, Claude, Gemini, Midjourney, and 200+ models. One account, pay with crypto.",
     "typewriter": [
       "GPT-4o writes code in seconds",
       "Claude explains complex things simply",
@@ -34,9 +34,9 @@
     "popularSubtitle": "Most in-demand AI models",
     "allModels": "All models",
     "freeTitle": "{count} free text models",
-    "freeText": "GPT-OSS, Qwen3, Gemma, DeepSeek R1, and other chat models — 0 ₽, no balance top-up. Available immediately after registration.",
+    "freeText": "GPT-OSS, Qwen3, Gemma, DeepSeek R1, and other chat models — free, no balance top-up. Available immediately after registration.",
     "freeCta": "Open free models",
-    "whyTitle": "Why aineron.ru",
+    "whyTitle": "Why aineron",
     "features": [
       {
         "title": "All models at once",
@@ -44,7 +44,7 @@
       },
       {
         "title": "No VPN",
-        "text": "Servers in Russia, pay in rubles. Works on any device in Russia."
+        "text": "No VPN required, pay with crypto. Works on any device, anywhere."
       },
       {
         "title": "API for developers",
@@ -56,11 +56,11 @@
       }
     ],
     "comparisonTitle": "Fair Comparison",
-    "comparisonSubtitle": "aineron.ru vs. Global Leaders",
+    "comparisonSubtitle": "aineron vs. Global Leaders",
     "comparisonFeatureCol": "Feature",
     "comparisonRows": [
-      "Works in Russia without VPN",
-      "Payment in rubles and Russian cards",
+      "Works worldwide without VPN",
+      "Pay with crypto — no bank card needed",
       "GPT, Claude, Gemini in one window",
       "Side-by-side model comparison",
       "Image and video generation",
@@ -68,18 +68,18 @@
       "OpenAI-compatible API",
       "Telegram bot with AI models"
     ],
-    "pricingTitle": "Simple Payment in Rubles",
+    "pricingTitle": "Simple Payment with Crypto",
     "pricingSubtitle": "Top up your balance and spend on any model. Funds do not expire.",
     "pricing": [
       {
         "title": "Start",
-        "price": "10 ₽",
+        "price": "1,000 credits",
         "sub": "free after registration"
       },
       {
         "title": "Top Up",
-        "price": "in rubles",
-        "sub": "with Russian card or Telegram Stars"
+        "price": "with crypto",
+        "sub": "USDT, TON via Crypto Pay"
       },
       {
         "title": "Subscriptions",
@@ -92,11 +92,11 @@
     "faq": [
       {
         "q": "How does the balance work?",
-        "a": "The aineron.ru balance is in rubles. Each message to an AI model costs a few rubles (usually 1–5 ₽). Funds do not expire, balance is topped up via Robokassa without commission."
+        "a": "The aineron balance is in credits. Each message to an AI model costs a little (usually a few credits). Funds do not expire, balance is topped up via crypto (USDT, TON) without commission."
       },
       {
         "q": "Is a VPN required to use the service?",
-        "a": "No. aineron.ru is a Russian service with servers in Russia. Accessible without VPN, payment with Russian cards, works in any browser and app."
+        "a": "No. Accessible without VPN from anywhere. Pay with crypto — no bank card needed. Works in any browser and app."
       },
       {
         "q": "Which AI models are available?",
@@ -108,7 +108,7 @@
       },
       {
         "q": "How to make a payment?",
-        "a": "Via Robokassa: Visa/MasterCard/Mir cards, YooMoney, SBP. Balance top-up for any amount and discounted subscriptions available. For legal entities — invoice and contract."
+        "a": "Via Crypto Pay: USDT, TON, and other cryptocurrencies. Balance top-up for any amount and discounted subscription packages available."
       },
       {
         "q": "What if the AI gives a poor response?",
@@ -116,11 +116,11 @@
       }
     ],
     "finalTitle": "Start Now",
-    "finalText": "10 ₽ free. No VPN, no foreign cards.",
+    "finalText": "1,000 credits free. No VPN, pay with crypto.",
     "perMessage": "{price} / message",
     "cta": {
       "topUp": "Top up balance",
-      "startFreeAmount": "Start with 10 ₽ free",
+      "startFreeAmount": "Start with 1,000 credits free",
       "openAccount": "Open dashboard",
       "createAccount": "Create account",
       "viewModels": "View models",
@@ -143,7 +143,7 @@
     "registerTitle": "Create account",
     "haveAccount": "Already have an account?",
     "loginLink": "Log in",
-    "bonus": "10 ₽ free upon registration",
+    "bonus": "1,000 credits free upon registration",
     "passwordTooShort": "Password must be at least 8 characters",
     "registerError": "Registration error. Try again.",
     "registering": "Creating account...",
@@ -979,7 +979,7 @@
     "emptyTitle": "No earnings yet",
     "emptyHint": "Share your referral link to start earning",
     "modalTitle": "Request Withdrawal",
-    "amountLabel": "Amount (₽)",
+    "amountLabel": "Amount (credits)",
     "cardNumberLabel": "Card Number",
     "errorWithdraw": "Error requesting withdrawal",
     "cancelButton": "Cancel",
@@ -1487,7 +1487,7 @@
   "apiDocs": {
     "errorBodyMessage": "Insufficient funds. Required {need}, you have {have}.",
     "metaTitle": "API and Integrations for Developers",
-    "metaDescription": "OpenAI and Anthropic-compatible API: GPT-5, Claude, Gemini, image and video generation, embeddings, audio, batch. Integration with Cursor, Cline, Continue. No VPN, from Russia.",
+    "metaDescription": "OpenAI and Anthropic-compatible API: GPT-5, Claude, Gemini, image and video generation, embeddings, audio, batch. Integration with Cursor, Cline, Continue. No VPN, pay with crypto.",
     "eyebrow": "For Developers",
     "title": "API and Integrations",
     "subtitle": "OpenAI and Anthropic-compatible API for GPT-5, Claude, Gemini, and media generation — no VPN. Plus integrations with Cursor, Cline, Continue. Choose a section on the left.",
@@ -1501,11 +1501,11 @@
       "navBilling": "Billing and Limits",
       "navErrors": "Error Codes",
       "overviewSectionTitle": "OpenAI-Compatible API",
-      "overviewLead": "{brand} provides access to GPT-5, Claude, Gemini, Grok, DeepSeek, image and video generation via a <b>standard OpenAI-compatible API</b> — no VPN or foreign cards, directly from Russia. If your code already works with the OpenAI SDK, just change the <ic>base_url</ic> and key.",
+      "overviewLead": "{brand} provides access to GPT-5, Claude, Gemini, Grok, DeepSeek, image and video generation via a <b>standard OpenAI-compatible API</b> — no VPN required, pay with crypto. If your code already works with the OpenAI SDK, just change the <ic>base_url</ic> and key.",
       "overviewAuthLabel": "Authentication",
       "overviewFormatLabel": "Format",
       "overviewBillingLabel": "Billing",
-      "overviewBillingValue": "Rubles / tokens",
+      "overviewBillingValue": "Credits / tokens",
       "overviewFormatsP": "Two formats are supported: <b1>OpenAI</b1> (<ic1>/chat/completions</ic1>, <ic2>/images/generations</ic2>, <ic3>/embeddings</ic3>, <ic4>/audio/*</ic4>) and <b2>Anthropic</b2> (<ic5>/messages</ic5>). Streaming, batch processing, webhooks are available.",
       "overviewGettingStartedTitle": "Getting Started",
       "gettingStartedItem1": "<a>Quickstart</a> — create a key and make your first request.",
@@ -1526,7 +1526,7 @@
       "authWarnTitle": "Do Not Publish Key",
       "authWarnBody": "Do not store <ic>ak_...</ic> in public repositories or client-side browser code. If the key is compromised — delete it in the dashboard and create a new one.",
       "billingTitle": "Billing and Limits",
-      "billingIntro": "Payment in rubles, charged per token. Transparent and predictable.",
+      "billingIntro": "Payment in credits, charged per token. Transparent and predictable.",
       "billingItem1": "Cost depends on the model and volume (input + output tokens).",
       "billingItem2": "Balance and spending are visible in the <a>dashboard analytics</a>.",
       "billingItem3": "Rate limit: up to <b>120 requests per minute</b> per key (error <ic>429</ic> on exceed — pause/retry).",
@@ -1585,12 +1585,12 @@
     "sandboxes": {
       "navOverview": "Overview and Quick Start",
       "title": "Sandboxes — Code Execution in microVM",
-      "lead": "Isolated sandboxes for safe execution of untrusted code — written by AI agents or your users. Each sandbox is a separate <b>Firecracker microVM</b> with its own kernel, ready in seconds. The only such API in Russia: rubles, RF offer, one key with chats and generation.",
+      "lead": "Isolated sandboxes for safe execution of untrusted code — written by AI agents or your users. Each sandbox is a separate <b>Firecracker microVM</b> with its own kernel, ready in seconds. Pay with crypto, one key shared with chats and generation.",
       "infoIsolationLabel": "Isolation",
       "infoStartLabel": "Start",
       "infoStartValue": "1–5 seconds",
-      "infoSmallValue": "0.50 ₽/min",
-      "infoStandardValue": "1 ₽/min",
+      "infoSmallValue": "50 credits/min",
+      "infoStandardValue": "100 credits/min",
       "typicalScenariosP": "Typical scenarios: agent 'LLM writes code → sandbox executes', student code verification, snippet execution from your product, dev servers with public URL.",
       "quickstartTitle": "Quick Start",
       "quickstartIntro": "The key must have the 'sandboxes' scope — enabled when creating the key in the dashboard.",
@@ -1687,7 +1687,7 @@
       "clineStep1": "Install <b></b> from the VS Code marketplace.",
       "clineStep2": "Cline settings → <b1></b1> → <b2></b2>. Fill in:",
       "clineStep3": "Recommended models for agent tasks: <ic1></ic1> (best for code), <ic2></ic2>, <ic3></ic3>.",
-      "clineStep4": "Describe the task in Russian or English. Cline will ask for permission before each file change.",
+      "clineStep4": "Describe the task in plain language. Cline will ask for permission before each file change.",
       "clineCalloutWarn": "Agent sessions read file context and consume more tokens than regular chat. Monitor your balance.",
       "continueIntro": "Open AI assistant for VS Code and JetBrains. Configured via JSON file.",
       "continueStep1": "Install <b1></b1>, open <ic></ic> (command <b2></b2>).",
