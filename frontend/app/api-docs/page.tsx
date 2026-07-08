@@ -9,21 +9,31 @@ import {
 } from "@/components/docs/DocKit";
 import { CodeTabs, StandaloneCodeBlock } from "@/components/docs/CodeTabs";
 import type { CodeTabItem } from "@/components/docs/CodeTabs";
+import { formatMoney } from "@/lib/money";
+import { getTranslations } from "next-intl/server";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "API и интеграции для разработчиков",
-  description:
-    "OpenAI- и Anthropic-совместимый API: GPT-5, Claude, Gemini, генерация изображений и видео, embeddings, аудио, batch. Интеграция с Cursor, Cline, Continue. Без VPN, из России.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("apiDocs");
+  return {
+    title: t("metaTitle"),
+    description: t("metaDescription"),
+  };
+}
+
+// Код-сэмплы ниже используют реальный base_url текущего инстанса (aineron.ru / aineron.net),
+// а не хардкод — иначе intl-пользователь скопировал бы неверный URL для своего API-ключа.
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "https://aineron.ru/api/v1";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://aineron.ru";
+const BRAND = new URL(SITE_URL).host;
 
 // ── Snippets ──────────────────────────────────────────────────────────────────
 
 const QUICKSTART: CodeTabItem[] = [
   {
     key: "curl", label: "curl",
-    code: `curl https://aineron.ru/api/v1/chat/completions \\
+    code: `curl ${API_BASE}/chat/completions \\
   -H "Authorization: Bearer ak_ВАШ_КЛЮЧ" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -39,7 +49,7 @@ const QUICKSTART: CodeTabItem[] = [
       `from openai import OpenAI
 
 client = OpenAI(
-    base_url="https://aineron.ru/api/v1",
+    base_url="${API_BASE}",
     api_key="ak_ВАШ_КЛЮЧ",
 )
 
@@ -67,7 +77,7 @@ for chunk in client.chat.completions.create(
       `import OpenAI from "openai";
 
 const client = new OpenAI({
-  baseURL: "https://aineron.ru/api/v1",
+  baseURL: "${API_BASE}",
   apiKey: "ak_ВАШ_КЛЮЧ",
 });
 
@@ -96,7 +106,7 @@ for await (const chunk of stream) {
     code: `<?php
 $curl = curl_init();
 curl_setopt_array($curl, [
-    CURLOPT_URL => 'https://aineron.ru/api/v1/chat/completions',
+    CURLOPT_URL => '${API_BASE}/chat/completions',
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_POST => true,
     CURLOPT_HTTPHEADER => [
@@ -123,7 +133,7 @@ const ANTHROPIC: CodeTabItem[] = [
     code: `import anthropic
 
 client = anthropic.Anthropic(
-    base_url="https://aineron.ru/api/v1",
+    base_url="${API_BASE}",
     api_key="ak_ВАШ_КЛЮЧ",
 )
 
@@ -142,7 +152,7 @@ print(message.content[0].text)`,
     code: `import Anthropic from "@anthropic-ai/sdk";
 
 const client = new Anthropic({
-  baseURL: "https://aineron.ru/api/v1",
+  baseURL: "${API_BASE}",
   apiKey: "ak_ВАШ_КЛЮЧ",
 });
 
@@ -159,7 +169,7 @@ console.log(message.content[0].text);`,
 const IMAGES: CodeTabItem[] = [
   {
     key: "curl", label: "curl",
-    code: `curl https://aineron.ru/api/v1/images/generations \\
+    code: `curl ${API_BASE}/images/generations \\
   -H "Authorization: Bearer ak_ВАШ_КЛЮЧ" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -174,7 +184,7 @@ const IMAGES: CodeTabItem[] = [
     code: `from openai import OpenAI
 
 client = OpenAI(
-    base_url="https://aineron.ru/api/v1",
+    base_url="${API_BASE}",
     api_key="ak_ВАШ_КЛЮЧ",
 )
 
@@ -189,7 +199,7 @@ print(image.data[0].url)`,
   },
 ];
 
-const EMBEDDINGS = `curl https://aineron.ru/api/v1/embeddings \\
+const EMBEDDINGS = `curl ${API_BASE}/embeddings \\
   -H "Authorization: Bearer ak_ВАШ_КЛЮЧ" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -197,56 +207,58 @@ const EMBEDDINGS = `curl https://aineron.ru/api/v1/embeddings \\
     "input": "Текст для векторизации"
   }'`;
 
-const AUDIO_TTS = `curl https://aineron.ru/api/v1/audio/speech \\
+const AUDIO_TTS = `curl ${API_BASE}/audio/speech \\
   -H "Authorization: Bearer ak_ВАШ_КЛЮЧ" \\
   -H "Content-Type: application/json" \\
   -d '{"model": "tts-1", "voice": "alloy", "input": "Привет, это синтез речи"}' \\
   --output speech.mp3`;
 
-const AUDIO_ASR = `curl https://aineron.ru/api/v1/audio/transcriptions \\
+const AUDIO_ASR = `curl ${API_BASE}/audio/transcriptions \\
   -H "Authorization: Bearer ak_ВАШ_КЛЮЧ" \\
   -F model="whisper-1" \\
   -F file="@audio.mp3"`;
 
-const ERROR_BODY = `{
+function errorBody(t: Awaited<ReturnType<typeof getTranslations>>) {
+  return `{
   "error": {
-    "message": "Недостаточно средств. Нужно 3 ₽, у вас 1,50 ₽.",
+    "message": "${t("errorBodyMessage", { need: formatMoney(300), have: formatMoney(150) })}",
     "type": "insufficient_quota",
     "code": "insufficient_quota"
   }
 }`;
+}
 
-const CLINE_SETTINGS = `API Base URL:  https://aineron.ru/api/v1
+const CLINE_SETTINGS = `API Base URL:  ${API_BASE}
 API Key:       ak_ВАШ_КЛЮЧ
 Model ID:      gpt-4o`;
 
 const CONTINUE_CONFIG = `{
   "models": [
     {
-      "title": "GPT-4o (aineron.ru)",
+      "title": "GPT-4o (${BRAND})",
       "provider": "openai",
       "model": "gpt-4o",
-      "apiBase": "https://aineron.ru/api/v1",
+      "apiBase": "${API_BASE}",
       "apiKey": "ak_ВАШ_КЛЮЧ"
     },
     {
-      "title": "Claude Sonnet (aineron.ru)",
+      "title": "Claude Sonnet (${BRAND})",
       "provider": "openai",
       "model": "claude-sonnet-4-6",
-      "apiBase": "https://aineron.ru/api/v1",
+      "apiBase": "${API_BASE}",
       "apiKey": "ak_ВАШ_КЛЮЧ"
     }
   ],
   "tabAutocompleteModel": {
-    "title": "GPT-4o Mini (aineron.ru)",
+    "title": "GPT-4o Mini (${BRAND})",
     "provider": "openai",
     "model": "gpt-4o-mini",
-    "apiBase": "https://aineron.ru/api/v1",
+    "apiBase": "${API_BASE}",
     "apiKey": "ak_ВАШ_КЛЮЧ"
   }
 }`;
 
-const CHECK_MODELS = `curl https://aineron.ru/api/v1/models \\
+const CHECK_MODELS = `curl ${API_BASE}/models \\
   -H "Authorization: Bearer ak_ВАШ_КЛЮЧ"`;
 
 // ── Sandboxes snippets ────────────────────────────────────────────────────────
@@ -265,43 +277,43 @@ with Sandbox(template="python") as sbx:
   {
     key: "curl", label: "curl",
     code: `# 1. Создать песочницу (TTL 5 минут)
-curl -X POST https://aineron.ru/api/v1/sandboxes/ \\
+curl -X POST ${API_BASE}/sandboxes/ \\
   -H "Authorization: Bearer ak_ВАШ_КЛЮЧ" \\
   -H "Content-Type: application/json" \\
   -d '{"template": "python", "timeout_seconds": 300}'
 # → {"id": "sbx_...", "state": "running", ...}
 
 # 2. Выполнить код
-curl -X POST https://aineron.ru/api/v1/sandboxes/sbx_.../exec/ \\
+curl -X POST ${API_BASE}/sandboxes/sbx_.../exec/ \\
   -H "Authorization: Bearer ak_ВАШ_КЛЮЧ" \\
   -H "Content-Type: application/json" \\
   -d '{"code": "print(2 + 2)", "language": "python"}'
 # → {"exit_code": 0, "stdout": "4\\n", ...}
 
 # 3. Остановить (иначе умрёт сама по TTL)
-curl -X DELETE https://aineron.ru/api/v1/sandboxes/sbx_.../ \\
+curl -X DELETE ${API_BASE}/sandboxes/sbx_.../ \\
   -H "Authorization: Bearer ak_ВАШ_КЛЮЧ"`,
   },
 ];
 
 const SANDBOX_FILES = `# Записать файлы
-curl -X POST https://aineron.ru/api/v1/sandboxes/sbx_.../files/ \\
+curl -X POST ${API_BASE}/sandboxes/sbx_.../files/ \\
   -H "Authorization: Bearer ak_ВАШ_КЛЮЧ" \\
   -H "Content-Type: application/json" \\
   -d '{"files": [{"path": "main.py", "content": "print(42)"}]}'
 
 # Прочитать файл
-curl "https://aineron.ru/api/v1/sandboxes/sbx_.../files/?path=/home/user/main.py" \\
+curl "${API_BASE}/sandboxes/sbx_.../files/?path=/home/user/main.py" \\
   -H "Authorization: Bearer ak_ВАШ_КЛЮЧ"
 
 # Листинг директории
-curl "https://aineron.ru/api/v1/sandboxes/sbx_.../files/?path=/home/user&op=list" \\
+curl "${API_BASE}/sandboxes/sbx_.../files/?path=/home/user&op=list" \\
   -H "Authorization: Bearer ak_ВАШ_КЛЮЧ"`;
 
 const SANDBOX_AGENT = `from openai import OpenAI
 from aineron import Sandbox
 
-llm = OpenAI(base_url="https://aineron.ru/api/v1", api_key="ak_ВАШ_КЛЮЧ")
+llm = OpenAI(base_url="${API_BASE}", api_key="ak_ВАШ_КЛЮЧ")
 
 def solve_with_code(task: str) -> str:
     """LLM пишет код → песочница выполняет → результат возвращается."""
@@ -322,42 +334,52 @@ def solve_with_code(task: str) -> str:
 print(solve_with_code("Найди 100-е число Фибоначчи"))`;
 
 // ── Groups ────────────────────────────────────────────────────────────────────
+// GROUPS — статическая JSX-структура (не может звать хуки/т() на уровне модуля),
+// поэтому вся конструкция обёрнута в функцию, вызываемую внутри async-компонента
+// страницы с уже полученным `t` (next-intl/server, getTranslations("apiDocs")).
 
-const GROUPS: DocGroup[] = [
+function buildGroups(t: Awaited<ReturnType<typeof getTranslations>>): DocGroup[] {
+  return [
   {
-    title: "Введение",
+    title: t("intro.groupTitle"),
     items: [
       {
         id: "overview",
-        label: "Обзор API",
+        label: t("intro.navOverview"),
         content: (
           <>
-            <DocSection title="OpenAI-совместимый API">
+            <DocSection title={t("intro.overviewSectionTitle")}>
               <Lead>
-                aineron предоставляет доступ к GPT-5, Claude, Gemini, Grok, DeepSeek,
-                генерации изображений и видео через <b>стандартный OpenAI-совместимый API</b> —
-                без VPN и зарубежных карт, напрямую из России. Если ваш код уже работает
-                с OpenAI SDK, достаточно сменить <IC>base_url</IC> и ключ.
+                {t.rich("intro.overviewLead", {
+                  brand: BRAND,
+                  b: (chunks) => <b>{chunks}</b>,
+                  ic: (chunks) => <IC>{chunks}</IC>,
+                })}
               </Lead>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <InfoCard label="Base URL" value="aineron.ru/api/v1" />
-                <InfoCard label="Аутентификация" value="Bearer ak_..." />
-                <InfoCard label="Формат" value="OpenAI + Anthropic" />
-                <InfoCard label="Биллинг" value="Рубли / токены" />
+                <InfoCard label="Base URL" value={`${BRAND}/api/v1`} />
+                <InfoCard label={t("intro.overviewAuthLabel")} value="Bearer ak_..." />
+                <InfoCard label={t("intro.overviewFormatLabel")} value="OpenAI + Anthropic" />
+                <InfoCard label={t("intro.overviewBillingLabel")} value={t("intro.overviewBillingValue")} />
               </div>
               <P>
-                Поддерживаются два формата: <b>OpenAI</b> (<IC>/chat/completions</IC>,{" "}
-                <IC>/images/generations</IC>, <IC>/embeddings</IC>, <IC>/audio/*</IC>) и{" "}
-                <b>Anthropic</b> (<IC>/messages</IC>). Стриминг, батч-обработка, вебхуки —
-                на месте.
+                {t.rich("intro.overviewFormatsP", {
+                  b1: (chunks) => <b>{chunks}</b>,
+                  b2: (chunks) => <b>{chunks}</b>,
+                  ic1: (chunks) => <IC>{chunks}</IC>,
+                  ic2: (chunks) => <IC>{chunks}</IC>,
+                  ic3: (chunks) => <IC>{chunks}</IC>,
+                  ic4: (chunks) => <IC>{chunks}</IC>,
+                  ic5: (chunks) => <IC>{chunks}</IC>,
+                })}
               </P>
             </DocSection>
-            <DocSection title="С чего начать">
+            <DocSection title={t("intro.overviewGettingStartedTitle")}>
               <UL>
-                <LI><A href="#quickstart">Быстрый старт</A> — создать ключ и сделать первый запрос.</LI>
-                <LI><A href="#auth">Аутентификация</A> — как передавать ключ.</LI>
-                <LI><A href="#billing">Биллинг и лимиты</A> — сколько стоит и какие ограничения.</LI>
-                <LI><A href="#ide-cursor">Интеграция с IDE</A> — Cursor, Cline, Continue.</LI>
+                <LI>{t.rich("intro.gettingStartedItem1", { a: (chunks) => <A href="#quickstart">{chunks}</A> })}</LI>
+                <LI>{t.rich("intro.gettingStartedItem2", { a: (chunks) => <A href="#auth">{chunks}</A> })}</LI>
+                <LI>{t.rich("intro.gettingStartedItem3", { a: (chunks) => <A href="#billing">{chunks}</A> })}</LI>
+                <LI>{t.rich("intro.gettingStartedItem4", { a: (chunks) => <A href="#ide-cursor">{chunks}</A> })}</LI>
               </UL>
               <div className="flex flex-wrap gap-3 pt-1">
                 <Link href="/api-docs/playground/" className="inline-flex items-center gap-2 rounded-[10px] bg-[#D97757] px-5 py-2.5 text-[15px] font-medium text-white transition-colors hover:bg-[#C4623E]">
@@ -367,7 +389,7 @@ const GROUPS: DocGroup[] = [
                   Swagger UI <ExternalLink size={14} />
                 </a>
                 <Link href="/account/keys/" className="inline-flex items-center gap-2 rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-white px-5 py-2.5 text-[15px] font-medium text-[rgba(13,13,13,0.7)] transition-colors hover:bg-[rgba(13,13,13,0.04)] dark:border-[rgba(255,255,255,0.14)] dark:bg-[#211E1B] dark:text-[rgba(236,236,236,0.7)]">
-                  Создать API-ключ
+                  {t("intro.createApiKeyButton")}
                 </Link>
               </div>
             </DocSection>
@@ -376,21 +398,26 @@ const GROUPS: DocGroup[] = [
       },
       {
         id: "quickstart",
-        label: "Быстрый старт",
+        label: t("intro.navQuickstart"),
         content: (
-          <DocSection title="Быстрый старт" intro="Три шага до первого ответа от нейросети.">
+          <DocSection title={t("intro.quickstartTitle")} intro={t("intro.quickstartIntro")}>
             <Steps>
               <Step n={1}>
-                <b>Создайте API-ключ</b> в кабинете — раздел{" "}
-                <A href="/account/keys/">API-ключи</A>. Ключ вида <IC>ak_...</IC>{" "}
-                показывается один раз, сохраните сразу.
+                {t.rich("intro.quickstartStep1", {
+                  b: (chunks) => <b>{chunks}</b>,
+                  a: (chunks) => <A href="/account/keys/">{chunks}</A>,
+                  ic: (chunks) => <IC>{chunks}</IC>,
+                })}
               </Step>
               <Step n={2}>
-                <b>Укажите наш base_url</b> <IC>https://aineron.ru/api/v1</IC> вместо{" "}
-                <IC>api.openai.com</IC> в вашем SDK или HTTP-клиенте.
+                {t.rich("intro.quickstartStep2", {
+                  b: (chunks) => <b>{chunks}</b>,
+                  ic1: () => <IC>{API_BASE}</IC>,
+                  ic2: (chunks) => <IC>{chunks}</IC>,
+                })}
               </Step>
               <Step n={3}>
-                <b>Пополните баланс</b> и делайте запросы — списание по токенам автоматически.
+                {t.rich("intro.quickstartStep3", { b: (chunks) => <b>{chunks}</b> })}
               </Step>
             </Steps>
             <div className="pt-2">
@@ -401,55 +428,53 @@ const GROUPS: DocGroup[] = [
       },
       {
         id: "auth",
-        label: "Аутентификация",
+        label: t("intro.navAuth"),
         content: (
-          <DocSection title="Аутентификация" intro="Все запросы к API требуют ключ в заголовке Authorization.">
+          <DocSection title={t("intro.authTitle")} intro={t("intro.authIntro")}>
             <StandaloneCodeBlock code={`Authorization: Bearer ak_ВАШ_КЛЮЧ`} />
             <UL>
-              <LI>Ключи создаются и удаляются в <A href="/account/keys/">кабинете</A>; можно завести несколько (например, отдельный для каждого инструмента).</LI>
-              <LI>Ключ привязан к вашему аккаунту и общему балансу.</LI>
-              <LI>Для Mini App и внутренних интеграций поддерживаются JWT-токены (выдаются при авторизации через Telegram).</LI>
+              <LI>{t.rich("intro.authItem1", { a: (chunks) => <A href="/account/keys/">{chunks}</A> })}</LI>
+              <LI>{t("intro.authItem2")}</LI>
+              <LI>{t("intro.authItem3")}</LI>
             </UL>
-            <Callout type="warn" title="Не публикуйте ключ">
-              Не храните <IC>ak_...</IC> в публичных репозиториях и клиентском коде браузера.
-              Если ключ скомпрометирован — удалите его в кабинете и создайте новый.
+            <Callout type="warn" title={t("intro.authWarnTitle")}>
+              {t.rich("intro.authWarnBody", { ic: (chunks) => <IC>{chunks}</IC> })}
             </Callout>
           </DocSection>
         ),
       },
       {
         id: "billing",
-        label: "Биллинг и лимиты",
+        label: t("intro.navBilling"),
         content: (
-          <DocSection title="Биллинг и лимиты" intro="Оплата в рублях, списание по токенам. Прозрачно и предсказуемо.">
+          <DocSection title={t("intro.billingTitle")} intro={t("intro.billingIntro")}>
             <UL>
-              <LI>Стоимость зависит от модели и объёма (входные + выходные токены).</LI>
-              <LI>Баланс и траты видны в <A href="/account/analytics/">аналитике кабинета</A>.</LI>
-              <LI>Rate limit: до <b>120 запросов в минуту</b> на ключ (ошибка <IC>429</IC> при превышении — сделайте паузу/повтор).</LI>
-              <LI>При нехватке средств API вернёт <IC>402 insufficient_quota</IC>.</LI>
+              <LI>{t("intro.billingItem1")}</LI>
+              <LI>{t.rich("intro.billingItem2", { a: (chunks) => <A href="/account/analytics/">{chunks}</A> })}</LI>
+              <LI>{t.rich("intro.billingItem3", { b: (chunks) => <b>{chunks}</b>, ic: (chunks) => <IC>{chunks}</IC> })}</LI>
+              <LI>{t.rich("intro.billingItem4", { ic: (chunks) => <IC>{chunks}</IC> })}</LI>
             </UL>
             <Callout type="tip">
-              Для автодополнения в IDE используйте быструю дешёвую модель (<IC>gpt-4o-mini</IC>),
-              а для сложных задач — мощную. Так вы экономите и снижаете задержку.
+              {t.rich("intro.billingTip", { ic: (chunks) => <IC>{chunks}</IC> })}
             </Callout>
           </DocSection>
         ),
       },
       {
         id: "errors",
-        label: "Коды ошибок",
+        label: t("intro.navErrors"),
         content: (
-          <DocSection title="Коды ошибок" intro="Ошибки возвращаются в OpenAI-совместимом формате.">
-            <StandaloneCodeBlock code={ERROR_BODY} />
+          <DocSection title={t("intro.errorsTitle")} intro={t("intro.errorsIntro")}>
+            <StandaloneCodeBlock code={errorBody(t)} />
             <div className="pt-2">
               <DataTable
-                head={["HTTP", "type", "Причина"]}
+                head={["HTTP", "type", t("intro.errorsTableHeadReason")]}
                 rows={[
-                  ["401", <IC>authentication_error</IC>, "Неверный или отсутствующий ключ"],
-                  ["402", <IC>insufficient_quota</IC>, "Недостаточно средств на балансе"],
-                  ["403", <IC>permission_error</IC>, "Нет доступа к ресурсу"],
-                  ["429", <IC>rate_limit_exceeded</IC>, "Превышен лимит (120/мин)"],
-                  ["400", <IC>invalid_request_error</IC>, "Неверные параметры запроса"],
+                  ["401", <IC>authentication_error</IC>, t("intro.errorReason401")],
+                  ["402", <IC>insufficient_quota</IC>, t("intro.errorReason402")],
+                  ["403", <IC>permission_error</IC>, t("intro.errorReason403")],
+                  ["429", <IC>rate_limit_exceeded</IC>, t("intro.errorReason429")],
+                  ["400", <IC>invalid_request_error</IC>, t("intro.errorReason400")],
                 ]}
               />
             </div>
@@ -459,33 +484,35 @@ const GROUPS: DocGroup[] = [
     ],
   },
   {
-    title: "Эндпоинты",
+    title: t("endpoints.groupTitle"),
     items: [
       {
         id: "chat",
         label: "Chat Completions",
         content: (
-          <DocSection title="Chat Completions" intro="Основной эндпоинт для текстовых моделей. Полностью совместим с OpenAI, включая стриминг.">
+          <DocSection title="Chat Completions" intro={t("endpoints.chatIntro")}>
             <p className="flex flex-wrap items-center gap-2 text-[15px]">
               <Method>POST</Method> <Path>/api/v1/chat/completions</Path>
             </p>
             <CodeTabs tabs={QUICKSTART} />
-            <H3>Популярные модели</H3>
+            <H3>{t("endpoints.chatModelsTitle")}</H3>
             <DataTable
-              head={["model", "Назначение"]}
+              head={["model", t("endpoints.chatTableHeadPurpose")]}
               rows={[
-                [<IC>gpt-4o</IC>, "Универсальная, хорошо следует инструкциям"],
-                [<IC>gpt-5</IC>, "Максимум качества и рассуждений"],
-                [<IC>gpt-4o-mini</IC>, "Быстрая и дешёвая, для автодополнения"],
-                [<IC>claude-sonnet-4-6</IC>, "Лучшая для кода и длинных файлов"],
-                [<IC>claude-opus-4-8</IC>, "Топ для сложных задач"],
-                [<IC>gemini-2.5-pro</IC>, "Большой контекст, мультимодальность"],
-                [<IC>deepseek-v3</IC>, "Очень дёшево, хорошее качество"],
+                [<IC>gpt-4o</IC>, t("endpoints.chatModelGpt4o")],
+                [<IC>gpt-5</IC>, t("endpoints.chatModelGpt5")],
+                [<IC>gpt-4o-mini</IC>, t("endpoints.chatModelGpt4oMini")],
+                [<IC>claude-sonnet-4-6</IC>, t("endpoints.chatModelSonnet")],
+                [<IC>claude-opus-4-8</IC>, t("endpoints.chatModelOpus")],
+                [<IC>gemini-2.5-pro</IC>, t("endpoints.chatModelGemini")],
+                [<IC>deepseek-v3</IC>, t("endpoints.chatModelDeepseek")],
               ]}
             />
             <Callout type="info">
-              Полный актуальный список — запросом <IC>GET /api/v1/models</IC> или в{" "}
-              <A href="/models/">каталоге</A>.
+              {t.rich("endpoints.chatCatalogCallout", {
+                ic: (chunks) => <IC>{chunks}</IC>,
+                a: (chunks) => <A href="/models/">{chunks}</A>,
+              })}
             </Callout>
           </DocSection>
         ),
@@ -494,7 +521,7 @@ const GROUPS: DocGroup[] = [
         id: "messages",
         label: "Messages (Anthropic)",
         content: (
-          <DocSection title="Messages API (Anthropic-совместимый)" intro="Если вы используете официальный Anthropic SDK — просто укажите наш base_url.">
+          <DocSection title={t("endpoints.messagesTitle")} intro={t("endpoints.messagesIntro")}>
             <p className="flex flex-wrap items-center gap-2 text-[15px]">
               <Method>POST</Method> <Path>/api/v1/messages</Path>
             </p>
@@ -504,39 +531,38 @@ const GROUPS: DocGroup[] = [
       },
       {
         id: "models",
-        label: "Модели и каталог",
+        label: t("endpoints.modelsNavLabel"),
         content: (
-          <DocSection title="Список моделей" intro="Получить актуальный список доступных моделей.">
+          <DocSection title={t("endpoints.modelsTitle")} intro={t("endpoints.modelsIntro")}>
             <p className="flex flex-wrap items-center gap-2 text-[15px]">
               <Method>GET</Method> <Path>/api/v1/models</Path>
             </p>
             <StandaloneCodeBlock code={CHECK_MODELS} />
-            <P>Также доступен публичный каталог с категориями и ценами:</P>
+            <P>{t("endpoints.modelsCatalogP")}</P>
             <UL>
-              <LI><Method>GET</Method> <Path>/api/v1/catalog/categories/</Path> — категории</LI>
-              <LI><Method>GET</Method> <Path>/api/v1/catalog/networks/</Path> — модели с ценами</LI>
-              <LI><Method>GET</Method> <Path>/api/v1/catalog/networks/{"{slug}"}/</Path> — детали модели</LI>
+              <LI><Method>GET</Method> <Path>/api/v1/catalog/categories/</Path> — {t("endpoints.modelsCatCategories")}</LI>
+              <LI><Method>GET</Method> <Path>/api/v1/catalog/networks/</Path> — {t("endpoints.modelsCatNetworks")}</LI>
+              <LI><Method>GET</Method> <Path>/api/v1/catalog/networks/{"{slug}"}/</Path> — {t("endpoints.modelsCatDetail")}</LI>
             </UL>
           </DocSection>
         ),
       },
       {
         id: "images",
-        label: "Изображения и видео",
+        label: t("endpoints.imagesNavLabel"),
         content: (
-          <DocSection title="Генерация изображений и видео" intro="Через стандартный OpenAI Images API. Видео генерируется асинхронно.">
+          <DocSection title={t("endpoints.imagesTitle")} intro={t("endpoints.imagesIntro")}>
             <p className="flex flex-wrap items-center gap-2 text-[15px]">
               <Method>POST</Method> <Path>/api/v1/images/generations</Path>
             </p>
             <CodeTabs tabs={IMAGES} />
             <UL>
-              <LI><Method>POST</Method> <Path>/api/v1/images/enhance-prompt/</Path> — усилить промпт</LI>
-              <LI><Method>GET</Method> <Path>/api/v1/generations/{"{id}"}/progress/</Path> — прогресс генерации (SSE)</LI>
-              <LI><Method>POST</Method> <Path>/api/v1/generations/{"{id}"}/upscale/</Path> — апскейл; <IC>/variations/</IC>, <IC>/remove-background/</IC></LI>
+              <LI><Method>POST</Method> <Path>/api/v1/images/enhance-prompt/</Path> — {t("endpoints.imagesEnhancePrompt")}</LI>
+              <LI><Method>GET</Method> <Path>/api/v1/generations/{"{id}"}/progress/</Path> — {t("endpoints.imagesProgress")}</LI>
+              <LI><Method>POST</Method> <Path>/api/v1/generations/{"{id}"}/upscale/</Path> — {t("endpoints.imagesUpscale")}; <IC>/variations/</IC>, <IC>/remove-background/</IC></LI>
             </UL>
             <Callout type="info">
-              Видео-модели (Sora 2, Veo 3.1, Kling) работают через тот же интерфейс, но результат
-              готовится 5–15 минут — опрашивайте статус генерации.
+              {t("endpoints.imagesVideoCallout")}
             </Callout>
           </DocSection>
         ),
@@ -545,7 +571,7 @@ const GROUPS: DocGroup[] = [
         id: "embeddings",
         label: "Embeddings",
         content: (
-          <DocSection title="Embeddings" intro="Векторные представления текста для поиска и RAG.">
+          <DocSection title="Embeddings" intro={t("endpoints.embeddingsIntro")}>
             <p className="flex flex-wrap items-center gap-2 text-[15px]">
               <Method>POST</Method> <Path>/api/v1/embeddings</Path>
             </p>
@@ -555,15 +581,15 @@ const GROUPS: DocGroup[] = [
       },
       {
         id: "audio",
-        label: "Аудио (TTS / ASR)",
+        label: t("endpoints.audioNavLabel"),
         content: (
-          <DocSection title="Аудио: синтез и распознавание речи">
-            <H3>Синтез речи (TTS)</H3>
+          <DocSection title={t("endpoints.audioTitle")}>
+            <H3>{t("endpoints.audioTtsTitle")}</H3>
             <p className="mb-2 flex flex-wrap items-center gap-2 text-[15px]">
               <Method>POST</Method> <Path>/api/v1/audio/speech</Path>
             </p>
             <StandaloneCodeBlock code={AUDIO_TTS} />
-            <H3>Распознавание речи (ASR / Whisper)</H3>
+            <H3>{t("endpoints.audioAsrTitle")}</H3>
             <p className="mb-2 flex flex-wrap items-center gap-2 text-[15px]">
               <Method>POST</Method> <Path>/api/v1/audio/transcriptions</Path>
             </p>
@@ -575,14 +601,14 @@ const GROUPS: DocGroup[] = [
         id: "batch",
         label: "Batch API",
         content: (
-          <DocSection title="Batch API" intro="Пакетная асинхронная обработка большого числа запросов.">
+          <DocSection title="Batch API" intro={t("endpoints.batchIntro")}>
             <UL>
-              <LI><Method>POST</Method> <Path>/api/v1/batches/</Path> — создать пакет</LI>
-              <LI><Method>GET</Method> <Path>/api/v1/batches/{"{id}"}/</Path> — статус</LI>
-              <LI><Method>GET</Method> <Path>/api/v1/batches/{"{id}"}/results/</Path> — результаты</LI>
-              <LI><Method>POST</Method> <Path>/api/v1/batches/{"{id}"}/cancel/</Path> — отменить</LI>
+              <LI><Method>POST</Method> <Path>/api/v1/batches/</Path> — {t("endpoints.batchCreate")}</LI>
+              <LI><Method>GET</Method> <Path>/api/v1/batches/{"{id}"}/</Path> — {t("endpoints.batchStatus")}</LI>
+              <LI><Method>GET</Method> <Path>/api/v1/batches/{"{id}"}/results/</Path> — {t("endpoints.batchResults")}</LI>
+              <LI><Method>POST</Method> <Path>/api/v1/batches/{"{id}"}/cancel/</Path> — {t("endpoints.batchCancel")}</LI>
             </UL>
-            <P>Подходит для массовой классификации, разметки, генерации — без ручного контроля rate limit.</P>
+            <P>{t("endpoints.batchP")}</P>
           </DocSection>
         ),
       },
@@ -593,32 +619,27 @@ const GROUPS: DocGroup[] = [
     items: [
       {
         id: "sandboxes",
-        label: "Обзор и быстрый старт",
+        label: t("sandboxes.navOverview"),
         content: (
           <>
-            <DocSection title="Sandboxes — исполнение кода в microVM">
+            <DocSection title={t("sandboxes.title")}>
               <Lead>
-                Изолированные песочницы для безопасного выполнения недоверенного кода —
-                того, что пишут AI-агенты или ваши пользователи. Каждая песочница — это
-                отдельная <b>Firecracker microVM</b> с собственным ядром, готовая за секунды.
-                Единственный такой API в России: рубли, оферта РФ, один ключ с чатами и генерацией.
+                {t.rich("sandboxes.lead", { b: (chunks) => <b>{chunks}</b> })}
               </Lead>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <InfoCard label="Изоляция" value="microVM" />
-                <InfoCard label="Старт" value="1–5 секунд" />
-                <InfoCard label="small" value="0,50 ₽/мин" />
-                <InfoCard label="standard" value="1 ₽/мин" />
+                <InfoCard label={t("sandboxes.infoIsolationLabel")} value="microVM" />
+                <InfoCard label={t("sandboxes.infoStartLabel")} value={t("sandboxes.infoStartValue")} />
+                <InfoCard label="small" value={t("sandboxes.infoSmallValue")} />
+                <InfoCard label="standard" value={t("sandboxes.infoStandardValue")} />
               </div>
               <P>
-                Типовые сценарии: агент «LLM пишет код → песочница выполняет», проверка
-                кода студентов, запуск сниппетов из вашего продукта, дев-серверы с публичным URL.
+                {t("sandboxes.typicalScenariosP")}
               </P>
             </DocSection>
-            <DocSection title="Быстрый старт" intro="Ключ должен иметь скоуп «sandboxes» — включается при создании ключа в кабинете.">
+            <DocSection title={t("sandboxes.quickstartTitle")} intro={t("sandboxes.quickstartIntro")}>
               <CodeTabs tabs={SANDBOX_QUICKSTART} />
-              <Callout type="tip" title="Биллинг честный">
-                Резерв списывается при создании (TTL × цена), при остановке неиспользованные
-                минуты возвращаются автоматически. Ошибка запуска — полный возврат.
+              <Callout type="tip" title={t("sandboxes.billingTipTitle")}>
+                {t("sandboxes.billingTipBody")}
               </Callout>
             </DocSection>
           </>
@@ -626,68 +647,71 @@ const GROUPS: DocGroup[] = [
       },
       {
         id: "sandboxes-ref",
-        label: "Справочник эндпоинтов",
+        label: t("sandboxesRef.navLabel"),
         content: (
-          <DocSection title="Справочник Sandboxes API">
+          <DocSection title={t("sandboxesRef.title")}>
             <DataTable
-              head={["Метод", "Путь", "Назначение"]}
+              head={[t("sandboxesRef.tableHeadMethod"), t("sandboxesRef.tableHeadPath"), t("sandboxesRef.tableHeadPurpose")]}
               rows={[
-                [<Method>POST</Method>, <Path>/api/v1/sandboxes/</Path>, "Создать песочницу"],
-                [<Method>GET</Method>, <Path>/api/v1/sandboxes/</Path>, "Список (активные; ?all=1 — история)"],
-                [<Method>GET</Method>, <Path>/api/v1/sandboxes/{"{id}"}/</Path>, "Статус"],
-                [<Method>POST</Method>, <Path>/api/v1/sandboxes/{"{id}"}/exec/</Path>, "Выполнить команду или код"],
-                [<Method>POST</Method>, <Path>/api/v1/sandboxes/{"{id}"}/files/</Path>, "Записать файлы"],
-                [<Method>GET</Method>, <Path>/api/v1/sandboxes/{"{id}"}/files/</Path>, "Прочитать файл / листинг"],
-                [<Method>GET</Method>, <Path>/api/v1/sandboxes/{"{id}"}/logs/</Path>, "Логи background-процессов"],
-                [<Method>GET</Method>, <Path>/api/v1/sandboxes/{"{id}"}/logs/stream/</Path>, "Логи в реальном времени (SSE)"],
-                [<Method>POST</Method>, <Path>/api/v1/sandboxes/{"{id}"}/timeout/</Path>, "Продлить TTL"],
-                [<Method>DELETE</Method>, <Path>/api/v1/sandboxes/{"{id}"}/</Path>, "Остановить + финальный расчёт"],
+                [<Method>POST</Method>, <Path>/api/v1/sandboxes/</Path>, t("sandboxesRef.rowCreate")],
+                [<Method>GET</Method>, <Path>/api/v1/sandboxes/</Path>, t("sandboxesRef.rowList")],
+                [<Method>GET</Method>, <Path>/api/v1/sandboxes/{"{id}"}/</Path>, t("sandboxesRef.rowStatus")],
+                [<Method>POST</Method>, <Path>/api/v1/sandboxes/{"{id}"}/exec/</Path>, t("sandboxesRef.rowExec")],
+                [<Method>POST</Method>, <Path>/api/v1/sandboxes/{"{id}"}/files/</Path>, t("sandboxesRef.rowFilesWrite")],
+                [<Method>GET</Method>, <Path>/api/v1/sandboxes/{"{id}"}/files/</Path>, t("sandboxesRef.rowFilesRead")],
+                [<Method>GET</Method>, <Path>/api/v1/sandboxes/{"{id}"}/logs/</Path>, t("sandboxesRef.rowLogs")],
+                [<Method>GET</Method>, <Path>/api/v1/sandboxes/{"{id}"}/logs/stream/</Path>, t("sandboxesRef.rowLogsStream")],
+                [<Method>POST</Method>, <Path>/api/v1/sandboxes/{"{id}"}/timeout/</Path>, t("sandboxesRef.rowTimeout")],
+                [<Method>DELETE</Method>, <Path>/api/v1/sandboxes/{"{id}"}/</Path>, t("sandboxesRef.rowDelete")],
               ]}
             />
-            <H3>Работа с файлами</H3>
+            <H3>{t("sandboxesRef.filesTitle")}</H3>
             <StandaloneCodeBlock code={SANDBOX_FILES} />
-            <H3>Параметры создания</H3>
+            <H3>{t("sandboxesRef.paramsTitle")}</H3>
             <DataTable
-              head={["Параметр", "Значения", "По умолчанию"]}
+              head={[t("sandboxesRef.paramHeadParam"), t("sandboxesRef.paramHeadValues"), t("sandboxesRef.paramHeadDefault")]}
               rows={[
                 [<IC>template</IC>, "base | python | nodejs | nextjs | django", <IC>base</IC>],
                 [<IC>size</IC>, "small (1 vCPU/1 GiB) | standard (2 vCPU/2 GiB)", <IC>standard</IC>],
                 [<IC>timeout_seconds</IC>, "60–3600", "300"],
-                [<IC>env</IC>, "до 20 переменных окружения", "—"],
-                [<IC>metadata</IC>, "ваши теги (вернутся в списке)", "—"],
+                [<IC>env</IC>, t("sandboxesRef.paramEnvValues"), "—"],
+                [<IC>metadata</IC>, t("sandboxesRef.paramMetadataValues"), "—"],
               ]}
             />
-            <H3>Лимиты</H3>
+            <H3>{t("sandboxesRef.limitsTitle")}</H3>
             <UL>
-              <LI>3 одновременные песочницы на пользователя; 240 минут в день.</LI>
-              <LI>exec: таймаут до 300 с, вывод до 256 KB (флаг <IC>truncated</IC>), 30 запусков/мин.</LI>
-              <LI>Файлы: до 5 MB на файл, до 50 файлов за запрос; пути — под <IC>/home/user</IC>, <IC>/tmp</IC>, <IC>/app</IC>.</LI>
-              <LI>Сеть изнутри песочницы: allowlist (pypi, npm и т.п.); нужен домен — напишите в поддержку.</LI>
+              <LI>{t("sandboxesRef.limit1")}</LI>
+              <LI>{t.rich("sandboxesRef.limit2", { ic: (chunks) => <IC>{chunks}</IC> })}</LI>
+              <LI>{t.rich("sandboxesRef.limit3", {
+                ic1: () => <IC>/home/user</IC>,
+                ic2: () => <IC>/tmp</IC>,
+                ic3: () => <IC>/app</IC>,
+              })}</LI>
+              <LI>{t("sandboxesRef.limit4")}</LI>
             </UL>
             <Callout type="warn" title="Idempotency-Key">
-              POST-создание и DELETE принимают заголовок <IC>Idempotency-Key</IC> — повтор
-              с тем же ключом вернёт первый результат и не создаст дубль (важно при ретраях).
+              {t.rich("sandboxesRef.idempotencyBody", { ic: (chunks) => <IC>{chunks}</IC> })}
             </Callout>
           </DocSection>
         ),
       },
       {
         id: "sandboxes-agent",
-        label: "Туториал: AI-агент с кодом",
+        label: t("sandboxesAgent.navLabel"),
         content: (
           <DocSection
-            title="AI-агент, который пишет и выполняет код"
-            intro="Полный цикл на одном ключе aineron: LLM генерирует решение через /chat/completions, песочница безопасно его выполняет, результат возвращается агенту."
+            title={t("sandboxesAgent.title")}
+            intro={t("sandboxesAgent.intro")}
           >
             <StandaloneCodeBlock code={SANDBOX_AGENT} />
             <P>
-              Паттерн расширяется до полноценного tool use: опишите песочницу как инструмент
-              (<IC>run_python</IC>) в параметре <IC>tools</IC> запроса к модели — и модель сама
-              решит, когда выполнять код, а когда отвечать текстом.
+              {t.rich("sandboxesAgent.patternP", {
+                ic1: () => <IC>run_python</IC>,
+                ic2: () => <IC>tools</IC>,
+              })}
             </P>
             <Callout type="tip">
-              Держите одну песочницу на диалог (а не на каждый вызов): состояние — переменные,
-              установленные пакеты, файлы — сохраняется между <IC>exec</IC>, а старт не тратится повторно.
+              {t.rich("sandboxesAgent.tipBody", { ic: (chunks) => <IC>{chunks}</IC> })}
             </Callout>
           </DocSection>
         ),
@@ -695,23 +719,23 @@ const GROUPS: DocGroup[] = [
     ],
   },
   {
-    title: "Ресурсы платформы",
+    title: t("resources.groupTitle"),
     items: [
       {
         id: "res-chats",
-        label: "Чаты и проекты",
+        label: t("resources.resChatsNavLabel"),
         content: (
-          <DocSection title="Чаты, проекты, файлы (API)" intro="Веб-функции доступны и программно — можно строить свои интерфейсы поверх платформы.">
+          <DocSection title={t("resources.resChatsTitle")} intro={t("resources.resChatsIntro")}>
             <DataTable
-              head={["Метод", "Путь", "Назначение"]}
+              head={[t("resources.tableHeadMethod"), t("resources.tableHeadPath"), t("resources.tableHeadPurpose")]}
               rows={[
-                [<Method>GET</Method>, <Path>/api/v1/chats/</Path>, "Список чатов"],
-                [<Method>POST</Method>, <Path>/api/v1/chats/</Path>, "Создать чат + сообщение"],
-                [<Method>POST</Method>, <Path>/api/v1/chats/{"{id}"}/messages/stream/</Path>, "Стриминг ответа (SSE)"],
-                [<Method>GET</Method>, <Path>/api/v1/chats/search/</Path>, "Поиск по истории (слова + смысл)"],
-                [<Method>GET</Method>, <Path>/api/v1/projects/</Path>, "Проекты и база знаний"],
-                [<Method>POST</Method>, <Path>/api/v1/projects/{"{id}"}/files/</Path>, "Загрузить файл в базу знаний"],
-                [<Method>GET</Method>, <Path>/api/v1/projects/{"{id}"}/kb/stats/</Path>, "Статус индексации базы знаний"],
+                [<Method>GET</Method>, <Path>/api/v1/chats/</Path>, t("resources.resChatsRowList")],
+                [<Method>POST</Method>, <Path>/api/v1/chats/</Path>, t("resources.resChatsRowCreate")],
+                [<Method>POST</Method>, <Path>/api/v1/chats/{"{id}"}/messages/stream/</Path>, t("resources.resChatsRowStream")],
+                [<Method>GET</Method>, <Path>/api/v1/chats/search/</Path>, t("resources.resChatsRowSearch")],
+                [<Method>GET</Method>, <Path>/api/v1/projects/</Path>, t("resources.resChatsRowProjects")],
+                [<Method>POST</Method>, <Path>/api/v1/projects/{"{id}"}/files/</Path>, t("resources.resChatsRowProjectsUpload")],
+                [<Method>GET</Method>, <Path>/api/v1/projects/{"{id}"}/kb/stats/</Path>, t("resources.resChatsRowKbStatus")],
               ]}
             />
           </DocSection>
@@ -719,19 +743,19 @@ const GROUPS: DocGroup[] = [
       },
       {
         id: "res-agent",
-        label: "Память, задачи, агент",
+        label: t("resources.resAgentNavLabel"),
         content: (
-          <DocSection title="Память, AI-задачи и Agent Mode (API)">
+          <DocSection title={t("resources.resAgentTitle")}>
             <DataTable
-              head={["Метод", "Путь", "Назначение"]}
+              head={[t("resources.tableHeadMethod"), t("resources.tableHeadPath"), t("resources.tableHeadPurpose")]}
               rows={[
-                [<Method>GET</Method>, <Path>/api/v1/memory/</Path>, "Факты памяти (фильтр по скоупу)"],
-                [<Method>POST</Method>, <Path>/api/v1/memory/quick-save/</Path>, "Сохранить факт"],
-                [<Method>GET</Method>, <Path>/api/v1/orgs/{"{id}"}/memory/</Path>, "Общая память организации"],
-                [<Method>GET</Method>, <Path>/api/v1/tasks/</Path>, "AI-задачи по расписанию"],
-                [<Method>POST</Method>, <Path>/api/v1/tasks/{"{id}"}/run/</Path>, "Запустить задачу сейчас"],
-                [<Method>POST</Method>, <Path>/api/v1/agent/</Path>, "Запустить Agent Mode"],
-                [<Method>GET</Method>, <Path>/api/v1/agent/{"{id}"}/</Path>, "Статус и результат агента"],
+                [<Method>GET</Method>, <Path>/api/v1/memory/</Path>, t("resources.resAgentRowMemoryList")],
+                [<Method>POST</Method>, <Path>/api/v1/memory/quick-save/</Path>, t("resources.resAgentRowMemorySave")],
+                [<Method>GET</Method>, <Path>/api/v1/orgs/{"{id}"}/memory/</Path>, t("resources.resAgentRowMemoryOrg")],
+                [<Method>GET</Method>, <Path>/api/v1/tasks/</Path>, t("resources.resAgentRowTasksList")],
+                [<Method>POST</Method>, <Path>/api/v1/tasks/{"{id}"}/run/</Path>, t("resources.resAgentRowTasksRun")],
+                [<Method>POST</Method>, <Path>/api/v1/agent/</Path>, t("resources.resAgentRowAgentRun")],
+                [<Method>GET</Method>, <Path>/api/v1/agent/{"{id}"}/</Path>, t("resources.resAgentRowAgentStatus")],
               ]}
             />
           </DocSection>
@@ -739,15 +763,15 @@ const GROUPS: DocGroup[] = [
       },
       {
         id: "res-research",
-        label: "Deep Research API",
+        label: t("resources.resResearchNavLabel"),
         content: (
-          <DocSection title="Deep Research (API)" intro="Запуск исследования и опрос статуса из вашего кода.">
+          <DocSection title={t("resources.resResearchTitle")} intro={t("resources.resResearchIntro")}>
             <DataTable
-              head={["Метод", "Путь", "Назначение"]}
+              head={[t("resources.tableHeadMethod"), t("resources.tableHeadPath"), t("resources.tableHeadPurpose")]}
               rows={[
-                [<Method>POST</Method>, <Path>/api/v1/chats/{"{id}"}/research/</Path>, "Запустить исследование"],
-                [<Method>GET</Method>, <Path>/api/v1/research/{"{id}"}/</Path>, "Статус, шаги, отчёт"],
-                [<Method>POST</Method>, <Path>/api/v1/research/{"{id}"}/save/</Path>, "Сохранить отчёт в базу знаний"],
+                [<Method>POST</Method>, <Path>/api/v1/chats/{"{id}"}/research/</Path>, t("resources.resResearchRowStart")],
+                [<Method>GET</Method>, <Path>/api/v1/research/{"{id}"}/</Path>, t("resources.resResearchRowStatus")],
+                [<Method>POST</Method>, <Path>/api/v1/research/{"{id}"}/save/</Path>, t("resources.resResearchRowSave")],
               ]}
             />
           </DocSection>
@@ -755,20 +779,20 @@ const GROUPS: DocGroup[] = [
       },
       {
         id: "res-webhooks",
-        label: "Webhooks, usage, audit",
+        label: t("resources.resWebhooksNavLabel"),
         content: (
-          <DocSection title="Вебхуки и наблюдаемость">
-            <H3>Исходящие вебхуки</H3>
-            <P>Получайте события платформы на свой URL (с HMAC-подписью).</P>
+          <DocSection title={t("resources.resWebhooksTitle")}>
+            <H3>{t("resources.resWebhooksOutgoingTitle")}</H3>
+            <P>{t("resources.resWebhooksOutgoingIntro")}</P>
             <UL>
-              <LI><Method>POST</Method> <Path>/api/v1/webhooks/</Path> — создать вебхук</LI>
-              <LI><Method>POST</Method> <Path>/api/v1/webhooks/{"{id}"}/test/</Path> — тестовое событие</LI>
+              <LI><Method>POST</Method> <Path>/api/v1/webhooks/</Path> — {t("resources.resWebhooksRowCreate")}</LI>
+              <LI><Method>POST</Method> <Path>/api/v1/webhooks/{"{id}"}/test/</Path> — {t("resources.resWebhooksRowTest")}</LI>
             </UL>
-            <H3>Использование и аудит</H3>
+            <H3>{t("resources.resWebhooksUsageTitle")}</H3>
             <UL>
-              <LI><Method>GET</Method> <Path>/api/v1/usage/</Path> — статистика трат</LI>
-              <LI><Method>GET</Method> <Path>/api/v1/audit/</Path> — журнал действий</LI>
-              <LI><Method>GET</Method> <Path>/api/v1/status/</Path> — статус сервиса</LI>
+              <LI><Method>GET</Method> <Path>/api/v1/usage/</Path> — {t("resources.resWebhooksRowUsage")}</LI>
+              <LI><Method>GET</Method> <Path>/api/v1/audit/</Path> — {t("resources.resWebhooksRowAudit")}</LI>
+              <LI><Method>GET</Method> <Path>/api/v1/status/</Path> — {t("resources.resWebhooksRowStatus")}</LI>
             </UL>
           </DocSection>
         ),
@@ -776,32 +800,48 @@ const GROUPS: DocGroup[] = [
     ],
   },
   {
-    title: "Интеграция с IDE",
+    title: t("ide.groupTitle"),
     items: [
       {
         id: "ide-cursor",
         label: "Cursor",
         content: (
-          <DocSection title="Cursor" intro="AI-редактор на базе VS Code. Поддерживает кастомные OpenAI-провайдеры с версии 0.40.">
+          <DocSection title="Cursor" intro={t("ide.cursorIntro")}>
             <Steps>
               <Step n={1}>
-                <Kbd>Ctrl+Shift+J</Kbd> (или <Kbd>Cmd+Shift+J</Kbd>) → вкладка <b>Models</b> → <b>Add Model</b>.
+                {t.rich("ide.cursorStep1", {
+                  kbd1: () => <Kbd>Ctrl+Shift+J</Kbd>,
+                  kbd2: () => <Kbd>Cmd+Shift+J</Kbd>,
+                  b1: () => <b>Models</b>,
+                  b2: () => <b>Add Model</b>,
+                })}
               </Step>
               <Step n={2}>
-                В разделе <b>OpenAI API Key</b> включите <b>Override OpenAI Base URL</b> и введите{" "}
-                <IC>https://aineron.ru/api/v1</IC>. В поле <b>API Key</b> — ваш <IC>ak_...</IC>.
+                {t.rich("ide.cursorStep2", {
+                  b1: () => <b>OpenAI API Key</b>,
+                  b2: () => <b>Override OpenAI Base URL</b>,
+                  urlIc: () => <IC>{API_BASE}</IC>,
+                  b3: () => <b>API Key</b>,
+                  keyIc: () => <IC>ak_...</IC>,
+                })}
               </Step>
               <Step n={3}>
-                В <b>Model Name</b> укажите модель, например <IC>gpt-4o</IC> или{" "}
-                <IC>claude-sonnet-4-6</IC>. Список — запросом:
+                {t.rich("ide.cursorStep3", {
+                  b: () => <b>Model Name</b>,
+                  ic1: () => <IC>gpt-4o</IC>,
+                  ic2: () => <IC>claude-sonnet-4-6</IC>,
+                })}
                 <div className="mt-3"><StandaloneCodeBlock code={CHECK_MODELS} /></div>
               </Step>
               <Step n={4}>
-                <b>Save</b> → выберите модель в правом нижнем углу → чат <Kbd>Ctrl+L</Kbd>. Готово.
+                {t.rich("ide.cursorStep4", {
+                  b: () => <b>Save</b>,
+                  kbd: () => <Kbd>Ctrl+L</Kbd>,
+                })}
               </Step>
             </Steps>
             <Callout type="info">
-              При нехватке средств автодополнение временно отключится — пополните баланс в кабинете.
+              {t("ide.cursorCalloutInfo")}
             </Callout>
           </DocSection>
         ),
@@ -810,22 +850,29 @@ const GROUPS: DocGroup[] = [
         id: "ide-cline",
         label: "Cline",
         content: (
-          <DocSection title="Cline" intro="Агент-расширение VS Code: сам создаёт и редактирует файлы, выполняет команды.">
+          <DocSection title="Cline" intro={t("ide.clineIntro")}>
             <Steps>
-              <Step n={1}>Установите <b>Cline</b> из маркетплейса VS Code.</Step>
+              <Step n={1}>
+                {t.rich("ide.clineStep1", { b: () => <b>Cline</b> })}
+              </Step>
               <Step n={2}>
-                Настройки Cline → <b>API Provider</b> → <b>OpenAI Compatible</b>. Заполните:
+                {t.rich("ide.clineStep2", {
+                  b1: () => <b>API Provider</b>,
+                  b2: () => <b>OpenAI Compatible</b>,
+                })}
                 <div className="mt-3"><StandaloneCodeBlock code={CLINE_SETTINGS} /></div>
               </Step>
               <Step n={3}>
-                Рекомендованные модели для агентских задач: <IC>claude-sonnet-4-6</IC> (лучшая для кода),{" "}
-                <IC>gpt-4o</IC>, <IC>claude-opus-4-8</IC>.
+                {t.rich("ide.clineStep3", {
+                  ic1: () => <IC>claude-sonnet-4-6</IC>,
+                  ic2: () => <IC>gpt-4o</IC>,
+                  ic3: () => <IC>claude-opus-4-8</IC>,
+                })}
               </Step>
-              <Step n={4}>Опишите задачу на русском или английском. Cline спросит разрешение перед каждым изменением файла.</Step>
+              <Step n={4}>{t("ide.clineStep4")}</Step>
             </Steps>
             <Callout type="warn">
-              Агентские сессии читают контекст файлов и расходуют больше токенов, чем обычный чат.
-              Следите за балансом.
+              {t("ide.clineCalloutWarn")}
             </Callout>
           </DocSection>
         ),
@@ -834,26 +881,29 @@ const GROUPS: DocGroup[] = [
         id: "ide-continue",
         label: "Continue",
         content: (
-          <DocSection title="Continue" intro="Открытый AI-ассистент для VS Code и JetBrains. Конфигурируется JSON-файлом.">
+          <DocSection title="Continue" intro={t("ide.continueIntro")}>
             <Steps>
               <Step n={1}>
-                Установите <b>Continue</b>, откройте <IC>~/.continue/config.json</IC> (команда{" "}
-                <b>Continue: Open Config</b>).
+                {t.rich("ide.continueStep1", {
+                  b1: () => <b>Continue</b>,
+                  ic: () => <IC>~/.continue/config.json</IC>,
+                  b2: () => <b>Continue: Open Config</b>,
+                })}
               </Step>
               <Step n={2}>
-                Добавьте блок <IC>models</IC>:
+                {t.rich("ide.continueStep2", { ic: () => <IC>models</IC> })}
                 <div className="mt-3"><StandaloneCodeBlock code={CONTINUE_CONFIG} /></div>
               </Step>
-              <Step n={3}>Сохраните — Continue применит конфигурацию. Выберите модель в выпадающем меню чата.</Step>
+              <Step n={3}>{t("ide.continueStep3")}</Step>
             </Steps>
-            <H3>Горячие клавиши</H3>
+            <H3>{t("ide.continueShortcutsTitle")}</H3>
             <DataTable
-              head={["Сочетание", "Действие"]}
+              head={[t("ide.continueTableHeadCombo"), t("ide.continueTableHeadAction")]}
               rows={[
-                [<Kbd>Ctrl+L</Kbd>, "Открыть чат / добавить выделение в контекст"],
-                [<Kbd>Ctrl+I</Kbd>, "Редактировать выделенный код"],
-                [<Kbd>Tab</Kbd>, "Принять автодополнение"],
-                [<Kbd>Ctrl+Shift+R</Kbd>, "Выбрать другую модель"],
+                [<Kbd>Ctrl+L</Kbd>, t("ide.continueRowCtrlL")],
+                [<Kbd>Ctrl+I</Kbd>, t("ide.continueRowCtrlI")],
+                [<Kbd>Tab</Kbd>, t("ide.continueRowTab")],
+                [<Kbd>Ctrl+Shift+R</Kbd>, t("ide.continueRowCtrlShiftR")],
               ]}
             />
           </DocSection>
@@ -862,38 +912,42 @@ const GROUPS: DocGroup[] = [
     ],
   },
   {
-    title: "Ещё",
+    title: t("more.groupTitle"),
     items: [
       {
         id: "telegram",
-        label: "Telegram-интеграция",
+        label: t("more.telegramNavLabel"),
         content: (
-          <DocSection title="Telegram (для интеграций)" intro="Эндпоинты для привязки аккаунта и авторизации Mini App.">
+          <DocSection title={t("more.telegramTitle")} intro={t("more.telegramIntro")}>
             <UL>
-              <LI><Method>POST</Method> <Path>/api/v1/telegram/link-token/</Path> — одноразовый токен привязки аккаунта</LI>
-              <LI><Method>POST</Method> <Path>/api/v1/telegram/webapp-auth/</Path> — обмен initData на JWT (для Mini App)</LI>
+              <LI><Method>POST</Method> <Path>/api/v1/telegram/link-token/</Path> — {t("more.telegramLinkTokenRow")}</LI>
+              <LI><Method>POST</Method> <Path>/api/v1/telegram/webapp-auth/</Path> — {t("more.telegramWebappAuthRow")}</LI>
             </UL>
-            <P>Как пользователю подключить бота — см. <A href="/docs/#tg-start">руководство пользователя</A>.</P>
+            <P>
+              {t.rich("more.telegramGuideP", { a: (chunks) => <A href="/docs/#tg-start">{chunks}</A> })}
+            </P>
           </DocSection>
         ),
       },
       {
         id: "tools",
-        label: "Инструменты",
+        label: t("more.toolsNavLabel"),
         content: (
-          <DocSection title="Инструменты разработчика">
+          <DocSection title={t("more.toolsTitle")}>
             <FeatureGrid>
               <FeatureCard icon={<Play size={16} />} title="Playground">
-                Интерактивная песочница — пробуйте запросы в браузере. <A href="/api-docs/playground/">Открыть →</A>
+                {t.rich("more.toolsPlaygroundBody", { a: (chunks) => <A href="/api-docs/playground/">{chunks}</A> })}
               </FeatureCard>
               <FeatureCard icon={<ExternalLink size={16} />} title="Swagger UI">
-                Полная интерактивная схема всех эндпоинтов. <A href="/api/v1/docs/">Открыть →</A>
+                {t.rich("more.toolsSwaggerBody", { a: (chunks) => <A href="/api/v1/docs/">{chunks}</A> })}
               </FeatureCard>
-              <FeatureCard icon={<Download size={16} />} title="Postman-коллекция">
-                Готовые запросы для Postman. <A href="/static/docs/postman_collection.json">Скачать →</A>
+              <FeatureCard icon={<Download size={16} />} title={t("more.toolsPostmanTitle")}>
+                {t.rich("more.toolsPostmanBody", { a: (chunks) => <A href="/static/docs/postman_collection.json">{chunks}</A> })}
               </FeatureCard>
-              <FeatureCard icon={<ExternalLink size={16} />} title="OpenAPI-схема">
-                Машиночитаемая спецификация. <A href="/api/v1/schema/">/api/v1/schema/</A>
+              <FeatureCard icon={<ExternalLink size={16} />} title={t("more.toolsOpenapiTitle")}>
+                {t.rich("more.toolsOpenapiBody", {
+                  a: () => <A href="/api/v1/schema/">/api/v1/schema/</A>,
+                })}
               </FeatureCard>
             </FeatureGrid>
           </DocSection>
@@ -901,42 +955,58 @@ const GROUPS: DocGroup[] = [
       },
       {
         id: "dev-faq",
-        label: "FAQ разработчика",
+        label: t("more.devFaqNavLabel"),
         content: (
-          <DocSection title="Частые вопросы разработчиков">
-            <H3>Какую модель выбрать для кода?</H3>
-            <P><IC>claude-sonnet-4-6</IC> или <IC>gpt-4o</IC>. Для быстрого автодополнения — <IC>gpt-4o-mini</IC>.</P>
-            <H3>Что делать при ошибке 429?</H3>
-            <P>Лимит 120 запросов/мин на ключ. IDE обычно повторяют запрос сами. Если упираетесь
-              постоянно — заведите несколько ключей под разные инструменты.</P>
-            <H3>Работает ли стриминг?</H3>
-            <P>Да, передайте <IC>stream: true</IC> — как в OpenAI SDK. Поддерживается везде,
-              где есть <IC>/chat/completions</IC>.</P>
-            <H3>Как проверить баланс из кода?</H3>
-            <P>Запрос <Method>GET</Method> <Path>/api/v1/usage/</Path> или смотрите в{" "}
-              <A href="/account/analytics/">аналитике</A>.</P>
-            <H3>Совместимо ли с LangChain / LlamaIndex?</H3>
-            <P>Да — это OpenAI-совместимый провайдер. Укажите <IC>base_url</IC> и ключ в настройках
-              OpenAI-клиента внутри фреймворка.</P>
-            <Callout type="info" title="Нужна помощь?">
-              Контакты поддержки — в подвале сайта. Для пользовательских функций смотрите{" "}
-              <A href="/docs/">руководство пользователя</A>.
+          <DocSection title={t("more.devFaqTitle")}>
+            <H3>{t("more.devFaqQ1")}</H3>
+            <P>
+              {t.rich("more.devFaqA1", {
+                ic1: () => <IC>claude-sonnet-4-6</IC>,
+                ic2: () => <IC>gpt-4o</IC>,
+                ic3: () => <IC>gpt-4o-mini</IC>,
+              })}
+            </P>
+            <H3>{t("more.devFaqQ2")}</H3>
+            <P>{t("more.devFaqA2")}</P>
+            <H3>{t("more.devFaqQ3")}</H3>
+            <P>
+              {t.rich("more.devFaqA3", {
+                ic1: () => <IC>stream: true</IC>,
+                ic2: () => <IC>/chat/completions</IC>,
+              })}
+            </P>
+            <H3>{t("more.devFaqQ4")}</H3>
+            <P>
+              {t.rich("more.devFaqA4", {
+                method: () => <Method>GET</Method>,
+                path: () => <Path>/api/v1/usage/</Path>,
+                a: (chunks) => <A href="/account/analytics/">{chunks}</A>,
+              })}
+            </P>
+            <H3>{t("more.devFaqQ5")}</H3>
+            <P>
+              {t.rich("more.devFaqA5", { ic: () => <IC>base_url</IC> })}
+            </P>
+            <Callout type="info" title={t("more.devFaqHelpTitle")}>
+              {t.rich("more.devFaqHelpBody", { a: (chunks) => <A href="/docs/">{chunks}</A> })}
             </Callout>
           </DocSection>
         ),
       },
     ],
   },
-];
+  ];
+}
 
-export default function ApiDocsPage() {
+export default async function ApiDocsPage() {
+  const t = await getTranslations("apiDocs");
   return (
     <DocLayout
-      eyebrow="Для разработчиков"
-      title="API и интеграции"
-      subtitle="OpenAI- и Anthropic-совместимый API к GPT-5, Claude, Gemini и генерации медиа — без VPN. Плюс интеграции с Cursor, Cline, Continue. Выбирайте раздел слева."
-      breadcrumb={[{ label: "Главная", href: "/" }, { label: "API для разработчиков" }]}
-      groups={GROUPS}
+      eyebrow={t("eyebrow")}
+      title={t("title")}
+      subtitle={t("subtitle")}
+      breadcrumb={[{ label: t("breadcrumbHome"), href: "/" }, { label: t("breadcrumbApiDocs") }]}
+      groups={buildGroups(t)}
     />
   );
 }

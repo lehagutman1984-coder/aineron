@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState, useRef, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import {
   Play,
@@ -20,6 +21,9 @@ import {
 } from "lucide-react";
 import { SandboxPlayground } from "@/components/docs/SandboxPlayground";
 
+// Реальный base_url текущего инстанса (aineron.ru / aineron.net), не хардкод.
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "https://aineron.ru/api/v1";
+
 const PRESET_MODELS = [
   { id: "gpt-4o", label: "GPT-4o" },
   { id: "gpt-4o-mini", label: "GPT-4o Mini" },
@@ -30,7 +34,7 @@ const PRESET_MODELS = [
   { id: "gemini-1.5-pro", label: "Gemini 1.5 Pro" },
   { id: "deepseek-v3", label: "DeepSeek V3" },
   { id: "deepseek-r1", label: "DeepSeek R1" },
-  { id: "custom", label: "Своя модель..." },
+  { id: "custom", label: null },
 ];
 
 type Role = "user" | "assistant";
@@ -44,10 +48,11 @@ function makeMsg(role: Role, content = ""): Message {
 }
 
 function RoleTag({ role, onChange }: { role: Role; onChange: () => void }) {
+  const t = useTranslations("apiDocsPlayground");
   return (
     <button
       onClick={onChange}
-      title="Переключить роль"
+      title={t("toggleRoleTooltip")}
       className={[
         "shrink-0 rounded-[5px] px-2 py-0.5 text-[13px] font-medium uppercase tracking-wide transition-colors",
         role === "user"
@@ -61,6 +66,7 @@ function RoleTag({ role, onChange }: { role: Role; onChange: () => void }) {
 }
 
 export default function PlaygroundPage() {
+  const t = useTranslations("apiDocsPlayground");
   const [playgroundTab, setPlaygroundTab] = useState<"chat" | "sandbox">("chat");
   const [authMode, setAuthMode] = useState<AuthMode>("session");
   const [apiKey, setApiKey] = useState("");
@@ -178,7 +184,7 @@ export default function PlaygroundPage() {
                 choices?: Array<{ delta?: { content?: string } }>;
               };
               const delta = parsed.choices?.[0]?.delta?.content;
-              if (delta) setResText((t) => (t ?? "") + delta);
+              if (delta) setResText((prev) => (prev ?? "") + delta);
               jsonLines += data + "\n";
             } catch {}
           }
@@ -196,19 +202,19 @@ export default function PlaygroundPage() {
           setResText(j.choices?.[0]?.message?.content ?? null);
         } else {
           const err = json as { error?: { message?: string }; detail?: string };
-          setResText(err.error?.message ?? err.detail ?? "Ошибка");
+          setResText(err.error?.message ?? err.detail ?? t("genericError"));
         }
       }
     } catch (err) {
       if ((err as Error).name !== "AbortError") {
         setResTime(Date.now() - t0);
-        setResText("Ошибка сети: " + (err as Error).message);
+        setResText(t("networkError", { message: (err as Error).message }));
         setResJson(JSON.stringify({ error: (err as Error).message }, null, 2));
       }
     } finally {
       setLoading(false);
     }
-  }, [loading, authMode, apiKey, model, customModel, systemPrompt, messages, temperature, maxTokens, streamMode]);
+  }, [loading, authMode, apiKey, model, customModel, systemPrompt, messages, temperature, maxTokens, streamMode, t]);
 
   const copyRes = () => {
     const text = resTab === "json" ? resJson : resText;
@@ -236,7 +242,7 @@ export default function PlaygroundPage() {
           className="flex items-center gap-1.5 text-[15px] text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A] transition-colors"
         >
           <ArrowLeft size={14} />
-          Документация
+          {t("breadcrumbDocs")}
         </Link>
         <span className="text-[rgba(13,13,13,0.25)]">/</span>
         <span className="text-[15px] font-medium text-[#1A1A1A]">
@@ -248,7 +254,7 @@ export default function PlaygroundPage() {
         API Playground
       </h1>
       <p className="mb-6 text-[16px] text-[rgba(13,13,13,0.55)]">
-        Тестируйте запросы к API прямо в браузере — без curl и Postman
+        {t("subtitle")}
       </p>
 
       {/* Tab switcher: Chat / Sandbox */}
@@ -289,7 +295,7 @@ export default function PlaygroundPage() {
           {/* Auth */}
           <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-4">
             <p className="mb-3 text-[14px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.45)]">
-              Авторизация
+              {t("authSectionTitle")}
             </p>
             <div className="flex gap-2">
               <button
@@ -302,7 +308,7 @@ export default function PlaygroundPage() {
                 ].join(" ")}
               >
                 <Globe size={13} />
-                Сессия
+                {t("authModeSession")}
               </button>
               <button
                 onClick={() => setAuthMode("apikey")}
@@ -314,7 +320,7 @@ export default function PlaygroundPage() {
                 ].join(" ")}
               >
                 <Key size={13} />
-                API-ключ
+                {t("authModeApiKey")}
               </button>
             </div>
             {authMode === "apikey" && (
@@ -329,7 +335,7 @@ export default function PlaygroundPage() {
             )}
             {authMode === "session" && (
               <p className="mt-2 text-[14px] text-[rgba(13,13,13,0.45)]">
-                Используется текущая сессия браузера
+                {t("authSessionHint")}
               </p>
             )}
           </div>
@@ -337,7 +343,7 @@ export default function PlaygroundPage() {
           {/* Model + params */}
           <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-4">
             <p className="mb-3 text-[14px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.45)]">
-              Модель и параметры
+              {t("modelSectionTitle")}
             </p>
 
             <select
@@ -347,7 +353,7 @@ export default function PlaygroundPage() {
             >
               {PRESET_MODELS.map((m) => (
                 <option key={m.id} value={m.id}>
-                  {m.label}
+                  {m.label ?? t("customModelOption")}
                 </option>
               ))}
             </select>
@@ -433,7 +439,7 @@ export default function PlaygroundPage() {
                   value={systemPrompt}
                   onChange={(e) => setSystemPrompt(e.target.value)}
                   rows={4}
-                  placeholder="Ты — полезный ассистент..."
+                  placeholder={t("systemPromptPlaceholder")}
                   className="mt-3 w-full resize-none rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-3 py-2 text-[15px] text-[#1A1A1A] placeholder:text-[rgba(13,13,13,0.35)] focus:border-[#D97757] focus:outline-none"
                 />
               </div>
@@ -462,8 +468,8 @@ export default function PlaygroundPage() {
                     rows={2}
                     placeholder={
                       msg.role === "user"
-                        ? "Напиши Hello World на Python"
-                        : "Ответ ассистента..."
+                        ? t("userMessagePlaceholder")
+                        : t("assistantMessagePlaceholder")
                     }
                     className="flex-1 resize-none rounded-[8px] border border-[rgba(13,13,13,0.12)] bg-[rgba(13,13,13,0.02)] px-3 py-2 text-[15px] text-[#1A1A1A] placeholder:text-[rgba(13,13,13,0.30)] focus:border-[#D97757] focus:outline-none"
                   />
@@ -482,7 +488,7 @@ export default function PlaygroundPage() {
               className="mt-3 flex items-center gap-1.5 text-[14px] text-[rgba(13,13,13,0.45)] hover:text-[#D97757] transition-colors"
             >
               <Plus size={13} />
-              Добавить сообщение
+              {t("addMessageButton")}
             </button>
           </div>
 
@@ -499,12 +505,12 @@ export default function PlaygroundPage() {
             {loading ? (
               <>
                 <Square size={15} />
-                Остановить
+                {t("stopButton")}
               </>
             ) : (
               <>
                 <Play size={15} />
-                Выполнить запрос
+                {t("executeButton")}
               </>
             )}
           </button>
@@ -538,7 +544,7 @@ export default function PlaygroundPage() {
                   className="flex items-center gap-1 text-[14px] text-[rgba(13,13,13,0.40)] hover:text-[#1A1A1A] transition-colors"
                 >
                   {copied ? <Check size={13} /> : <Copy size={13} />}
-                  {copied ? "Скопировано" : "Копировать"}
+                  {copied ? t("copiedLabel") : t("copyLabel")}
                 </button>
               )}
             </div>
@@ -557,7 +563,7 @@ export default function PlaygroundPage() {
                         : "border-transparent text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A]",
                     ].join(" ")}
                   >
-                    {tab === "formatted" ? "Ответ" : "JSON"}
+                    {tab === "formatted" ? t("responseTabLabel") : "JSON"}
                   </button>
                 ))}
               </div>
@@ -568,7 +574,7 @@ export default function PlaygroundPage() {
               {loading && resText === null && (
                 <div className="flex items-center gap-2 text-[15px] text-[rgba(13,13,13,0.45)]">
                   <Loader size={14} className="animate-spin" />
-                  Ожидание ответа...
+                  {t("waitingForResponse")}
                 </div>
               )}
 
@@ -578,7 +584,7 @@ export default function PlaygroundPage() {
                     <Play size={20} className="text-[#D97757]" />
                   </div>
                   <p className="text-[15px] text-[rgba(13,13,13,0.45)]">
-                    Заполните запрос и нажмите «Выполнить»
+                    {t("emptyStateHint")}
                   </p>
                 </div>
               )}
@@ -600,12 +606,12 @@ export default function PlaygroundPage() {
           {/* Request preview */}
           <details className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white">
             <summary className="cursor-pointer px-4 py-3 text-[14px] font-medium text-[rgba(13,13,13,0.45)] uppercase tracking-wide hover:text-[#1A1A1A] transition-colors select-none">
-              curl-команда
+              {t("curlCommandSummary")}
             </summary>
             <div className="border-t border-[rgba(13,13,13,0.06)] px-4 pb-4">
               <pre className="mt-3 overflow-x-auto rounded-[8px] bg-[#1A1A1A] p-3 font-mono text-[13px] leading-relaxed text-[#e4e4e4]">
                 {[
-                  `curl https://aineron.ru/api/v1/chat/completions \\`,
+                  `curl ${API_BASE}/chat/completions \\`,
                   authMode === "apikey"
                     ? `  -H "Authorization: Bearer ${apiKey || "ak_ВАШ_КЛЮЧ"}" \\`
                     : `  -H "Cookie: sessionid=..." \\`,
@@ -643,7 +649,7 @@ export default function PlaygroundPage() {
               className="inline-flex items-center gap-1.5 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 py-1.5 text-[14px] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#1A1A1A] transition-colors"
             >
               <Key size={12} />
-              Получить API-ключ
+              {t("getApiKeyLink")}
             </Link>
             <a
               href="/api/v1/docs/"
