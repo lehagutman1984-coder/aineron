@@ -9,6 +9,8 @@ import logging
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
 
+from api.error_messages import em
+
 logger = logging.getLogger(__name__)
 
 
@@ -124,7 +126,7 @@ class VoiceConsumer(AsyncWebsocketConsumer):
         # Check balance before processing
         has_balance = await self._check_balance()
         if not has_balance:
-            await self.send(text_data=json.dumps({'error': 'Недостаточно средств для голосового режима'}))
+            await self.send(text_data=json.dumps({'error': em('insufficient_balance_voice')}))
             return
 
         try:
@@ -143,7 +145,7 @@ class VoiceConsumer(AsyncWebsocketConsumer):
                 await self.send(bytes_data=audio_bytes)
         except Exception as e:
             logger.error('VoiceConsumer error: %s', e)
-            await self.send(text_data=json.dumps({'error': 'Ошибка обработки голоса'}))
+            await self.send(text_data=json.dumps({'error': em('voice_processing_error')}))
 
     @database_sync_to_async
     def _check_access(self):

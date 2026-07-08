@@ -15,6 +15,7 @@ from ..models import StudioProject, ProjectDatabase, PreviewSession
 from ..serializers import PipelineStateSerializer
 from ..billing import estimate_kopecks, reserve, charge_from_reserve, release_reserve, release_reserve_amount
 from core.money import format_rub
+from api.error_messages import em
 
 _PREVIEW_SVC = _os.environ.get('PREVIEW_SERVICE_URL', 'http://localhost:8001')
 _PREVIEW_TOKEN = _os.environ.get('PREVIEW_INTERNAL_TOKEN', '')
@@ -232,7 +233,7 @@ class PipelinePauseView(APIView):
         state = project.pipeline
         state.status = 'paused_manual'
         state.pause_requested = True
-        state.pause_reason = request.data.get('reason', 'Пауза пользователем')
+        state.pause_reason = request.data.get('reason', em('paused_by_user'))
         state.save(update_fields=['status', 'pause_requested', 'pause_reason'])
         if state.current_task_id:
             current_app.control.revoke(state.current_task_id, terminate=True, signal='SIGTERM')
@@ -270,7 +271,7 @@ class PipelineResetView(APIView):
             except Exception:
                 pass
             return Response({'status': 'ready'})
-        _timeout_pipeline(state, 'Отменено пользователем')
+        _timeout_pipeline(state, em('cancelled_by_user'))
         return Response({'status': 'failed'})
 
 
@@ -334,7 +335,7 @@ class ContextChatView(APIView):
         from ..billing import can_afford, charge
         cost = 100  # 1 ₽ в копейках
         if not can_afford(request.user, cost):
-            return Response({'error': 'Недостаточно средств на балансе. Пополните баланс.'}, status=402)
+            return Response({'error': em('insufficient_balance')}, status=402)
         msg = request.data.get('message', '')
         history = project.interview_data.get('assistant_history', [])
         answer = AssistantAgent(project).answer(msg, history)
@@ -475,10 +476,7 @@ class ConsoleErrorView(APIView):
                     return Response({'error': 'duplicate_error', 'stored': True}, status=409)
                 if (state.autofix_count or 0) >= _s.STUDIO_MAX_AUTOFIX:
                     state.status = 'paused_on_loop'
-                    state.pause_reason = (
-                        f'Достигнут лимит автоисправлений ({_s.STUDIO_MAX_AUTOFIX}). '
-                        'Опишите проблему вручную.'
-                    )
+                    state.pause_reason = em('autofix_limit_reached', limit=_s.STUDIO_MAX_AUTOFIX)
                     project.status = 'paused'
                     project.save(update_fields=['status'])
                     state.save(update_fields=['status', 'pause_reason'])
@@ -515,11 +513,11 @@ class ExplainView(APIView):
         from ..billing import can_afford, charge
         cost = 100  # 1 ₽ в копейках
         if not can_afford(request.user, cost):
-            return Response({'error': 'Недостаточно средств на балансе. Пополните баланс.'}, status=402)
+            return Response({'error': em('insufficient_balance')}, status=402)
         code = request.data.get('code', '')
         path = request.data.get('path', '')
         if not code.strip():
-            return Response({'error': 'Пустой фрагмент'}, status=400)
+            return Response({'error': em('empty_code_fragment')}, status=400)
         from ..agents.explainer import ExplainerAgent
         answer = ExplainerAgent(project).explain(code, path)
         charge(request.user, cost, project, reference=f'studio-explain:{project.id}:{uuid.uuid4().hex}')
@@ -565,7 +563,7 @@ class ProjectDatabaseView(APIView):
         project = get_object_or_404(StudioProject, id=id, user=request.user)
         mode = request.data.get('mode', '')
         if mode not in self._VALID_MODES:
-            return Response({'error': 'Недопустимый режим базы данных'}, status=400)
+            return Response({'error': em('invalid_db_mode')}, status=400)
 
         db, _ = ProjectDatabase.objects.get_or_create(project=project)
         db.mode = mode
@@ -578,17 +576,17 @@ class ProjectDatabaseView(APIView):
         if mode == 'neon':
             neon_api_key = (request.data.get('neon_api_key') or '').strip()
             if not neon_api_key and not db.neon_api_key_enc:
-                return Response({'error': 'Требуется Neon API-ключ'}, status=400)
+                return Response({'error': em('neon_api_key_required')}, status=400)
             if neon_api_key:
                 db.neon_api_key_enc = encrypt_token(neon_api_key)
             db.external_conn_enc = ''
         elif mode == 'external':
             external_conn = (request.data.get('external_conn') or '').strip()
             if not external_conn and not db.external_conn_enc:
-                return Response({'error': 'Требуется строка подключения'}, status=400)
+                return Response({'error': em('connection_string_required')}, status=400)
             if external_conn:
                 if not external_conn.startswith(('postgresql://', 'postgres://')):
-                    return Response({'error': 'DSN должен начинаться с postgresql://'}, status=400)
+                    return Response({'error': em('dsn_invalid_prefix')}, status=400)
                 db.external_conn_enc = encrypt_token(external_conn)
             db.neon_api_key_enc = ''
         else:  # aineron — provision schema + scoped PG role
@@ -645,7 +643,7 @@ class ProjectDatabaseView(APIView):
                     db.credentials_enc = _enc(_json.dumps(_creds))
                     db.provisioned = True
                 except Exception as exc:
-                    return Response({'error': f'Ошибка создания схемы: {exc}'}, status=503)
+                    return Response({'error': em('schema_creation_error', exc=exc)}, status=503)
             # else: dev mode without PG — still set schema name for manual setup
             db.aineron_schema = schema_name
 
@@ -675,9 +673,9 @@ class ProjectDatabaseTestView(APIView):
         project = get_object_or_404(StudioProject, id=id, user=request.user)
         db = ProjectDatabase.objects.filter(project=project).first()
         if not db or db.mode == 'none':
-            return Response({'ok': False, 'error': 'База не подключена'})
+            return Response({'ok': False, 'error': em('database_not_connected')})
         if not db.provisioned:
-            return Response({'ok': False, 'error': 'База ещё не провизионирована'})
+            return Response({'ok': False, 'error': em('database_not_provisioned')})
 
         if db.mode == 'aineron':
             try:
@@ -689,13 +687,13 @@ class ProjectDatabaseTestView(APIView):
                         [schema],
                     )
                     exists = cursor.fetchone()[0]
-                return Response({'ok': exists, 'error': None if exists else f'Схема {schema!r} не найдена'})
+                return Response({'ok': exists, 'error': None if exists else em('schema_not_found', schema=repr(schema))})
             except Exception as exc:
                 return Response({'ok': False, 'error': str(exc)[:300]})
 
         if db.mode == 'external':
             if not db.external_conn_enc:
-                return Response({'ok': False, 'error': 'DSN не настроен'})
+                return Response({'ok': False, 'error': em('dsn_not_configured')})
             try:
                 from aitext.crypto import decrypt_token
                 import psycopg2
@@ -704,11 +702,11 @@ class ProjectDatabaseTestView(APIView):
                 conn.close()
                 return Response({'ok': True, 'error': None})
             except ImportError:
-                return Response({'ok': False, 'error': 'psycopg2 не установлен'})
+                return Response({'ok': False, 'error': em('psycopg2_not_installed')})
             except Exception as exc:
                 return Response({'ok': False, 'error': str(exc)[:300]})
 
-        return Response({'ok': None, 'error': f'Тест для режима {db.mode!r} не реализован'})
+        return Response({'ok': None, 'error': em('db_test_not_implemented', mode=repr(db.mode))})
 
 
 class DbExportView(APIView):
@@ -729,14 +727,14 @@ class DbExportView(APIView):
         db = ProjectDatabase.objects.filter(project=project).first()
         if not db or db.mode != 'aineron' or not db.aineron_schema:
             return Response(
-                {'error': 'Экспорт доступен только для режима Aineron. Для Neon/External используйте собственный инструмент БД.'},
+                {'error': em('export_aineron_only')},
                 status=400,
             )
 
         schema = db.aineron_schema
         # Validate schema name is safe before passing to subprocess
         if not re.match(r'^[A-Za-z_][A-Za-z0-9_]*$', schema):
-            return Response({'error': 'Некорректное имя схемы'}, status=400)
+            return Response({'error': em('invalid_schema_name')}, status=400)
 
         host = _os.getenv('AINERON_DB_HOST', 'localhost')
         port = _os.getenv('AINERON_DB_PORT', '5432')
@@ -790,7 +788,7 @@ class DbExportView(APIView):
             tmp_path = None  # ownership transferred to generator
             return response
         except FileNotFoundError:
-            return Response({'error': 'pg_dump не найден на сервере'}, status=501)
+            return Response({'error': em('pg_dump_not_found')}, status=501)
         except subprocess.TimeoutExpired:
             return Response({'error': 'pg_dump timeout (>30 s)'}, status=504)
         finally:
@@ -812,7 +810,7 @@ class E2BPreviewView(APIView):
         project = get_object_or_404(StudioProject, id=id, user=request.user)
         stack = project.target_stack
         if stack not in ('nextjs', 'python', 'django'):
-            return Response({'error': f'E2B не поддерживает стек {stack}'}, status=400)
+            return Response({'error': em('e2b_unsupported_stack', stack=stack)}, status=400)
 
         # Sprint 8: reserve kopecks for max session duration (15 min × rate)
         rate = getattr(settings, 'E2B_PREVIEW_STARS_PER_MIN', 1)  # звёзд/мин (legacy env unit)
@@ -824,14 +822,14 @@ class E2BPreviewView(APIView):
         allowed, used_min, cap_min = _check_and_reserve_daily_cap(str(request.user.id), ttl_minutes)
         if not allowed:
             return Response(
-                {'error': f'Дневной лимит превью ({cap_min} мин/день) исчерпан — использовано {used_min} мин. Лимит обновится завтра.'},
+                {'error': em('daily_preview_limit_exceeded', cap_min=cap_min, used_min=used_min)},
                 status=429,
             )
 
         if max_cost_kopecks > 0 and not reserve(request.user, max_cost_kopecks, project):
             _refund_daily_cap(str(request.user.id), ttl_minutes)
             return Response(
-                {'error': f'Недостаточно средств для запуска превью (нужно {format_rub(max_cost_kopecks)})'},
+                {'error': em('insufficient_balance_preview', amount=format_rub(max_cost_kopecks))},
                 status=402,
             )
 
@@ -858,14 +856,14 @@ class E2BPreviewView(APIView):
             _refund_daily_cap(str(request.user.id), ttl_minutes)
             release_reserve_amount(project, max_cost_kopecks)
             return Response(
-                {'error': 'preview-service недоступен. Запустите: cd preview-service && uvicorn main:app --port 8001'},
+                {'error': em('preview_service_unavailable_dev')},
                 status=503,
             )
 
         if resp.status_code == 429:
             _refund_daily_cap(str(request.user.id), ttl_minutes)
             release_reserve_amount(project, max_cost_kopecks)
-            return Response({'error': resp.json().get('detail', 'Слишком много превью')}, status=429)
+            return Response({'error': resp.json().get('detail', em('too_many_previews'))}, status=429)
         if not resp.ok:
             _refund_daily_cap(str(request.user.id), ttl_minutes)
             release_reserve_amount(project, max_cost_kopecks)
@@ -876,7 +874,7 @@ class E2BPreviewView(APIView):
         if not session_id_new:
             _refund_daily_cap(str(request.user.id), ttl_minutes)
             release_reserve_amount(project, max_cost_kopecks)
-            return Response({'error': 'preview-service вернул неожиданный ответ'}, status=502)
+            return Response({'error': em('preview_service_unexpected_response')}, status=502)
         # Create billing record (settled=False — will be charged on stop or by reconciler)
         PreviewSession.objects.create(
             session_id=session_id_new,
@@ -892,7 +890,7 @@ class E2BPreviewView(APIView):
     def delete(self, request, id, session_id):
         project = get_object_or_404(StudioProject, id=id, user=request.user)
         if not PreviewSession.objects.filter(session_id=session_id, user=request.user).exists():
-            return Response({'error': 'Сессия не найдена'}, status=404)
+            return Response({'error': em('session_not_found')}, status=404)
         stop_data = {}
         try:
             stop_resp = _rq.delete(
@@ -935,7 +933,7 @@ class E2BPreviewStatusView(APIView):
     def get(self, request, id, session_id):
         get_object_or_404(StudioProject, id=id, user=request.user)  # auth check
         if not PreviewSession.objects.filter(session_id=session_id, user=request.user).exists():
-            return Response({'error': 'Сессия не найдена'}, status=404)
+            return Response({'error': em('session_not_found')}, status=404)
         try:
             resp = _rq.get(
                 f'{_PREVIEW_SVC}/preview/{session_id}/status',
@@ -951,7 +949,7 @@ class E2BPreviewStatusView(APIView):
     def delete(self, request, id, session_id):
         project = get_object_or_404(StudioProject, id=id, user=request.user)
         if not PreviewSession.objects.filter(session_id=session_id, user=request.user).exists():
-            return Response({'error': 'Сессия не найдена'}, status=404)
+            return Response({'error': em('session_not_found')}, status=404)
         stop_data = {}
         try:
             stop_resp = _rq.delete(
@@ -976,7 +974,7 @@ class E2BPreviewLogsView(APIView):
     def get(self, request, id, session_id):
         get_object_or_404(StudioProject, id=id, user=request.user)
         if not PreviewSession.objects.filter(session_id=session_id, user=request.user).exists():
-            return Response({'error': 'Сессия не найдена'}, status=404)
+            return Response({'error': em('session_not_found')}, status=404)
         try:
             resp = _rq.get(
                 f'{_PREVIEW_SVC}/preview/{session_id}/logs',
@@ -999,7 +997,7 @@ class E2BPreviewLogsStreamView(APIView):
     def get(self, request, id, session_id):
         get_object_or_404(StudioProject, id=id, user=request.user)
         if not PreviewSession.objects.filter(session_id=session_id, user=request.user).exists():
-            return Response({'error': 'Сессия не найдена'}, status=404)
+            return Response({'error': em('session_not_found')}, status=404)
 
         def _stream():
             try:
@@ -1034,11 +1032,11 @@ class BotEmulateView(APIView):
         from ..billing import can_afford, charge
         cost = 100  # 1 ₽ в копейках
         if not can_afford(request.user, cost):
-            return Response({'error': 'Недостаточно средств на балансе. Пополните баланс.'}, status=402)
+            return Response({'error': em('insufficient_balance')}, status=402)
 
         message = str(request.data.get('message', ''))[:500]
         if not message.strip():
-            return Response({'error': 'Пустое сообщение'}, status=400)
+            return Response({'error': em('empty_message')}, status=400)
 
         # Build context from project's Python files (first 10, max 1500 chars each)
         files_ctx = ''
@@ -1066,9 +1064,9 @@ class BotEmulateView(APIView):
                 max_tokens=300,
                 temperature=0.3,
             )
-            reply = completion.choices[0].message.content or '(нет ответа)'
+            reply = completion.choices[0].message.content or em('llm_no_response')
         except Exception as exc:
-            return Response({'error': f'Ошибка LLM: {exc}'}, status=502)
+            return Response({'error': em('llm_error', exc=exc)}, status=502)
 
         charge(request.user, cost, project, reference=f'studio-botemu:{project.id}:{uuid.uuid4().hex}')
         return Response({'reply': reply})
@@ -1084,12 +1082,12 @@ class E2BBotPreviewView(APIView):
     def post(self, request, id):
         project = get_object_or_404(StudioProject, id=id, user=request.user)
         if project.target_stack != 'telegram_bot':
-            return Response({'error': 'Проект не является Telegram Bot'}, status=400)
+            return Response({'error': em('project_not_telegram_bot')}, status=400)
 
         bot_token = str(request.data.get('bot_token', '')).strip()
         if not bot_token or ':' not in bot_token:
             return Response(
-                {'error': 'Неверный формат токена. Получите тестовый токен у @BotFather.'},
+                {'error': em('invalid_bot_token_format')},
                 status=400,
             )
 
@@ -1112,11 +1110,11 @@ class E2BBotPreviewView(APIView):
                 timeout=30,
             )
         except _rq.exceptions.RequestException:
-            return Response({'error': 'preview-service недоступен'}, status=503)
+            return Response({'error': em('preview_service_unavailable')}, status=503)
 
         if resp.status_code == 409:
             return Response(
-                {'error': 'Этот бот уже запущен в другой сессии. Остановите её перед новым запуском.'},
+                {'error': em('bot_already_running')},
                 status=409,
             )
         if not resp.ok:
@@ -1125,14 +1123,11 @@ class E2BBotPreviewView(APIView):
         data = resp.json()
         session_id = data.get('session_id')
         if not session_id:
-            return Response({'error': 'preview-service не вернул session_id'}, status=502)
+            return Response({'error': em('preview_service_no_session_id')}, status=502)
         return Response({
             'session_id': session_id,
             'state': data.get('state', 'starting'),
-            'warning': (
-                'Токен передан в изолированную E2B среду и хранится только в памяти sandbox. '
-                'Сессия автоматически завершится через 15 мин.'
-            ),
+            'warning': em('bot_token_sandbox_warning'),
         })
 
 
@@ -1187,7 +1182,7 @@ class PreviewProxyView(APIView):
             # Try root-level index.html
             file_obj = project.files.filter(path__in=['index.html', 'public/index.html', 'src/index.html']).first()
         if not file_obj:
-            return HttpResponse('<h1>Файл не найден</h1>', content_type='text/html; charset=utf-8', status=404)
+            return HttpResponse(f'<h1>{em("file_not_found")}</h1>', content_type='text/html; charset=utf-8', status=404)
 
         ext = os.path.splitext(serve_path)[1].lower()
         content_type = _MIME.get(ext, 'text/plain; charset=utf-8')

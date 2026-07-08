@@ -15,6 +15,7 @@ from rest_framework import serializers
 
 from aitext.models import ProjectCollaborator
 from api.views._project_access import get_project_for_user, get_project_owner_only
+from api.error_messages import em
 
 
 class CollaboratorSerializer(serializers.ModelSerializer):
@@ -43,20 +44,20 @@ class CollaboratorListCreateView(APIView):
         role = request.data.get('role', 'viewer')
 
         if not email:
-            return Response({'error': 'Укажите email'}, status=400)
+            return Response({'error': em('collaborator_email_required')}, status=400)
         if role not in ('viewer', 'editor'):
-            return Response({'error': 'role: viewer или editor'}, status=400)
+            return Response({'error': em('collaborator_role_invalid')}, status=400)
 
         from users.models import CustomUser
         try:
             target = CustomUser.objects.get(email__iexact=email)
         except CustomUser.DoesNotExist:
-            return Response({'error': f'Пользователь {email} не найден'}, status=404)
+            return Response({'error': em('collaborator_user_not_found', email=email)}, status=404)
 
         if target == request.user:
-            return Response({'error': 'Нельзя добавить себя'}, status=400)
+            return Response({'error': em('collaborator_cannot_add_self')}, status=400)
         if target == project.user:
-            return Response({'error': 'Пользователь уже является владельцем'}, status=400)
+            return Response({'error': em('collaborator_already_owner')}, status=400)
 
         collab, created = ProjectCollaborator.objects.get_or_create(
             project=project,
@@ -88,7 +89,7 @@ class CollaboratorDetailView(APIView):
         collab = self._get(request, pk, cid)
         role = request.data.get('role')
         if role not in ('viewer', 'editor'):
-            return Response({'error': 'role: viewer или editor'}, status=400)
+            return Response({'error': em('collaborator_role_invalid')}, status=400)
         collab.role = role
         collab.save(update_fields=['role'])
         return Response(CollaboratorSerializer(collab).data)

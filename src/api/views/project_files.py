@@ -7,6 +7,7 @@ from rest_framework import serializers
 
 from aitext.models import Project, ProjectFile
 from api.views._project_access import get_project_for_user
+from api.error_messages import em
 
 
 MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB
@@ -84,20 +85,20 @@ class ProjectFileListCreateView(APIView):
 
         if project.knowledge_files.count() >= MAX_FILES_PER_PROJECT:
             return Response(
-                {'error': f'Максимум {MAX_FILES_PER_PROJECT} файлов на проект'},
+                {'error': em('max_files_per_project', max_files=MAX_FILES_PER_PROJECT)},
                 status=400,
             )
 
         uploaded = request.FILES.get('file')
         if not uploaded:
-            return Response({'error': 'Файл не передан'}, status=400)
+            return Response({'error': em('file_missing')}, status=400)
 
         if uploaded.size > MAX_FILE_SIZE:
-            return Response({'error': 'Файл слишком большой (макс. 20 МБ)'}, status=400)
+            return Response({'error': em('file_too_large', size_mb=20)}, status=400)
 
         ext = os.path.splitext(uploaded.name)[1].lower()
         if ext not in ALLOWED_EXTENSIONS:
-            return Response({'error': f'Формат {ext} не поддерживается'}, status=400)
+            return Response({'error': em('file_format_unsupported', ext=ext)}, status=400)
 
         pf = ProjectFile.objects.create(
             project=project,
@@ -158,7 +159,7 @@ class ProjectFileSearchView(APIView):
     def get(self, request, pk):
         from django.conf import settings
         if not getattr(settings, 'PROJECT_FILE_SEARCH', False):
-            return Response({'error': 'Поиск по файлам отключён'}, status=400)
+            return Response({'error': em('file_search_disabled')}, status=400)
 
         project = get_project_for_user(pk, request.user, write=False)
         query = request.query_params.get('q', '').strip()
@@ -183,7 +184,7 @@ class FileVersionListView(APIView):
     def get(self, request, pk, file_id):
         from django.conf import settings
         if not getattr(settings, 'PROJECT_FILE_VERSIONS', False):
-            return Response({'error': 'Версии файлов отключены'}, status=400)
+            return Response({'error': em('file_versions_disabled')}, status=400)
 
         project = get_project_for_user(pk, request.user, write=False)
         pf = get_object_or_404(ProjectFile, pk=file_id, project=project)
@@ -214,7 +215,7 @@ class FileRestoreView(APIView):
     def post(self, request, pk, file_id, version_id):
         from django.conf import settings
         if not getattr(settings, 'PROJECT_FILE_VERSIONS', False):
-            return Response({'error': 'Версии файлов отключены'}, status=400)
+            return Response({'error': em('file_versions_disabled')}, status=400)
 
         project = get_project_for_user(pk, request.user, write=True)
         pf = get_object_or_404(ProjectFile, pk=file_id, project=project)

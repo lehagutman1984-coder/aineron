@@ -14,6 +14,7 @@ from rest_framework import serializers
 from aitext.models import Project, ProjectConnector, ProjectCommit
 from aitext.crypto import encrypt_token, decrypt_token
 from api.views._project_access import get_project_for_user
+from api.error_messages import em
 
 
 def _gitea_base_url(connector: 'ProjectConnector') -> str | None:
@@ -96,7 +97,7 @@ class ConnectorListCreateView(APIView):
     def post(self, request, pk):
         project = get_project_for_user(pk, request.user, write=True)
         if project.connectors.count() >= 3:
-            return Response({'error': 'Максимум 3 коннектора на проект'}, status=400)
+            return Response({'error': em('max_connectors_per_project')}, status=400)
 
         connector_type = request.data.get('connector_type', '').strip()
         repo_url = request.data.get('repo_url', '').strip()
@@ -104,19 +105,19 @@ class ConnectorListCreateView(APIView):
         branch = request.data.get('branch', 'main').strip() or 'main'
 
         if connector_type not in ('github', 'gitea', 'website', 'rss'):
-            return Response({'error': 'Тип коннектора: github, gitea, website или rss'}, status=400)
+            return Response({'error': em('invalid_connector_type')}, status=400)
         if not repo_url:
-            return Response({'error': 'Укажите URL'}, status=400)
+            return Response({'error': em('repo_url_required')}, status=400)
 
         # U5: сайт/RSS — источники знаний без токена; owner/repo для уникальности
         if connector_type in ('website', 'rss'):
             from django.conf import settings as dj
             if not getattr(dj, 'CONNECTOR_WEBSITE', True):
-                return Response({'error': 'Website/RSS коннекторы отключены'}, status=403)
+                return Response({'error': em('website_rss_disabled')}, status=403)
             from urllib.parse import urlparse
             parsed = urlparse(repo_url)
             if parsed.scheme not in ('http', 'https') or not parsed.netloc:
-                return Response({'error': 'Некорректный URL'}, status=400)
+                return Response({'error': em('invalid_url')}, status=400)
             import hashlib
             owner = parsed.netloc[:100]
             repo = hashlib.md5(repo_url.encode()).hexdigest()[:12] + '-' + connector_type
@@ -130,7 +131,7 @@ class ConnectorListCreateView(APIView):
                 },
             )
             if not created:
-                return Response({'error': 'Этот источник уже подключён'}, status=400)
+                return Response({'error': em('source_already_connected')}, status=400)
             from aitext.tasks import sync_connector_task
             sync_connector_task.delay(connector.id)
             return Response(
@@ -139,7 +140,7 @@ class ConnectorListCreateView(APIView):
             )
 
         if not access_token:
-            return Response({'error': 'Укажите Personal Access Token'}, status=400)
+            return Response({'error': em('pat_required')}, status=400)
 
         if connector_type == 'github':
             owner, repo = _parse_github_url(repo_url)
@@ -149,7 +150,7 @@ class ConnectorListCreateView(APIView):
             owner, repo = _parse_gitea_url(repo_url, gitea_base)
 
         if not owner or not repo:
-            return Response({'error': 'Не удалось разобрать owner/repo из URL'}, status=400)
+            return Response({'error': em('owner_repo_parse_failed')}, status=400)
 
         try:
             enc_token = encrypt_token(access_token)
@@ -205,7 +206,7 @@ class ConnectorReadFilesView(APIView):
         try:
             token = decrypt_token(connector.access_token_enc)
         except Exception as e:
-            return Response({'error': f'Ошибка токена: {e}'}, status=500)
+            return Response({'error': em('token_error', e=e)}, status=500)
 
         try:
             if connector.connector_type == 'github':
@@ -216,7 +217,7 @@ class ConnectorReadFilesView(APIView):
                 items = list_tree(connector.owner, connector.repo, connector.branch,
                                   token=token, base_url=_gitea_base_url(connector))
         except Exception as e:
-            return Response({'error': f'Ошибка доступа к репозиторию: {e}'}, status=502)
+            return Response({'error': em('repo_access_error', e=e)}, status=502)
 
         return Response({'items': items})
 
@@ -230,12 +231,12 @@ class ConnectorFileContentView(APIView):
         connector = get_object_or_404(ProjectConnector, pk=connector_id, project=project)
         path = request.query_params.get('path', '')
         if not path:
-            return Response({'error': 'Укажите path'}, status=400)
+            return Response({'error': em('path_required')}, status=400)
 
         try:
             token = decrypt_token(connector.access_token_enc)
         except Exception as e:
-            return Response({'error': f'Ошибка токена: {e}'}, status=500)
+            return Response({'error': em('token_error', e=e)}, status=500)
 
         try:
             if connector.connector_type == 'github':
@@ -246,7 +247,7 @@ class ConnectorFileContentView(APIView):
                 content = get_file_content_ext(connector.owner, connector.repo, path, connector.branch,
                                                token=token, base_url=_gitea_base_url(connector))
         except Exception as e:
-            return Response({'error': f'Ошибка чтения файла: {e}'}, status=502)
+            return Response({'error': em('file_read_error', e=e)}, status=502)
 
         return Response({'path': path, 'content': content})
 
@@ -268,11 +269,11 @@ class CommitListCreateView(APIView):
         files = request.data.get('files', [])
 
         if not commit_message:
-            return Response({'error': 'Укажите сообщение коммита'}, status=400)
+            return Response({'error': em('commit_message_required')}, status=400)
         if not files:
-            return Response({'error': 'Добавьте хотя бы один файл'}, status=400)
+            return Response({'error': em('files_required')}, status=400)
         if len(files) > 50:
-            return Response({'error': 'Максимум 50 файлов на коммит'}, status=400)
+            return Response({'error': em('max_files_per_commit')}, status=400)
 
         connector = None
         if connector_id:
@@ -280,7 +281,7 @@ class CommitListCreateView(APIView):
 
         for f in files:
             if not isinstance(f, dict) or 'path' not in f or 'content' not in f:
-                return Response({'error': 'Каждый файл должен содержать path и content'}, status=400)
+                return Response({'error': em('file_missing_path_content')}, status=400)
 
         commit = ProjectCommit.objects.create(
             project=project,
@@ -301,7 +302,7 @@ class CommitConfirmView(APIView):
         commit = get_object_or_404(ProjectCommit, pk=commit_id, project=project)
 
         if commit.status != 'pending':
-            return Response({'error': f'Коммит уже обработан: {commit.status}'}, status=400)
+            return Response({'error': em('commit_already_processed', status=commit.status)}, status=400)
 
         action = request.data.get('action', '')
         if action == 'reject':
@@ -311,18 +312,18 @@ class CommitConfirmView(APIView):
 
         if action in ('push', 'pr'):
             if not commit.connector:
-                return Response({'error': 'Нет коннектора для пуша'}, status=400)
+                return Response({'error': em('no_connector_for_push')}, status=400)
             if action == 'pr':
                 from django.conf import settings
                 if not getattr(settings, 'PROJECT_PR_PROPOSALS', False):
-                    return Response({'error': 'PR-режим отключён (PROJECT_PR_PROPOSALS=0)'}, status=400)
+                    return Response({'error': em('pr_mode_disabled')}, status=400)
                 commit.kind = 'pull_request'
                 commit.save(update_fields=['kind'])
             from aitext.tasks import push_project_commit
             push_project_commit.delay(commit.id)
             return Response({'status': 'queued', 'commit_id': commit.id, 'kind': commit.kind})
 
-        return Response({'error': 'action должен быть push, pr или reject'}, status=400)
+        return Response({'error': em('invalid_commit_action')}, status=400)
 
 
 class CommitDeleteView(APIView):
@@ -333,7 +334,7 @@ class CommitDeleteView(APIView):
         project = get_project_for_user(pk, request.user, write=True)
         commit = get_object_or_404(ProjectCommit, pk=commit_id, project=project)
         if commit.status == 'pending':
-            return Response({'error': 'Нельзя удалить коммит со статусом pending'}, status=400)
+            return Response({'error': em('cannot_delete_pending_commit')}, status=400)
         commit.delete()
         return Response(status=204)
 

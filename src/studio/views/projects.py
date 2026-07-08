@@ -2,6 +2,7 @@ from django.db.models import Q
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from api.error_messages import em
 from ..models import StudioProject, StudioPipelineState, StudioTemplate, StudioCollaborator
 from ..serializers import (
     StudioProjectSerializer, StudioProjectCreateSerializer,
@@ -123,13 +124,13 @@ class CollaboratorView(APIView):
         action = request.data.get('action', 'add')
         email = request.data.get('email', '').strip()
         if not email:
-            return Response({'error': 'Email обязателен'}, status=400)
+            return Response({'error': em('email_required')}, status=400)
         from django.contrib.auth import get_user_model
         User = get_user_model()
         try:
             target = User.objects.get(email=email)
         except User.DoesNotExist:
-            return Response({'error': 'Пользователь не найден'}, status=404)
+            return Response({'error': em('user_not_found')}, status=404)
         if action == 'remove':
             StudioCollaborator.objects.filter(project=project, user=target).delete()
             return Response({'status': 'removed'})
@@ -148,7 +149,7 @@ class ScreenshotView(APIView):
         project = StudioProject.objects.get(id=id, user=request.user)
         img = request.FILES.get('image')
         if not img:
-            return Response({'error': 'Нет файла'}, status=400)
+            return Response({'error': em('no_file')}, status=400)
         project.screenshot = img
         project.save(update_fields=['screenshot'])
         img.seek(0)
@@ -260,19 +261,19 @@ class ProjectSettingsView(APIView):
         # Validate before applying
         if 'ai_model' in request.data:
             if request.data['ai_model'] not in MODEL_TIER:
-                return Response({'error': f"Неизвестная модель: {request.data['ai_model']}"}, status=400)
+                return Response({'error': em('unknown_model', model=request.data['ai_model'])}, status=400)
         if 'agent_models' in request.data:
             am = request.data['agent_models']
             if not isinstance(am, dict):
-                return Response({'error': 'agent_models должен быть объектом'}, status=400)
+                return Response({'error': em('agent_models_must_be_object')}, status=400)
             invalid = [v for v in am.values() if v not in MODEL_TIER]
             if invalid:
-                return Response({'error': f'Неизвестные модели: {", ".join(invalid)}'}, status=400)
+                return Response({'error': em('unknown_models', models=", ".join(invalid))}, status=400)
         for k in ('max_iterations', 'max_stars_budget', 'max_kopecks_budget'):
             if k in request.data:
                 val = request.data[k]
                 if not isinstance(val, int) or val < 0:
-                    return Response({'error': f'{k} должен быть неотрицательным числом'}, status=400)
+                    return Response({'error': em('field_must_be_nonnegative', field=k)}, status=400)
 
         updated = []
         for key in self.ALLOWED:

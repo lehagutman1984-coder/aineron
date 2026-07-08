@@ -11,6 +11,7 @@ from rest_framework import status
 from api.authentication import CsrfExemptSessionAuthentication
 from aitext.models import GeneratedImage, Message
 from aitext.tasks import generate_ai_response
+from api.error_messages import em
 
 
 def _user_gens_q(user):
@@ -126,7 +127,7 @@ class GenerationRerunView(APIView):
         if chat is None:
             return Response({
                 'error': {
-                    'message': 'Эту генерацию нельзя повторить (нет исходного чата).',
+                    'message': em('files_rerun_no_source_chat'),
                     'type': 'invalid_request_error',
                     'code': None,
                 }
@@ -141,7 +142,7 @@ class GenerationRerunView(APIView):
         if is_media and getattr(request.user.tariff, 'is_free', True):
             return Response({
                 'error': {
-                    'message': 'Генерация изображений и видео доступна только на платных тарифах.',
+                    'message': em('files_media_paid_only'),
                     'type': 'insufficient_permissions',
                     'code': 'requires_paid_plan',
                 }
@@ -152,7 +153,7 @@ class GenerationRerunView(APIView):
             from core.money import format_rub
             return Response({
                 'error': {
-                    'message': f'Недостаточно средств. Нужно {format_rub(cost_kopecks)}, у вас {format_rub(request.user.balance_kopecks)}.',
+                    'message': em('files_insufficient_funds', needed=format_rub(cost_kopecks), have=format_rub(request.user.balance_kopecks)),
                     'type': 'insufficient_quota',
                     'code': 'insufficient_quota',
                 }
@@ -207,7 +208,7 @@ class GenerationUpscaleView(APIView):
         if gen.media_type != 'image' or not gen.image:
             return Response({
                 'error': {
-                    'message': 'Апскейл доступен только для изображений.',
+                    'message': em('files_upscale_images_only'),
                     'type': 'invalid_request_error',
                     'code': None,
                 }
@@ -224,7 +225,7 @@ class GenerationUpscaleView(APIView):
         if getattr(request.user.tariff, 'is_free', True):
             return Response({
                 'error': {
-                    'message': 'Апскейл изображений доступен только на платных тарифах.',
+                    'message': em('files_upscale_paid_only'),
                     'type': 'insufficient_permissions',
                     'code': 'requires_paid_plan',
                 }
@@ -236,7 +237,7 @@ class GenerationUpscaleView(APIView):
             from core.money import format_rub
             return Response({
                 'error': {
-                    'message': f'Недостаточно средств. Нужно {format_rub(cost_kopecks)}, у вас {format_rub(request.user.balance_kopecks)}.',
+                    'message': em('files_insufficient_funds', needed=format_rub(cost_kopecks), have=format_rub(request.user.balance_kopecks)),
                     'type': 'insufficient_quota',
                     'code': 'insufficient_quota',
                 }
@@ -292,7 +293,7 @@ class GenerationVariationsView(APIView):
         if chat is None:
             return Response({
                 'error': {
-                    'message': 'Для этой генерации нельзя создать вариации (нет исходного чата).',
+                    'message': em('files_variations_no_source_chat'),
                     'type': 'invalid_request_error',
                     'code': None,
                 }
@@ -309,7 +310,7 @@ class GenerationVariationsView(APIView):
         if getattr(request.user.tariff, 'is_free', True):
             return Response({
                 'error': {
-                    'message': 'Создание вариаций доступно только на платных тарифах.',
+                    'message': em('files_variations_paid_only'),
                     'type': 'insufficient_permissions',
                     'code': 'requires_paid_plan',
                 }
@@ -321,7 +322,7 @@ class GenerationVariationsView(APIView):
             from core.money import format_rub
             return Response({
                 'error': {
-                    'message': f'Недостаточно средств. Нужно {format_rub(total_cost_kopecks)} на {count} вариаций, у вас {format_rub(request.user.balance_kopecks)}.',
+                    'message': em('files_insufficient_funds_variations', needed=format_rub(total_cost_kopecks), count=count, have=format_rub(request.user.balance_kopecks)),
                     'type': 'insufficient_quota',
                     'code': 'insufficient_quota',
                 }
@@ -381,7 +382,7 @@ class GenerationDescribeView(APIView):
             request_host = request.build_absolute_uri('/')[:-1]
             image_url = request_host + gen.image.url
         else:
-            return Response({'error': {'message': 'Изображение не найдено', 'type': 'not_found', 'code': None}}, status=404)
+            return Response({'error': {'message': em('files_image_not_found'), 'type': 'not_found', 'code': None}}, status=404)
 
         try:
             client = OpenAI(
@@ -410,7 +411,7 @@ class GenerationDescribeView(APIView):
             )
             prompt_text = resp.choices[0].message.content.strip() if resp.choices else ""
             if not prompt_text:
-                return Response({'error': {'message': 'Не удалось получить описание', 'type': 'api_error', 'code': None}}, status=500)
+                return Response({'error': {'message': em('files_describe_failed'), 'type': 'api_error', 'code': None}}, status=500)
             return Response({'prompt': prompt_text})
         except Exception as e:
             return Response({'error': {'message': str(e), 'type': 'api_error', 'code': None}}, status=500)
@@ -491,7 +492,7 @@ class RemoveBackgroundView(APIView):
             from rembg import remove as rembg_remove
         except ImportError:
             return Response(
-                {'error': 'Функция временно недоступна — обновление сервиса. Попробуйте через img2img с промптом «remove background».'},
+                {'error': em('files_rembg_unavailable')},
                 status=503
             )
 
@@ -500,17 +501,17 @@ class RemoveBackgroundView(APIView):
             gen.message_id and gen.message and gen.message.chat.user_id == request.user.pk
         )
         if not owns:
-            return Response({'error': 'Доступ запрещён'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'error': em('files_access_denied')}, status=status.HTTP_403_FORBIDDEN)
 
         try:
             img_bytes = gen.image.read()
         except Exception as e:
-            return Response({'error': f'Не удалось прочитать изображение: {e}'}, status=500)
+            return Response({'error': em('files_read_image_failed', error=e)}, status=500)
 
         try:
             result_bytes = rembg_remove(img_bytes)
         except Exception as e:
-            return Response({'error': f'Ошибка удаления фона: {e}'}, status=500)
+            return Response({'error': em('files_remove_background_failed', error=e)}, status=500)
 
         try:
             import uuid as _uuid
@@ -539,4 +540,4 @@ class RemoveBackgroundView(APIView):
 
             return Response({'id': new_gen.id, 'url': image_url})
         except Exception as e:
-            return Response({'error': f'Ошибка сохранения: {e}'}, status=500)
+            return Response({'error': em('files_save_failed', error=e)}, status=500)

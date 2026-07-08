@@ -17,6 +17,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 
 from aitext.models import NeuralNetwork, ModelMatch
+from api.error_messages import em
 
 logger = logging.getLogger(__name__)
 
@@ -47,24 +48,24 @@ class ArenaVoteView(APIView):
         compare_chat_ids = request.data.get('compare_chat_ids') or []
 
         if not winner_slug or not loser_slug:
-            return Response({'error': 'winner_slug и loser_slug обязательны'}, status=400)
+            return Response({'error': em('arena_winner_loser_required')}, status=400)
         if winner_slug == loser_slug:
-            return Response({'error': 'winner и loser должны быть разными моделями'}, status=400)
+            return Response({'error': em('arena_winner_loser_same')}, status=400)
         if not isinstance(compare_chat_ids, list) or len(compare_chat_ids) < 1:
-            return Response({'error': 'compare_chat_ids должен содержать хотя бы один chat_id'}, status=400)
+            return Response({'error': em('arena_compare_chat_ids_required')}, status=400)
 
         # Anti-abuse: each compare chat can only vote once
         already_voted = ModelMatch.objects.filter(
             compare_chat_ids__overlap=compare_chat_ids
         ).exists()
         if already_voted:
-            return Response({'error': 'Вы уже голосовали по этому сравнению'}, status=400)
+            return Response({'error': em('arena_already_voted')}, status=400)
 
         try:
             winner = NeuralNetwork.objects.get(slug=winner_slug, is_active=True)
             loser = NeuralNetwork.objects.get(slug=loser_slug, is_active=True)
         except NeuralNetwork.DoesNotExist:
-            return Response({'error': 'Одна из моделей не найдена'}, status=404)
+            return Response({'error': em('arena_model_not_found')}, status=404)
 
         with transaction.atomic():
             match = ModelMatch.objects.create(

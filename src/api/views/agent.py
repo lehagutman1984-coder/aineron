@@ -10,6 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from telegram_bot.models import AgentRun
+from api.error_messages import em
 
 
 def _run_payload(run: AgentRun) -> dict:
@@ -38,12 +39,12 @@ class AgentStartView(APIView):
 
         goal = (request.data.get('goal') or '').strip()
         if not goal:
-            return Response({'error': 'goal обязателен'}, status=400)
+            return Response({'error': em('agent_goal_required')}, status=400)
 
         price = getattr(settings, 'AGENT_PRICE_KOPECKS', 500)
         if not request.user.has_enough_kopecks(price):
             return Response(
-                {'error': f'Недостаточно средств: Agent Mode стоит {format_rub(price)}'},
+                {'error': em('agent_insufficient_funds', price=format_rub(price))},
                 status=402,
             )
 
@@ -58,7 +59,7 @@ class AgentStartView(APIView):
                     project_id=project_id, user=request.user).select_related('project').first()
                 project = collab.project if collab else None
             if project is None:
-                return Response({'error': 'Проект не найден'}, status=404)
+                return Response({'error': em('agent_project_not_found')}, status=404)
 
         run = AgentRun.objects.create(user=request.user, goal=goal[:2000],
                                       project=project)

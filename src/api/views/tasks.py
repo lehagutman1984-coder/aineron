@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from telegram_bot.models import AITask, ai_task_limit
+from api.error_messages import em
 
 
 class AITaskSerializer(serializers.ModelSerializer):
@@ -33,18 +34,18 @@ class AITaskSerializer(serializers.ModelSerializer):
         schedule_type = _val('schedule_type', 'daily')
         if schedule_type in ('daily', 'weekly') and _val('run_time') is None:
             raise serializers.ValidationError(
-                {'run_time': 'Для daily/weekly укажите время запуска (HH:MM, МСК)'})
+                {'run_time': em('tasks_run_time_required')})
         if schedule_type == 'weekly':
             weekday = _val('weekday')
             if weekday is None or not (0 <= int(weekday) <= 6):
                 raise serializers.ValidationError(
-                    {'weekday': 'Для weekly укажите день недели 0–6 (0 = понедельник)'})
+                    {'weekday': em('tasks_weekday_required')})
         if schedule_type == 'cron' and len((_val('cron') or '').split()) != 5:
             raise serializers.ValidationError(
-                {'cron': 'Cron-выражение должно содержать 5 полей'})
+                {'cron': em('tasks_cron_fields_required')})
         if schedule_type == 'once' and not self.instance:
             raise serializers.ValidationError(
-                {'schedule_type': 'Разовые задачи создаются в боте: /task'})
+                {'schedule_type': em('tasks_once_via_bot')})
         return attrs
 
 
@@ -68,7 +69,7 @@ class AITaskListCreateView(APIView):
         limit = ai_task_limit(request.user)
         if active >= limit:
             return Response(
-                {'error': f'Достигнут лимит активных задач по тарифу: {limit}'},
+                {'error': em('tasks_limit_reached_with_limit', limit=limit)},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -95,7 +96,7 @@ class AITaskDetailView(APIView):
             active = AITask.objects.filter(user=request.user, is_active=True).count()
             if active >= ai_task_limit(request.user):
                 return Response(
-                    {'error': 'Достигнут лимит активных задач по тарифу'},
+                    {'error': em('tasks_limit_reached')},
                     status=status.HTTP_403_FORBIDDEN,
                 )
 
@@ -128,7 +129,7 @@ class AITaskRunNowView(APIView):
             return Response({'error': 'not found'}, status=status.HTTP_404_NOT_FOUND)
         if not hasattr(request.user, 'telegram'):
             return Response(
-                {'error': 'Для доставки результата привяжите Telegram в кабинете'},
+                {'error': em('tasks_telegram_link_required')},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         from telegram_bot.tasks import execute_ai_task

@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from aitext.models import Chat, Message, DeepResearch
+from api.error_messages import em
 
 
 class DeepResearchStartView(APIView):
@@ -60,14 +61,14 @@ class DeepResearchSaveView(APIView):
             DeepResearch, id=research_id, chat__user=request.user,
         )
         if research.status != 'done':
-            return Response({'error': 'Исследование ещё не завершено'}, status=400)
+            return Response({'error': em('research_not_finished')}, status=400)
         if getattr(research.chat, 'project_id', None) is None:
-            return Response({'error': 'Чат не принадлежит проекту'}, status=400)
+            return Response({'error': em('research_chat_no_project')}, status=400)
 
         from aitext.tasks import save_research_to_kb
         pf = save_research_to_kb(research.id)
         if pf is None:
-            return Response({'error': 'Нет отчёта для сохранения'}, status=400)
+            return Response({'error': em('research_no_report')}, status=400)
         return Response({
             'file_id': pf.id,
             'filename': pf.filename,

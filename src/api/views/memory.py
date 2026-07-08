@@ -18,6 +18,7 @@ from rest_framework import status
 from aitext.models import UserMemory, ChatSummary
 from aitext.memory import invalidate_memory_cache
 from api.serializers.memory import UserMemorySerializer, ChatSummarySerializer
+from api.error_messages import em
 
 
 class MemoryListCreateView(ListCreateAPIView):
@@ -114,7 +115,7 @@ class QuickSaveFactView(APIView):
     def post(self, request):
         text = (request.data.get('text') or '').strip()
         if not text:
-            return Response({'error': 'text обязателен'}, status=400)
+            return Response({'error': em('memory_text_required')}, status=400)
 
         from aitext.memory import normalize_fact
         content_key = normalize_fact(text)[:200]
@@ -200,10 +201,10 @@ class OrgMemoryView(APIView):
         if org is None:
             return Response({'error': 'not found'}, status=404)
         if role not in ('owner', 'admin'):
-            return Response({'error': 'Только owner/admin организации'}, status=403)
+            return Response({'error': em('memory_org_owner_admin_only')}, status=403)
         text = (request.data.get('content') or '').strip()
         if not text:
-            return Response({'error': 'content обязателен'}, status=400)
+            return Response({'error': em('memory_content_required')}, status=400)
 
         from aitext.memory import normalize_fact
         # content_key уникален per-user — org-префикс исключает конфликт
@@ -228,10 +229,10 @@ class OrgMemoryView(APIView):
         if org is None:
             return Response({'error': 'not found'}, status=404)
         if role not in ('owner', 'admin'):
-            return Response({'error': 'Только owner/admin организации'}, status=403)
+            return Response({'error': em('memory_org_owner_admin_only')}, status=403)
         fact_id = request.query_params.get('fact_id')
         if not fact_id:
-            return Response({'error': 'fact_id обязателен'}, status=400)
+            return Response({'error': em('memory_fact_id_required')}, status=400)
         deleted, _ = UserMemory.objects.filter(
             pk=fact_id, organization=org).delete()
         self._invalidate(org)
@@ -253,7 +254,7 @@ class MemorySettingsView(APIView):
     def patch(self, request):
         enabled = request.data.get('memory_enabled')
         if enabled is None:
-            return Response({'error': 'memory_enabled обязателен'}, status=400)
+            return Response({'error': em('memory_enabled_required')}, status=400)
         request.user.memory_enabled = bool(enabled)
         request.user.save(update_fields=['memory_enabled'])
         invalidate_memory_cache(request.user.id)  # B11: тоггл сбрасывает кэш
