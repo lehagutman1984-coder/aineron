@@ -9,60 +9,56 @@ import {
   DocSection, Lead, P, H3, IC, Kbd, A, UL, LI, Steps, Step, Callout,
   FeatureGrid, FeatureCard, DataTable,
 } from "@/components/docs/DocKit";
+import { getTranslations } from "next-intl/server";
 
-export const metadata: Metadata = {
-  title: "Документация — как пользоваться aineron",
-  description:
-    "Полное руководство по aineron.ru: чаты, генерация изображений и видео, проекты с базой знаний, память, Deep Research, AI-агент, AI-задачи и Telegram-бот. Простыми словами.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("docs");
+  return {
+    title: t("metaTitle"),
+    description: t("metaDescription"),
+  };
+}
 
-const GROUPS: DocGroup[] = [
+// GROUPS — статическая JSX-структура (не может звать t() на уровне модуля),
+// поэтому обёрнута в функцию, вызываемую внутри async-компонента страницы
+// с уже полученным `t` (next-intl/server, getTranslations("docs")). Тот же
+// паттерн, что buildGroups(t) в app/api-docs/page.tsx.
+function buildGroups(t: Awaited<ReturnType<typeof getTranslations>>): DocGroup[] {
+  return [
   {
-    title: "Начало",
+    title: t("intro.groupTitle"),
     items: [
       {
         id: "overview",
-        label: "Что такое aineron",
+        label: t("intro.overviewLabel"),
         content: (
           <>
-            <DocSection title="Что такое aineron">
-              <Lead>
-                aineron — это доступ ко всем ведущим нейросетям мира из одного окна,
-                без VPN и без зарубежной карты. GPT-5, Claude, Gemini, Grok, DeepSeek,
-                генерация изображений и видео, а ещё — умные надстройки, которых нет
-                у обычных «чатов с ИИ»: память, база знаний, исследования с источниками
-                и AI-агент, который сам выполняет задачи.
-              </Lead>
-              <P>
-                Пользоваться можно тремя способами, и все они работают на одном балансе:
-              </P>
+            <DocSection title={t("intro.overviewTitle")}>
+              <Lead>{t("intro.overviewLead")}</Lead>
+              <P>{t("intro.overviewWaysP")}</P>
               <FeatureGrid>
-                <FeatureCard icon={<Globe size={16} />} title="Веб-сайт">
-                  Чат, каталог моделей, проекты, генерация картинок и видео — прямо в браузере.
+                <FeatureCard icon={<Globe size={16} />} title={t("intro.overviewWebTitle")}>
+                  {t("intro.overviewWebBody")}
                 </FeatureCard>
-                <FeatureCard icon={<Bot size={16} />} title="Telegram-бот">
-                  Тот же ИИ в мессенджере: пишите боту{" "}
-                  <A href="https://t.me/aineron_bot">@aineron_bot</A>. Умеет работать даже по расписанию.
+                <FeatureCard icon={<Bot size={16} />} title={t("intro.overviewBotTitle")}>
+                  {t.rich("intro.overviewBotBody", { a: (chunks) => <A href="https://t.me/aineron_bot">{chunks}</A> })}
                 </FeatureCard>
-                <FeatureCard icon={<Zap size={16} />} title="API для разработчиков">
-                  Подключение к вашим приложениям и IDE (Cursor, Cline, Continue).{" "}
-                  <A href="/api-docs/">Документация API →</A>
+                <FeatureCard icon={<Zap size={16} />} title={t("intro.overviewApiTitle")}>
+                  {t.rich("intro.overviewApiBody", { a: (chunks) => <A href="/api-docs/">{chunks}</A> })}
                 </FeatureCard>
               </FeatureGrid>
             </DocSection>
-            <DocSection title="Чем мы отличаемся от обычного «чат-бота»">
+            <DocSection title={t("intro.diffTitle")}>
               <UL>
-                <LI><b>Все модели сразу</b> — не привязаны к одному вендору, переключайтесь между GPT, Claude, Gemini в один клик.</LI>
-                <LI><b>Память</b> — платформа запоминает факты о вас и о ваших проектах, чтобы не повторять их каждый раз.</LI>
-                <LI><b>Проекты с базой знаний</b> — загрузите свои файлы, и ИИ отвечает с опорой на них.</LI>
-                <LI><b>Deep Research</b> — многошаговое исследование с настоящими источниками и цитатами.</LI>
-                <LI><b>AI-агент</b> — сам ищет, считает, читает ваши файлы и предлагает правки.</LI>
-                <LI><b>Проактивный Telegram-бот</b> — присылает утренний бриф, следит за темами, отвечает вашим клиентам.</LI>
+                <LI>{t.rich("intro.diffItem1", { b: (chunks) => <b>{chunks}</b> })}</LI>
+                <LI>{t.rich("intro.diffItem2", { b: (chunks) => <b>{chunks}</b> })}</LI>
+                <LI>{t.rich("intro.diffItem3", { b: (chunks) => <b>{chunks}</b> })}</LI>
+                <LI>{t.rich("intro.diffItem4", { b: (chunks) => <b>{chunks}</b> })}</LI>
+                <LI>{t.rich("intro.diffItem5", { b: (chunks) => <b>{chunks}</b> })}</LI>
+                <LI>{t.rich("intro.diffItem6", { b: (chunks) => <b>{chunks}</b> })}</LI>
               </UL>
-              <Callout type="tip" title="Совет для новичков и вайб-кодеров">
-                Не обязательно знать термины. Просто начните с чата — напишите вопрос обычными
-                словами. Остальные функции пригодятся, когда захотите большего: собрать проект,
-                исследовать тему или автоматизировать рутину.
+              <Callout type="tip" title={t("intro.diffTipTitle")}>
+                {t("intro.diffTipBody")}
               </Callout>
             </DocSection>
           </>
@@ -70,32 +66,29 @@ const GROUPS: DocGroup[] = [
       },
       {
         id: "start",
-        label: "Регистрация и вход",
+        label: t("intro.startLabel"),
         content: (
           <>
-            <DocSection title="Регистрация и вход">
-              <P>Создать аккаунт можно за минуту — и сразу получить бесплатный баланс на пробу.</P>
+            <DocSection title={t("intro.startTitle")}>
+              <P>{t("intro.startLeadP")}</P>
               <Steps>
                 <Step n={1}>
-                  Нажмите <b>«Начать бесплатно»</b> в правом верхнем углу сайта.
+                  {t.rich("intro.startStep1", { b: (chunks) => <b>{chunks}</b> })}
                 </Step>
                 <Step n={2}>
-                  Зарегистрируйтесь по e-mail и паролю <b>или</b> через соцсеть:
-                  Google, Яндекс, VK, Mail.ru, GitHub — в один клик.
+                  {t.rich("intro.startStep2", { b: (chunks) => <b>{chunks}</b> })}
                 </Step>
                 <Step n={3}>
-                  При регистрации по почте подтвердите e-mail: введите 6-значный код из письма.
+                  {t("intro.startStep3")}
                 </Step>
                 <Step n={4}>
-                  Готово — вы попадёте в онбординг, а на балансе уже будут пробные средства.
+                  {t("intro.startStep4")}
                 </Step>
               </Steps>
             </DocSection>
-            <DocSection title="Тёмная и светлая тема">
+            <DocSection title={t("intro.themeTitle")}>
               <P>
-                Иконка солнца/луны в шапке переключает тему: системная → светлая → тёмная.
-                Выбор сохраняется в браузере. Вся платформа, включая эту документацию,
-                поддерживает обе темы.
+                {t("intro.themeBody")}
               </P>
             </DocSection>
           </>
@@ -103,45 +96,35 @@ const GROUPS: DocGroup[] = [
       },
       {
         id: "balance",
-        label: "Баланс и оплата",
+        label: t("intro.balanceLabel"),
         content: (
           <>
-            <DocSection title="Как устроен баланс">
+            <DocSection title={t("intro.balanceTitle")}>
               <Lead>
-                Баланс — это обычные рубли. Каждое сообщение к нейросети стоит немного:
-                от копеек за экономичные модели до нескольких рублей за самые мощные.
-                Списывается автоматически, ничего настраивать не нужно.
+                {t("intro.balanceLead")}
               </Lead>
               <UL>
-                <LI>Баланс всегда виден в шапке сайта и в Mini App бота.</LI>
-                <LI>Стоимость сообщения зависит от выбранной модели — она подписана в каталоге.</LI>
-                <LI>Если генерация изображения или видео не удалась — деньги возвращаются автоматически.</LI>
-                <LI>Новым пользователям начисляется приветственный баланс на пробу.</LI>
+                <LI>{t("intro.balanceItem1")}</LI>
+                <LI>{t("intro.balanceItem2")}</LI>
+                <LI>{t("intro.balanceItem3")}</LI>
+                <LI>{t("intro.balanceItem4")}</LI>
               </UL>
             </DocSection>
-            <DocSection title="Как пополнить">
+            <DocSection title={t("intro.topupTitle")}>
               <FeatureGrid>
-                <FeatureCard icon={<Wallet size={16} />} title="Карта / СБП (сайт)">
-                  Раздел <A href="/account/billing/">Кабинет → Тарифы и платежи</A>. Российские
-                  карты, СБП, ЮMoney через Robokassa.
+                <FeatureCard icon={<Wallet size={16} />} title={t("intro.topupCardTitle")}>
+                  {t.rich("intro.topupCardBody", { a: (chunks) => <A href="/account/billing/">{chunks}</A> })}
                 </FeatureCard>
-                <FeatureCard icon={<Star size={16} />} title="Telegram Stars (в боте)">
-                  Оплата прямо в мессенджере в два тапа, мгновенное зачисление. Команда{" "}
-                  <IC>/balance</IC> в боте.
+                <FeatureCard icon={<Star size={16} />} title={t("intro.topupStarsTitle")}>
+                  {t.rich("intro.topupStarsBody", { ic: (chunks) => <IC>{chunks}</IC> })}
                 </FeatureCard>
               </FeatureGrid>
-              <H3>Тарифы или разовое пополнение?</H3>
+              <H3>{t("intro.topupH3")}</H3>
               <P>
-                Можно просто пополнять баланс по мере надобности, а можно оформить месячный
-                тариф — он даёт больше рублей на баланс за меньшую цену (бонус до +40%) и
-                иногда безлимит на отдельные модели. Тарифы: Старт, Стандарт, Про, Макс и
-                отдельный «Бизнес» (для AI-секретаря). Подробнее — в{" "}
-                <A href="/account/billing/">разделе оплаты</A>.
+                {t.rich("intro.topupTariffsP", { a: (chunks) => <A href="/account/billing/">{chunks}</A> })}
               </P>
-              <Callout type="info" title="Промокоды и рефералы">
-                Есть промокод — введите его в разделе оплаты. Пригласите друга по своей
-                реферальной ссылке — получите бонус, когда он оплатит.{" "}
-                <A href="/account/referral/">Реферальная программа →</A>
+              <Callout type="info" title={t("intro.topupPromoTitle")}>
+                {t.rich("intro.topupPromoBody", { a: (chunks) => <A href="/account/referral/">{chunks}</A> })}
               </Callout>
             </DocSection>
           </>
@@ -150,39 +133,38 @@ const GROUPS: DocGroup[] = [
     ],
   },
   {
-    title: "Чат и генерация",
+    title: t("chat.groupTitle"),
     items: [
       {
         id: "chat",
-        label: "Чаты",
+        label: t("chat.chatsLabel"),
         content: (
           <>
-            <DocSection title="Чат с нейросетью" intro="Главный инструмент. Напишите вопрос — получите ответ. Ниже — всё, что умеет чат.">
+            <DocSection title={t("chat.chatTitle")} intro={t("chat.chatIntro")}>
               <FeatureGrid>
-                <FeatureCard icon={<Zap size={16} />} title="Живой стриминг">
-                  Ответ печатается по мере генерации, не нужно ждать целиком.
+                <FeatureCard icon={<Zap size={16} />} title={t("chat.streamingTitle")}>
+                  {t("chat.streamingBody")}
                 </FeatureCard>
-                <FeatureCard icon={<Search size={16} />} title="Веб-поиск">
-                  Тумблер «Интернет» в поле ввода — ИИ добавит свежие факты из сети к ответу.
+                <FeatureCard icon={<Search size={16} />} title={t("chat.webSearchTitle")}>
+                  {t("chat.webSearchBody")}
                 </FeatureCard>
-                <FeatureCard icon={<FileText size={16} />} title="Вложения">
-                  Прикрепите фото, PDF, документ или архив — ИИ прочитает и учтёт содержимое.
+                <FeatureCard icon={<FileText size={16} />} title={t("chat.attachmentsTitle")}>
+                  {t("chat.attachmentsBody")}
                 </FeatureCard>
-                <FeatureCard icon={<Mic size={16} />} title="Голос">
-                  Надиктуйте вопрос голосом; ответ можно озвучить обратно.
+                <FeatureCard icon={<Mic size={16} />} title={t("chat.voiceTitle")}>
+                  {t("chat.voiceBody")}
                 </FeatureCard>
               </FeatureGrid>
-              <H3>История и управление</H3>
+              <H3>{t("chat.historyH3")}</H3>
               <UL>
-                <LI>Все диалоги сохраняются слева в списке чатов — можно вернуться в любой момент.</LI>
-                <LI>Кнопки под ответом: 👍/👎 (оценка), повтор, редактировать запрос, удалить, озвучить.</LI>
-                <LI><b>Ветвление</b> — от любого сообщения можно создать ответвление диалога, чтобы пойти по другому пути, не теряя основной.</LI>
-                <LI><b>Варианты ответа</b> — получить сразу несколько версий (кратко / подробно / по шагам) и выбрать лучшую.</LI>
-                <LI>Поиск по всей истории чатов — по словам и по смыслу (см. «Память всех чатов»).</LI>
+                <LI>{t("chat.historyItem1")}</LI>
+                <LI>{t("chat.historyItem2")}</LI>
+                <LI>{t.rich("chat.historyItem3", { b: (chunks) => <b>{chunks}</b> })}</LI>
+                <LI>{t.rich("chat.historyItem4", { b: (chunks) => <b>{chunks}</b> })}</LI>
+                <LI>{t("chat.historyItem5")}</LI>
               </UL>
               <Callout type="tip">
-                Хотите новый диалог с чистого листа — команда <IC>/newchat</IC> в боте или
-                кнопка «Новый чат» на сайте. Контекст предыдущего разговора при этом не мешает.
+                {t.rich("chat.newChatTip", { ic: (chunks) => <IC>{chunks}</IC> })}
               </Callout>
             </DocSection>
           </>
@@ -190,28 +172,30 @@ const GROUPS: DocGroup[] = [
       },
       {
         id: "models",
-        label: "Каталог моделей",
+        label: t("chat.modelsLabel"),
         content: (
           <>
-            <DocSection title="Каталог нейросетей" intro="Все доступные модели собраны в каталоге. У каждой — описание, цена за сообщение и назначение.">
-              <P>Модели делятся на три вкладки:</P>
+            <DocSection title={t("chat.modelsTitle")} intro={t("chat.modelsIntro")}>
+              <P>{t("chat.modelsTabsP")}</P>
               <DataTable
-                head={["Тип", "Для чего", "Примеры"]}
+                head={[t("chat.modelsTableType"), t("chat.modelsTableFor"), t("chat.modelsTableExamples")]}
                 rows={[
-                  ["Текст", "Диалоги, код, анализ, тексты", <>GPT-5, GPT-4o, Claude Opus/Sonnet, Gemini, Grok, DeepSeek, Qwen</>],
-                  ["Изображения", "Генерация и правка картинок", <>Flux, и другие image-модели</>],
-                  ["Видео", "Генерация видео по тексту/фото", <>Sora 2, Veo 3.1, Kling</>],
+                  [t("chat.modelsRowTextType"), t("chat.modelsRowTextFor"), <>{t("chat.modelsRowTextExamples")}</>],
+                  [t("chat.modelsRowImgType"), t("chat.modelsRowImgFor"), <>{t("chat.modelsRowImgExamples")}</>],
+                  [t("chat.modelsRowVideoType"), t("chat.modelsRowVideoFor"), <>{t("chat.modelsRowVideoExamples")}</>],
                 ]}
               />
-              <H3>Как выбрать модель</H3>
+              <H3>{t("chat.modelsHowH3")}</H3>
               <UL>
-                <LI><b>Быстро и дёшево</b> — DeepSeek, GPT-4o-mini, Gemini Flash. Для простых вопросов и черновиков.</LI>
-                <LI><b>Универсально</b> — GPT-4o, Claude Sonnet, Gemini Pro. Баланс качества и цены.</LI>
-                <LI><b>Максимум качества</b> — GPT-5, Claude Opus, Grok — для сложных рассуждений и кода.</LI>
+                <LI>{t.rich("chat.modelsHowItem1", { b: (chunks) => <b>{chunks}</b> })}</LI>
+                <LI>{t.rich("chat.modelsHowItem2", { b: (chunks) => <b>{chunks}</b> })}</LI>
+                <LI>{t.rich("chat.modelsHowItem3", { b: (chunks) => <b>{chunks}</b> })}</LI>
               </UL>
               <P>
-                Сменить модель в чате можно в один клик, а в боте — командой <IC>/models</IC>.
-                Каталог для ознакомления: <A href="/models/">Все модели →</A>.
+                {t.rich("chat.modelsSwitchP", {
+                  ic: (chunks) => <IC>{chunks}</IC>,
+                  a: (chunks) => <A href="/models/">{chunks}</A>,
+                })}
               </P>
             </DocSection>
           </>
@@ -219,84 +203,88 @@ const GROUPS: DocGroup[] = [
       },
       {
         id: "images",
-        label: "Изображения",
+        label: t("chat.imagesLabel"),
         content: (
-          <DocSection title="Генерация изображений" intro="Опишите картинку словами — нейросеть её нарисует. Доступны и продвинутые режимы работы с изображениями.">
+          <DocSection title={t("chat.imagesTitle")} intro={t("chat.imagesIntro")}>
             <UL>
-              <LI><b>Текст → картинка</b> — просто опишите, что хотите увидеть.</LI>
-              <LI><b>Правка (img2img, inpaint)</b> — загрузите картинку и опишите изменения; можно закрасить область маской и заменить только её.</LI>
-              <LI><b>Улучшение</b> — апскейл (увеличение чёткости), удаление фона, вариации, описание изображения.</LI>
-              <LI><b>Улучшение промпта</b> — кнопка усиливает ваше описание, чтобы результат был детальнее.</LI>
+              <LI>{t.rich("chat.imagesItem1", { b: (chunks) => <b>{chunks}</b> })}</LI>
+              <LI>{t.rich("chat.imagesItem2", { b: (chunks) => <b>{chunks}</b> })}</LI>
+              <LI>{t.rich("chat.imagesItem3", { b: (chunks) => <b>{chunks}</b> })}</LI>
+              <LI>{t.rich("chat.imagesItem4", { b: (chunks) => <b>{chunks}</b> })}</LI>
             </UL>
             <Callout type="info">
-              Все сгенерированные картинки и видео складываются в раздел{" "}
-              <A href="/account/files/">Мои файлы</A> и <A href="/account/favorites/">Избранное</A>.
-              Оттуда их можно скачать, повторить с другими настройками или поделиться.
+              {t.rich("chat.imagesFilesCallout", {
+                a1: (chunks) => <A href="/account/files/">{chunks}</A>,
+                a2: (chunks) => <A href="/account/favorites/">{chunks}</A>,
+              })}
             </Callout>
             <Callout type="warn">
-              Генерация изображений и видео доступна на платных тарифах. Если генерация
-              не удалась по технической причине — средства возвращаются автоматически.
+              {t("chat.imagesPaidWarn")}
             </Callout>
           </DocSection>
         ),
       },
       {
         id: "video",
-        label: "Видео",
+        label: t("chat.videoLabel"),
         content: (
-          <DocSection title="Генерация видео" intro="Короткие ролики по текстовому описанию или из фотографии. Готовятся 5–15 минут — результат придёт в чат или в бот.">
+          <DocSection title={t("chat.videoTitle")} intro={t("chat.videoIntro")}>
             <DataTable
-              head={["Модель", "Особенности"]}
+              head={[t("chat.videoTableModel"), t("chat.videoTableFeatures")]}
               rows={[
-                ["Sora 2 / Sora 2 Pro", "Длительность 5/10/20 сек, вертикаль и горизонталь"],
-                ["Veo 3.1 / Veo 3.1 Fast", "8 сек, разрешение до 4K"],
-                ["Kling v2.6", "5/10 сек, режимы качества, звук (в pro), негативный промпт"],
+                [t("chat.videoRowSoraModel"), t("chat.videoRowSoraFeatures")],
+                [t("chat.videoRowVeoModel"), t("chat.videoRowVeoFeatures")],
+                [t("chat.videoRowKlingModel"), t("chat.videoRowKlingFeatures")],
               ]}
             />
             <UL>
-              <LI><b>Текст → видео</b> — опишите сцену и движение камеры.</LI>
-              <LI><b>Фото → видео (оживление)</b> — загрузите картинку, и она придёт в движение.</LI>
+              <LI>{t.rich("chat.videoItem1", { b: (chunks) => <b>{chunks}</b> })}</LI>
+              <LI>{t.rich("chat.videoItem2", { b: (chunks) => <b>{chunks}</b> })}</LI>
             </UL>
             <Callout type="tip">
-              Видео — самая «тяжёлая» генерация. Опишите не только объект, но и движение:
-              «медленный полёт камеры над городом на закате».
+              {t("chat.videoTip")}
             </Callout>
           </DocSection>
         ),
       },
       {
         id: "compare",
-        label: "Сравнение моделей",
+        label: t("chat.compareLabel"),
         content: (
-          <DocSection title="Model Arena — сравнение моделей" intro="Задайте один вопрос сразу двум-трём моделям и сравните ответы бок о бок.">
+          <DocSection title={t("chat.compareTitle")} intro={t("chat.compareIntro")}>
             <UL>
-              <LI>Удобно выбрать, какая модель лучше решает именно вашу задачу.</LI>
-              <LI>Ответы генерируются параллельно и стримятся одновременно.</LI>
-              <LI>Можно проголосовать за лучший ответ — это формирует общий Elo-рейтинг моделей.</LI>
+              <LI>{t("chat.compareItem1")}</LI>
+              <LI>{t("chat.compareItem2")}</LI>
+              <LI>{t("chat.compareItem3")}</LI>
             </UL>
-            <P>Открыть: <A href="/compare/">Сравнение моделей →</A>, рейтинг — <A href="/arena/">Лидерборд Arena</A>.</P>
+            <P>
+              {t.rich("chat.compareLinksP", {
+                a1: (chunks) => <A href="/compare/">{chunks}</A>,
+                a2: (chunks) => <A href="/arena/">{chunks}</A>,
+              })}
+            </P>
           </DocSection>
         ),
       },
       {
         id: "prompts",
-        label: "Промпты и персоны",
+        label: t("chat.promptsLabel"),
         content: (
           <>
-            <DocSection title="Библиотека промптов" intro="Готовые заготовки запросов на частые задачи, чтобы не придумывать формулировку с нуля.">
+            <DocSection title={t("chat.promptsTitle")} intro={t("chat.promptsIntro")}>
               <UL>
-                <LI>Встроенные промпты по категориям + ваши собственные сохранённые.</LI>
-                <LI>Вставляются в поле ввода одним кликом, дальше редактируйте под себя.</LI>
+                <LI>{t("chat.promptsItem1")}</LI>
+                <LI>{t("chat.promptsItem2")}</LI>
               </UL>
-              <P>Открыть: <A href="/prompts/">Библиотека промптов →</A></P>
+              <P>{t.rich("chat.promptsLinkP", { a: (chunks) => <A href="/prompts/">{chunks}</A> })}</P>
             </DocSection>
-            <DocSection title="Персоны" intro="Персона — это заранее заданный «характер» и роль ассистента (например, «строгий редактор» или «дружелюбный преподаватель»).">
+            <DocSection title={t("chat.personasTitle")} intro={t("chat.personasIntro")}>
               <UL>
-                <LI>Выберите персону — и ИИ будет отвечать в её стиле во всех сообщениях.</LI>
-                <LI>Можно создавать свои персоны с собственной инструкцией.</LI>
-                <LI>В боте — команда <IC>/persona</IC>.</LI>
+                <LI>{t("chat.personasItem1")}</LI>
+                <LI>{t("chat.personasItem2")}</LI>
+                <LI>{t.rich("chat.personasItem3", { ic: (chunks) => <IC>{chunks}</IC> })}</LI>
               </UL>
-              <P>Открыть: <A href="/personas/">Персоны →</A></P>
+              <P>{t.rich("chat.personasLinkP", { a: (chunks) => <A href="/personas/">{chunks}</A> })}</P>
             </DocSection>
           </>
         ),
@@ -304,118 +292,110 @@ const GROUPS: DocGroup[] = [
     ],
   },
   {
-    title: "Проекты (Spaces)",
+    title: t("projects.groupTitle"),
     items: [
       {
         id: "projects",
-        label: "Что такое проекты",
+        label: t("projects.projectsLabel"),
         content: (
-          <DocSection title="Проекты — рабочие пространства" intro="Проект объединяет чаты, файлы-базу знаний и инструкции в одно пространство. Это как отдельная «комната» для конкретной задачи, клиента или продукта.">
+          <DocSection title={t("projects.projectsTitle")} intro={t("projects.projectsIntro")}>
             <FeatureGrid>
-              <FeatureCard icon={<FolderKanban size={16} />} title="Папка чатов">
-                Все диалоги проекта в одном месте, не смешиваются с остальными.
+              <FeatureCard icon={<FolderKanban size={16} />} title={t("projects.cardFolderTitle")}>
+                {t("projects.cardFolderBody")}
               </FeatureCard>
-              <FeatureCard icon={<FileText size={16} />} title="База знаний">
-                Загруженные файлы, по которым ИИ отвечает (см. следующий раздел).
+              <FeatureCard icon={<FileText size={16} />} title={t("projects.cardKbTitle")}>
+                {t("projects.cardKbBody")}
               </FeatureCard>
-              <FeatureCard icon={<ScrollText size={16} />} title="Инструкции">
-                Системный промпт проекта — общий стиль и правила для всех чатов внутри.
+              <FeatureCard icon={<ScrollText size={16} />} title={t("projects.cardInstructionsTitle")}>
+                {t("projects.cardInstructionsBody")}
               </FeatureCard>
-              <FeatureCard icon={<Brain size={16} />} title="Своя память">
-                Факты, узнанные в проекте, привязываются к нему и не «протекают» в другие.
+              <FeatureCard icon={<Brain size={16} />} title={t("projects.cardMemoryTitle")}>
+                {t("projects.cardMemoryBody")}
               </FeatureCard>
             </FeatureGrid>
-            <P>Открыть: <A href="/projects/">Мои проекты →</A>. У каждого проекта — цвет, иконка и вкладки: Файлы, Инструкции, Git/Источники, Команда, Журнал.</P>
+            <P>{t.rich("projects.projectsOpenP", { a: (chunks) => <A href="/projects/">{chunks}</A> })}</P>
           </DocSection>
         ),
       },
       {
         id: "kb",
-        label: "База знаний",
+        label: t("projects.kbLabel"),
         content: (
-          <DocSection title="База знаний и умный поиск (RAG)" intro="Загрузите в проект свои файлы — и ИИ будет отвечать, опираясь на них. Это называется RAG: нейросеть находит нужные фрагменты ваших документов и использует их в ответе.">
-            <H3>Что можно загружать</H3>
-            <P>PDF, Word, текст, таблицы, презентации, архивы, код. Файлы автоматически
-              разбираются и индексируются.</P>
-            <H3>Как это работает под капотом (простыми словами)</H3>
+          <DocSection title={t("projects.kbTitle")} intro={t("projects.kbIntro")}>
+            <H3>{t("projects.kbUploadH3")}</H3>
+            <P>{t("projects.kbUploadP")}</P>
+            <H3>{t("projects.kbHowH3")}</H3>
             <UL>
-              <LI>Платформа находит по смыслу самые релевантные куски ваших файлов (гибридный поиск + переранжирование — качество выше, чем у обычного поиска по словам).</LI>
-              <LI>Эти куски незаметно добавляются к вашему вопросу, и модель отвечает с опорой на них.</LI>
-              <LI>Под ответом видно, <b>какие файлы</b> были использованы (источники).</LI>
+              <LI>{t("projects.kbHowItem1")}</LI>
+              <LI>{t("projects.kbHowItem2")}</LI>
+              <LI>{t.rich("projects.kbHowItem3", { b: (chunks) => <b>{chunks}</b> })}</LI>
             </UL>
-            <H3>Управление вручную — «команды» прямо в сообщении</H3>
+            <H3>{t("projects.kbCommandsH3")}</H3>
             <DataTable
-              head={["Команда", "Что делает"]}
+              head={[t("projects.kbCommandsTableCommand"), t("projects.kbCommandsTableAction")]}
               rows={[
-                [<IC>@file имя</IC>, "Взять конкретный файл целиком, минуя поиск"],
-                [<IC>@web запрос</IC>, "Добавить свежий веб-поиск к ответу"],
-                [<IC>@codebase</IC>, "Искать по коду подключённого репозитория"],
+                [<IC>{t("projects.kbCmdFileIc")}</IC>, t("projects.kbCmdFileDesc")],
+                [<IC>{t("projects.kbCmdWebIc")}</IC>, t("projects.kbCmdWebDesc")],
+                [<IC>{t("projects.kbCmdCodebaseIc")}</IC>, t("projects.kbCmdCodebaseDesc")],
               ]}
             />
-            <Callout type="tip" title="Дашборд базы знаний">
-              Вкладка со статусом файлов: что проиндексировано, сколько фрагментов, кнопка
-              «Переиндексировать». Если файл не попал в ответы — проверьте его статус там.
+            <Callout type="tip" title={t("projects.kbDashboardTipTitle")}>
+              {t("projects.kbDashboardTipBody")}
             </Callout>
           </DocSection>
         ),
       },
       {
         id: "connectors",
-        label: "Источники: Git, сайт, RSS",
+        label: t("projects.connectorsLabel"),
         content: (
-          <DocSection title="Подключение внешних источников" intro="Базу знаний можно наполнять не только загрузкой файлов, но и автоматически — из репозитория, сайта или новостной ленты.">
+          <DocSection title={t("projects.connectorsTitle")} intro={t("projects.connectorsIntro")}>
             <FeatureGrid>
-              <FeatureCard icon={<GitBranch size={16} />} title="Git (GitHub / Gitea)">
-                Подключите репозиторий по токену — код синхронизируется в базу знаний,
-                ИИ понимает вашу кодовую базу. Обновления подтягиваются автоматически.
+              <FeatureCard icon={<GitBranch size={16} />} title={t("projects.connectorsGitTitle")}>
+                {t("projects.connectorsGitBody")}
               </FeatureCard>
-              <FeatureCard icon={<Globe size={16} />} title="Сайт (краулер)">
-                Укажите адрес сайта или документации — страницы попадут в базу знаний
-                и будут пересканироваться раз в сутки.
+              <FeatureCard icon={<Globe size={16} />} title={t("projects.connectorsSiteTitle")}>
+                {t("projects.connectorsSiteBody")}
               </FeatureCard>
-              <FeatureCard icon={<ScrollText size={16} />} title="RSS-лента">
-                Новые записи ленты ежедневно добавляются в базу знаний — удобно для
-                мониторинга темы или новостей.
+              <FeatureCard icon={<ScrollText size={16} />} title={t("projects.connectorsRssTitle")}>
+                {t("projects.connectorsRssBody")}
               </FeatureCard>
             </FeatureGrid>
-            <P>Подключается на странице проекта → вкладка Git/Источники → «Подключить» → выбор типа.
-              Для сайта и RSS токен не нужен, только адрес.</P>
+            <P>{t("projects.connectorsHowP")}</P>
           </DocSection>
         ),
       },
       {
         id: "code",
-        label: "Код и AI-коммиты",
+        label: t("projects.codeLabel"),
         content: (
-          <DocSection title="Работа с кодом" intro="Для проектов с подключённым репозиторием доступен редактор и предложение изменений.">
+          <DocSection title={t("projects.codeTitle")} intro={t("projects.codeIntro")}>
             <UL>
-              <LI><b>Встроенный редактор</b> кода (подсветка JS/HTML/CSS) прямо в проекте.</LI>
-              <LI><b>AI-коммиты</b> — ИИ может предложить изменения файлов; вы видите их и подтверждаете кнопкой (ничего не меняется без вашего согласия). Для больших файлов используется точечное патч-редактирование.</LI>
-              <LI><b>Pull Request</b> или прямой коммит — на ваш выбор.</LI>
-              <LI>История версий каждого файла с возможностью отката.</LI>
+              <LI>{t.rich("projects.codeItem1", { b: (chunks) => <b>{chunks}</b> })}</LI>
+              <LI>{t.rich("projects.codeItem2", { b: (chunks) => <b>{chunks}</b> })}</LI>
+              <LI>{t.rich("projects.codeItem3", { b: (chunks) => <b>{chunks}</b> })}</LI>
+              <LI>{t("projects.codeItem4")}</LI>
             </UL>
             <Callout type="info">
-              AI-агент (см. раздел «Agent Mode») умеет сам читать файлы проекта и предлагать
-              такие правки — как коммит на подтверждение.
+              {t("projects.codeAgentCallout")}
             </Callout>
           </DocSection>
         ),
       },
       {
         id: "collab",
-        label: "Команда и граф знаний",
+        label: t("projects.collabLabel"),
         content: (
           <>
-            <DocSection title="Совместная работа" intro="Проектом можно делиться с коллегами.">
+            <DocSection title={t("projects.collabTitle")} intro={t("projects.collabIntro")}>
               <UL>
-                <LI>Пригласите соавторов с ролью <b>наблюдатель</b> (только чтение) или <b>редактор</b> (правки).</LI>
-                <LI>Журнал действий (аудит) фиксирует, кто и что делал.</LI>
-                <LI>Проект можно опубликовать как <b>публичный Space</b> — открытая страница только для чтения.</LI>
+                <LI>{t.rich("projects.collabItem1", { b1: (chunks) => <b>{chunks}</b>, b2: (chunks) => <b>{chunks}</b> })}</LI>
+                <LI>{t("projects.collabItem2")}</LI>
+                <LI>{t.rich("projects.collabItem3", { b: (chunks) => <b>{chunks}</b> })}</LI>
               </UL>
             </DocSection>
-            <DocSection title="Граф знаний" intro="Визуальная карта связей между файлами и понятиями вашего проекта.">
-              <P>Показывает, как документы и темы связаны между собой — удобно, чтобы окинуть
-                взглядом большую базу знаний. Открывается со страницы проекта.</P>
+            <DocSection title={t("projects.graphTitle")} intro={t("projects.graphIntro")}>
+              <P>{t("projects.graphP")}</P>
             </DocSection>
           </>
         ),
@@ -423,102 +403,105 @@ const GROUPS: DocGroup[] = [
     ],
   },
   {
-    title: "Умные функции",
+    title: t("smart.groupTitle"),
     items: [
       {
         id: "memory",
-        label: "Память",
+        label: t("smart.memoryLabel"),
         content: (
-          <DocSection title="Память" intro="Платформа запоминает важные факты о вас из разговоров, чтобы не переспрашивать. Например: на каком языке вы пишете код, как зовут, чем занимаетесь.">
-            <H3>Три уровня памяти</H3>
+          <DocSection title={t("smart.memoryTitle")} intro={t("smart.memoryIntro")}>
+            <H3>{t("smart.memoryLevelsH3")}</H3>
             <DataTable
-              head={["Уровень", "Что помнит", "Где видно"]}
+              head={[t("smart.memoryTableLevel"), t("smart.memoryTableWhat"), t("smart.memoryTableWhere")]}
               rows={[
-                ["Личная", "Общие факты о вас — во всех чатах", "Кабинет → Память"],
-                ["Проекта", "Факты, узнанные в проекте — только внутри него", "Раздел «Проект» в памяти"],
-                ["Команды", "Общие факты организации — у всех участников", "Дашборд организации"],
+                [t("smart.memoryRowPersonalLevel"), t("smart.memoryRowPersonalWhat"), t("smart.memoryRowPersonalWhere")],
+                [t("smart.memoryRowProjectLevel"), t("smart.memoryRowProjectWhat"), t("smart.memoryRowProjectWhere")],
+                [t("smart.memoryRowTeamLevel"), t("smart.memoryRowTeamWhat"), t("smart.memoryRowTeamWhere")],
               ]}
             />
             <UL>
-              <LI>Память наполняется автоматически, но всё можно посмотреть, отредактировать, закрепить или удалить.</LI>
-              <LI>Когда бот что-то запомнил — он тихо сообщает об этом («Запомнил: …»).</LI>
-              <LI>Память можно полностью выключить в настройках.</LI>
+              <LI>{t("smart.memoryItem1")}</LI>
+              <LI>{t("smart.memoryItem2")}</LI>
+              <LI>{t("smart.memoryItem3")}</LI>
             </UL>
-            <P>Управление: <A href="/account/memory/">Кабинет → Память</A>, в боте — <IC>/memory</IC>.</P>
+            <P>
+              {t.rich("smart.memoryManageP", {
+                a: (chunks) => <A href="/account/memory/">{chunks}</A>,
+                ic: (chunks) => <IC>{chunks}</IC>,
+              })}
+            </P>
           </DocSection>
         ),
       },
       {
         id: "recall",
-        label: "Память всех чатов",
+        label: t("smart.recallLabel"),
         content: (
-          <DocSection title="Total Recall — помнит все разговоры" intro="Спросите «помнишь, что мы решили про биллинг?» — и платформа найдёт нужный старый чат по смыслу, даже если вы не помните, где это было.">
+          <DocSection title={t("smart.recallTitle")} intro={t("smart.recallIntro")}>
             <UL>
-              <LI>Срабатывает на фразы «помнишь…», «мы обсуждали…», «в прошлый раз…», «напомни…».</LI>
-              <LI>Поиск по истории чатов работает и по словам, и по смыслу — находит нужное, даже если формулировка другая.</LI>
+              <LI>{t("smart.recallItem1")}</LI>
+              <LI>{t("smart.recallItem2")}</LI>
             </UL>
             <Callout type="info">
-              Это как долгая память ассистента: чем больше вы им пользуетесь, тем полезнее он
-              становится, потому что помнит контекст прошлых задач.
+              {t("smart.recallCallout")}
             </Callout>
           </DocSection>
         ),
       },
       {
         id: "research",
-        label: "Deep Research",
+        label: t("smart.researchLabel"),
         content: (
-          <DocSection title="Deep Research — исследование с источниками" intro="Не просто ответ, а настоящее мини-исследование: платформа сама формулирует несколько поисковых запросов, читает источники и собирает отчёт со ссылками и цитатами.">
+          <DocSection title={t("smart.researchTitle")} intro={t("smart.researchIntro")}>
             <Steps>
-              <Step n={1}>Задайте вопрос-тему исследования.</Step>
-              <Step n={2}>Видите живой прогресс: «Изучаю источник 4/9…».</Step>
-              <Step n={3}>Получаете структурированный отчёт с нумерованными цитатами [1][2] и списком источников + файл для скачивания.</Step>
+              <Step n={1}>{t("smart.researchStep1")}</Step>
+              <Step n={2}>{t("smart.researchStep2")}</Step>
+              <Step n={3}>{t("smart.researchStep3")}</Step>
             </Steps>
             <UL>
-              <LI>В проекте отчёт можно <b>сохранить в базу знаний</b> — и следующие ответы будут его учитывать (знания накапливаются).</LI>
-              <LI>В боте — команда <IC>/research</IC> (фиксированная цена, подтверждается перед запуском).</LI>
+              <LI>{t.rich("smart.researchItem1", { b: (chunks) => <b>{chunks}</b> })}</LI>
+              <LI>{t.rich("smart.researchItem2", { ic: (chunks) => <IC>{chunks}</IC> })}</LI>
             </UL>
           </DocSection>
         ),
       },
       {
         id: "agent",
-        label: "Agent Mode",
+        label: t("smart.agentLabel"),
         content: (
-          <DocSection title="Agent Mode — агент, который сам делает" intro="Обычный чат отвечает. Агент — действует: планирует шаги и выполняет их с помощью инструментов, пока не решит задачу.">
-            <P>Что умеет агент за один запрос:</P>
+          <DocSection title={t("smart.agentTitle")} intro={t("smart.agentIntro")}>
+            <P>{t("smart.agentWhatP")}</P>
             <UL>
-              <LI><b>Искать в интернете</b> актуальные данные.</LI>
-              <LI><b>Точно считать</b> (безопасный калькулятор).</LI>
-              <LI><b>Читать вашу базу знаний</b> и файлы проекта.</LI>
-              <LI><b>Предлагать правки файлов</b> — как коммит на подтверждение (ничего не меняется без вас).</LI>
+              <LI>{t.rich("smart.agentItem1", { b: (chunks) => <b>{chunks}</b> })}</LI>
+              <LI>{t.rich("smart.agentItem2", { b: (chunks) => <b>{chunks}</b> })}</LI>
+              <LI>{t.rich("smart.agentItem3", { b: (chunks) => <b>{chunks}</b> })}</LI>
+              <LI>{t.rich("smart.agentItem4", { b: (chunks) => <b>{chunks}</b> })}</LI>
             </UL>
-            <Callout type="tip" title="Пример">
-              «Сравни цены топ-5 видеокарт и посчитай стоимость фермы из 8 штук» — агент найдёт
-              цены, посчитает и пришлёт отчёт. В боте — команда <IC>/agent</IC>.
+            <Callout type="tip" title={t("smart.agentCalloutTitle")}>
+              {t.rich("smart.agentCalloutBody", { ic: (chunks) => <IC>{chunks}</IC> })}
             </Callout>
           </DocSection>
         ),
       },
       {
         id: "tasks",
-        label: "AI-задачи по расписанию",
+        label: t("smart.tasksLabel"),
         content: (
-          <DocSection title="AI-задачи — работают, пока вы спите" intro="Поручите платформе задачу, которая будет выполняться сама по расписанию, а результат придёт вам в Telegram.">
+          <DocSection title={t("smart.tasksTitle")} intro={t("smart.tasksIntro")}>
             <UL>
-              <LI><b>Утренний бриф</b> — новости по вашим темам и курс валют каждое утро.</LI>
-              <LI><b>Мониторинг</b> — следить за темой/ключевым словом и присылать сводку.</LI>
-              <LI><b>Мониторинг с исследованием</b> — полноценный Deep Research по теме каждую неделю, отчёт копится в базе знаний проекта.</LI>
-              <LI><b>Повторяющийся промт</b> — например, пост в канал каждый понедельник.</LI>
+              <LI>{t.rich("smart.tasksItem1", { b: (chunks) => <b>{chunks}</b> })}</LI>
+              <LI>{t.rich("smart.tasksItem2", { b: (chunks) => <b>{chunks}</b> })}</LI>
+              <LI>{t.rich("smart.tasksItem3", { b: (chunks) => <b>{chunks}</b> })}</LI>
+              <LI>{t.rich("smart.tasksItem4", { b: (chunks) => <b>{chunks}</b> })}</LI>
             </UL>
             <P>
-              Создаётся обычными словами: в боте <IC>/task каждое утро в 8 присылай новости AI
-              и курс доллара</IC> — платформа сама разберёт фразу. Управление —{" "}
-              <A href="/account/tasks/">Кабинет → AI-задачи</A> или <IC>/tasks</IC> в боте.
+              {t.rich("smart.tasksCreateP", {
+                ic: (chunks) => <IC>{chunks}</IC>,
+                a: (chunks) => <A href="/account/tasks/">{chunks}</A>,
+              })}
             </P>
             <Callout type="info">
-              Каждый запуск оплачивается по цене модели. Лимит активных задач зависит от тарифа;
-              при нехватке средств задача ставится на паузу с уведомлением.
+              {t("smart.tasksCalloutBody")}
             </Callout>
           </DocSection>
         ),
@@ -526,27 +509,27 @@ const GROUPS: DocGroup[] = [
     ],
   },
   {
-    title: "Кабинет и настройки",
+    title: t("account.groupTitle"),
     items: [
       {
         id: "account",
-        label: "Личный кабинет",
+        label: t("account.accountLabel"),
         content: (
-          <DocSection title="Что есть в кабинете" intro="Все настройки, статистика и управление аккаунтом собраны в одном месте.">
+          <DocSection title={t("account.accountTitle")} intro={t("account.accountIntro")}>
             <DataTable
-              head={["Раздел", "Назначение"]}
+              head={[t("account.accountTableSection"), t("account.accountTableAction")]}
               rows={[
-                [<A href="/account/">Обзор</A>, "Баланс, текущий тариф, быстрые действия"],
-                [<A href="/account/analytics/">Аналитика</A>, "Траты по дням, топ моделей, статистика использования"],
-                [<A href="/account/billing/">Тарифы и платежи</A>, "Пополнение, покупка тарифа, история платежей, промокоды"],
-                [<A href="/account/tasks/">AI-задачи</A>, "Задачи по расписанию (создание, пауза, запуск)"],
-                [<A href="/account/keys/">API-ключи</A>, "Ключи для разработки и интеграций"],
-                [<A href="/account/referral/">Партнёрская программа</A>, "Ваша реф-ссылка, приглашённые, бонусы, вывод"],
-                [<A href="/account/files/">Мои файлы</A>, "Все сгенерированные изображения и видео"],
-                [<A href="/account/favorites/">Избранное</A>, "Отмеченные генерации"],
-                [<A href="/account/memory/">Память</A>, "Что платформа помнит о вас (управление)"],
-                [<A href="/account/telegram/">Telegram</A>, "Привязка Telegram-аккаунта к бота"],
-                [<A href="/account/oauth-apps/">OAuth-приложения</A>, "Приложения, которым вы дали доступ"],
+                [<A href="/account/">{t("account.rowOverviewLabel")}</A>, t("account.rowOverviewDesc")],
+                [<A href="/account/analytics/">{t("account.rowAnalyticsLabel")}</A>, t("account.rowAnalyticsDesc")],
+                [<A href="/account/billing/">{t("account.rowBillingLabel")}</A>, t("account.rowBillingDesc")],
+                [<A href="/account/tasks/">{t("account.rowTasksLabel")}</A>, t("account.rowTasksDesc")],
+                [<A href="/account/keys/">{t("account.rowKeysLabel")}</A>, t("account.rowKeysDesc")],
+                [<A href="/account/referral/">{t("account.rowReferralLabel")}</A>, t("account.rowReferralDesc")],
+                [<A href="/account/files/">{t("account.rowFilesLabel")}</A>, t("account.rowFilesDesc")],
+                [<A href="/account/favorites/">{t("account.rowFavoritesLabel")}</A>, t("account.rowFavoritesDesc")],
+                [<A href="/account/memory/">{t("account.rowMemoryLabel")}</A>, t("account.rowMemoryDesc")],
+                [<A href="/account/telegram/">{t("account.rowTelegramLabel")}</A>, t("account.rowTelegramDesc")],
+                [<A href="/account/oauth-apps/">{t("account.rowOauthLabel")}</A>, t("account.rowOauthDesc")],
               ]}
             />
           </DocSection>
@@ -554,16 +537,16 @@ const GROUPS: DocGroup[] = [
       },
       {
         id: "settings",
-        label: "Настройки чата",
+        label: t("account.settingsLabel"),
         content: (
-          <DocSection title="Настройки" intro="Тонкая подстройка поведения ассистента — на сайте в чате и в боте командой /settings.">
+          <DocSection title={t("account.settingsTitle")} intro={t("account.settingsIntro")}>
             <UL>
-              <LI><b>Модель по умолчанию</b> — какая нейросеть отвечает без явного выбора.</LI>
-              <LI><b>Системный промпт</b> — постоянная инструкция ассистенту (тон, роль, правила).</LI>
-              <LI><b>Веб-поиск</b> — включить/выключить добавление свежих данных из интернета.</LI>
-              <LI><b>Голосовые ответы</b> (в боте) — озвучивать ответы голосом.</LI>
-              <LI><b>Стриминг</b> — показывать ответ по мере генерации.</LI>
-              <LI><b>Память</b> — включить/выключить запоминание фактов.</LI>
+              <LI>{t.rich("account.settingsItem1", { b: (chunks) => <b>{chunks}</b> })}</LI>
+              <LI>{t.rich("account.settingsItem2", { b: (chunks) => <b>{chunks}</b> })}</LI>
+              <LI>{t.rich("account.settingsItem3", { b: (chunks) => <b>{chunks}</b> })}</LI>
+              <LI>{t.rich("account.settingsItem4", { b: (chunks) => <b>{chunks}</b> })}</LI>
+              <LI>{t.rich("account.settingsItem5", { b: (chunks) => <b>{chunks}</b> })}</LI>
+              <LI>{t.rich("account.settingsItem6", { b: (chunks) => <b>{chunks}</b> })}</LI>
             </UL>
           </DocSection>
         ),
@@ -571,111 +554,118 @@ const GROUPS: DocGroup[] = [
     ],
   },
   {
-    title: "Telegram-бот",
+    title: t("telegram.groupTitle"),
     items: [
       {
         id: "tg-start",
-        label: "Подключение бота",
+        label: t("telegram.startLabel"),
         content: (
-          <DocSection title="Начало работы с ботом" intro="Тот же ИИ и тот же баланс — прямо в Telegram. Бот работает как полноценный ассистент и даже проактивно.">
+          <DocSection title={t("telegram.startTitle")} intro={t("telegram.startIntro")}>
             <Steps>
-              <Step n={1}>Откройте <A href="https://t.me/aineron_bot">@aineron_bot</A> и нажмите «Старт».</Step>
-              <Step n={2}>Привяжите аккаунт aineron (через <A href="/account/telegram/">Кабинет → Telegram</A> или по подсказке бота) — баланс и история станут общими.</Step>
-              <Step n={3}>Пишите вопросы обычным текстом или пользуйтесь командами из меню.</Step>
+              <Step n={1}>{t.rich("telegram.startStep1", { a: (chunks) => <A href="https://t.me/aineron_bot">{chunks}</A> })}</Step>
+              <Step n={2}>{t.rich("telegram.startStep2", { a: (chunks) => <A href="/account/telegram/">{chunks}</A> })}</Step>
+              <Step n={3}>{t("telegram.startStep3")}</Step>
             </Steps>
-            <Callout type="tip" title="Меню бота">
-              Нажмите «Меню» рядом с полем ввода — там все команды. Ниже — что они делают.
+            <Callout type="tip" title={t("telegram.startMenuTipTitle")}>
+              {t("telegram.startMenuTipBody")}
             </Callout>
           </DocSection>
         ),
       },
       {
         id: "tg-basic",
-        label: "Возможности бота",
+        label: t("telegram.basicLabel"),
         content: (
-          <DocSection title="Что умеет бот" intro="Полный ассистент в мессенджере.">
+          <DocSection title={t("telegram.basicTitle")} intro={t("telegram.basicIntro")}>
             <DataTable
-              head={["Команда", "Действие"]}
+              head={[t("telegram.basicTableCommand"), t("telegram.basicTableAction")]}
               rows={[
-                [<IC>любой текст</IC>, "Чат с ИИ (живой стриминг, реакция «принято»)"],
-                [<IC>/image описание</IC>, "Сгенерировать изображение"],
-                [<IC>/video описание</IC>, "Сгенерировать видео (5–15 мин)"],
-                [<IC>/img2video</IC>, "Оживить фото — из картинки в видео"],
-                [<IC>/sticker</IC>, "AI-стикер"],
-                [<IC>голосовое</IC>, "Распознавание речи + ответ голосом"],
-                [<IC>/models</IC>, "Выбор модели (текст/картинки/видео)"],
-                [<IC>/balance</IC>, "Баланс и пополнение"],
-                [<IC>/memory</IC>, "Что бот о вас помнит"],
-                [<IC>/settings</IC>, "Настройки (голос, поиск, промт)"],
-                [<IC>/help</IC>, "Справка по всем командам"],
+                [<IC>{t("telegram.basicRowTextCommand")}</IC>, t("telegram.basicRowTextAction")],
+                [<IC>{t("telegram.basicRowImageCommand")}</IC>, t("telegram.basicRowImageAction")],
+                [<IC>{t("telegram.basicRowVideoCommand")}</IC>, t("telegram.basicRowVideoAction")],
+                [<IC>{t("telegram.basicRowImg2videoCommand")}</IC>, t("telegram.basicRowImg2videoAction")],
+                [<IC>{t("telegram.basicRowStickerCommand")}</IC>, t("telegram.basicRowStickerAction")],
+                [<IC>{t("telegram.basicRowVoiceCommand")}</IC>, t("telegram.basicRowVoiceAction")],
+                [<IC>{t("telegram.basicRowModelsCommand")}</IC>, t("telegram.basicRowModelsAction")],
+                [<IC>{t("telegram.basicRowBalanceCommand")}</IC>, t("telegram.basicRowBalanceAction")],
+                [<IC>{t("telegram.basicRowMemoryCommand")}</IC>, t("telegram.basicRowMemoryAction")],
+                [<IC>{t("telegram.basicRowSettingsCommand")}</IC>, t("telegram.basicRowSettingsAction")],
+                [<IC>{t("telegram.basicRowHelpCommand")}</IC>, t("telegram.basicRowHelpAction")],
               ]}
             />
-            <P>Прикреплённые фото и документы бот тоже прочитает и учтёт в ответе.</P>
+            <P>{t("telegram.basicFilesP")}</P>
           </DocSection>
         ),
       },
       {
         id: "tg-agentic",
-        label: "Проактивный ассистент",
+        label: t("telegram.agenticLabel"),
         content: (
-          <DocSection title="Проактивные функции бота" intro="То, чего нет у обычных ботов: бот сам работает по расписанию, исследует и выполняет задачи.">
+          <DocSection title={t("telegram.agenticTitle")} intro={t("telegram.agenticIntro")}>
             <DataTable
-              head={["Команда", "Что делает"]}
+              head={[t("telegram.agenticTableCommand"), t("telegram.agenticTableAction")]}
               rows={[
-                [<IC>/task</IC>, "AI-задача по расписанию («каждое утро присылай…»)"],
-                [<IC>/tasks</IC>, "Мои задачи: пауза, запуск, «прислать сейчас»"],
-                [<IC>/agent задача</IC>, "Agent Mode: поиск + вычисления + база знаний → отчёт"],
-                [<IC>/research вопрос</IC>, "Deep Research с источниками"],
-                [<IC>/channel</IC>, "AI ведёт ваш Telegram-канал: посты по расписанию"],
-                [<IC>/topics</IC>, "Топики-проекты в личке (отдельный контекст на тему)"],
+                [<IC>{t("telegram.agenticRowTaskCommand")}</IC>, t("telegram.agenticRowTaskAction")],
+                [<IC>{t("telegram.agenticRowTasksCommand")}</IC>, t("telegram.agenticRowTasksAction")],
+                [<IC>{t("telegram.agenticRowAgentCommand")}</IC>, t("telegram.agenticRowAgentAction")],
+                [<IC>{t("telegram.agenticRowResearchCommand")}</IC>, t("telegram.agenticRowResearchAction")],
+                [<IC>{t("telegram.agenticRowChannelCommand")}</IC>, t("telegram.agenticRowChannelAction")],
+                [<IC>{t("telegram.agenticRowTopicsCommand")}</IC>, t("telegram.agenticRowTopicsAction")],
               ]}
             />
-            <Callout type="tip" title="Флагманская фича">
-              AI-задачи — «первый ассистент в русском Telegram, который работает, пока вы спите».
-              Утренний бриф, мониторинг темы, еженедельные отчёты — всё приходит само.
+            <Callout type="tip" title={t("telegram.agenticCalloutTitle")}>
+              {t("telegram.agenticCalloutBody")}
             </Callout>
           </DocSection>
         ),
       },
       {
         id: "tg-business",
-        label: "AI-секретарь для бизнеса",
+        label: t("telegram.businessLabel"),
         content: (
-          <DocSection title="AI-секретарь (Telegram Business)" intro="Бот отвечает вашим клиентам от вашего имени. Готовый инструмент для самозанятых, магазинов, экспертов — всех, кто тонет в личке.">
+          <DocSection title={t("telegram.businessTitle")} intro={t("telegram.businessIntro")}>
             <UL>
-              <LI><b>Режим «Черновики»</b> (безопасный) — на каждое сообщение клиента бот готовит ответ, а вы одобряете кнопкой «Отправить / Изменить / Игнор». Без вашего согласия ничего не уходит.</LI>
-              <LI><b>Режим «Автопилот»</b> — типовые вопросы (часы, цены, доставка) бот отвечает сам, сложное передаёт вам.</LI>
-              <LI><b>База знаний секретаря</b> — подключите проект с прайсом и FAQ, и ответы будут опираться на ваши документы.</LI>
-              <LI><b>Утренняя сводка</b> — «за ночь 7 сообщений: 3 отвечено, 2 ждут вас».</LI>
+              <LI>{t.rich("telegram.businessItem1", { b: (chunks) => <b>{chunks}</b> })}</LI>
+              <LI>{t.rich("telegram.businessItem2", { b: (chunks) => <b>{chunks}</b> })}</LI>
+              <LI>{t.rich("telegram.businessItem3", { b: (chunks) => <b>{chunks}</b> })}</LI>
+              <LI>{t.rich("telegram.businessItem4", { b: (chunks) => <b>{chunks}</b> })}</LI>
             </UL>
-            <P>Настройка — команда <IC>/secretary</IC>. Подробнее о продукте: <A href="/business-bot/">страница AI-секретаря →</A>.
-              Требуется Telegram Business у владельца аккаунта.</P>
+            <P>
+              {t.rich("telegram.businessFooterP", {
+                ic: (chunks) => <IC>{chunks}</IC>,
+                a: (chunks) => <A href="/business-bot/">{chunks}</A>,
+              })}
+            </P>
           </DocSection>
         ),
       },
       {
         id: "tg-more",
-        label: "Каналы, боты, подписки",
+        label: t("telegram.moreLabel"),
         content: (
           <>
-            <DocSection title="Свои AI-боты" intro="Соберите собственного бота-ассистента за пару минут.">
+            <DocSection title={t("telegram.moreBotsTitle")} intro={t("telegram.moreBotsIntro")}>
               <UL>
-                <LI>Команда <IC>/mybot</IC> → выберите готовый шаблон персоны (Поддержка магазина, Юрист, Репетитор, Копирайтер) или опишите свою.</LI>
-                <LI>Ваш <IC>@свой_бот</IC> отвечает гостям вашей моделью и вашей базой знаний.</LI>
-                <LI>Сообщения гостей оплачиваются с вашего баланса (с дневным лимитом).</LI>
+                <LI>{t.rich("telegram.moreBotsItem1", { ic: (chunks) => <IC>{chunks}</IC> })}</LI>
+                <LI>{t.rich("telegram.moreBotsItem2", { ic: (chunks) => <IC>{chunks}</IC> })}</LI>
+                <LI>{t("telegram.moreBotsItem3")}</LI>
               </UL>
             </DocSection>
-            <DocSection title="Подписки и монетизация">
+            <DocSection title={t("telegram.moreSubsTitle")}>
               <UL>
-                <LI><b>Подписки в Telegram Stars</b> — оформить тариф прямо в мессенджере (<IC>/subscribe</IC>), продление автоматическое, отмена в <IC>/balance</IC>.</LI>
-                <LI><b>Партнёрская программа</b> — каналы могут рекламировать бота за комиссию от Telegram.</LI>
+                <LI>{t.rich("telegram.moreSubsItem1", {
+                  b: (chunks) => <b>{chunks}</b>,
+                  ic1: (chunks) => <IC>{chunks}</IC>,
+                  ic2: (chunks) => <IC>{chunks}</IC>,
+                })}</LI>
+                <LI>{t.rich("telegram.moreSubsItem2", { b: (chunks) => <b>{chunks}</b> })}</LI>
               </UL>
             </DocSection>
-            <DocSection title="Группы 2.0" intro="Бот полезен и в групповых чатах.">
+            <DocSection title={t("telegram.moreGroupsTitle")} intro={t("telegram.moreGroupsIntro")}>
               <UL>
-                <LI><IC>/summary</IC> — краткая сводка обсуждения за N часов.</LI>
-                <LI><IC>/quiz тема</IC> — AI-квиз для участников.</LI>
-                <LI><IC>/stat</IC> — расход по участникам (для команд с орг-биллингом).</LI>
+                <LI>{t.rich("telegram.moreGroupsItem1", { ic: (chunks) => <IC>{chunks}</IC> })}</LI>
+                <LI>{t.rich("telegram.moreGroupsItem2", { ic: (chunks) => <IC>{chunks}</IC> })}</LI>
+                <LI>{t.rich("telegram.moreGroupsItem3", { ic: (chunks) => <IC>{chunks}</IC> })}</LI>
               </UL>
             </DocSection>
           </>
@@ -683,84 +673,85 @@ const GROUPS: DocGroup[] = [
       },
       {
         id: "tg-miniapp",
-        label: "Mini App",
+        label: t("telegram.miniappLabel"),
         content: (
-          <DocSection title="Mini App — приложение внутри Telegram" intro="Полноценное мини-приложение прямо в мессенджере, без установки из App Store.">
+          <DocSection title={t("telegram.miniappTitle")} intro={t("telegram.miniappIntro")}>
             <UL>
-              <LI>Три экрана: <b>Баланс</b>, <b>Галерея</b> генераций, <b>Чат</b>.</LI>
-              <LI>Полноэкранный режим и кнопка «Добавить на главный экран» (иконка на телефоне).</LI>
-              <LI>Поделиться своей генерацией в любой чат одним тапом, выложить в Stories.</LI>
+              <LI>{t.rich("telegram.miniappItem1", {
+                b1: (chunks) => <b>{chunks}</b>,
+                b2: (chunks) => <b>{chunks}</b>,
+                b3: (chunks) => <b>{chunks}</b>,
+              })}</LI>
+              <LI>{t("telegram.miniappItem2")}</LI>
+              <LI>{t("telegram.miniappItem3")}</LI>
             </UL>
-            <P>Открывается из бота или по прямой ссылке <IC>t.me/aineron_bot/app</IC>.</P>
+            <P>{t.rich("telegram.miniappFooterP", { ic: (chunks) => <IC>{chunks}</IC> })}</P>
           </DocSection>
         ),
       },
     ],
   },
   {
-    title: "Для команд (B2B)",
+    title: t("teams.groupTitle"),
     items: [
       {
         id: "orgs",
-        label: "Организации",
+        label: t("teams.orgsLabel"),
         content: (
-          <DocSection title="Организации и командная работа" intro="Для компаний и команд: общий баланс, участники и общая память.">
+          <DocSection title={t("teams.orgsTitle")} intro={t("teams.orgsIntro")}>
             <UL>
-              <LI><b>Общий баланс</b> организации и счета — оплата за всю команду централизованно.</LI>
-              <LI><b>Участники и роли</b> — приглашайте коллег, задавайте права.</LI>
-              <LI><b>Аналитика по участникам</b> — кто сколько использует.</LI>
-              <LI><b>Общая память команды</b> — факты вроде «наш стек — Django», «релизы по пятницам» видят все участники во всех чатах.</LI>
-              <LI><b>Telegram-группы</b> можно подключить к организации: бот работает в группе, а траты идут с общего баланса.</LI>
+              <LI>{t.rich("teams.orgsItem1", { b: (chunks) => <b>{chunks}</b> })}</LI>
+              <LI>{t.rich("teams.orgsItem2", { b: (chunks) => <b>{chunks}</b> })}</LI>
+              <LI>{t.rich("teams.orgsItem3", { b: (chunks) => <b>{chunks}</b> })}</LI>
+              <LI>{t.rich("teams.orgsItem4", { b: (chunks) => <b>{chunks}</b> })}</LI>
+              <LI>{t.rich("teams.orgsItem5", { b: (chunks) => <b>{chunks}</b> })}</LI>
             </UL>
-            <P>Управление — раздел дашборда организации. Для подключения группы в боте используется команда регистрации группы.</P>
+            <P>{t("teams.orgsFooterP")}</P>
           </DocSection>
         ),
       },
     ],
   },
   {
-    title: "Помощь",
+    title: t("help.groupTitle"),
     items: [
       {
         id: "faq",
-        label: "Частые вопросы",
+        label: t("help.faqLabel"),
         content: (
-          <DocSection title="Частые вопросы">
-            <H3>Нужен ли VPN?</H3>
-            <P>Нет. Всё работает из России напрямую, без VPN и без зарубежных карт.</P>
-            <H3>За что списываются деньги?</H3>
-            <P>За каждое сообщение к нейросети — по цене выбранной модели. Дешёвые модели стоят
-              копейки, мощные — несколько рублей. Цена подписана в каталоге.</P>
-            <H3>Почему не получилось сгенерировать картинку/видео?</H3>
-            <P>Иногда провайдер возвращает ошибку. В этом случае средства возвращаются
-              автоматически — просто попробуйте ещё раз или смените модель.</P>
-            <H3>Данные в безопасности?</H3>
-            <P>Переписка клиентов в AI-секретаре не хранится (только очередь черновиков с
-              автоудалением). Память можно посмотреть и удалить в любой момент. Токены
-              подключённых репозиториев хранятся в зашифрованном виде.</P>
-            <H3>Чем отличаются сайт и бот?</H3>
-            <P>Это одна платформа с общим балансом и историей. Сайт удобнее для проектов, базы
-              знаний и генерации; бот — для быстрых вопросов, голоса и проактивных задач.</P>
-            <H3>Я разработчик — есть API?</H3>
-            <P>Да, OpenAI-совместимый. См. <A href="/api-docs/">Документацию для разработчиков →</A></P>
-            <Callout type="info" title="Не нашли ответ?">
-              Напишите в поддержку — контакты в подвале сайта. Мы поможем разобраться.
+          <DocSection title={t("help.faqTitle")}>
+            <H3>{t("help.faqVpnQ")}</H3>
+            <P>{t("help.faqVpnA")}</P>
+            <H3>{t("help.faqBillingQ")}</H3>
+            <P>{t("help.faqBillingA")}</P>
+            <H3>{t("help.faqGenFailQ")}</H3>
+            <P>{t("help.faqGenFailA")}</P>
+            <H3>{t("help.faqDataQ")}</H3>
+            <P>{t("help.faqDataA")}</P>
+            <H3>{t("help.faqDiffQ")}</H3>
+            <P>{t("help.faqDiffA")}</P>
+            <H3>{t("help.faqApiQ")}</H3>
+            <P>{t.rich("help.faqApiA", { a: (chunks) => <A href="/api-docs/">{chunks}</A> })}</P>
+            <Callout type="info" title={t("help.faqCalloutTitle")}>
+              {t("help.faqCalloutBody")}
             </Callout>
           </DocSection>
         ),
       },
     ],
   },
-];
+  ];
+}
 
-export default function DocsPage() {
+export default async function DocsPage() {
+  const t = await getTranslations("docs");
   return (
     <DocLayout
-      eyebrow="Руководство пользователя"
-      title="Как пользоваться aineron"
-      subtitle="Полное руководство простыми словами: чаты и генерация, проекты с базой знаний, память, исследования, AI-агент и Telegram-бот. Выбирайте раздел слева."
-      breadcrumb={[{ label: "Главная", href: "/" }, { label: "Документация" }]}
-      groups={GROUPS}
+      eyebrow={t("eyebrow")}
+      title={t("pageTitle")}
+      subtitle={t("subtitle")}
+      breadcrumb={[{ label: t("breadcrumbHome"), href: "/" }, { label: t("breadcrumbDocs") }]}
+      groups={buildGroups(t)}
     />
   );
 }
