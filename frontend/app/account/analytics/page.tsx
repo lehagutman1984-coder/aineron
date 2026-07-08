@@ -1,19 +1,17 @@
 ﻿"use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { TrendingUp, TrendingDown, Minus, Wallet, Zap, BarChart2 } from "lucide-react";
 import { getStarsUsage } from "@/lib/api/client";
 import type { StarsUsageDay, StarsUsageModel } from "@/lib/api/types";
 import { formatMoney } from "@/lib/money";
 
-const PERIODS = [
-  { label: "7 дней", value: 7 },
-  { label: "30 дней", value: 30 },
-  { label: "90 дней", value: 90 },
-];
+const PERIOD_VALUES = [7, 30, 90];
 
 export default function AnalyticsPage() {
+  const t = useTranslations("accountAnalytics");
   const [days, setDays] = useState(30);
 
   const { data, isLoading } = useQuery({
@@ -37,27 +35,27 @@ export default function AnalyticsPage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-[22px] font-bold text-[#1A1A1A] dark:text-[#EDE8E3]">
-            Аналитика
+            {t("title")}
           </h1>
           <p className="mt-0.5 text-[15px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.40)]">
-            Расходы по времени и моделям
+            {t("subtitle")}
           </p>
         </div>
 
         {/* Period selector */}
         <div className="flex rounded-[9px] border border-[rgba(13,13,13,0.12)] bg-white p-0.5 dark:border-[rgba(255,255,255,0.10)] dark:bg-[#1c1c1f]">
-          {PERIODS.map((p) => (
+          {PERIOD_VALUES.map((value) => (
             <button
-              key={p.value}
-              onClick={() => setDays(p.value)}
+              key={value}
+              onClick={() => setDays(value)}
               className={[
                 "rounded-[7px] px-3 py-1.5 text-[14px] font-medium transition-all",
-                days === p.value
+                days === value
                   ? "bg-[#1A1A1A] text-white"
                   : "text-[rgba(13,13,13,0.55)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.45)]",
               ].join(" ")}
             >
-              {p.label}
+              {t("days", { count: value })}
             </button>
           ))}
         </div>
@@ -66,7 +64,7 @@ export default function AnalyticsPage() {
       {/* Stat cards */}
       <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <StatCard
-          label="Потрачено"
+          label={t("spentLabel")}
           value={data?.totals.total_kopecks ?? 0}
           display={formatMoney(data?.totals.total_kopecks ?? 0)}
           delta={delta}
@@ -74,13 +72,13 @@ export default function AnalyticsPage() {
           loading={isLoading}
         />
         <StatCard
-          label="Запросов отправлено"
+          label={t("requestsSentLabel")}
           value={data?.totals.total_requests ?? 0}
           icon={<Zap size={15} className="text-[#D97757]" />}
           loading={isLoading}
         />
         <StatCard
-          label="Среднее в день"
+          label={t("avgPerDayLabel")}
           value={data?.totals.avg_per_day_kopecks ?? 0}
           display={formatMoney(data?.totals.avg_per_day_kopecks ?? 0)}
           icon={<BarChart2 size={15} className="text-[#D97757]" />}
@@ -94,14 +92,14 @@ export default function AnalyticsPage() {
         style={{ borderColor: "var(--border-secondary)" }}
       >
         <h2 className="mb-4 text-[16px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
-          Расходы по дням
+          {t("dailySpendTitle")}
         </h2>
         {isLoading ? (
           <div className="h-40 animate-pulse rounded-[8px] bg-[rgba(13,13,13,0.05)]" />
         ) : !data || data.by_day.length === 0 ? (
-          <EmptyChart />
+          <EmptyChart t={t} />
         ) : (
-          <BarChart days={data.by_day} period={days} />
+          <BarChart days={data.by_day} period={days} t={t} />
         )}
       </div>
 
@@ -111,7 +109,7 @@ export default function AnalyticsPage() {
         style={{ borderColor: "var(--border-secondary)" }}
       >
         <h2 className="mb-4 text-[16px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
-          Топ моделей по расходу
+          {t("topModelsTitle")}
         </h2>
         {isLoading ? (
           <div className="flex flex-col gap-2">
@@ -121,10 +119,10 @@ export default function AnalyticsPage() {
           </div>
         ) : !data || data.by_model.length === 0 ? (
           <p className="py-6 text-center text-[15px] text-[rgba(13,13,13,0.40)]">
-            Нет данных за выбранный период
+            {t("noData")}
           </p>
         ) : (
-          <ModelList models={data.by_model} />
+          <ModelList models={data.by_model} t={t} />
         )}
       </div>
     </div>
@@ -192,7 +190,13 @@ function DeltaBadge({ delta }: { delta: number }) {
 }
 
 // ── Bar chart (pure CSS) ───────────────────────────────────────────────────────
-function BarChart({ days, period }: { days: StarsUsageDay[]; period: number }) {
+function BarChart({
+  days, period, t,
+}: {
+  days: StarsUsageDay[];
+  period: number;
+  t: ReturnType<typeof useTranslations>;
+}) {
   // Fill sparse data: create a map of date→row, then build full range
   const map = new Map(days.map((d) => [d.date, d]));
 
@@ -217,12 +221,13 @@ function BarChart({ days, period }: { days: StarsUsageDay[]; period: number }) {
     <div className="flex h-40 items-end gap-[2px]">
       {grouped.map((entry) => {
         const pct = Math.max((entry.kopecks / maxGrouped) * 100, entry.kopecks > 0 ? 2 : 0);
-        const label = formatDateLabel(entry.date, period);
+        const label = formatDateLabel(entry.date, period, t);
+        const requestsLabel = t("requestsShort", { count: entry.requests });
         return (
           <div
             key={entry.date}
             className="group relative flex flex-1 flex-col items-center justify-end"
-            title={`${label}: ${formatMoney(entry.kopecks)}, ${entry.requests} запр.`}
+            title={`${label}: ${formatMoney(entry.kopecks)}, ${requestsLabel}`}
           >
             <div
               className="w-full rounded-t-[3px] transition-all duration-200"
@@ -237,7 +242,7 @@ function BarChart({ days, period }: { days: StarsUsageDay[]; period: number }) {
             {/* Tooltip */}
             {entry.kopecks > 0 && (
               <div className="pointer-events-none absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 z-10 hidden rounded-[7px] bg-[#1A1A1A] px-2 py-1 text-[12px] text-white whitespace-nowrap group-hover:block">
-                {label}<br />{formatMoney(entry.kopecks)}, {entry.requests} запр.
+                {label}<br />{formatMoney(entry.kopecks)}, {requestsLabel}
               </div>
             )}
           </div>
@@ -262,15 +267,20 @@ function groupByWeek(days: StarsUsageDay[]): StarsUsageDay[] {
   return Object.values(weeks).sort((a, b) => a.date.localeCompare(b.date));
 }
 
-function formatDateLabel(date: string, period: number) {
+function formatDateLabel(date: string, period: number, t: ReturnType<typeof useTranslations>) {
   const d = new Date(date + "T00:00:00");
   if (period <= 7) return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
   if (period <= 30) return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
-  return `нед. ${d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}`;
+  return t("weekOf", { date: d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" }) });
 }
 
 // ── Top models list ────────────────────────────────────────────────────────────
-function ModelList({ models }: { models: StarsUsageModel[] }) {
+function ModelList({
+  models, t,
+}: {
+  models: StarsUsageModel[];
+  t: ReturnType<typeof useTranslations>;
+}) {
   const maxKopecks = Math.max(...models.map((m) => m.kopecks), 1);
 
   return (
@@ -299,7 +309,7 @@ function ModelList({ models }: { models: StarsUsageModel[] }) {
               </div>
             </div>
             <span className="w-12 shrink-0 text-right text-[13px] text-[rgba(13,13,13,0.38)] dark:text-[rgba(236,236,236,0.30)]">
-              {m.requests} запр.
+              {t("requestsShort", { count: m.requests })}
             </span>
           </div>
         );
@@ -308,11 +318,11 @@ function ModelList({ models }: { models: StarsUsageModel[] }) {
   );
 }
 
-function EmptyChart() {
+function EmptyChart({ t }: { t: ReturnType<typeof useTranslations> }) {
   return (
     <div className="flex h-40 items-center justify-center">
       <p className="text-[15px] text-[rgba(13,13,13,0.40)]">
-        Нет данных за выбранный период
+        {t("noData")}
       </p>
     </div>
   );

@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { CheckCircle, XCircle, AlertCircle, RefreshCw } from "lucide-react";
 
 interface ServiceCheck {
@@ -26,15 +27,6 @@ interface StatusData {
   };
   timestamp: number;
 }
-
-const SERVICES: { key: keyof StatusData["checks"]; label: string; optional?: boolean }[] = [
-  { key: "database", label: "База данных" },
-  { key: "cache", label: "Кэш / очередь (Redis)" },
-  { key: "upstream", label: "AI-сервис" },
-  { key: "preview", label: "Studio Preview (E2B)" },
-  // Показывается только когда Sandbox API включён (бэкенд отдаёт check)
-  { key: "sandboxes", label: "Sandbox API", optional: true },
-];
 
 function StatusIcon({ status }: { status: string }) {
   if (status === "operational")
@@ -65,9 +57,19 @@ function PreviewMeta({ check }: { check: ServiceCheck }) {
 }
 
 export default function StatusPage() {
+  const t = useTranslations("status");
   const [data, setData] = useState<StatusData | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+
+  const SERVICES: { key: keyof StatusData["checks"]; label: string; optional?: boolean }[] = [
+    { key: "database", label: t("serviceDatabase") },
+    { key: "cache", label: t("serviceCache") },
+    { key: "upstream", label: t("serviceUpstream") },
+    { key: "preview", label: t("servicePreview") },
+    // Показывается только когда Sandbox API включён (бэкенд отдаёт check)
+    { key: "sandboxes", label: t("serviceSandboxes"), optional: true },
+  ];
 
   const fetchStatus = async () => {
     setLoading(true);
@@ -106,14 +108,15 @@ export default function StatusPage() {
           ].join(" ")}
         >
           <StatusIcon status={overall} />
-          {overall === "operational" ? "Все системы работают" : "Есть проблемы"}
+          {overall === "operational" ? t("allOperational") : t("hasIssues")}
         </div>
         <h1 className="text-[28px] font-bold text-[#1A1A1A]">
-          Статус aineron.ru
+          {t("pageTitle")}
         </h1>
         <p className="mt-2 text-[16px] text-[rgba(13,13,13,0.5)]">
-          Обновляется каждую минуту
-          {lastRefreshed && ` · Последнее: ${lastRefreshed.toLocaleTimeString("ru-RU")}`}
+          {t("updatesEveryMinute")}
+          {lastRefreshed &&
+            t("lastRefreshedAt", { time: lastRefreshed.toLocaleTimeString("ru-RU") })}
         </p>
       </div>
 
@@ -141,13 +144,13 @@ export default function StatusPage() {
               </div>
               <div className="flex items-center gap-3 text-[15px] text-[rgba(13,13,13,0.5)]">
                 {check?.latency_ms !== undefined && (
-                  <span>{check.latency_ms} мс</span>
+                  <span>{t("latencyMs", { ms: check.latency_ms })}</span>
                 )}
                 {check?.active_models !== undefined && (
-                  <span>{check.active_models} моделей</span>
+                  <span>{t("activeModels", { count: check.active_models })}</span>
                 )}
                 {check?.active_sessions !== undefined && (
-                  <span>{check.active_sessions} активных</span>
+                  <span>{t("activeSessions", { count: check.active_sessions })}</span>
                 )}
                 {svc.key === "preview" && check && (
                   <PreviewMeta check={check} />
@@ -157,10 +160,10 @@ export default function StatusPage() {
                 )}
                 <span className="capitalize">
                   {check?.status === "operational"
-                    ? "Работает"
+                    ? t("statusOperational")
                     : check?.status === "degraded"
-                    ? "Сбой"
-                    : "Неизвестно"}
+                    ? t("statusDegraded")
+                    : t("statusUnknown")}
                 </span>
               </div>
             </div>
@@ -174,7 +177,7 @@ export default function StatusPage() {
         className="flex items-center gap-2 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-4 py-2 text-[15px] font-medium text-[rgba(13,13,13,0.7)] transition-all hover:border-[rgba(13,13,13,0.3)] disabled:opacity-50"
       >
         <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-        Обновить
+        {t("refreshButton")}
       </button>
     </div>
   );

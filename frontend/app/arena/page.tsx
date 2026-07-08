@@ -3,10 +3,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { Trophy, Swords, TrendingUp } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { getArenaLeaderboard } from "@/lib/api/client";
 import type { ArenaEntry } from "@/lib/api/types";
 
 export default function ArenaPage() {
+  const t = useTranslations("arena");
   const { data, isLoading, error } = useQuery({
     queryKey: ["arena-leaderboard"],
     queryFn: getArenaLeaderboard,
@@ -24,23 +26,23 @@ export default function ArenaPage() {
           </h1>
         </div>
         <p className="text-[16px] text-[rgba(13,13,13,0.50)] dark:text-[rgba(236,236,236,0.45)]">
-          Elo-рейтинг моделей на основе сравнительных поединков. Голосуйте на странице{" "}
+          {t("eloDescription")}{" "}
           <Link href="/compare" className="text-[#D97757] hover:underline">
-            сравнения
+            {t("compareLink")}
           </Link>{" "}
-          — рейтинг обновляется автоматически.
+          {t("eloDescriptionSuffix")}
         </p>
       </div>
 
       {isLoading && (
         <div className="text-center py-16 text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.30)]">
-          Загрузка рейтинга...
+          {t("loadingLeaderboard")}
         </div>
       )}
 
       {error && (
         <div className="rounded-[12px] border border-[rgba(231,76,60,0.25)] bg-[rgba(231,76,60,0.06)] p-4 text-[15px] text-[#e74c3c]">
-          Не удалось загрузить рейтинг. Попробуйте позже.
+          {t("loadError")}
         </div>
       )}
 
@@ -48,9 +50,9 @@ export default function ArenaPage() {
         <div className="rounded-[12px] border border-dashed border-[rgba(13,13,13,0.15)] px-6 py-12 text-center dark:border-[rgba(255,255,255,0.10)]">
           <Swords size={32} className="mx-auto mb-3 text-[rgba(13,13,13,0.25)] dark:text-[rgba(236,236,236,0.25)]" />
           <p className="text-[16px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.40)]">
-            Арена пуста. Сыграйте первый матч на странице{" "}
+            {t("emptyStateText")}{" "}
             <Link href="/compare" className="text-[#D97757] hover:underline">
-              сравнения моделей
+              {t("compareModelsLink")}
             </Link>
             .
           </p>
@@ -69,13 +71,13 @@ export default function ArenaPage() {
                   #
                 </th>
                 <th className="px-4 py-3 font-semibold text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.45)]">
-                  Модель
+                  {t("tableModel")}
                 </th>
                 <th className="px-4 py-3 text-right font-semibold text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.45)]">
                   Elo
                 </th>
                 <th className="px-4 py-3 text-right font-semibold text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.45)]">
-                  Матчей
+                  {t("tableMatches")}
                 </th>
               </tr>
             </thead>
@@ -96,7 +98,7 @@ export default function ArenaPage() {
             style={{ background: "var(--surface-inverse)" }}
           >
             <Swords size={14} />
-            Сыграть матч
+            {t("playMatch")}
           </Link>
         </div>
       )}

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2, Copy, Key, ExternalLink } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface OAuthApp {
   id: number;
@@ -41,6 +42,7 @@ async function deleteOAuthApp(id: number): Promise<void> {
 }
 
 export default function OAuthAppsPage() {
+  const t = useTranslations("accountOauthApps");
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const [redirectUris, setRedirectUris] = useState("");
@@ -80,9 +82,9 @@ export default function OAuthAppsPage() {
     <div className="mx-auto max-w-3xl px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-[20px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">OAuth-приложения</h1>
+          <h1 className="text-[20px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">{t("title")}</h1>
           <p className="mt-1 text-[15px] text-[rgba(13,13,13,0.50)] dark:text-[rgba(236,236,236,0.45)]">
-            Сторонние приложения с доступом через Telegram-аутентификацию
+            {t("subtitle")}
           </p>
         </div>
         <button
@@ -90,7 +92,7 @@ export default function OAuthAppsPage() {
           className="flex items-center gap-2 rounded-lg bg-[#D97757] px-4 py-2 text-[15px] font-medium text-white hover:bg-[#C4623E]"
         >
           <Plus size={14} />
-          Создать
+          {t("create")}
         </button>
       </div>
 
@@ -99,7 +101,7 @@ export default function OAuthAppsPage() {
           <div className="space-y-3">
             <div>
               <label className="mb-1 block text-[14px] font-medium text-[rgba(13,13,13,0.60)] dark:text-[rgba(236,236,236,0.50)]">
-                Название приложения
+                {t("appNameLabel")}
               </label>
               <input
                 value={name}
@@ -110,7 +112,7 @@ export default function OAuthAppsPage() {
             </div>
             <div>
               <label className="mb-1 block text-[14px] font-medium text-[rgba(13,13,13,0.60)] dark:text-[rgba(236,236,236,0.50)]">
-                Redirect URIs (по одному на строку)
+                {t("redirectUrisLabel")}
               </label>
               <textarea
                 value={redirectUris}
@@ -127,13 +129,13 @@ export default function OAuthAppsPage() {
                 disabled={!name.trim() || !redirectUris.trim() || create.isPending}
                 className="rounded-lg bg-[#D97757] px-4 py-2 text-[15px] font-medium text-white disabled:opacity-50 hover:bg-[#C4623E]"
               >
-                {create.isPending ? "Создание..." : "Создать"}
+                {create.isPending ? t("creating") : t("create")}
               </button>
               <button
                 onClick={() => setFormOpen(false)}
                 className="rounded-lg border border-[rgba(13,13,13,0.12)] px-4 py-2 text-[15px] text-[rgba(13,13,13,0.60)] hover:bg-[rgba(13,13,13,0.04)] dark:border-[rgba(255,255,255,0.10)] dark:text-[rgba(236,236,236,0.50)]"
               >
-                Отмена
+                {t("cancel")}
               </button>
             </div>
           </div>
@@ -141,15 +143,15 @@ export default function OAuthAppsPage() {
       )}
 
       {isLoading ? (
-        <div className="py-16 text-center text-[15px] text-[rgba(13,13,13,0.40)]">Загрузка...</div>
+        <div className="py-16 text-center text-[15px] text-[rgba(13,13,13,0.40)]">{t("loading")}</div>
       ) : apps.length === 0 ? (
         <div className="rounded-xl border border-dashed border-[rgba(13,13,13,0.12)] py-16 text-center dark:border-[rgba(255,255,255,0.10)]">
           <Key size={32} className="mx-auto mb-3 text-[rgba(13,13,13,0.20)] dark:text-[rgba(236,236,236,0.18)]" />
           <p className="text-[16px] text-[rgba(13,13,13,0.50)] dark:text-[rgba(236,236,236,0.42)]">
-            Нет OAuth-приложений
+            {t("emptyTitle")}
           </p>
           <p className="mt-1 text-[14px] text-[rgba(13,13,13,0.35)]">
-            Создайте приложение, чтобы пользователи могли входить через Telegram
+            {t("emptyDescription")}
           </p>
         </div>
       ) : (
@@ -163,7 +165,7 @@ export default function OAuthAppsPage() {
                 <div>
                   <p className="text-[16px] font-medium text-[#1A1A1A] dark:text-[#EDE8E3]">{app.name}</p>
                   <p className="mt-0.5 text-[13px] text-[rgba(13,13,13,0.40)]">
-                    Создано {new Date(app.created).toLocaleDateString("ru")}
+                    {t("createdOn", { date: new Date(app.created).toLocaleDateString("ru") })}
                   </p>
                 </div>
                 <button
@@ -175,12 +177,14 @@ export default function OAuthAppsPage() {
               </div>
               <div className="space-y-2">
                 <CredentialRow
+                  t={t}
                   label="Client ID"
                   value={app.client_id}
                   copied={copiedId === `cid-${app.id}`}
                   onCopy={() => copy(app.client_id, `cid-${app.id}`)}
                 />
                 <CredentialRow
+                  t={t}
                   label="Client Secret"
                   value={app.client_secret}
                   copied={copiedId === `cs-${app.id}`}
@@ -201,7 +205,7 @@ export default function OAuthAppsPage() {
                   className="flex items-center gap-1 text-[14px] text-[#D97757] hover:underline"
                 >
                   <ExternalLink size={12} />
-                  Тест авторизации
+                  {t("testAuth")}
                 </a>
               </div>
             </div>
@@ -213,12 +217,14 @@ export default function OAuthAppsPage() {
 }
 
 function CredentialRow({
+  t,
   label,
   value,
   copied,
   onCopy,
   secret,
 }: {
+  t: ReturnType<typeof useTranslations>;
   label: string;
   value: string;
   copied: boolean;
@@ -239,12 +245,12 @@ function CredentialRow({
             onClick={() => setShow(!show)}
             className="text-[rgba(13,13,13,0.35)] hover:text-[#1A1A1A] dark:hover:text-[#EDE8E3]"
           >
-            {show ? <span className="text-[13px]">скрыть</span> : <span className="text-[13px]">показать</span>}
+            {show ? <span className="text-[13px]">{t("hide")}</span> : <span className="text-[13px]">{t("show")}</span>}
           </button>
         )}
         <button onClick={onCopy} className="text-[rgba(13,13,13,0.35)] hover:text-[#D97757]">
           {copied ? (
-            <span className="text-[13px] text-[#22c55e]">скопировано</span>
+            <span className="text-[13px] text-[#22c55e]">{t("copied")}</span>
           ) : (
             <Copy size={13} />
           )}

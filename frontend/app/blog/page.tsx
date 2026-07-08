@@ -1,13 +1,16 @@
 ﻿import type { Metadata } from "next";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { CalendarDays, Eye } from "lucide-react";
 import { serverListBlogPosts, serverListBlogCategories } from "@/lib/api/server";
 
-export const metadata: Metadata = {
-  title: "Блог — AI-нейросети, гайды и сравнения",
-  description:
-    "Статьи о нейросетях без VPN: подключение GPT, Claude, Gemini через API, сравнения моделей, гайды для разработчиков.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("blog");
+  return {
+    title: t("metaTitle"),
+    description: t("metaDescription"),
+  };
+}
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +19,7 @@ export default async function BlogListPage({
 }: {
   searchParams: { category?: string };
 }) {
+  const t = await getTranslations("blog");
   const [posts, categories] = await Promise.all([
     serverListBlogPosts({ category: searchParams.category }),
     serverListBlogCategories(),
@@ -27,8 +31,8 @@ export default async function BlogListPage({
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Blog",
-    name: "Блог aineron.ru",
-    description: "Статьи о нейросетях и AI API без VPN",
+    name: t("jsonLdName"),
+    description: t("jsonLdDescription"),
     url: "https://aineron.ru/blog/",
     inLanguage: "ru",
   };
@@ -42,9 +46,9 @@ export default async function BlogListPage({
 
       <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
         <div className="mb-8">
-          <h1 className="text-[28px] font-bold text-[#1A1A1A]">Блог</h1>
+          <h1 className="text-[28px] font-bold text-[#1A1A1A]">{t("pageTitle")}</h1>
           <p className="mt-2 text-[17px] text-[rgba(13,13,13,0.6)]">
-            Гайды, сравнения и новости об AI-нейросетях
+            {t("pageSubtitle")}
           </p>
         </div>
 
@@ -60,7 +64,7 @@ export default async function BlogListPage({
                   : "border border-[rgba(13,13,13,0.15)] text-[rgba(13,13,13,0.65)] hover:border-[rgba(13,13,13,0.3)]",
               ].join(" ")}
             >
-              Все
+              {t("allCategories")}
             </Link>
             {safeCategories.map((cat) => (
               <Link
@@ -81,7 +85,7 @@ export default async function BlogListPage({
 
         {safePosts.length === 0 ? (
           <div className="py-16 text-center text-[16px] text-[rgba(13,13,13,0.45)]">
-            Статей пока нет
+            {t("noPostsYet")}
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">

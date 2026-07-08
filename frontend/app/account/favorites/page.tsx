@@ -4,13 +4,14 @@ import { useState } from "react";
 import Link from "next/link";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Heart, ImageOff, Video, Wand2, Download, ArrowLeft } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { getFavorites, favoriteGeneration, downloadImageUrl } from "@/lib/api/client";
 
 type Filter = "all" | "image" | "video";
-const TABS: { key: Filter; label: string }[] = [
-  { key: "all", label: "Все" },
-  { key: "image", label: "Изображения" },
-  { key: "video", label: "Видео" },
+const TAB_KEYS: { key: Filter; labelKey: "tabAll" | "tabImages" | "tabVideo" }[] = [
+  { key: "all", labelKey: "tabAll" },
+  { key: "image", labelKey: "tabImages" },
+  { key: "video", labelKey: "tabVideo" },
 ];
 
 function formatDate(iso: string) {
@@ -18,6 +19,7 @@ function formatDate(iso: string) {
 }
 
 export default function FavoritesPage() {
+  const t = useTranslations("accountFavorites");
   const qc = useQueryClient();
   const [filter, setFilter] = useState<Filter>("all");
 
@@ -52,26 +54,26 @@ export default function FavoritesPage() {
             <Heart size={20} className="text-[#e74c3c]" />
           </div>
           <div>
-            <h1 className="text-[20px] font-bold leading-tight text-[#1A1A1A] dark:text-[#EDE8E3]">Избранное</h1>
+            <h1 className="text-[20px] font-bold leading-tight text-[#1A1A1A] dark:text-[#EDE8E3]">{t("title")}</h1>
             <p className="text-[15px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.4)]">
-              Сохранённые изображения и видео{total > 0 ? ` · ${total}` : ""}
+              {t("subtitle")}{total > 0 ? ` · ${total}` : ""}
             </p>
           </div>
         </div>
 
         {/* Filter tabs */}
         <div className="mb-5 flex gap-1 rounded-[10px] border border-[rgba(13,13,13,0.10)] bg-[rgba(13,13,13,0.03)] p-1 w-fit dark:border-[rgba(255,255,255,0.10)] dark:bg-[rgba(255,255,255,0.04)]">
-          {TABS.map((t) => (
+          {TAB_KEYS.map((tab) => (
             <button
-              key={t.key}
-              onClick={() => setFilter(t.key)}
+              key={tab.key}
+              onClick={() => setFilter(tab.key)}
               className={`rounded-[7px] px-4 py-1.5 text-[15px] font-medium transition-all ${
-                filter === t.key
+                filter === tab.key
                   ? "bg-white text-[#1A1A1A] shadow-sm dark:bg-[rgba(255,255,255,0.12)] dark:text-[#EDE8E3]"
                   : "text-[rgba(13,13,13,0.55)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.5)] dark:hover:text-[#EDE8E3]"
               }`}
             >
-              {t.label}
+              {t(tab.labelKey)}
             </button>
           ))}
         </div>
@@ -88,16 +90,16 @@ export default function FavoritesPage() {
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[rgba(13,13,13,0.05)]">
               <ImageOff size={28} className="text-[rgba(13,13,13,0.25)]" />
             </div>
-            <p className="text-[17px] font-medium text-[#1A1A1A] dark:text-[#EDE8E3]">Пусто</p>
+            <p className="text-[17px] font-medium text-[#1A1A1A] dark:text-[#EDE8E3]">{t("emptyTitle")}</p>
             <p className="mt-1 text-[15px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.4)]">
-              Нажмите «Сохранить» под изображением в чате, чтобы добавить его сюда
+              {t("emptyDescription")}
             </p>
             <Link
               href="/models/"
               className="mt-4 inline-flex items-center gap-1.5 rounded-[8px] bg-[#D97757] px-4 py-2 text-[15px] font-medium text-white transition-colors hover:bg-[#C4623E]"
             >
               <Wand2 size={14} />
-              Создать изображение
+              {t("createImage")}
             </Link>
           </div>
         ) : (
@@ -117,7 +119,7 @@ export default function FavoritesPage() {
                       <div className="absolute top-2 left-2">
                         <span className="flex items-center gap-1 rounded-[5px] bg-black/50 px-1.5 py-0.5 text-[12px] text-white">
                           <Video size={9} />
-                          Видео
+                          {t("videoBadge")}
                         </span>
                       </div>
                     )}
@@ -125,14 +127,14 @@ export default function FavoritesPage() {
                     <div className="absolute inset-0 flex items-end justify-end gap-1.5 p-2 opacity-0 transition-opacity group-hover:opacity-100">
                       <button
                         onClick={() => downloadImageUrl(item.image_url, `aineron-${item.id}.${item.media_type === "video" ? "mp4" : "png"}`)}
-                        title="Скачать"
+                        title={t("download")}
                         className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-white/80 text-[#1A1A1A] shadow-sm backdrop-blur-sm hover:bg-white"
                       >
                         <Download size={13} />
                       </button>
                       <button
                         onClick={() => unfavoriteMut.mutate(item.id)}
-                        title="Убрать из избранного"
+                        title={t("removeFromFavorites")}
                         className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-white/80 text-[#e74c3c] shadow-sm backdrop-blur-sm hover:bg-white"
                         disabled={unfavoriteMut.isPending}
                       >
@@ -169,7 +171,7 @@ export default function FavoritesPage() {
                   disabled={isFetchingNextPage}
                   className="h-10 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-6 text-[15px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:bg-[rgba(13,13,13,0.04)] disabled:opacity-50 dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.65)]"
                 >
-                  {isFetchingNextPage ? "Загрузка..." : "Загрузить ещё"}
+                  {isFetchingNextPage ? t("loadingMore") : t("loadMore")}
                 </button>
               </div>
             )}

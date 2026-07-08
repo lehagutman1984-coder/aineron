@@ -5,15 +5,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Video, Sparkles, ImageOff, Wand2, Search, Copy, Check, Heart } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { getGallery, likeGeneration } from "@/lib/api/client";
 import type { GalleryItem } from "@/lib/api/types";
 
 type Filter = "all" | "image" | "video";
 
-const TABS: { key: Filter; label: string }[] = [
-  { key: "all", label: "Все" },
-  { key: "image", label: "Изображения" },
-  { key: "video", label: "Видео" },
+const TAB_KEYS: { key: Filter; labelKey: "tabAll" | "tabImages" | "tabVideo" }[] = [
+  { key: "all", labelKey: "tabAll" },
+  { key: "image", labelKey: "tabImages" },
+  { key: "video", labelKey: "tabVideo" },
 ];
 
 const PER_PAGE = 24;
@@ -29,7 +30,13 @@ function formatDate(iso: string) {
   });
 }
 
-function GalleryCard({ item, onTry }: { item: GalleryItem; onTry: (prompt: string) => void }) {
+function GalleryCard({
+  t, item, onTry,
+}: {
+  t: ReturnType<typeof useTranslations>;
+  item: GalleryItem;
+  onTry: (prompt: string) => void;
+}) {
   const [copied, setCopied] = useState(false);
   const [likes, setLikes] = useState(item.likes ?? 0);
   const [liked, setLiked] = useState(false);
@@ -72,7 +79,7 @@ function GalleryCard({ item, onTry }: { item: GalleryItem; onTry: (prompt: strin
 
       <div className="p-3">
         <p className="line-clamp-2 text-[14px] leading-relaxed text-[rgba(13,13,13,0.65)]">
-          {item.prompt || "Без описания"}
+          {item.prompt || t("noDescription")}
         </p>
         <div className="mt-1.5 flex flex-wrap items-center gap-1">
           {item.model_name && (
@@ -91,7 +98,7 @@ function GalleryCard({ item, onTry }: { item: GalleryItem; onTry: (prompt: strin
                 setTimeout(() => setCopied(false), 1500);
               }}
               className="ml-auto flex h-6 w-6 items-center justify-center rounded-[5px] text-[rgba(13,13,13,0.35)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A]"
-              title="Скопировать промпт"
+              title={t("copyPrompt")}
             >
               {copied ? <Check size={12} /> : <Copy size={12} />}
             </button>
@@ -104,12 +111,12 @@ function GalleryCard({ item, onTry }: { item: GalleryItem; onTry: (prompt: strin
               className="inline-flex items-center gap-1.5 rounded-[7px] bg-[rgba(217,119,87,0.08)] px-2.5 py-1.5 text-[14px] font-medium text-[#D97757] transition-colors hover:bg-[rgba(217,119,87,0.14)]"
             >
               <Wand2 size={12} />
-              Попробовать
+              {t("tryPrompt")}
             </button>
           )}
           <button
             onClick={handleLike}
-            title={liked ? "Уже лайкнуто" : "Нравится"}
+            title={liked ? t("alreadyLiked") : t("like")}
             className={`ml-auto flex items-center gap-1 rounded-[7px] px-2 py-1.5 text-[14px] font-medium transition-colors ${
               liked ? "text-[#e74c3c]" : "text-[rgba(13,13,13,0.38)] hover:text-[#e74c3c]"
             }`}
@@ -124,6 +131,7 @@ function GalleryCard({ item, onTry }: { item: GalleryItem; onTry: (prompt: strin
 }
 
 export default function GalleryPage() {
+  const t = useTranslations("gallery");
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>("all");
   const [model, setModel] = useState<string>("");
@@ -131,8 +139,8 @@ export default function GalleryPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search), 500);
-    return () => clearTimeout(t);
+    const timeoutId = setTimeout(() => setDebouncedSearch(search), 500);
+    return () => clearTimeout(timeoutId);
   }, [search]);
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
@@ -172,7 +180,7 @@ export default function GalleryPage() {
             href="/models/"
             className="rounded-[8px] bg-[#D97757] px-4 py-1.5 text-[15px] font-medium text-white transition-colors hover:bg-[#C4623E]"
           >
-            Создать своё
+            {t("createOwn")}
           </Link>
         </div>
       </header>
@@ -183,9 +191,9 @@ export default function GalleryPage() {
             <Sparkles size={20} className="text-[#D97757]" />
           </div>
           <div>
-            <h1 className="text-[22px] font-bold leading-tight text-[#1A1A1A]">Публичная галерея</h1>
+            <h1 className="text-[22px] font-bold leading-tight text-[#1A1A1A]">{t("title")}</h1>
             <p className="text-[15px] text-[rgba(13,13,13,0.45)]">
-              Работы пользователей Aineron{total > 0 ? ` · ${total}` : ""}
+              {t("subtitle")}{total > 0 ? ` · ${total}` : ""}
             </p>
           </div>
         </div>
@@ -196,7 +204,7 @@ export default function GalleryPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Поиск по промпту..."
+            placeholder={t("searchPlaceholder")}
             className="w-full rounded-[10px] border border-[rgba(13,13,13,0.12)] bg-white px-4 py-2 pl-10 text-[15px] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] dark:border-[rgba(255,255,255,0.1)] dark:bg-[rgba(255,255,255,0.06)] dark:text-[#EDE8E3]"
           />
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[rgba(13,13,13,0.35)]" />
@@ -205,17 +213,17 @@ export default function GalleryPage() {
         {/* Filter bar */}
         <div className="mb-2 flex flex-wrap items-center gap-2">
           <div className="flex gap-1 rounded-[10px] border border-[rgba(13,13,13,0.10)] bg-[rgba(13,13,13,0.03)] p-1">
-            {TABS.map((t) => (
+            {TAB_KEYS.map((tab) => (
               <button
-                key={t.key}
-                onClick={() => setFilter(t.key)}
+                key={tab.key}
+                onClick={() => setFilter(tab.key)}
                 className={`rounded-[7px] px-4 py-1.5 text-[15px] font-medium transition-all ${
-                  filter === t.key
+                  filter === tab.key
                     ? "bg-white text-[#1A1A1A] shadow-sm"
                     : "text-[rgba(13,13,13,0.55)] hover:text-[#1A1A1A]"
                 }`}
               >
-                {t.label}
+                {t(tab.labelKey)}
               </button>
             ))}
           </div>
@@ -231,7 +239,7 @@ export default function GalleryPage() {
                 : "border-[rgba(13,13,13,0.12)] text-[rgba(13,13,13,0.55)] hover:border-[rgba(13,13,13,0.25)]"
             }`}
           >
-            Все модели
+            {t("allModels")}
           </button>
           {MODEL_CHIPS.map((m) => (
             <button
@@ -264,16 +272,16 @@ export default function GalleryPage() {
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[rgba(13,13,13,0.05)]">
               <ImageOff size={28} className="text-[rgba(13,13,13,0.25)]" />
             </div>
-            <p className="text-[17px] font-medium text-[#1A1A1A]">Пока пусто</p>
+            <p className="text-[17px] font-medium text-[#1A1A1A]">{t("emptyTitle")}</p>
             <p className="mt-1 text-[15px] text-[rgba(13,13,13,0.45)]">
-              Здесь появятся публичные работы пользователей
+              {t("emptyDescription")}
             </p>
           </div>
         ) : (
           <>
             <div className="columns-2 gap-3 sm:columns-3 lg:columns-4">
               {items.map((item) => (
-                <GalleryCard key={item.id} item={item} onTry={handleTry} />
+                <GalleryCard key={item.id} t={t} item={item} onTry={handleTry} />
               ))}
             </div>
 
@@ -284,7 +292,7 @@ export default function GalleryPage() {
                   disabled={isFetchingNextPage}
                   className="h-10 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-6 text-[15px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:bg-[rgba(13,13,13,0.04)] disabled:opacity-50"
                 >
-                  {isFetchingNextPage ? "Загрузка..." : "Загрузить ещё"}
+                  {isFetchingNextPage ? t("loadingMore") : t("loadMore")}
                 </button>
               </div>
             )}

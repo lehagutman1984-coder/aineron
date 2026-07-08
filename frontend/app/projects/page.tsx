@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState, useRef, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import {
@@ -36,14 +37,15 @@ function ProjectIcon({ name, size = 16 }: { name: string; size?: number }) {
 
 // ── Kanban columns config ──────────────────────────────────────
 type Status = "active" | "paused" | "done";
-const COLUMNS: { id: Status; label: string; color: string }[] = [
-  { id: "active", label: "Активные", color: "#D97757" },
-  { id: "paused", label: "Пауза", color: "#e67e22" },
-  { id: "done",   label: "Завершённые", color: "#22a85a" },
+const COLUMN_META: { id: Status; color: string }[] = [
+  { id: "active", color: "#D97757" },
+  { id: "paused", color: "#e67e22" },
+  { id: "done",   color: "#22a85a" },
 ];
 
 // ── Create modal ──────────────────────────────────────────────
 function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (p: Project) => void }) {
+  const t = useTranslations("projects");
   const [name, setName] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
   const [color, setColor] = useState(COLORS[0]);
@@ -60,7 +62,7 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
       const project = await createProject({ name: name.trim(), system_prompt: systemPrompt.trim(), color, icon });
       onCreated(project);
     } catch {
-      setError("Не удалось создать проект");
+      setError(t("createError"));
     } finally {
       setLoading(false);
     }
@@ -70,23 +72,23 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
       <div className="w-full max-w-[440px] rounded-[18px] border border-[rgba(13,13,13,0.10)] bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-[16px] font-semibold text-[#1A1A1A]">Новый проект</h2>
+          <h2 className="text-[16px] font-semibold text-[#1A1A1A]">{t("modalTitle")}</h2>
           <button onClick={onClose} className="rounded-[7px] p-1 text-[rgba(13,13,13,0.4)] hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A] transition-colors">
             <X size={16} />
           </button>
         </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
-            <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.55)]">Название</label>
+            <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.55)]">{t("nameLabel")}</label>
             <input
               autoFocus value={name} onChange={(e) => setName(e.target.value)}
-              placeholder="Мой проект" maxLength={100}
+              placeholder={t("namePlaceholder")} maxLength={100}
               className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[16px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.55)]">Иконка</label>
+              <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.55)]">{t("iconLabel")}</label>
               <div className="flex flex-wrap gap-1.5">
                 {ICONS.map((ic) => (
                   <button key={ic} type="button" onClick={() => setIcon(ic)}
@@ -98,7 +100,7 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
               </div>
             </div>
             <div>
-              <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.55)]">Цвет</label>
+              <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.55)]">{t("colorLabel")}</label>
               <div className="flex flex-wrap gap-1.5">
                 {COLORS.map((c) => (
                   <button key={c} type="button" onClick={() => setColor(c)}
@@ -110,18 +112,18 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
           </div>
           <div>
             <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.55)]">
-              Системный промт <span className="text-[rgba(13,13,13,0.35)]">(необязательно)</span>
+              {t("systemPromptLabel")} <span className="text-[rgba(13,13,13,0.35)]">{t("optional")}</span>
             </label>
             <textarea value={systemPrompt} onChange={(e) => setSystemPrompt(e.target.value)}
-              placeholder="Ты — помощник-программист, отвечай только на русском..." rows={3}
+              placeholder={t("systemPromptPlaceholder")} rows={3}
               className="w-full resize-none rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[15px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all" />
-            <p className="mt-1 text-[13px] text-[rgba(13,13,13,0.38)]">Применяется ко всем чатам в проекте автоматически</p>
+            <p className="mt-1 text-[13px] text-[rgba(13,13,13,0.38)]">{t("systemPromptHint")}</p>
           </div>
           {error && <div className="rounded-[8px] bg-[rgba(231,76,60,0.08)] px-3 py-2 text-[15px] text-[#e74c3c]">{error}</div>}
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={onClose} className="rounded-[8px] px-4 py-2 text-[15px] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.06)] transition-colors">Отмена</button>
+            <button type="button" onClick={onClose} className="rounded-[8px] px-4 py-2 text-[15px] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.06)] transition-colors">{t("cancel")}</button>
             <button type="submit" disabled={!name.trim() || loading} className="rounded-[8px] bg-[#D97757] px-4 py-2 text-[15px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 transition-colors">
-              {loading ? "Создание..." : "Создать"}
+              {loading ? t("creating") : t("create")}
             </button>
           </div>
         </form>
@@ -140,6 +142,7 @@ function ProjectCard({
   onDelete: (id: number) => void;
   onDragStart: (e: React.DragEvent, id: number) => void;
 }) {
+  const t = useTranslations("projects");
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   return (
@@ -160,15 +163,15 @@ function ProjectCard({
       {project.system_prompt ? (
         <p className="mb-3 line-clamp-2 text-[14px] leading-[1.5] text-[rgba(13,13,13,0.50)]">{project.system_prompt}</p>
       ) : (
-        <p className="mb-3 text-[14px] text-[rgba(13,13,13,0.32)]">Без системного промта</p>
+        <p className="mb-3 text-[14px] text-[rgba(13,13,13,0.32)]">{t("noSystemPrompt")}</p>
       )}
       <div className="flex items-center justify-between">
         <span className="flex items-center gap-1 text-[14px] text-[rgba(13,13,13,0.45)]">
           <MessageSquare size={12} />
-          {project.chat_count} чатов
+          {t("chatsCount", { count: project.chat_count })}
         </span>
         <Link href={`/projects/${project.id}/`} className="flex items-center gap-0.5 text-[14px] font-medium text-[#D97757] hover:text-[#C4623E] transition-colors">
-          Открыть <ChevronRight size={13} />
+          {t("open")} <ChevronRight size={13} />
         </Link>
       </div>
       {!confirmDelete ? (
@@ -178,9 +181,9 @@ function ProjectCard({
         </button>
       ) : (
         <div className="absolute right-3 top-3 flex items-center gap-1 rounded-[8px] border border-[rgba(231,76,60,0.20)] bg-white p-1.5 shadow-lg">
-          <span className="px-1 text-[13px] text-[rgba(13,13,13,0.55)]">Удалить?</span>
-          <button onClick={() => onDelete(project.id)} className="rounded-[5px] bg-[#e74c3c] px-2 py-0.5 text-[13px] font-medium text-white hover:bg-[#c0392b] transition-colors">Да</button>
-          <button onClick={() => setConfirmDelete(false)} className="rounded-[5px] px-1.5 py-0.5 text-[13px] text-[rgba(13,13,13,0.45)] hover:bg-[rgba(13,13,13,0.07)] transition-colors">Нет</button>
+          <span className="px-1 text-[13px] text-[rgba(13,13,13,0.55)]">{t("confirmDeleteQuestion")}</span>
+          <button onClick={() => onDelete(project.id)} className="rounded-[5px] bg-[#e74c3c] px-2 py-0.5 text-[13px] font-medium text-white hover:bg-[#c0392b] transition-colors">{t("yes")}</button>
+          <button onClick={() => setConfirmDelete(false)} className="rounded-[5px] px-1.5 py-0.5 text-[13px] text-[rgba(13,13,13,0.45)] hover:bg-[rgba(13,13,13,0.07)] transition-colors">{t("no")}</button>
         </div>
       )}
     </div>
@@ -201,6 +204,7 @@ function KanbanColumn({
   onDragStart: (e: React.DragEvent, id: number) => void;
   onDrop: (status: Status) => void;
 }) {
+  const t = useTranslations("projects");
   const [isDragOver, setIsDragOver] = useState(false);
 
   return (
@@ -228,7 +232,7 @@ function KanbanColumn({
         ))}
         {projects.length === 0 && (
           <div className="flex h-16 items-center justify-center rounded-[10px] border border-dashed border-[rgba(13,13,13,0.12)] text-[14px] text-[rgba(13,13,13,0.30)]">
-            Перетащи проект сюда
+            {t("dropHere")}
           </div>
         )}
       </div>
@@ -238,6 +242,7 @@ function KanbanColumn({
 
 // ── Grid card (non-kanban mode) ───────────────────────────────
 function GridCard({ project, onDelete }: { project: Project; onDelete: (id: number) => void }) {
+  const t = useTranslations("projects");
   const [confirmDelete, setConfirmDelete] = useState(false);
   return (
     <div className="group relative rounded-[14px] border border-[rgba(13,13,13,0.09)] bg-white p-5 transition-shadow hover:shadow-md">
@@ -248,12 +253,12 @@ function GridCard({ project, onDelete }: { project: Project; onDelete: (id: numb
       {project.system_prompt ? (
         <p className="mb-3 line-clamp-2 text-[14px] leading-[1.5] text-[rgba(13,13,13,0.50)]">{project.system_prompt}</p>
       ) : (
-        <p className="mb-3 text-[14px] text-[rgba(13,13,13,0.32)]">Без системного промта</p>
+        <p className="mb-3 text-[14px] text-[rgba(13,13,13,0.32)]">{t("noSystemPrompt")}</p>
       )}
       <div className="flex items-center justify-between">
-        <span className="flex items-center gap-1 text-[14px] text-[rgba(13,13,13,0.45)]"><MessageSquare size={12} />{project.chat_count} чатов</span>
+        <span className="flex items-center gap-1 text-[14px] text-[rgba(13,13,13,0.45)]"><MessageSquare size={12} />{t("chatsCount", { count: project.chat_count })}</span>
         <Link href={`/projects/${project.id}/`} className="flex items-center gap-0.5 text-[14px] font-medium text-[#D97757] hover:text-[#C4623E] transition-colors">
-          Открыть <ChevronRight size={13} />
+          {t("open")} <ChevronRight size={13} />
         </Link>
       </div>
       {!confirmDelete ? (
@@ -262,9 +267,9 @@ function GridCard({ project, onDelete }: { project: Project; onDelete: (id: numb
         </button>
       ) : (
         <div className="absolute right-3 top-3 flex items-center gap-1 rounded-[8px] border border-[rgba(231,76,60,0.20)] bg-white p-1.5 shadow-lg">
-          <span className="px-1 text-[13px] text-[rgba(13,13,13,0.55)]">Удалить?</span>
-          <button onClick={() => onDelete(project.id)} className="rounded-[5px] bg-[#e74c3c] px-2 py-0.5 text-[13px] font-medium text-white hover:bg-[#c0392b] transition-colors">Да</button>
-          <button onClick={() => setConfirmDelete(false)} className="rounded-[5px] px-1.5 py-0.5 text-[13px] text-[rgba(13,13,13,0.45)] hover:bg-[rgba(13,13,13,0.07)] transition-colors">Нет</button>
+          <span className="px-1 text-[13px] text-[rgba(13,13,13,0.55)]">{t("confirmDeleteQuestion")}</span>
+          <button onClick={() => onDelete(project.id)} className="rounded-[5px] bg-[#e74c3c] px-2 py-0.5 text-[13px] font-medium text-white hover:bg-[#c0392b] transition-colors">{t("yes")}</button>
+          <button onClick={() => setConfirmDelete(false)} className="rounded-[5px] px-1.5 py-0.5 text-[13px] text-[rgba(13,13,13,0.45)] hover:bg-[rgba(13,13,13,0.07)] transition-colors">{t("no")}</button>
         </div>
       )}
     </div>
@@ -273,10 +278,18 @@ function GridCard({ project, onDelete }: { project: Project; onDelete: (id: numb
 
 // ── Page ──────────────────────────────────────────────────────
 export default function ProjectsPage() {
+  const t = useTranslations("projects");
   const qc = useQueryClient();
   const [showModal, setShowModal] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "kanban">("grid");
   const dragIdRef = useRef<number | null>(null);
+
+  const COLUMN_LABELS: Record<Status, string> = {
+    active: t("columnActive"),
+    paused: t("columnPaused"),
+    done: t("columnDone"),
+  };
+  const COLUMNS = COLUMN_META.map((c) => ({ ...c, label: COLUMN_LABELS[c.id] }));
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ["projects"],
@@ -325,9 +338,9 @@ export default function ProjectsPage() {
       {/* Header */}
       <div className="mb-7 flex items-center justify-between">
         <div>
-          <h1 className="text-[24px] font-bold text-[#1A1A1A]">Проекты</h1>
+          <h1 className="text-[24px] font-bold text-[#1A1A1A]">{t("title")}</h1>
           <p className="mt-0.5 text-[16px] text-[rgba(13,13,13,0.50)]">
-            Группируйте чаты по задачам и задавайте общий системный промт
+            {t("subtitle")}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -338,14 +351,14 @@ export default function ProjectsPage() {
               className={["flex items-center gap-1.5 rounded-[7px] px-3 py-1.5 text-[14px] font-medium transition-colors", viewMode === "grid" ? "bg-[rgba(13,13,13,0.07)] text-[#1A1A1A]" : "text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A]"].join(" ")}
             >
               <LayoutGrid size={13} />
-              Сетка
+              {t("viewGrid")}
             </button>
             <button
               onClick={() => setViewMode("kanban")}
               className={["flex items-center gap-1.5 rounded-[7px] px-3 py-1.5 text-[14px] font-medium transition-colors", viewMode === "kanban" ? "bg-[rgba(13,13,13,0.07)] text-[#1A1A1A]" : "text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A]"].join(" ")}
             >
               <Columns3 size={13} />
-              Канбан
+              {t("viewKanban")}
             </button>
           </div>
           <button
@@ -353,7 +366,7 @@ export default function ProjectsPage() {
             className="flex items-center gap-1.5 rounded-[9px] bg-[#D97757] px-4 py-2 text-[15px] font-medium text-white hover:bg-[#C4623E] transition-colors"
           >
             <Plus size={15} />
-            Новый проект
+            {t("newProject")}
           </button>
         </div>
       </div>
@@ -370,11 +383,11 @@ export default function ProjectsPage() {
           <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(217,119,87,0.08)]">
             <Folder size={22} className="text-[#D97757]" />
           </div>
-          <p className="mb-1 text-[17px] font-medium text-[#1A1A1A]">Нет проектов</p>
-          <p className="mb-4 text-[15px] text-[rgba(13,13,13,0.45)]">Создайте первый проект, чтобы группировать чаты</p>
+          <p className="mb-1 text-[17px] font-medium text-[#1A1A1A]">{t("noProjects")}</p>
+          <p className="mb-4 text-[15px] text-[rgba(13,13,13,0.45)]">{t("noProjectsHint")}</p>
           <button onClick={() => setShowModal(true)} className="flex items-center gap-1.5 rounded-[9px] bg-[#D97757] px-4 py-2 text-[15px] font-medium text-white hover:bg-[#C4623E] transition-colors">
             <Plus size={15} />
-            Создать проект
+            {t("createProject")}
           </button>
         </div>
       ) : viewMode === "grid" ? (

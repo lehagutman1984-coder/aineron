@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { Copy, Check, Users, Wallet, Banknote, ArrowDownToLine } from "lucide-react";
 import { getReferral, requestReferralWithdrawal } from "@/lib/api/client";
 import type { ReferralData } from "@/lib/api/types";
@@ -15,13 +16,13 @@ function formatDate(iso: string) {
   });
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  pending: "Ожидает",
-  completed: "Выполнено",
-  cancelled: "Отменено",
-};
-
 export default function ReferralPage() {
+  const t = useTranslations("accountReferral");
+  const STATUS_LABELS: Record<string, string> = {
+    pending: t("statusPending"),
+    completed: t("statusCompleted"),
+    cancelled: t("statusCancelled"),
+  };
   const queryClient = useQueryClient();
   const [copied, setCopied] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
@@ -48,7 +49,7 @@ export default function ReferralPage() {
       setWithdrawError(null);
     },
     onError: (err: Error) => {
-      setWithdrawError(err.message || "Ошибка при запросе вывода");
+      setWithdrawError(err.message || t("errorWithdraw"));
     },
   });
 
@@ -72,7 +73,7 @@ export default function ReferralPage() {
   if (error || !data) {
     return (
       <div className="rounded-[12px] border border-[rgba(231,76,60,0.2)] bg-[rgba(231,76,60,0.05)] p-6 text-[16px] text-[#e74c3c]">
-        Не удалось загрузить данные реферальной программы
+        {t("errorLoad")}
       </div>
     );
   }
@@ -80,9 +81,9 @@ export default function ReferralPage() {
   return (
     <div className="px-4 py-10 sm:px-6 space-y-6">
       <div>
-        <h1 className="text-[22px] font-bold text-[#1A1A1A]">Партнёрская программа</h1>
+        <h1 className="text-[22px] font-bold text-[#1A1A1A]">{t("title")}</h1>
         <p className="mt-1 text-[15px] text-[rgba(13,13,13,0.55)]">
-          Приглашайте друзей и получайте бонусы за каждую их покупку
+          {t("subtitle")}
         </p>
       </div>
 
@@ -91,7 +92,7 @@ export default function ReferralPage() {
         <div className="rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white p-4">
           <div className="mb-1 flex items-center gap-2 text-[14px] text-[rgba(13,13,13,0.45)]">
             <Users size={14} />
-            Переходов
+            {t("statClicks")}
           </div>
           <div className="text-[24px] font-bold text-[#1A1A1A]">{data.referral_clicks}</div>
         </div>
@@ -99,7 +100,7 @@ export default function ReferralPage() {
         <div className="rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white p-4">
           <div className="mb-1 flex items-center gap-2 text-[14px] text-[rgba(13,13,13,0.45)]">
             {data.balance_type === "rub" ? <Banknote size={14} /> : <Wallet size={14} />}
-            Баланс
+            {t("statBalance")}
           </div>
           <div className="text-[24px] font-bold text-[#1A1A1A]">
             {data.balance_type === "rub"
@@ -110,13 +111,13 @@ export default function ReferralPage() {
 
         {data.can_withdraw && (
           <div className="rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white p-4 flex flex-col justify-between">
-            <div className="mb-1 text-[14px] text-[rgba(13,13,13,0.45)]">Вывод средств</div>
+            <div className="mb-1 text-[14px] text-[rgba(13,13,13,0.45)]">{t("statWithdraw")}</div>
             <button
               onClick={() => setShowWithdrawModal(true)}
               className="flex items-center gap-2 rounded-[8px] bg-[#D97757] px-3 py-2 text-[15px] font-medium text-white hover:bg-[#C4623E] transition-colors"
             >
               <ArrowDownToLine size={14} />
-              Запросить
+              {t("withdrawButton")}
             </button>
           </div>
         )}
@@ -124,7 +125,7 @@ export default function ReferralPage() {
 
       {/* Referral link */}
       <div className="rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white p-5">
-        <div className="mb-3 text-[15px] font-medium text-[rgba(13,13,13,0.65)]">Ваша реферальная ссылка</div>
+        <div className="mb-3 text-[15px] font-medium text-[rgba(13,13,13,0.65)]">{t("linkLabel")}</div>
         <div className="flex items-center gap-2">
           <div className="flex-1 truncate rounded-[8px] border border-[rgba(13,13,13,0.12)] bg-[rgba(13,13,13,0.03)] px-3 py-2 text-[15px] font-mono text-[#1A1A1A]">
             {data.referral_link}
@@ -146,14 +147,14 @@ export default function ReferralPage() {
       {data.earnings.length > 0 && (
         <div className="rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white">
           <div className="border-b border-[rgba(13,13,13,0.08)] px-5 py-4 text-[16px] font-medium text-[#1A1A1A]">
-            Начисления
+            {t("earningsTitle")}
           </div>
           <div className="divide-y divide-[rgba(13,13,13,0.06)]">
             {data.earnings.map((e) => (
               <div key={e.id} className="flex items-center justify-between px-5 py-3">
                 <div>
                   <div className="text-[15px] text-[#1A1A1A]">
-                    {e.description || e.tariff || "Реферальный бонус"}
+                    {e.description || e.tariff || t("defaultBonus")}
                   </div>
                   <div className="text-[13px] text-[rgba(13,13,13,0.45)]">{formatDate(e.created_at)}</div>
                 </div>
@@ -171,13 +172,13 @@ export default function ReferralPage() {
       {data.withdrawals.length > 0 && (
         <div className="rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white">
           <div className="border-b border-[rgba(13,13,13,0.08)] px-5 py-4 text-[16px] font-medium text-[#1A1A1A]">
-            Запросы на вывод
+            {t("withdrawalsTitle")}
           </div>
           <div className="divide-y divide-[rgba(13,13,13,0.06)]">
             {data.withdrawals.map((w) => (
               <div key={w.id} className="flex items-center justify-between px-5 py-3">
                 <div>
-                  <div className="text-[15px] text-[#1A1A1A]">Карта {w.card_number}</div>
+                  <div className="text-[15px] text-[#1A1A1A]">{t("cardLabel", { card: w.card_number })}</div>
                   <div className="text-[13px] text-[rgba(13,13,13,0.45)]">{formatDate(w.created_at)}</div>
                 </div>
                 <div className="text-right">
@@ -195,9 +196,9 @@ export default function ReferralPage() {
       {data.earnings.length === 0 && (
         <div className="rounded-[12px] border border-[rgba(13,13,13,0.08)] bg-white p-8 text-center">
           <Users size={32} className="mx-auto mb-3 text-[rgba(13,13,13,0.20)]" />
-          <p className="text-[16px] font-medium text-[#1A1A1A]">Пока нет начислений</p>
+          <p className="text-[16px] font-medium text-[#1A1A1A]">{t("emptyTitle")}</p>
           <p className="mt-1 text-[15px] text-[rgba(13,13,13,0.45)]">
-            Поделитесь реферальной ссылкой, чтобы начать зарабатывать
+            {t("emptyHint")}
           </p>
         </div>
       )}
@@ -212,11 +213,11 @@ export default function ReferralPage() {
             className="w-full max-w-sm rounded-[16px] bg-white p-6 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="mb-4 text-[18px] font-bold text-[#1A1A1A]">Запросить вывод</h2>
+            <h2 className="mb-4 text-[18px] font-bold text-[#1A1A1A]">{t("modalTitle")}</h2>
 
             <div className="mb-3">
               <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.65)]">
-                Сумма (₽)
+                {t("amountLabel")}
               </label>
               <input
                 type="number"
@@ -231,7 +232,7 @@ export default function ReferralPage() {
 
             <div className="mb-4">
               <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.65)]">
-                Номер карты
+                {t("cardNumberLabel")}
               </label>
               <input
                 type="text"
@@ -254,7 +255,7 @@ export default function ReferralPage() {
                 onClick={() => setShowWithdrawModal(false)}
                 className="flex-1 h-10 rounded-[8px] border border-[rgba(13,13,13,0.12)] text-[16px] text-[rgba(13,13,13,0.65)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
               >
-                Отмена
+                {t("cancelButton")}
               </button>
               <button
                 onClick={() => withdrawMutation.mutate()}
@@ -266,7 +267,7 @@ export default function ReferralPage() {
                 }
                 className="flex-1 h-10 rounded-[8px] bg-[#D97757] text-[16px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {withdrawMutation.isPending ? "Отправка..." : "Запросить"}
+                {withdrawMutation.isPending ? t("submitSending") : t("withdrawButton")}
               </button>
             </div>
           </div>

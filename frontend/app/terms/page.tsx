@@ -1,17 +1,20 @@
 ﻿import { FileText } from "lucide-react";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { serverGetLegalDoc } from "@/lib/api/server";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata() {
   const doc = await serverGetLegalDoc("terms");
+  const t = await getTranslations("legalChrome");
   return {
-    title: doc?.title ?? "Пользовательское соглашение",
+    title: doc?.title ?? t("termsFallbackTitle"),
   };
 }
 
 export default async function TermsPage() {
+  const t = await getTranslations("legalChrome");
   const doc = await serverGetLegalDoc("terms");
 
   const date = doc?.last_updated
@@ -31,19 +34,19 @@ export default async function TermsPage() {
             href="/"
             className="text-[15px] text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A] transition-colors"
           >
-            Главная
+            {t("breadcrumbHome")}
           </Link>
           <span className="text-[15px] text-[rgba(13,13,13,0.25)]">/</span>
-          <span className="text-[15px] text-[rgba(13,13,13,0.65)]">Пользовательское соглашение</span>
+          <span className="text-[15px] text-[rgba(13,13,13,0.65)]">{t("termsFallbackTitle")}</span>
         </div>
 
         <div className="rounded-[16px] border border-[rgba(13,13,13,0.10)] bg-white p-8 shadow-sm">
           <h1 className="mb-2 text-[26px] font-bold text-[#1A1A1A]">
-            {doc?.title ?? "Пользовательское соглашение"}
+            {doc?.title ?? t("termsFallbackTitle")}
           </h1>
           {date && (
             <p className="mb-8 text-[15px] text-[rgba(13,13,13,0.45)]">
-              Обновлено: {date}
+              {t("lastUpdated", { date })}
             </p>
           )}
 
@@ -54,7 +57,7 @@ export default async function TermsPage() {
             />
           ) : (
             <p className="text-[16px] text-[rgba(13,13,13,0.55)]">
-              Документ находится в разработке. Свяжитесь с нами по адресу{" "}
+              {t("docInProgress")}{" "}
               <a href="mailto:support@aineron.ru" className="text-[#D97757] hover:underline">
                 support@aineron.ru
               </a>

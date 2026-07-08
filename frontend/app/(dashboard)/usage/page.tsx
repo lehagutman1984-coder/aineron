@@ -3,20 +3,22 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { ArrowLeft, BarChart2, Zap, Wallet, Activity } from "lucide-react";
 import { getUsageStats, listOrgs } from "@/lib/api/client";
 import type { UsageStats, Organization } from "@/lib/api/types";
 import { formatMoney } from "@/lib/money";
 
-const PERIOD_OPTIONS = [
-  { label: "7 дней", value: 7 },
-  { label: "30 дней", value: 30 },
-  { label: "90 дней", value: 90 },
-];
-
 export default function UsagePage() {
+  const t = useTranslations("usageDashboard");
   const [days, setDays] = useState(30);
   const [orgId, setOrgId] = useState<number | undefined>(undefined);
+
+  const PERIOD_OPTIONS = [
+    { label: t("period7"), value: 7 },
+    { label: t("period30"), value: 30 },
+    { label: t("period90"), value: 90 },
+  ];
 
   const { data: orgs = [] } = useQuery<Organization[]>({
     queryKey: ["orgs"],
@@ -41,10 +43,10 @@ export default function UsagePage() {
           className="flex items-center gap-1 text-[15px] text-[rgba(13,13,13,0.5)] hover:text-[#1A1A1A] transition-colors"
         >
           <ArrowLeft size={14} />
-          Кабинет
+          {t("backToAccount")}
         </Link>
         <span className="text-[rgba(13,13,13,0.25)]">/</span>
-        <h1 className="text-[20px] font-bold text-[#1A1A1A]">Статистика использования</h1>
+        <h1 className="text-[20px] font-bold text-[#1A1A1A]">{t("title")}</h1>
       </div>
 
       {/* Filters */}
@@ -72,7 +74,7 @@ export default function UsagePage() {
             onChange={(e) => setOrgId(e.target.value ? Number(e.target.value) : undefined)}
             className="rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-3 py-2 text-[15px] text-[rgba(13,13,13,0.7)] outline-none focus:border-[#D97757]"
           >
-            <option value="">Мои запросы</option>
+            <option value="">{t("myRequests")}</option>
             {orgs.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.name}
@@ -84,11 +86,11 @@ export default function UsagePage() {
 
       {isLoading ? (
         <div className="py-16 text-center text-[16px] text-[rgba(13,13,13,0.45)]">
-          Загрузка...
+          {t("loading")}
         </div>
       ) : !stats ? (
         <div className="py-16 text-center text-[16px] text-[rgba(13,13,13,0.45)]">
-          Нет данных
+          {t("noData")}
         </div>
       ) : (
         <>
@@ -96,17 +98,17 @@ export default function UsagePage() {
           <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
             <TotalCard
               icon={<Zap size={18} />}
-              label="Запросов"
+              label={t("requestsLabel")}
               value={stats.totals.total_requests.toLocaleString("ru-RU")}
             />
             <TotalCard
               icon={<Activity size={18} />}
-              label="Токенов"
+              label={t("tokensLabel")}
               value={stats.totals.total_tokens.toLocaleString("ru-RU")}
             />
             <TotalCard
               icon={<Wallet size={18} />}
-              label="Потрачено"
+              label={t("spentLabel")}
               value={formatMoney(stats.totals.total_kopecks)}
             />
           </div>
@@ -115,7 +117,7 @@ export default function UsagePage() {
           {stats.by_day.length > 0 && (
             <div className="mb-6 rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-5">
               <p className="mb-4 text-[15px] font-semibold text-[#1A1A1A]">
-                Токены по дням
+                {t("tokensByDay")}
               </p>
               <div className="flex items-end gap-1" style={{ height: "100px" }}>
                 {stats.by_day.map((day) => {
@@ -148,16 +150,16 @@ export default function UsagePage() {
           {stats.by_model.length > 0 && (
             <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-5">
               <p className="mb-4 text-[15px] font-semibold text-[#1A1A1A]">
-                По моделям (топ 20)
+                {t("byModel")}
               </p>
               <div className="overflow-x-auto">
                 <table className="w-full text-[15px]">
                   <thead>
                     <tr className="border-b border-[rgba(13,13,13,0.08)] text-left text-[13px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.45)]">
-                      <th className="pb-2 pr-4">Модель</th>
-                      <th className="pb-2 pr-4 text-right">Запросов</th>
-                      <th className="pb-2 pr-4 text-right">Токенов</th>
-                      <th className="pb-2 text-right">Потрачено</th>
+                      <th className="pb-2 pr-4">{t("modelColumn")}</th>
+                      <th className="pb-2 pr-4 text-right">{t("requestsLabel")}</th>
+                      <th className="pb-2 pr-4 text-right">{t("tokensLabel")}</th>
+                      <th className="pb-2 text-right">{t("spentLabel")}</th>
                     </tr>
                   </thead>
                   <tbody>

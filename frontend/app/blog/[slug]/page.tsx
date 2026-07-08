@@ -1,6 +1,7 @@
 ﻿import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { ArrowLeft, CalendarDays, Eye, Tag } from "lucide-react";
 import { serverGetBlogPost, serverListBlogPosts } from "@/lib/api/server";
 
@@ -10,7 +11,10 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const post = await serverGetBlogPost(params.slug);
-  if (!post) return { title: "Статья не найдена" };
+  if (!post) {
+    const t = await getTranslations("blogPost");
+    return { title: t("notFoundTitle") };
+  }
 
   const title = post.seo_title || post.title;
   const description = post.seo_description || post.preview_text;
@@ -38,6 +42,7 @@ export async function generateStaticParams() {
 export const dynamic = "force-dynamic";
 
 export default async function BlogPostPage({ params }: Props) {
+  const t = await getTranslations("blogPost");
   const post = await serverGetBlogPost(params.slug);
   if (!post) notFound();
 
@@ -70,8 +75,8 @@ export default async function BlogPostPage({ params }: Props) {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Главная", item: SITE_URL },
-      { "@type": "ListItem", position: 2, name: "Блог", item: `${SITE_URL}/blog/` },
+      { "@type": "ListItem", position: 1, name: t("breadcrumbHome"), item: SITE_URL },
+      { "@type": "ListItem", position: 2, name: t("breadcrumbBlog"), item: `${SITE_URL}/blog/` },
       { "@type": "ListItem", position: 3, name: post.title, item: postUrl },
     ],
   };
@@ -90,9 +95,9 @@ export default async function BlogPostPage({ params }: Props) {
       <article className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
         {/* Breadcrumbs */}
         <nav className="mb-6 flex items-center gap-2 text-[15px] text-[rgba(13,13,13,0.45)]">
-          <Link href="/" className="hover:text-[#1A1A1A] transition-colors">Главная</Link>
+          <Link href="/" className="hover:text-[#1A1A1A] transition-colors">{t("breadcrumbHome")}</Link>
           <span>/</span>
-          <Link href="/blog/" className="hover:text-[#1A1A1A] transition-colors">Блог</Link>
+          <Link href="/blog/" className="hover:text-[#1A1A1A] transition-colors">{t("breadcrumbBlog")}</Link>
           {post.category && (
             <>
               <span>/</span>
@@ -112,7 +117,7 @@ export default async function BlogPostPage({ params }: Props) {
           className="mb-6 inline-flex items-center gap-1.5 text-[15px] text-[rgba(13,13,13,0.55)] hover:text-[#1A1A1A] transition-colors"
         >
           <ArrowLeft size={14} />
-          Все статьи
+          {t("backToAllPosts")}
         </Link>
 
         {/* Header */}
@@ -136,7 +141,7 @@ export default async function BlogPostPage({ params }: Props) {
             </span>
             <span className="flex items-center gap-1.5">
               <Eye size={13} />
-              {post.views_count} просмотров
+              {t("viewsCount", { count: post.views_count })}
             </span>
             {post.author_name && (
               <span className="text-[rgba(13,13,13,0.5)]">{post.author_name}</span>
@@ -176,7 +181,7 @@ export default async function BlogPostPage({ params }: Props) {
           <div className="mt-10 border-t border-[rgba(13,13,13,0.08)] pt-8">
             <p className="mb-3 flex items-center gap-2 text-[15px] font-semibold text-[#1A1A1A]">
               <Tag size={14} />
-              Связанные нейросети
+              {t("relatedNetworks")}
             </p>
             <div className="flex flex-wrap gap-2">
               {post.network_slugs.map((slug) => (

@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import {
   Layers, Send, RotateCcw, Copy, Check, Code2, Search, X, ExternalLink,
@@ -20,6 +21,7 @@ const detectHTML = (s: string) =>
 
 // ── Page root ─────────────────────────────────────────────────────────────────
 export default function ComparePage() {
+  const t = useTranslations("compare");
   const { setBalance } = useAuthStore();
   const [mode, setMode] = useState<CompareMode>("text");
   const [prompt, setPrompt] = useState("");
@@ -84,7 +86,7 @@ export default function ComparePage() {
         setCompareItems(res.items);
       }
     } catch (err) {
-      setError(err instanceof APIError ? err.message : "Ошибка соединения. Попробуйте ещё раз.");
+      setError(err instanceof APIError ? err.message : t("connectionError"));
     } finally {
       setIsSubmitting(false);
     }
@@ -111,12 +113,10 @@ export default function ComparePage() {
           </div>
         </div>
         <h1 className="text-[24px] font-bold text-[#1A1A1A] dark:text-[#EDE8E3]">
-          Сравнение моделей
+          {t("title")}
         </h1>
         <p className="mt-1.5 text-[16px] text-[rgba(13,13,13,0.48)] dark:text-[rgba(236,236,236,0.42)]">
-          {isImage
-            ? "Один промпт — несколько изображений. Выберите 2–4 модели и сравните результат."
-            : "Один запрос — несколько ответов. Выберите 2–3 нейросети и сравните результат."}
+          {isImage ? t("subtitleImage") : t("subtitleText")}
         </p>
       </div>
 
@@ -127,8 +127,8 @@ export default function ComparePage() {
           style={{ background: "var(--background-secondary)" }}
         >
           {([
-            { key: "text" as const, label: "Текст", icon: MessageSquareText },
-            { key: "image" as const, label: "Изображения", icon: ImageIcon },
+            { key: "text" as const, label: t("tabText"), icon: MessageSquareText },
+            { key: "image" as const, label: t("tabImages"), icon: ImageIcon },
           ]).map((tab) => {
             const active = mode === tab.key;
             const Icon = tab.icon;
@@ -165,7 +165,7 @@ export default function ComparePage() {
           onKeyDown={(e) => {
             if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) handleSubmit();
           }}
-          placeholder={isImage ? "Опишите изображение для генерации..." : "Введите запрос для сравнения..."}
+          placeholder={isImage ? t("placeholderImage") : t("placeholderText")}
           rows={4}
           className="block w-full resize-none bg-white px-4 py-3.5 text-[16px] leading-relaxed text-[#1A1A1A] outline-none dark:bg-[#1C1917] dark:text-[#EDE8E3] dark:placeholder:text-[rgba(236,236,236,0.30)]"
         />
@@ -182,7 +182,7 @@ export default function ComparePage() {
           style={{ borderBottom: "1px solid var(--border-tertiary)", background: "var(--background-tertiary)" }}
         >
           <span className="text-[15px] font-medium text-[rgba(13,13,13,0.65)] dark:text-[rgba(236,236,236,0.55)]">
-            Выберите модели{" "}
+            {t("selectModels")}{" "}
             <span className="text-[#D97757]">{selected.length}/{maxSelect}</span>
           </span>
           <div className="relative">
@@ -190,7 +190,7 @@ export default function ComparePage() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Поиск..."
+              placeholder={t("searchPlaceholder")}
               className="h-7 rounded-[7px] border border-[rgba(13,13,13,0.12)] bg-white pl-7 pr-3 text-[14px] text-[#1A1A1A] outline-none focus:border-[#D97757] dark:border-[rgba(255,255,255,0.12)] dark:bg-[#1c1c1f] dark:text-[#EDE8E3]"
             />
           </div>
@@ -253,7 +253,7 @@ export default function ComparePage() {
               })}
               {filtered.length === 0 && (
                 <p className="col-span-3 py-6 text-center text-[15px] text-[rgba(13,13,13,0.4)]">
-                  {isImage ? "Image-модели не найдены" : "Модели не найдены"}
+                  {isImage ? t("noImageModels") : t("noModels")}
                 </p>
               )}
             </div>
@@ -290,10 +290,10 @@ export default function ComparePage() {
       <div className="flex items-center justify-between">
         <p className="text-[15px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.38)]">
           {selected.length < 2
-            ? "Выберите минимум 2 модели"
+            ? t("selectAtLeastTwo")
             : isImage
-            ? `~${formatMoney(totalCostKopecks)} (списывается за каждое изображение)`
-            : `Стоимость: ${formatMoney(totalCostKopecks)}`}
+            ? t("costPerImage", { cost: formatMoney(totalCostKopecks) })
+            : t("costTotal", { cost: formatMoney(totalCostKopecks) })}
         </p>
         <button
           onClick={handleSubmit}
@@ -314,7 +314,7 @@ export default function ComparePage() {
           ) : (
             <>
               <Send size={14} />
-              Сравнить
+              {t("compareButton")}
             </>
           )}
         </button>
@@ -335,6 +335,7 @@ function ResultsView({
   isImage?: boolean;
   onReset: () => void;
 }) {
+  const t = useTranslations("compare");
   const [doneCount, setDoneCount] = useState(0);
   const [voted, setVoted] = useState<string | null>(null); // winner slug
   const [voteError, setVoteError] = useState<string | null>(null);
@@ -361,7 +362,7 @@ function ResultsView({
     if (anySuccess) {
       setVoted(winnerSlug);
     } else {
-      setVoteError(lastError instanceof APIError ? lastError.message : "Ошибка голосования");
+      setVoteError(lastError instanceof APIError ? lastError.message : t("voteError"));
     }
   };
 
@@ -375,7 +376,7 @@ function ResultsView({
         <div className="mx-auto flex max-w-7xl items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <p className="text-[13px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.38)] dark:text-[rgba(236,236,236,0.35)]">
-              Запрос
+              {t("promptLabel")}
             </p>
             <p className="mt-0.5 line-clamp-2 text-[15px] text-[#1A1A1A] dark:text-[#EDE8E3]">
               {prompt}
@@ -386,7 +387,7 @@ function ResultsView({
             className="flex shrink-0 items-center gap-1.5 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 py-1.5 text-[14px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:bg-[rgba(13,13,13,0.05)] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.55)]"
           >
             <RotateCcw size={12} />
-            Новое сравнение
+            {t("newComparison")}
           </button>
         </div>
 
@@ -395,7 +396,7 @@ function ResultsView({
           <div className="mx-auto mt-3 max-w-7xl">
             <p className="mb-2 flex items-center gap-1.5 text-[14px] font-medium text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.45)]">
               <Trophy size={12} className="text-[#f4a017]" />
-              {isImage ? "Какое изображение лучше?" : "Какой ответ лучший?"} Ваш голос влияет на Elo-рейтинг арены.
+              {isImage ? t("voteQuestionImage") : t("voteQuestionText")} {t("voteHint")}
             </p>
             <div className="flex flex-wrap gap-2">
               {items.map((item) => (
@@ -414,7 +415,7 @@ function ResultsView({
         )}
         {voted && (
           <p className="mx-auto mt-2 max-w-7xl text-[14px] text-[rgba(13,13,13,0.50)] dark:text-[rgba(236,236,236,0.42)]">
-            Голос засчитан — рейтинг Elo обновлён.
+            {t("voteRecorded")}
           </p>
         )}
       </div>
@@ -449,6 +450,7 @@ function CompareColumn({
   onDone?: () => void;
   isWinner?: boolean;
 }) {
+  const t = useTranslations("compare");
   const [message, setMessage] = useState<WebMessage | null>(null);
   const [done, setDone] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -523,7 +525,7 @@ function CompareColumn({
           </div>
         ) : message.status === "failed" ? (
           <p className="text-[15px] text-[#e74c3c]">
-            {message.error_message ?? "Ошибка генерации. Попробуйте ещё раз."}
+            {message.error_message ?? t("generationError")}
           </p>
         ) : (
           <MessageContent message={message} />
@@ -541,14 +543,14 @@ function CompareColumn({
             className="flex items-center gap-1.5 rounded-[6px] px-2.5 py-1.5 text-[14px] text-[rgba(13,13,13,0.50)] transition-colors hover:bg-[rgba(13,13,13,0.05)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.45)] dark:hover:text-[#EDE8E3]"
           >
             {copied ? <Check size={12} /> : <Copy size={12} />}
-            {copied ? "Скопировано" : "Копировать"}
+            {copied ? t("copied") : t("copyButton")}
           </button>
           <Link
             href={`/chat/${item.chat_id}/`}
             className="flex items-center gap-1.5 rounded-[6px] px-2.5 py-1.5 text-[14px] text-[rgba(13,13,13,0.50)] transition-colors hover:bg-[rgba(13,13,13,0.05)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.45)] dark:hover:text-[#EDE8E3]"
           >
             <ExternalLink size={12} />
-            Открыть чат
+            {t("openChat")}
           </Link>
         </div>
       )}

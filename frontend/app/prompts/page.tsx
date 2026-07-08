@@ -7,23 +7,25 @@ import {
   Search, Plus, Trash2, Copy, Check, X,
 } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { listPrompts, createPrompt, deletePrompt } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 import type { PromptTemplate } from "@/lib/api/types";
 
 const CATEGORIES = [
-  { key: "all", label: "Все", Icon: BookMarked },
-  { key: "code", label: "Код", Icon: Code2 },
-  { key: "translate", label: "Перевод", Icon: Globe },
-  { key: "analyze", label: "Анализ", Icon: BarChart2 },
-  { key: "email", label: "Письма", Icon: Mail },
-  { key: "study", label: "Учёба", Icon: BookOpen },
-  { key: "creative", label: "Творчество", Icon: Pencil },
+  { key: "all", labelKey: "categoryAll", Icon: BookMarked },
+  { key: "code", labelKey: "categoryCode", Icon: Code2 },
+  { key: "translate", labelKey: "categoryTranslate", Icon: Globe },
+  { key: "analyze", labelKey: "categoryAnalyze", Icon: BarChart2 },
+  { key: "email", labelKey: "categoryEmail", Icon: Mail },
+  { key: "study", labelKey: "categoryStudy", Icon: BookOpen },
+  { key: "creative", labelKey: "categoryCreative", Icon: Pencil },
 ] as const;
 
 type CategoryKey = (typeof CATEGORIES)[number]["key"];
 
 export default function PromptsPage() {
+  const t = useTranslations("prompts");
   const { user } = useAuthStore();
   const qc = useQueryClient();
   const [activeCategory, setActiveCategory] = useState<CategoryKey>("all");
@@ -61,10 +63,10 @@ export default function PromptsPage() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-[24px] font-bold text-[#1A1A1A] dark:text-[#EDE8E3]">
-          Библиотека промтов
+          {t("title")}
         </h1>
         <p className="mt-1 text-[16px] text-[rgba(13,13,13,0.48)] dark:text-[rgba(236,236,236,0.42)]">
-          {prompts.length} готовых шаблонов для быстрого старта
+          {t("subtitle", { count: prompts.length })}
         </p>
       </div>
 
@@ -76,7 +78,7 @@ export default function PromptsPage() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Поиск промтов..."
+            placeholder={t("searchPlaceholder")}
             className="h-9 w-full rounded-[9px] border border-[rgba(13,13,13,0.12)] bg-white pl-8 pr-3 text-[15px] text-[#1A1A1A] outline-none focus:border-[#D97757] dark:border-[rgba(255,255,255,0.10)] dark:bg-[#1c1c1f] dark:text-[#EDE8E3]"
           />
         </div>
@@ -87,14 +89,14 @@ export default function PromptsPage() {
             className="flex items-center gap-1.5 rounded-[9px] bg-[#D97757] px-4 py-2 text-[15px] font-medium text-white transition-colors hover:bg-[#C4623E]"
           >
             <Plus size={14} />
-            Добавить промт
+            {t("addPrompt")}
           </button>
         )}
       </div>
 
       {/* Category tabs */}
       <div className="mb-6 flex gap-1.5 overflow-x-auto pb-1">
-        {CATEGORIES.map(({ key, label, Icon }) => (
+        {CATEGORIES.map(({ key, labelKey, Icon }) => (
           <button
             key={key}
             onClick={() => setActiveCategory(key)}
@@ -106,7 +108,7 @@ export default function PromptsPage() {
             ].join(" ")}
           >
             <Icon size={13} />
-            {label}
+            {t(labelKey)}
           </button>
         ))}
       </div>
@@ -122,7 +124,7 @@ export default function PromptsPage() {
         <div className="flex flex-col items-center py-20 text-center">
           <BookMarked size={40} className="mb-3 text-[rgba(13,13,13,0.15)] dark:text-[rgba(236,236,236,0.12)]" />
           <p className="text-[16px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.38)]">
-            {search ? "Ничего не найдено" : "В этой категории пока нет промтов"}
+            {search ? t("emptySearch") : t("emptyCategory")}
           </p>
         </div>
       ) : (
@@ -130,6 +132,7 @@ export default function PromptsPage() {
           {filtered.map((p) => (
             <PromptCard
               key={p.id}
+              t={t}
               prompt={p}
               copied={copiedId === p.id}
               onCopy={() => handleCopy(p)}
@@ -147,8 +150,9 @@ export default function PromptsPage() {
 
 // ── Prompt card ────────────────────────────────────────────────────────────────
 function PromptCard({
-  prompt, copied, onCopy, onDelete,
+  t, prompt, copied, onCopy, onDelete,
 }: {
+  t: ReturnType<typeof useTranslations>;
   prompt: PromptTemplate;
   copied: boolean;
   onCopy: () => void;
@@ -189,13 +193,13 @@ function PromptCard({
           className="flex items-center gap-1.5 rounded-[7px] border border-[rgba(13,13,13,0.10)] px-2.5 py-1.5 text-[14px] font-medium text-[rgba(13,13,13,0.60)] transition-colors hover:border-[rgba(13,13,13,0.20)] hover:text-[#1A1A1A] dark:border-[rgba(255,255,255,0.10)] dark:text-[rgba(236,236,236,0.50)]"
         >
           {copied ? <Check size={12} className="text-[#D97757]" /> : <Copy size={12} />}
-          {copied ? "Скопировано" : "Копировать"}
+          {copied ? t("copied") : t("copy")}
         </button>
         <Link
           href={`/models/`}
           className="flex items-center gap-1.5 rounded-[7px] bg-[rgba(217,119,87,0.08)] px-2.5 py-1.5 text-[14px] font-medium text-[#D97757] transition-colors hover:bg-[rgba(217,119,87,0.14)]"
         >
-          Использовать
+          {t("use")}
         </Link>
       </div>
     </div>
@@ -204,6 +208,7 @@ function PromptCard({
 
 // ── Add prompt modal ───────────────────────────────────────────────────────────
 function AddPromptModal({ onClose }: { onClose: () => void }) {
+  const t = useTranslations("prompts");
   const qc = useQueryClient();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -232,7 +237,7 @@ function AddPromptModal({ onClose }: { onClose: () => void }) {
       >
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-[16px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
-            Добавить промт
+            {t("addPrompt")}
           </h2>
           <button onClick={onClose} className="text-[rgba(13,13,13,0.40)] hover:text-[#1A1A1A]">
             <X size={18} />
@@ -242,19 +247,19 @@ function AddPromptModal({ onClose }: { onClose: () => void }) {
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
             <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.60)] dark:text-[rgba(236,236,236,0.50)]">
-              Название
+              {t("nameLabel")}
             </label>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Например: Анализ резюме"
+              placeholder={t("namePlaceholder")}
               className="h-9 w-full rounded-[9px] border border-[rgba(13,13,13,0.12)] bg-transparent px-3 text-[15px] text-[#1A1A1A] outline-none focus:border-[#D97757] dark:border-[rgba(255,255,255,0.12)] dark:text-[#EDE8E3]"
             />
           </div>
 
           <div>
             <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.60)] dark:text-[rgba(236,236,236,0.50)]">
-              Категория
+              {t("categoryLabel")}
             </label>
             <select
               value={category}
@@ -262,26 +267,26 @@ function AddPromptModal({ onClose }: { onClose: () => void }) {
               className="h-9 w-full rounded-[9px] border border-[rgba(13,13,13,0.12)] bg-white px-3 text-[15px] text-[#1A1A1A] outline-none focus:border-[#D97757] dark:border-[rgba(255,255,255,0.12)] dark:bg-[#1c1c1f] dark:text-[#EDE8E3]"
             >
               {CATEGORIES.filter((c) => c.key !== "all").map((c) => (
-                <option key={c.key} value={c.key}>{c.label}</option>
+                <option key={c.key} value={c.key}>{t(c.labelKey)}</option>
               ))}
             </select>
           </div>
 
           <div>
             <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.60)] dark:text-[rgba(236,236,236,0.50)]">
-              Текст промта
+              {t("promptTextLabel")}
             </label>
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="Введите шаблон промта..."
+              placeholder={t("promptTextPlaceholder")}
               rows={5}
               className="w-full resize-none rounded-[9px] border border-[rgba(13,13,13,0.12)] bg-transparent px-3 py-2 text-[15px] leading-relaxed text-[#1A1A1A] outline-none focus:border-[#D97757] dark:border-[rgba(255,255,255,0.12)] dark:text-[#EDE8E3]"
             />
           </div>
 
           {mutation.isError && (
-            <p className="text-[14px] text-[#e74c3c]">Ошибка сохранения. Попробуйте ещё раз.</p>
+            <p className="text-[14px] text-[#e74c3c]">{t("saveError")}</p>
           )}
 
           <div className="flex justify-end gap-2">
@@ -290,14 +295,14 @@ function AddPromptModal({ onClose }: { onClose: () => void }) {
               onClick={onClose}
               className="rounded-[8px] px-4 py-2 text-[15px] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.05)] dark:text-[rgba(236,236,236,0.45)]"
             >
-              Отмена
+              {t("cancel")}
             </button>
             <button
               type="submit"
               disabled={!title.trim() || !content.trim() || mutation.isPending}
               className="rounded-[8px] bg-[#D97757] px-4 py-2 text-[15px] font-medium text-white transition-colors hover:bg-[#C4623E] disabled:opacity-40"
             >
-              {mutation.isPending ? "Сохранение..." : "Сохранить"}
+              {mutation.isPending ? t("saving") : t("save")}
             </button>
           </div>
         </form>

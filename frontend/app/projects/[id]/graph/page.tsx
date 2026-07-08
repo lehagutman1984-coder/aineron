@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { Network, FileText, ArrowLeft } from "lucide-react";
 import Link from "next/link";
@@ -9,6 +10,7 @@ import type { GraphNode, GraphEdge } from "@/lib/api/types";
 import { useEffect, useRef } from "react";
 
 export default function ProjectGraphPage() {
+  const t = useTranslations("projectsGraph");
   const { id } = useParams<{ id: string }>();
   const projectId = parseInt(id, 10);
 
@@ -30,13 +32,13 @@ export default function ProjectGraphPage() {
           className="flex items-center gap-1.5 text-[14px] text-[rgba(13,13,13,0.50)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.45)]"
         >
           <ArrowLeft size={13} />
-          Проект
+          {t("backToProject")}
         </Link>
         <span className="text-[rgba(13,13,13,0.20)]">/</span>
         <div className="flex items-center gap-2">
           <Network size={16} className="text-[#D97757]" />
           <span className="text-[16px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
-            Граф знаний
+            {t("title")}
           </span>
         </div>
       </div>
@@ -45,13 +47,13 @@ export default function ProjectGraphPage() {
       <div className="flex-1 overflow-hidden">
         {isLoading && (
           <div className="flex h-full items-center justify-center text-[rgba(13,13,13,0.40)]">
-            Вычисление схожести файлов...
+            {t("computing")}
           </div>
         )}
 
         {error && (
           <div className="p-6 text-[15px] text-[#e74c3c]">
-            Не удалось загрузить граф. Убедитесь, что база знаний содержит проиндексированные файлы.
+            {t("loadError")}
           </div>
         )}
 
@@ -59,14 +61,13 @@ export default function ProjectGraphPage() {
           <div className="flex h-full flex-col items-center justify-center gap-3 px-8 text-center">
             <Network size={36} className="text-[rgba(13,13,13,0.20)] dark:text-[rgba(236,236,236,0.18)]" />
             <p className="text-[16px] text-[rgba(13,13,13,0.50)] dark:text-[rgba(236,236,236,0.42)]">
-              Нет проиндексированных файлов. Загрузите файлы в базу знаний и дождитесь
-              завершения индексации.
+              {t("emptyText")}
             </p>
             <Link
               href={`/projects/${id}`}
               className="text-[15px] font-medium text-[#D97757] hover:underline"
             >
-              Перейти к базе знаний
+              {t("goToKnowledgeBase")}
             </Link>
           </div>
         )}
@@ -81,8 +82,8 @@ export default function ProjectGraphPage() {
           className="shrink-0 border-t border-[rgba(13,13,13,0.06)] px-5 py-2 text-[13px] text-[rgba(13,13,13,0.40)] dark:border-[rgba(255,255,255,0.06)]"
           style={{ background: "var(--surface, #fff)" }}
         >
-          {data.nodes.length} файлов · {data.edges.length} связей ·
-          порог схожести 75%
+          {t("filesCount", { count: data.nodes.length })} · {t("edgesCount", { count: data.edges.length })} ·{" "}
+          {t("similarityThreshold")}
         </div>
       )}
     </div>

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Brain,
@@ -30,13 +31,17 @@ import {
   type MemoryCategory,
 } from "@/lib/api/memory";
 
-const CATEGORIES: { value: MemoryCategory; label: string }[] = [
-  { value: "profile", label: "Профиль" },
-  { value: "skill", label: "Навыки" },
-  { value: "preference", label: "Предпочтения" },
-  { value: "project", label: "Проекты" },
-  { value: "fact", label: "Факты" },
-];
+type Translate = ReturnType<typeof useTranslations>;
+
+function getCategories(t: Translate): { value: MemoryCategory; label: string }[] {
+  return [
+    { value: "profile", label: t("categoryProfile") },
+    { value: "skill", label: t("categorySkill") },
+    { value: "preference", label: t("categoryPreference") },
+    { value: "project", label: t("categoryProject") },
+    { value: "fact", label: t("categoryFact") },
+  ];
+}
 
 const CATEGORY_BADGE: Record<MemoryCategory, string> = {
   profile: "bg-blue-100 text-blue-700",
@@ -46,13 +51,16 @@ const CATEGORY_BADGE: Record<MemoryCategory, string> = {
   fact: "bg-slate-100 text-slate-700",
 };
 
-const CATEGORY_LABEL: Record<MemoryCategory, string> = {
-  profile: "Профиль",
-  skill: "Навыки",
-  preference: "Предпочтения",
-  project: "Проекты",
-  fact: "Факты",
-};
+function getCategoryLabel(t: Translate, category: MemoryCategory): string {
+  const map: Record<MemoryCategory, string> = {
+    profile: t("categoryProfile"),
+    skill: t("categorySkill"),
+    preference: t("categoryPreference"),
+    project: t("categoryProject"),
+    fact: t("categoryFact"),
+  };
+  return map[category];
+}
 
 type CategoryFilter = "all" | MemoryCategory;
 type SourceFilter = "all" | "auto" | "manual";
@@ -60,6 +68,7 @@ type SourceFilter = "all" | "auto" | "manual";
 const isAuto = (source: string) => source === "auto";
 
 export default function MemoryPage() {
+  const t = useTranslations("accountMemory");
   const queryClient = useQueryClient();
 
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
@@ -165,12 +174,13 @@ export default function MemoryPage() {
   const regularFacts = filtered.filter((f) => !f.is_pinned);
 
   const memoryEnabled = settingsQuery.data?.memory_enabled ?? false;
+  const categories = getCategories(t);
 
   // ---- Loading / unauth fallback ----
   if (settingsQuery.isLoading) {
     return (
       <div className="flex h-[calc(100vh-56px)] items-center justify-center text-[16px] text-[rgba(13,13,13,0.45)]">
-        Загрузка...
+        {t("loading")}
       </div>
     );
   }
@@ -180,13 +190,13 @@ export default function MemoryPage() {
       <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
         <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-8 text-center">
           <p className="text-[16px] text-[rgba(13,13,13,0.55)]">
-            Не удалось загрузить память. Войдите в аккаунт и попробуйте снова.
+            {t("loadError")}
           </p>
           <Link
             href="/account/"
             className="mt-4 inline-flex items-center gap-2 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-4 py-2 text-[16px] text-[rgba(13,13,13,0.7)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
           >
-            <ArrowLeft size={16} />В кабинет
+            <ArrowLeft size={16} />{t("backToAccount")}
           </Link>
         </div>
       </div>
@@ -202,7 +212,7 @@ export default function MemoryPage() {
           className="inline-flex items-center gap-1.5 text-[15px] text-[rgba(13,13,13,0.5)] hover:text-[#1A1A1A] transition-colors"
         >
           <ArrowLeft size={16} />
-          Личный кабинет
+          {t("backToAccountLink")}
         </Link>
       </div>
 
@@ -213,11 +223,10 @@ export default function MemoryPage() {
           </div>
           <div>
             <h1 className="text-[24px] font-bold text-[#1A1A1A]">
-              Долговременная память
+              {t("pageTitle")}
             </h1>
             <p className="mt-1 text-[16px] text-[rgba(13,13,13,0.55)]">
-              Факты о вас и краткие итоги сессий, которые модель учитывает в новых
-              чатах.
+              {t("pageSubtitle")}
             </p>
           </div>
         </div>
@@ -248,11 +257,10 @@ export default function MemoryPage() {
             <Brain size={24} />
           </div>
           <h2 className="mb-2 text-[18px] font-semibold text-[#1A1A1A]">
-            Память отключена
+            {t("disabledTitle")}
           </h2>
           <p className="mx-auto mb-6 max-w-md text-[16px] text-[rgba(13,13,13,0.55)]">
-            Включите долговременную память, чтобы модель запоминала важные факты о
-            вас и краткие итоги диалогов между сессиями.
+            {t("disabledDescription")}
           </p>
           <button
             type="button"
@@ -261,7 +269,7 @@ export default function MemoryPage() {
             className="inline-flex items-center gap-2 rounded-[8px] bg-[#1A1A1A] px-4 py-2 text-[16px] text-white hover:bg-[#333] transition-colors disabled:opacity-50"
           >
             <Sparkles size={16} />
-            Включить память
+            {t("enableMemory")}
           </button>
         </div>
       ) : (
@@ -270,29 +278,29 @@ export default function MemoryPage() {
           <div className="mb-6 grid grid-cols-3 gap-3">
             <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white px-4 py-3">
               <p className="text-[22px] font-bold text-[#1A1A1A]">{stats.total}</p>
-              <p className="text-[14px] text-[rgba(13,13,13,0.55)]">всего фактов</p>
+              <p className="text-[14px] text-[rgba(13,13,13,0.55)]">{t("statsTotal")}</p>
             </div>
             <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white px-4 py-3">
               <p className="text-[22px] font-bold text-[#1A1A1A]">{stats.auto}</p>
-              <p className="text-[14px] text-[rgba(13,13,13,0.55)]">авто</p>
+              <p className="text-[14px] text-[rgba(13,13,13,0.55)]">{t("statsAuto")}</p>
             </div>
             <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white px-4 py-3">
               <p className="text-[22px] font-bold text-[#1A1A1A]">{stats.manual}</p>
-              <p className="text-[14px] text-[rgba(13,13,13,0.55)]">вручную</p>
+              <p className="text-[14px] text-[rgba(13,13,13,0.55)]">{t("statsManual")}</p>
             </div>
           </div>
 
           {/* ============ Section 1: Facts ============ */}
           <section className="mb-10">
             <div className="mb-4 flex items-center justify-between gap-3">
-              <h2 className="text-[18px] font-semibold text-[#1A1A1A]">Факты</h2>
+              <h2 className="text-[18px] font-semibold text-[#1A1A1A]">{t("factsTitle")}</h2>
               <button
                 type="button"
                 onClick={() => setShowForm((v) => !v)}
                 className="inline-flex items-center gap-2 rounded-[8px] bg-[#1A1A1A] px-4 py-2 text-[16px] text-white hover:bg-[#333] transition-colors"
               >
                 {showForm ? <X size={16} /> : <Plus size={16} />}
-                {showForm ? "Отмена" : "Добавить факт"}
+                {showForm ? t("cancel") : t("addFact")}
               </button>
             </div>
 
@@ -302,7 +310,7 @@ export default function MemoryPage() {
                 <textarea
                   value={newContent}
                   onChange={(e) => setNewContent(e.target.value)}
-                  placeholder="Например: Я backend-разработчик, пишу на Python и предпочитаю краткие ответы."
+                  placeholder={t("factPlaceholder")}
                   rows={3}
                   className="w-full resize-none rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-3 py-2 text-[16px] text-[#1A1A1A] outline-none placeholder:text-[rgba(13,13,13,0.35)] focus:border-[#1A1A1A]"
                 />
@@ -314,7 +322,7 @@ export default function MemoryPage() {
                     }
                     className="rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-3 py-2 text-[16px] text-[#1A1A1A] outline-none focus:border-[#1A1A1A]"
                   >
-                    {CATEGORIES.map((c) => (
+                    {categories.map((c) => (
                       <option key={c.value} value={c.value}>
                         {c.label}
                       </option>
@@ -327,11 +335,11 @@ export default function MemoryPage() {
                     className="inline-flex items-center gap-2 rounded-[8px] bg-[#1A1A1A] px-4 py-2 text-[16px] text-white hover:bg-[#333] transition-colors disabled:opacity-50"
                   >
                     <Check size={16} />
-                    Сохранить
+                    {t("save")}
                   </button>
                   {createMutation.isError && (
                     <span className="text-[15px] text-red-600">
-                      Не удалось сохранить факт.
+                      {t("saveFactError")}
                     </span>
                   )}
                 </div>
@@ -345,9 +353,9 @@ export default function MemoryPage() {
                   active={categoryFilter === "all"}
                   onClick={() => setCategoryFilter("all")}
                 >
-                  Все
+                  {t("filterAll")}
                 </FilterTab>
-                {CATEGORIES.map((c) => (
+                {categories.map((c) => (
                   <FilterTab
                     key={c.value}
                     active={categoryFilter === c.value}
@@ -362,19 +370,19 @@ export default function MemoryPage() {
                   active={sourceFilter === "all"}
                   onClick={() => setSourceFilter("all")}
                 >
-                  Все источники
+                  {t("filterAllSources")}
                 </FilterTab>
                 <FilterTab
                   active={sourceFilter === "auto"}
                   onClick={() => setSourceFilter("auto")}
                 >
-                  Авто
+                  {t("autoLabel")}
                 </FilterTab>
                 <FilterTab
                   active={sourceFilter === "manual"}
                   onClick={() => setSourceFilter("manual")}
                 >
-                  Вручную
+                  {t("manualLabel")}
                 </FilterTab>
               </div>
             </div>
@@ -382,20 +390,20 @@ export default function MemoryPage() {
             {/* Facts list */}
             {factsQuery.isLoading ? (
               <p className="py-8 text-center text-[16px] text-[rgba(13,13,13,0.45)]">
-                Загрузка фактов...
+                {t("loadingFacts")}
               </p>
             ) : factsQuery.isError ? (
               <div className="rounded-[14px] border border-dashed border-[rgba(13,13,13,0.15)] bg-white px-4 py-10 text-center">
                 <p className="text-[16px] text-[rgba(13,13,13,0.55)]">
-                  Не удалось загрузить факты. Попробуйте обновить страницу.
+                  {t("factsLoadError")}
                 </p>
               </div>
             ) : filtered.length === 0 ? (
               <div className="rounded-[14px] border border-dashed border-[rgba(13,13,13,0.15)] bg-white px-4 py-10 text-center">
                 <p className="text-[16px] text-[rgba(13,13,13,0.55)]">
                   {facts.length === 0
-                    ? "Пока нет фактов. Они появятся автоматически по мере общения или добавьте вручную."
-                    : "Нет фактов по выбранным фильтрам."}
+                    ? t("noFactsYet")
+                    : t("noFactsFiltered")}
                 </p>
               </div>
             ) : (
@@ -404,7 +412,7 @@ export default function MemoryPage() {
                   <div>
                     <div className="mb-2 flex items-center gap-1.5 text-[14px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.45)]">
                       <Pin size={12} />
-                      Закреплённые
+                      {t("pinnedSectionTitle")}
                     </div>
                     <div className="space-y-2">
                       {pinnedFacts.map((fact) => (
@@ -435,7 +443,7 @@ export default function MemoryPage() {
                   <div className="space-y-2">
                     {pinnedFacts.length > 0 && (
                       <div className="mb-2 text-[14px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.45)]">
-                        Остальные
+                        {t("otherSectionTitle")}
                       </div>
                     )}
                     {regularFacts.map((fact) => (
@@ -467,16 +475,16 @@ export default function MemoryPage() {
           {/* ============ Section 2: Session history ============ */}
           <section className="mb-10">
             <h2 className="mb-4 text-[18px] font-semibold text-[#1A1A1A]">
-              История сессий
+              {t("historyTitle")}
             </h2>
             {summariesQuery.isLoading ? (
               <p className="py-8 text-center text-[16px] text-[rgba(13,13,13,0.45)]">
-                Загрузка истории...
+                {t("loadingHistory")}
               </p>
             ) : (summariesQuery.data ?? []).filter((s) => s.best_summary || s.rolling_summary).length === 0 ? (
               <div className="rounded-[14px] border border-dashed border-[rgba(13,13,13,0.15)] bg-white px-4 py-10 text-center">
                 <p className="text-[16px] text-[rgba(13,13,13,0.55)]">
-                  Итоги сессий появятся после первого длинного диалога.
+                  {t("noHistoryYet")}
                 </p>
               </div>
             ) : (
@@ -498,25 +506,24 @@ export default function MemoryPage() {
           {/* ============ Section 3: Management ============ */}
           <section className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-6">
             <div className="mb-4 flex items-center gap-2 text-[15px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.55)]">
-              Управление
+              {t("managementTitle")}
             </div>
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
                 <p className="text-[16px] font-medium text-[#1A1A1A]">
-                  Активные факты:{" "}
+                  {t("activeFactsLabel")}{" "}
                   <span className="inline-flex items-center rounded-full bg-[rgba(13,13,13,0.06)] px-2 py-0.5 text-[15px]">
                     {stats.active}
                   </span>
                 </p>
                 <p className="mt-1 text-[15px] text-[rgba(13,13,13,0.55)]">
-                  Удаление авто-фактов уберёт только записи, добавленные
-                  автоматически. Факты, добавленные вручную, сохранятся.
+                  {t("autoDeleteDescription")}
                 </p>
               </div>
               {confirmClear ? (
                 <div className="flex items-center gap-2">
                   <span className="text-[15px] text-[rgba(13,13,13,0.7)]">
-                    Удалить все авто-факты?
+                    {t("confirmClearAutoTitle")}
                   </span>
                   <button
                     type="button"
@@ -525,14 +532,14 @@ export default function MemoryPage() {
                     className="inline-flex items-center gap-1.5 rounded-[8px] bg-red-500 px-4 py-2 text-[16px] text-white hover:bg-red-600 transition-colors disabled:opacity-50"
                   >
                     <Check size={16} />
-                    Да, удалить
+                    {t("confirmYesDelete")}
                   </button>
                   <button
                     type="button"
                     onClick={() => setConfirmClear(false)}
                     className="inline-flex items-center rounded-[8px] border border-[rgba(13,13,13,0.15)] px-4 py-2 text-[16px] text-[rgba(13,13,13,0.7)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
                   >
-                    Отмена
+                    {t("cancel")}
                   </button>
                 </div>
               ) : (
@@ -543,13 +550,13 @@ export default function MemoryPage() {
                   className="inline-flex items-center gap-2 rounded-[8px] bg-red-500 px-4 py-2 text-[16px] text-white hover:bg-red-600 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Trash2 size={16} />
-                  Удалить все авто-факты
+                  {t("deleteAllAutoFacts")}
                 </button>
               )}
             </div>
             {clearMutation.isSuccess && (
               <p className="mt-3 text-[15px] text-[rgba(13,13,13,0.55)]">
-                Удалено авто-фактов: {clearMutation.data?.deleted ?? 0}.
+                {t("deletedAutoFactsCount", { count: clearMutation.data?.deleted ?? 0 })}
               </p>
             )}
           </section>
@@ -598,6 +605,7 @@ function FactCard({
   onDelete: () => void;
   busy: boolean;
 }) {
+  const t = useTranslations("accountMemory");
   const auto = isAuto(fact.source);
   return (
     <div
@@ -610,7 +618,7 @@ function FactCard({
           type="button"
           onClick={onTogglePin}
           disabled={busy}
-          aria-label={fact.is_pinned ? "Открепить" : "Закрепить"}
+          aria-label={fact.is_pinned ? t("unpinFact") : t("pinFact")}
           className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] transition-colors disabled:opacity-50 ${
             fact.is_pinned
               ? "bg-amber-100 text-amber-600"
@@ -627,7 +635,7 @@ function FactCard({
                 CATEGORY_BADGE[fact.category]
               }`}
             >
-              {fact.category_display || CATEGORY_LABEL[fact.category]}
+              {fact.category_display || getCategoryLabel(t, fact.category)}
             </span>
             <span
               className={`inline-flex items-center rounded-full px-2 py-0.5 text-[14px] font-medium ${
@@ -636,7 +644,7 @@ function FactCard({
                   : "bg-blue-100 text-blue-700"
               }`}
             >
-              {auto ? "Авто" : "Вручную"}
+              {auto ? t("autoLabel") : t("manualLabel")}
             </span>
           </div>
           <p className="text-[16px] leading-relaxed text-[#1A1A1A]">
@@ -650,7 +658,7 @@ function FactCard({
             type="button"
             role="switch"
             aria-checked={fact.is_active}
-            aria-label="Активность факта"
+            aria-label={t("factActiveToggleLabel")}
             disabled={busy}
             onClick={onToggleActive}
             className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors disabled:opacity-50 ${
@@ -668,7 +676,7 @@ function FactCard({
             type="button"
             onClick={onDelete}
             disabled={busy}
-            aria-label="Удалить факт"
+            aria-label={t("deleteFactAriaLabel")}
             className="flex h-7 w-7 items-center justify-center rounded-[8px] text-[rgba(13,13,13,0.4)] hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-50"
           >
             <Trash2 size={16} />
@@ -690,6 +698,7 @@ function SummaryCard({
   expanded: boolean;
   onToggle: () => void;
 }) {
+  const t = useTranslations("accountMemory");
   const displayText = summary.best_summary || summary.summary_text || summary.rolling_summary || '';
   const isLong = displayText.length > SUMMARY_PREVIEW_LIMIT;
   const text =
@@ -709,7 +718,7 @@ function SummaryCard({
               {summary.chat_title}
             </p>
             <p className="text-[14px] text-[rgba(13,13,13,0.5)]">
-              {summary.network_name} · {summary.message_count} сообщ. ·{" "}
+              {summary.network_name} · {t("messageCountLabel", { count: summary.message_count })} ·{" "}
               {new Date(summary.created_at).toLocaleDateString("ru-RU")}
             </p>
           </div>
@@ -727,12 +736,12 @@ function SummaryCard({
           {expanded ? (
             <>
               <ChevronUp size={16} />
-              Свернуть
+              {t("collapseSummary")}
             </>
           ) : (
             <>
               <ChevronDown size={16} />
-              Показать полностью
+              {t("expandSummary")}
             </>
           )}
         </button>

@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2, Bot, X, Send, MessageSquarePlus, Loader2, Cpu } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { listPersonas, createPersona, deletePersona, createChat, listNetworks } from "@/lib/api/client";
 import { formatMoney } from "@/lib/money";
 import { useAuthStore } from "@/lib/stores/auth";
 import type { Persona, NetworkListItem } from "@/lib/api/types";
 
 export default function PersonasPage() {
+  const t = useTranslations("personas");
   const { user } = useAuthStore();
   const qc = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
@@ -47,8 +49,8 @@ export default function PersonasPage() {
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim()) { setFormErr("Введите имя персоны"); return; }
-    if (!form.system_prompt.trim()) { setFormErr("Введите системный промт"); return; }
+    if (!form.name.trim()) { setFormErr(t("nameRequired")); return; }
+    if (!form.system_prompt.trim()) { setFormErr(t("systemPromptRequired")); return; }
     setFormErr("");
     createMutation.mutate({ ...form, network: form.network || null });
   };
@@ -61,10 +63,10 @@ export default function PersonasPage() {
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-[24px] font-bold text-[#1A1A1A] dark:text-[#EDE8E3]">
-            AI-персоны
+            {t("title")}
           </h1>
           <p className="mt-1 text-[16px] text-[rgba(13,13,13,0.50)] dark:text-[rgba(236,236,236,0.45)]">
-            Выберите персонажа — бот возьмёт его роль и стиль общения
+            {t("subtitle")}
           </p>
         </div>
         {user && (
@@ -74,20 +76,20 @@ export default function PersonasPage() {
             style={{ background: "var(--surface-inverse)" }}
           >
             <Plus size={14} />
-            Создать персону
+            {t("createPersona")}
           </button>
         )}
       </div>
 
       {isLoading && (
-        <div className="text-center py-12 text-[rgba(13,13,13,0.40)]">Загрузка...</div>
+        <div className="text-center py-12 text-[rgba(13,13,13,0.40)]">{t("loading")}</div>
       )}
 
       {/* System personas */}
       {systemPersonas.length > 0 && (
         <section className="mb-8">
           <h2 className="mb-3 text-[15px] font-semibold uppercase tracking-wide text-[rgba(13,13,13,0.42)] dark:text-[rgba(236,236,236,0.40)]">
-            Системные персоны
+            {t("systemPersonasTitle")}
           </h2>
           <div className="grid gap-3 sm:grid-cols-2">
             {systemPersonas.map((p) => (
@@ -101,13 +103,13 @@ export default function PersonasPage() {
       {user && (
         <section>
           <h2 className="mb-3 text-[15px] font-semibold uppercase tracking-wide text-[rgba(13,13,13,0.42)] dark:text-[rgba(236,236,236,0.40)]">
-            Мои персоны
+            {t("myPersonasTitle")}
           </h2>
           {myPersonas.length === 0 ? (
             <div className="rounded-[12px] border border-dashed border-[rgba(13,13,13,0.15)] px-6 py-8 text-center dark:border-[rgba(255,255,255,0.10)]">
               <Bot size={28} className="mx-auto mb-2 text-[rgba(13,13,13,0.25)] dark:text-[rgba(236,236,236,0.25)]" />
               <p className="text-[15px] text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.40)]">
-                У вас нет персональных персон. Создайте первую!
+                {t("emptyMyPersonas")}
               </p>
             </div>
           ) : (
@@ -140,61 +142,61 @@ export default function PersonasPage() {
               <X size={16} />
             </button>
             <h2 className="mb-4 text-[17px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]">
-              Новая персона
+              {t("newPersonaTitle")}
             </h2>
             <form onSubmit={handleCreate} className="space-y-3">
               <div>
                 <label className="mb-1 block text-[14px] font-medium text-[rgba(13,13,13,0.60)]">
-                  Имя
+                  {t("nameLabel")}
                 </label>
                 <input
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="Например: Дружелюбный ментор"
+                  placeholder={t("namePlaceholder")}
                   className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-transparent px-3 py-2 text-[15px] outline-none focus:border-[#D97757]"
                 />
               </div>
               <div>
                 <label className="mb-1 block text-[14px] font-medium text-[rgba(13,13,13,0.60)]">
-                  Описание (опционально)
+                  {t("descriptionLabel")}
                 </label>
                 <input
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  placeholder="Одна строка о персоне"
+                  placeholder={t("descriptionPlaceholder")}
                   className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-transparent px-3 py-2 text-[15px] outline-none focus:border-[#D97757]"
                 />
               </div>
               <div>
                 <label className="mb-1 block text-[14px] font-medium text-[rgba(13,13,13,0.60)]">
-                  Системный промт
+                  {t("systemPromptLabel")}
                 </label>
                 <textarea
                   value={form.system_prompt}
                   onChange={(e) => setForm({ ...form, system_prompt: e.target.value })}
                   rows={5}
-                  placeholder="Ты — дружелюбный ментор по программированию..."
+                  placeholder={t("systemPromptPlaceholder")}
                   className="w-full resize-none rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-transparent px-3 py-2 text-[15px] outline-none focus:border-[#D97757]"
                 />
               </div>
               <div>
                 <label className="mb-1 block text-[14px] font-medium text-[rgba(13,13,13,0.60)]">
-                  Модель по умолчанию
+                  {t("defaultModelLabel")}
                 </label>
                 <select
                   value={form.network}
                   onChange={(e) => setForm({ ...form, network: e.target.value })}
                   className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-transparent px-3 py-2 text-[15px] outline-none focus:border-[#D97757]"
                 >
-                  <option value="">Спрашивать при старте чата</option>
+                  <option value="">{t("askAtChatStart")}</option>
                   {textNetworks.map((n) => (
                     <option key={n.slug} value={n.slug}>
-                      {n.name} — {formatMoney(n.cost_kopecks)}/сообщение
+                      {t("modelOptionCost", { name: n.name, cost: formatMoney(n.cost_kopecks) })}
                     </option>
                   ))}
                 </select>
                 <p className="mt-1 text-[13px] text-[rgba(13,13,13,0.40)]">
-                  Модель можно поменять при старте каждого чата
+                  {t("modelChangeHint")}
                 </p>
               </div>
               {formErr && (
@@ -206,7 +208,7 @@ export default function PersonasPage() {
                   onClick={() => setShowCreate(false)}
                   className="rounded-[8px] border border-[rgba(13,13,13,0.15)] px-4 py-2 text-[15px] text-[rgba(13,13,13,0.60)] hover:bg-[rgba(13,13,13,0.04)]"
                 >
-                  Отмена
+                  {t("cancel")}
                 </button>
                 <button
                   type="submit"
@@ -214,7 +216,7 @@ export default function PersonasPage() {
                   className="rounded-[8px] px-4 py-2 text-[15px] font-semibold text-white transition-opacity disabled:opacity-60"
                   style={{ background: "var(--surface-inverse)" }}
                 >
-                  {createMutation.isPending ? "Создание..." : "Создать"}
+                  {createMutation.isPending ? t("creating") : t("create")}
                 </button>
               </div>
             </form>
@@ -236,6 +238,7 @@ function PersonaCard({
   networks: NetworkListItem[];
   onDelete?: () => void;
 }) {
+  const t = useTranslations("personas");
   const router = useRouter();
   const [composing, setComposing] = useState(false);
   const [msg, setMsg] = useState("");
@@ -319,7 +322,7 @@ function PersonaCard({
             >
               {networks.map((n) => (
                 <option key={n.slug} value={n.slug}>
-                  {n.name} — {formatMoney(n.cost_kopecks)}/сообщение
+                  {t("modelOptionCost", { name: n.name, cost: formatMoney(n.cost_kopecks) })}
                 </option>
               ))}
             </select>
@@ -332,12 +335,12 @@ function PersonaCard({
               if (e.key === "Enter" && !e.shiftKey) handleStart(e);
             }}
             rows={2}
-            placeholder="Напишите первое сообщение..."
+            placeholder={t("firstMessagePlaceholder")}
             className="w-full resize-none rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-transparent px-3 py-2 text-[14px] outline-none focus:border-[#D97757]"
           />
           {startMutation.isError && (
             <p className="text-[13px] text-[#e74c3c]">
-              Не удалось начать чат. Попробуйте ещё раз.
+              {t("startChatError")}
             </p>
           )}
           <div className="flex justify-end gap-2">
@@ -346,7 +349,7 @@ function PersonaCard({
               onClick={() => setComposing(false)}
               className="rounded-[8px] px-3 py-1.5 text-[14px] text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.04)]"
             >
-              Отмена
+              {t("cancel")}
             </button>
             <button
               type="submit"
@@ -359,7 +362,7 @@ function PersonaCard({
               ) : (
                 <Send size={14} />
               )}
-              Отправить
+              {t("send")}
             </button>
           </div>
         </form>
@@ -367,11 +370,11 @@ function PersonaCard({
         <button
           onClick={() => setComposing(true)}
           disabled={!canStart}
-          title={canStart ? undefined : "Нет доступной модели для чата"}
+          title={canStart ? undefined : t("noModelAvailable")}
           className="mt-1 flex items-center justify-center gap-2 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 py-2 text-[14px] font-medium text-[rgba(13,13,13,0.70)] transition-colors hover:border-[#D97757] hover:text-[#D97757] disabled:cursor-not-allowed disabled:opacity-50 dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.70)]"
         >
           <MessageSquarePlus size={15} />
-          Начать чат
+          {t("startChat")}
         </button>
       ) : (
         <Link
@@ -379,7 +382,7 @@ function PersonaCard({
           className="mt-1 flex items-center justify-center gap-2 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 py-2 text-[14px] font-medium text-[rgba(13,13,13,0.70)] transition-colors hover:border-[#D97757] hover:text-[#D97757] dark:border-[rgba(255,255,255,0.12)] dark:text-[rgba(236,236,236,0.70)]"
         >
           <MessageSquarePlus size={15} />
-          Войдите, чтобы начать чат
+          {t("loginToChat")}
         </Link>
       )}
 
@@ -387,7 +390,7 @@ function PersonaCard({
         <button
           onClick={onDelete}
           className="absolute right-3 top-3 hidden h-7 w-7 items-center justify-center rounded-[6px] text-[rgba(13,13,13,0.35)] transition-colors hover:bg-[rgba(231,76,60,0.08)] hover:text-[#e74c3c] group-hover:flex"
-          title="Удалить персону"
+          title={t("deletePersona")}
         >
           <Trash2 size={13} />
         </button>

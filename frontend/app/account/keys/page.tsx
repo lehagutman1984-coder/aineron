@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2, Copy, Key, Eye, EyeOff } from "lucide-react";
 import { listAPIKeys, createAPIKey, deleteAPIKey } from "@/lib/api/client";
@@ -9,6 +10,7 @@ import { APIError } from "@/lib/api/client";
 import type { APIKey } from "@/lib/api/types";
 
 export default function KeysPage() {
+  const t = useTranslations("accountKeys");
   const qc = useQueryClient();
   const [newKeyName, setNewKeyName] = useState("");
   const [withSandboxes, setWithSandboxes] = useState(false);
@@ -36,7 +38,7 @@ export default function KeysPage() {
       qc.invalidateQueries({ queryKey: ["api-keys"] });
     },
     onError: (err) => {
-      setError(err instanceof APIError ? err.message : "Ошибка создания ключа");
+      setError(err instanceof APIError ? err.message : t("createError"));
     },
   });
 
@@ -58,13 +60,13 @@ export default function KeysPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
-      <h1 className="mb-8 text-[22px] font-bold text-[#1A1A1A]">API-ключи</h1>
+      <h1 className="mb-8 text-[22px] font-bold text-[#1A1A1A]">{t("title")}</h1>
 
       {/* Created key banner */}
       {createdKey && (
         <div className="mb-6 rounded-[12px] border border-[rgba(217,119,87,0.35)] bg-[rgba(217,119,87,0.08)] p-5">
           <p className="mb-2 text-[15px] font-semibold text-[#D97757]">
-            Ключ создан. Сохраните — он показывается только один раз.
+            {t("createdBanner")}
           </p>
           <div className="flex items-center gap-2">
             <code className="flex-1 truncate rounded-[6px] border border-[rgba(13,13,13,0.15)] bg-white px-3 py-2 text-[14px] text-[#1A1A1A]">
@@ -95,13 +97,13 @@ export default function KeysPage() {
           <div className="flex items-end gap-3">
             <div className="flex-1">
               <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.6)]">
-                Название ключа
+                {t("nameLabel")}
               </label>
               <input
                 type="text"
                 value={newKeyName}
                 onChange={(e) => setNewKeyName(e.target.value)}
-                placeholder="Например: VS Code, Cursor, Prod"
+                placeholder={t("namePlaceholder")}
                 autoFocus
                 className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 py-2 text-[16px] text-[#1A1A1A] placeholder-[rgba(13,13,13,0.38)] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
               />
@@ -111,14 +113,14 @@ export default function KeysPage() {
               disabled={!newKeyName.trim() || createMutation.isPending}
               className="h-9 rounded-[8px] bg-[#D97757] px-4 text-[15px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 transition-colors"
             >
-              {createMutation.isPending ? "Создание..." : "Создать"}
+              {createMutation.isPending ? t("creating") : t("create")}
             </button>
             <button
               type="button"
               onClick={() => { setFormOpen(false); setError(null); }}
               className="h-9 rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[15px] text-[rgba(13,13,13,0.6)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
             >
-              Отмена
+              {t("cancel")}
             </button>
           </div>
           <label className="flex cursor-pointer items-start gap-2.5 text-[14px] text-[rgba(13,13,13,0.6)]">
@@ -129,10 +131,10 @@ export default function KeysPage() {
               className="mt-0.5 h-4 w-4 accent-[#D97757]"
             />
             <span>
-              <span className="font-medium text-[#1A1A1A]">Доступ к Sandboxes</span>{" "}
-              — исполнение кода в изолированных microVM (списание поминутно).{" "}
+              <span className="font-medium text-[#1A1A1A]">{t("sandboxesAccess")}</span>{" "}
+              {t("sandboxesDescription")}{" "}
               <Link href="/api-docs/" className="text-[#D97757] hover:underline underline-offset-2">
-                Подробнее
+                {t("learnMore")}
               </Link>
             </span>
           </label>
@@ -143,7 +145,7 @@ export default function KeysPage() {
           className="mb-5 flex items-center gap-2 rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-4 py-2.5 text-[15px] text-[rgba(13,13,13,0.7)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#1A1A1A] transition-colors"
         >
           <Plus size={15} />
-          Создать ключ
+          {t("createKeyButton")}
         </button>
       )}
 
@@ -153,13 +155,13 @@ export default function KeysPage() {
 
       {/* Keys list */}
       {isLoading ? (
-        <div className="py-8 text-center text-[16px] text-[rgba(13,13,13,0.45)]">Загрузка...</div>
+        <div className="py-8 text-center text-[16px] text-[rgba(13,13,13,0.45)]">{t("loading")}</div>
       ) : keys.length === 0 ? (
         <div className="rounded-[12px] border border-dashed border-[rgba(13,13,13,0.18)] py-12 text-center">
           <Key size={28} className="mx-auto mb-3 text-[rgba(13,13,13,0.25)]" />
-          <p className="text-[16px] text-[rgba(13,13,13,0.5)]">Нет API-ключей</p>
+          <p className="text-[16px] text-[rgba(13,13,13,0.5)]">{t("emptyTitle")}</p>
           <p className="mt-1 text-[15px] text-[rgba(13,13,13,0.38)]">
-            Создайте ключ для подключения к IDE или вашему приложению
+            {t("emptySubtitle")}
           </p>
         </div>
       ) : (
@@ -170,6 +172,7 @@ export default function KeysPage() {
               apiKey={key}
               onDelete={() => deleteMutation.mutate(key.id)}
               deleting={deleteMutation.isPending}
+              t={t}
             />
           ))}
         </div>
@@ -177,7 +180,7 @@ export default function KeysPage() {
 
       {/* Info block */}
       <div className="mt-8 rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-[rgba(13,13,13,0.02)] p-5 text-[15px] leading-relaxed text-[rgba(13,13,13,0.6)]">
-        <p className="mb-1 font-medium text-[#1A1A1A]">Как использовать</p>
+        <p className="mb-1 font-medium text-[#1A1A1A]">{t("howToUse")}</p>
         <p>
           Base URL:{" "}
           <code className="rounded-[4px] bg-white px-1.5 py-0.5 text-[14px] border border-[rgba(13,13,13,0.12)]">
@@ -191,7 +194,7 @@ export default function KeysPage() {
           </code>
         </p>
         <Link href="/api-docs/" className="mt-2 inline-block text-[#D97757] hover:underline underline-offset-2">
-          Полная документация
+          {t("fullDocs")}
         </Link>
       </div>
     </div>
@@ -202,10 +205,12 @@ function KeyRow({
   apiKey,
   onDelete,
   deleting,
+  t,
 }: {
   apiKey: APIKey;
   onDelete: () => void;
   deleting: boolean;
+  t: ReturnType<typeof useTranslations>;
 }) {
   const [confirming, setConfirming] = useState(false);
 
@@ -222,27 +227,27 @@ function KeyRow({
           )}
         </p>
         <p className="text-[14px] text-[rgba(13,13,13,0.45)]">
-          {apiKey.key_prefix}... · создан{" "}
-          {new Date(apiKey.created_at).toLocaleDateString("ru-RU")}
+          {apiKey.key_prefix}... ·{" "}
+          {t("createdOn", { date: new Date(apiKey.created_at).toLocaleDateString("ru-RU") })}
           {apiKey.last_used_at &&
-            ` · использован ${new Date(apiKey.last_used_at).toLocaleDateString("ru-RU")}`}
+            ` · ${t("usedOn", { date: new Date(apiKey.last_used_at).toLocaleDateString("ru-RU") })}`}
         </p>
       </div>
       {confirming ? (
         <div className="flex items-center gap-2">
-          <span className="text-[14px] text-[rgba(13,13,13,0.5)]">Удалить?</span>
+          <span className="text-[14px] text-[rgba(13,13,13,0.5)]">{t("confirmDelete")}</span>
           <button
             onClick={() => { onDelete(); setConfirming(false); }}
             disabled={deleting}
             className="rounded-[6px] bg-[#e74c3c] px-2.5 py-1 text-[14px] font-medium text-white hover:bg-[#c0392b] disabled:opacity-50 transition-colors"
           >
-            Да
+            {t("yes")}
           </button>
           <button
             onClick={() => setConfirming(false)}
             className="rounded-[6px] border border-[rgba(13,13,13,0.15)] px-2.5 py-1 text-[14px] text-[rgba(13,13,13,0.6)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
           >
-            Нет
+            {t("no")}
           </button>
         </div>
       ) : (

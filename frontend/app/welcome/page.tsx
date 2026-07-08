@@ -1,8 +1,9 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import {
   Code2, Globe, Pencil, BookOpen, Briefcase, Image,
   ChevronRight, ArrowRight, Check, Star,
@@ -10,99 +11,68 @@ import {
 
 const ONBOARDING_KEY = "onboarding_done";
 
-// ── Interest definitions ───────────────────────────────────────────────────────
-const INTERESTS = [
+// ── Interest definitions (non-translatable metadata) ───────────────────────────
+const INTERESTS_META = [
   {
     key: "code",
-    label: "Написать код",
-    description: "Отладка, рефакторинг, объяснение алгоритмов",
     icon: Code2,
     color: "#D97757",
     bg: "rgba(217,119,87,0.08)",
-    prompts: [
-      "Напиши функцию на Python для валидации email",
-      "Объясни разницу между async/await и Promise",
-      "Помоги найти баг в этом коде",
-    ],
     catalog: "/models/?category=text",
   },
   {
     key: "translate",
-    label: "Перевод и текст",
-    description: "Переводы, редактирование, рерайт",
     icon: Globe,
     color: "#22a85a",
     bg: "rgba(34,168,90,0.08)",
-    prompts: [
-      "Переведи этот текст с английского на русский",
-      "Сделай этот email более профессиональным",
-      "Исправь грамматические ошибки в тексте",
-    ],
     catalog: "/models/?category=text",
   },
   {
     key: "creative",
-    label: "Творчество",
-    description: "Тексты, идеи, контент для соцсетей",
     icon: Pencil,
     color: "#D97757",
     bg: "rgba(155,89,182,0.08)",
-    prompts: [
-      "Придумай 10 идей для поста в Instagram",
-      "Напиши короткий рассказ в жанре фантастики",
-      "Составь продающее описание для товара",
-    ],
     catalog: "/models/?category=text",
   },
   {
     key: "study",
-    label: "Учёба",
-    description: "Объяснения, конспекты, подготовка",
     icon: BookOpen,
     color: "#e67e22",
     bg: "rgba(230,126,34,0.08)",
-    prompts: [
-      "Объясни квантовую запутанность простыми словами",
-      "Помоги написать план курсовой работы",
-      "Составь 10 тестовых вопросов по теме",
-    ],
     catalog: "/models/?category=text",
   },
   {
     key: "business",
-    label: "Бизнес",
-    description: "Анализ, письма, презентации",
     icon: Briefcase,
     color: "#D97757",
     bg: "rgba(13,158,140,0.08)",
-    prompts: [
-      "Напиши коммерческое предложение для клиента",
-      "Проведи SWOT-анализ для стартапа",
-      "Составь скрипт для холодного звонка",
-    ],
     catalog: "/models/?category=text",
   },
   {
     key: "images",
-    label: "Изображения",
-    description: "Генерация изображений и арт",
     icon: Image,
     color: "#e74c3c",
     bg: "rgba(231,76,60,0.08)",
-    prompts: [
-      "Нарисуй портрет в стиле масляной живописи",
-      "Создай иллюстрацию для детской книги",
-      "Сгенерируй логотип для tech-стартапа",
-    ],
     catalog: "/models/?category=image",
   },
 ] as const;
 
-type InterestKey = (typeof INTERESTS)[number]["key"];
+type InterestKey = (typeof INTERESTS_META)[number]["key"];
+
+type InterestContent = { label: string; description: string; prompts: string[] };
+
+type Interest = (typeof INTERESTS_META)[number] & InterestContent;
+
+function useInterests(t: ReturnType<typeof useTranslations>): Interest[] {
+  const content = t.raw("interests") as InterestContent[];
+  return INTERESTS_META.map((meta, i) => ({ ...meta, ...content[i] }));
+}
 
 // ── Page ───────────────────────────────────────────────────────────────────────
 export default function WelcomePage() {
+  const t = useTranslations("welcome");
   const router = useRouter();
+  const interests = useInterests(t);
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [interest, setInterest] = useState<InterestKey | null>(null);
   const [pickedPrompt, setPickedPrompt] = useState<string | null>(null);
@@ -114,7 +84,7 @@ export default function WelcomePage() {
     }
   }, [router]);
 
-  const chosen = INTERESTS.find((i) => i.key === interest);
+  const chosen = interests.find((i) => i.key === interest);
 
   const finish = () => {
     localStorage.setItem(ONBOARDING_KEY, "1");
@@ -158,6 +128,7 @@ export default function WelcomePage() {
       >
         {step === 1 && (
           <Step1
+            interests={interests}
             onSelect={(key) => {
               setInterest(key);
               setStep(2);
@@ -184,7 +155,7 @@ export default function WelcomePage() {
           onClick={finish}
           className="mt-5 text-[14px] text-[rgba(13,13,13,0.38)] hover:text-[rgba(13,13,13,0.60)] transition-colors"
         >
-          Пропустить
+          {t("skip")}
         </button>
       )}
     </div>
@@ -192,21 +163,28 @@ export default function WelcomePage() {
 }
 
 // ── Step 1: Pick interest ──────────────────────────────────────────────────────
-function Step1({ onSelect }: { onSelect: (key: InterestKey) => void }) {
+function Step1({
+  interests,
+  onSelect,
+}: {
+  interests: Interest[];
+  onSelect: (key: InterestKey) => void;
+}) {
+  const t = useTranslations("welcome");
   return (
     <>
       <div className="mb-6 text-center">
         <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-[12px] bg-[rgba(217,119,87,0.08)]">
           <Star size={20} className="text-[#D97757]" />
         </div>
-        <h1 className="text-[22px] font-bold text-[#1A1A1A]">Добро пожаловать!</h1>
+        <h1 className="text-[22px] font-bold text-[#1A1A1A]">{t("step1.title")}</h1>
         <p className="mt-1 text-[16px] text-[rgba(13,13,13,0.52)]">
-          Для чего вы планируете использовать AI?
+          {t("step1.subtitle")}
         </p>
       </div>
 
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-        {INTERESTS.map((item) => {
+        {interests.map((item) => {
           const Icon = item.icon;
           return (
             <button
@@ -240,12 +218,13 @@ function Step2({
   onBack,
   onNext,
 }: {
-  interest: (typeof INTERESTS)[number];
+  interest: Interest;
   pickedPrompt: string | null;
   onPickPrompt: (p: string) => void;
   onBack: () => void;
   onNext: () => void;
 }) {
+  const t = useTranslations("welcome");
   const Icon = interest.icon;
   return (
     <>
@@ -254,7 +233,7 @@ function Step2({
         className="mb-4 flex items-center gap-1 text-[14px] text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A] transition-colors"
       >
         <ChevronRight size={12} className="rotate-180" />
-        Назад
+        {t("step2.back")}
       </button>
 
       <div className="mb-5 flex items-center gap-3">
@@ -266,7 +245,7 @@ function Step2({
         </div>
         <div>
           <h2 className="text-[17px] font-bold text-[#1A1A1A]">{interest.label}</h2>
-          <p className="text-[15px] text-[rgba(13,13,13,0.50)]">Выберите пример или откройте каталог</p>
+          <p className="text-[15px] text-[rgba(13,13,13,0.50)]">{t("step2.subtitle")}</p>
         </div>
       </div>
 
@@ -302,13 +281,13 @@ function Step2({
           className="flex-1 rounded-[10px] border border-[rgba(13,13,13,0.12)] py-2.5 text-center text-[15px] font-medium text-[rgba(13,13,13,0.60)] transition-colors hover:border-[rgba(13,13,13,0.22)] hover:text-[#1A1A1A]"
           onClick={() => localStorage.setItem(ONBOARDING_KEY, "1")}
         >
-          Открыть каталог
+          {t("step2.openCatalog")}
         </Link>
         <button
           onClick={onNext}
           className="flex flex-1 items-center justify-center gap-1.5 rounded-[10px] bg-[#D97757] py-2.5 text-[15px] font-medium text-white transition-colors hover:bg-[#C4623E]"
         >
-          Продолжить
+          {t("step2.continue")}
           <ArrowRight size={14} />
         </button>
       </div>
@@ -322,19 +301,27 @@ function Step3({
   prompt,
   onFinish,
 }: {
-  interest: (typeof INTERESTS)[number];
+  interest: Interest;
   prompt: string | null;
   onFinish: () => void;
 }) {
+  const t = useTranslations("welcome");
+  const quickLinks = t.raw("step3.quickLinks") as { label: string; sub: string }[];
+  const links = [
+    { href: "/models/", ...quickLinks[0] },
+    { href: "/compare/", ...quickLinks[1] },
+    { href: "/account/billing/", ...quickLinks[2] },
+  ];
+
   return (
     <>
       <div className="mb-6 text-center">
         <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-[rgba(34,168,90,0.10)]">
           <Check size={22} className="text-[#22a85a]" />
         </div>
-        <h2 className="text-[20px] font-bold text-[#1A1A1A]">Всё готово!</h2>
+        <h2 className="text-[20px] font-bold text-[#1A1A1A]">{t("step3.title")}</h2>
         <p className="mt-1 text-[15px] text-[rgba(13,13,13,0.50)]">
-          На вашем балансе уже есть средства для первых запросов
+          {t("step3.subtitle")}
         </p>
       </div>
 
@@ -348,7 +335,7 @@ function Step3({
           <div className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#D97757]" />
           <div>
             <p className="mb-0.5 text-[13px] font-medium uppercase tracking-wide text-[#D97757]">
-              Ваш первый запрос
+              {t("step3.yourFirstPrompt")}
             </p>
             <p className="text-[#1A1A1A]">{prompt}</p>
           </div>
@@ -358,23 +345,7 @@ function Step3({
 
       {/* Quick links */}
       <div className="mb-6 flex flex-col gap-2">
-        {[
-          {
-            href: "/models/",
-            label: "Каталог нейросетей",
-            sub: "200+ моделей на любую задачу",
-          },
-          {
-            href: "/compare/",
-            label: "Сравнение моделей",
-            sub: "Отправьте запрос в несколько моделей сразу",
-          },
-          {
-            href: "/account/billing/",
-            label: "Пополнить баланс",
-            sub: "Пополните баланс или оформите подписку",
-          },
-        ].map((item) => (
+        {links.map((item) => (
           <Link
             key={item.href}
             href={item.href}
@@ -394,7 +365,7 @@ function Step3({
         onClick={onFinish}
         className="w-full rounded-[10px] bg-[#1A1A1A] py-2.5 text-[16px] font-medium text-white transition-colors hover:bg-[rgba(13,13,13,0.85)]"
       >
-        Перейти в личный кабинет
+        {t("step3.goToAccount")}
       </button>
     </>
   );

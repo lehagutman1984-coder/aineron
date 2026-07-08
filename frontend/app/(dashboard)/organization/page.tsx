@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Building2, Users, Plus, Trash2, Mail, ArrowLeft,
@@ -17,6 +18,7 @@ import { APIError } from "@/lib/api/client";
 import type { Organization, OrgMember, OrgInvite, Invoice } from "@/lib/api/types";
 
 export default function OrganizationPage() {
+  const t = useTranslations("orgDashboard");
   const qc = useQueryClient();
   const [selectedOrgId, setSelectedOrgId] = useState<number | null>(null);
   const [createOrgOpen, setCreateOrgOpen] = useState(false);
@@ -39,7 +41,7 @@ export default function OrganizationPage() {
       setSelectedOrgId(org.id);
     },
     onError: (err) => {
-      setCreateError(err instanceof APIError ? err.message : "Ошибка создания");
+      setCreateError(err instanceof APIError ? err.message : t("createOrgError"));
     },
   });
 
@@ -53,10 +55,10 @@ export default function OrganizationPage() {
           className="flex items-center gap-1 text-[15px] text-[rgba(13,13,13,0.5)] hover:text-[#1A1A1A] transition-colors"
         >
           <ArrowLeft size={14} />
-          Кабинет
+          {t("account")}
         </Link>
         <span className="text-[rgba(13,13,13,0.25)]">/</span>
-        <h1 className="text-[20px] font-bold text-[#1A1A1A]">Организации</h1>
+        <h1 className="text-[20px] font-bold text-[#1A1A1A]">{t("organizations")}</h1>
       </div>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-[280px_1fr]">
@@ -64,7 +66,7 @@ export default function OrganizationPage() {
         <aside>
           <div className="mb-3 flex items-center justify-between">
             <p className="text-[14px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.45)]">
-              Ваши организации
+              {t("yourOrganizations")}
             </p>
             <button
               onClick={() => setCreateOrgOpen((v) => !v)}
@@ -81,7 +83,7 @@ export default function OrganizationPage() {
             >
               <input
                 type="text"
-                placeholder="Название организации"
+                placeholder={t("orgNamePlaceholder")}
                 value={orgName}
                 onChange={(e) => setOrgName(e.target.value)}
                 required
@@ -90,7 +92,7 @@ export default function OrganizationPage() {
               />
               <input
                 type="text"
-                placeholder="ИНН (необязательно)"
+                placeholder={t("innOptionalPlaceholder")}
                 value={orgInn}
                 onChange={(e) => setOrgInn(e.target.value)}
                 maxLength={12}
@@ -105,7 +107,7 @@ export default function OrganizationPage() {
                   disabled={!orgName.trim() || createOrgMutation.isPending}
                   className="flex-1 h-8 rounded-[6px] bg-[#D97757] text-[14px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 transition-colors"
                 >
-                  {createOrgMutation.isPending ? "..." : "Создать"}
+                  {createOrgMutation.isPending ? "..." : t("create")}
                 </button>
                 <button
                   type="button"
@@ -120,12 +122,12 @@ export default function OrganizationPage() {
 
           {isLoading ? (
             <div className="py-6 text-center text-[15px] text-[rgba(13,13,13,0.45)]">
-              Загрузка...
+              {t("loading")}
             </div>
           ) : orgs.length === 0 ? (
             <div className="rounded-[10px] border border-dashed border-[rgba(13,13,13,0.18)] py-8 text-center">
               <Building2 size={24} className="mx-auto mb-2 text-[rgba(13,13,13,0.25)]" />
-              <p className="text-[15px] text-[rgba(13,13,13,0.5)]">Нет организаций</p>
+              <p className="text-[15px] text-[rgba(13,13,13,0.5)]">{t("noOrganizations")}</p>
             </div>
           ) : (
             <div className="flex flex-col gap-1">
@@ -155,7 +157,7 @@ export default function OrganizationPage() {
         <main>
           {!selectedOrg ? (
             <div className="flex h-64 items-center justify-center rounded-[14px] border border-dashed border-[rgba(13,13,13,0.15)] text-[16px] text-[rgba(13,13,13,0.4)]">
-              Выберите организацию
+              {t("selectOrganization")}
             </div>
           ) : (
             <OrgDetail org={selectedOrg} />
@@ -167,8 +169,14 @@ export default function OrganizationPage() {
 }
 
 function OrgDetail({ org }: { org: Organization }) {
+  const t = useTranslations("orgDashboard");
   const qc = useQueryClient();
   const isAdmin = org.user_role === "owner" || org.user_role === "admin";
+  const roleLabels: Record<string, string> = {
+    owner: t("roleOwner"),
+    admin: t("roleAdmin"),
+    member: t("roleMember"),
+  };
 
   const { data: members = [] } = useQuery<OrgMember[]>({
     queryKey: ["org-members", org.id],
@@ -202,7 +210,7 @@ function OrgDetail({ org }: { org: Organization }) {
       qc.invalidateQueries({ queryKey: ["org-invites", org.id] });
     },
     onError: (err) => {
-      setInviteError(err instanceof APIError ? err.message : "Ошибка");
+      setInviteError(err instanceof APIError ? err.message : t("genericError"));
     },
   });
 
@@ -217,7 +225,7 @@ function OrgDetail({ org }: { org: Organization }) {
       qc.invalidateQueries({ queryKey: ["org-invoices", org.id] });
     },
     onError: (err) => {
-      setInvoiceError(err instanceof APIError ? err.message : "Ошибка");
+      setInvoiceError(err instanceof APIError ? err.message : t("genericError"));
     },
   });
 
@@ -229,28 +237,28 @@ function OrgDetail({ org }: { org: Organization }) {
           <Building2 size={18} className="text-[#D97757]" />
           <h2 className="text-[17px] font-bold text-[#1A1A1A]">{org.name}</h2>
           <span className="rounded-full bg-[rgba(13,13,13,0.07)] px-2 py-0.5 text-[13px] text-[rgba(13,13,13,0.55)]">
-            {org.user_role}
+            {org.user_role ? roleLabels[org.user_role] ?? org.user_role : ""}
           </span>
         </div>
         {org.inn && (
-          <p className="text-[15px] text-[rgba(13,13,13,0.55)]">ИНН: {org.inn}</p>
+          <p className="text-[15px] text-[rgba(13,13,13,0.55)]">{t("innLabel", { inn: org.inn })}</p>
         )}
         <div className="mt-3 flex items-center gap-4">
           <div className="text-center">
             <p className="text-[20px] font-bold text-[#1A1A1A]">
               {Number(org.balance_rub).toFixed(2)}
             </p>
-            <p className="text-[13px] text-[rgba(13,13,13,0.5)]">руб. баланс</p>
+            <p className="text-[13px] text-[rgba(13,13,13,0.5)]">{t("balanceLabel")}</p>
           </div>
           <div className="text-center">
             <p className="text-[20px] font-bold text-[#1A1A1A]">{org.member_count}</p>
-            <p className="text-[13px] text-[rgba(13,13,13,0.5)]">участников</p>
+            <p className="text-[13px] text-[rgba(13,13,13,0.5)]">{t("membersCountLabel")}</p>
           </div>
         </div>
       </div>
 
       {/* Members */}
-      <Section title="Участники" icon={<Users size={14} />}>
+      <Section title={t("membersSectionTitle")} icon={<Users size={14} />}>
         <div className="flex flex-col gap-1.5">
           {members.map((m) => (
             <div
@@ -262,7 +270,7 @@ function OrgDetail({ org }: { org: Organization }) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="truncate text-[15px] font-medium text-[#1A1A1A]">{m.email}</p>
-                <p className="text-[13px] text-[rgba(13,13,13,0.45)]">{m.role}</p>
+                <p className="text-[13px] text-[rgba(13,13,13,0.45)]">{roleLabels[m.role] ?? m.role}</p>
               </div>
               {isAdmin && m.role !== "owner" && (
                 <button
@@ -282,7 +290,7 @@ function OrgDetail({ org }: { org: Organization }) {
           >
             <input
               type="email"
-              placeholder="email участника"
+              placeholder={t("memberEmailPlaceholder")}
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
               required
@@ -294,7 +302,7 @@ function OrgDetail({ org }: { org: Organization }) {
               className="flex h-9 items-center gap-1.5 rounded-[8px] bg-[#D97757] px-3 text-[15px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 transition-colors"
             >
               <Mail size={13} />
-              Пригласить
+              {t("invite")}
             </button>
           </form>
         )}
@@ -304,7 +312,7 @@ function OrgDetail({ org }: { org: Organization }) {
         {invites.length > 0 && (
           <div className="mt-3 flex flex-col gap-1">
             <p className="text-[13px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.4)]">
-              Ожидают принятия
+              {t("pendingInvites")}
             </p>
             {invites.map((inv) => (
               <div
@@ -321,10 +329,10 @@ function OrgDetail({ org }: { org: Organization }) {
 
       {/* Invoices */}
       {isAdmin && (
-        <Section title="Счета на оплату" icon={<FileText size={14} />}>
+        <Section title={t("invoicesSectionTitle")} icon={<FileText size={14} />}>
           <div className="flex flex-col gap-1.5">
             {invoices.length === 0 ? (
-              <p className="text-[15px] text-[rgba(13,13,13,0.45)]">Счетов нет</p>
+              <p className="text-[15px] text-[rgba(13,13,13,0.45)]">{t("noInvoices")}</p>
             ) : (
               invoices.map((inv) => (
                 <div
@@ -340,7 +348,7 @@ function OrgDetail({ org }: { org: Organization }) {
                     </p>
                   </div>
                   <p className="shrink-0 text-[15px] font-semibold text-[#1A1A1A]">
-                    {Number(inv.amount_rub).toLocaleString("ru-RU")} руб.
+                    {t("amountValue", { amount: Number(inv.amount_rub).toLocaleString("ru-RU") })}
                   </p>
                   <StatusBadge status={inv.status} />
                 </div>
@@ -353,7 +361,7 @@ function OrgDetail({ org }: { org: Organization }) {
           >
             <input
               type="number"
-              placeholder="Сумма в рублях"
+              placeholder={t("amountPlaceholder")}
               value={invoiceAmount}
               onChange={(e) => setInvoiceAmount(e.target.value)}
               min="100"
@@ -366,7 +374,7 @@ function OrgDetail({ org }: { org: Organization }) {
               disabled={invoiceMutation.isPending}
               className="h-9 rounded-[8px] bg-[#D97757] px-3 text-[15px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 transition-colors"
             >
-              Выставить счёт
+              {t("issueInvoice")}
             </button>
           </form>
           {invoiceError && (
@@ -382,6 +390,7 @@ function OrgDetail({ org }: { org: Organization }) {
 }
 
 function TelegramSection({ orgId }: { orgId: number }) {
+  const t = useTranslations("orgDashboard");
   const qc = useQueryClient();
   const [token, setToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -410,14 +419,14 @@ function TelegramSection({ orgId }: { orgId: number }) {
   };
 
   return (
-    <Section title="Telegram-интеграция" icon={<Send size={14} />}>
+    <Section title={t("telegramSectionTitle")} icon={<Send size={14} />}>
       <p className="mb-4 text-[15px] text-[rgba(13,13,13,0.55)]">
-        Подключи Telegram-группы к организации. Участники смогут использовать бота за счёт баланса организации.
+        {t("telegramDescription")}
       </p>
 
       {/* Token generator */}
       <div className="mb-4 rounded-[10px] border border-[rgba(13,13,13,0.10)] bg-white p-4">
-        <p className="mb-2 text-[14px] font-medium text-[rgba(13,13,13,0.55)]">Токен подключения</p>
+        <p className="mb-2 text-[14px] font-medium text-[rgba(13,13,13,0.55)]">{t("connectionToken")}</p>
         {token ? (
           <div className="flex items-center gap-2">
             <code className="flex-1 rounded-[6px] bg-[rgba(13,13,13,0.05)] px-3 py-1.5 text-[15px] font-mono text-[#1A1A1A] overflow-auto">
@@ -428,7 +437,7 @@ function TelegramSection({ orgId }: { orgId: number }) {
             </button>
           </div>
         ) : (
-          <p className="text-[14px] text-[rgba(13,13,13,0.40)]">Нет активного токена</p>
+          <p className="text-[14px] text-[rgba(13,13,13,0.40)]">{t("noActiveToken")}</p>
         )}
         <div className="mt-3 flex items-start gap-3">
           <button
@@ -437,11 +446,11 @@ function TelegramSection({ orgId }: { orgId: number }) {
             className="flex items-center gap-1.5 rounded-[8px] bg-[#D97757] px-3 py-1.5 text-[14px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 transition-colors"
           >
             <RefreshCw size={12} className={genTokenMutation.isPending ? "animate-spin" : ""} />
-            {token ? "Обновить токен" : "Создать токен"}
+            {token ? t("refreshToken") : t("createToken")}
           </button>
           {token && (
             <div className="text-[13px] text-[rgba(13,13,13,0.45)] leading-relaxed">
-              Добавь бота в группу, дай права <b>администратора</b> и напиши:<br />
+              {t.rich("addBotInstructions", { b: (chunks) => <b>{chunks}</b> })}<br />
               <code className="font-mono">/reggroup {token}</code>
             </div>
           )}
@@ -451,7 +460,7 @@ function TelegramSection({ orgId }: { orgId: number }) {
       {/* Connected groups */}
       {groups.length > 0 && (
         <div>
-          <p className="mb-2 text-[14px] font-medium text-[rgba(13,13,13,0.55)]">Подключённые группы ({groups.length})</p>
+          <p className="mb-2 text-[14px] font-medium text-[rgba(13,13,13,0.55)]">{t("connectedGroupsCount", { count: groups.length })}</p>
           <div className="flex flex-col gap-2">
             {groups.map((g) => (
               <div key={g.id} className="flex items-center justify-between rounded-[8px] border border-[rgba(13,13,13,0.08)] bg-white px-3 py-2">
@@ -495,12 +504,17 @@ function Section({
 }
 
 function StatusBadge({ status }: { status: "pending" | "paid" | "cancelled" }) {
+  const t = useTranslations("orgDashboard");
   const map = {
     pending: "text-[#d4ac0d] bg-[rgba(241,196,15,0.10)]",
     paid: "text-[#1abc9c] bg-[rgba(26,188,156,0.10)]",
     cancelled: "text-[rgba(13,13,13,0.5)] bg-[rgba(13,13,13,0.06)]",
   };
-  const label = { pending: "Ожидает", paid: "Оплачен", cancelled: "Отменён" };
+  const label = {
+    pending: t("statusPending"),
+    paid: t("statusPaid"),
+    cancelled: t("statusCancelled"),
+  };
   return (
     <span
       className={`shrink-0 rounded-full px-2 py-0.5 text-[13px] font-medium ${map[status]}`}

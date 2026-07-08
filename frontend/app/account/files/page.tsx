@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Video,
@@ -30,10 +31,10 @@ import { APIError } from "@/lib/api/client";
 
 type Category = "all" | "images" | "videos";
 
-const TABS: { key: Category; label: string }[] = [
-  { key: "all", label: "Все файлы" },
-  { key: "images", label: "Изображения" },
-  { key: "videos", label: "Видео" },
+const TABS: { key: Category; labelKey: string }[] = [
+  { key: "all", labelKey: "tabAll" },
+  { key: "images", labelKey: "tabImages" },
+  { key: "videos", labelKey: "tabVideos" },
 ];
 
 const PER_PAGE = 24;
@@ -48,6 +49,7 @@ function formatDate(iso: string) {
 
 // Бейдж seed с кнопкой копирования
 function SeedBadge({ seed }: { seed: number }) {
+  const t = useTranslations("accountFiles");
   const [copied, setCopied] = useState(false);
   return (
     <button
@@ -61,7 +63,7 @@ function SeedBadge({ seed }: { seed: number }) {
           () => {}
         );
       }}
-      title="Скопировать seed"
+      title={t("copySeed")}
       className="inline-flex items-center gap-1 rounded-[5px] bg-[rgba(13,13,13,0.05)] px-1.5 py-0.5 text-[12px] font-medium text-[rgba(13,13,13,0.55)] hover:bg-[rgba(13,13,13,0.09)] transition-colors"
     >
       <span>seed {seed}</span>
@@ -86,6 +88,7 @@ function ShareControls({
   sharing: boolean;
   onToggle: () => void;
 }) {
+  const t = useTranslations("accountFiles");
   const [copied, setCopied] = useState(false);
   const copyLink = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -103,7 +106,7 @@ function ShareControls({
       <button
         onClick={(e) => { e.stopPropagation(); onToggle(); }}
         disabled={sharing}
-        title={isPublic ? "Убрать из публичной галереи" : "Опубликовать в галерее"}
+        title={isPublic ? t("removeFromGallery") : t("publishToGallery")}
         className={`inline-flex items-center gap-1 rounded-[6px] border px-1.5 py-0.5 text-[12px] font-medium transition-colors disabled:opacity-50 ${
           isPublic
             ? "border-[rgba(26,157,75,0.25)] bg-[rgba(26,157,75,0.08)] text-[#1a9d4b]"
@@ -111,16 +114,16 @@ function ShareControls({
         }`}
       >
         <Share2 size={10} className={isPublic ? "text-[#1a9d4b]" : "text-[#D97757]"} />
-        {isPublic ? "Публичное" : "Сделать публичным"}
+        {isPublic ? t("public") : t("makePublic")}
       </button>
       {isPublic && shareSlug && (
         <button
           onClick={copyLink}
-          title="Скопировать публичную ссылку"
+          title={t("copyPublicLink")}
           className="inline-flex items-center gap-1 rounded-[6px] border border-[rgba(13,13,13,0.10)] px-1.5 py-0.5 text-[12px] font-medium text-[rgba(13,13,13,0.6)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
         >
           {copied ? <Check size={10} className="text-[#1a9d4b]" /> : <Link2 size={10} className="text-[#D97757]" />}
-          {copied ? "Скопировано" : "Скопировать ссылку"}
+          {copied ? t("copied") : t("copyLink")}
         </button>
       )}
     </div>
@@ -164,6 +167,7 @@ function FileCard({
   upscaling: boolean;
   varying: boolean;
 }) {
+  const t = useTranslations("accountFiles");
   return (
     <div className="group relative overflow-hidden rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white">
       <button
@@ -202,7 +206,7 @@ function FileCard({
             {file.parent_id != null && (
               <span className="inline-flex items-center gap-0.5 rounded-[5px] bg-[rgba(217,119,87,0.1)] px-1.5 py-0.5 text-[12px] font-medium text-[#D97757]">
                 <Maximize2 size={9} />
-                Детализировано
+                {t("upscaled")}
               </span>
             )}
             {file.model_name && (
@@ -222,28 +226,28 @@ function FileCard({
             <button
               onClick={(e) => { e.stopPropagation(); onUpscale(file, 2); }}
               disabled={upscaling}
-              title="Детализировать — усилить резкость и проработку деталей"
+              title={t("upscaleTitle")}
               className="inline-flex items-center gap-1 rounded-[6px] border border-[rgba(13,13,13,0.10)] px-1.5 py-0.5 text-[12px] font-medium text-[rgba(13,13,13,0.6)] hover:bg-[rgba(13,13,13,0.04)] disabled:opacity-50 transition-colors"
             >
               <Maximize2 size={10} className="text-[#D97757]" />
-              Детализировать
+              {t("upscale")}
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); onVariations(file); }}
               disabled={varying}
-              title="Создать 4 вариации"
+              title={t("variationsTitle")}
               className="inline-flex items-center gap-1 rounded-[6px] border border-[rgba(13,13,13,0.10)] px-1.5 py-0.5 text-[12px] font-medium text-[rgba(13,13,13,0.6)] hover:bg-[rgba(13,13,13,0.04)] disabled:opacity-50 transition-colors"
             >
               <Images size={10} className="text-[#D97757]" />
-              Варианты
+              {t("variations")}
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); onStyle(file); }}
-              title="Использовать как референс стиля"
+              title={t("styleTitle")}
               className="inline-flex items-center gap-1 rounded-[6px] border border-[rgba(13,13,13,0.10)] px-1.5 py-0.5 text-[12px] font-medium text-[rgba(13,13,13,0.6)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
             >
               <Palette size={10} className="text-[#D97757]" />
-              Стиль
+              {t("style")}
             </button>
           </div>
         )}
@@ -260,7 +264,7 @@ function FileCard({
         <button
           onClick={(e) => { e.stopPropagation(); onRerun(file); }}
           disabled={rerunning}
-          title="Повторить генерацию (те же параметры)"
+          title={t("rerunTitle")}
           className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-white/90 shadow-sm hover:bg-white disabled:opacity-50 transition-colors"
         >
           <RotateCcw size={13} className={rerunning ? "animate-spin text-[#D97757]" : "text-[#D97757]"} />
@@ -269,14 +273,14 @@ function FileCard({
           <>
             <button
               onClick={(e) => { e.stopPropagation(); onEdit(file); }}
-              title="Редактировать изображение (img2img)"
+              title={t("editTitle")}
               className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-white/90 shadow-sm hover:bg-white transition-colors"
             >
               <Pencil size={13} className="text-[#D97757]" />
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); onAnimate(file); }}
-              title="Оживить изображение (img2video)"
+              title={t("animateTitle")}
               className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-white/90 shadow-sm hover:bg-white transition-colors"
             >
               <Film size={13} className="text-[#D97757]" />
@@ -336,6 +340,7 @@ function PreviewModal({
   upscaling: boolean;
   varying: boolean;
 }) {
+  const t = useTranslations("accountFiles");
   const idx = files.findIndex((f) => f.id === file.id);
 
   return (
@@ -354,29 +359,29 @@ function PreviewModal({
             <button
               onClick={() => onRerun(file)}
               disabled={rerunning}
-              title="Повторить генерацию (те же параметры)"
+              title={t("rerunTitle")}
               className="flex h-8 items-center gap-1.5 rounded-[8px] bg-[rgba(255,255,255,0.08)] px-3 hover:bg-[rgba(255,255,255,0.14)] disabled:opacity-50 transition-colors"
             >
               <RotateCcw size={14} className={rerunning ? "animate-spin text-white" : "text-white"} />
-              <span className="text-[14px] font-medium text-white">Повторить</span>
+              <span className="text-[14px] font-medium text-white">{t("rerun")}</span>
             </button>
             {file.media_type === "image" && (
               <>
                 <button
                   onClick={() => onEdit(file)}
-                  title="Редактировать изображение (img2img)"
+                  title={t("editTitle")}
                   className="flex h-8 items-center gap-1.5 rounded-[8px] bg-[rgba(255,255,255,0.08)] px-3 hover:bg-[rgba(255,255,255,0.14)] transition-colors"
                 >
                   <Pencil size={14} className="text-white" />
-                  <span className="text-[14px] font-medium text-white">Редактировать</span>
+                  <span className="text-[14px] font-medium text-white">{t("edit")}</span>
                 </button>
                 <button
                   onClick={() => onAnimate(file)}
-                  title="Оживить изображение (img2video)"
+                  title={t("animateTitle")}
                   className="flex h-8 items-center gap-1.5 rounded-[8px] bg-[rgba(255,255,255,0.08)] px-3 hover:bg-[rgba(255,255,255,0.14)] transition-colors"
                 >
                   <Film size={14} className="text-white" />
-                  <span className="text-[14px] font-medium text-white">Оживить</span>
+                  <span className="text-[14px] font-medium text-white">{t("animate")}</span>
                 </button>
               </>
             )}
@@ -409,37 +414,37 @@ function PreviewModal({
             <button
               onClick={() => onUpscale(file, 2)}
               disabled={upscaling}
-              title="Увеличить разрешение в 2 раза"
+              title={t("upscale2xTitle")}
               className="flex h-8 items-center gap-1.5 rounded-[8px] bg-[rgba(255,255,255,0.08)] px-3 hover:bg-[rgba(255,255,255,0.14)] disabled:opacity-50 transition-colors"
             >
               <Maximize2 size={14} className="text-white" />
-              <span className="text-[14px] font-medium text-white">Апскейл 2×</span>
+              <span className="text-[14px] font-medium text-white">{t("upscale2x")}</span>
             </button>
             <button
               onClick={() => onUpscale(file, 4)}
               disabled={upscaling}
-              title="Увеличить разрешение в 4 раза"
+              title={t("upscale4xTitle")}
               className="flex h-8 items-center gap-1.5 rounded-[8px] bg-[rgba(255,255,255,0.08)] px-3 hover:bg-[rgba(255,255,255,0.14)] disabled:opacity-50 transition-colors"
             >
               <Maximize2 size={14} className="text-white" />
-              <span className="text-[14px] font-medium text-white">4×</span>
+              <span className="text-[14px] font-medium text-white">{t("upscale4x")}</span>
             </button>
             <button
               onClick={() => onVariations(file)}
               disabled={varying}
-              title="Создать 4 вариации"
+              title={t("variationsTitle")}
               className="flex h-8 items-center gap-1.5 rounded-[8px] bg-[rgba(255,255,255,0.08)] px-3 hover:bg-[rgba(255,255,255,0.14)] disabled:opacity-50 transition-colors"
             >
               <Images size={14} className="text-white" />
-              <span className="text-[14px] font-medium text-white">Варианты</span>
+              <span className="text-[14px] font-medium text-white">{t("variations")}</span>
             </button>
             <button
               onClick={() => onStyle(file)}
-              title="Использовать как референс стиля"
+              title={t("styleTitle")}
               className="flex h-8 items-center gap-1.5 rounded-[8px] bg-[rgba(255,255,255,0.08)] px-3 hover:bg-[rgba(255,255,255,0.14)] transition-colors"
             >
               <Palette size={14} className="text-white" />
-              <span className="text-[14px] font-medium text-white">Стиль</span>
+              <span className="text-[14px] font-medium text-white">{t("style")}</span>
             </button>
           </div>
         )}
@@ -492,14 +497,14 @@ function PreviewModal({
           {file.seed != null ? (
             <button
               onClick={() => navigator.clipboard?.writeText(String(file.seed))}
-              title="Скопировать seed"
+              title={t("copySeed")}
               className="inline-flex items-center gap-1 rounded-[5px] bg-[rgba(255,255,255,0.10)] px-1.5 py-0.5 text-[rgba(255,255,255,0.7)] hover:bg-[rgba(255,255,255,0.16)] transition-colors"
             >
               seed {file.seed}
               <Copy size={10} />
             </button>
           ) : null}
-          <span className="ml-auto">{idx + 1} из {files.length}</span>
+          <span className="ml-auto">{t("previewCounter", { current: idx + 1, total: files.length })}</span>
         </div>
       </div>
     </div>
@@ -512,6 +517,7 @@ const EDIT_IMAGE_KEY = "aineron_edit_image";
 const STYLE_IMAGE_KEY = "aineron_style_image";
 
 export default function FilesPage() {
+  const t = useTranslations("accountFiles");
   const router = useRouter();
   const queryClient = useQueryClient();
   const addToast = useUIStore((s) => s.addToast);
@@ -574,7 +580,7 @@ export default function FilesPage() {
     onSuccess: (res) => {
       addToast({
         type: "success",
-        message: `Апскейл ×${res.factor} запущен. Результат появится в галерее через минуту.`,
+        message: t("upscaleStarted", { factor: res.factor }),
       });
       // Результат генерируется асинхронно — обновляем галерею с задержкой
       setTimeout(() => queryClient.invalidateQueries({ queryKey: ["user-files"] }), 8000);
@@ -583,7 +589,7 @@ export default function FilesPage() {
     onError: (err) => {
       addToast({
         type: "error",
-        message: err instanceof APIError ? err.message : "Не удалось запустить апскейл.",
+        message: err instanceof APIError ? err.message : t("upscaleFailed"),
       });
     },
     onSettled: () => setUpscalingId(null),
@@ -598,7 +604,7 @@ export default function FilesPage() {
     onError: (err) => {
       addToast({
         type: "error",
-        message: err instanceof APIError ? err.message : "Не удалось создать вариации.",
+        message: err instanceof APIError ? err.message : t("variationsFailed"),
       });
     },
     onSettled: () => setVaryingId(null),
@@ -642,14 +648,14 @@ export default function FilesPage() {
       addToast({
         type: "success",
         message: res.is_public
-          ? "Опубликовано в галерее."
-          : "Убрано из публичной галереи.",
+          ? t("publishedToGallery")
+          : t("removedFromGallery"),
       });
     },
     onError: (err) => {
       addToast({
         type: "error",
-        message: err instanceof APIError ? err.message : "Не удалось изменить публикацию.",
+        message: err instanceof APIError ? err.message : t("shareFailed"),
       });
     },
     onSettled: () => setSharingId(null),
@@ -705,10 +711,10 @@ export default function FilesPage() {
     <div className="px-4 py-10 sm:px-6 space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-[22px] font-bold text-[#1A1A1A]">Мои файлы</h1>
+          <h1 className="text-[22px] font-bold text-[#1A1A1A]">{t("title")}</h1>
           {total > 0 && (
             <p className="mt-0.5 text-[15px] text-[rgba(13,13,13,0.45)]">
-              {total} {total === 1 ? "файл" : total < 5 ? "файла" : "файлов"}
+              {t("fileCount", { count: total })}
             </p>
           )}
         </div>
@@ -716,17 +722,17 @@ export default function FilesPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 rounded-[10px] border border-[rgba(13,13,13,0.10)] bg-[rgba(13,13,13,0.03)] p-1 w-fit">
-        {TABS.map((t) => (
+        {TABS.map((tab) => (
           <button
-            key={t.key}
-            onClick={() => handleCategoryChange(t.key)}
+            key={tab.key}
+            onClick={() => handleCategoryChange(tab.key)}
             className={`rounded-[7px] px-4 py-1.5 text-[15px] font-medium transition-all ${
-              category === t.key
+              category === tab.key
                 ? "bg-white text-[#1A1A1A] shadow-sm"
                 : "text-[rgba(13,13,13,0.55)] hover:text-[#1A1A1A]"
             }`}
           >
-            {t.label}
+            {t(tab.labelKey)}
           </button>
         ))}
       </div>
@@ -747,9 +753,9 @@ export default function FilesPage() {
           <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[rgba(13,13,13,0.05)]">
             <FolderOpen size={28} className="text-[rgba(13,13,13,0.25)]" />
           </div>
-          <p className="text-[17px] font-medium text-[#1A1A1A]">Файлов пока нет</p>
+          <p className="text-[17px] font-medium text-[#1A1A1A]">{t("emptyTitle")}</p>
           <p className="mt-1 text-[15px] text-[rgba(13,13,13,0.45)]">
-            Сгенерированные изображения и видео будут здесь
+            {t("emptySubtitle")}
           </p>
         </div>
       ) : (
@@ -786,7 +792,7 @@ export default function FilesPage() {
                 disabled={isFetchingNextPage}
                 className="h-10 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-6 text-[15px] font-medium text-[rgba(13,13,13,0.65)] hover:bg-[rgba(13,13,13,0.04)] disabled:opacity-50 transition-colors"
               >
-                {isFetchingNextPage ? "Загрузка..." : "Загрузить ещё"}
+                {isFetchingNextPage ? t("loadingMore") : t("loadMore")}
               </button>
             </div>
           )}

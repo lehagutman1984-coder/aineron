@@ -1,17 +1,20 @@
 ﻿import { FileText } from "lucide-react";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { serverGetLegalDoc } from "@/lib/api/server";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata() {
   const doc = await serverGetLegalDoc("privacy");
+  const t = await getTranslations("legalChrome");
   return {
-    title: doc?.title ?? "Политика конфиденциальности",
+    title: doc?.title ?? t("privacyFallbackTitle"),
   };
 }
 
 export default async function PrivacyPolicyPage() {
+  const t = await getTranslations("legalChrome");
   const doc = await serverGetLegalDoc("privacy");
 
   const date = doc?.last_updated
@@ -31,19 +34,19 @@ export default async function PrivacyPolicyPage() {
             href="/"
             className="text-[15px] text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A] transition-colors"
           >
-            Главная
+            {t("breadcrumbHome")}
           </Link>
           <span className="text-[15px] text-[rgba(13,13,13,0.25)]">/</span>
-          <span className="text-[15px] text-[rgba(13,13,13,0.65)]">Политика конфиденциальности</span>
+          <span className="text-[15px] text-[rgba(13,13,13,0.65)]">{t("privacyFallbackTitle")}</span>
         </div>
 
         <div className="rounded-[16px] border border-[rgba(13,13,13,0.10)] bg-white p-8 shadow-sm">
           <h1 className="mb-2 text-[26px] font-bold text-[#1A1A1A]">
-            {doc?.title ?? "Политика конфиденциальности"}
+            {doc?.title ?? t("privacyFallbackTitle")}
           </h1>
           {date && (
             <p className="mb-8 text-[15px] text-[rgba(13,13,13,0.45)]">
-              Обновлено: {date}
+              {t("lastUpdated", { date })}
             </p>
           )}
 
@@ -54,7 +57,7 @@ export default async function PrivacyPolicyPage() {
             />
           ) : (
             <p className="text-[16px] text-[rgba(13,13,13,0.55)]">
-              Документ находится в разработке. Свяжитесь с нами по адресу{" "}
+              {t("docInProgress")}{" "}
               <a href="mailto:support@aineron.ru" className="text-[#D97757] hover:underline">
                 support@aineron.ru
               </a>
