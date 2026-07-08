@@ -8,7 +8,7 @@ fallback на ru при пустом переводе.
 """
 from modeltranslation.translator import TranslationOptions, register
 
-from .models import Category, FAQ, NeuralNetwork
+from .models import Category, FAQ, NeuralNetwork, PromptTemplate
 
 
 @register(Category)
@@ -24,3 +24,8 @@ class NeuralNetworkTranslationOptions(TranslationOptions):
 @register(FAQ)
 class FAQTranslationOptions(TranslationOptions):
     fields = ('question', 'answer')
+
+
+@register(PromptTemplate)
+class PromptTemplateTranslationOptions(TranslationOptions):
+    fields = ('title', 'content')
