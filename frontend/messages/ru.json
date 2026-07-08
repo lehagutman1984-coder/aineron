@@ -1212,7 +1212,7 @@
     "serviceSandboxes": "Sandbox API",
     "allOperational": "Все системы работают",
     "hasIssues": "Есть проблемы",
-    "pageTitle": "Статус aineron.ru",
+    "pageTitle": "Статус {brand}",
     "updatesEveryMinute": "Обновляется каждую минуту",
     "lastRefreshedAt": " · Последнее: {time}",
     "latencyMs": "{ms} мс",
@@ -1226,7 +1226,7 @@
   "blog": {
     "metaTitle": "Блог — AI-нейросети, гайды и сравнения",
     "metaDescription": "Статьи о нейросетях без VPN: подключение GPT, Claude, Gemini через API, сравнения моделей, гайды для разработчиков.",
-    "jsonLdName": "Блог aineron.ru",
+    "jsonLdName": "Блог {brand}",
     "jsonLdDescription": "Статьи о нейросетях и AI API без VPN",
     "pageTitle": "Блог",
     "pageSubtitle": "Гайды, сравнения и новости об AI-нейросетях",

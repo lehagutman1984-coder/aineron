@@ -1212,7 +1212,7 @@
     "serviceSandboxes": "Sandbox API",
     "allOperational": "All systems operational",
     "hasIssues": "Issues detected",
-    "pageTitle": "Status aineron.ru",
+    "pageTitle": "Status {brand}",
     "updatesEveryMinute": "Updates every minute",
     "lastRefreshedAt": " · Last refreshed: {time}",
     "latencyMs": "{ms} ms",
@@ -1226,7 +1226,7 @@
   "blog": {
     "metaTitle": "Blog — AI Models, Guides, and Comparisons",
     "metaDescription": "Articles on AI models without VPN: connecting GPT, Claude, Gemini via API, model comparisons, developer guides.",
-    "jsonLdName": "Blog aineron.ru",
+    "jsonLdName": "Blog {brand}",
     "jsonLdDescription": "Articles on AI models and AI API without VPN",
     "pageTitle": "Blog",
     "pageSubtitle": "Guides, Comparisons, and News on AI Models",

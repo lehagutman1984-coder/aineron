@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getTranslations, getLocale } from "next-intl/server";
 import { CalendarDays, Eye } from "lucide-react";
 import { serverListBlogPosts, serverListBlogCategories } from "@/lib/api/server";
+import { brandName } from "@/lib/site";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("blog");
@@ -33,7 +34,7 @@ export default async function BlogListPage({
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Blog",
-    name: t("jsonLdName"),
+    name: t("jsonLdName", { brand: brandName() }),
     description: t("jsonLdDescription"),
     url: `${SITE_URL}/blog/`,
     inLanguage: locale,

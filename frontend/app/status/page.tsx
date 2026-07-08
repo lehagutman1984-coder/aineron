@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { CheckCircle, XCircle, AlertCircle, RefreshCw } from "lucide-react";
+import { brandName } from "@/lib/site";
 
 interface ServiceCheck {
   status: "operational" | "degraded" | "unknown";
@@ -112,7 +113,7 @@ export default function StatusPage() {
           {overall === "operational" ? t("allOperational") : t("hasIssues")}
         </div>
         <h1 className="text-[28px] font-bold text-[#1A1A1A]">
-          {t("pageTitle")}
+          {t("pageTitle", { brand: brandName() })}
         </h1>
         <p className="mt-2 text-[16px] text-[rgba(13,13,13,0.5)]">
           {t("updatesEveryMinute")}
