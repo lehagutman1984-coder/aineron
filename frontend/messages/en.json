@@ -22,14 +22,14 @@
     "badge": "Russian service — no VPN or foreign cards",
     "title": "All AI models in one window",
     "subtitle": "GPT-4o, Claude, Gemini, Midjourney, and 200+ models. One account, pay in rubles.",
-    "typewriter": {
-      "0": "GPT-4o writes code in seconds",
-      "1": "Claude explains complex things simply",
-      "2": "Gemini analyzes documents",
-      "3": "Midjourney draws on request",
-      "4": "DeepSeek solves math problems",
-      "5": "Perplexity finds current information"
-    },
+    "typewriter": [
+      "GPT-4o writes code in seconds",
+      "Claude explains complex things simply",
+      "Gemini analyzes documents",
+      "Midjourney draws on request",
+      "DeepSeek solves math problems",
+      "Perplexity finds current information"
+    ],
     "popularTitle": "Popular models",
     "popularSubtitle": "Most in-demand AI models",
     "allModels": "All models",
@@ -37,84 +37,84 @@
     "freeText": "GPT-OSS, Qwen3, Gemma, DeepSeek R1, and other chat models — 0 ₽, no balance top-up. Available immediately after registration.",
     "freeCta": "Open free models",
     "whyTitle": "Why aineron.ru",
-    "features": {
-      "0": {
+    "features": [
+      {
         "title": "All models at once",
         "text": "GPT-4o, Claude, Gemini, Midjourney, and 200+ models — one account and shared balance."
       },
-      "1": {
+      {
         "title": "No VPN",
         "text": "Servers in Russia, pay in rubles. Works on any device in Russia."
       },
-      "2": {
+      {
         "title": "API for developers",
         "text": "OpenAI-compatible API. Connect Cursor, VS Code, or your product."
       },
-      "3": {
+      {
         "title": "Text, photo, and video",
         "text": "Chat, image and video generation in one interface."
       }
-    },
+    ],
     "comparisonTitle": "Fair Comparison",
     "comparisonSubtitle": "aineron.ru vs. Global Leaders",
     "comparisonFeatureCol": "Feature",
-    "comparisonRows": {
-      "0": "Works in Russia without VPN",
-      "1": "Payment in rubles and Russian cards",
-      "2": "GPT, Claude, Gemini in one window",
-      "3": "Side-by-side model comparison",
-      "4": "Image and video generation",
-      "5": "File upload and web search",
-      "6": "OpenAI-compatible API",
-      "7": "Telegram bot with AI models"
-    },
+    "comparisonRows": [
+      "Works in Russia without VPN",
+      "Payment in rubles and Russian cards",
+      "GPT, Claude, Gemini in one window",
+      "Side-by-side model comparison",
+      "Image and video generation",
+      "File upload and web search",
+      "OpenAI-compatible API",
+      "Telegram bot with AI models"
+    ],
     "pricingTitle": "Simple Payment in Rubles",
     "pricingSubtitle": "Top up your balance and spend on any model. Funds do not expire.",
-    "pricing": {
-      "0": {
+    "pricing": [
+      {
         "title": "Start",
         "price": "10 ₽",
         "sub": "free after registration"
       },
-      "1": {
+      {
         "title": "Top Up",
         "price": "in rubles",
         "sub": "with Russian card or Telegram Stars"
       },
-      "2": {
+      {
         "title": "Subscriptions",
         "price": "with discount",
         "sub": "packages for active users"
       }
-    },
+    ],
     "pricingNote": "No card needed to start",
     "faqTitle": "Frequently Asked Questions",
-    "faq": {
-      "0": {
+    "faq": [
+      {
         "q": "How does the balance work?",
         "a": "The aineron.ru balance is in rubles. Each message to an AI model costs a few rubles (usually 1–5 ₽). Funds do not expire, balance is topped up via Robokassa without commission."
       },
-      "1": {
+      {
         "q": "Is a VPN required to use the service?",
         "a": "No. aineron.ru is a Russian service with servers in Russia. Accessible without VPN, payment with Russian cards, works in any browser and app."
       },
-      "2": {
+      {
         "q": "Which AI models are available?",
         "a": "Available models include GPT-4o, GPT-4o mini, Claude 3.5 Sonnet, Gemini 1.5 Pro, DeepSeek V3, Mistral, Llama, and over 200 others. For images: Stable Diffusion, Flux, Midjourney-compatible models."
       },
-      "3": {
+      {
         "q": "Is there an API for developers?",
         "a": "Yes. The API is compatible with OpenAI SDK — just change the base_url and API key. Works with Cursor, VS Code (Continue), GitHub Copilot alternatives, and any OpenAI-compatible app."
       },
-      "4": {
+      {
         "q": "How to make a payment?",
         "a": "Via Robokassa: Visa/MasterCard/Mir cards, YooMoney, SBP. Balance top-up for any amount and discounted subscriptions available. For legal entities — invoice and contract."
       },
-      "5": {
+      {
         "q": "What if the AI gives a poor response?",
         "a": "Each message has a 'Regenerate' button — the AI will generate a new response without additional charge. If a technical error occurs, funds are automatically refunded."
       }
-    },
+    ],
     "finalTitle": "Start Now",
     "finalText": "10 ₽ free. No VPN, no foreign cards.",
     "perMessage": "{price} / message",

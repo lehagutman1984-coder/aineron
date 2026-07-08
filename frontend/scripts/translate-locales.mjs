@@ -69,7 +69,22 @@ function unflatten(flat) {
     }
     node[parts[parts.length - 1]] = value;
   }
-  return out;
+  return arrayify(out);
+}
+
+// Ключи вида "0","1",...,"n-1" — значит это был массив (flatten() их не различает
+// от обычных объектов), восстанавливаем структуру, иначе {"0":x,"1":y} ломает .map()
+// на фронте (см. инцидент с en.json / GLOBAL_EXPANSION_PLAN.md G2).
+function arrayify(node) {
+  if (node === null || typeof node !== "object") return node;
+  for (const key of Object.keys(node)) {
+    node[key] = arrayify(node[key]);
+  }
+  const keys = Object.keys(node);
+  if (keys.length > 0 && keys.every((k, i) => k === String(i))) {
+    return keys.map((k) => node[k]);
+  }
+  return node;
 }
 
 const sha = (s) => createHash("sha256").update(s).digest("hex").slice(0, 16);
