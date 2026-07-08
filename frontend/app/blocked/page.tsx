@@ -1,5 +1,6 @@
 ﻿import { ShieldOff } from "lucide-react";
 import Link from "next/link";
+import { supportEmail } from "@/lib/site";
 
 export const metadata = {
   title: "Аккаунт заблокирован",
@@ -19,7 +20,7 @@ export default function BlockedPage() {
           Если вы считаете, что это ошибка, свяжитесь с поддержкой.
         </p>
         <a
-          href="mailto:support@aineron.ru"
+          href={`mailto:${supportEmail()}`}
           className="mb-4 flex h-10 w-full items-center justify-center rounded-[8px] bg-[#D97757] text-[16px] font-medium text-white hover:bg-[#C4623E] transition-colors"
         >
           Написать в поддержку

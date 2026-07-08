@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import {
   Bot,
   MessageSquare,
@@ -9,14 +10,16 @@ import {
   Zap,
   ArrowRight,
 } from "lucide-react";
+import { CURRENCY } from "@/lib/money";
+import { SITE_URL, siteHost } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "AI-секретарь для Telegram Business — aineron.ru",
+  title: `AI-секретарь для Telegram Business — ${siteHost()}`,
   description:
     "Бот aineron отвечает вашим клиентам в Telegram от вашего имени: черновики с подтверждением, автопилот для типовых вопросов, утренняя сводка. 990 ₽/мес, до 300 авто-ответов.",
   keywords:
     "AI секретарь telegram, telegram business бот, автоответчик telegram, нейросеть для бизнеса",
-  alternates: { canonical: "https://aineron.ru/business-bot/" },
+  alternates: { canonical: `${SITE_URL}/business-bot/` },
 };
 
 const FEATURES = [
@@ -60,6 +63,9 @@ const STEPS = [
 ];
 
 export default function BusinessBotPage() {
+  if (CURRENCY === "credits") {
+    notFound();
+  }
   return (
     <main className="min-h-screen bg-white text-[#1A1A1A]">
       {/* Hero */}

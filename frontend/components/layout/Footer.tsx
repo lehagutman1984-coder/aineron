@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { siteHost, supportEmail } from "@/lib/site";
 
 const COLUMNS = [
   {
@@ -37,6 +38,8 @@ const COLUMNS = [
 
 export function Footer() {
   const t = useTranslations("footer");
+  const host = siteHost();
+  const email = supportEmail();
   return (
     <footer className="border-t border-[rgba(13,13,13,0.10)] bg-white dark:border-[rgba(255,255,255,0.08)] dark:bg-[#1C1917]">
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
@@ -47,7 +50,7 @@ export function Footer() {
               href="/"
               className="text-[17px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]"
             >
-              aineron.ru
+              {host}
             </Link>
             <p className="mt-2 text-[15px] leading-relaxed text-[rgba(13,13,13,0.50)] dark:text-[rgba(236,236,236,0.40)]">
               {t("description")}
@@ -80,15 +83,15 @@ export function Footer() {
         <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-[rgba(13,13,13,0.08)] pt-6 dark:border-[rgba(255,255,255,0.07)] sm:flex-row">
           <div className="flex flex-col gap-1 text-center sm:text-left">
             <p className="text-[14px] text-[rgba(13,13,13,0.40)] dark:text-[rgba(236,236,236,0.30)]">
-              &copy; {new Date().getFullYear()} aineron.ru
+              &copy; {new Date().getFullYear()} {host}
             </p>
             <p className="text-[13px] text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.25)]">
               {t("legal")} ·{" "}
               <a
-                href="mailto:support@aineron.ru"
+                href={`mailto:${email}`}
                 className="transition-colors hover:text-[#1A1A1A] dark:hover:text-[#EDE8E3]"
               >
-                support@aineron.ru
+                {email}
               </a>
             </p>
           </div>

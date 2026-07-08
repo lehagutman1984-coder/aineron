@@ -1,4 +1,5 @@
 import type { NetworkListItem, NetworkDetail, Category, BlogCategory, BlogPost, BlogPostDetail } from "./types";
+import { siteHost } from "@/lib/site";
 
 async function serverFetch<T>(
   path: string,
@@ -9,7 +10,7 @@ async function serverFetch<T>(
   try {
     const res = await fetch(`${django}/api/v1${path}`, {
       cache: "no-store",
-      headers: { Host: "aineron.ru" },
+      headers: { Host: siteHost() },
       signal: AbortSignal.timeout(4000),
       ...rest,
     });

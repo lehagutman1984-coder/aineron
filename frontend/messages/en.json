@@ -176,7 +176,7 @@
       "privacy": "Privacy Policy",
       "terms": "Terms of Use"
     },
-    "legal": "Ivashchenko Alexey Anatolyevich · INN 220805856949",
+    "legal": "All rights reserved.",
     "privacyShort": "Privacy",
     "termsShort": "Terms"
   },
@@ -2221,5 +2221,13 @@
   "rootMeta": {
     "defaultTitle": "{host} — Access AI Models Without VPN",
     "description": "Access to GPT-5, Claude, Gemini, and other AI models — no VPN required, pay with crypto. Chat, image and video generation, API for developers."
+  },
+  "manifest": {
+    "name": "{host} — AI Models Without VPN",
+    "description": "GPT-4o, Claude, Gemini, and other AI models without VPN. Chat and image generation.",
+    "shortcutNewChat": "New Chat",
+    "shortcutNewChatDesc": "Choose a model and start chatting",
+    "shortcutAccount": "Dashboard",
+    "shortcutAccountDesc": "Balance and settings"
   }
 }

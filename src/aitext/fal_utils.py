@@ -295,11 +295,15 @@ def validate_and_merge_settings(config, user_settings):
     return final_args, errors, extra_cost
 
 
-def _apply_watermark(image_bytes: bytes, text: str = "aineron.ru") -> bytes:
+def _apply_watermark(image_bytes: bytes, text: str = None) -> bytes:
     """Накладывает водяной знак в правый нижний угол (для бесплатных тарифов)."""
     try:
         from PIL import Image, ImageDraw, ImageFont
+        from urllib.parse import urlparse
         import io
+        if text is None:
+            site_url = getattr(settings, 'SITE_URL', 'https://aineron.ru')
+            text = urlparse(site_url).netloc or 'aineron.ru'
         img = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
         overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
         draw = ImageDraw.Draw(overlay)

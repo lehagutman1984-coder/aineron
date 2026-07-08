@@ -18,6 +18,7 @@ import {
 import { getMe, listChats } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 import { formatMoney } from "@/lib/money";
+import { SITE_URL } from "@/lib/site";
 import { useTranslations, useLocale } from "next-intl";
 import type { ChatListItem } from "@/lib/api/types";
 
@@ -109,14 +110,14 @@ export default function AccountPage() {
               <code className="flex-1 truncate rounded-[6px] bg-[rgba(13,13,13,0.05)] px-3 py-2 text-[14px] text-[#1A1A1A]">
                 {typeof window !== "undefined"
                   ? `${window.location.origin}/?ref=${profile.referral_code}`
-                  : `https://aineron.ru/?ref=${profile.referral_code}`}
+                  : `${SITE_URL}/?ref=${profile.referral_code}`}
               </code>
               <button
                 onClick={() =>
                   handleCopy(
                     typeof window !== "undefined"
                       ? `${window.location.origin}/?ref=${profile.referral_code}`
-                      : `https://aineron.ru/?ref=${profile.referral_code}`
+                      : `${SITE_URL}/?ref=${profile.referral_code}`
                   )
                 }
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[6px] border border-[rgba(13,13,13,0.15)] text-[rgba(13,13,13,0.5)] hover:bg-[rgba(13,13,13,0.04)] hover:text-[#1A1A1A] transition-all"

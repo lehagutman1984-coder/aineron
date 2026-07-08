@@ -61,7 +61,7 @@ export default async function BlogPostPage({ params }: Props) {
     inLanguage: locale,
     publisher: {
       "@type": "Organization",
-      name: "aineron.ru",
+      name: new URL(SITE_URL).host,
       url: SITE_URL,
     },
     ...(post.author_name && {

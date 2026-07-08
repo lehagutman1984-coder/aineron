@@ -1,17 +1,20 @@
 ﻿import type { MetadataRoute } from "next";
+import { getLocale, getTranslations } from "next-intl/server";
+import { siteHost } from "@/lib/site";
 
-export default function manifest(): MetadataRoute.Manifest {
+export default async function manifest(): Promise<MetadataRoute.Manifest> {
+  const locale = await getLocale();
+  const t = await getTranslations("manifest");
   return {
-    name: "aineron.ru — AI без VPN",
+    name: t("name", { host: siteHost() }),
     short_name: "aineron",
-    description:
-      "GPT-4o, Claude, Gemini и другие нейросети без VPN. Чат и генерация изображений.",
+    description: t("description"),
     start_url: "/",
     display: "standalone",
     background_color: "#ffffff",
     theme_color: "#D97757",
     orientation: "portrait-primary",
-    lang: "ru",
+    lang: locale,
     categories: ["productivity", "utilities"],
     icons: [
       {
@@ -36,14 +39,14 @@ export default function manifest(): MetadataRoute.Manifest {
     ],
     shortcuts: [
       {
-        name: "Новый чат",
+        name: t("shortcutNewChat"),
         url: "/catalog/",
-        description: "Выбрать нейросеть и начать чат",
+        description: t("shortcutNewChatDesc"),
       },
       {
-        name: "Кабинет",
+        name: t("shortcutAccount"),
         url: "/account/",
-        description: "Баланс и настройки",
+        description: t("shortcutAccountDesc"),
       },
     ],
   };

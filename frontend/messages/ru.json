@@ -2221,5 +2221,13 @@
   "rootMeta": {
     "defaultTitle": "{host} — AI-нейросети без VPN",
     "description": "Доступ к GPT-4o, Claude, Gemini и другим нейросетям без VPN. Чат, генерация изображений, API для разработчиков."
+  },
+  "manifest": {
+    "name": "{host} — AI без VPN",
+    "description": "GPT-4o, Claude, Gemini и другие нейросети без VPN. Чат и генерация изображений.",
+    "shortcutNewChat": "Новый чат",
+    "shortcutNewChatDesc": "Выбрать нейросеть и начать чат",
+    "shortcutAccount": "Кабинет",
+    "shortcutAccountDesc": "Баланс и настройки"
   }
 }

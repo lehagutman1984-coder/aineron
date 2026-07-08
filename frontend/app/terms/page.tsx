@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { getTranslations, getLocale } from "next-intl/server";
 import { serverGetLegalDoc } from "@/lib/api/server";
+import { supportEmail } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -59,8 +60,8 @@ export default async function TermsPage() {
           ) : (
             <p className="text-[16px] text-[rgba(13,13,13,0.55)]">
               {t("docInProgress")}{" "}
-              <a href="mailto:support@aineron.ru" className="text-[#D97757] hover:underline">
-                support@aineron.ru
+              <a href={`mailto:${supportEmail()}`} className="text-[#D97757] hover:underline">
+                {supportEmail()}
               </a>
             </p>
           )}

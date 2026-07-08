@@ -8,6 +8,7 @@ import { useUIStore, type Theme } from "@/lib/stores/ui";
 import { authLogout } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/money";
+import { siteHost } from "@/lib/site";
 import { useTranslations } from "next-intl";
 
 const THEME_CYCLE: Theme[] = ["system", "light", "dark"];
@@ -44,7 +45,7 @@ export function Navbar() {
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 font-semibold text-[17px] text-[#1A1A1A] dark:text-[#EDE8E3]">
-          aineron.ru
+          {siteHost()}
         </Link>
 
         {/* Desktop nav */}
