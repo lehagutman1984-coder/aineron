@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
-import { getLocale, getMessages } from "next-intl/server";
+import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { RTL_LOCALES } from "@/i18n/request";
 import "./globals.css";
 import { Providers } from "./providers";
@@ -19,38 +19,51 @@ const inter = Inter({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: {
-    default: "aineron.ru — AI-нейросети без VPN",
-    template: "%s — aineron.ru",
-  },
-  description:
-    "Доступ к GPT-4o, Claude, Gemini и другим нейросетям без VPN. Чат, генерация изображений, API для разработчиков.",
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL ?? "https://aineron.ru"
-  ),
-  openGraph: {
-    locale: "ru_RU",
-    type: "website",
-    siteName: "aineron.ru",
-  },
-  twitter: {
-    card: "summary_large_image",
-  },
-  manifest: "/manifest.webmanifest",
-  appleWebApp: {
-    capable: true,
-    title: "aineron",
-    statusBarStyle: "default",
-  },
-  icons: {
-    icon: [
-      { url: "/favicon.ico", sizes: "48x48" },
-      { url: "/icons/icon.svg", type: "image/svg+xml" },
-    ],
-    apple: "/icons/icon-192.png",
-  },
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://aineron.ru";
+const SITE_HOST = new URL(SITE_URL).host;
+
+const OG_LOCALES: Record<string, string> = {
+  ru: "ru_RU",
+  en: "en_US",
+  fa: "fa_IR",
+  tr: "tr_TR",
+  id: "id_ID",
+  ar: "ar_SA",
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const t = await getTranslations("rootMeta");
+  return {
+    title: {
+      default: t("defaultTitle", { host: SITE_HOST }),
+      template: `%s — ${SITE_HOST}`,
+    },
+    description: t("description"),
+    metadataBase: new URL(SITE_URL),
+    openGraph: {
+      locale: OG_LOCALES[locale] ?? "en_US",
+      type: "website",
+      siteName: SITE_HOST,
+    },
+    twitter: {
+      card: "summary_large_image",
+    },
+    manifest: "/manifest.webmanifest",
+    appleWebApp: {
+      capable: true,
+      title: "aineron",
+      statusBarStyle: "default",
+    },
+    icons: {
+      icon: [
+        { url: "/favicon.ico", sizes: "48x48" },
+        { url: "/icons/icon.svg", type: "image/svg+xml" },
+      ],
+      apple: "/icons/icon-192.png",
+    },
+  };
+}
 
 export default async function RootLayout({
   children,

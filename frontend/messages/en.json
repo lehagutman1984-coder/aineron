@@ -2217,5 +2217,9 @@
       "faqCalloutTitle": "Didn't find an answer?",
       "faqCalloutBody": "Contact support — details are in the site footer. We will help you resolve it."
     }
+  },
+  "rootMeta": {
+    "defaultTitle": "{host} — Access AI Models Without VPN",
+    "description": "Access to GPT-5, Claude, Gemini, and other AI models — no VPN required, pay with crypto. Chat, image and video generation, API for developers."
   }
 }
