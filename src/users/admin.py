@@ -666,7 +666,7 @@ class ReferralEarningAdmin(admin.ModelAdmin):
 
 @admin.register(WithdrawalRequest)
 class WithdrawalRequestAdmin(admin.ModelAdmin):
-    list_display = ('user', 'amount', 'card_number', 'status', 'created_at')
+    list_display = ('user', 'amount', 'payout_destination', 'status', 'created_at')
     list_filter = ('status', 'created_at')
     search_fields = ('user__email',)
     actions = ['approve_withdrawals', 'reject_withdrawals']

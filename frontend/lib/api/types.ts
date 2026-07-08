@@ -944,7 +944,7 @@ export interface ReferralEarning {
 export interface ReferralWithdrawal {
   id: number;
   amount: number;
-  card_number: string;
+  payout_destination: string;
   status: "pending" | "completed" | "cancelled";
   created_at: string;
   processed_at: string | null;

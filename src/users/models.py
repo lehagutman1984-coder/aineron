@@ -1234,7 +1234,11 @@ class WithdrawalRequest(models.Model):
     )
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='withdrawal_requests')
     amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Сумма вывода')
-    card_number = models.CharField(max_length=20, verbose_name='Номер карты')
+    payout_destination = models.CharField(
+        max_length=128,
+        verbose_name='Реквизиты для вывода',
+        help_text='Номер карты (aineron.ru) или адрес крипто-кошелька USDT/TON (aineron.net)',
+    )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name='Статус')
     created_at = models.DateTimeField(auto_now_add=True)
     processed_at = models.DateTimeField(null=True, blank=True)

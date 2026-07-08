@@ -1402,7 +1402,7 @@ def request_withdrawal(request):
     try:
         data = json.loads(request.body)
         amount = Decimal(data['amount'])
-        card_number = data['card_number']
+        payout_destination = data['payout_destination']
         user = request.user
         if not user.can_convert_to_rub:
             return JsonResponse({'success': False, 'message': 'Вывод недоступен'})
@@ -1410,7 +1410,7 @@ def request_withdrawal(request):
             return JsonResponse({'success': False, 'message': 'Недостаточно средств'})
         user.rub_balance -= amount
         user.save()
-        WithdrawalRequest.objects.create(user=user, amount=amount, card_number=card_number)
+        WithdrawalRequest.objects.create(user=user, amount=amount, payout_destination=payout_destination)
         return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})

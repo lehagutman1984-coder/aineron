@@ -53,7 +53,7 @@ class ReferralView(APIView):
             {
                 'id': w.id,
                 'amount': float(w.amount),
-                'card_number': w.card_number,
+                'payout_destination': w.payout_destination,
                 'status': w.status,
                 'created_at': w.created_at.isoformat(),
                 'processed_at': w.processed_at.isoformat() if w.processed_at else None,
@@ -89,11 +89,11 @@ class ReferralWithdrawView(APIView):
             )
 
         amount_raw = request.data.get('amount')
-        card_number = (request.data.get('card_number') or '').strip()
+        payout_destination = (request.data.get('payout_destination') or '').strip()
 
-        if not amount_raw or not card_number:
+        if not amount_raw or not payout_destination:
             return Response(
-                {'error': {'message': 'Укажите сумму и номер карты', 'code': 'missing_fields'}},
+                {'error': {'message': 'Укажите сумму и реквизиты для вывода', 'code': 'missing_fields'}},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -119,6 +119,6 @@ class ReferralWithdrawView(APIView):
 
         user.rub_balance -= amount
         user.save(update_fields=['rub_balance'])
-        WithdrawalRequest.objects.create(user=user, amount=amount, card_number=card_number)
+        WithdrawalRequest.objects.create(user=user, amount=amount, payout_destination=payout_destination)
 
         return Response({'ok': True})

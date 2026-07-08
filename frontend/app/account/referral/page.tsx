@@ -6,7 +6,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { Copy, Check, Users, Wallet, Banknote, ArrowDownToLine } from "lucide-react";
 import { getReferral, requestReferralWithdrawal } from "@/lib/api/client";
 import type { ReferralData } from "@/lib/api/types";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, CURRENCY } from "@/lib/money";
 
 function formatDate(iso: string, locale: string) {
   return new Date(iso).toLocaleDateString(locale, {
@@ -14,6 +14,12 @@ function formatDate(iso: string, locale: string) {
     month: "2-digit",
     year: "numeric",
   });
+}
+
+function formatRubAmount(amount: number): string {
+  return CURRENCY === "credits"
+    ? `${amount.toLocaleString("en-US", { maximumFractionDigits: 2 })} credits`
+    : `${amount.toFixed(2)} ₽`;
 }
 
 export default function ReferralPage() {
@@ -28,7 +34,7 @@ export default function ReferralPage() {
   const [copied, setCopied] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
-  const [withdrawCard, setWithdrawCard] = useState("");
+  const [withdrawDestination, setWithdrawDestination] = useState("");
   const [withdrawError, setWithdrawError] = useState<string | null>(null);
 
   const { data, isLoading, error } = useQuery<ReferralData>({
@@ -40,13 +46,13 @@ export default function ReferralPage() {
     mutationFn: () =>
       requestReferralWithdrawal({
         amount: parseFloat(withdrawAmount),
-        card_number: withdrawCard,
+        payout_destination: withdrawDestination,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["referral"] });
       setShowWithdrawModal(false);
       setWithdrawAmount("");
-      setWithdrawCard("");
+      setWithdrawDestination("");
       setWithdrawError(null);
     },
     onError: (err: Error) => {
@@ -105,7 +111,7 @@ export default function ReferralPage() {
           </div>
           <div className="text-[24px] font-bold text-[#1A1A1A]">
             {data.balance_type === "rub"
-              ? `${data.balance.toFixed(2)} ₽`
+              ? formatRubAmount(data.balance)
               : formatMoney(data.balance_kopecks ?? 0)}
           </div>
         </div>
@@ -160,8 +166,8 @@ export default function ReferralPage() {
                   <div className="text-[13px] text-[rgba(13,13,13,0.45)]">{formatDate(e.created_at, locale)}</div>
                 </div>
                 <div className="text-right text-[15px] font-medium text-[#1A1A1A]">
-                  {e.amount_rub > 0 && <div>+{e.amount_rub.toFixed(2)} ₽</div>}
-                  {e.amount_stars > 0 && <div>+{e.amount_stars} ₽</div>}
+                  {e.amount_rub > 0 && <div>+{formatRubAmount(e.amount_rub)}</div>}
+                  {e.amount_stars > 0 && <div>+{formatRubAmount(e.amount_stars)}</div>}
                 </div>
               </div>
             ))}
@@ -179,11 +185,11 @@ export default function ReferralPage() {
             {data.withdrawals.map((w) => (
               <div key={w.id} className="flex items-center justify-between px-5 py-3">
                 <div>
-                  <div className="text-[15px] text-[#1A1A1A]">{t("cardLabel", { card: w.card_number })}</div>
+                  <div className="text-[15px] text-[#1A1A1A]">{t("cardLabel", { card: w.payout_destination })}</div>
                   <div className="text-[13px] text-[rgba(13,13,13,0.45)]">{formatDate(w.created_at, locale)}</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-[15px] font-medium text-[#1A1A1A]">{w.amount.toFixed(2)} ₽</div>
+                  <div className="text-[15px] font-medium text-[#1A1A1A]">{formatRubAmount(w.amount)}</div>
                   <div className="text-[13px] text-[rgba(13,13,13,0.45)]">
                     {STATUS_LABELS[w.status] ?? w.status}
                   </div>
@@ -237,10 +243,10 @@ export default function ReferralPage() {
               </label>
               <input
                 type="text"
-                value={withdrawCard}
-                onChange={(e) => setWithdrawCard(e.target.value)}
-                placeholder="0000 0000 0000 0000"
-                maxLength={19}
+                value={withdrawDestination}
+                onChange={(e) => setWithdrawDestination(e.target.value)}
+                placeholder={CURRENCY === "credits" ? "USDT (TRC-20) or TON address" : "0000 0000 0000 0000"}
+                maxLength={CURRENCY === "credits" ? 100 : 19}
                 className="h-10 w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[16px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
               />
             </div>
@@ -263,7 +269,7 @@ export default function ReferralPage() {
                 disabled={
                   withdrawMutation.isPending ||
                   !withdrawAmount ||
-                  !withdrawCard ||
+                  !withdrawDestination ||
                   parseFloat(withdrawAmount) <= 0
                 }
                 className="flex-1 h-10 rounded-[8px] bg-[#D97757] text-[16px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"

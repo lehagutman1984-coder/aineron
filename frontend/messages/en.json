@@ -972,7 +972,7 @@
     "earningsTitle": "Earnings",
     "defaultBonus": "Referral Bonus",
     "withdrawalsTitle": "Withdrawal Requests",
-    "cardLabel": "Card {card}",
+    "cardLabel": "Wallet {card}",
     "statusPending": "Pending",
     "statusCompleted": "Completed",
     "statusCancelled": "Cancelled",
@@ -980,7 +980,7 @@
     "emptyHint": "Share your referral link to start earning",
     "modalTitle": "Request Withdrawal",
     "amountLabel": "Amount (credits)",
-    "cardNumberLabel": "Card Number",
+    "cardNumberLabel": "Crypto Wallet Address (USDT TRC-20 or TON)",
     "errorWithdraw": "Error requesting withdrawal",
     "cancelButton": "Cancel",
     "submitSending": "Sending..."
