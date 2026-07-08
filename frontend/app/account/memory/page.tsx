@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Brain,
@@ -699,6 +699,7 @@ function SummaryCard({
   onToggle: () => void;
 }) {
   const t = useTranslations("accountMemory");
+  const locale = useLocale();
   const displayText = summary.best_summary || summary.summary_text || summary.rolling_summary || '';
   const isLong = displayText.length > SUMMARY_PREVIEW_LIMIT;
   const text =
@@ -719,7 +720,7 @@ function SummaryCard({
             </p>
             <p className="text-[14px] text-[rgba(13,13,13,0.5)]">
               {summary.network_name} · {t("messageCountLabel", { count: summary.message_count })} ·{" "}
-              {new Date(summary.created_at).toLocaleDateString("ru-RU")}
+              {new Date(summary.created_at).toLocaleDateString(locale)}
             </p>
           </div>
         </div>

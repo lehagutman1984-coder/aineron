@@ -1,7 +1,7 @@
 ﻿import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getTranslations } from "next-intl/server";
+import { getTranslations, getLocale } from "next-intl/server";
 import { ArrowLeft, CalendarDays, Eye, Tag } from "lucide-react";
 import { serverGetBlogPost, serverListBlogPosts } from "@/lib/api/server";
 
@@ -43,6 +43,7 @@ export const dynamic = "force-dynamic";
 
 export default async function BlogPostPage({ params }: Props) {
   const t = await getTranslations("blogPost");
+  const locale = await getLocale();
   const post = await serverGetBlogPost(params.slug);
   if (!post) notFound();
 
@@ -57,7 +58,7 @@ export default async function BlogPostPage({ params }: Props) {
     datePublished: post.published_at,
     dateModified: post.updated_at,
     url: postUrl,
-    inLanguage: "ru",
+    inLanguage: locale,
     publisher: {
       "@type": "Organization",
       name: "aineron.ru",
@@ -133,7 +134,7 @@ export default async function BlogPostPage({ params }: Props) {
           <div className="flex flex-wrap items-center gap-4 text-[15px] text-[rgba(13,13,13,0.5)]">
             <span className="flex items-center gap-1.5">
               <CalendarDays size={13} />
-              {new Date(post.published_at).toLocaleDateString("ru-RU", {
+              {new Date(post.published_at).toLocaleDateString(locale, {
                 day: "numeric",
                 month: "long",
                 year: "numeric",

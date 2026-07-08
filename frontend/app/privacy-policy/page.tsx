@@ -1,6 +1,6 @@
 ﻿import { FileText } from "lucide-react";
 import Link from "next/link";
-import { getTranslations } from "next-intl/server";
+import { getTranslations, getLocale } from "next-intl/server";
 import { serverGetLegalDoc } from "@/lib/api/server";
 
 export const dynamic = "force-dynamic";
@@ -15,10 +15,11 @@ export async function generateMetadata() {
 
 export default async function PrivacyPolicyPage() {
   const t = await getTranslations("legalChrome");
+  const locale = await getLocale();
   const doc = await serverGetLegalDoc("privacy");
 
   const date = doc?.last_updated
-    ? new Date(doc.last_updated).toLocaleDateString("ru-RU", {
+    ? new Date(doc.last_updated).toLocaleDateString(locale, {
         day: "2-digit",
         month: "long",
         year: "numeric",

@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -343,7 +343,7 @@ function groupChats(chats: ChatListItem[]): { group: Group; items: ChatListItem[
   return ORDER.filter((g) => map.has(g)).map((g) => ({ group: g, items: map.get(g)! }));
 }
 
-function timeAgo(dateStr: string, t: ReturnType<typeof useTranslations>): string {
+function timeAgo(dateStr: string, t: ReturnType<typeof useTranslations>, locale: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const m = Math.floor(diff / 60000);
   const h = Math.floor(diff / 3600000);
@@ -352,7 +352,7 @@ function timeAgo(dateStr: string, t: ReturnType<typeof useTranslations>): string
   if (m < 60) return t("minutesAgo", { count: m });
   if (h < 24) return t("hoursAgo", { count: h });
   if (d < 7) return t("daysAgo", { count: d });
-  return new Date(dateStr).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+  return new Date(dateStr).toLocaleDateString(locale, { day: "numeric", month: "short" });
 }
 
 // ── Preview card ─────────────────────────────────────────────
@@ -374,6 +374,7 @@ function PreviewCard({
   onMouseLeave: () => void;
 }) {
   const t = useTranslations("chat.sidebar");
+  const locale = useLocale();
   const clampedY = Math.max(8, Math.min(y - 8, (typeof window !== "undefined" ? window.innerHeight : 600) - 200));
 
   return (
@@ -409,7 +410,7 @@ function PreviewCard({
               {chat.title || chat.network.name}
             </p>
             <p className="text-[12px] text-[rgba(13,13,13,0.42)]">
-              {chat.network.name} · {timeAgo(chat.updated_at, t)}
+              {chat.network.name} · {timeAgo(chat.updated_at, t, locale)}
             </p>
           </div>
         </div>
@@ -456,6 +457,7 @@ function PreviewCard({
 
 export function ChatSidebar() {
   const t = useTranslations("chat.sidebar");
+  const locale = useLocale();
   const pathname = usePathname();
   const router = useRouter();
   const qc = useQueryClient();
@@ -938,7 +940,7 @@ export function ChatSidebar() {
                               {chat.title || chat.network.name}
                             </p>
                             <span className="shrink-0 text-[12px] text-[rgba(13,13,13,0.28)]">
-                              {timeAgo(chat.updated_at, t)}
+                              {timeAgo(chat.updated_at, t, locale)}
                             </span>
                           </div>
 

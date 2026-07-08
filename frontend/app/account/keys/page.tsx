@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2, Copy, Key, Eye, EyeOff } from "lucide-react";
 import { listAPIKeys, createAPIKey, deleteAPIKey } from "@/lib/api/client";
@@ -184,7 +184,7 @@ export default function KeysPage() {
         <p>
           Base URL:{" "}
           <code className="rounded-[4px] bg-white px-1.5 py-0.5 text-[14px] border border-[rgba(13,13,13,0.12)]">
-            https://aineron.ru/api/v1
+            {process.env.NEXT_PUBLIC_API_URL ?? "https://aineron.ru/api/v1"}
           </code>
         </p>
         <p className="mt-1">
@@ -212,6 +212,7 @@ function KeyRow({
   deleting: boolean;
   t: ReturnType<typeof useTranslations>;
 }) {
+  const locale = useLocale();
   const [confirming, setConfirming] = useState(false);
 
   return (
@@ -228,9 +229,9 @@ function KeyRow({
         </p>
         <p className="text-[14px] text-[rgba(13,13,13,0.45)]">
           {apiKey.key_prefix}... ·{" "}
-          {t("createdOn", { date: new Date(apiKey.created_at).toLocaleDateString("ru-RU") })}
+          {t("createdOn", { date: new Date(apiKey.created_at).toLocaleDateString(locale) })}
           {apiKey.last_used_at &&
-            ` · ${t("usedOn", { date: new Date(apiKey.last_used_at).toLocaleDateString("ru-RU") })}`}
+            ` · ${t("usedOn", { date: new Date(apiKey.last_used_at).toLocaleDateString(locale) })}`}
         </p>
       </div>
       {confirming ? (

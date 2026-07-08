@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Heart, ImageOff, Video, Wand2, Download, ArrowLeft } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { getFavorites, favoriteGeneration, downloadImageUrl } from "@/lib/api/client";
 
 type Filter = "all" | "image" | "video";
@@ -14,12 +14,13 @@ const TAB_KEYS: { key: Filter; labelKey: "tabAll" | "tabImages" | "tabVideo" }[]
   { key: "video", labelKey: "tabVideo" },
 ];
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
+function formatDate(iso: string, locale: string) {
+  return new Date(iso).toLocaleDateString(locale, { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
 export default function FavoritesPage() {
   const t = useTranslations("accountFavorites");
+  const locale = useLocale();
   const qc = useQueryClient();
   const [filter, setFilter] = useState<Filter>("all");
 
@@ -156,7 +157,7 @@ export default function FavoritesPage() {
                         </span>
                       )}
                       <span className="ml-auto text-[12px] text-[rgba(13,13,13,0.30)] dark:text-[rgba(236,236,236,0.25)]">
-                        {formatDate(item.created_at)}
+                        {formatDate(item.created_at, locale)}
                       </span>
                     </div>
                   </div>

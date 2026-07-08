@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Video,
@@ -39,8 +39,8 @@ const TABS: { key: Category; labelKey: string }[] = [
 
 const PER_PAGE = 24;
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("ru-RU", {
+function formatDate(iso: string, locale: string) {
+  return new Date(iso).toLocaleDateString(locale, {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -93,7 +93,7 @@ function ShareControls({
   const copyLink = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!shareSlug) return;
-    navigator.clipboard?.writeText(`https://aineron.ru/g/${shareSlug}`).then(
+    navigator.clipboard?.writeText(`${window.location.origin}/g/${shareSlug}`).then(
       () => {
         setCopied(true);
         setTimeout(() => setCopied(false), 1500);
@@ -168,6 +168,7 @@ function FileCard({
   varying: boolean;
 }) {
   const t = useTranslations("accountFiles");
+  const locale = useLocale();
   return (
     <div className="group relative overflow-hidden rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white">
       <button
@@ -218,7 +219,7 @@ function FileCard({
           </div>
         )}
         <p className="mt-0.5 text-[13px] text-[rgba(13,13,13,0.35)]">
-          {formatDate(file.created_at)} · {file.size}
+          {formatDate(file.created_at, locale)} · {file.size}
         </p>
 
         {file.media_type === "image" && (
@@ -341,6 +342,7 @@ function PreviewModal({
   varying: boolean;
 }) {
   const t = useTranslations("accountFiles");
+  const locale = useLocale();
   const idx = files.findIndex((f) => f.id === file.id);
 
   return (
@@ -487,7 +489,7 @@ function PreviewModal({
 
         {/* Footer */}
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-4 py-2.5 text-[13px] text-[rgba(255,255,255,0.35)]">
-          <span>{formatDate(file.created_at)} · {file.size}</span>
+          <span>{formatDate(file.created_at, locale)} · {file.size}</span>
           {file.width && file.height ? <span>· {file.width}×{file.height}</span> : null}
           {file.model_name ? (
             <span className="rounded-[5px] bg-[rgba(255,255,255,0.10)] px-1.5 py-0.5 text-[rgba(255,255,255,0.7)]">

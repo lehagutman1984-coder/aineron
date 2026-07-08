@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Video, Sparkles, ImageOff, Wand2, Search, Copy, Check, Heart } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { getGallery, likeGeneration } from "@/lib/api/client";
 import type { GalleryItem } from "@/lib/api/types";
 
@@ -22,8 +22,8 @@ const PREFILL_KEY = "aineron_prefill_prompt";
 
 const MODEL_CHIPS = ["Flux 2 Pro", "GPT Image 1", "Flux Kontext Pro", "Sora 2", "Kling v2.6"];
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("ru-RU", {
+function formatDate(iso: string, locale: string) {
+  return new Date(iso).toLocaleDateString(locale, {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -37,6 +37,7 @@ function GalleryCard({
   item: GalleryItem;
   onTry: (prompt: string) => void;
 }) {
+  const locale = useLocale();
   const [copied, setCopied] = useState(false);
   const [likes, setLikes] = useState(item.likes ?? 0);
   const [liked, setLiked] = useState(false);
@@ -88,7 +89,7 @@ function GalleryCard({
             </span>
           )}
           <span className="text-[12px] text-[rgba(13,13,13,0.35)]">{item.username}</span>
-          <span className="text-[12px] text-[rgba(13,13,13,0.30)]">· {formatDate(item.created_at)}</span>
+          <span className="text-[12px] text-[rgba(13,13,13,0.30)]">· {formatDate(item.created_at, locale)}</span>
           {item.prompt && (
             <button
               onClick={(e) => {

@@ -1,10 +1,17 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Clock, Cpu, LogIn, Sparkles } from "lucide-react";
+import { getTranslations, getLocale } from "next-intl/server";
 import type { PublicGeneration } from "@/lib/api/types";
 import { TryPromptButton } from "./TryPromptButton";
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://aineron.ru";
 const BASE = (process.env.NEXT_PUBLIC_API_URL ?? "https://aineron.ru/api/v1").replace(/\/$/, "");
+
+function brandName(): string {
+  const host = new URL(SITE_URL).host;
+  return host.charAt(0).toUpperCase() + host.slice(1);
+}
 
 async function fetchGeneration(slug: string): Promise<PublicGeneration | null> {
   try {
@@ -22,11 +29,15 @@ export async function generateMetadata({
   params: { slug: string };
 }): Promise<Metadata> {
   const gen = await fetchGeneration(params.slug);
-  if (!gen) return { title: "Генерация не найдена — Aineron" };
-  const title = gen.prompt ? gen.prompt.slice(0, 80) : "AI-генерация на Aineron";
+  const t = await getTranslations("publicGeneration");
+  const brand = brandName();
+  if (!gen) return { title: t("notFoundMetaTitle") };
+  const title = gen.prompt ? gen.prompt.slice(0, 80) : t("metaTitleFallback");
   const description = gen.prompt
     ? gen.prompt.slice(0, 160)
-    : `Сгенерировано на Aineron.ru${gen.model_name ? ` моделью ${gen.model_name}` : ""}`;
+    : gen.model_name
+      ? t("metaDescriptionWithModel", { brand, model: gen.model_name })
+      : t("metaDescriptionFallback", { brand });
   const images = gen.media_type === "image" && gen.image_url ? [{ url: gen.image_url }] : undefined;
   return {
     title: `${title} — Aineron`,
@@ -34,7 +45,7 @@ export async function generateMetadata({
     openGraph: {
       title,
       description,
-      siteName: "Aineron.ru",
+      siteName: brand,
       type: "website",
       images,
     },
@@ -47,8 +58,8 @@ export async function generateMetadata({
   };
 }
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("ru-RU", {
+function formatDate(dateStr: string, locale: string): string {
+  return new Date(dateStr).toLocaleDateString(locale, {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -57,17 +68,20 @@ function formatDate(dateStr: string): string {
 
 export default async function PublicGenerationPage({ params }: { params: { slug: string } }) {
   const gen = await fetchGeneration(params.slug);
+  const t = await getTranslations("publicGeneration");
+  const locale = await getLocale();
+  const brand = brandName();
 
   if (!gen) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f7f7f8]">
         <div className="text-center">
-          <p className="text-[17px] font-medium text-[#1A1A1A]">Генерация не найдена</p>
+          <p className="text-[17px] font-medium text-[#1A1A1A]">{t("notFoundHeading")}</p>
           <p className="mt-1 text-[15px] text-[rgba(13,13,13,0.45)]">
-            Ссылка недействительна или публикация снята
+            {t("notFoundHint")}
           </p>
           <Link href="/gallery/" className="mt-4 inline-block text-[15px] text-[#D97757] hover:underline">
-            В галерею
+            {t("backToGallery")}
           </Link>
         </div>
       </div>
@@ -80,10 +94,10 @@ export default async function PublicGenerationPage({ params }: { params: { slug:
       <header className="border-b border-[rgba(13,13,13,0.08)] bg-white">
         <div className="mx-auto flex max-w-[860px] items-center justify-between px-4 py-3">
           <Link href="/" className="text-[15px] font-semibold tracking-tight text-[#1A1A1A]">
-            Aineron.ru
+            {brand}
           </Link>
           <Link href="/gallery/" className="text-[14px] text-[rgba(13,13,13,0.50)] hover:text-[#1A1A1A]">
-            Публичная галерея
+            {t("galleryLink")}
           </Link>
         </div>
       </header>
@@ -101,7 +115,7 @@ export default async function PublicGenerationPage({ params }: { params: { slug:
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={gen.image_url}
-              alt={gen.prompt || "AI-генерация"}
+              alt={gen.prompt || t("imageAltFallback")}
               className="mx-auto max-h-[70vh] w-full object-contain"
             />
           )}
@@ -112,7 +126,7 @@ export default async function PublicGenerationPage({ params }: { params: { slug:
           {gen.prompt && (
             <>
               <h2 className="mb-1.5 text-[14px] font-semibold uppercase tracking-wide text-[rgba(13,13,13,0.45)]">
-                Промт
+                {t("promptLabel")}
               </h2>
               <p className="whitespace-pre-wrap text-[17px] leading-relaxed text-[rgba(13,13,13,0.85)]">
                 {gen.prompt}
@@ -128,12 +142,12 @@ export default async function PublicGenerationPage({ params }: { params: { slug:
             )}
             <span className="inline-flex items-center gap-1.5">
               <Clock size={12} />
-              {formatDate(gen.created_at)}
+              {formatDate(gen.created_at, locale)}
             </span>
             {gen.width && gen.height ? (
               <span>{gen.width}×{gen.height}</span>
             ) : null}
-            <span className="ml-auto">Автор: {gen.username}</span>
+            <span className="ml-auto">{t("authorLabel", { username: gen.username })}</span>
           </div>
 
           {gen.prompt && (
@@ -150,10 +164,10 @@ export default async function PublicGenerationPage({ params }: { params: { slug:
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[15px] font-medium text-[#1A1A1A]">
-              Создайте похожее на Aineron.ru
+              {t("ctaTitle", { brand })}
             </p>
             <p className="mt-0.5 text-[14px] leading-relaxed text-[rgba(13,13,13,0.55)]">
-              Десятки моделей для генерации изображений и видео в одном кабинете.
+              {t("ctaText")}
             </p>
           </div>
           <Link
@@ -161,7 +175,7 @@ export default async function PublicGenerationPage({ params }: { params: { slug:
             className="inline-flex shrink-0 items-center gap-1.5 rounded-[8px] bg-[#D97757] px-4 py-2 text-[15px] font-medium text-white transition-colors hover:bg-[#C4623E]"
           >
             <LogIn size={14} />
-            Войти, чтобы создать
+            {t("loginToCreate")}
           </Link>
         </div>
       </main>

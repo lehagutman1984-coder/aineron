@@ -1,6 +1,6 @@
 ﻿import type { Metadata } from "next";
 import Link from "next/link";
-import { getTranslations } from "next-intl/server";
+import { getTranslations, getLocale } from "next-intl/server";
 import { CalendarDays, Eye } from "lucide-react";
 import { serverListBlogPosts, serverListBlogCategories } from "@/lib/api/server";
 
@@ -20,6 +20,7 @@ export default async function BlogListPage({
   searchParams: { category?: string };
 }) {
   const t = await getTranslations("blog");
+  const locale = await getLocale();
   const [posts, categories] = await Promise.all([
     serverListBlogPosts({ category: searchParams.category }),
     serverListBlogCategories(),
@@ -28,13 +29,14 @@ export default async function BlogListPage({
   const safePosts = posts ?? [];
   const safeCategories = categories ?? [];
 
+  const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://aineron.ru";
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Blog",
     name: t("jsonLdName"),
     description: t("jsonLdDescription"),
-    url: "https://aineron.ru/blog/",
-    inLanguage: "ru",
+    url: `${SITE_URL}/blog/`,
+    inLanguage: locale,
   };
 
   return (
@@ -119,7 +121,7 @@ export default async function BlogListPage({
                   <div className="flex items-center gap-4 text-[13px] text-[rgba(13,13,13,0.4)]">
                     <span className="flex items-center gap-1">
                       <CalendarDays size={11} />
-                      {new Date(post.published_at).toLocaleDateString("ru-RU", {
+                      {new Date(post.published_at).toLocaleDateString(locale, {
                         day: "numeric",
                         month: "long",
                         year: "numeric",

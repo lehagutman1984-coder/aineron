@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Building2, Users, Plus, Trash2, Mail, ArrowLeft,
@@ -170,6 +170,7 @@ export default function OrganizationPage() {
 
 function OrgDetail({ org }: { org: Organization }) {
   const t = useTranslations("orgDashboard");
+  const locale = useLocale();
   const qc = useQueryClient();
   const isAdmin = org.user_role === "owner" || org.user_role === "admin";
   const roleLabels: Record<string, string> = {
@@ -348,7 +349,7 @@ function OrgDetail({ org }: { org: Organization }) {
                     </p>
                   </div>
                   <p className="shrink-0 text-[15px] font-semibold text-[#1A1A1A]">
-                    {t("amountValue", { amount: Number(inv.amount_rub).toLocaleString("ru-RU") })}
+                    {t("amountValue", { amount: Number(inv.amount_rub).toLocaleString(locale) })}
                   </p>
                   <StatusBadge status={inv.status} />
                 </div>

@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { TrendingUp, TrendingDown, Minus, Wallet, Zap, BarChart2 } from "lucide-react";
 import { getStarsUsage } from "@/lib/api/client";
@@ -142,6 +142,7 @@ function StatCard({
   icon: React.ReactNode;
   loading: boolean;
 }) {
+  const locale = useLocale();
   return (
     <div
       className="rounded-[14px] border bg-white p-4 dark:bg-[#1C1917]"
@@ -158,7 +159,7 @@ function StatCard({
       ) : (
         <div className="flex items-end gap-2">
           <span className="text-[24px] font-bold leading-none text-[#1A1A1A] dark:text-[#EDE8E3]">
-            {display ?? `${value.toLocaleString("ru-RU")}${suffix}`}
+            {display ?? `${value.toLocaleString(locale)}${suffix}`}
           </span>
           {delta != null && (
             <DeltaBadge delta={delta} />
@@ -197,6 +198,7 @@ function BarChart({
   period: number;
   t: ReturnType<typeof useTranslations>;
 }) {
+  const locale = useLocale();
   // Fill sparse data: create a map of date→row, then build full range
   const map = new Map(days.map((d) => [d.date, d]));
 
@@ -221,7 +223,7 @@ function BarChart({
     <div className="flex h-40 items-end gap-[2px]">
       {grouped.map((entry) => {
         const pct = Math.max((entry.kopecks / maxGrouped) * 100, entry.kopecks > 0 ? 2 : 0);
-        const label = formatDateLabel(entry.date, period, t);
+        const label = formatDateLabel(entry.date, period, t, locale);
         const requestsLabel = t("requestsShort", { count: entry.requests });
         return (
           <div
@@ -267,11 +269,11 @@ function groupByWeek(days: StarsUsageDay[]): StarsUsageDay[] {
   return Object.values(weeks).sort((a, b) => a.date.localeCompare(b.date));
 }
 
-function formatDateLabel(date: string, period: number, t: ReturnType<typeof useTranslations>) {
+function formatDateLabel(date: string, period: number, t: ReturnType<typeof useTranslations>, locale: string) {
   const d = new Date(date + "T00:00:00");
-  if (period <= 7) return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
-  if (period <= 30) return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
-  return t("weekOf", { date: d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" }) });
+  if (period <= 7) return d.toLocaleDateString(locale, { day: "numeric", month: "short" });
+  if (period <= 30) return d.toLocaleDateString(locale, { day: "numeric", month: "short" });
+  return t("weekOf", { date: d.toLocaleDateString(locale, { day: "numeric", month: "short" }) });
 }
 
 // ── Top models list ────────────────────────────────────────────────────────────

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { ArrowLeft, BarChart2, Zap, Wallet, Activity } from "lucide-react";
 import { getUsageStats, listOrgs } from "@/lib/api/client";
 import type { UsageStats, Organization } from "@/lib/api/types";
@@ -11,6 +11,7 @@ import { formatMoney } from "@/lib/money";
 
 export default function UsagePage() {
   const t = useTranslations("usageDashboard");
+  const locale = useLocale();
   const [days, setDays] = useState(30);
   const [orgId, setOrgId] = useState<number | undefined>(undefined);
 
@@ -99,12 +100,12 @@ export default function UsagePage() {
             <TotalCard
               icon={<Zap size={18} />}
               label={t("requestsLabel")}
-              value={stats.totals.total_requests.toLocaleString("ru-RU")}
+              value={stats.totals.total_requests.toLocaleString(locale)}
             />
             <TotalCard
               icon={<Activity size={18} />}
               label={t("tokensLabel")}
-              value={stats.totals.total_tokens.toLocaleString("ru-RU")}
+              value={stats.totals.total_tokens.toLocaleString(locale)}
             />
             <TotalCard
               icon={<Wallet size={18} />}
@@ -133,7 +134,7 @@ export default function UsagePage() {
                         style={{ height: `${Math.max(pct, 2)}%` }}
                       />
                       <div className="absolute bottom-full left-1/2 mb-1 hidden -translate-x-1/2 rounded-[4px] bg-[#1A1A1A] px-2 py-1 text-[12px] text-white group-hover:block whitespace-nowrap">
-                        {day.date}: {day.total_tokens.toLocaleString("ru-RU")} tok
+                        {day.date}: {day.total_tokens.toLocaleString(locale)} tok
                       </div>
                     </div>
                   );
@@ -177,10 +178,10 @@ export default function UsagePage() {
                           </Link>
                         </td>
                         <td className="py-2 pr-4 text-right text-[rgba(13,13,13,0.65)]">
-                          {row.requests.toLocaleString("ru-RU")}
+                          {row.requests.toLocaleString(locale)}
                         </td>
                         <td className="py-2 pr-4 text-right text-[rgba(13,13,13,0.65)]">
-                          {row.total_tokens.toLocaleString("ru-RU")}
+                          {row.total_tokens.toLocaleString(locale)}
                         </td>
                         <td className="py-2 text-right text-[rgba(13,13,13,0.65)]">
                           {formatMoney(row.cost_kopecks)}

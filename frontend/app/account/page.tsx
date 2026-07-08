@@ -18,11 +18,12 @@ import {
 import { getMe, listChats } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 import { formatMoney } from "@/lib/money";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import type { ChatListItem } from "@/lib/api/types";
 
 export default function AccountPage() {
   const t = useTranslations("account.overview");
+  const locale = useLocale();
   const { user, isLoading, setUser } = useAuthStore();
 
   const { data: me, isLoading: meLoading } = useQuery({
@@ -235,7 +236,7 @@ export default function AccountPage() {
                   )}
                 </div>
                 <p className="shrink-0 text-[13px] text-[rgba(13,13,13,0.35)]">
-                  {new Date(chat.updated_at).toLocaleDateString("ru-RU")}
+                  {new Date(chat.updated_at).toLocaleDateString(locale)}
                 </p>
               </Link>
             ))}

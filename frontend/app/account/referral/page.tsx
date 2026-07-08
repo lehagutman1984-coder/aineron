@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { Copy, Check, Users, Wallet, Banknote, ArrowDownToLine } from "lucide-react";
 import { getReferral, requestReferralWithdrawal } from "@/lib/api/client";
 import type { ReferralData } from "@/lib/api/types";
 import { formatMoney } from "@/lib/money";
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("ru-RU", {
+function formatDate(iso: string, locale: string) {
+  return new Date(iso).toLocaleDateString(locale, {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -18,6 +18,7 @@ function formatDate(iso: string) {
 
 export default function ReferralPage() {
   const t = useTranslations("accountReferral");
+  const locale = useLocale();
   const STATUS_LABELS: Record<string, string> = {
     pending: t("statusPending"),
     completed: t("statusCompleted"),
@@ -156,7 +157,7 @@ export default function ReferralPage() {
                   <div className="text-[15px] text-[#1A1A1A]">
                     {e.description || e.tariff || t("defaultBonus")}
                   </div>
-                  <div className="text-[13px] text-[rgba(13,13,13,0.45)]">{formatDate(e.created_at)}</div>
+                  <div className="text-[13px] text-[rgba(13,13,13,0.45)]">{formatDate(e.created_at, locale)}</div>
                 </div>
                 <div className="text-right text-[15px] font-medium text-[#1A1A1A]">
                   {e.amount_rub > 0 && <div>+{e.amount_rub.toFixed(2)} ₽</div>}
@@ -179,7 +180,7 @@ export default function ReferralPage() {
               <div key={w.id} className="flex items-center justify-between px-5 py-3">
                 <div>
                   <div className="text-[15px] text-[#1A1A1A]">{t("cardLabel", { card: w.card_number })}</div>
-                  <div className="text-[13px] text-[rgba(13,13,13,0.45)]">{formatDate(w.created_at)}</div>
+                  <div className="text-[13px] text-[rgba(13,13,13,0.45)]">{formatDate(w.created_at, locale)}</div>
                 </div>
                 <div className="text-right">
                   <div className="text-[15px] font-medium text-[#1A1A1A]">{w.amount.toFixed(2)} ₽</div>

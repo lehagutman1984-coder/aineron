@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { CheckCircle, XCircle, AlertCircle, RefreshCw } from "lucide-react";
 
 interface ServiceCheck {
@@ -58,6 +58,7 @@ function PreviewMeta({ check }: { check: ServiceCheck }) {
 
 export default function StatusPage() {
   const t = useTranslations("status");
+  const locale = useLocale();
   const [data, setData] = useState<StatusData | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
@@ -116,7 +117,7 @@ export default function StatusPage() {
         <p className="mt-2 text-[16px] text-[rgba(13,13,13,0.5)]">
           {t("updatesEveryMinute")}
           {lastRefreshed &&
-            t("lastRefreshedAt", { time: lastRefreshed.toLocaleTimeString("ru-RU") })}
+            t("lastRefreshedAt", { time: lastRefreshed.toLocaleTimeString(locale) })}
         </p>
       </div>
 
