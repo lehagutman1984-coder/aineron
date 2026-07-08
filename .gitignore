@@ -10,3 +10,4 @@ env/
 .idea/
 *.log
 .claude/
+frontend/scripts/.translate-cache.json

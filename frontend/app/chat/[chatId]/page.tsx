@@ -25,6 +25,7 @@ import { ZoomableImage } from "@/components/chat/ZoomableImage";
 import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, uploadFile, synthesizeSpeech, confirmCommit, exportChat, quickSaveFact, branchChat, startDeepResearch, getResearchStatus, getMemoryToast, upscaleGeneration, createVariations, describeGeneration, downloadImageUrl, favoriteGeneration, removeBackground, APIError, BASE_URL, type CommitProposed } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 import { useUIStore } from "@/lib/stores/ui";
+import { useTranslations } from "next-intl";
 import type { WebMessage, ChatDetail, UiSection, KBSource } from "@/lib/api/types";
 
 const POLL_INTERVAL = 800;
@@ -65,6 +66,7 @@ export default function ChatPage() {
   const qc = useQueryClient();
   const { setBalance } = useAuthStore();
   const addToast = useUIStore((s) => s.addToast);
+  const t = useTranslations("chat");
 
   const [text, setText] = useState("");
   const [showPromptPicker, setShowPromptPicker] = useState(false);
@@ -435,7 +437,7 @@ export default function ChatPage() {
           },
         });
       } catch (err) {
-        const errMsg = err instanceof APIError ? err.message : "Ошибка соединения. Попробуйте ещё раз.";
+        const errMsg = err instanceof APIError ? err.message : t("connectionError");
         qc.setQueryData<ChatDetail>(["chat", id], (prev) => {
           if (!prev) return prev;
           return {
@@ -453,7 +455,7 @@ export default function ChatPage() {
         setStreamError(errMsg);
       }
     },
-    [id, qc, setBalance, webSearch, variantsMode]
+    [id, qc, setBalance, webSearch, variantsMode, t]
   );
 
   // Sprint 2 — Deep Research submit
@@ -528,12 +530,12 @@ export default function ChatPage() {
           );
         } catch {
           setAttachments((prev) =>
-            prev.map((a) => (a.id === tempId ? { ...a, uploading: false, error: "Ошибка загрузки" } : a))
+            prev.map((a) => (a.id === tempId ? { ...a, uploading: false, error: t("uploadError") } : a))
           );
         }
       }
     },
-    [id]
+    [id, t]
   );
 
   const clearAttachments = useCallback(() => {
@@ -579,14 +581,14 @@ export default function ChatPage() {
       const res = await describeGeneration(String(generationId));
       if (res.prompt) {
         setText(res.prompt);
-        addToast({ message: 'Промпт описан — проверьте поле ввода', type: 'success' });
+        addToast({ message: t("toastDescribed"), type: 'success' });
       }
     } catch (e) {
-      addToast({ message: e instanceof Error ? e.message : 'Ошибка описания изображения', type: 'error' });
+      addToast({ message: e instanceof Error ? e.message : t("toastDescribeError"), type: 'error' });
     } finally {
       setDescribingId(null);
     }
-  }, [describingId, addToast]);
+  }, [describingId, addToast, t]);
 
   // Убрать фон: сначала пробуем rembg-endpoint (если генерация есть в БД),
   // иначе fallback через img2img с промптом
@@ -595,7 +597,7 @@ export default function ChatPage() {
       if (generationId) {
         try {
           const res = await removeBackground(generationId);
-          addToast({ type: "success", message: "Фон удалён — результат появится в следующем сообщении." });
+          addToast({ type: "success", message: t("toastBgRemoved") });
           // Обновляем чат чтобы показать новый файл
           qc.invalidateQueries({ queryKey: ["chat", id] });
           void res;
@@ -611,7 +613,7 @@ export default function ChatPage() {
         settings: { ...mediaSettings, image_url: imageUrl },
       });
     },
-    [sendMutation, mediaSettings, addToast, qc, id]
+    [sendMutation, mediaSettings, addToast, qc, id, t]
   );
 
   // Видео готово (SSE) — форсируем перезагрузку статуса сообщения
@@ -627,7 +629,7 @@ export default function ChatPage() {
         const res = await upscaleGeneration(String(generationId), factor);
         addToast({
           type: "info",
-          message: `Улучшение ×${res.factor} запущено, обычно занимает 15–30 сек...`,
+          message: t("toastUpscaleStarted", { factor: res.factor }),
         });
         if (res.placeholder_id) {
           const es = new EventSource(`${BASE_URL}/generations/${res.placeholder_id}/progress/`, { withCredentials: true });
@@ -637,10 +639,10 @@ export default function ChatPage() {
               if (data.status === "done") {
                 es.close();
                 qc.invalidateQueries({ queryKey: ["chat", id] });
-                addToast({ type: "success", message: `Изображение улучшено ×${factor}! Появилось в чате.` });
+                addToast({ type: "success", message: t("toastUpscaleDone", { factor }) });
               } else if (data.status === "error") {
                 es.close();
-                addToast({ type: "error", message: "Не удалось улучшить изображение. Попробуйте позже." });
+                addToast({ type: "error", message: t("toastUpscaleFailed") });
               }
             } catch { /* */ }
           };
@@ -649,11 +651,11 @@ export default function ChatPage() {
       } catch (err) {
         addToast({
           type: "error",
-          message: err instanceof APIError ? err.message : "Не удалось запустить улучшение.",
+          message: err instanceof APIError ? err.message : t("toastUpscaleError"),
         });
       }
     },
-    [addToast, qc, id]
+    [addToast, qc, id, t]
   );
 
   // Sprint 8: избранное — toggle is_favorite, optimistic update через invalidateQueries
@@ -663,17 +665,17 @@ export default function ChatPage() {
         const res = await favoriteGeneration(generationId);
         addToast({
           type: res.is_favorite ? "success" : "info",
-          message: res.is_favorite ? "Сохранено в избранном." : "Удалено из избранного.",
+          message: res.is_favorite ? t("toastFavoriteAdded") : t("toastFavoriteRemoved"),
         });
         qc.invalidateQueries({ queryKey: ["chat", id] });
       } catch (err) {
         addToast({
           type: "error",
-          message: err instanceof APIError ? err.message : "Не удалось обновить избранное.",
+          message: err instanceof APIError ? err.message : t("toastFavoriteError"),
         });
       }
     },
-    [addToast, qc, id]
+    [addToast, qc, id, t]
   );
 
   // Sprint 6: вариации сгенерированного изображения из пузыря сообщения
@@ -681,23 +683,23 @@ export default function ChatPage() {
     async (generationId: number) => {
       try {
         await createVariations(String(generationId), 4);
-        addToast({ type: "success", message: "Создаём 4 вариации — они появятся в этом чате." });
+        addToast({ type: "success", message: t("toastVariationsStarted") });
         qc.invalidateQueries({ queryKey: ["chat", id] });
       } catch (err) {
         addToast({
           type: "error",
-          message: err instanceof APIError ? err.message : "Не удалось создать вариации.",
+          message: err instanceof APIError ? err.message : t("toastVariationsError"),
         });
       }
     },
-    [addToast, qc, id]
+    [addToast, qc, id, t]
   );
 
   // Sprint 6: референс стиля — сохраняем в state, применяем к следующей генерации
   const handleStyleImage = useCallback((url: string) => {
     setStyleReferenceUrl(url);
-    addToast({ type: "info", message: "Стиль задан. Следующая генерация будет в этом стиле." });
-  }, [addToast]);
+    addToast({ type: "info", message: t("toastStyleSet") });
+  }, [addToast, t]);
 
   // img2img: применить редактирование из модалки — отправляет сообщение с image_url/mask_url/outpaint
   const handleEditModalSubmit = useCallback(
@@ -823,9 +825,9 @@ export default function ChatPage() {
   if (error || !chat) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-        <p className="text-[17px] text-[rgba(13,13,13,0.55)]">Чат не найден</p>
+        <p className="text-[17px] text-[rgba(13,13,13,0.55)]">{t("notFound")}</p>
         <Link href="/models/" className="text-[15px] text-[#D97757] hover:underline">
-          К каталогу моделей
+          {t("backToCatalog")}
         </Link>
       </div>
     );
@@ -848,7 +850,7 @@ export default function ChatPage() {
       {/* Drag overlay */}
       {isDragOver && (
         <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center rounded-[14px] border-2 border-dashed border-[#D97757] bg-[rgba(217,119,87,0.06)]">
-          <p className="text-[17px] font-medium text-[#D97757]">Отпустите для загрузки</p>
+          <p className="text-[17px] font-medium text-[#D97757]">{t("dragDrop")}</p>
         </div>
       )}
       {/* Header */}
@@ -882,10 +884,10 @@ export default function ChatPage() {
           <div className="relative group/export">
             <button
               className="flex h-8 items-center gap-1.5 rounded-[7px] px-2.5 text-[14px] font-medium text-[rgba(13,13,13,0.55)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A]"
-              title="Экспортировать чат"
+              title={t("exportTitle")}
             >
               <Download size={13} />
-              <span className="hidden sm:inline">Экспорт</span>
+              <span className="hidden sm:inline">{t("export")}</span>
             </button>
             <div className="absolute right-0 top-9 z-20 hidden group-hover/export:block w-32 rounded-[8px] border border-[rgba(13,13,13,0.10)] bg-white shadow-lg overflow-hidden">
               <a
@@ -911,14 +913,14 @@ export default function ChatPage() {
             className="flex h-8 items-center gap-1.5 rounded-[7px] px-2.5 text-[14px] font-medium text-[rgba(13,13,13,0.55)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A]"
           >
             <LayoutGrid size={13} />
-            <span className="hidden sm:inline">Каталог</span>
+            <span className="hidden sm:inline">{t("catalog")}</span>
           </Link>
           <Link
             href={`/models/${chat.network.slug}/`}
             className="flex h-8 items-center gap-1.5 rounded-[7px] bg-[#D97757] px-2.5 text-[14px] font-medium text-white transition-colors hover:bg-[#C4623E]"
           >
             <PenSquare size={13} />
-            <span className="hidden sm:inline">Новый чат</span>
+            <span className="hidden sm:inline">{t("newChat")}</span>
           </Link>
         </div>
       </header>
@@ -935,14 +937,14 @@ export default function ChatPage() {
           <FileText size={13} style={{ color: chat.project.color, flexShrink: 0 }} />
           <span className="flex-1 truncate text-[14px]" style={{ color: chat.project.color }}>
             <span className="font-medium">{chat.project.name}</span>
-            <span className="opacity-70"> · инструкции проекта активны</span>
+            <span className="opacity-70"> · {t("projectActive")}</span>
           </span>
           <Link
             href={`/projects/${chat.project.id}/`}
             className="shrink-0 rounded-[5px] px-2 py-0.5 text-[13px] font-medium transition-colors hover:opacity-80"
             style={{ color: chat.project.color, background: `${chat.project.color}18` }}
           >
-            Открыть
+            {t("openProject")}
           </Link>
           <button
             onClick={() => setInstructionsDismissed(true)}
@@ -958,8 +960,8 @@ export default function ChatPage() {
       {chat?.parent_chat_id && (
         <div className="flex shrink-0 items-center gap-1.5 border-b border-[rgba(13,13,13,0.06)] px-4 py-1.5 text-[14px] text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.4)] dark:border-[rgba(255,255,255,0.06)]">
           <GitBranch size={11} className="shrink-0" />
-          <span>Ветка от:</span>
-          <a href={`/chat/${chat.parent_chat_id}/`} className="text-[#D97757] hover:underline">родительский чат</a>
+          <span>{t("branchFrom")}</span>
+          <a href={`/chat/${chat.parent_chat_id}/`} className="text-[#D97757] hover:underline">{t("parentChat")}</a>
         </div>
       )}
 
@@ -968,7 +970,7 @@ export default function ChatPage() {
         <div className="shrink-0 border-b border-[rgba(13,13,13,0.06)] px-4 py-2 dark:border-[rgba(255,255,255,0.06)]">
           <div className="mb-1.5 flex items-center gap-1.5 text-[13px] font-medium text-[rgba(13,13,13,0.5)] dark:text-[rgba(236,236,236,0.4)]">
             <GitBranch size={11} />
-            Ветки ({chat.branches.length})
+            {t("branchesCount", { count: chat.branches.length })}
           </div>
           <div className="flex flex-wrap gap-1.5">
             {chat.branches.map((b) => (
@@ -977,7 +979,7 @@ export default function ChatPage() {
                 href={`/chat/${b.id}/`}
                 className="rounded-[6px] border border-[rgba(13,13,13,0.1)] px-2 py-0.5 text-[13px] text-[rgba(13,13,13,0.6)] hover:border-[#D97757] hover:text-[#D97757] transition-colors dark:border-[rgba(255,255,255,0.1)] dark:text-[rgba(236,236,236,0.5)]"
               >
-                {b.title || `Ветка #${b.id}`}
+                {b.title || t("branchNumbered", { id: b.id })}
               </a>
             ))}
           </div>
@@ -1012,7 +1014,7 @@ export default function ChatPage() {
                 {chat.network.name}
               </p>
               <p className="mt-1 text-[15px] text-[rgba(13,13,13,0.42)] dark:text-[rgba(236,236,236,0.40)]">
-                Выберите тему или напишите свой вопрос
+                {t("emptyHint")}
               </p>
 
               {/* Prompt library button */}
@@ -1022,7 +1024,7 @@ export default function ChatPage() {
                 style={{ borderColor: "var(--chat-input-border)", color: "var(--text-secondary)" }}
               >
                 <BookMarked size={13} />
-                Шаблоны промтов
+                {t("promptTemplates")}
               </button>
 
               {/* Starter prompt cards */}
@@ -1106,7 +1108,7 @@ export default function ChatPage() {
             <button
               onClick={scrollToBottom}
               className="flex h-9 w-9 items-center justify-center rounded-full border border-[rgba(13,13,13,0.10)] bg-white shadow-md transition-all hover:shadow-lg active:scale-95"
-              title="Прокрутить вниз"
+              title={t("scrollToBottom")}
             >
               <ChevronDown size={18} className="text-[rgba(13,13,13,0.55)]" />
             </button>
@@ -1123,7 +1125,7 @@ export default function ChatPage() {
                 <GitCommit size={15} className="shrink-0 text-[#D97757]" />
                 <div className="min-w-0">
                   <p className="text-[15px] font-semibold text-[#1A1A1A]">
-                    AI предложил коммит ({pendingCommit.files_count} {pendingCommit.files_count === 1 ? "файл" : pendingCommit.files_count < 5 ? "файла" : "файлов"})
+                    {t("aiCommitProposed", { files: t("commitFilesCount", { count: pendingCommit.files_count }) })}
                   </p>
                   <p className="truncate text-[13px] text-[rgba(13,13,13,0.50)]">{pendingCommit.commit_message}</p>
                 </div>
@@ -1143,7 +1145,7 @@ export default function ChatPage() {
                   className="flex items-center gap-1 rounded-[7px] bg-[#22a85a] px-2.5 py-1.5 text-[14px] font-medium text-white hover:bg-[#1a8a49] transition-colors disabled:opacity-50"
                 >
                   <CheckCircle2 size={12} />
-                  Подтвердить
+                  {t("confirmCommit")}
                 </button>
                 <button
                   disabled={commitActionLoading}
@@ -1159,7 +1161,7 @@ export default function ChatPage() {
                   className="flex items-center gap-1 rounded-[7px] border border-[rgba(13,13,13,0.15)] px-2.5 py-1.5 text-[14px] font-medium text-[rgba(13,13,13,0.60)] hover:border-[rgba(231,76,60,0.4)] hover:text-[#e74c3c] transition-colors disabled:opacity-50"
                 >
                   <XCircle size={12} />
-                  Отклонить
+                  {t("rejectCommit")}
                 </button>
               </div>
             </div>
@@ -1195,7 +1197,7 @@ export default function ChatPage() {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={sourceImage.localUrl || sourceImage.url}
-                    alt="Исходное изображение"
+                    alt={t("sourceImageAlt")}
                     className="h-14 w-14 rounded-[10px] border object-cover"
                     style={{ borderColor: "var(--chat-input-border)" }}
                   />
@@ -1208,7 +1210,7 @@ export default function ChatPage() {
                     type="button"
                     onClick={clearSourceImage}
                     className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-[rgba(13,13,13,0.10)] bg-white shadow-sm transition-colors hover:bg-[rgba(13,13,13,0.06)]"
-                    title="Убрать исходное изображение"
+                    title={t("removeSourceImage")}
                   >
                     <X size={11} className="text-[rgba(13,13,13,0.55)]" />
                   </button>
@@ -1216,14 +1218,14 @@ export default function ChatPage() {
                 <div className="min-w-0">
                   <p className="flex items-center gap-1 text-[14px] font-medium text-[#1A1A1A] dark:text-[#EDE8E3]">
                     <ImagePlus size={12} className="text-[#D97757]" />
-                    Редактирование изображения
+                    {t("editSourceImage")}
                   </p>
                   <p className="mt-0.5 text-[13px] text-[rgba(13,13,13,0.42)] dark:text-[rgba(236,236,236,0.4)]">
                     {sourceImage.uploading
-                      ? "Загрузка..."
+                      ? t("uploading")
                       : sourceImage.error
-                        ? "Ошибка загрузки"
-                        : "Опишите изменения и отправьте"}
+                        ? t("uploadError")
+                        : t("describeChanges")}
                   </p>
                 </div>
               </div>
@@ -1236,7 +1238,7 @@ export default function ChatPage() {
                 autoResize();
               }}
               onKeyDown={handleKeyDown}
-              placeholder="Введите сообщение..."
+              placeholder={t("inputPlaceholder")}
               rows={1}
               disabled={isBusy}
               className="block w-full resize-none bg-transparent px-4 py-3.5 pr-24 text-[16px] leading-relaxed text-[#1A1A1A] outline-none disabled:opacity-50 dark:text-[#EDE8E3] dark:placeholder:text-[rgba(236,236,236,0.35)]"
@@ -1262,7 +1264,7 @@ export default function ChatPage() {
                 type="button"
                 disabled={isBusy}
                 onClick={() => sourceInputRef.current?.click()}
-                title="Загрузить изображение для редактирования (img2img)"
+                title={t("uploadImageTitle")}
                 className="absolute bottom-2.5 right-[50px] flex h-9 w-9 items-center justify-center rounded-[10px] text-[rgba(13,13,13,0.4)] transition-all hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A] disabled:cursor-not-allowed disabled:opacity-30 dark:text-[rgba(236,236,236,0.4)] dark:hover:bg-[rgba(255,255,255,0.08)] dark:hover:text-[#EDE8E3]"
               >
                 <ImagePlus size={16} />
@@ -1297,7 +1299,7 @@ export default function ChatPage() {
                   setWebSearch(next);
                   localStorage.setItem("web_search_enabled", next ? "1" : "0");
                 }}
-                title={webSearch ? "Веб-поиск включён. Нажмите чтобы отключить" : "Включить поиск в интернете"}
+                title={webSearch ? t("webSearchOn") : t("webSearchOff")}
                 className={[
                   "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[13px] font-medium transition-all",
                   webSearch
@@ -1306,7 +1308,7 @@ export default function ChatPage() {
                 ].join(" ")}
               >
                 <Globe size={12} />
-                Поиск в интернете
+                {t("webSearch")}
                 {webSearch && (
                   <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#D97757]" />
                 )}
@@ -1315,7 +1317,7 @@ export default function ChatPage() {
               <button
                 type="button"
                 onClick={() => setVariantsMode((v) => !v)}
-                title={variantsMode ? "Режим вариантов включён. Нажмите чтобы отключить" : "Получить 3 варианта ответа (Кратко / Подробно / Пошагово)"}
+                title={variantsMode ? t("variantsOn") : t("variantsOff")}
                 className={[
                   "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[13px] font-medium transition-all",
                   variantsMode
@@ -1324,7 +1326,7 @@ export default function ChatPage() {
                 ].join(" ")}
               >
                 <Layers size={12} />
-                Варианты
+                {t("variants")}
                 {variantsMode && (
                   <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#D97757]" />
                 )}
@@ -1333,7 +1335,7 @@ export default function ChatPage() {
               <button
                 type="button"
                 onClick={() => setResearchMode((v) => !v)}
-                title={researchMode ? "Режим исследования включён. Нажмите чтобы отключить" : "Глубокое исследование — многошаговый автономный анализ с цитатами"}
+                title={researchMode ? t("researchOn") : t("researchOff")}
                 className={[
                   "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[13px] font-medium transition-all",
                   researchMode
@@ -1342,7 +1344,7 @@ export default function ChatPage() {
                 ].join(" ")}
               >
                 <Microscope size={12} />
-                Исследование
+                {t("research")}
                 {researchMode && (
                   <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#16a34a]" />
                 )}
@@ -1361,7 +1363,7 @@ export default function ChatPage() {
           {chat.network.provider === "fal-ai" && (
             <div className="mt-1.5 flex items-center gap-1 px-1">
               <span className="mr-0.5 text-[13px] font-medium text-[rgba(13,13,13,0.38)] dark:text-[rgba(236,236,236,0.33)]">
-                Количество:
+                {t("batchCount")}
               </span>
               {([1, 2, 4] as const).map((n) => (
                 <button
@@ -1380,7 +1382,7 @@ export default function ChatPage() {
               ))}
               {batchCount > 1 && (
                 <span className="ml-1 text-[12px] text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.3)]">
-                  — будет сгенерировано {batchCount} варианта
+                  {t("batchWillGenerate", { count: batchCount })}
                 </span>
               )}
             </div>
@@ -1389,15 +1391,15 @@ export default function ChatPage() {
           {/* Баннер «Стиль задан» — показываем если есть styleReferenceUrl */}
           {styleReferenceUrl && (
             <div className="mx-1 mt-1.5 flex items-center gap-2 rounded-[8px] border border-[rgba(217,119,87,0.2)] bg-[rgba(217,119,87,0.06)] px-3 py-1.5">
-              <img src={styleReferenceUrl} alt="стиль" className="h-8 w-8 rounded-[4px] object-cover" />
+              <img src={styleReferenceUrl} alt="" className="h-8 w-8 rounded-[4px] object-cover" />
               <span className="flex-1 text-[14px] text-[rgba(13,13,13,0.7)] dark:text-[rgba(236,236,236,0.7)]">
-                Следующая генерация будет в стиле этого изображения
+                {t("styleReferenceBanner")}
               </span>
               <button
                 type="button"
                 onClick={() => setStyleReferenceUrl(null)}
                 className="text-[rgba(13,13,13,0.4)] hover:text-[rgba(13,13,13,0.7)] dark:text-[rgba(236,236,236,0.4)] dark:hover:text-[rgba(236,236,236,0.7)]"
-                title="Убрать референс стиля"
+                title={t("removeStyleReference")}
               >
                 <X size={14} />
               </button>
@@ -1431,7 +1433,7 @@ export default function ChatPage() {
                 ].join(" ")}
                   >
                     <Settings2 size={12} />
-                    Настройки
+                    {t("mediaSettings")}
                     <ChevronDown size={11} className={showMediaSettings ? "rotate-180 transition-transform" : "transition-transform"} />
                   </button>
                 ) : null}
@@ -1452,15 +1454,15 @@ export default function ChatPage() {
               <BouncingDots />
               <span className="text-[14px] text-[rgba(13,13,13,0.42)]">
                 {searchPhase === "searching" ? (
-                  <span className="font-medium text-[#D97757]">Ищем в интернете...</span>
+                  <span className="font-medium text-[#D97757]">{t("searchingWeb")}</span>
                 ) : searchPhase === "generating" ? (
                   <>
-                    <span className="font-medium text-[#16a34a]">Найдено</span>
+                    <span className="font-medium text-[#16a34a]">{t("searchFound")}</span>
                     <span className="mx-1 text-[rgba(13,13,13,0.25)]">·</span>
-                    <span>{chat.network.name} анализирует...</span>
+                    <span>{t("analyzing", { name: chat.network.name })}</span>
                   </>
                 ) : (
-                  <span>{chat.network.name} отвечает...</span>
+                  <span>{t("responding", { name: chat.network.name })}</span>
                 )}
               </span>
             </div>
@@ -1592,6 +1594,7 @@ function MessageRow({
   onVideoComplete?: () => void;
   researchData?: { steps: import("@/lib/api/types").DeepResearchStep[]; status: import("@/lib/api/types").DeepResearchStatus; error: string };
 }) {
+  const t = useTranslations("chat");
   const isUser = message.role === "user";
   const [savedFact, setSavedFact] = useState(false);
   const [branchLoading, setBranchLoading] = useState(false);
@@ -1619,10 +1622,10 @@ function MessageRow({
                 } catch {}
               }}
               className="flex h-6 items-center gap-1 rounded-[5px] px-2 text-[13px] font-medium text-[rgba(13,13,13,0.42)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.38)]"
-              title="Запомнить это сообщение как факт памяти"
+              title={t("rememberFactTitle")}
             >
               <BookmarkPlus size={11} />
-              {savedFact ? "Запомнено" : "Запомнить"}
+              {savedFact ? t("remembered") : t("remember")}
             </button>
             {chatId && (
               <button
@@ -1637,10 +1640,10 @@ function MessageRow({
                   }
                 }}
                 className="flex h-6 items-center gap-1 rounded-[5px] px-2 text-[13px] font-medium text-[rgba(13,13,13,0.42)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.38)]"
-                title="Создать ветку разговора от этого сообщения"
+                title={t("branchTitle")}
               >
                 {branchLoading ? <Loader size={11} className="animate-spin" /> : <GitBranch size={11} />}
-                Ветка
+                {t("branch")}
               </button>
             )}
           </div>
@@ -1681,7 +1684,7 @@ function MessageRow({
         ) : researchData?.status === "error" ? (
           <>
             <DeepResearchPanel steps={researchData.steps} status={researchData.status} error={researchData.error} />
-            <p className="mt-2 text-[15px] text-red-500">Ошибка исследования. Попробуйте ещё раз.</p>
+            <p className="mt-2 text-[15px] text-red-500">{t("researchError")}</p>
           </>
         ) : message.status === "pending" ? (
           isFalAi && message.generation_id ? (
@@ -1698,7 +1701,7 @@ function MessageRow({
           )
         ) : message.status === "failed" ? (
           <p className="text-[16px] text-[#e74c3c]">
-            {message.error_message ?? "Ошибка генерации. Попробуйте ещё раз."}
+            {message.error_message ?? t("generationError")}
           </p>
         ) : (
           <>
@@ -1723,7 +1726,7 @@ function MessageRow({
                             {onDownloadImage && (
                               <button
                                 onClick={() => onDownloadImage(url)}
-                                title="Скачать"
+                                title={t("download")}
                                 className="flex h-6 w-6 items-center justify-center rounded-[5px] bg-white/80 text-[#1A1A1A] shadow-sm backdrop-blur-sm hover:bg-white dark:bg-black/60 dark:text-white dark:hover:bg-black/80"
                               >
                                 <Download size={11} />
@@ -1732,7 +1735,7 @@ function MessageRow({
                             {onEditImage && (
                               <button
                                 onClick={() => onEditImage(url)}
-                                title="Редактировать"
+                                title={t("edit")}
                                 className="flex h-6 w-6 items-center justify-center rounded-[5px] bg-white/80 text-[#1A1A1A] shadow-sm backdrop-blur-sm hover:bg-white dark:bg-black/60 dark:text-white dark:hover:bg-black/80"
                               >
                                 <Pencil size={11} />
@@ -1782,33 +1785,33 @@ function MessageRow({
               return (
                 <div className="mt-2 flex flex-wrap items-center gap-1 border-t border-[rgba(13,13,13,0.07)] pt-2 dark:border-[rgba(236,236,236,0.07)]">
                   {canRegenerate && onRegenerate && (
-                    <button onClick={onRegenerate} className={btnCls} style={btnStyle} onMouseEnter={onEnter} onMouseLeave={onLeave} title="Сгенерировать ещё раз">
-                      <RotateCcw size={13} /><span>Ещё раз</span>
+                    <button onClick={onRegenerate} className={btnCls} style={btnStyle} onMouseEnter={onEnter} onMouseLeave={onLeave} title={t("regenerateAgainTitle")}>
+                      <RotateCcw size={13} /><span>{t("again")}</span>
                     </button>
                   )}
                   {imgUrl && onEditImage && (
-                    <button onClick={() => onEditImage(imgUrl)} className={btnCls} style={btnStyle} onMouseEnter={onEnter} onMouseLeave={onLeave} title="Редактировать изображение (img2img)">
-                      <Pencil size={13} /><span>Редактировать</span>
+                    <button onClick={() => onEditImage(imgUrl)} className={btnCls} style={btnStyle} onMouseEnter={onEnter} onMouseLeave={onLeave} title={t("editImageTitle")}>
+                      <Pencil size={13} /><span>{t("edit")}</span>
                     </button>
                   )}
                   {imgUrl && onRemoveBg && (
-                    <button onClick={() => onRemoveBg(imgUrl, message.image_generation_id ?? undefined)} className={btnCls} style={btnStyle} onMouseEnter={onEnter} onMouseLeave={onLeave} title="Убрать фон">
-                      <Eraser size={13} /><span>Убрать фон</span>
+                    <button onClick={() => onRemoveBg(imgUrl, message.image_generation_id ?? undefined)} className={btnCls} style={btnStyle} onMouseEnter={onEnter} onMouseLeave={onLeave} title={t("removeBgTitle")}>
+                      <Eraser size={13} /><span>{t("removeBg")}</span>
                     </button>
                   )}
                   {imgUrl && onAnimateImage && (
-                    <button onClick={() => onAnimateImage(imgUrl)} className={btnCls} style={btnStyle} onMouseEnter={onEnter} onMouseLeave={onLeave} title="Оживить изображение в видео">
-                      <Film size={13} /><span>Оживить</span>
+                    <button onClick={() => onAnimateImage(imgUrl)} className={btnCls} style={btnStyle} onMouseEnter={onEnter} onMouseLeave={onLeave} title={t("animateTitle")}>
+                      <Film size={13} /><span>{t("animate")}</span>
                     </button>
                   )}
                   {message.image_generation_id && onUpscaleImage && (
-                    <button onClick={() => onUpscaleImage(message.image_generation_id!, 2)} className={btnCls} style={btnStyle} onMouseEnter={onEnter} onMouseLeave={onLeave} title="Детализировать — усилить резкость и проработку деталей через flux-kontext-pro">
-                      <Maximize2 size={13} /><span>Детализировать</span>
+                    <button onClick={() => onUpscaleImage(message.image_generation_id!, 2)} className={btnCls} style={btnStyle} onMouseEnter={onEnter} onMouseLeave={onLeave} title={t("upscaleTitle")}>
+                      <Maximize2 size={13} /><span>{t("upscale")}</span>
                     </button>
                   )}
                   {message.image_generation_id && onVariationsImage && (
-                    <button onClick={() => onVariationsImage(message.image_generation_id!)} className={btnCls} style={btnStyle} onMouseEnter={onEnter} onMouseLeave={onLeave} title="Создать 4 вариации">
-                      <Images size={13} /><span>Варианты</span>
+                    <button onClick={() => onVariationsImage(message.image_generation_id!)} className={btnCls} style={btnStyle} onMouseEnter={onEnter} onMouseLeave={onLeave} title={t("variationsTitle")}>
+                      <Images size={13} /><span>{t("variations")}</span>
                     </button>
                   )}
                   {message.image_generation_id && onFavoriteImage && (
@@ -1818,15 +1821,15 @@ function MessageRow({
                       style={message.image_is_favorite ? { color: "#e74c3c" } : btnStyle}
                       onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(231,76,60,0.08)"; e.currentTarget.style.color = "#e74c3c"; }}
                       onMouseLeave={(e) => { e.currentTarget.style.background = ""; e.currentTarget.style.color = message.image_is_favorite ? "#e74c3c" : "rgba(217,119,87,0.9)"; }}
-                      title={message.image_is_favorite ? "Убрать из избранного" : "Добавить в избранное"}
+                      title={message.image_is_favorite ? t("favoriteRemove") : t("favoriteAdd")}
                     >
                       <Heart size={13} fill={message.image_is_favorite ? "currentColor" : "none"} />
-                      <span>{message.image_is_favorite ? "Сохранено" : "Сохранить"}</span>
+                      <span>{message.image_is_favorite ? t("saved") : t("save")}</span>
                     </button>
                   )}
                   {imgUrl && onStyleImage && (
-                    <button onClick={() => onStyleImage(imgUrl)} className={btnCls} style={btnStyle} onMouseEnter={onEnter} onMouseLeave={onLeave} title="Использовать как референс стиля">
-                      <Palette size={13} /><span>Стиль</span>
+                    <button onClick={() => onStyleImage(imgUrl)} className={btnCls} style={btnStyle} onMouseEnter={onEnter} onMouseLeave={onLeave} title={t("styleTitle")}>
+                      <Palette size={13} /><span>{t("style")}</span>
                     </button>
                   )}
                   {imgUrl && onDownloadImage && (
@@ -1836,9 +1839,9 @@ function MessageRow({
                       style={btnStyle}
                       onMouseEnter={onEnter}
                       onMouseLeave={onLeave}
-                      title="Скачать изображение"
+                      title={t("downloadImageTitle")}
                     >
-                      <Download size={13} /><span>Скачать</span>
+                      <Download size={13} /><span>{t("download")}</span>
                     </button>
                   )}
                   {message.image_generation_id && onDescribeImage && (
@@ -1848,11 +1851,11 @@ function MessageRow({
                       style={btnStyle}
                       onMouseEnter={onEnter}
                       onMouseLeave={onLeave}
-                      title="Получить промпт из этого изображения"
+                      title={t("describeTitle")}
                       disabled={describingId === message.image_generation_id}
                     >
                       <FileSearch size={13} />
-                      <span>{describingId === message.image_generation_id ? 'Анализ...' : 'Промпт'}</span>
+                      <span>{describingId === message.image_generation_id ? t("analyzingShort") : t("describe")}</span>
                     </button>
                   )}
                 </div>
@@ -1877,10 +1880,10 @@ function MessageRow({
                       (e.currentTarget as HTMLButtonElement).style.background = "";
                       (e.currentTarget as HTMLButtonElement).style.color = "rgba(217,119,87,0.8)";
                     }}
-                    title="Открыть превью артефакта"
+                    title={t("previewArtifactTitle")}
                   >
                     <Layers size={13} />
-                    <span>Preview</span>
+                    <span>{t("preview")}</span>
                   </button>
                 ) : null;
               })()}
@@ -1897,10 +1900,10 @@ function MessageRow({
                     (e.currentTarget as HTMLButtonElement).style.background = "";
                     (e.currentTarget as HTMLButtonElement).style.color = "var(--text-tertiary)";
                   }}
-                  title="Повторить генерацию"
+                  title={t("regenerateTitle")}
                 >
                   <RotateCcw size={13} />
-                  <span>Ещё раз</span>
+                  <span>{t("again")}</span>
                 </button>
               )}
               {(message.plain_text || message.content) && (
@@ -1916,10 +1919,10 @@ function MessageRow({
                   <button
                     onClick={() => setForgetPanelMsgId((v) => v === message.id ? null : message.id)}
                     className="flex items-center gap-1 rounded-[6px] px-1.5 py-1 text-[13px] text-[rgba(217,119,87,0.6)] hover:bg-[rgba(217,119,87,0.07)] hover:text-[#D97757] transition-colors"
-                    title="Забыть из памяти"
+                    title={t("forgetMemoryTitle")}
                   >
                     <Brain size={12} />
-                    <span className="text-[12px]">Память</span>
+                    <span className="text-[12px]">{t("memory")}</span>
                   </button>
                   {forgetPanelMsgId === message.id && (
                     <ForgetMemoryPanel onClose={() => setForgetPanelMsgId(null)} />
@@ -1936,6 +1939,7 @@ function MessageRow({
 
 /* ─── TTS speak button ───────────────────────────────────── */
 function SpeakButton({ text }: { text: string }) {
+  const t = useTranslations("chat");
   const [state, setState] = useState<"idle" | "loading" | "playing">("idle");
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const urlRef = useRef<string | null>(null);
@@ -1984,7 +1988,7 @@ function SpeakButton({ text }: { text: string }) {
           (e.currentTarget as HTMLButtonElement).style.color = "var(--text-tertiary)";
         }
       }}
-      title={state === "playing" ? "Остановить" : "Озвучить ответ (TTS)"}
+      title={state === "playing" ? t("speakStopTitle") : t("speakTitle")}
     >
       {state === "loading" ? (
         <Loader size={13} className="animate-spin" />
@@ -1993,7 +1997,7 @@ function SpeakButton({ text }: { text: string }) {
       ) : (
         <Volume2 size={13} />
       )}
-      <span>{state === "loading" ? "Загрузка..." : state === "playing" ? "Стоп" : "Озвучить"}</span>
+      <span>{state === "loading" ? t("loading") : state === "playing" ? t("speakStop") : t("speak")}</span>
     </button>
   );
 }
@@ -2006,6 +2010,7 @@ function CopyButton({
   plainText: string | null | undefined;
   htmlContent: string;
 }) {
+  const t = useTranslations("chat");
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -2034,10 +2039,10 @@ function CopyButton({
           ? "#D97757"
           : "var(--text-tertiary)";
       }}
-      title="Скопировать"
+      title={t("copyTitle")}
     >
       {copied ? <Check size={13} /> : <Copy size={13} />}
-      <span>{copied ? "Скопировано" : "Копировать"}</span>
+      <span>{copied ? t("copied") : t("copy")}</span>
     </button>
   );
 }
@@ -2221,6 +2226,7 @@ function PlainTextAnimated({ content, shouldAnimate }: { content: string; should
 
 /* ─── Search context block ───────────────────────────────── */
 function SearchContextBlock({ context }: { context: string }) {
+  const t = useTranslations("chat");
   const [open, setOpen] = useState(false);
   const lines = context.split("\n").filter(Boolean);
   const preview = lines.slice(0, 3).join("\n");
@@ -2233,7 +2239,7 @@ function SearchContextBlock({ context }: { context: string }) {
       >
         <Globe size={13} className="shrink-0 text-[#D97757]" />
         <span className="flex-1 text-[14px] font-medium text-[#D97757]">
-          Результаты поиска
+          {t("searchResults")}
         </span>
         {open ? (
           <ChevronDown size={13} className="shrink-0 text-[rgba(217,119,87,0.6)]" />
@@ -2250,7 +2256,7 @@ function SearchContextBlock({ context }: { context: string }) {
             onClick={() => setOpen(true)}
             className="mt-1 text-[13px] text-[rgba(217,119,87,0.7)] hover:text-[#D97757]"
           >
-            Показать всё ({lines.length} строк)
+            {t("showAllLines", { count: lines.length })}
           </button>
         )}
       </div>
@@ -2260,6 +2266,7 @@ function SearchContextBlock({ context }: { context: string }) {
 
 /* ─── KB Sources block ───────────────────────────────────── */
 function SourcesBlock({ sources }: { sources: KBSource[] }) {
+  const t = useTranslations("chat");
   const [open, setOpen] = useState(false);
   return (
     <div className="mt-2.5 rounded-[10px] border border-[rgba(217,119,87,0.14)] bg-[rgba(217,119,87,0.03)]">
@@ -2269,7 +2276,7 @@ function SourcesBlock({ sources }: { sources: KBSource[] }) {
       >
         <FileText size={13} className="shrink-0 text-[#D97757]" />
         <span className="flex-1 text-[14px] font-medium text-[#D97757]">
-          Источники ({sources.length})
+          {t("sourcesCount", { count: sources.length })}
         </span>
         {open ? (
           <ChevronDown size={13} className="shrink-0 text-[rgba(217,119,87,0.6)]" />

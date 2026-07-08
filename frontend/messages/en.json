@@ -1,160 +1,160 @@
 {
   "nav": {
-    "catalog": "Models",
+    "catalog": "Catalog",
     "compare": "Compare",
     "gallery": "Gallery",
     "projects": "Projects",
     "personas": "Personas",
-    "docs": "Docs",
+    "docs": "Documentation",
     "api": "API",
     "blog": "Blog",
     "account": "Dashboard",
     "accountFull": "Dashboard",
-    "logout": "Sign out",
-    "login": "Sign in",
-    "startFree": "Start for free",
+    "logout": "Log out",
+    "login": "Log in",
+    "startFree": "Start free",
     "menu": "Menu",
     "themeSystem": "System theme",
     "themeLight": "Light theme",
     "themeDark": "Dark theme"
   },
   "home": {
-    "badge": "Every top AI model — one account, pay as you go",
-    "title": "All AI models in one place",
-    "subtitle": "GPT-4o, Claude, Gemini, Midjourney and 200+ models. One account, pay per message — no subscription.",
-    "typewriter": [
-      "GPT-4o writes code in seconds",
-      "Claude explains complex things simply",
-      "Gemini analyzes your documents",
-      "Midjourney draws on demand",
-      "DeepSeek solves math problems",
-      "Perplexity finds up-to-date answers"
-    ],
+    "badge": "Russian service — no VPN or foreign cards",
+    "title": "All AI models in one window",
+    "subtitle": "GPT-4o, Claude, Gemini, Midjourney, and 200+ models. One account, pay in rubles.",
+    "typewriter": {
+      "0": "GPT-4o writes code in seconds",
+      "1": "Claude explains complex things simply",
+      "2": "Gemini analyzes documents",
+      "3": "Midjourney draws on request",
+      "4": "DeepSeek solves math problems",
+      "5": "Perplexity finds current information"
+    },
     "popularTitle": "Popular models",
-    "popularSubtitle": "The most in-demand AI models",
+    "popularSubtitle": "Most in-demand AI models",
     "allModels": "All models",
     "freeTitle": "{count} free text models",
-    "freeText": "GPT-OSS, Qwen3, Gemma, DeepSeek R1 and other chat models — completely free, no top-up needed. Available right after sign-up.",
+    "freeText": "GPT-OSS, Qwen3, Gemma, DeepSeek R1, and other chat models — 0 ₽, no balance top-up. Available immediately after registration.",
     "freeCta": "Open free models",
-    "whyTitle": "Why aineron",
-    "features": [
-      {
+    "whyTitle": "Why aineron.ru",
+    "features": {
+      "0": {
         "title": "All models at once",
-        "text": "GPT-4o, Claude, Gemini, Midjourney and 200+ models — one account and a shared balance."
+        "text": "GPT-4o, Claude, Gemini, Midjourney, and 200+ models — one account and shared balance."
       },
-      {
-        "title": "No subscription",
-        "text": "Pay per message with credits. No $20/month plans — spend only on what you use."
+      "1": {
+        "title": "No VPN",
+        "text": "Servers in Russia, pay in rubles. Works on any device in Russia."
       },
-      {
+      "2": {
         "title": "API for developers",
-        "text": "OpenAI-compatible API. Plug in Cursor, VS Code or your own product."
+        "text": "OpenAI-compatible API. Connect Cursor, VS Code, or your product."
       },
-      {
-        "title": "Text, images and video",
-        "text": "Chat, image and video generation — in a single interface."
+      "3": {
+        "title": "Text, photo, and video",
+        "text": "Chat, image and video generation in one interface."
       }
-    ],
-    "comparisonTitle": "An honest comparison",
-    "comparisonSubtitle": "aineron versus the market leaders",
+    },
+    "comparisonTitle": "Fair Comparison",
+    "comparisonSubtitle": "aineron.ru vs. Global Leaders",
     "comparisonFeatureCol": "Feature",
-    "comparisonRows": [
-      "No credit card required",
-      "Pay with crypto (USDT, TON)",
-      "GPT, Claude and Gemini in one place",
-      "Side-by-side model comparison",
-      "Image and video generation",
-      "File uploads and web search",
-      "OpenAI-compatible API",
-      "Pay per message, no subscription"
-    ],
-    "pricingTitle": "Simple pay-as-you-go pricing",
-    "pricingSubtitle": "Top up your balance and spend it on any model. Credits never expire.",
-    "pricing": [
-      {
+    "comparisonRows": {
+      "0": "Works in Russia without VPN",
+      "1": "Payment in rubles and Russian cards",
+      "2": "GPT, Claude, Gemini in one window",
+      "3": "Side-by-side model comparison",
+      "4": "Image and video generation",
+      "5": "File upload and web search",
+      "6": "OpenAI-compatible API",
+      "7": "Telegram bot with AI models"
+    },
+    "pricingTitle": "Simple Payment in Rubles",
+    "pricingSubtitle": "Top up your balance and spend on any model. Funds do not expire.",
+    "pricing": {
+      "0": {
         "title": "Start",
-        "price": "1,000 credits",
-        "sub": "free after sign-up"
+        "price": "10 ₽",
+        "sub": "free after registration"
       },
-      {
-        "title": "Top up",
-        "price": "with crypto",
-        "sub": "USDT or TON, from $1"
+      "1": {
+        "title": "Top Up",
+        "price": "in rubles",
+        "sub": "with Russian card or Telegram Stars"
       },
-      {
-        "title": "Rate",
-        "price": "$1 = 10,000",
-        "sub": "credits — a message costs a few hundred"
+      "2": {
+        "title": "Subscriptions",
+        "price": "with discount",
+        "sub": "packages for active users"
       }
-    ],
-    "pricingNote": "No card required to start",
-    "faqTitle": "Frequently asked questions",
-    "faq": [
-      {
+    },
+    "pricingNote": "No card needed to start",
+    "faqTitle": "Frequently Asked Questions",
+    "faq": {
+      "0": {
         "q": "How does the balance work?",
-        "a": "Your balance is measured in credits. Each message costs a few hundred credits depending on the model. Credits never expire, and you can top up any amount starting from $1."
+        "a": "The aineron.ru balance is in rubles. Each message to an AI model costs a few rubles (usually 1–5 ₽). Funds do not expire, balance is topped up via Robokassa without commission."
       },
-      {
-        "q": "How do I pay?",
-        "a": "With cryptocurrency: USDT or TON via @CryptoBot in Telegram. Choose an amount, pay the invoice, and your balance updates automatically within seconds."
+      "1": {
+        "q": "Is a VPN required to use the service?",
+        "a": "No. aineron.ru is a Russian service with servers in Russia. Accessible without VPN, payment with Russian cards, works in any browser and app."
       },
-      {
+      "2": {
         "q": "Which AI models are available?",
-        "a": "GPT-4o, GPT-4o mini, Claude 3.5 Sonnet, Gemini 1.5 Pro, DeepSeek V3, Mistral, Llama and 200+ more. For images: Stable Diffusion, Flux and Midjourney-compatible models. For video: Sora, Veo and Kling."
+        "a": "Available models include GPT-4o, GPT-4o mini, Claude 3.5 Sonnet, Gemini 1.5 Pro, DeepSeek V3, Mistral, Llama, and over 200 others. For images: Stable Diffusion, Flux, Midjourney-compatible models."
       },
-      {
+      "3": {
         "q": "Is there an API for developers?",
-        "a": "Yes. The API is OpenAI-compatible — just change the base_url and API key. Works with Cursor, VS Code (Continue) and any OpenAI-compatible application."
+        "a": "Yes. The API is compatible with OpenAI SDK — just change the base_url and API key. Works with Cursor, VS Code (Continue), GitHub Copilot alternatives, and any OpenAI-compatible app."
       },
-      {
-        "q": "Do I need a subscription?",
-        "a": "No. There are no monthly plans — you pay only for the messages you send. Top up once and use any model until your credits run out."
+      "4": {
+        "q": "How to make a payment?",
+        "a": "Via Robokassa: Visa/MasterCard/Mir cards, YooMoney, SBP. Balance top-up for any amount and discounted subscriptions available. For legal entities — invoice and contract."
       },
-      {
-        "q": "What if the AI gives a bad answer?",
-        "a": "Every message has a Regenerate button — the AI produces a new answer at no extra charge. If a technical error occurs, your credits are refunded automatically."
+      "5": {
+        "q": "What if the AI gives a poor response?",
+        "a": "Each message has a 'Regenerate' button — the AI will generate a new response without additional charge. If a technical error occurs, funds are automatically refunded."
       }
-    ],
-    "finalTitle": "Start right now",
-    "finalText": "1,000 credits free. No card, no subscription.",
+    },
+    "finalTitle": "Start Now",
+    "finalText": "10 ₽ free. No VPN, no foreign cards.",
     "perMessage": "{price} / message",
     "cta": {
       "topUp": "Top up balance",
-      "startFreeAmount": "Start with 1,000 free credits",
+      "startFreeAmount": "Start with 10 ₽ free",
       "openAccount": "Open dashboard",
       "createAccount": "Create account",
-      "viewModels": "Browse models",
-      "startFree": "Start for free",
+      "viewModels": "View models",
+      "startFree": "Start free",
       "newChat": "New chat",
-      "viewCatalog": "Browse catalog"
+      "viewCatalog": "View catalog"
     }
   },
   "auth": {
-    "loginTitle": "Sign in",
-    "noAccount": "No account yet?",
-    "registerLink": "Create one",
+    "loginTitle": "Log in",
+    "noAccount": "No account?",
+    "registerLink": "Sign up",
     "email": "Email",
     "password": "Password",
     "passwordPlaceholder": "At least 8 characters",
-    "loginError": "Sign-in failed. Please try again.",
-    "loggingIn": "Signing in...",
-    "loginButton": "Sign in",
+    "loginError": "Login error. Try again.",
+    "loggingIn": "Logging in...",
+    "loginButton": "Log in",
     "forgotPassword": "Forgot password?",
     "registerTitle": "Create account",
     "haveAccount": "Already have an account?",
-    "loginLink": "Sign in",
-    "bonus": "1,000 credits free on sign-up",
+    "loginLink": "Log in",
+    "bonus": "10 ₽ free upon registration",
     "passwordTooShort": "Password must be at least 8 characters",
-    "registerError": "Registration failed. Please try again.",
+    "registerError": "Registration error. Try again.",
     "registering": "Creating account...",
     "registerButton": "Create account"
   },
   "footer": {
-    "description": "All AI models in one place. GPT-4o, Claude, Gemini and more — pay per message, no subscription.",
+    "description": "AI models without VPN. GPT-4o, Claude, Gemini, and more — all in one place.",
     "product": {
       "title": "Product",
       "catalog": "Model catalog",
-      "compare": "Compare models",
+      "compare": "Model comparison",
       "gallery": "Gallery",
       "projects": "Projects",
       "prompts": "Prompts",
@@ -164,19 +164,19 @@
     "developers": {
       "title": "Developers",
       "docs": "Documentation",
-      "api": "API & integrations",
+      "api": "API and integrations",
       "sandboxes": "Sandboxes",
       "playground": "Playground",
-      "ide": "IDE integrations",
+      "ide": "IDE Integrations",
       "account": "Dashboard"
     },
     "company": {
       "title": "Company",
       "blog": "Blog",
-      "privacy": "Privacy policy",
-      "terms": "Terms of service"
+      "privacy": "Privacy Policy",
+      "terms": "Terms of Use"
     },
-    "legal": "Ivashchenko Alexey · TIN 220805856949",
+    "legal": "Ivashchenko Alexey Anatolyevich · INN 220805856949",
     "privacyShort": "Privacy",
     "termsShort": "Terms"
   },
@@ -185,15 +185,15 @@
     "all": "All",
     "free": "Free",
     "empty": "Nothing found",
-    "editImageTitle": "Image editing",
-    "editImageHint": "Pick an image model — it will apply your edits to this file",
-    "styleRefTitle": "Style reference",
-    "styleRefHint": "Pick an image model — new generations will adopt this file's style",
+    "editImageTitle": "Edit Image",
+    "editImageHint": "Select an image model — it will apply your changes to this file",
+    "styleRefTitle": "Style Reference",
+    "styleRefHint": "Select an image model — new generations will adopt this file's style",
     "cancel": "Cancel",
     "priceFree": "Free",
     "priceUnlimited": "Unlimited",
-    "pageTitle": "AI model catalog",
-    "pageDescription": "GPT-4o, Claude, Gemini, image generation and dozens of other AI models. Pick a model and start chatting.",
+    "pageTitle": "AI Models Catalog",
+    "pageDescription": "GPT-4o, Claude, Gemini, image generation, and dozens of other AI models without VPN. Choose a model and start a chat.",
     "modelsAvailable": "{count} models available"
   },
   "account": {
@@ -201,18 +201,18 @@
       "overview": "Overview",
       "memory": "Memory",
       "projects": "Projects",
-      "personas": "AI personas",
+      "personas": "AI Personas",
       "gallery": "Gallery",
       "analytics": "Analytics",
-      "billing": "Billing",
-      "tasks": "AI tasks",
-      "keys": "API keys",
-      "referral": "Referral program",
-      "files": "My files",
+      "billing": "Plans & Payments",
+      "tasks": "AI Tasks",
+      "keys": "API Keys",
+      "referral": "Referral Program",
+      "files": "My Files",
       "favorites": "Favorites",
       "telegram": "Telegram",
-      "oauth": "OAuth apps",
-      "logout": "Sign out"
+      "oauth": "OAuth Apps",
+      "logout": "Log Out"
     },
     "overview": {
       "loading": "Loading...",
@@ -221,7 +221,7 @@
       "topUp": "Top up",
       "profile": "Profile",
       "freeTariff": "Free plan",
-      "billingLink": "Billing",
+      "billingLink": "Plans and payments",
       "referralTitle": "Referral program",
       "referralLink": "Your referral link:",
       "memoryTitle": "Memory",
@@ -234,7 +234,7 @@
       "galleryText": "Community showcase — images and videos.",
       "galleryOpen": "Open gallery",
       "devTitle": "For developers",
-      "devText": "OpenAI-compatible API. Connect Cursor, VS Code, Continue.",
+      "devText": "OpenAI-compatible API. Connect to Cursor, VS Code, Continue.",
       "apiKeys": "API keys",
       "docs": "Documentation",
       "recentChats": "Recent chats"
@@ -246,11 +246,119 @@
     "statusFailed": "Failed",
     "statusRefunded": "Refunded",
     "typeSubscription": "Plan",
-    "typePages": "Top-up",
+    "typePages": "Top up",
     "typePromo": "Promo code",
     "promoPlaceholder": "Enter promo code",
     "promoApply": "Apply",
-    "historyEmpty": "No payments yet.",
+    "historyEmpty": "Payment history is empty.",
     "loading": "Loading..."
+  },
+  "chat": {
+    "notFound": "Chat not found",
+    "backToCatalog": "Back to model catalog",
+    "connectionError": "Connection error. Please try again.",
+    "dragDrop": "Release to upload",
+    "export": "Export",
+    "exportTitle": "Export chat",
+    "catalog": "Catalog",
+    "newChat": "New chat",
+    "projectActive": "project instructions active",
+    "openProject": "Open",
+    "branchFrom": "Branch from:",
+    "parentChat": "parent chat",
+    "branchesCount": "Branches ({count})",
+    "branchNumbered": "Branch #{id}",
+    "emptyHint": "Choose a topic or type your question",
+    "promptTemplates": "Prompt templates",
+    "inputPlaceholder": "Enter message...",
+    "webSearchOn": "Web search is on. Click to turn off",
+    "webSearchOff": "Enable web search",
+    "webSearch": "Web search",
+    "variantsOn": "Variants mode is on. Click to turn off",
+    "variantsOff": "Get 3 response variants (Brief / Detailed / Step-by-step)",
+    "variants": "Variants",
+    "researchOn": "Research mode is on. Click to turn off",
+    "researchOff": "Deep research — multi-step autonomous analysis with citations",
+    "research": "Research",
+    "batchCount": "Count:",
+    "batchWillGenerate": "— {count} variants will be generated",
+    "styleReferenceBanner": "Next generation will be in the style of this image",
+    "removeStyleReference": "Remove style reference",
+    "mediaSettings": "Settings",
+    "searchingWeb": "Searching the web...",
+    "searchFound": "Found",
+    "analyzing": "{name} is analyzing...",
+    "responding": "{name} is responding...",
+    "editSourceImage": "Edit image",
+    "uploading": "Uploading...",
+    "uploadError": "Upload error",
+    "describeChanges": "Describe changes and send",
+    "removeSourceImage": "Remove source image",
+    "sourceImageAlt": "Source image",
+    "uploadImageTitle": "Upload image for editing (img2img)",
+    "scrollToBottom": "Scroll to bottom",
+    "aiCommitProposed": "AI proposed commit ({files})",
+    "commitFilesCount": "{count, plural, one {# file} few {# files} many {# files} other {# files}}",
+    "confirmCommit": "Confirm",
+    "rejectCommit": "Reject",
+    "rememberFactTitle": "Remember this message as a memory fact",
+    "remember": "Remember",
+    "remembered": "Remembered",
+    "branchTitle": "Create a conversation branch from this message",
+    "branch": "Branch",
+    "researchError": "Research error. Try again.",
+    "generationError": "Generation error. Try again.",
+    "download": "Download",
+    "downloadImageTitle": "Download image",
+    "edit": "Edit",
+    "editImageTitle": "Edit image (img2img)",
+    "regenerateAgainTitle": "Regenerate",
+    "again": "Again",
+    "removeBgTitle": "Remove background",
+    "removeBg": "Remove background",
+    "animateTitle": "Animate image to video",
+    "animate": "Animate",
+    "upscaleTitle": "Enhance details and sharpness with flux-kontext-pro",
+    "upscale": "Enhance",
+    "variationsTitle": "Create 4 variations",
+    "variations": "Variations",
+    "favoriteAdd": "Add to favorites",
+    "favoriteRemove": "Remove from favorites",
+    "saved": "Saved",
+    "save": "Save",
+    "styleTitle": "Use as style reference",
+    "style": "Style",
+    "describeTitle": "Get prompt from this image",
+    "describe": "Prompt",
+    "analyzingShort": "Analyzing...",
+    "copyTitle": "Copy",
+    "copy": "Copy",
+    "copied": "Copied",
+    "previewArtifactTitle": "Open artifact preview",
+    "preview": "Preview",
+    "regenerateTitle": "Regenerate",
+    "speakStopTitle": "Stop",
+    "speakTitle": "Speak response (TTS)",
+    "loading": "Loading...",
+    "speakStop": "Stop",
+    "speak": "Speak",
+    "forgetMemoryTitle": "Forget Memory",
+    "memory": "Memory",
+    "searchResults": "Search Results",
+    "showAllLines": "Show All ({count, plural, one {# line} few {# lines} many {# lines} other {# lines}})",
+    "sourcesCount": "Sources ({count})",
+    "toastDescribed": "Prompt described — check the input field",
+    "toastDescribeError": "Image description error",
+    "toastBgRemoved": "Background removed — result will appear in the next message.",
+    "toastUpscaleStarted": "Upscale ×{factor} started, usually takes 15–30 sec...",
+    "toastUpscaleDone": "Image upscaled ×{factor}. Appeared in chat.",
+    "toastUpscaleFailed": "Failed to upscale image. Try again later.",
+    "toastUpscaleError": "Failed to start upscaling.",
+    "toastFavoriteAdded": "Added to favorites.",
+    "toastFavoriteRemoved": "Removed from favorites.",
+    "toastFavoriteError": "Failed to update favorites.",
+    "toastVariationsStarted": "Creating 4 variations — they will appear in this chat.",
+    "toastVariationsError": "Failed to create variations.",
+    "toastStyleSet": "Style set. Next generation will be in this style."
   }
 }
