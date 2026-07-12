@@ -661,6 +661,23 @@ def _prepare_expand_to_ratio(image_bytes, target_ratio_str):
     return out_img.getvalue(), out_mask.getvalue()
 
 
+# Flux 2 (generation-only) не сохраняет лицо/личность при редактировании — проверено
+# эмпирически 2026-07-12: images.edit() формально успешен (настоящий ответ BFL, без
+# исключения и без фолбэка на generate), но результат — другой человек. Flux Kontext —
+# отдельная линейка BFL специально для identity-preserving правок, при том же промте
+# на том же фото лицо сохраняется корректно. Поэтому реальный вызов редиректим на
+# Kontext-аналог, а пользователю в ответе сообщаем о замене.
+_FLUX_EDIT_REDIRECT = {
+    'flux-2-pro': 'flux-kontext-pro',
+    'flux-2-max': 'flux-kontext-max',
+    'flux-2-flex': 'flux-kontext-pro',
+}
+_FLUX_EDIT_REDIRECT_NOTE = (
+    "Для сохранения лица на исходном фото использована модель Flux Kontext "
+    "(эта версия Flux точнее редактирует существующие фотографии)."
+)
+
+
 def generate_image_edit(network, user_msg, message, user_settings=None):
     """Img2img: редактирование изображения через laozhang /images/edits (multipart)
     с фолбэком на /images/generations + image_url в теле.
@@ -822,7 +839,11 @@ def generate_image_edit(network, user_msg, message, user_settings=None):
     if isinstance(size_val, dict):
         size_val = f"{size_val.get('width', 1024)}x{size_val.get('height', 1024)}"
 
-    params = {'model': model_id, 'prompt': prompt, 'n': 1, 'size': str(size_val)}
+    effective_model_id = _FLUX_EDIT_REDIRECT.get(model_id, model_id)
+    if effective_model_id != model_id:
+        logger.info(f"[img2img] {model_id} не сохраняет лицо при редактировании — используем {effective_model_id}")
+
+    params = {'model': effective_model_id, 'prompt': prompt, 'n': 1, 'size': str(size_val)}
     # Нестандартные параметры (seed, negative_prompt, style refs) НЕ принимаются
     # openai SDK как прямые kwargs — поднимают TypeError. Передаём через extra_body,
     # который SDK сливает в JSON-тело; laozhang-прокси форвардит провайдеру.
@@ -876,7 +897,7 @@ def generate_image_edit(network, user_msg, message, user_settings=None):
         gen = _GenImage(
             message=message,
             prompt=prompt,
-            model_name=model_id,
+            model_name=effective_model_id,
             provider='laozhang',
             media_type='image',
             source='chat',
@@ -892,6 +913,8 @@ def generate_image_edit(network, user_msg, message, user_settings=None):
         saved_media = [gen]
         model_name = config.get('name', network.name)
         text_parts = [f"Изображение отредактировано моделью \"{model_name}\"."]
+        if effective_model_id != model_id:
+            text_parts.append(_FLUX_EDIT_REDIRECT_NOTE)
         text_parts.append(
             f"<img src='{gen.image.url}' alt='Отредактированное изображение' style='max-width:100%; border-radius:12px;'>"
         )
@@ -910,7 +933,7 @@ def generate_image_edit(network, user_msg, message, user_settings=None):
             gen.seed = int(seed_used) if seed_used is not None else None
         except (ValueError, TypeError):
             gen.seed = None
-        gen.model_name = model_id
+        gen.model_name = effective_model_id
         gen.provider = 'laozhang'
         gen.source = 'chat'
         if user_settings and user_settings.get('parent_id'):
@@ -924,6 +947,8 @@ def generate_image_edit(network, user_msg, message, user_settings=None):
     saved_media = [gen] if gen else []
     if saved_media:
         text_parts = [f"Изображение отредактировано моделью \"{model_name}\"."]
+        if effective_model_id != model_id:
+            text_parts.append(_FLUX_EDIT_REDIRECT_NOTE)
         for media in saved_media:
             text_parts.append(
                 f"<img src='{media.image.url}' alt='Отредактированное изображение' style='max-width:100%; border-radius:12px;'>"

@@ -228,6 +228,8 @@
     "sourceImageAlt": "تصویر منبع",
     "removeSourceImage": "حذف تصویر منبع",
     "editImageFormHint": "تغییرات را توصیف کنید — مدل آنها را به این تصویر اعمال می‌کند",
+    "uploading": "در حال بارگذاری...",
+    "uploadImageTitle": "بارگذاری عکس",
     "removeStyleRef": "حذف مرجع سبک",
     "styleRefFormHint": "تصاویر جدید سبک این مرجع را خواهند داشت",
     "placeholderEdit": "توصیف کنید چه چیزی در تصویر تغییر کند...",

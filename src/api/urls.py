@@ -15,7 +15,7 @@ from api.views.chats import (
 )
 from api.views.chat_search import ChatSearchView
 from api.views.chat_export import ChatExportView
-from api.views.uploads import ChatFileUploadView
+from api.views.uploads import ChatFileUploadView, ReferenceImageUploadView
 from api.views.auth import MeView, LoginView, LogoutView, RegisterView, VerifyEmailView, ResendVerificationView
 from api.views.teams import (
     OrgListCreateView, OrgDetailView,
@@ -122,6 +122,7 @@ urlpatterns = [
     path('v1/research/<int:research_id>/', DeepResearchStatusView.as_view(), name='deep_research_status'),
     path('v1/research/<int:research_id>/save/', DeepResearchSaveView.as_view(), name='deep_research_save'),
     path('v1/chats/<int:chat_id>/upload/', ChatFileUploadView.as_view(), name='chat_file_upload'),
+    path('v1/uploads/reference-image/', ReferenceImageUploadView.as_view(), name='reference_image_upload'),
     path('v1/messages/<int:message_id>/status/', MessageStatusView.as_view(), name='message_status'),
 
     # ========== Аутентификация (сессионная) ==========

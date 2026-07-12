@@ -4,9 +4,9 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "@/i18n/navigation";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { Send, Settings2, ChevronDown, ImagePlus, X, Palette } from "lucide-react";
+import { Send, Settings2, ChevronDown, ImagePlus, X, Palette, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { createChat } from "@/lib/api/client";
+import { createChat, uploadReferenceImage } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 import { APIError } from "@/lib/api/client";
 import { MediaSettingsPanel } from "@/components/chat/MediaSettingsPanel";
@@ -38,6 +38,9 @@ export function ChatStartForm({ networkSlug, isMedia, isVideo, configJson, proje
   const [editImageUrl, setEditImageUrl] = useState<string | null>(null);
   // Sprint 6: референс стиля, переданный из галереи кнопкой "Стиль"
   const [styleImageUrl, setStyleImageUrl] = useState<string | null>(null);
+  // Прямая загрузка референсного фото со стартового экрана (до создания чата)
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const sourceInputRef = useRef<HTMLInputElement>(null);
 
   // Инициализируем настройки из api_defaults при загрузке
   useEffect(() => {
@@ -117,6 +120,20 @@ export function ChatStartForm({ networkSlug, isMedia, isVideo, configJson, proje
     }
   };
 
+  const handlePickImage = async (file: File) => {
+    if (!user) return;
+    setUploadingImage(true);
+    setError(null);
+    try {
+      const result = await uploadReferenceImage(file);
+      setEditImageUrl(result.url);
+    } catch (err) {
+      setError(err instanceof APIError ? err.message : t("genericError"));
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3">
       {/* Settings panel for media models */}
@@ -144,7 +161,15 @@ export function ChatStartForm({ networkSlug, isMedia, isVideo, configJson, proje
         </div>
       )}
 
-      {/* img2img: исходное изображение из галереи */}
+      {/* img2img: загрузка референсного фото в процессе */}
+      {uploadingImage && !editImageUrl && (
+        <div className="flex items-center gap-2.5 rounded-[10px] border border-[rgba(13,13,13,0.10)] bg-[rgba(13,13,13,0.02)] p-2.5">
+          <Loader2 size={16} className="animate-spin text-[#D97757]" />
+          <p className="text-[14px] text-[rgba(13,13,13,0.5)]">{t("uploading")}</p>
+        </div>
+      )}
+
+      {/* img2img: исходное изображение (загружено напрямую или из галереи) */}
       {editImageUrl && (
         <div className="flex items-center gap-2.5 rounded-[10px] border border-[rgba(217,119,87,0.20)] bg-[rgba(217,119,87,0.04)] p-2.5">
           <div className="relative shrink-0">
@@ -221,11 +246,31 @@ export function ChatStartForm({ networkSlug, isMedia, isVideo, configJson, proje
                 : t("placeholderText")
           }
           rows={4}
-          className="w-full resize-none rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-4 py-3 pe-12 text-[16px] text-[#1A1A1A] placeholder-[rgba(13,13,13,0.38)] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
+          className={`w-full resize-none rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-4 py-3 text-[16px] text-[#1A1A1A] placeholder-[rgba(13,13,13,0.38)] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all ${isMedia && !isVideo ? "pe-20" : "pe-12"}`}
         />
+        {isMedia && !isVideo && (
+          <>
+            <input
+              ref={sourceInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => { if (e.target.files?.[0]) { handlePickImage(e.target.files[0]); e.target.value = ""; } }}
+            />
+            <button
+              type="button"
+              disabled={uploadingImage || !user}
+              onClick={() => sourceInputRef.current?.click()}
+              title={t("uploadImageTitle")}
+              className="absolute bottom-3 right-12 flex h-8 w-8 items-center justify-center rounded-[8px] text-[rgba(13,13,13,0.4)] transition-all hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {uploadingImage ? <Loader2 size={15} className="animate-spin" /> : <ImagePlus size={15} />}
+            </button>
+          </>
+        )}
         <button
           type="submit"
-          disabled={!text.trim() || loading}
+          disabled={!text.trim() || loading || uploadingImage}
           className="absolute bottom-3 right-3 flex h-8 w-8 items-center justify-center rounded-[8px] bg-[#D97757] text-white hover:bg-[#C4623E] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
         >
           <Send size={15} />

@@ -228,6 +228,8 @@
     "sourceImageAlt": "Kaynak görüntü",
     "removeSourceImage": "Kaynak görüntüyü kaldır",
     "editImageFormHint": "Değişiklikleri tanımlayın — model bu görüntüye uygulayacak",
+    "uploading": "Yükleniyor...",
+    "uploadImageTitle": "Fotoğraf yükle",
     "removeStyleRef": "Stil referansını kaldır",
     "styleRefFormHint": "Yeni görüntüler bu referansın stilini benimseyecek",
     "placeholderEdit": "Görüntüde değiştirmek istediğinizi tanımlayın...",

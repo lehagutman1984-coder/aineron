@@ -735,9 +735,19 @@ export default function ChatPage() {
     (e: React.DragEvent) => {
       e.preventDefault();
       setIsDragOver(false);
-      if (e.dataTransfer.files.length > 0) handleFiles(e.dataTransfer.files);
+      const files = e.dataTransfer.files;
+      if (files.length === 0) return;
+      // fal-ai (генерация изображений): нет отдельного вложений-пайплайна в
+      // генерации — перетащенное фото должно стать источником для img2img
+      // (settings.image_url), иначе оно молча теряется (см. handleFiles).
+      if (chat?.network.provider === "fal-ai") {
+        const imageFile = Array.from(files).find((f) => f.type.startsWith("image/"));
+        if (imageFile) handleSourceImage(imageFile);
+        return;
+      }
+      handleFiles(files);
     },
-    [handleFiles]
+    [handleFiles, handleSourceImage, chat?.network.provider]
   );
 
   const isPending = pendingMessageId !== null;

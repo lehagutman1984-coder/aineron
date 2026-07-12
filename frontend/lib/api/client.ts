@@ -290,6 +290,23 @@ export const uploadFile = (chatId: number, file: File): Promise<AttachmentItem> 
   });
 };
 
+// Загрузка референсного фото ДО создания чата (img2img со стартового экрана модели)
+export const uploadReferenceImage = (file: File): Promise<AttachmentItem> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  return fetch(`${BASE_URL}/uploads/reference-image/`, {
+    method: "POST",
+    body: formData,
+    credentials: "include",
+  }).then(async (res) => {
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({})) as { error?: { message?: string; code?: string } };
+      throw new APIError(res.status, body?.error?.message ?? `HTTP ${res.status}`, body?.error?.code ?? null);
+    }
+    return res.json() as Promise<AttachmentItem>;
+  });
+};
+
 export const getMessageStatus = (messageId: number): Promise<WebMessage> =>
   request<WebMessage>(`/messages/${messageId}/status/`);
 
