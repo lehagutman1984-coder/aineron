@@ -120,6 +120,7 @@ services:
         NEXT_PUBLIC_E2B_PREVIEW: "0"
         NEXT_PUBLIC_DEFAULT_LOCALE: en
         NEXT_PUBLIC_CURRENCY: credits
+        NEXT_PUBLIC_YM_ID: "110622120"
     container_name: neiro_frontend
     restart: unless-stopped
     environment:
