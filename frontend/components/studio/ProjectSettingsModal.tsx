@@ -151,7 +151,7 @@ export function ProjectSettingsModal({ project, onClose, onSaved }: Props) {
                     <button
                       type="button"
                       onClick={() => setExpandedAgent(isExpanded ? null : agent.key)}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-[var(--hover)] transition-colors text-left"
+                      className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-[var(--hover)] transition-colors text-start"
                     >
                       <span className="text-[var(--text-secondary)]">{AGENT_ICONS[agent.key]}</span>
                       <div className="flex-1 min-w-0">
@@ -187,7 +187,7 @@ export function ProjectSettingsModal({ project, onClose, onSaved }: Props) {
                             <span className="text-amber-400 font-medium">
                               Рекомендуем: {modelById[agent.recommended]?.label ?? agent.recommended}
                             </span>
-                            <span className="text-[var(--text-secondary)] ml-1">— {agent.recommendedReason}</span>
+                            <span className="text-[var(--text-secondary)] ms-1">— {agent.recommendedReason}</span>
                           </div>
                         </div>
 
@@ -299,7 +299,7 @@ function ModelSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full text-xs bg-[var(--hover)] border border-[var(--border)] rounded-lg px-3 py-2 pr-8 appearance-none focus:outline-none focus:border-blue-500"
+        className="w-full text-xs bg-[var(--hover)] border border-[var(--border)] rounded-lg px-3 py-2 pe-8 appearance-none focus:outline-none focus:border-blue-500"
       >
         {showDefault && (
           <option value={showDefault}>

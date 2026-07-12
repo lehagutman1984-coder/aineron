@@ -1,5 +1,6 @@
-import Link from "next/link";
+
 import type { ReactNode } from "react";
+import { Link } from "@/i18n/navigation";
 import { Info, AlertTriangle, Lightbulb, CheckCircle2 } from "lucide-react";
 
 /**
@@ -208,7 +209,7 @@ export function DataTable({
             {head.map((h, i) => (
               <th
                 key={i}
-                className="pb-2.5 pr-4 text-left font-medium text-[rgba(13,13,13,0.42)] dark:text-[rgba(236,236,236,0.45)]"
+                className="pb-2.5 pe-4 text-start font-medium text-[rgba(13,13,13,0.42)] dark:text-[rgba(236,236,236,0.45)]"
               >
                 {h}
               </th>
@@ -221,7 +222,7 @@ export function DataTable({
               {r.map((c, j) => (
                 <td
                   key={j}
-                  className="py-2.5 pr-4 align-top text-[rgba(13,13,13,0.68)] dark:text-[rgba(236,236,236,0.64)]"
+                  className="py-2.5 pe-4 align-top text-[rgba(13,13,13,0.68)] dark:text-[rgba(236,236,236,0.64)]"
                 >
                   {c}
                 </td>

@@ -189,7 +189,7 @@ export function PreviewPanel({ projectId, hasSandbox, status, githubUrl, onRefre
             <RefreshCw size={16} />
           </button>
           <span className="text-xs text-[var(--text-secondary)] font-mono">sandpack</span>
-          <div className="ml-auto flex items-center gap-1">
+          <div className="ms-auto flex items-center gap-1">
             {status === 'completed' && (
               <>
                 <a href={studioApi.exportUrl(projectId)} download className={btn.ghostXs}>
@@ -314,7 +314,7 @@ export function PreviewPanel({ projectId, hasSandbox, status, githubUrl, onRefre
           <button
             onClick={() => setPreviewForced(false)}
             title="Вернуться"
-            className="text-xs text-[var(--text-secondary)] hover:text-[var(--text)] ml-1"
+            className="text-xs text-[var(--text-secondary)] hover:text-[var(--text)] ms-1"
           >
             ← Завершён
           </button>
@@ -335,7 +335,7 @@ export function PreviewPanel({ projectId, hasSandbox, status, githubUrl, onRefre
           </button>
         )}
 
-        <div className="ml-auto flex items-center gap-1">
+        <div className="ms-auto flex items-center gap-1">
           <button
             onClick={() => setWidth('375px')}
             title="375px"

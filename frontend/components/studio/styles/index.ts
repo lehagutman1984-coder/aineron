@@ -13,7 +13,7 @@ export const layout = {
   // Вертикальный разделитель в topbar
   divider: 'w-px h-4 bg-[var(--border)]',
   // Группа кнопок справа
-  rightGroup: 'ml-auto flex items-center gap-2',
+  rightGroup: 'ms-auto flex items-center gap-2',
   // Заголовок панели (flex, justify-between, border-b)
   panelHeader:
     'flex items-center justify-between px-4 py-2 border-b border-[var(--border)] shrink-0',
@@ -54,10 +54,10 @@ export const modal = {
 export const drawer = {
   // Drawer md — шаг, ревьюер
   rootMd:
-    'fixed inset-y-0 right-0 w-full max-w-md bg-[var(--bg)] border-l border-[var(--border)] shadow-xl z-50 flex flex-col',
+    'fixed inset-y-0 right-0 w-full max-w-md bg-[var(--bg)] border-s border-[var(--border)] shadow-xl z-50 flex flex-col',
   // Drawer sm — чат
   rootSm:
-    'fixed inset-y-0 right-0 w-full max-w-sm bg-[var(--bg)] border-l border-[var(--border)] shadow-xl z-40 flex flex-col',
+    'fixed inset-y-0 right-0 w-full max-w-sm bg-[var(--bg)] border-s border-[var(--border)] shadow-xl z-40 flex flex-col',
   header:
     'flex items-center justify-between px-4 py-3 border-b border-[var(--border)] shrink-0',
   body: 'flex-1 overflow-auto p-4 space-y-4 text-xs',
@@ -139,7 +139,7 @@ export const card = {
   row: 'flex items-center gap-4 p-4 rounded-xl border border-[var(--border)] bg-[var(--card-bg)] hover:border-blue-400 transition-colors group',
   // Карточка шаблона
   template:
-    'flex flex-col items-start p-3 rounded-lg border border-[var(--border)] bg-[var(--card-bg)] hover:border-blue-400 hover:bg-[var(--hover)] transition-colors text-left group',
+    'flex flex-col items-start p-3 rounded-lg border border-[var(--border)] bg-[var(--card-bg)] hover:border-blue-400 hover:bg-[var(--hover)] transition-colors text-start group',
   // Карточка в гит-истории
   historyItem:
     'flex items-center justify-between p-2 rounded-lg bg-[var(--card-bg)] border border-[var(--border)] text-xs',
@@ -248,7 +248,7 @@ export const tree = {
   scrollArea: 'flex-1 overflow-auto p-1',
   emptyState: 'p-3 text-xs text-[var(--text-secondary)] opacity-60',
   folderBtn:
-    'flex items-center gap-1.5 w-full text-left py-0.5 pr-2 text-xs hover:bg-[var(--hover)] rounded transition-colors',
+    'flex items-center gap-1.5 w-full text-start py-0.5 pe-2 text-xs hover:bg-[var(--hover)] rounded transition-colors',
   deleteBtn:
     'absolute right-1 top-0.5 p-0.5 text-[var(--text-secondary)] hover:text-red-400 transition-colors',
 };
@@ -276,6 +276,6 @@ export const reviewer = {
 
 // ─── Interview ───────────────────────────────────────────
 export const interview = {
-  progressTrack: 'flex-1 h-1 bg-[var(--border)] rounded-full overflow-hidden ml-2',
+  progressTrack: 'flex-1 h-1 bg-[var(--border)] rounded-full overflow-hidden ms-2',
   progressFill: 'h-full bg-blue-500 transition-all',
 };

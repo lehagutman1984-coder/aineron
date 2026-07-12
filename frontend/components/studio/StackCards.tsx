@@ -50,7 +50,7 @@ export function StackCards({ selected, onSelect }: StackCardsProps) {
           key={s.value}
           type="button"
           onClick={() => onSelect(s.value)}
-          className={`text-left p-3 rounded-lg border transition-colors ${
+          className={`text-start p-3 rounded-lg border transition-colors ${
             selected === s.value
               ? 'border-blue-500 bg-blue-600/10'
               : 'border-[var(--border)] hover:border-[var(--text-secondary)]'

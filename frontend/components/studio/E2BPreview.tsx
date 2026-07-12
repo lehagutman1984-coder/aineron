@@ -451,7 +451,7 @@ export function E2BPreview({ projectId, refreshKey, stack }: Props) {
         </button>
 
         {/* Viewport switcher */}
-        <div className="flex items-center ml-1 border border-[var(--border)] rounded overflow-hidden">
+        <div className="flex items-center ms-1 border border-[var(--border)] rounded overflow-hidden">
           <button
             onClick={() => setViewWidth('375px')}
             title="375px"

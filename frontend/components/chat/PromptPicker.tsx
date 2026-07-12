@@ -101,7 +101,7 @@ export function PromptPicker({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("searchPlaceholder")}
-              className="h-8 w-full rounded-[8px] border border-[rgba(13,13,13,0.12)] bg-transparent pl-7 pr-3 text-[14px] text-[#1A1A1A] outline-none focus:border-[#D97757] dark:border-[rgba(255,255,255,0.12)] dark:text-[#EDE8E3]"
+              className="h-8 w-full rounded-[8px] border border-[rgba(13,13,13,0.12)] bg-transparent ps-7 pe-3 text-[14px] text-[#1A1A1A] outline-none focus:border-[#D97757] dark:border-[rgba(255,255,255,0.12)] dark:text-[#EDE8E3]"
             />
           </div>
         </div>
@@ -142,7 +142,7 @@ export function PromptPicker({
                 <button
                   key={p.id}
                   onClick={() => { onSelect(p.content); onClose(); }}
-                  className="flex items-start gap-3 rounded-[10px] px-3 py-3 text-left transition-colors hover:bg-[rgba(13,13,13,0.05)] dark:hover:bg-[rgba(255,255,255,0.05)]"
+                  className="flex items-start gap-3 rounded-[10px] px-3 py-3 text-start transition-colors hover:bg-[rgba(13,13,13,0.05)] dark:hover:bg-[rgba(255,255,255,0.05)]"
                 >
                   <div className="mt-0.5">
                     <CatIcon category={p.category} />

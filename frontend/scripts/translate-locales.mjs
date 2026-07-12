@@ -2,20 +2,28 @@
 /**
  * LLM-пайплайн переводов словарей (GLOBAL_EXPANSION_PLAN.md §4.4).
  *
- * Источник истины — messages/ru.json (язык разработки). Скрипт переводит
- * ключи, которых нет в целевой локали ЛИБО у которых изменилась исходная
- * строка (хэш-кэш в scripts/.translate-cache.json), батчами через
+ * Источник истины по умолчанию — messages/ru.json (язык разработки). Скрипт
+ * переводит ключи, которых нет в целевой локали ЛИБО у которых изменилась
+ * исходная строка (хэш-кэш в scripts/.translate-cache.json), батчами через
  * laozhang.ai (OpenAI-совместимый API) с глоссарием messages/_glossary.json.
  *
  * Запуск:
  *   LAOZHANG_API_KEY=... node scripts/translate-locales.mjs            # все локали
  *   LAOZHANG_API_KEY=... node scripts/translate-locales.mjs fa tr      # выборочно
+ *   ... --source=en    # переводить НЕ с ru, а с en.json (см. ниже)
  *   ... --force        # перевести всё заново (игнорировать кэш)
  *   ... --dry-run      # показать, что будет переведено, без вызова API
  *
  * en.json авторится вручную (или вычитывается после машинного прохода) —
  * скрипт по умолчанию переводит en тоже, но правки в en.json руками
  * имеют приоритет: перезапись происходит только при изменении ru-источника.
+ *
+ * --source=en ОБЯЗАТЕЛЕН для локалей международного инстанса (fa, tr, id, ar):
+ * ru.json — контент aineron.ru как есть (рубли, Robokassa, РФ-специфичные
+ * формулировки). en.json уже прошёл ручную адаптацию под aineron.net (кредиты,
+ * крипта, без привязки к России) — см. GLOBAL_EXPANSION_PLAN.md §8, "вторая
+ * находка". Перевод fa/tr напрямую с ru.json вернул бы эти РФ-формулировки
+ * в международные локали тем же классом бага, который уже чинили для en.
  */
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
@@ -26,9 +34,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MESSAGES_DIR = path.join(__dirname, "..", "messages");
 const CACHE_FILE = path.join(__dirname, ".translate-cache.json");
 
-const SOURCE_LOCALE = "ru";
 const ALL_TARGETS = ["en", "fa", "tr", "id", "ar"];
 const LOCALE_NAMES = {
+  ru: "Russian",
   en: "English",
   fa: "Persian (Farsi)",
   tr: "Turkish",
@@ -44,6 +52,8 @@ const BATCH_SIZE = 40;
 const args = process.argv.slice(2);
 const force = args.includes("--force");
 const dryRun = args.includes("--dry-run");
+const sourceArg = args.find((a) => a.startsWith("--source="));
+const SOURCE_LOCALE = sourceArg ? sourceArg.split("=")[1] : "ru";
 const targets = args.filter((a) => !a.startsWith("--"));
 const locales = targets.length ? targets : ALL_TARGETS;
 
@@ -102,10 +112,10 @@ function loadJson(file, fallback = {}) {
 
 async function translateBatch(entries, locale, glossary) {
   const systemPrompt = [
-    `You are a professional UI localizer translating a SaaS product interface from Russian to ${LOCALE_NAMES[locale]}.`,
+    `You are a professional UI localizer translating a SaaS product interface from ${LOCALE_NAMES[SOURCE_LOCALE]} to ${LOCALE_NAMES[locale]}.`,
     `Tone: ${glossary.tone}`,
     `NEVER translate these terms (keep verbatim): ${glossary.do_not_translate.join(", ")}.`,
-    `Glossary (ru term -> en reference, follow the intent in your language):`,
+    `Glossary (reference term -> canonical English meaning, follow the intent in your language regardless of source language):`,
     ...Object.entries(glossary.terms).map(
       ([ru, t]) => `- "${ru}" -> "${t.en}"${t.note ? ` (${t.note})` : ""}`,
     ),

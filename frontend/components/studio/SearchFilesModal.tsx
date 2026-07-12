@@ -48,7 +48,7 @@ export function SearchFilesModal({ projectId, onClose, onPick }: Props) {
             <button
               key={`${r.file_id}-${r.line}-${idx}`}
               onClick={() => { onPick(r.file_id); onClose(); }}
-              className="w-full text-left px-3 py-2 hover:bg-[var(--hover)] border-b border-[var(--border)] last:border-0"
+              className="w-full text-start px-3 py-2 hover:bg-[var(--hover)] border-b border-[var(--border)] last:border-0"
             >
               <div className="text-xs font-mono text-[var(--text-secondary)]">{r.path}:{r.line}</div>
               <div className="text-xs font-mono truncate">{r.snippet}</div>

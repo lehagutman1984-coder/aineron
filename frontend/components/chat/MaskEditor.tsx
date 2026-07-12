@@ -355,7 +355,7 @@ export function MaskEditor({ imageUrl, chatId, applying, onApply }: Props) {
 
         {/* Размер кисти */}
         <div className="flex items-center gap-1 rounded-[8px] border border-[rgba(13,13,13,0.12)] bg-[rgba(13,13,13,0.03)] p-1">
-          <Brush size={13} className="ml-1 text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.4)]" />
+          <Brush size={13} className="ms-1 text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.4)]" />
           {(Object.keys(BRUSH_RATIO) as BrushKey[]).map((k) => (
             <button
               key={k}

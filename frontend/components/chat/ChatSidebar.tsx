@@ -1,10 +1,10 @@
 ﻿"use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+
 import {
   PenSquare,
   LayoutGrid,
@@ -208,7 +208,7 @@ function ProjectSidebarRow({
           <span className="truncate text-[14px] text-[rgba(13,13,13,0.65)] group-hover:text-[#1A1A1A]">
             {project.name}
           </span>
-          <span className="ml-auto shrink-0 text-[12px] text-[rgba(13,13,13,0.28)]">
+          <span className="ms-auto shrink-0 text-[12px] text-[rgba(13,13,13,0.28)]">
             {project.chat_count}
           </span>
           <ChevronDown
@@ -219,7 +219,7 @@ function ProjectSidebarRow({
         </button>
 
         {/* "..." menu */}
-        <div className="relative mr-1 shrink-0">
+        <div className="relative me-1 shrink-0">
           <button
             onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v); setConfirmDelete(false); }}
             className="hidden h-5 w-5 items-center justify-center rounded-[4px] text-[rgba(13,13,13,0.30)] hover:bg-[rgba(13,13,13,0.08)] hover:text-[#1A1A1A] group-hover:flex transition-colors"
@@ -232,7 +232,7 @@ function ProjectSidebarRow({
               <div className="absolute right-0 top-6 z-50 w-36 overflow-hidden rounded-[8px] border border-[rgba(13,13,13,0.10)] bg-white shadow-lg">
                 <button
                   onClick={() => { setMenuOpen(false); onEdit(); }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-[14px] text-[rgba(13,13,13,0.70)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-start text-[14px] text-[rgba(13,13,13,0.70)] hover:bg-[rgba(13,13,13,0.04)] transition-colors"
                 >
                   <Edit3 size={12} />
                   {t("rename")}
@@ -240,7 +240,7 @@ function ProjectSidebarRow({
                 {!confirmDelete ? (
                   <button
                     onClick={() => setConfirmDelete(true)}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-[14px] text-[#e74c3c] hover:bg-[rgba(231,76,60,0.05)] transition-colors"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-start text-[14px] text-[#e74c3c] hover:bg-[rgba(231,76,60,0.05)] transition-colors"
                   >
                     <Trash2 size={12} />
                     {t("delete")}
@@ -270,7 +270,7 @@ function ProjectSidebarRow({
 
       {/* Accordion content */}
       {isExpanded && (
-        <div className="ml-6 pb-0.5 pt-0.5">
+        <div className="ms-6 pb-0.5 pt-0.5">
           {isLoading ? (
             <div className="px-2 py-1.5 text-[13px] text-[rgba(13,13,13,0.35)]">{t("loading")}</div>
           ) : projectChats.length === 0 ? (
@@ -647,7 +647,7 @@ export function ChatSidebar() {
   // ── Collapsed mode ──────────────────────────────────────────
   if (collapsed) {
     return (
-      <aside className="hidden md:flex w-12 shrink-0 flex-col border-r border-[rgba(13,13,13,0.08)] bg-white">
+      <aside className="hidden md:flex w-12 shrink-0 flex-col border-e border-[rgba(13,13,13,0.08)] bg-white">
         <div className="flex flex-col items-center gap-1 px-1.5 pt-2.5">
           <button
             onClick={toggleCollapse}
@@ -703,7 +703,7 @@ export function ChatSidebar() {
   return (
     <>
       {/* Sidebar */}
-      <aside className="hidden md:flex w-[260px] shrink-0 flex-col border-r border-[rgba(13,13,13,0.08)] bg-white">
+      <aside className="hidden md:flex w-[260px] shrink-0 flex-col border-e border-[rgba(13,13,13,0.08)] bg-white">
         {/* Header */}
         <div className="flex items-center gap-1.5 px-2.5 pb-2 pt-2.5">
           <Link
@@ -741,7 +741,7 @@ export function ChatSidebar() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("searchPlaceholder")}
-              className="w-full rounded-[8px] border border-[rgba(13,13,13,0.11)] bg-[rgba(13,13,13,0.03)] py-[6px] pl-7 pr-7 text-[14px] text-[#1A1A1A] outline-none placeholder:text-[rgba(13,13,13,0.32)] focus:border-[rgba(217,119,87,0.4)] focus:bg-white"
+              className="w-full rounded-[8px] border border-[rgba(13,13,13,0.11)] bg-[rgba(13,13,13,0.03)] py-[6px] ps-7 pe-7 text-[14px] text-[#1A1A1A] outline-none placeholder:text-[rgba(13,13,13,0.32)] focus:border-[rgba(217,119,87,0.4)] focus:bg-white"
             />
             {search ? (
               <button
@@ -857,7 +857,7 @@ export function ChatSidebar() {
                     {/* Active indicator */}
                     {active && (
                       <div
-                        className="absolute left-0 top-2 bottom-2 w-[2.5px] rounded-r-full bg-[#D97757]"
+                        className="absolute left-0 top-2 bottom-2 w-[2.5px] rounded-e-full bg-[#D97757]"
                       />
                     )}
 

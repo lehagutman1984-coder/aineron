@@ -1,5 +1,6 @@
-import Link from "next/link";
+
 import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { siteHost, supportEmail } from "@/lib/site";
 
 const COLUMNS = [
@@ -81,7 +82,7 @@ export function Footer() {
 
         {/* Bottom bar */}
         <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-[rgba(13,13,13,0.08)] pt-6 dark:border-[rgba(255,255,255,0.07)] sm:flex-row">
-          <div className="flex flex-col gap-1 text-center sm:text-left">
+          <div className="flex flex-col gap-1 text-center sm:text-start">
             <p className="text-[14px] text-[rgba(13,13,13,0.40)] dark:text-[rgba(236,236,236,0.30)]">
               &copy; {new Date().getFullYear()} {host}
             </p>

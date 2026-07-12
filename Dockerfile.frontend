@@ -14,6 +14,9 @@ ARG NEXT_PUBLIC_YM_ID=
 ARG NEXT_PUBLIC_GA_ID=
 # Локаль инстанса (G2): ru — aineron.ru, en — международный инстанс
 ARG NEXT_PUBLIC_DEFAULT_LOCALE=ru
+# Активные локали инстанса (G4, [locale]-роутинг): список через запятую.
+# Не задан → только default locale, "as-needed" не добавляет префикс — .ru не меняется.
+ARG NEXT_PUBLIC_ENABLED_LOCALES=
 # Валюта витрины: rub — aineron.ru, credits — международный инстанс
 ARG NEXT_PUBLIC_CURRENCY=rub
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
@@ -22,6 +25,7 @@ ENV NEXT_PUBLIC_E2B_PREVIEW=${NEXT_PUBLIC_E2B_PREVIEW}
 ENV NEXT_PUBLIC_YM_ID=${NEXT_PUBLIC_YM_ID}
 ENV NEXT_PUBLIC_GA_ID=${NEXT_PUBLIC_GA_ID}
 ENV NEXT_PUBLIC_DEFAULT_LOCALE=${NEXT_PUBLIC_DEFAULT_LOCALE}
+ENV NEXT_PUBLIC_ENABLED_LOCALES=${NEXT_PUBLIC_ENABLED_LOCALES}
 ENV NEXT_PUBLIC_CURRENCY=${NEXT_PUBLIC_CURRENCY}
 
 RUN npm run build

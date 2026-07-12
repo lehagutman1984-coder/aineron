@@ -40,7 +40,7 @@ export function GitHistory({ projectId }: GitHistoryProps) {
   if (versions.length === 0) {
     return (
       <div className="p-4 text-sm text-[var(--text-secondary)]">
-        <GitBranch size={14} className="inline mr-1" />
+        <GitBranch size={14} className="inline me-1" />
         Коммиты появятся после завершения шагов
       </div>
     );
@@ -69,7 +69,7 @@ export function GitHistory({ projectId }: GitHistoryProps) {
             </div>
           </div>
           {confirmId === v.id ? (
-            <div className="flex items-center gap-1 ml-2 shrink-0">
+            <div className="flex items-center gap-1 ms-2 shrink-0">
               <button
                 onClick={() => rollbackMutation.mutate(v.id)}
                 disabled={rollbackMutation.isPending}
@@ -88,7 +88,7 @@ export function GitHistory({ projectId }: GitHistoryProps) {
             <button
               onClick={() => setConfirmId(v.id)}
               title="Откатиться к этой версии"
-              className="ml-2 shrink-0 p-1 text-[var(--text-secondary)] hover:text-[var(--text)] transition-colors"
+              className="ms-2 shrink-0 p-1 text-[var(--text-secondary)] hover:text-[var(--text)] transition-colors"
             >
               <RotateCcw size={14} />
             </button>

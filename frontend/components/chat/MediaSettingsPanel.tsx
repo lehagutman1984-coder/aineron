@@ -199,7 +199,7 @@ function CollapsibleTextarea({
         {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
         <span>{field.label}</span>
         {!open && text ? (
-          <span className="ml-1 truncate text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.3)]">
+          <span className="ms-1 truncate text-[rgba(13,13,13,0.35)] dark:text-[rgba(236,236,236,0.3)]">
             — {text.slice(0, 40)}
           </span>
         ) : null}

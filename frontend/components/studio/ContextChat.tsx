@@ -69,7 +69,7 @@ export function ContextChat({ projectId, pauseReason, resumeHint, onResume }: Co
       {chatMessages.length > 0 && (
         <div className="flex-shrink-0 max-h-48 overflow-auto p-3 space-y-2 border-b border-[var(--border)]">
           {chatMessages.map((m, i) => (
-            <div key={i} className={m.role === 'user' ? 'text-right' : 'text-left'}>
+            <div key={i} className={m.role === 'user' ? 'text-end' : 'text-start'}>
               <span
                 className={`${chat.bubbleBase} ${
                   m.role === 'user'

@@ -423,7 +423,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
           <a
             href={studioApi.exportUrl(project.id)}
             download
-            className="ml-auto flex items-center gap-1 text-green-400/60 hover:text-green-300 transition-colors"
+            className="ms-auto flex items-center gap-1 text-green-400/60 hover:text-green-300 transition-colors"
           >
             <Download size={11} /> Скачать ZIP
           </a>
@@ -497,7 +497,7 @@ export function StudioLayout({ project, files, pipeline, onRefresh }: StudioLayo
               div is the only way to correctly hide it on mobile with Tailwind hidden/md:flex. */}
           <div className="hidden md:flex flex-1 min-h-0 overflow-hidden">
             <PanelGroup orientation="horizontal" className="flex-1 overflow-hidden">
-              <Panel defaultSize={15} minSize={10} className="overflow-hidden flex flex-col border-r border-[var(--border)]">
+              <Panel defaultSize={15} minSize={10} className="overflow-hidden flex flex-col border-e border-[var(--border)]">
                 <div className="flex-1 overflow-hidden">
                   <FileTree
                     files={files}

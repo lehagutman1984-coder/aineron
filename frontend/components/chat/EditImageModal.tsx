@@ -224,7 +224,7 @@ export function EditImageModal({ imageUrl, chatId, onClose, onSubmit }: Props) {
                 >
                   <Icon size={14} />
                   {label}
-                  <span className="text-[12px] opacity-60 ml-0.5">{ASPECT_HINT[dir]}</span>
+                  <span className="text-[12px] opacity-60 ms-0.5">{ASPECT_HINT[dir]}</span>
                 </button>
               ))}
             </div>

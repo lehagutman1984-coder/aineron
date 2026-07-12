@@ -181,7 +181,7 @@ const components: Components = {
   ),
   th: ({ children, ...props }) => (
     <th
-      className="border-b border-[rgba(13,13,13,0.10)] bg-[rgba(13,13,13,0.04)] px-3 py-2 text-left font-semibold"
+      className="border-b border-[rgba(13,13,13,0.10)] bg-[rgba(13,13,13,0.04)] px-3 py-2 text-start font-semibold"
       {...props}
     >
       {children}
@@ -203,7 +203,7 @@ const components: Components = {
 
   blockquote: ({ children, ...props }) => (
     <blockquote
-      className="my-3 border-l-[3px] border-[rgba(13,13,13,0.18)] pl-4 italic text-[rgba(13,13,13,0.58)]"
+      className="my-3 border-s-[3px] border-[rgba(13,13,13,0.18)] ps-4 italic text-[rgba(13,13,13,0.58)]"
       {...props}
     >
       {children}
@@ -233,7 +233,7 @@ const components: Components = {
           type="checkbox"
           checked={checked}
           readOnly
-          className="mr-1.5 accent-[#D97757]"
+          className="me-1.5 accent-[#D97757]"
           {...props}
         />
       );
@@ -364,7 +364,7 @@ function DiffHunk({ hunk, dark }: { hunk: EditHunk; dark: boolean }) {
   return (
     <div className={`border-b last:border-b-0 ${dark ? "border-[rgba(255,255,255,0.06)]" : "border-[rgba(0,200,100,0.10)]"}`}>
       <div className="grid grid-cols-2">
-        <div className={`border-r ${dark ? "border-[rgba(255,255,255,0.08)] bg-[rgba(255,60,60,0.12)]" : "border-[rgba(0,200,100,0.15)] bg-[rgba(255,60,60,0.05)]"}`}>
+        <div className={`border-e ${dark ? "border-[rgba(255,255,255,0.08)] bg-[rgba(255,60,60,0.12)]" : "border-[rgba(0,200,100,0.15)] bg-[rgba(255,60,60,0.05)]"}`}>
           <div className={`flex items-center justify-between border-b px-3 py-1 ${dark ? "border-[rgba(255,60,60,0.20)]" : "border-[rgba(255,60,60,0.12)]"}`}>
             <span className="text-[12px] font-semibold uppercase tracking-wider text-[rgba(220,80,80,0.9)]">{t("before")}</span>
             <button onClick={copySearch} className={btnCls}>

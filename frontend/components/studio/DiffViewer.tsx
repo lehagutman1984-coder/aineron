@@ -47,7 +47,7 @@ export function DiffViewer({ oldContent, newContent, path }: DiffViewerProps) {
       <div className="flex items-center gap-2 px-4 py-2 border-b border-[var(--border)] text-xs text-[var(--text-secondary)] shrink-0">
         <GitCompare size={14} />
         <span className="font-mono">{path}</span>
-        {!hasChanges && <span className="ml-auto opacity-60">Нет изменений</span>}
+        {!hasChanges && <span className="ms-auto opacity-60">Нет изменений</span>}
       </div>
       <div className="flex-1 overflow-auto font-mono text-xs">
         {lines.map((line, i) => (
@@ -61,10 +61,10 @@ export function DiffViewer({ oldContent, newContent, path }: DiffViewerProps) {
                 : code.diffLine.normal
             }
           >
-            <span className="select-none opacity-30 w-10 shrink-0 text-right mr-4">
+            <span className="select-none opacity-30 w-10 shrink-0 text-end me-4">
               {line.lineNum}
             </span>
-            <span className="select-none w-4 shrink-0 mr-2">
+            <span className="select-none w-4 shrink-0 me-2">
               {line.type === 'added' ? '+' : line.type === 'removed' ? '-' : ' '}
             </span>
             <span className="whitespace-pre-wrap break-all">{line.content}</span>

@@ -69,6 +69,10 @@
   --btn-primary:           #D97757;
   --surface-inverse:       #1A1A1A; /* dark chip/tooltip on light; elevated on dark */
   --font-primary:          "Inter", sans-serif;
+  /* fa (G4): Vazirmatn, self-hosted через next/font в app/[locale]/layout.tsx.
+     ar (G5, ещё не включена) захочет свой шрифт — IBM Plex Sans Arabic
+     заметно отличается от Vazirmatn визуально, менять здесь при добавлении ar. */
+  --font-primary-rtl:      "Vazirmatn", "Inter", sans-serif;
 
   /* Studio shorthand variables */
   --bg:          #FAF9F7;
@@ -146,6 +150,10 @@ html {
 
 @media (max-width: 640px) {
   html { font-size: 15px; }
+}
+
+html[dir="rtl"] {
+  --font-primary: var(--font-primary-rtl);
 }
 
 html,

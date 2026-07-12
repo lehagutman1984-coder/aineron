@@ -41,7 +41,7 @@ export function PipelineTimeline({
           <Loader2 size={14} className="animate-spin shrink-0" />
           <span>{AGENT_LABELS[currentAgent] ?? currentAgent}</span>
           {iterationCount > 0 && (
-            <span className="text-xs text-[var(--muted)] ml-auto shrink-0">
+            <span className="text-xs text-[var(--muted)] ms-auto shrink-0">
               Попытка {iterationCount + 1} из {maxIterations}
             </span>
           )}
@@ -65,7 +65,7 @@ export function PipelineTimeline({
             {step.title}
           </span>
           {step.status === 'active' && elapsedSeconds > 5 && (
-            <span className="ml-auto text-xs text-[var(--muted)] shrink-0">{elapsedSeconds}с</span>
+            <span className="ms-auto text-xs text-[var(--muted)] shrink-0">{elapsedSeconds}с</span>
           )}
         </div>
       ))}

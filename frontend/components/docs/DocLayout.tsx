@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, type ReactNode } from "react";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
+
 import { ChevronDown, BookOpen } from "lucide-react";
 
 export interface DocItem {
@@ -118,7 +119,7 @@ export function DocLayout({
                       key={item.id}
                       onClick={() => select(item.id)}
                       className={[
-                        "rounded-[8px] px-3 py-1.5 text-left text-[15px] transition-colors",
+                        "rounded-[8px] px-3 py-1.5 text-start text-[15px] transition-colors",
                         item.id === active
                           ? "bg-[rgba(217,119,87,0.1)] font-medium text-[#D97757]"
                           : "text-[rgba(13,13,13,0.62)] hover:bg-[rgba(13,13,13,0.045)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.6)] dark:hover:bg-[rgba(255,255,255,0.05)] dark:hover:text-[#EDE8E3]",
@@ -164,7 +165,7 @@ export function DocLayout({
                         key={item.id}
                         onClick={() => select(item.id)}
                         className={[
-                          "block w-full rounded-[8px] px-2 py-1.5 text-left text-[15px] transition-colors",
+                          "block w-full rounded-[8px] px-2 py-1.5 text-start text-[15px] transition-colors",
                           item.id === active
                             ? "bg-[rgba(217,119,87,0.1)] font-medium text-[#D97757]"
                             : "text-[rgba(13,13,13,0.7)] dark:text-[rgba(236,236,236,0.65)]",

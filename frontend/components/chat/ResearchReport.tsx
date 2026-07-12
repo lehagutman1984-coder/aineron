@@ -15,7 +15,7 @@ function CollapsibleSection({ title, html }: { title: string; html: string }) {
     <div className="border-b border-[rgba(13,13,13,0.06)] last:border-0 dark:border-[rgba(255,255,255,0.05)]">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 py-2 text-left text-[15px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]"
+        className="flex w-full items-center gap-2 py-2 text-start text-[15px] font-semibold text-[#1A1A1A] dark:text-[#EDE8E3]"
       >
         {open ? (
           <ChevronDown size={13} className="shrink-0 text-[rgba(13,13,13,0.4)]" />
@@ -26,7 +26,7 @@ function CollapsibleSection({ title, html }: { title: string; html: string }) {
       </button>
       {open && (
         <div
-          className="pb-3 pl-5 text-[15px] leading-relaxed text-[rgba(13,13,13,0.8)] dark:text-[rgba(236,236,236,0.75)]"
+          className="pb-3 ps-5 text-[15px] leading-relaxed text-[rgba(13,13,13,0.8)] dark:text-[rgba(236,236,236,0.75)]"
           dangerouslySetInnerHTML={{ __html: html }}
         />
       )}

@@ -227,7 +227,7 @@ export function DatabasePanel({ projectId }: DatabasePanelProps) {
             key={m.value}
             type="button"
             onClick={() => setSelectedMode(m.value)}
-            className={`text-left p-3 rounded-lg border transition-colors ${
+            className={`text-start p-3 rounded-lg border transition-colors ${
               selectedMode === m.value
                 ? 'border-blue-500 bg-blue-600/10'
                 : 'border-[var(--border)] hover:border-[var(--text-secondary)]'

@@ -117,7 +117,7 @@ export function UseCaseTabs() {
 
           {/* Right — fake chat demo */}
           <div
-            className="flex flex-col justify-between border-l p-7"
+            className="flex flex-col justify-between border-s p-7"
             style={{ borderColor: "var(--border-tertiary)", background: "var(--background-tertiary)" }}
           >
             <p className="mb-3 text-[13px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.38)]">

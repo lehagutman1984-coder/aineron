@@ -40,13 +40,13 @@ export function DeepResearchPanel({ steps, status, error }: Props) {
           {t("title")}
         </span>
         {isRunning && (
-          <Loader2 size={11} className="ml-auto animate-spin text-[#D97757]" />
+          <Loader2 size={11} className="ms-auto animate-spin text-[#D97757]" />
         )}
         {status === "done" && (
-          <CheckCircle size={11} className="ml-auto text-[#16a34a]" />
+          <CheckCircle size={11} className="ms-auto text-[#16a34a]" />
         )}
         {status === "error" && (
-          <AlertCircle size={11} className="ml-auto text-red-500" />
+          <AlertCircle size={11} className="ms-auto text-red-500" />
         )}
       </div>
 

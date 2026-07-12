@@ -242,7 +242,7 @@ export function TelegramBotPanel({ projectId, refreshKey }: Props) {
                   {botState === 'starting' ? 'Запускаю бота в E2B…' : 'Бот работает в изолированной среде'}
                 </span>
                 {botState === 'running' && expiresAt > 0 && (
-                  <span className="ml-auto flex items-center gap-1 text-[12px] text-[var(--text-secondary)]">
+                  <span className="ms-auto flex items-center gap-1 text-[12px] text-[var(--text-secondary)]">
                     до: <SessionTimer expiresAt={expiresAt} onExpired={stopBot} />
                   </span>
                 )}

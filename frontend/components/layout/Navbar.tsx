@@ -1,7 +1,8 @@
 ﻿"use client";
 
-import Link from "next/link";
+
 import { Wallet, User, Menu, X, Sun, Moon, Monitor } from "lucide-react";
+import { Link } from "@/i18n/navigation";
 import { useState } from "react";
 import { useAuthStore } from "@/lib/stores/auth";
 import { useUIStore, type Theme } from "@/lib/stores/ui";
@@ -149,7 +150,7 @@ export function Navbar() {
                 <MobileNavLink href="/account/" onClick={() => setMobileOpen(false)}>{t("accountFull")}</MobileNavLink>
                 <button
                   onClick={() => { setMobileOpen(false); handleLogout(); }}
-                  className="py-2 text-left text-[16px] text-[rgba(13,13,13,0.6)] dark:text-[rgba(236,236,236,0.5)]"
+                  className="py-2 text-start text-[16px] text-[rgba(13,13,13,0.6)] dark:text-[rgba(236,236,236,0.5)]"
                 >
                   {t("logout")}
                 </button>

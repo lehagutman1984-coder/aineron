@@ -57,7 +57,7 @@ function TreeNodeItem({ node, depth, selectedId, onSelect, onDelete }: NodeProps
         <button
           onClick={() => onSelect(node.fileId!)}
           style={{ paddingLeft: `${depth * 12 + 8}px` }}
-          className={`flex items-center gap-1.5 w-full text-left py-0.5 pr-8 text-xs rounded transition-colors ${
+          className={`flex items-center gap-1.5 w-full text-start py-0.5 pe-8 text-xs rounded transition-colors ${
             isSelected
               ? 'bg-blue-600 text-white'
               : 'hover:bg-[var(--hover)] text-[var(--text-secondary)]'

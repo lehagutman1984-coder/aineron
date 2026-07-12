@@ -1,7 +1,8 @@
 ﻿"use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
+
 import { useTranslations, useLocale } from "next-intl";
 import { Search, X, MessageSquare, Bot, Clock } from "lucide-react";
 import { searchChats } from "@/lib/api/client";
@@ -120,7 +121,7 @@ export function GlobalSearch() {
               <li key={r.message_id}>
                 <button
                   onClick={() => navigate(r)}
-                  className={`w-full text-left px-4 py-3 flex gap-3 items-start transition-colors ${
+                  className={`w-full text-start px-4 py-3 flex gap-3 items-start transition-colors ${
                     i === selected ? "bg-[rgba(217,119,87,0.06)]" : "hover:bg-[rgba(13,13,13,0.03)]"
                   }`}
                 >

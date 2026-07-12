@@ -119,6 +119,8 @@ services:
         NEXT_PUBLIC_SITE_URL: https://aineron.net
         NEXT_PUBLIC_E2B_PREVIEW: "0"
         NEXT_PUBLIC_DEFAULT_LOCALE: en
+        # G4: волна 1 — fa (Иран) + tr (Турция), см. GLOBAL_EXPANSION_PLAN.md §1/§5
+        NEXT_PUBLIC_ENABLED_LOCALES: en,fa,tr
         NEXT_PUBLIC_CURRENCY: credits
         NEXT_PUBLIC_YM_ID: "110622120"
     container_name: neiro_frontend

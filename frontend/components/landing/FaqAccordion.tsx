@@ -15,7 +15,7 @@ export function FaqAccordion() {
         <div key={i}>
           <button
             onClick={() => setOpen(open === i ? null : i)}
-            className="flex w-full items-center justify-between gap-4 py-4 text-left"
+            className="flex w-full items-center justify-between gap-4 py-4 text-start"
           >
             <span className="text-[16px] font-medium text-[#1A1A1A]">{faq.q}</span>
             <ChevronDown

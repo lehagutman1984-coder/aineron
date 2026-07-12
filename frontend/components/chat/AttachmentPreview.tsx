@@ -46,7 +46,7 @@ function AttachmentChip({
 
   return (
     <div
-      className="relative flex min-w-0 max-w-[180px] items-center gap-2 overflow-hidden rounded-[10px] border pr-2 transition-shadow"
+      className="relative flex min-w-0 max-w-[180px] items-center gap-2 overflow-hidden rounded-[10px] border pe-2 transition-shadow"
       style={{
         background: "var(--chat-surface)",
         borderColor: "var(--chat-input-border)",

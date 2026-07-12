@@ -61,13 +61,13 @@ export function InterviewCards({ questions, onSubmit, loading }: InterviewCardsP
               <button
                 key={opt}
                 onClick={() => setAnswers((a) => ({ ...a, [question.id]: opt }))}
-                className={`w-full text-left px-4 py-3 rounded-lg border text-sm transition-colors ${
+                className={`w-full text-start px-4 py-3 rounded-lg border text-sm transition-colors ${
                   answer === opt
                     ? 'border-blue-500 bg-blue-600/10 text-blue-400'
                     : 'border-[var(--border)] hover:border-blue-400'
                 }`}
               >
-                {answer === opt && <Check size={14} className="inline mr-2" />}
+                {answer === opt && <Check size={14} className="inline me-2" />}
                 {opt}
               </button>
             ))}

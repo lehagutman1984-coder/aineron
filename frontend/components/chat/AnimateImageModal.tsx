@@ -1,7 +1,8 @@
 ﻿"use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
+
 import { useTranslations } from "next-intl";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { X, Film, Loader2, Sparkles } from "lucide-react";
@@ -152,7 +153,7 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
                     key={m.slug}
                     type="button"
                     onClick={() => setSlug(m.slug)}
-                    className={`flex flex-col items-start gap-0.5 rounded-[8px] border px-3 py-2 text-left transition-colors ${
+                    className={`flex flex-col items-start gap-0.5 rounded-[8px] border px-3 py-2 text-start transition-colors ${
                       selectedSlug === m.slug
                         ? "border-[#D97757] bg-[rgba(217,119,87,0.08)]"
                         : "border-[rgba(13,13,13,0.12)] hover:bg-[rgba(13,13,13,0.04)] dark:border-[rgba(255,255,255,0.12)]"

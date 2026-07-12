@@ -68,7 +68,7 @@ export function GenerationProgress({ generationId, onComplete }: Props) {
           <Film size={13} className="opacity-60" />
           {done ? t("done") : t("generatingVideo")}
         </span>
-        <span className="ml-auto text-[14px] tabular-nums text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.45)]">
+        <span className="ms-auto text-[14px] tabular-nums text-[rgba(13,13,13,0.45)] dark:text-[rgba(236,236,236,0.45)]">
           {pct}%
         </span>
       </div>

@@ -21,7 +21,7 @@ const CodeMirrorEditor = dynamic(
     ssr: false,
     loading: () => (
       <div className="flex items-center justify-center py-10 text-[14px] text-[rgba(13,13,13,0.38)]">
-        <Loader2 size={14} className="animate-spin mr-1.5" />
+        <Loader2 size={14} className="animate-spin me-1.5" />
         {IS_RU ? "Загрузка редактора..." : "Loading editor..."}
       </div>
     ),
