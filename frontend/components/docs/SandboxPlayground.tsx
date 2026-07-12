@@ -7,25 +7,19 @@
 import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import { Box, Key, Globe, Loader, Play, Square } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { formatMoney } from "@/lib/money";
+import { IS_RU } from "@/lib/site";
 
 type AuthMode = "session" | "apikey";
 
 const TEMPLATES = [
-  { id: "python", label: "Python 3.11", language: "python", placeholder: 'print("Привет из microVM")' },
+  { id: "python", label: "Python 3.11", language: "python", placeholder: IS_RU ? 'print("Привет из microVM")' : 'print("Hello from microVM")' },
   { id: "base", label: "Base (Python + Node)", language: "python", placeholder: 'print(2 + 2)' },
   { id: "nodejs", label: "Node.js 20", language: "node", placeholder: 'console.log(process.version)' },
 ];
 
 type RunPhase = "idle" | "creating" | "executing" | "cleanup" | "done" | "error";
-
-const PHASE_LABEL: Record<RunPhase, string> = {
-  idle: "",
-  creating: "Создание microVM...",
-  executing: "Выполнение кода...",
-  cleanup: "Остановка песочницы...",
-  done: "",
-  error: "",
-};
 
 interface ExecOut {
   exit_code: number;
@@ -36,6 +30,7 @@ interface ExecOut {
 }
 
 export function SandboxPlayground() {
+  const t = useTranslations("sandbox.playground");
   const [authMode, setAuthMode] = useState<AuthMode>("session");
   const [apiKey, setApiKey] = useState("");
   const [template, setTemplate] = useState("python");
@@ -94,7 +89,7 @@ export function SandboxPlayground() {
         metadata: { source: "playground" },
       });
       sandboxId = created.id as string;
-      if (cancelRef.current) throw new Error("Остановлено");
+      if (cancelRef.current) throw new Error(t("stopped"));
 
       setPhase("executing");
       const exec = (await call("POST", `${sandboxId}/exec/`, {
@@ -121,6 +116,15 @@ export function SandboxPlayground() {
 
   const busy = phase === "creating" || phase === "executing" || phase === "cleanup";
 
+  const phaseLabel: Record<RunPhase, string> = {
+    idle: "",
+    creating: t("phaseCreating"),
+    executing: t("phaseExecuting"),
+    cleanup: t("phaseCleanup"),
+    done: "",
+    error: "",
+  };
+
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1fr]">
       {/* LEFT */}
@@ -128,7 +132,7 @@ export function SandboxPlayground() {
         {/* Auth */}
         <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-4">
           <p className="mb-3 text-[14px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.45)]">
-            Авторизация
+            {t("auth")}
           </p>
           <div className="flex gap-2">
             {(["session", "apikey"] as const).map((mode) => (
@@ -143,7 +147,7 @@ export function SandboxPlayground() {
                 ].join(" ")}
               >
                 {mode === "session" ? <Globe size={13} /> : <Key size={13} />}
-                {mode === "session" ? "Сессия" : "API-ключ"}
+                {mode === "session" ? t("session") : t("apiKeyMode")}
               </button>
             ))}
           </div>
@@ -152,7 +156,7 @@ export function SandboxPlayground() {
               type="text"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              placeholder="ak_КЛЮЧ со скоупом sandboxes"
+              placeholder={t("apiKeyPlaceholder")}
               spellCheck={false}
               className="mt-3 w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-3 py-2 font-mono text-[15px] text-[#1A1A1A] placeholder:text-[rgba(13,13,13,0.35)] focus:border-[#D97757] focus:outline-none"
             />
@@ -162,7 +166,7 @@ export function SandboxPlayground() {
         {/* Template */}
         <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-4">
           <p className="mb-3 text-[14px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.45)]">
-            Шаблон
+            {t("template")}
           </p>
           <select
             value={template}
@@ -180,7 +184,7 @@ export function SandboxPlayground() {
         {/* Code */}
         <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white p-4">
           <p className="mb-3 text-[14px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.45)]">
-            Код
+            {t("code")}
           </p>
           <textarea
             value={code}
@@ -203,17 +207,17 @@ export function SandboxPlayground() {
           {busy ? (
             <>
               <Square size={15} />
-              Остановить
+              {t("stop")}
             </>
           ) : (
             <>
               <Play size={15} />
-              Выполнить в песочнице
+              {t("run")}
             </>
           )}
         </button>
         <p className="text-center text-[13px] text-[rgba(13,13,13,0.40)]">
-          Каждый запуск: создание microVM → выполнение → остановка. Списывается ~1 минута (0,50 ₽).
+          {t("billingNote", { price: formatMoney(50) })}
         </p>
       </div>
 
@@ -222,7 +226,7 @@ export function SandboxPlayground() {
         <div className="rounded-[14px] border border-[rgba(13,13,13,0.10)] bg-white">
           <div className="flex items-center justify-between border-b border-[rgba(13,13,13,0.08)] px-4 py-3">
             <span className="text-[14px] font-medium uppercase tracking-wide text-[rgba(13,13,13,0.45)]">
-              Результат
+              {t("result")}
             </span>
             {result && (
               <span
@@ -238,7 +242,7 @@ export function SandboxPlayground() {
             {busy && (
               <div className="flex items-center gap-2 text-[15px] text-[rgba(13,13,13,0.45)]">
                 <Loader size={14} className="animate-spin" />
-                {PHASE_LABEL[phase]}
+                {phaseLabel[phase]}
               </div>
             )}
             {phase === "idle" && (
@@ -247,7 +251,7 @@ export function SandboxPlayground() {
                   <Box size={20} className="text-[#D97757]" />
                 </div>
                 <p className="text-[15px] text-[rgba(13,13,13,0.45)]">
-                  Напишите код и запустите его в изолированной microVM
+                  {t("emptyHint")}
                 </p>
               </div>
             )}
@@ -277,11 +281,11 @@ export function SandboxPlayground() {
                   </div>
                 )}
                 {!result.stdout && !result.stderr && (
-                  <p className="text-[15px] text-[rgba(13,13,13,0.45)]">Пустой вывод</p>
+                  <p className="text-[15px] text-[rgba(13,13,13,0.45)]">{t("emptyOutput")}</p>
                 )}
                 {result.truncated && (
                   <p className="text-[13px] text-[rgba(13,13,13,0.40)]">
-                    Вывод обрезан (лимит 256 KB)
+                    {t("truncated")}
                   </p>
                 )}
               </div>
@@ -294,13 +298,13 @@ export function SandboxPlayground() {
             className="inline-flex items-center gap-1.5 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 py-1.5 text-[14px] text-[rgba(13,13,13,0.55)] transition-colors hover:bg-[rgba(13,13,13,0.04)] hover:text-[#1A1A1A]"
           >
             <Key size={12} />
-            Ключ со скоупом sandboxes
+            {t("keysLink")}
           </Link>
           <Link
             href="/sandbox/"
             className="inline-flex items-center gap-1.5 rounded-[8px] border border-[rgba(13,13,13,0.12)] px-3 py-1.5 text-[14px] text-[rgba(13,13,13,0.55)] transition-colors hover:bg-[rgba(13,13,13,0.04)] hover:text-[#1A1A1A]"
           >
-            <Box size={12} />О продукте Sandboxes
+            <Box size={12} />{t("aboutLink")}
           </Link>
         </div>
       </div>

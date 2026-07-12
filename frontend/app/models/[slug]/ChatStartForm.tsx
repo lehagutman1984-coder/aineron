@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { Send, Settings2, ChevronDown, ImagePlus, X, Palette } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { createChat } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 import { APIError } from "@/lib/api/client";
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export function ChatStartForm({ networkSlug, isMedia, isVideo, configJson, projectId }: Props) {
+  const t = useTranslations("catalog");
   const router = useRouter();
   const qc = useQueryClient();
   const { user, setBalance } = useAuthStore();
@@ -101,7 +103,7 @@ export function ChatStartForm({ networkSlug, isMedia, isVideo, configJson, proje
       if (err instanceof APIError) {
         setError(err.message);
       } else {
-        setError("Что-то пошло не так. Попробуйте ещё раз.");
+        setError(t("genericError"));
       }
       setLoading(false);
     }
@@ -125,7 +127,7 @@ export function ChatStartForm({ networkSlug, isMedia, isVideo, configJson, proje
             className="mb-2 flex items-center gap-1.5 text-[14px] font-medium text-[rgba(13,13,13,0.5)] hover:text-[#1A1A1A] transition-colors"
           >
             <Settings2 size={13} />
-            Настройки генерации
+            {t("generationSettings")}
             <ChevronDown
               size={12}
               className={showSettings ? "rotate-180 transition-transform" : "transition-transform"}
@@ -148,13 +150,13 @@ export function ChatStartForm({ networkSlug, isMedia, isVideo, configJson, proje
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={editImageUrl}
-              alt="Исходное изображение"
+              alt={t("sourceImageAlt")}
               className="h-14 w-14 rounded-[8px] border border-[rgba(13,13,13,0.10)] object-cover"
             />
             <button
               type="button"
               onClick={() => setEditImageUrl(null)}
-              title="Убрать исходное изображение"
+              title={t("removeSourceImage")}
               className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-[rgba(13,13,13,0.10)] bg-white shadow-sm transition-colors hover:bg-[rgba(13,13,13,0.06)]"
             >
               <X size={11} className="text-[rgba(13,13,13,0.55)]" />
@@ -163,10 +165,10 @@ export function ChatStartForm({ networkSlug, isMedia, isVideo, configJson, proje
           <div className="min-w-0">
             <p className="flex items-center gap-1 text-[15px] font-medium text-[#1A1A1A]">
               <ImagePlus size={13} className="text-[#D97757]" />
-              Редактирование изображения
+              {t("editImageTitle")}
             </p>
             <p className="mt-0.5 text-[14px] text-[rgba(13,13,13,0.5)]">
-              Опишите изменения — модель применит их к этому изображению
+              {t("editImageFormHint")}
             </p>
           </div>
         </div>
@@ -179,13 +181,13 @@ export function ChatStartForm({ networkSlug, isMedia, isVideo, configJson, proje
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={styleImageUrl}
-              alt="Референс стиля"
+              alt={t("styleRefTitle")}
               className="h-14 w-14 rounded-[8px] border border-[rgba(13,13,13,0.10)] object-cover"
             />
             <button
               type="button"
               onClick={() => setStyleImageUrl(null)}
-              title="Убрать референс стиля"
+              title={t("removeStyleRef")}
               className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-[rgba(13,13,13,0.10)] bg-white shadow-sm transition-colors hover:bg-[rgba(13,13,13,0.06)]"
             >
               <X size={11} className="text-[rgba(13,13,13,0.55)]" />
@@ -194,10 +196,10 @@ export function ChatStartForm({ networkSlug, isMedia, isVideo, configJson, proje
           <div className="min-w-0">
             <p className="flex items-center gap-1 text-[15px] font-medium text-[#1A1A1A]">
               <Palette size={13} className="text-[#D97757]" />
-              Референс стиля
+              {t("styleRefTitle")}
             </p>
             <p className="mt-0.5 text-[14px] text-[rgba(13,13,13,0.5)]">
-              Новые изображения переймут стиль этого референса
+              {t("styleRefFormHint")}
             </p>
           </div>
         </div>
@@ -212,10 +214,10 @@ export function ChatStartForm({ networkSlug, isMedia, isVideo, configJson, proje
           onKeyDown={handleKeyDown}
           placeholder={
             editImageUrl
-              ? "Опишите, что изменить на изображении..."
+              ? t("placeholderEdit")
               : isMedia
-                ? "Опишите, что нужно сгенерировать..."
-                : "Введите сообщение... (Enter — отправить, Shift+Enter — новая строка)"
+                ? t("placeholderMedia")
+                : t("placeholderText")
           }
           rows={4}
           className="w-full resize-none rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-4 py-3 pr-12 text-[16px] text-[#1A1A1A] placeholder-[rgba(13,13,13,0.38)] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
@@ -234,11 +236,11 @@ export function ChatStartForm({ networkSlug, isMedia, isVideo, configJson, proje
       )}
       {!user && (
         <p className="text-[15px] text-[rgba(13,13,13,0.5)]">
-          Нужна{" "}
+          {t("needAuthPrefix")}{" "}
           <a href="/login/" className="text-[#D97757] hover:underline">
-            авторизация
+            {t("needAuthLink")}
           </a>{" "}
-          для отправки сообщения
+          {t("needAuthSuffix")}
         </p>
       )}
     </form>

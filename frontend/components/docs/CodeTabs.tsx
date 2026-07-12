@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { Copy, Check } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 function CopyButton({ code }: { code: string }) {
+  const t = useTranslations("chat");
   const [copied, setCopied] = useState(false);
 
   const handle = () => {
@@ -18,7 +20,7 @@ function CopyButton({ code }: { code: string }) {
       className="flex items-center gap-1.5 rounded-[6px] px-2.5 py-1 text-[13px] font-medium text-[rgba(255,255,255,0.4)] hover:text-[rgba(255,255,255,0.75)] transition-colors"
     >
       {copied ? <Check size={11} /> : <Copy size={11} />}
-      {copied ? "Скопировано" : "Копировать"}
+      {copied ? t("copied") : t("copy")}
     </button>
   );
 }

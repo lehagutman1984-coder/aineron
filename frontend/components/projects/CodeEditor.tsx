@@ -8,7 +8,9 @@ import { html } from "@codemirror/lang-html";
 import { css } from "@codemirror/lang-css";
 import { oneDark } from "@codemirror/theme-one-dark";
 import type { Extension } from "@codemirror/state";
+import { useTranslations } from "next-intl";
 import { useUIStore } from "@/lib/stores/ui";
+import { IS_RU } from "@/lib/site";
 
 const CodeMirrorEditor = dynamic(
   async () => {
@@ -20,7 +22,7 @@ const CodeMirrorEditor = dynamic(
     loading: () => (
       <div className="flex items-center justify-center py-10 text-[14px] text-[rgba(13,13,13,0.38)]">
         <Loader2 size={14} className="animate-spin mr-1.5" />
-        Загрузка редактора...
+        {IS_RU ? "Загрузка редактора..." : "Loading editor..."}
       </div>
     ),
   }
@@ -64,6 +66,7 @@ export default function CodeEditor({
   onCommit,
   onClose,
 }: Props) {
+  const t = useTranslations("projects");
   const [content, setContent] = useState(initialContent);
   const [editMode, setEditMode] = useState(false);
   const [commitMsg, setCommitMsg] = useState("");
@@ -118,7 +121,7 @@ export default function CodeEditor({
       setEditMode(false);
       setCommitMsg("");
     } catch (e) {
-      setCommitErr((e as Error).message ?? "Ошибка при коммите");
+      setCommitErr((e as Error).message ?? t("commitError"));
     } finally {
       setCommitting(false);
     }
@@ -126,7 +129,7 @@ export default function CodeEditor({
 
   const handleToggleEdit = () => {
     if (editMode && dirty) {
-      if (!window.confirm("Есть несохранённые изменения. Отменить правки?")) return;
+      if (!window.confirm(t("unsavedConfirm"))) return;
       setContent(initialContent);
     }
     setEditMode(!editMode);
@@ -144,7 +147,7 @@ export default function CodeEditor({
           onClick={() => setFontSizeIdx((i) => Math.max(0, i - 1))}
           disabled={fontSizeIdx === 0}
           className="flex h-6 w-6 items-center justify-center rounded text-[rgba(13,13,13,0.40)] hover:bg-[rgba(13,13,13,0.07)] hover:text-[#1A1A1A] disabled:opacity-30 transition-colors"
-          title="Уменьшить шрифт"
+          title={t("fontSmaller")}
         >
           <Minus size={11} />
         </button>
@@ -153,7 +156,7 @@ export default function CodeEditor({
           onClick={() => setFontSizeIdx((i) => Math.min(FONT_SIZES.length - 1, i + 1))}
           disabled={fontSizeIdx === FONT_SIZES.length - 1}
           className="flex h-6 w-6 items-center justify-center rounded text-[rgba(13,13,13,0.40)] hover:bg-[rgba(13,13,13,0.07)] hover:text-[#1A1A1A] disabled:opacity-30 transition-colors"
-          title="Увеличить шрифт"
+          title={t("fontBigger")}
         >
           <Plus size={11} />
         </button>
@@ -171,7 +174,7 @@ export default function CodeEditor({
           }`}
         >
           {editMode ? <Eye size={12} /> : <Edit2 size={12} />}
-          {editMode ? "Просмотр" : "Редактировать"}
+          {editMode ? t("viewMode") : t("editMode")}
         </button>
       )}
 
@@ -179,7 +182,7 @@ export default function CodeEditor({
       <button
         onClick={() => setExpanded((v) => !v)}
         className="flex h-6 w-6 items-center justify-center rounded text-[rgba(13,13,13,0.40)] hover:bg-[rgba(13,13,13,0.07)] hover:text-[#1A1A1A] transition-colors"
-        title={expanded ? "Свернуть (Esc)" : "Развернуть на весь экран"}
+        title={expanded ? t("collapseEsc") : t("expandFull")}
       >
         {expanded ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
       </button>
@@ -222,7 +225,7 @@ export default function CodeEditor({
           type="text"
           value={commitMsg}
           onChange={(e) => setCommitMsg(e.target.value)}
-          placeholder="Сообщение коммита..."
+          placeholder={t("commitPlaceholder")}
           className="flex-1 rounded-[6px] border border-[rgba(13,13,13,0.16)] px-2.5 py-1.5 text-[15px] outline-none focus:border-[#D97757]"
           onKeyDown={(e) => { if (e.key === "Enter") handleCommit(); }}
         />

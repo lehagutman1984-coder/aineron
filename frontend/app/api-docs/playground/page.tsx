@@ -20,6 +20,10 @@ import {
   Box,
 } from "lucide-react";
 import { SandboxPlayground } from "@/components/docs/SandboxPlayground";
+import { IS_RU } from "@/lib/site";
+
+// Плейсхолдер API-ключа в примерах — по локали инстанса
+const KEY_PLACEHOLDER = IS_RU ? "ak_ВАШ_КЛЮЧ" : "ak_YOUR_KEY";
 
 // Реальный base_url текущего инстанса (aineron.ru / aineron.net), не хардкод.
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "https://aineron.ru/api/v1";
@@ -328,7 +332,7 @@ export default function PlaygroundPage() {
                 type="text"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                placeholder="ak_ВАШ_КЛЮЧ"
+                placeholder={KEY_PLACEHOLDER}
                 spellCheck={false}
                 className="mt-3 w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-3 py-2 font-mono text-[15px] text-[#1A1A1A] placeholder:text-[rgba(13,13,13,0.35)] focus:border-[#D97757] focus:outline-none"
               />
@@ -613,7 +617,7 @@ export default function PlaygroundPage() {
                 {[
                   `curl ${API_BASE}/chat/completions \\`,
                   authMode === "apikey"
-                    ? `  -H "Authorization: Bearer ${apiKey || "ak_ВАШ_КЛЮЧ"}" \\`
+                    ? `  -H "Authorization: Bearer ${apiKey || KEY_PLACEHOLDER}" \\`
                     : `  -H "Cookie: sessionid=..." \\`,
                   `  -H "Content-Type: application/json" \\`,
                   `  -d '${JSON.stringify(

@@ -1029,7 +1029,7 @@ export default function ChatPage() {
 
               {/* Starter prompt cards */}
               <div className="mt-4 grid w-full grid-cols-1 gap-2.5 sm:grid-cols-2">
-                {getStarterPrompts(chat.network).map((card, i) => (
+                {getStarterPrompts(chat.network, t).map((card, i) => (
                   <button
                     key={i}
                     onClick={() => handlePrompt(card.prompt)}
@@ -2129,6 +2129,7 @@ function AssistantContent({
   shouldAnimate: boolean;
   sources?: KBSource[];
 }) {
+  const t = useTranslations("chat");
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Attach copy handlers to Django CodeFormatter buttons (legacy HTML path).
@@ -2143,8 +2144,8 @@ function AssistantContent({
         const block = btn.closest(".code-block");
         const code = block?.querySelector("code")?.textContent ?? "";
         navigator.clipboard.writeText(code).catch(() => {});
-        const orig = btn.textContent ?? "Копировать";
-        btn.textContent = "Скопировано";
+        const orig = btn.textContent ?? t("copy");
+        btn.textContent = t("copied");
         setTimeout(() => { btn.textContent = orig; }, 2000);
       });
     });
@@ -2316,14 +2317,17 @@ function SourcesBlock({ sources }: { sources: KBSource[] }) {
 /* ─── Starter prompts ────────────────────────────────────── */
 type PromptCard = { label: string; prompt: string };
 
-function getStarterPrompts(network: { provider: string; category: { name: string; slug: string } | null }): PromptCard[] {
+function getStarterPrompts(
+  network: { provider: string; category: { name: string; slug: string } | null },
+  t: ReturnType<typeof useTranslations>,
+): PromptCard[] {
   // Image generation models
   if (network.provider === "fal-ai") {
     return [
-      { label: "Пейзаж", prompt: "Реалистичное фото горного рассвета: туман над долиной, золотой час, высокое разрешение" },
-      { label: "Портрет", prompt: "Портрет молодой женщины в стиле арт-деко, детализированный, мягкое студийное освещение" },
-      { label: "Абстракция", prompt: "Абстрактная цифровая живопись в синих и фиолетовых тонах с неоновыми акцентами" },
-      { label: "Интерьер", prompt: "Уютная библиотека с высокими деревянными полками, тёплый свет, кресло у панорамного окна" },
+      { label: t("starters.imgLandscape"), prompt: t("starters.imgLandscapePrompt") },
+      { label: t("starters.imgPortrait"), prompt: t("starters.imgPortraitPrompt") },
+      { label: t("starters.imgAbstract"), prompt: t("starters.imgAbstractPrompt") },
+      { label: t("starters.imgInterior"), prompt: t("starters.imgInteriorPrompt") },
     ];
   }
 
@@ -2332,28 +2336,28 @@ function getStarterPrompts(network: { provider: string; category: { name: string
 
   if (cat.includes("kod") || cat.includes("code") || cat.includes("програм") || cat.includes("разраб")) {
     return [
-      { label: "Написать функцию", prompt: "Напиши функцию на Python, которая проверяет, является ли строка палиндромом, с тестами" },
-      { label: "Найти баг", prompt: "Найди и исправь баг в этом коде:\n\n```python\n# вставь код сюда\n```" },
-      { label: "SQL запрос", prompt: "Напиши SQL-запрос: топ-10 пользователей по количеству заказов за последние 30 дней" },
-      { label: "Code review", prompt: "Сделай code review этого кода и предложи улучшения по производительности и читаемости:" },
+      { label: t("starters.codeFunc"), prompt: t("starters.codeFuncPrompt") },
+      { label: t("starters.codeBug"), prompt: t("starters.codeBugPrompt") },
+      { label: t("starters.codeSql"), prompt: t("starters.codeSqlPrompt") },
+      { label: t("starters.codeReview"), prompt: t("starters.codeReviewPrompt") },
     ];
   }
 
   if (cat.includes("перевод") || cat.includes("translat")) {
     return [
-      { label: "На английский", prompt: "Переведи следующий текст на английский язык, сохранив стиль и тон:" },
-      { label: "На русский", prompt: "Translate the following text to Russian, keeping the original style:" },
-      { label: "Деловой стиль", prompt: "Переведи на английский в деловом стиле для международного письма:" },
-      { label: "Проверь перевод", prompt: "Проверь этот перевод и исправь ошибки, объясни каждое исправление:" },
+      { label: t("starters.trToEnglish"), prompt: t("starters.trToEnglishPrompt") },
+      { label: t("starters.trToRussian"), prompt: t("starters.trToRussianPrompt") },
+      { label: t("starters.trBusiness"), prompt: t("starters.trBusinessPrompt") },
+      { label: t("starters.trCheck"), prompt: t("starters.trCheckPrompt") },
     ];
   }
 
   // General text model prompts
   return [
-    { label: "Объяснение", prompt: "Объясни, как работает квантовое шифрование, простыми словами без технических терминов" },
-    { label: "Написать код", prompt: "Напиши Python-скрипт, который парсит JSON-файл и выводит топ-5 записей по полю \"score\"" },
-    { label: "Составить текст", prompt: "Помоги написать профессиональное письмо с предложением о партнёрстве — кратко и убедительно" },
-    { label: "Анализ", prompt: "Составь SWOT-анализ для небольшого онлайн-сервиса с подпиской и AI-функциями" },
+    { label: t("starters.genExplain"), prompt: t("starters.genExplainPrompt") },
+    { label: t("starters.genCode"), prompt: t("starters.genCodePrompt") },
+    { label: t("starters.genText"), prompt: t("starters.genTextPrompt") },
+    { label: t("starters.genAnalysis"), prompt: t("starters.genAnalysisPrompt") },
   ];
 }
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Download, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -22,6 +23,7 @@ function isStandalone() {
 }
 
 export function PWAProvider() {
+  const t = useTranslations("pwa");
   const [prompt, setPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showBanner, setShowBanner] = useState(false);
   const [ios, setIos] = useState(false);
@@ -82,20 +84,20 @@ export function PWAProvider() {
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-[15px] font-semibold text-[#1A1A1A]">
-          Установить приложение
+          {t("installTitle")}
         </p>
         {ios ? (
           <p className="mt-0.5 text-[14px] text-[rgba(13,13,13,0.55)] leading-relaxed">
-            Нажмите{" "}
-            <span className="font-medium text-[#1A1A1A]">«Поделиться»</span> в
-            Safari, затем{" "}
+            {t("iosPress")}{" "}
+            <span className="font-medium text-[#1A1A1A]">{t("iosShare")}</span>{" "}
+            {t("iosThen")}{" "}
             <span className="font-medium text-[#1A1A1A]">
-              «На экран Домой»
+              {t("iosAddHome")}
             </span>
           </p>
         ) : (
           <p className="mt-0.5 text-[14px] text-[rgba(13,13,13,0.55)]">
-            Работает без браузера, быстрее загружается
+            {t("benefit")}
           </p>
         )}
         {!ios && (
@@ -103,14 +105,14 @@ export function PWAProvider() {
             onClick={install}
             className="mt-2 rounded-[7px] bg-[#D97757] px-3 py-1.5 text-[14px] font-medium text-white hover:bg-[#C4623E] transition-colors"
           >
-            Установить
+            {t("install")}
           </button>
         )}
       </div>
       <button
         onClick={dismiss}
         className="shrink-0 text-[rgba(13,13,13,0.35)] hover:text-[rgba(13,13,13,0.7)] transition-colors"
-        aria-label="Закрыть"
+        aria-label={t("close")}
       >
         <X size={16} />
       </button>

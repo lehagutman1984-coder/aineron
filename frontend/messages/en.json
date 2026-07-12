@@ -147,7 +147,23 @@
     "passwordTooShort": "Password must be at least 8 characters",
     "registerError": "Registration error. Try again.",
     "registering": "Creating account...",
-    "registerButton": "Create account"
+    "registerButton": "Create account",
+    "agreePrefix": "By continuing, you agree to the",
+    "agreeTerms": "terms of service",
+    "agreeAnd": "and the",
+    "agreePrivacy": "privacy policy",
+    "verifyTitle": "Verify your email",
+    "verifySentTo": "We sent a 6-digit code to",
+    "verifyYourEmail": "your email",
+    "verifyInvalidCode": "Invalid code. Please try again.",
+    "verifyResendFailed": "Failed to send the email. Please try again later.",
+    "verifyResent": "Email sent again",
+    "verifyChecking": "Checking...",
+    "verifyConfirm": "Confirm",
+    "verifyResendIn": "Resend in {seconds} sec.",
+    "verifySending": "Sending...",
+    "verifyResend": "Resend code",
+    "backHome": "Back to home"
   },
   "footer": {
     "description": "AI models without VPN. GPT-4o, Claude, Gemini, and more — all in one place.",
@@ -194,7 +210,32 @@
     "priceUnlimited": "Unlimited",
     "pageTitle": "AI Models Catalog",
     "pageDescription": "GPT-4o, Claude, Gemini, image generation, and dozens of other AI models without VPN. Choose a model and start a chat.",
-    "modelsAvailable": "{count} models available"
+    "modelsAvailable": "{count} models available",
+    "modelNotFound": "Model not found",
+    "breadcrumbHome": "Home",
+    "breadcrumbCatalog": "Catalog",
+    "unlimitedByTariff": "Unlimited on your plan",
+    "pricePerMessage": "{price} / message",
+    "messagesPerDay": "{count} messages per day",
+    "acceptsImages": "Images",
+    "acceptsVideo": "Video",
+    "describeToGenerate": "Describe what you want to generate",
+    "startDialog": "Start a chat",
+    "faqTitle": "Frequently asked questions",
+    "relatedModels": "Similar models — {category}",
+    "genericError": "Something went wrong. Please try again.",
+    "generationSettings": "Generation settings",
+    "sourceImageAlt": "Source image",
+    "removeSourceImage": "Remove source image",
+    "editImageFormHint": "Describe the changes — the model will apply them to this image",
+    "removeStyleRef": "Remove style reference",
+    "styleRefFormHint": "New images will adopt the style of this reference",
+    "placeholderEdit": "Describe what to change in the image...",
+    "placeholderMedia": "Describe what you want to generate...",
+    "placeholderText": "Type a message... (Enter — send, Shift+Enter — new line)",
+    "needAuthPrefix": "You need to",
+    "needAuthLink": "sign in",
+    "needAuthSuffix": "to send a message"
   },
   "account": {
     "nav": {
@@ -616,6 +657,40 @@
     },
     "responseVariants": {
       "title": "Variants"
+    },
+    "starters": {
+      "imgLandscape": "Landscape",
+      "imgLandscapePrompt": "Realistic photo of a mountain sunrise: fog over the valley, golden hour, high resolution",
+      "imgPortrait": "Portrait",
+      "imgPortraitPrompt": "Portrait of a young woman in art deco style, detailed, soft studio lighting",
+      "imgAbstract": "Abstract",
+      "imgAbstractPrompt": "Abstract digital painting in blue and purple tones with neon accents",
+      "imgInterior": "Interior",
+      "imgInteriorPrompt": "Cozy library with tall wooden shelves, warm light, an armchair by a panoramic window",
+      "codeFunc": "Write a function",
+      "codeFuncPrompt": "Write a Python function that checks whether a string is a palindrome, with tests",
+      "codeBug": "Find a bug",
+      "codeBugPrompt": "Find and fix the bug in this code:\n\n```python\n# paste your code here\n```",
+      "codeSql": "SQL query",
+      "codeSqlPrompt": "Write an SQL query: top 10 users by order count over the last 30 days",
+      "codeReview": "Code review",
+      "codeReviewPrompt": "Do a code review of this code and suggest performance and readability improvements:",
+      "trToEnglish": "To English",
+      "trToEnglishPrompt": "Translate the following text into English, preserving the style and tone:",
+      "trToRussian": "To Russian",
+      "trToRussianPrompt": "Translate the following text to Russian, keeping the original style:",
+      "trBusiness": "Business style",
+      "trBusinessPrompt": "Translate into English in a formal business style for an international letter:",
+      "trCheck": "Check a translation",
+      "trCheckPrompt": "Check this translation, fix any mistakes and explain each correction:",
+      "genExplain": "Explanation",
+      "genExplainPrompt": "Explain how quantum encryption works in simple terms, without technical jargon",
+      "genCode": "Write code",
+      "genCodePrompt": "Write a Python script that parses a JSON file and prints the top 5 records by the \"score\" field",
+      "genText": "Draft a text",
+      "genTextPrompt": "Help me write a professional partnership proposal email — short and persuasive",
+      "genAnalysis": "Analysis",
+      "genAnalysisPrompt": "Create a SWOT analysis for a small online service with a subscription and AI features"
     }
   },
   "accountFiles": {
@@ -1060,7 +1135,16 @@
     "createError": "Failed to create project",
     "cancel": "Cancel",
     "creating": "Creating...",
-    "create": "Create"
+    "create": "Create",
+    "commitError": "Commit failed",
+    "unsavedConfirm": "You have unsaved changes. Discard them?",
+    "fontSmaller": "Decrease font size",
+    "fontBigger": "Increase font size",
+    "viewMode": "View",
+    "editMode": "Edit",
+    "collapseEsc": "Collapse (Esc)",
+    "expandFull": "Expand to full screen",
+    "commitPlaceholder": "Commit message..."
   },
   "projectsGraph": {
     "backToProject": "Project",
@@ -1801,7 +1885,28 @@
     "faq4A": "Yes, Python SDK: pip install aineron. For other languages — standard REST API with Bearer authorization, curl examples in the documentation.",
     "faq5Q": "What are the limitations?",
     "faq5A": "Up to 3 concurrent Sandboxes and 240 minutes per day per account, TTL up to 60 minutes, command output up to 256 KB. Network access from inside is allowlist-based (pypi, npm, etc.); need your own domain — contact support.",
-    "ctaButton": "Start in 5 minutes"
+    "ctaButton": "Start in 5 minutes",
+    "playground": {
+      "stopped": "Stopped",
+      "phaseCreating": "Creating microVM...",
+      "phaseExecuting": "Executing code...",
+      "phaseCleanup": "Stopping sandbox...",
+      "auth": "Authorization",
+      "session": "Session",
+      "apiKeyMode": "API key",
+      "apiKeyPlaceholder": "ak_KEY with the sandboxes scope",
+      "template": "Template",
+      "code": "Code",
+      "stop": "Stop",
+      "run": "Run in sandbox",
+      "billingNote": "Each run: create microVM → execute → stop. ~1 minute is charged ({price}).",
+      "result": "Result",
+      "emptyHint": "Write some code and run it in an isolated microVM",
+      "emptyOutput": "Empty output",
+      "truncated": "Output truncated (256 KB limit)",
+      "keysLink": "Key with the sandboxes scope",
+      "aboutLink": "About Sandboxes"
+    }
   },
   "docs": {
     "metaTitle": "Documentation — How to Use aineron",
@@ -2229,5 +2334,39 @@
     "shortcutNewChatDesc": "Choose a model and start chatting",
     "shortcutAccount": "Dashboard",
     "shortcutAccountDesc": "Balance and settings"
+  },
+  "blocked": {
+    "metaTitle": "Account blocked",
+    "title": "Account blocked",
+    "text": "Your account has been blocked for violating the terms of service. If you believe this is a mistake, please contact support.",
+    "contactSupport": "Contact support",
+    "backHome": "Back to home"
+  },
+  "notFound": {
+    "metaTitle": "Page not found",
+    "title": "Page not found",
+    "text": "This page does not exist or has been moved.",
+    "backHome": "Back to home",
+    "catalogLink": "Model catalog"
+  },
+  "payment": {
+    "successTitle": "Payment successful",
+    "successText": "The funds have been added to your account. You can continue using the service.",
+    "failTitle": "Payment failed",
+    "failText": "The payment was not completed. Try again or choose another payment method.",
+    "invoiceNumber": "Payment ID: {id}",
+    "goToBalance": "Go to balance",
+    "backToPayment": "Back to payment",
+    "backHome": "Back to home"
+  },
+  "pwa": {
+    "installTitle": "Install the app",
+    "iosPress": "Tap",
+    "iosShare": "“Share”",
+    "iosThen": "in Safari, then",
+    "iosAddHome": "“Add to Home Screen”",
+    "benefit": "Works without a browser and loads faster",
+    "install": "Install",
+    "close": "Close"
   }
 }

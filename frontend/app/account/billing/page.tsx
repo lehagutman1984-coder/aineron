@@ -35,7 +35,7 @@ import {
 import type { CryptoTopupResponse } from "@/lib/api/client";
 import type { PromoCheckResponse } from "@/lib/api/client";
 import type { Tariff, PaymentHistory, RobokassaForm, UserSubscription } from "@/lib/api/types";
-import { formatMoney, CURRENCY } from "@/lib/money";
+import { formatMoney, rubToKopecks, CURRENCY } from "@/lib/money";
 import { useTranslations } from "next-intl";
 import { useAuthStore } from "@/lib/stores/auth";
 
@@ -871,7 +871,7 @@ function HistorySection() {
   });
 
   if (isLoading) {
-    return <div className="text-[var(--color-text-secondary)] text-sm">Загрузка...</div>;
+    return <div className="text-[var(--color-text-secondary)] text-sm">{t("loading")}</div>;
   }
 
   if (!payments?.length) {
@@ -900,13 +900,13 @@ function HistorySection() {
           <div className="text-right shrink-0">
             {parseFloat(p.amount) > 0 && (
               <p className="text-sm font-semibold text-[var(--color-text-primary)]">
-                {parseFloat(p.amount).toLocaleString("ru-RU")} ₽
+                {formatMoney(rubToKopecks(parseFloat(p.amount)))}
               </p>
             )}
             <p className="text-xs text-[var(--color-text-secondary)]">
               {p.amount_kopecks != null
                 ? `+${formatMoney(p.amount_kopecks)}`
-                : `+${p.pages_count} ₽`}{" "}
+                : `+${formatMoney(rubToKopecks(p.pages_count))}`}{" "}
               · {paymentStatusLabel(p.status, t)}
             </p>
           </div>

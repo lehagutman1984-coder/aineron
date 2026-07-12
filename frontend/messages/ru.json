@@ -147,7 +147,23 @@
     "passwordTooShort": "Пароль должен содержать минимум 8 символов",
     "registerError": "Ошибка регистрации. Попробуйте снова.",
     "registering": "Создаём аккаунт...",
-    "registerButton": "Создать аккаунт"
+    "registerButton": "Создать аккаунт",
+    "agreePrefix": "Продолжая, вы соглашаетесь с",
+    "agreeTerms": "условиями",
+    "agreeAnd": "и",
+    "agreePrivacy": "политикой конфиденциальности",
+    "verifyTitle": "Подтвердите email",
+    "verifySentTo": "Мы отправили 6-значный код на",
+    "verifyYourEmail": "вашу почту",
+    "verifyInvalidCode": "Неверный код. Попробуйте снова.",
+    "verifyResendFailed": "Не удалось отправить письмо. Попробуйте позже.",
+    "verifyResent": "Письмо отправлено повторно",
+    "verifyChecking": "Проверяем...",
+    "verifyConfirm": "Подтвердить",
+    "verifyResendIn": "Отправить повторно через {seconds} сек.",
+    "verifySending": "Отправляем...",
+    "verifyResend": "Отправить код повторно",
+    "backHome": "На главную"
   },
   "footer": {
     "description": "AI-нейросети без VPN. GPT-4o, Claude, Gemini и другие — в одном месте.",
@@ -194,7 +210,32 @@
     "priceUnlimited": "Безлимит",
     "pageTitle": "Каталог нейросетей",
     "pageDescription": "GPT-4o, Claude, Gemini, генерация изображений и десятки других AI-моделей без VPN. Выберите нейросеть и начните чат.",
-    "modelsAvailable": "{count} моделей доступно"
+    "modelsAvailable": "{count} моделей доступно",
+    "modelNotFound": "Модель не найдена",
+    "breadcrumbHome": "Главная",
+    "breadcrumbCatalog": "Каталог",
+    "unlimitedByTariff": "Безлимит по тарифу",
+    "pricePerMessage": "{price} / сообщение",
+    "messagesPerDay": "{count} сообщений в день",
+    "acceptsImages": "Изображения",
+    "acceptsVideo": "Видео",
+    "describeToGenerate": "Опишите, что нужно сгенерировать",
+    "startDialog": "Начать диалог",
+    "faqTitle": "Частые вопросы",
+    "relatedModels": "Похожие модели — {category}",
+    "genericError": "Что-то пошло не так. Попробуйте ещё раз.",
+    "generationSettings": "Настройки генерации",
+    "sourceImageAlt": "Исходное изображение",
+    "removeSourceImage": "Убрать исходное изображение",
+    "editImageFormHint": "Опишите изменения — модель применит их к этому изображению",
+    "removeStyleRef": "Убрать референс стиля",
+    "styleRefFormHint": "Новые изображения переймут стиль этого референса",
+    "placeholderEdit": "Опишите, что изменить на изображении...",
+    "placeholderMedia": "Опишите, что нужно сгенерировать...",
+    "placeholderText": "Введите сообщение... (Enter — отправить, Shift+Enter — новая строка)",
+    "needAuthPrefix": "Нужна",
+    "needAuthLink": "авторизация",
+    "needAuthSuffix": "для отправки сообщения"
   },
   "account": {
     "nav": {
@@ -616,6 +657,40 @@
     },
     "responseVariants": {
       "title": "Варианты"
+    },
+    "starters": {
+      "imgLandscape": "Пейзаж",
+      "imgLandscapePrompt": "Реалистичное фото горного рассвета: туман над долиной, золотой час, высокое разрешение",
+      "imgPortrait": "Портрет",
+      "imgPortraitPrompt": "Портрет молодой женщины в стиле арт-деко, детализированный, мягкое студийное освещение",
+      "imgAbstract": "Абстракция",
+      "imgAbstractPrompt": "Абстрактная цифровая живопись в синих и фиолетовых тонах с неоновыми акцентами",
+      "imgInterior": "Интерьер",
+      "imgInteriorPrompt": "Уютная библиотека с высокими деревянными полками, тёплый свет, кресло у панорамного окна",
+      "codeFunc": "Написать функцию",
+      "codeFuncPrompt": "Напиши функцию на Python, которая проверяет, является ли строка палиндромом, с тестами",
+      "codeBug": "Найти баг",
+      "codeBugPrompt": "Найди и исправь баг в этом коде:\n\n```python\n# вставь код сюда\n```",
+      "codeSql": "SQL запрос",
+      "codeSqlPrompt": "Напиши SQL-запрос: топ-10 пользователей по количеству заказов за последние 30 дней",
+      "codeReview": "Code review",
+      "codeReviewPrompt": "Сделай code review этого кода и предложи улучшения по производительности и читаемости:",
+      "trToEnglish": "На английский",
+      "trToEnglishPrompt": "Переведи следующий текст на английский язык, сохранив стиль и тон:",
+      "trToRussian": "На русский",
+      "trToRussianPrompt": "Translate the following text to Russian, keeping the original style:",
+      "trBusiness": "Деловой стиль",
+      "trBusinessPrompt": "Переведи на английский в деловом стиле для международного письма:",
+      "trCheck": "Проверь перевод",
+      "trCheckPrompt": "Проверь этот перевод и исправь ошибки, объясни каждое исправление:",
+      "genExplain": "Объяснение",
+      "genExplainPrompt": "Объясни, как работает квантовое шифрование, простыми словами без технических терминов",
+      "genCode": "Написать код",
+      "genCodePrompt": "Напиши Python-скрипт, который парсит JSON-файл и выводит топ-5 записей по полю \"score\"",
+      "genText": "Составить текст",
+      "genTextPrompt": "Помоги написать профессиональное письмо с предложением о партнёрстве — кратко и убедительно",
+      "genAnalysis": "Анализ",
+      "genAnalysisPrompt": "Составь SWOT-анализ для небольшого онлайн-сервиса с подпиской и AI-функциями"
     }
   },
   "accountFiles": {
@@ -1060,7 +1135,16 @@
     "createError": "Не удалось создать проект",
     "cancel": "Отмена",
     "creating": "Создание...",
-    "create": "Создать"
+    "create": "Создать",
+    "commitError": "Ошибка при коммите",
+    "unsavedConfirm": "Есть несохранённые изменения. Отменить правки?",
+    "fontSmaller": "Уменьшить шрифт",
+    "fontBigger": "Увеличить шрифт",
+    "viewMode": "Просмотр",
+    "editMode": "Редактировать",
+    "collapseEsc": "Свернуть (Esc)",
+    "expandFull": "Развернуть на весь экран",
+    "commitPlaceholder": "Сообщение коммита..."
   },
   "projectsGraph": {
     "backToProject": "Проект",
@@ -1801,7 +1885,28 @@
     "faq4A": "Да, Python SDK: pip install aineron. Для остальных языков — обычный REST API с Bearer-авторизацией, примеры на curl в документации.",
     "faq5Q": "Какие ограничения?",
     "faq5A": "До 3 одновременных песочниц и 240 минут в день на аккаунт, TTL до 60 минут, вывод команды до 256 KB. Сетевой доступ изнутри — по allowlist (pypi, npm и т.д.); нужен свой домен — напишите в поддержку.",
-    "ctaButton": "Начать за 5 минут"
+    "ctaButton": "Начать за 5 минут",
+    "playground": {
+      "stopped": "Остановлено",
+      "phaseCreating": "Создание microVM...",
+      "phaseExecuting": "Выполнение кода...",
+      "phaseCleanup": "Остановка песочницы...",
+      "auth": "Авторизация",
+      "session": "Сессия",
+      "apiKeyMode": "API-ключ",
+      "apiKeyPlaceholder": "ak_КЛЮЧ со скоупом sandboxes",
+      "template": "Шаблон",
+      "code": "Код",
+      "stop": "Остановить",
+      "run": "Выполнить в песочнице",
+      "billingNote": "Каждый запуск: создание microVM → выполнение → остановка. Списывается ~1 минута ({price}).",
+      "result": "Результат",
+      "emptyHint": "Напишите код и запустите его в изолированной microVM",
+      "emptyOutput": "Пустой вывод",
+      "truncated": "Вывод обрезан (лимит 256 KB)",
+      "keysLink": "Ключ со скоупом sandboxes",
+      "aboutLink": "О продукте Sandboxes"
+    }
   },
   "docs": {
     "metaTitle": "Документация — как пользоваться aineron",
@@ -2229,5 +2334,39 @@
     "shortcutNewChatDesc": "Выбрать нейросеть и начать чат",
     "shortcutAccount": "Кабинет",
     "shortcutAccountDesc": "Баланс и настройки"
+  },
+  "blocked": {
+    "metaTitle": "Аккаунт заблокирован",
+    "title": "Аккаунт заблокирован",
+    "text": "Ваш аккаунт заблокирован в связи с нарушением правил использования сервиса. Если вы считаете, что это ошибка, свяжитесь с поддержкой.",
+    "contactSupport": "Написать в поддержку",
+    "backHome": "На главную"
+  },
+  "notFound": {
+    "metaTitle": "Страница не найдена",
+    "title": "Страница не найдена",
+    "text": "Такой страницы не существует или она была перемещена.",
+    "backHome": "На главную",
+    "catalogLink": "Каталог нейросетей"
+  },
+  "payment": {
+    "successTitle": "Оплата прошла успешно",
+    "successText": "Средства зачислены на ваш счёт. Можете продолжать пользоваться сервисом.",
+    "failTitle": "Оплата не прошла",
+    "failText": "Платёж не был завершён. Попробуйте снова или выберите другой способ оплаты.",
+    "invoiceNumber": "Номер платежа: {id}",
+    "goToBalance": "Перейти к балансу",
+    "backToPayment": "Вернуться к оплате",
+    "backHome": "На главную"
+  },
+  "pwa": {
+    "installTitle": "Установить приложение",
+    "iosPress": "Нажмите",
+    "iosShare": "«Поделиться»",
+    "iosThen": "в Safari, затем",
+    "iosAddHome": "«На экран Домой»",
+    "benefit": "Работает без браузера, быстрее загружается",
+    "install": "Установить",
+    "close": "Закрыть"
   }
 }

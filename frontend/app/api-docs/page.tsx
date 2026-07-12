@@ -10,6 +10,7 @@ import {
 import { CodeTabs, StandaloneCodeBlock } from "@/components/docs/CodeTabs";
 import type { CodeTabItem } from "@/components/docs/CodeTabs";
 import { formatMoney } from "@/lib/money";
+import { IS_RU } from "@/lib/site";
 import { getTranslations } from "next-intl/server";
 
 export const dynamic = "force-dynamic";
@@ -28,18 +29,68 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "https://aineron.ru/api/v1";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://aineron.ru";
 const BRAND = new URL(SITE_URL).host;
 
+// Пользовательские строки внутри код-сэмплов (промты, комментарии, плейсхолдер
+// ключа) — по локали инстанса: en-сборка не должна показывать русские примеры.
+const S = IS_RU
+  ? {
+      key: "ak_ВАШ_КЛЮЧ",
+      hello: "Привет! Напиши Hello World на Python",
+      hi: "Привет!",
+      streamComment: "Стриминг ответа по мере генерации",
+      streamShort: "Стриминг",
+      joke: "Расскажи анекдот",
+      pythagoras: "Объясни теорему Пифагора",
+      imgPrompt: "Горный пейзаж на закате, фотореализм, 8K",
+      embedInput: "Текст для векторизации",
+      ttsInput: "Привет, это синтез речи",
+      sbxAutoStopped: "Песочница остановлена автоматически — биллинг завершён",
+      sbxStep1: "1. Создать песочницу (TTL 5 минут)",
+      sbxStep2: "2. Выполнить код",
+      sbxStep3: "3. Остановить (иначе умрёт сама по TTL)",
+      sbxWrite: "Записать файлы",
+      sbxRead: "Прочитать файл",
+      sbxList: "Листинг директории",
+      agentDoc: "LLM пишет код → песочница выполняет → результат возвращается.",
+      agentTask: "Реши задачу кодом на Python. Верни ТОЛЬКО код:",
+      agentErr: "Ошибка выполнения:",
+      agentFib: "Найди 100-е число Фибоначчи",
+    }
+  : {
+      key: "ak_YOUR_KEY",
+      hello: "Hi! Write Hello World in Python",
+      hi: "Hello!",
+      streamComment: "Stream the response as it is generated",
+      streamShort: "Streaming",
+      joke: "Tell me a joke",
+      pythagoras: "Explain the Pythagorean theorem",
+      imgPrompt: "Mountain landscape at sunset, photorealistic, 8K",
+      embedInput: "Text to embed",
+      ttsInput: "Hello, this is speech synthesis",
+      sbxAutoStopped: "Sandbox stopped automatically — billing finished",
+      sbxStep1: "1. Create a sandbox (TTL 5 minutes)",
+      sbxStep2: "2. Execute code",
+      sbxStep3: "3. Stop it (otherwise it dies by TTL)",
+      sbxWrite: "Write files",
+      sbxRead: "Read a file",
+      sbxList: "List a directory",
+      agentDoc: "LLM writes code → sandbox executes it → result comes back.",
+      agentTask: "Solve the task with Python code. Return ONLY the code:",
+      agentErr: "Execution error:",
+      agentFib: "Find the 100th Fibonacci number",
+    };
+
 // ── Snippets ──────────────────────────────────────────────────────────────────
 
 const QUICKSTART: CodeTabItem[] = [
   {
     key: "curl", label: "curl",
     code: `curl ${API_BASE}/chat/completions \\
-  -H "Authorization: Bearer ak_ВАШ_КЛЮЧ" \\
+  -H "Authorization: Bearer ${S.key}" \\
   -H "Content-Type: application/json" \\
   -d '{
     "model": "gpt-4o",
     "messages": [
-      {"role": "user", "content": "Привет! Напиши Hello World на Python"}
+      {"role": "user", "content": "${S.hello}"}
     ]
   }'`,
   },
@@ -50,21 +101,21 @@ const QUICKSTART: CodeTabItem[] = [
 
 client = OpenAI(
     base_url="${API_BASE}",
-    api_key="ak_ВАШ_КЛЮЧ",
+    api_key="${S.key}",
 )
 
 response = client.chat.completions.create(
     model="gpt-4o",
     messages=[
-        {"role": "user", "content": "Привет! Напиши Hello World на Python"}
+        {"role": "user", "content": "${S.hello}"}
     ]
 )
 
 print(response.choices[0].message.content)`,
-      `# Стриминг ответа по мере генерации
+      `# ${S.streamComment}
 for chunk in client.chat.completions.create(
     model="gpt-4o",
-    messages=[{"role": "user", "content": "Расскажи анекдот"}],
+    messages=[{"role": "user", "content": "${S.joke}"}],
     stream=True,
 ):
     if chunk.choices[0].delta.content:
@@ -78,21 +129,21 @@ for chunk in client.chat.completions.create(
 
 const client = new OpenAI({
   baseURL: "${API_BASE}",
-  apiKey: "ak_ВАШ_КЛЮЧ",
+  apiKey: "${S.key}",
 });
 
 const response = await client.chat.completions.create({
   model: "gpt-4o",
   messages: [
-    { role: "user", content: "Привет! Напиши Hello World на Python" }
+    { role: "user", content: "${S.hello}" }
   ],
 });
 
 console.log(response.choices[0].message.content);`,
-      `// Стриминг
+      `// ${S.streamShort}
 const stream = await client.chat.completions.create({
   model: "gpt-4o",
-  messages: [{ role: "user", content: "Расскажи анекдот" }],
+  messages: [{ role: "user", content: "${S.joke}" }],
   stream: true,
 });
 
@@ -110,13 +161,13 @@ curl_setopt_array($curl, [
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_POST => true,
     CURLOPT_HTTPHEADER => [
-        'Authorization: Bearer ak_ВАШ_КЛЮЧ',
+        'Authorization: Bearer ${S.key}',
         'Content-Type: application/json',
     ],
     CURLOPT_POSTFIELDS => json_encode([
         'model'    => 'gpt-4o',
         'messages' => [
-            ['role' => 'user', 'content' => 'Привет!']
+            ['role' => 'user', 'content' => '${S.hi}']
         ],
     ]),
 ]);
@@ -134,14 +185,14 @@ const ANTHROPIC: CodeTabItem[] = [
 
 client = anthropic.Anthropic(
     base_url="${API_BASE}",
-    api_key="ak_ВАШ_КЛЮЧ",
+    api_key="${S.key}",
 )
 
 message = client.messages.create(
     model="claude-sonnet-4-6",
     max_tokens=1024,
     messages=[
-        {"role": "user", "content": "Объясни теорему Пифагора"}
+        {"role": "user", "content": "${S.pythagoras}"}
     ]
 )
 
@@ -153,13 +204,13 @@ print(message.content[0].text)`,
 
 const client = new Anthropic({
   baseURL: "${API_BASE}",
-  apiKey: "ak_ВАШ_КЛЮЧ",
+  apiKey: "${S.key}",
 });
 
 const message = await client.messages.create({
   model: "claude-sonnet-4-6",
   max_tokens: 1024,
-  messages: [{ role: "user", content: "Объясни теорему Пифагора" }],
+  messages: [{ role: "user", content: "${S.pythagoras}" }],
 });
 
 console.log(message.content[0].text);`,
@@ -170,11 +221,11 @@ const IMAGES: CodeTabItem[] = [
   {
     key: "curl", label: "curl",
     code: `curl ${API_BASE}/images/generations \\
-  -H "Authorization: Bearer ak_ВАШ_КЛЮЧ" \\
+  -H "Authorization: Bearer ${S.key}" \\
   -H "Content-Type: application/json" \\
   -d '{
     "model": "flux-2-pro",
-    "prompt": "Горный пейзаж на закате, фотореализм, 8K",
+    "prompt": "${S.imgPrompt}",
     "n": 1,
     "size": "1024x1024"
   }'`,
@@ -185,12 +236,12 @@ const IMAGES: CodeTabItem[] = [
 
 client = OpenAI(
     base_url="${API_BASE}",
-    api_key="ak_ВАШ_КЛЮЧ",
+    api_key="${S.key}",
 )
 
 image = client.images.generate(
     model="flux-2-pro",
-    prompt="Горный пейзаж на закате, фотореализм, 8K",
+    prompt="${S.imgPrompt}",
     n=1,
     size="1024x1024",
 )
@@ -200,21 +251,21 @@ print(image.data[0].url)`,
 ];
 
 const EMBEDDINGS = `curl ${API_BASE}/embeddings \\
-  -H "Authorization: Bearer ak_ВАШ_КЛЮЧ" \\
+  -H "Authorization: Bearer ${S.key}" \\
   -H "Content-Type: application/json" \\
   -d '{
     "model": "text-embedding-3-small",
-    "input": "Текст для векторизации"
+    "input": "${S.embedInput}"
   }'`;
 
 const AUDIO_TTS = `curl ${API_BASE}/audio/speech \\
-  -H "Authorization: Bearer ak_ВАШ_КЛЮЧ" \\
+  -H "Authorization: Bearer ${S.key}" \\
   -H "Content-Type: application/json" \\
-  -d '{"model": "tts-1", "voice": "alloy", "input": "Привет, это синтез речи"}' \\
+  -d '{"model": "tts-1", "voice": "alloy", "input": "${S.ttsInput}"}' \\
   --output speech.mp3`;
 
 const AUDIO_ASR = `curl ${API_BASE}/audio/transcriptions \\
-  -H "Authorization: Bearer ak_ВАШ_КЛЮЧ" \\
+  -H "Authorization: Bearer ${S.key}" \\
   -F model="whisper-1" \\
   -F file="@audio.mp3"`;
 
@@ -229,7 +280,7 @@ function errorBody(t: Awaited<ReturnType<typeof getTranslations>>) {
 }
 
 const CLINE_SETTINGS = `API Base URL:  ${API_BASE}
-API Key:       ak_ВАШ_КЛЮЧ
+API Key:       ${S.key}
 Model ID:      gpt-4o`;
 
 const CONTINUE_CONFIG = `{
@@ -239,14 +290,14 @@ const CONTINUE_CONFIG = `{
       "provider": "openai",
       "model": "gpt-4o",
       "apiBase": "${API_BASE}",
-      "apiKey": "ak_ВАШ_КЛЮЧ"
+      "apiKey": "${S.key}"
     },
     {
       "title": "Claude Sonnet (${BRAND})",
       "provider": "openai",
       "model": "claude-sonnet-4-6",
       "apiBase": "${API_BASE}",
-      "apiKey": "ak_ВАШ_КЛЮЧ"
+      "apiKey": "${S.key}"
     }
   ],
   "tabAutocompleteModel": {
@@ -254,12 +305,12 @@ const CONTINUE_CONFIG = `{
     "provider": "openai",
     "model": "gpt-4o-mini",
     "apiBase": "${API_BASE}",
-    "apiKey": "ak_ВАШ_КЛЮЧ"
+    "apiKey": "${S.key}"
   }
 }`;
 
 const CHECK_MODELS = `curl ${API_BASE}/models \\
-  -H "Authorization: Bearer ak_ВАШ_КЛЮЧ"`;
+  -H "Authorization: Bearer ${S.key}"`;
 
 // ── Sandboxes snippets ────────────────────────────────────────────────────────
 
@@ -272,56 +323,56 @@ from aineron import Sandbox
 with Sandbox(template="python") as sbx:
     result = sbx.exec(code="print(2 + 2)")
     print(result.stdout)   # 4
-# Песочница остановлена автоматически — биллинг завершён`,
+# ${S.sbxAutoStopped}`,
   },
   {
     key: "curl", label: "curl",
-    code: `# 1. Создать песочницу (TTL 5 минут)
+    code: `# ${S.sbxStep1}
 curl -X POST ${API_BASE}/sandboxes/ \\
-  -H "Authorization: Bearer ak_ВАШ_КЛЮЧ" \\
+  -H "Authorization: Bearer ${S.key}" \\
   -H "Content-Type: application/json" \\
   -d '{"template": "python", "timeout_seconds": 300}'
 # → {"id": "sbx_...", "state": "running", ...}
 
-# 2. Выполнить код
+# ${S.sbxStep2}
 curl -X POST ${API_BASE}/sandboxes/sbx_.../exec/ \\
-  -H "Authorization: Bearer ak_ВАШ_КЛЮЧ" \\
+  -H "Authorization: Bearer ${S.key}" \\
   -H "Content-Type: application/json" \\
   -d '{"code": "print(2 + 2)", "language": "python"}'
 # → {"exit_code": 0, "stdout": "4\\n", ...}
 
-# 3. Остановить (иначе умрёт сама по TTL)
+# ${S.sbxStep3}
 curl -X DELETE ${API_BASE}/sandboxes/sbx_.../ \\
-  -H "Authorization: Bearer ak_ВАШ_КЛЮЧ"`,
+  -H "Authorization: Bearer ${S.key}"`,
   },
 ];
 
-const SANDBOX_FILES = `# Записать файлы
+const SANDBOX_FILES = `# ${S.sbxWrite}
 curl -X POST ${API_BASE}/sandboxes/sbx_.../files/ \\
-  -H "Authorization: Bearer ak_ВАШ_КЛЮЧ" \\
+  -H "Authorization: Bearer ${S.key}" \\
   -H "Content-Type: application/json" \\
   -d '{"files": [{"path": "main.py", "content": "print(42)"}]}'
 
-# Прочитать файл
+# ${S.sbxRead}
 curl "${API_BASE}/sandboxes/sbx_.../files/?path=/home/user/main.py" \\
-  -H "Authorization: Bearer ak_ВАШ_КЛЮЧ"
+  -H "Authorization: Bearer ${S.key}"
 
-# Листинг директории
+# ${S.sbxList}
 curl "${API_BASE}/sandboxes/sbx_.../files/?path=/home/user&op=list" \\
-  -H "Authorization: Bearer ak_ВАШ_КЛЮЧ"`;
+  -H "Authorization: Bearer ${S.key}"`;
 
 const SANDBOX_AGENT = `from openai import OpenAI
 from aineron import Sandbox
 
-llm = OpenAI(base_url="${API_BASE}", api_key="ak_ВАШ_КЛЮЧ")
+llm = OpenAI(base_url="${API_BASE}", api_key="${S.key}")
 
 def solve_with_code(task: str) -> str:
-    """LLM пишет код → песочница выполняет → результат возвращается."""
+    """${S.agentDoc}"""
     code = llm.chat.completions.create(
         model="deepseek-v3",
         messages=[{
             "role": "user",
-            "content": f"Реши задачу кодом на Python. Верни ТОЛЬКО код: {task}",
+            "content": f"${S.agentTask} {task}",
         }],
     ).choices[0].message.content.strip().strip("\`").removeprefix("python")
 
@@ -329,9 +380,9 @@ def solve_with_code(task: str) -> str:
         result = sbx.exec(code=code, timeout=60)
         if result.ok:
             return result.stdout
-        return f"Ошибка выполнения: {result.stderr}"
+        return f"${S.agentErr} {result.stderr}"
 
-print(solve_with_code("Найди 100-е число Фибоначчи"))`;
+print(solve_with_code("${S.agentFib}"))`;
 
 // ── Groups ────────────────────────────────────────────────────────────────────
 // GROUPS — статическая JSX-структура (не может звать хуки/т() на уровне модуля),
@@ -431,7 +482,7 @@ function buildGroups(t: Awaited<ReturnType<typeof getTranslations>>): DocGroup[]
         label: t("intro.navAuth"),
         content: (
           <DocSection title={t("intro.authTitle")} intro={t("intro.authIntro")}>
-            <StandaloneCodeBlock code={`Authorization: Bearer ak_ВАШ_КЛЮЧ`} />
+            <StandaloneCodeBlock code={`Authorization: Bearer ${S.key}`} />
             <UL>
               <LI>{t.rich("intro.authItem1", { a: (chunks) => <A href="/account/keys/">{chunks}</A> })}</LI>
               <LI>{t("intro.authItem2")}</LI>

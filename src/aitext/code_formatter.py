@@ -9,6 +9,14 @@ from pygments.util import ClassNotFound as UtilClassNotFound
 logger = logging.getLogger(__name__)
 
 
+def _button_labels():
+    """Подписи кнопок код-блока по языку инстанса (INTL_MODE → английские)."""
+    from django.conf import settings
+    if getattr(settings, 'INTL_MODE', False):
+        return 'Copy', 'Download'
+    return 'Копировать', 'Скачать'
+
+
 class CodeFormatter:
     """Класс для форматирования кода с подсветкой синтаксиса с полной поддержкой Pygments"""
 
@@ -109,6 +117,7 @@ class CodeFormatter:
             highlighted_code = highlight(code, lexer, formatter)
 
             display_name = cls.LANGUAGE_DISPLAY_NAMES.get(detected_language, detected_language.capitalize())
+            copy_label, download_label = _button_labels()
 
             return f'''
 <div class="code-block">
@@ -117,11 +126,11 @@ class CodeFormatter:
         <div class="code-actions">
             <button class="code-action-btn copy-code">
                 <i class="far fa-copy"></i>
-                Копировать
+                {copy_label}
             </button>
             <button class="code-action-btn download-code">
                 <i class="fas fa-download"></i>
-                Скачать
+                {download_label}
             </button>
         </div>
     </div>
@@ -134,6 +143,7 @@ class CodeFormatter:
             logger.error(f"Error highlighting code: {e}")
             escaped_code = html.escape(code)
             display_name = cls.LANGUAGE_DISPLAY_NAMES.get(detected_language, detected_language.capitalize())
+            copy_label, download_label = _button_labels()
             return f'''
 <div class="code-block">
     <div class="code-header">
@@ -141,11 +151,11 @@ class CodeFormatter:
         <div class="code-actions">
             <button class="code-action-btn copy-code">
                 <i class="far fa-copy"></i>
-                Копировать
+                {copy_label}
             </button>
             <button class="code-action-btn download-code">
                 <i class="fas fa-download"></i>
-                Скачать
+                {download_label}
             </button>
         </div>
     </div>
