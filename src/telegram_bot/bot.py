@@ -32,6 +32,25 @@ def register_routers():
     dp.message.middleware(AuthMiddleware())
     dp.callback_query.middleware(AuthMiddleware())
     dp.inline_query.middleware(AuthMiddleware())
+
+    if getattr(settings, 'INTL_MODE', False):
+        # G4 (GLOBAL_EXPANSION_PLAN.md §4.6): волна 1 — только базовый
+        # денежный/чат-путь. Payment (Stars/Robokassa) и Studio-смежные
+        # фичи (tasks/research/business/topics/mybot/group/inline и т.д.)
+        # не переведены и не подключены на этой волне — см. §16 задачи.
+        dp.include_router(menu.router)
+        dp.include_router(onboarding.router)
+        dp.include_router(start.router)
+        dp.include_router(chat.router)
+        dp.include_router(balance.router)
+        dp.include_router(models_cmd.router)
+        dp.include_router(images.router)
+        dp.include_router(settings_cmd.router)
+        _routers_registered = True
+        return
+
+    # aineron.ru: полный набор роутеров, порядок и состав НЕ ИЗМЕНЕНЫ —
+    # доказуемый no-op относительно поведения до G4.
     dp.include_router(inline.router)        # FIRST — inline queries
     dp.include_router(menu.router)          # SECOND — reply keyboard buttons
     dp.include_router(onboarding.router)    # FSM onboarding callbacks

@@ -6,6 +6,7 @@ from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKe
 from asgiref.sync import sync_to_async
 from telegram_bot.keyboards import star_packs_kb
 from telegram_bot.utils import stars_estimate, DIVIDER
+from telegram_bot.i18n import t, resolve_language
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -38,8 +39,40 @@ def _get_stars_subscription(tg_user):
     )
 
 
-async def send_balance(message: Message, tg_user):
-    from core.money import format_rub
+async def send_balance(message: Message, tg_user, lang: str = 'ru'):
+    from core.money import format_money, format_rub
+
+    if lang != 'ru':
+        # Международный инстанс: без Stars/Robokassa/подписки — только баланс
+        # в кредитах и ссылка на пополнение на сайте (см. i18n.py resolve_language).
+        network = tg_user.default_network
+        cost_kopecks = network.cost_kopecks if network else 0
+        name = network.name if network else '—'
+        balance_kopecks = tg_user.user.balance_kopecks
+        estimate = stars_estimate(balance_kopecks, cost_kopecks) if cost_kopecks else '—'
+        week_total_kopecks = await _get_week_spending(tg_user.user)
+
+        lines = [
+            f"<b>{t('balance.title', lang)}</b>", DIVIDER,
+            f"{t('balance.available', lang)}: <b>{format_money(balance_kopecks)}</b>",
+        ]
+        if cost_kopecks:
+            lines.append(f"{t('balance.model', lang)}: {name}  ({format_money(cost_kopecks)}/{t('balance.perMessage', lang)})")
+            lines.append(f"{t('balance.enoughFor', lang)}: ~{estimate} {t('balance.responses', lang)}")
+        else:
+            lines.append(f"{t('balance.model', lang)}: {name}")
+        if week_total_kopecks:
+            lines.append(f"\n{t('balance.last7days', lang)}: -{format_money(week_total_kopecks)}")
+        text = '\n'.join(lines)
+
+        from django.conf import settings as dj_settings
+        site_url = getattr(dj_settings, 'SITE_URL', 'https://aineron.net')
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text=t('balance.topUpOnWebsite', lang), url=f'{site_url}/account/billing/')],
+        ])
+        await message.answer(text, parse_mode='HTML', reply_markup=kb)
+        return
+
     network = tg_user.default_network
     cost_kopecks = network.cost_kopecks if network else 0
     name = network.name if network else '—'
@@ -139,11 +172,21 @@ async def cb_substars_cancel(query: CallbackQuery, tg_user=None):
 async def cmd_balance(message: Message, tg_user=None):
     if tg_user is None:
         return
-    await send_balance(message, tg_user)
+    lang = resolve_language(tg_user, message.from_user)
+    await send_balance(message, tg_user, lang)
 
 
 @router.message(Command('help'))
-async def cmd_help(message: Message):
+async def cmd_help(message: Message, tg_user=None):
+    lang = resolve_language(tg_user, message.from_user)
+    if lang != 'ru':
+        # Урезанная справка: только зарегистрированные на intl-боте команды
+        # (см. bot.py register_routers) — /task, /research и т.п. не подключены.
+        await message.answer(
+            f"<b>{t('menu.helpTitle', lang)}</b>\n{DIVIDER}\n{t('menu.helpBody', lang)}",
+            parse_mode='HTML',
+        )
+        return
     await message.answer(
         f'<b>Aineron · Помощь</b>\n{DIVIDER}\n'
         '<b>Чат и генерация</b>\n'

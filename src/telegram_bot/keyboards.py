@@ -5,26 +5,40 @@ from aiogram.types import (
 )
 
 
-def main_reply_kb() -> ReplyKeyboardMarkup:
+def main_reply_kb(lang: str = 'ru') -> ReplyKeyboardMarkup:
+    if lang == 'ru':
+        return ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text='Чат'),     KeyboardButton(text='Картинка'), KeyboardButton(text='Видео')],
+                [KeyboardButton(text='Баланс'),  KeyboardButton(text='Модели'),   KeyboardButton(text='Настройки')],
+                [KeyboardButton(text='Проекты'), KeyboardButton(text='История'),  KeyboardButton(text='Задачи')],
+                [KeyboardButton(text='Исследование'), KeyboardButton(text='Помощь')],
+            ],
+            resize_keyboard=True,
+            input_field_placeholder='Напишите вопрос или выберите раздел',
+        )
+    # Международный инстанс (G4): урезанный набор — только зарегистрированные
+    # на intl-боте хендлеры (см. bot.py register_routers). Video/Projects/
+    # История/Задачи/Исследование пока не переведены и не подключены.
+    from telegram_bot.i18n import t
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text='Чат'),     KeyboardButton(text='Картинка'), KeyboardButton(text='Видео')],
-            [KeyboardButton(text='Баланс'),  KeyboardButton(text='Модели'),   KeyboardButton(text='Настройки')],
-            [KeyboardButton(text='Проекты'), KeyboardButton(text='История'),  KeyboardButton(text='Задачи')],
-            [KeyboardButton(text='Исследование'), KeyboardButton(text='Помощь')],
+            [KeyboardButton(text=t('menu.chat', lang)), KeyboardButton(text=t('menu.image', lang))],
+            [KeyboardButton(text=t('menu.balance', lang)), KeyboardButton(text=t('menu.models', lang))],
+            [KeyboardButton(text=t('menu.settings', lang)), KeyboardButton(text=t('menu.help', lang))],
         ],
         resize_keyboard=True,
-        input_field_placeholder='Напишите вопрос или выберите раздел',
     )
 
 
 def after_answer_kb(message_id: int, has_tts: bool = True,
-                    copy_code: str = '') -> InlineKeyboardMarkup:
+                    copy_code: str = '', lang: str = 'ru') -> InlineKeyboardMarkup:
+    from telegram_bot.i18n import t
     row1 = [
         InlineKeyboardButton(text='👍', callback_data=f'react_like:{message_id}'),
         InlineKeyboardButton(text='👎', callback_data=f'react_dislike:{message_id}'),
         InlineKeyboardButton(text='↺', callback_data=f'regen:{message_id}'),
-        InlineKeyboardButton(text='Новый чат', callback_data='newchat'),
+        InlineKeyboardButton(text=t('chat.newChatButton', lang), callback_data='newchat'),
     ]
     if has_tts:
         row1.append(InlineKeyboardButton(text='🔊', callback_data=f'tts:{message_id}'))
@@ -38,7 +52,7 @@ def after_answer_kb(message_id: int, has_tts: bool = True,
         try:
             from aiogram.types import CopyTextButton
             rows.append([InlineKeyboardButton(
-                text='Скопировать код',
+                text=t('chat.copyCodeButton', lang),
                 copy_text=CopyTextButton(text=copy_code[:256]),
             )])
         except Exception:
@@ -60,13 +74,18 @@ def models_kb(networks: list, current_id: int | None = None) -> InlineKeyboardMa
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def models_tabs_kb(active_tab: str, networks: list, current_id: int | None = None) -> InlineKeyboardMarkup:
+def models_tabs_kb(active_tab: str, networks: list, current_id: int | None = None,
+                   lang: str = 'ru') -> InlineKeyboardMarkup:
     """Three-tab keyboard: Текст / Изображения / Видео."""
-    tab_labels = {
-        'text': 'Текст',
-        'image': 'Изображения',
-        'video': 'Видео',
-    }
+    if lang == 'ru':
+        tab_labels = {'text': 'Текст', 'image': 'Изображения', 'video': 'Видео'}
+    else:
+        from telegram_bot.i18n import t
+        tab_labels = {
+            'text': t('models.tabText', lang),
+            'image': t('models.tabImage', lang),
+            'video': t('models.tabVideo', lang),
+        }
     tab_type = active_tab
 
     tab_row = []
@@ -87,7 +106,8 @@ def models_tabs_kb(active_tab: str, networks: list, current_id: int | None = Non
         rows.append(row)
 
     if active_tab == 'video' and networks:
-        rows.append([InlineKeyboardButton(text='Настройки видео', callback_data='vset:o')])
+        from telegram_bot.i18n import t as _t
+        rows.append([InlineKeyboardButton(text=_t('models.videoSettingsButton', lang), callback_data='vset:o')])
 
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
@@ -110,14 +130,27 @@ def webapp_kb(site_url: str) -> InlineKeyboardMarkup:
     ]])
 
 
-def settings_kb(tg_user) -> InlineKeyboardMarkup:
-    voice = 'Вкл' if tg_user.voice_responses else 'Выкл'
-    search = 'Вкл' if tg_user.web_search else 'Выкл'
-    streaming = 'Вкл' if tg_user.streaming else 'Выкл'
+def settings_kb(tg_user, lang: str = 'ru') -> InlineKeyboardMarkup:
+    if lang == 'ru':
+        voice = 'Вкл' if tg_user.voice_responses else 'Выкл'
+        search = 'Вкл' if tg_user.web_search else 'Выкл'
+        streaming = 'Вкл' if tg_user.streaming else 'Выкл'
+        return InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text=f'Голосовые ответы: {voice}', callback_data='toggle:voice')],
+            [InlineKeyboardButton(text=f'Веб-поиск: {search}', callback_data='toggle:search')],
+            [InlineKeyboardButton(text=f'Стриминг: {streaming}', callback_data='toggle:streaming')],
+            [InlineKeyboardButton(text='Системный промт', callback_data='settings:sysprompt')],
+            [InlineKeyboardButton(text='Сменить модель', callback_data='settings:model')],
+        ])
+    from telegram_bot.i18n import t
+    on, off = t('settings.on', lang), t('settings.off', lang)
+    voice = on if tg_user.voice_responses else off
+    search = on if tg_user.web_search else off
+    streaming = on if tg_user.streaming else off
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=f'Голосовые ответы: {voice}', callback_data='toggle:voice')],
-        [InlineKeyboardButton(text=f'Веб-поиск: {search}', callback_data='toggle:search')],
-        [InlineKeyboardButton(text=f'Стриминг: {streaming}', callback_data='toggle:streaming')],
-        [InlineKeyboardButton(text='Системный промт', callback_data='settings:sysprompt')],
-        [InlineKeyboardButton(text='Сменить модель', callback_data='settings:model')],
+        [InlineKeyboardButton(text=f"{t('settings.voiceReplies', lang)}: {voice}", callback_data='toggle:voice')],
+        [InlineKeyboardButton(text=f"{t('settings.webSearch', lang)}: {search}", callback_data='toggle:search')],
+        [InlineKeyboardButton(text=f"{t('settings.streaming', lang)}: {streaming}", callback_data='toggle:streaming')],
+        [InlineKeyboardButton(text=t('settings.sysPromptButton', lang), callback_data='settings:sysprompt')],
+        [InlineKeyboardButton(text=t('settings.changeModelButton', lang), callback_data='settings:model')],
     ])

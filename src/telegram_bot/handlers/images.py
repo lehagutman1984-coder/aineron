@@ -8,6 +8,7 @@ from django.conf import settings
 
 from telegram_bot.analytics import async_log_event
 from telegram_bot.utils import DIVIDER
+from telegram_bot.i18n import t, resolve_language
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -64,28 +65,29 @@ get_message_state = sync_to_async(_get_message_state, thread_sensitive=True)
 async def cmd_image(message: Message, tg_user=None):
     if tg_user is None:
         return
+    lang = resolve_language(tg_user, message.from_user)
 
     prompt = message.text.removeprefix('/image').strip()
     if not prompt:
         await message.answer(
-            f'<b>Aineron · Изображение</b>\n{DIVIDER}\n'
-            'Опишите изображение:\n\n'
-            '<code>/image закат над морем в стиле аниме</code>',
+            f"<b>{t('images.title', lang)}</b>\n{DIVIDER}\n"
+            f"{t('images.describe', lang)}\n\n{t('images.example', lang)}",
             parse_mode='HTML',
         )
         return
 
     network = await get_image_network(tg_user)
     if not network:
-        await message.answer("Нет доступных моделей для генерации изображений.")
+        await message.answer(t('images.noModels', lang))
         return
 
     if not tg_user.user.has_enough_kopecks(network.cost_kopecks):
-        from core.money import format_rub
+        from core.money import format_money
         await message.answer(
-            f'<b>Недостаточно средств</b>\n{DIVIDER}\n'
-            f'Нужно: <b>{format_rub(network.cost_kopecks)}</b>   У вас: {format_rub(tg_user.user.balance_kopecks)}\n\n'
-            'Пополните баланс: /balance',
+            f"<b>{t('images.insufficientTitle', lang)}</b>\n{DIVIDER}\n"
+            f"{t('images.need', lang)}: <b>{format_money(network.cost_kopecks)}</b>   "
+            f"{t('images.have', lang)}: {format_money(tg_user.user.balance_kopecks)}\n\n"
+            f"{t('images.topUp', lang)}",
             parse_mode='HTML',
         )
         return
@@ -94,9 +96,7 @@ async def cmd_image(message: Message, tg_user=None):
     from telegram_bot.notify import set_status_reaction
     await set_status_reaction(message.bot, message.chat.id, message.message_id, '👀')
 
-    status_msg = await message.answer(
-        f'Генерирую изображение...  ({network.name})'
-    )
+    status_msg = await message.answer(t('images.generating', lang, name=network.name))
 
     assistant_msg = await create_image_request(tg_user, network, prompt)
 
@@ -122,33 +122,29 @@ async def cmd_image(message: Message, tg_user=None):
                 await status_msg.delete()
                 img_url = f"{settings.SITE_URL}{image.image.url}"
                 try:
-                    from core.money import format_rub
+                    from core.money import format_money
                     await message.answer_photo(
                         URLInputFile(img_url),
-                        caption=f"{network.name} · {format_rub(network.cost_kopecks)}",
+                        caption=f"{network.name} · {format_money(network.cost_kopecks)}",
                     )
                 except Exception:
-                    await message.answer(f"Изображение готово: {img_url}")
+                    await message.answer(t('images.resultReady', lang, url=img_url))
             else:
-                await status_msg.edit_text("Изображение сгенерировано, но не найдено. Проверь /account/files/")
+                await status_msg.edit_text(t('images.notFound', lang))
             await async_log_event(tg_user, 'image', network=network,
                                   cost_kopecks=network.cost_kopecks)
             return
 
         elif msg.status == 'failed':
-            await status_msg.edit_text(
-                "Ошибка генерации. Попробуйте позже — средства возвращены."
-            )
+            await status_msg.edit_text(t('images.error', lang))
             await async_log_event(tg_user, 'error', network=network, reason='image_failed')
             return
 
         if i % 5 == 0 and i > 0:
             dots = '.' * ((i // 5) % 4 + 1)
             try:
-                await status_msg.edit_text(
-                    f'Генерирую{dots}  ({i * POLL_INTERVAL} сек)'
-                )
+                await status_msg.edit_text(t('images.generatingDots', lang, dots=dots, sec=i * POLL_INTERVAL))
             except Exception:
                 pass
 
-    await status_msg.edit_text("Превышено время ожидания. Попробуйте ещё раз.")
+    await status_msg.edit_text(t('images.timeout', lang))

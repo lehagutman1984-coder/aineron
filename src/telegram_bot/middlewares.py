@@ -7,6 +7,8 @@ from aiogram.types import TelegramObject
 from asgiref.sync import sync_to_async
 from django.core.cache import cache
 
+from telegram_bot.i18n import resolve_language, t
+
 logger = logging.getLogger(__name__)
 
 RATE_LIMIT_PER_MINUTE = 30
@@ -27,18 +29,16 @@ class AuthMiddleware(BaseMiddleware):
         # /start обрабатывается без авторизации — это точка входа
         text = getattr(event, 'text', '') or ''
         if text.startswith('/start'):
+            data['lang'] = resolve_language(None, from_user)
             return await handler(event, data)
 
         get_tg = sync_to_async(self._get_tg_user, thread_sensitive=True)
         tg_user = await get_tg(from_user.id)
+        lang = resolve_language(tg_user, from_user)
+        data['lang'] = lang
 
         if tg_user is None:
-            await event.answer(
-                "Чтобы начать работу, привяжи аккаунт:\n\n"
-                "1. Зайди на aineron.ru\n"
-                "2. Кабинет → Telegram → Подключить\n\n"
-                "После привязки все функции будут доступны."
-            )
+            await event.answer(t('auth.notLinked', lang))
             return
 
         if tg_user.user.shadow_banned:
@@ -50,7 +50,7 @@ class AuthMiddleware(BaseMiddleware):
         count = await sync_to_async(cache.get, thread_sensitive=False)(rate_key, 0)
         if count >= RATE_LIMIT_PER_MINUTE:
             if hasattr(event, 'answer'):
-                await event.answer("Слишком много запросов. Подожди минуту и попробуй снова.")
+                await event.answer(t('auth.rateLimited', lang))
             return
         await sync_to_async(cache.set, thread_sensitive=False)(rate_key, count + 1, 60)
 

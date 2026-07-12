@@ -15,6 +15,10 @@ class TelegramUser(models.Model):
     telegram_username = models.CharField(max_length=100, blank=True, verbose_name='Username')
     telegram_first_name = models.CharField(max_length=100, blank=True, verbose_name='Имя')
     linked_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата привязки')
+    # Локаль бота (G4, GLOBAL_EXPANSION_PLAN.md §4.6). Пусто = не выбрана явно —
+    # resolve_language() в telegram_bot/i18n.py решает по from_user.language_code
+    # (только при INTL_MODE=1; на aineron.ru язык всегда 'ru' независимо от поля).
+    language = models.CharField(max_length=8, blank=True, verbose_name='Язык бота')
 
     default_network = models.ForeignKey(
         'aitext.NeuralNetwork',

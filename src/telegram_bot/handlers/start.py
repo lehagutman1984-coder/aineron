@@ -7,6 +7,7 @@ from aiogram.types import Message
 from django.utils import timezone
 
 from telegram_bot.utils import DIVIDER
+from telegram_bot.i18n import t, resolve_language
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -20,7 +21,7 @@ def _get_link_token(token_str):
         return None
 
 
-def _create_tg_user(user, from_user):
+def _create_tg_user(user, from_user, lang=''):
     from telegram_bot.models import TelegramUser
     tg_user, _ = TelegramUser.objects.get_or_create(
         telegram_id=from_user.id,
@@ -28,6 +29,7 @@ def _create_tg_user(user, from_user):
             'user': user,
             'telegram_username': from_user.username or '',
             'telegram_first_name': from_user.first_name or '',
+            'language': lang,
         },
     )
     if not tg_user.user_id or tg_user.user_id != user.id:
@@ -70,6 +72,7 @@ apply_referral = sync_to_async(_apply_referral, thread_sensitive=True)
 
 @router.message(CommandStart())
 async def cmd_start(message: Message, state: FSMContext, tg_user=None):
+    lang = resolve_language(tg_user, message.from_user)
     args = ''
     if message.text and ' ' in message.text:
         args = message.text.split(maxsplit=1)[1].strip()
@@ -77,29 +80,36 @@ async def cmd_start(message: Message, state: FSMContext, tg_user=None):
     # Already linked and no special args — show dashboard
     if tg_user and not args:
         from telegram_bot.keyboards import main_reply_kb
-        get_balance = sync_to_async(lambda: tg_user.user.pages_count, thread_sensitive=True)
-        balance = await get_balance()
+        from core.money import format_money
+        if lang == 'ru':
+            get_balance = sync_to_async(lambda: tg_user.user.pages_count, thread_sensitive=True)
+            balance = await get_balance()
+        else:
+            get_kopecks = sync_to_async(lambda: tg_user.user.balance_kopecks, thread_sensitive=True)
+            balance = format_money(await get_kopecks())
         await message.answer(
-            f'<b>Aineron</b>\n{DIVIDER}\n'
-            f'Добро пожаловать, <b>{message.from_user.first_name}</b>\n\n'
-            f'Баланс: <b>{balance} зв.</b>\n\n'
-            'Напишите вопрос или выберите раздел в меню.',
+            f"<b>{t('start.dashboardTitle', lang)}</b>\n{DIVIDER}\n"
+            f"{t('start.dashboardWelcome', lang, name=message.from_user.first_name)}\n\n"
+            f"{t('start.balanceLine', lang, balance=balance)}\n\n"
+            f"{t('start.dashboardHint', lang)}",
             parse_mode='HTML',
-            reply_markup=main_reply_kb(),
+            reply_markup=main_reply_kb(lang),
         )
         return
 
     if args and args.startswith('model_'):
         slug = args[6:]
+        from django.conf import settings as dj_settings
+        site_url = getattr(dj_settings, 'SITE_URL', 'https://aineron.ru')
         await message.answer(
-            f'Открываю модель: https://aineron.ru/chat/{slug}/',
+            t('start.openingModel', lang, url=f'{site_url}/chat/{slug}/'),
             parse_mode='HTML',
         )
         return
 
     if args and args.startswith('prompt_'):
         await message.answer(
-            'Промт загружается, пишите запрос!',
+            t('start.promptLoading', lang),
             parse_mode='HTML',
         )
         return
@@ -108,11 +118,7 @@ async def cmd_start(message: Message, state: FSMContext, tg_user=None):
         referral_code = args[4:]
         await store_referral_code(message.from_user.id, referral_code)
         await message.answer(
-            f'<b>Aineron</b>\n{DIVIDER}\n'
-            'Реферальный код применён. Для начала работы привяжите аккаунт:\n\n'
-            '1. Перейдите на <b>aineron.ru</b>\n'
-            '2. Кабинет → Telegram → Подключить\n'
-            '3. Вернитесь сюда по ссылке',
+            f"<b>{t('start.dashboardTitle', lang)}</b>\n{DIVIDER}\n{t('start.refApplied', lang)}",
             parse_mode='HTML',
         )
         return
@@ -120,7 +126,7 @@ async def cmd_start(message: Message, state: FSMContext, tg_user=None):
     if args and not args.startswith('ref_'):
         link_token = await get_link_token(args)
         if link_token and link_token.is_valid:
-            tg_user = await create_tg_user(link_token.user, message.from_user)
+            tg_user = await create_tg_user(link_token.user, message.from_user, lang)
             await mark_token_used(link_token)
             get_cached_ref = sync_to_async(
                 lambda: __import__('django.core.cache', fromlist=['cache']).cache.get(f'tg_ref:{message.from_user.id}'),
@@ -130,37 +136,34 @@ async def cmd_start(message: Message, state: FSMContext, tg_user=None):
             if ref_code:
                 await apply_referral(link_token.user, ref_code)
 
-            get_balance = sync_to_async(lambda: link_token.user.pages_count, thread_sensitive=True)
-            balance = await get_balance()
+            from core.money import format_money
+            if lang == 'ru':
+                get_balance = sync_to_async(lambda: link_token.user.pages_count, thread_sensitive=True)
+                balance = await get_balance()
+            else:
+                get_kopecks = sync_to_async(lambda: link_token.user.balance_kopecks, thread_sensitive=True)
+                balance = format_money(await get_kopecks())
 
             from telegram_bot.keyboards import main_reply_kb
             from telegram_bot.handlers.onboarding import start_onboarding
             await message.answer(
-                f'<b>Аккаунт привязан</b>\n{DIVIDER}\n'
-                f'Добро пожаловать, <b>{message.from_user.first_name}</b>\n\n'
-                f'Баланс: <b>{balance} зв.</b>',
+                f"<b>{t('start.linkedTitle', lang)}</b>\n{DIVIDER}\n"
+                f"{t('start.dashboardWelcome', lang, name=message.from_user.first_name)}\n\n"
+                f"{t('start.balanceLine', lang, balance=balance)}",
                 parse_mode='HTML',
-                reply_markup=main_reply_kb(),
+                reply_markup=main_reply_kb(lang),
             )
-            await start_onboarding(message, state, tg_user)
+            await start_onboarding(message, state, tg_user, lang=lang)
             logger.info(f'Telegram linked: user={link_token.user.email} tg_id={message.from_user.id}')
             return
 
         await message.answer(
-            f'<b>Ссылка недействительна</b>\n{DIVIDER}\n'
-            'Ссылка устарела или уже была использована.\n\n'
-            'Перейдите на <b>aineron.ru</b> → Кабинет → Telegram и получите новую ссылку.',
+            f"<b>{t('start.linkInvalidTitle', lang)}</b>\n{DIVIDER}\n{t('start.linkInvalidBody', lang)}",
             parse_mode='HTML',
         )
         return
 
     await message.answer(
-        f'<b>Aineron</b>\n{DIVIDER}\n'
-        'Платформа AI-сервисов: GPT-4o, Claude, Gemini и другие модели.\n\n'
-        'Чтобы начать:\n'
-        '1. Перейдите на <b>aineron.ru</b>\n'
-        '2. Кабинет → Telegram → Подключить\n'
-        '3. Вернитесь сюда по ссылке\n\n'
-        'После привязки вам станут доступны все модели и баланс.',
+        f"<b>{t('start.dashboardTitle', lang)}</b>\n{DIVIDER}\n{t('start.introBody', lang)}",
         parse_mode='HTML',
     )

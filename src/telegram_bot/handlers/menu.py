@@ -2,37 +2,62 @@ import logging
 from aiogram import Router, F
 from aiogram.types import Message
 from asgiref.sync import sync_to_async
+from django.conf import settings as dj_settings
 
 from telegram_bot.utils import DIVIDER
+from telegram_bot.i18n import t, resolve_language, DICT_LOCALES
 
 logger = logging.getLogger(__name__)
 router = Router()
 
-MENU_BUTTONS = {'Чат', 'Картинка', 'Видео', 'Баланс', 'Модели', 'Настройки', 'История', 'Помощь',
-                'Проекты', 'Задачи', 'Исследование'}
+MENU_ACTION_KEYS = (
+    'chat', 'image', 'video', 'balance', 'models', 'settings',
+    'history', 'help', 'projects', 'tasks', 'research',
+)
 
 
-@router.message(F.text.in_(MENU_BUTTONS))
+def _all_menu_labels() -> set:
+    """Все возможные подписи кнопок меню по всем локалям — для фильтра хендлера."""
+    labels = set()
+    for locale in DICT_LOCALES:
+        for key in MENU_ACTION_KEYS:
+            labels.add(t(f'menu.{key}', locale))
+    return labels
+
+
+def _label_to_action(text: str, lang: str) -> str | None:
+    for key in MENU_ACTION_KEYS:
+        if t(f'menu.{key}', lang) == text:
+            return key
+    # fallback: подпись могла прийти на другой локали (сменил язык клиента
+    # Telegram между нажатиями) — ищем по всем словарям
+    for locale in DICT_LOCALES:
+        for key in MENU_ACTION_KEYS:
+            if t(f'menu.{key}', locale) == text:
+                return key
+    return None
+
+
+@router.message(F.text.func(lambda text: text in _all_menu_labels()))
 async def handle_menu_button(message: Message, state=None, tg_user=None):
-    text = message.text
+    lang = resolve_language(tg_user, message.from_user)
+    action = _label_to_action(message.text, lang)
+    if action is None:
+        return
 
-    if text == 'Чат':
+    if action == 'chat':
         await message.answer(
-            f'<b>Aineron · Чат</b>\n{DIVIDER}\n'
-            'Напишите вопрос или задачу — AI ответит.\n\n'
-            'Для нового диалога: /newchat',
+            f"<b>{t('menu.chatTitle', lang)}</b>\n{DIVIDER}\n{t('menu.chatBody', lang)}",
             parse_mode='HTML',
         )
 
-    elif text == 'Картинка':
+    elif action == 'image':
         await message.answer(
-            f'<b>Aineron · Генерация изображения</b>\n{DIVIDER}\n'
-            'Опишите изображение командой:\n\n'
-            '<code>/image закат над морем в стиле аниме</code>',
+            f"<b>{t('menu.imageTitle', lang)}</b>\n{DIVIDER}\n{t('menu.imageBody', lang)}",
             parse_mode='HTML',
         )
 
-    elif text == 'Видео':
+    elif action == 'video':
         await message.answer(
             f'<b>Aineron · Генерация видео</b>\n{DIVIDER}\n'
             'Опишите видео командой:\n\n'
@@ -41,84 +66,57 @@ async def handle_menu_button(message: Message, state=None, tg_user=None):
             parse_mode='HTML',
         )
 
-    elif text == 'Баланс':
+    elif action == 'balance':
         if tg_user:
             from telegram_bot.handlers.balance import send_balance
-            await send_balance(message, tg_user)
+            await send_balance(message, tg_user, lang=lang)
         else:
-            await message.answer('Привяжите аккаунт через /start')
+            await message.answer(t('menu.notLinkedShort', lang))
 
-    elif text == 'Модели':
+    elif action == 'models':
         if tg_user:
             from telegram_bot.handlers.models_cmd import _send_tab
-            await _send_tab(message, tg_user, 'text', edit=False)
+            await _send_tab(message, tg_user, 'text', edit=False, lang=lang)
         else:
-            await message.answer('Привяжите аккаунт через /start')
+            await message.answer(t('menu.notLinkedShort', lang))
 
-    elif text == 'Настройки':
+    elif action == 'settings':
         if tg_user:
             from telegram_bot.handlers.settings_cmd import send_settings
-            await send_settings(message, tg_user)
+            await send_settings(message, tg_user, lang=lang)
         else:
-            await message.answer('Привяжите аккаунт через /start')
+            await message.answer(t('menu.notLinkedShort', lang))
 
-    elif text == 'История':
+    elif action == 'history':
         if tg_user:
             from telegram_bot.handlers.history import cmd_history
             await cmd_history(message, state=None, tg_user=tg_user)
         else:
             await message.answer('Привяжите аккаунт через /start')
 
-    elif text == 'Проекты':
+    elif action == 'projects':
         if tg_user:
             from telegram_bot.handlers.projects_cmd import send_project_list
             await send_project_list(message, None, tg_user, offset=0)
         else:
             await message.answer('Привяжите аккаунт через /start')
 
-    elif text == 'Задачи':
+    elif action == 'tasks':
         if tg_user:
             from telegram_bot.handlers.tasks_cmd import _send_task_list
             await _send_task_list(message, tg_user)
         else:
             await message.answer('Привяжите аккаунт через /start')
 
-    elif text == 'Исследование':
+    elif action == 'research':
         if tg_user:
             from telegram_bot.handlers.research_cmd import _ask_confirmation
             await _ask_confirmation(message, state, tg_user, '')
         else:
             await message.answer('Привяжите аккаунт через /start')
 
-    elif text == 'Помощь':
+    elif action == 'help':
         await message.answer(
-            f'<b>Aineron · Помощь</b>\n{DIVIDER}\n'
-            '<b>Чат и генерация</b>\n'
-            'Напишите любой вопрос — AI ответит.\n'
-            '/image &lt;описание&gt; — создать изображение\n'
-            '/video &lt;описание&gt; — создать видео (5–15 мин)\n\n'
-            '<b>Управление</b>\n'
-            '/models — выбор модели AI\n'
-            '/balance — баланс и пополнение\n'
-            '/settings — настройки\n'
-            '/newchat — начать новый диалог\n\n'
-            '<b>Инструменты</b>\n'
-            '/task — AI-задачи по расписанию (утренний бриф, мониторинг)\n'
-            '/tasks — мои задачи\n'
-            '/research &lt;вопрос&gt; — глубокое исследование с источниками\n'
-            '/agent &lt;задача&gt; — агент: поиск + вычисления + отчёт\n'
-            '/channel — AI-посты в ваш канал по расписанию\n'
-            '/search &lt;запрос&gt; — поиск по истории\n'
-            '/export — скачать текущий чат (.md)\n'
-            '/digest — AI-дайджест\n'
-            '/ai — AI-агенты: пост, код-ревью, перевод\n'
-            '/img2video &lt;промт&gt; — фото → анимация\n'
-            '/videoset — настройки видео: длительность, качество, звук\n'
-            '/sticker &lt;промт&gt; — AI-стикер\n'
-            '/memory — что бот помнит о вас\n'
-            '/projects — проекты и база знаний\n'
-            '/referral — реферальная программа\n'
-            f'{DIVIDER}\n'
-            'Пополнение баланса: aineron.ru/account/billing/',
+            f"<b>{t('menu.helpTitle', lang)}</b>\n{DIVIDER}\n{t('menu.helpBody', lang)}",
             parse_mode='HTML',
         )

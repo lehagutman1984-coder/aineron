@@ -7,6 +7,7 @@ from aiogram.types import Message, CallbackQuery
 from asgiref.sync import sync_to_async
 from telegram_bot.keyboards import settings_kb, models_kb
 from telegram_bot.utils import DIVIDER
+from telegram_bot.i18n import t, resolve_language
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -31,30 +32,32 @@ toggle_field = sync_to_async(_toggle_field, thread_sensitive=True)
 save_system_prompt = sync_to_async(_save_system_prompt, thread_sensitive=True)
 
 
-async def send_settings(message: Message, tg_user):
+async def send_settings(message: Message, tg_user, lang: str = 'ru'):
     model_name = tg_user.default_network.name if tg_user.default_network else '—'
-    prompt_state = 'задан' if tg_user.system_prompt else 'не задан'
+    prompt_state = t('settings.sysPromptSet', lang) if tg_user.system_prompt else t('settings.sysPromptNotSet', lang)
     text = (
-        f'<b>Aineron · Настройки</b>\n{DIVIDER}\n'
-        f'Модель:          {model_name}\n'
-        f'Системный промт: {prompt_state}\n'
-        f'{DIVIDER}\n'
-        'Параметры:'
+        f"<b>{t('settings.title', lang)}</b>\n{DIVIDER}\n"
+        f"{t('settings.modelLabel', lang)}:          {model_name}\n"
+        f"{t('settings.sysPromptLabel', lang)}: {prompt_state}\n"
+        f"{DIVIDER}\n"
+        f"{t('settings.params', lang)}"
     )
-    await message.answer(text, parse_mode='HTML', reply_markup=settings_kb(tg_user))
+    await message.answer(text, parse_mode='HTML', reply_markup=settings_kb(tg_user, lang))
 
 
 @router.message(or_f(Command('settings'), F.text == 'Настройки'))
 async def cmd_settings(message: Message, tg_user=None):
     if tg_user is None:
         return
-    await send_settings(message, tg_user)
+    lang = resolve_language(tg_user, message.from_user)
+    await send_settings(message, tg_user, lang)
 
 
 @router.callback_query(F.data.startswith('toggle:'))
 async def cb_toggle(query: CallbackQuery, tg_user=None):
     if tg_user is None:
         return
+    lang = resolve_language(tg_user, query.from_user)
     field_map = {
         'voice': 'voice_responses',
         'search': 'web_search',
@@ -65,20 +68,21 @@ async def cb_toggle(query: CallbackQuery, tg_user=None):
     if not field:
         return
     new_val = await toggle_field(tg_user, field)
-    state = 'включено' if new_val else 'выключено'
+    state = t('settings.toggledOn', lang) if new_val else t('settings.toggledOff', lang)
     await query.answer(f'{key}: {state}')
-    await query.message.edit_reply_markup(reply_markup=settings_kb(tg_user))
+    await query.message.edit_reply_markup(reply_markup=settings_kb(tg_user, lang))
 
 
 @router.callback_query(F.data == 'settings:sysprompt')
 async def cb_set_sysprompt(query: CallbackQuery, state: FSMContext, tg_user=None):
     if tg_user is None:
         return
-    current = tg_user.system_prompt or 'не задан'
+    lang = resolve_language(tg_user, query.from_user)
+    current = tg_user.system_prompt or t('settings.sysPromptNotSet', lang)
     await query.message.answer(
-        f'<b>Системный промт</b>\n{DIVIDER}\n'
-        f'Текущий: <i>{current[:200]}</i>\n\n'
-        'Отправьте новый промт или /cancel для отмены.',
+        f"<b>{t('settings.sysPromptTitle', lang)}</b>\n{DIVIDER}\n"
+        f"{t('settings.current', lang)}: <i>{current[:200]}</i>\n\n"
+        f"{t('settings.sendNewPrompt', lang)}",
         parse_mode='HTML',
     )
     await state.set_state(SettingsFSM.waiting_system_prompt)
@@ -89,15 +93,16 @@ async def cb_set_sysprompt(query: CallbackQuery, state: FSMContext, tg_user=None
 async def on_system_prompt_input(message: Message, state: FSMContext, tg_user=None):
     if tg_user is None:
         return
+    lang = resolve_language(tg_user, message.from_user)
     if message.text == '/cancel':
         await state.clear()
-        await message.answer("Отменено.")
+        await message.answer(t('settings.cancelled', lang))
         return
     await save_system_prompt(tg_user, message.text)
     await state.clear()
     await message.answer(
-        f'<b>Промт сохранён</b>\n{DIVIDER}\n'
-        f'<i>{(message.text or "")[:200]}</i>',
+        f"<b>{t('settings.promptSavedTitle', lang)}</b>\n{DIVIDER}\n"
+        f"<i>{(message.text or '')[:200]}</i>",
         parse_mode='HTML',
     )
 
@@ -106,6 +111,7 @@ async def on_system_prompt_input(message: Message, state: FSMContext, tg_user=No
 async def cb_change_model(query: CallbackQuery, tg_user=None):
     if tg_user is None:
         return
+    lang = resolve_language(tg_user, query.from_user)
     from telegram_bot.handlers.models_cmd import _send_tab
-    await _send_tab(query.message, tg_user, 'text', edit=False)
+    await _send_tab(query.message, tg_user, 'text', edit=False, lang=lang)
     await query.answer()

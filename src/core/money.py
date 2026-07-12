@@ -52,3 +52,20 @@ def apply_min_charge(kopecks: int) -> int:
     if kopecks <= 0:
         return 0
     return max(get_min_charge_kopecks(), kopecks)
+
+
+def format_credits(kopecks: int) -> str:
+    """50000 -> '50,000 credits' (1 кредит = 1 внутренняя единица = копейка)."""
+    return f'{int(round(kopecks)):,} credits'
+
+
+def format_money(kopecks: int) -> str:
+    """
+    Универсальное форматирование по режиму инстанса — аналог frontend/lib/money.ts.
+    INTL_MODE=0 (aineron.ru): рубли, как format_rub. INTL_MODE=1 (aineron.net): кредиты.
+    Единственная точка форматирования сумм вне Next.js (боты, письма, Django-шаблоны).
+    """
+    from django.conf import settings
+    if getattr(settings, 'INTL_MODE', False):
+        return format_credits(kopecks)
+    return format_rub(kopecks)

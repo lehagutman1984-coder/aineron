@@ -7,6 +7,8 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message, CallbackQuery
 
+from django.conf import settings as dj_settings
+
 from telegram_bot import capabilities
 from telegram_bot.keyboards import after_answer_kb, main_reply_kb
 from telegram_bot.notify import (
@@ -15,6 +17,7 @@ from telegram_bot.notify import (
 from telegram_bot.rich import extract_first_code
 from telegram_bot.utils import telegram_format, split_message, DIVIDER
 from telegram_bot.analytics import async_log_event
+from telegram_bot.i18n import t, resolve_language
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -114,7 +117,7 @@ check_balance = sync_to_async(_check_balance, thread_sensitive=True)
 
 async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
                        skip_billing: bool = False, chat_override=None,
-                       voice_reply: bool = False):
+                       voice_reply: bool = False, lang: str = 'ru'):
     """Общий пайплайн: текст → AI → ответ с polling.
 
     skip_billing=True  — биллинг уже снят на стороне вызывающего (оргбиллинг).
@@ -125,23 +128,31 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
 
     network = await get_default_network(tg_user)
     if not network:
-        await tg_message.answer("Нет доступных моделей. Обратитесь в поддержку.")
+        await tg_message.answer(t('chat.noModels', lang))
         return
 
     if not skip_billing:
         has_balance = await check_balance(tg_user.user, network.cost_kopecks)
         if not has_balance:
-            from core.money import format_rub
-            from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-            kb = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text='Telegram Stars (XTR)', callback_data='buy_stars')],
-                [InlineKeyboardButton(text='Карта / СБП (Robokassa)', callback_data='buy_robokassa')],
-                [InlineKeyboardButton(text='Пополнить на сайте', url='https://aineron.ru/account/billing/')],
-            ])
+            from core.money import format_money
+            if lang == 'ru':
+                from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+                kb = InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text='Telegram Stars (XTR)', callback_data='buy_stars')],
+                    [InlineKeyboardButton(text='Карта / СБП (Robokassa)', callback_data='buy_robokassa')],
+                    [InlineKeyboardButton(text='Пополнить на сайте', url='https://aineron.ru/account/billing/')],
+                ])
+            else:
+                from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+                site_url = getattr(dj_settings, 'SITE_URL', 'https://aineron.net')
+                kb = InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text=t('balance.topUpOnWebsite', lang), url=f'{site_url}/account/billing/')],
+                ])
             await tg_message.answer(
-                f'<b>Недостаточно средств</b>\n{DIVIDER}\n'
-                f'Нужно: <b>{format_rub(network.cost_kopecks)}</b>   У вас: {format_rub(tg_user.user.balance_kopecks)}\n\n'
-                f'Пополните баланс:',
+                f"<b>{t('chat.insufficientTitle', lang)}</b>\n{DIVIDER}\n"
+                f"{t('chat.need', lang)}: <b>{format_money(network.cost_kopecks)}</b>   "
+                f"{t('chat.have', lang)}: {format_money(tg_user.user.balance_kopecks)}\n\n"
+                f"{t('chat.topUp', lang)}",
                 parse_mode='HTML',
                 reply_markup=kb,
             )
@@ -161,7 +172,7 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
     status_prefix = f'[{project.name}] ' if project else ''
     # S1: нативный стриминг через sendMessageDraft (fallback — edit с троттлингом)
     streamer = stream_draft_or_edit(tg_message, min_edit_interval=EDIT_MIN_INTERVAL)
-    await streamer.start(f"{status_prefix}Генерирую ответ...")
+    await streamer.start(f"{status_prefix}{t('chat.generating', lang)}")
 
     for i in range(POLL_MAX_TRIES):
         await asyncio.sleep(POLL_INTERVAL)
@@ -184,7 +195,7 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
                     import html as _html
                     full_text += ('\n\n— Источники: '
                                   + ', '.join(_html.escape(n) for n in names))
-            markup = after_answer_kb(msg.id, copy_code=extract_first_code(full_text))
+            markup = after_answer_kb(msg.id, copy_code=extract_first_code(full_text), lang=lang)
             delivered = False
             # S1: Rich Messages — таблицы, код, thinking-блоки (за флагом)
             if capabilities.available('rich_messages', tg_message.bot):
@@ -220,7 +231,7 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
             return
 
         elif msg.status == 'failed':
-            await streamer.fail("Ошибка генерации. Попробуйте ещё раз.")
+            await streamer.fail(t('chat.error', lang))
             await set_status_reaction(tg_message.bot, tg_message.chat.id, tg_message.message_id, None)
             await async_log_event(tg_user, 'error', network=network, reason='generation_failed')
             return
@@ -231,7 +242,7 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
             if partial:
                 await streamer.update(partial)
 
-    await streamer.fail("Превышено время ожидания. Попробуйте ещё раз.")
+    await streamer.fail(t('chat.timeout', lang))
     await set_status_reaction(tg_message.bot, tg_message.chat.id, tg_message.message_id, None)
     await async_log_event(tg_user, 'error', network=network, reason='timeout')
 
@@ -240,22 +251,24 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
 async def cmd_newchat(message: Message, tg_user=None):
     if tg_user is None:
         return
+    lang = resolve_language(tg_user, message.from_user)
     def _reset(u):
         from telegram_bot.models import TelegramChat
         TelegramChat.objects.filter(tg_user=u, is_active=True).update(is_active=False)
     await sync_to_async(_reset, thread_sensitive=True)(tg_user)
-    await message.answer("Новый диалог начат. Напишите первый вопрос.", reply_markup=main_reply_kb())
+    await message.answer(t('chat.newChatStarted', lang), reply_markup=main_reply_kb(lang))
 
 
 @router.callback_query(F.data == 'newchat')
 async def cb_newchat(query: CallbackQuery, tg_user=None):
     if tg_user is None:
         return
+    lang = resolve_language(tg_user, query.from_user)
     def _reset(u):
         from telegram_bot.models import TelegramChat
         TelegramChat.objects.filter(tg_user=u, is_active=True).update(is_active=False)
     await sync_to_async(_reset, thread_sensitive=True)(tg_user)
-    await query.message.answer("Новый диалог начат. Напишите первый вопрос.")
+    await query.message.answer(t('chat.newChatStarted', lang))
     await query.answer()
 
 
@@ -263,6 +276,7 @@ async def cb_newchat(query: CallbackQuery, tg_user=None):
 async def cb_regen(query: CallbackQuery, tg_user=None):
     if tg_user is None:
         return
+    lang = resolve_language(tg_user, query.from_user)
     msg_id = int(query.data.split(':')[1])
 
     def _get_original_text(m_id):
@@ -277,19 +291,20 @@ async def cb_regen(query: CallbackQuery, tg_user=None):
     get_orig = sync_to_async(_get_original_text, thread_sensitive=True)
     text = await get_orig(msg_id)
     if text:
-        await query.answer("Повторяю запрос...")
-        await process_text(query.message, tg_user, text)
+        await query.answer(t('chat.regenerating', lang))
+        await process_text(query.message, tg_user, text, lang=lang)
     else:
-        await query.answer("Не могу найти исходный запрос.")
+        await query.answer(t('chat.notFoundOriginal', lang))
 
 
 @router.callback_query(F.data.startswith('react_like:'))
 async def cb_react_like(query: CallbackQuery, tg_user=None):
     """👍 — positive reaction: логируем для feedback-петли качества (U6)."""
+    lang = resolve_language(tg_user, query.from_user)
     if tg_user is not None:
         await async_log_event(tg_user, 'message', feedback='like',
                               message_id=query.data.split(':')[1])
-    await query.answer("Рад помочь!")
+    await query.answer(t('chat.likeThanks', lang))
 
 
 @router.callback_query(F.data.startswith('react_dislike:'))
@@ -298,6 +313,7 @@ async def cb_react_dislike(query: CallbackQuery, tg_user=None):
     if tg_user is None:
         await query.answer()
         return
+    lang = resolve_language(tg_user, query.from_user)
     msg_id = int(query.data.split(':')[1])
 
     def _get_original_text(m_id):
@@ -314,11 +330,11 @@ async def cb_react_dislike(query: CallbackQuery, tg_user=None):
     await async_log_event(tg_user, 'message', feedback='dislike', message_id=msg_id)
     text = await get_orig(msg_id)
     if text:
-        await query.answer("Пересматриваю ответ...")
-        improved_prompt = f"{text}\n\n[Предыдущий ответ не устроил. Ответь подробнее и точнее.]"
-        await process_text(query.message, tg_user, improved_prompt)
+        await query.answer(t('chat.reviewing', lang))
+        improved_prompt = f"{text}{t('chat.dislikeHint', lang)}"
+        await process_text(query.message, tg_user, improved_prompt, lang=lang)
     else:
-        await query.answer("Не могу найти исходный запрос.")
+        await query.answer(t('chat.notFoundOriginal', lang))
 
 
 @router.callback_query(F.data.startswith('edit_msg:'))
@@ -327,11 +343,12 @@ async def cb_edit_msg(query: CallbackQuery, state: FSMContext, tg_user=None):
     if tg_user is None:
         await query.answer()
         return
+    lang = resolve_language(tg_user, query.from_user)
     msg_id = int(query.data.split(':')[1])
     await state.set_state(EditMsgFSM.waiting_new_text)
     await state.update_data(original_msg_id=msg_id, edit_query_msg_id=query.message.message_id)
     await query.answer()
-    await query.message.reply("Отправь новый текст запроса:")
+    await query.message.reply(t('chat.sendNewText', lang))
 
 
 @router.message(EditMsgFSM.waiting_new_text)
@@ -340,13 +357,14 @@ async def handle_edit_new_text(message: Message, state: FSMContext, tg_user=None
     if tg_user is None:
         await state.clear()
         return
+    lang = resolve_language(tg_user, message.from_user)
     new_text = (message.text or '').strip()
     if not new_text:
-        await message.answer("Пустой текст — отмена редактирования.")
+        await message.answer(t('chat.emptyEditText', lang))
         await state.clear()
         return
     await state.clear()
-    await process_text(message, tg_user, new_text)
+    await process_text(message, tg_user, new_text, lang=lang)
 
 
 @router.callback_query(F.data.startswith('del_msg:'))
@@ -355,6 +373,7 @@ async def cb_del_msg(query: CallbackQuery, tg_user=None):
     if tg_user is None:
         await query.answer()
         return
+    lang = resolve_language(tg_user, query.from_user)
     msg_id = int(query.data.split(':')[1])
 
     @sync_to_async
@@ -372,9 +391,9 @@ async def cb_del_msg(query: CallbackQuery, tg_user=None):
     try:
         await query.message.delete()
     except Exception:
-        await query.answer("Не удалось удалить сообщение.")
+        await query.answer(t('chat.deleteFailed', lang))
     else:
-        await query.answer("Удалено.")
+        await query.answer(t('chat.deleted', lang))
 
 
 # StateFilter(None) ОБЯЗАТЕЛЕН: без него catch-all перехватывает текстовые
@@ -384,6 +403,7 @@ async def cb_del_msg(query: CallbackQuery, tg_user=None):
 async def handle_text_message(message: Message, tg_user=None):
     if tg_user is None:
         return
+    lang = resolve_language(tg_user, message.from_user)
     # S7: сообщение в топике-проекте — свой контекст (Chat) топика
     thread_id = getattr(message, 'message_thread_id', None)
     if thread_id and capabilities.is_enabled('topics'):
@@ -391,24 +411,26 @@ async def handle_text_message(message: Message, tg_user=None):
             from telegram_bot.handlers.topics import resolve_topic_chat
             topic_chat = await resolve_topic_chat(tg_user, thread_id)
             if topic_chat is not None:
-                await process_text(message, tg_user, message.text, chat_override=topic_chat)
+                await process_text(message, tg_user, message.text, chat_override=topic_chat, lang=lang)
                 return
         except Exception as e:
             logger.debug(f'topic routing skipped: {e}')
     # S2: детект интента «задача по расписанию» — предложить создать AI-задачу
-    try:
-        from telegram_bot.handlers.tasks_cmd import looks_like_task_intent
-        if looks_like_task_intent(message.text):
-            from django.core.cache import cache
-            from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-            set_cached = sync_to_async(cache.set, thread_sensitive=True)
-            await set_cached(f'tg_task_intent:{tg_user.telegram_id}', message.text, 600)
-            await message.answer(
-                'Похоже на задачу по расписанию. Могу выполнять её автоматически.',
-                reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
-                    InlineKeyboardButton(text='Создать AI-задачу', callback_data='task_intent'),
-                ]]),
-            )
-    except Exception as e:
-        logger.debug(f'task intent detect skipped: {e}')
-    await process_text(message, tg_user, message.text)
+    # (не для intl-бота: /task не зарегистрирован там на этой волне)
+    if lang == 'ru':
+        try:
+            from telegram_bot.handlers.tasks_cmd import looks_like_task_intent
+            if looks_like_task_intent(message.text):
+                from django.core.cache import cache
+                from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+                set_cached = sync_to_async(cache.set, thread_sensitive=True)
+                await set_cached(f'tg_task_intent:{tg_user.telegram_id}', message.text, 600)
+                await message.answer(
+                    'Похоже на задачу по расписанию. Могу выполнять её автоматически.',
+                    reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+                        InlineKeyboardButton(text='Создать AI-задачу', callback_data='task_intent'),
+                    ]]),
+                )
+        except Exception as e:
+            logger.debug(f'task intent detect skipped: {e}')
+    await process_text(message, tg_user, message.text, lang=lang)
