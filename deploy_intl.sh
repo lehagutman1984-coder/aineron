@@ -17,6 +17,8 @@ sleep 10
 docker compose -f docker-compose.intl.yml exec -T web python manage.py migrate --noinput
 # modeltranslation: заполнить *_ru из исходных колонок (идемпотентно)
 docker compose -f docker-compose.intl.yml exec -T web python manage.py update_translation_fields || true
+# Flux (BFL) плохо следует не-английским промтам при редактировании фото — включаем автоперевод
+docker compose -f docker-compose.intl.yml exec -T web python manage.py enable_flux_translation || true
 
 # nginx кэширует IP upstream-контейнеров при старте: после пересоздания web/frontend
 # он бьёт по мёртвым адресам (502). Рестарт — обязателен.

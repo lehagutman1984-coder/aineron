@@ -58,6 +58,9 @@ docker-compose exec -T web python manage.py add_zai_free_models || echo -e "${YE
 echo -e "${YELLOW}Засеиваем бесплатные модели Cloudflare Workers AI...${NC}"
 docker-compose exec -T web python manage.py add_cloudflare_free_models || echo -e "${YELLOW}add_cloudflare_free_models пропущен${NC}"
 
+echo -e "${YELLOW}Включаем перевод промтов на английский для Flux (img2img на русском не работал)...${NC}"
+docker-compose exec -T web python manage.py enable_flux_translation || echo -e "${YELLOW}enable_flux_translation пропущен${NC}"
+
 echo -e "${YELLOW}Собираем статические файлы...${NC}"
 docker-compose exec -T web python manage.py collectstatic --noinput
 

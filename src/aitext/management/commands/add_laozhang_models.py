@@ -445,6 +445,11 @@ class Command(BaseCommand):
                     'config_json': config,
                     'is_active': True,
                     'is_popular': m.get('is_popular', False),
+                    # Flux (BFL) плохо следует не-английским промтам при редактировании
+                    # фото — на русском промте модель зачастую возвращает исходник почти
+                    # без изменений (проверено эмпирически 2026-07-13). GPT Image/Gemini
+                    # с русским справляются нормально — им перевод не нужен.
+                    'translate_to_english': m['slug'] in FLUX_MODEL_SLUGS,
                 }
             )
             status = 'создана' if created else 'обновлена'
