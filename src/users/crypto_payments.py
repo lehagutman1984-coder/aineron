@@ -103,15 +103,24 @@ def settle_crypto_payment(payment) -> bool:
 
     try:
         from telegram_bot.notify import notify_user
-        from core.money import format_rub
+        from telegram_bot.i18n import t, resolve_language
+        from core.money import format_money
         tg = getattr(user, 'telegram', None)
         if tg:
-            notify_user(
-                tg.telegram_id,
-                f"<b>Оплата криптовалютой прошла успешно!</b>\n\n"
-                f"Начислено: <b>{format_rub(topup_kopecks)}</b>\n"
-                f"Баланс: <b>{format_rub(user.balance_kopecks)}</b>",
-            )
+            lang = resolve_language(tg, None)
+            if lang == 'ru':
+                text = (
+                    f"<b>Оплата криптовалютой прошла успешно!</b>\n\n"
+                    f"Начислено: <b>{format_money(topup_kopecks)}</b>\n"
+                    f"Баланс: <b>{format_money(user.balance_kopecks)}</b>"
+                )
+            else:
+                text = (
+                    f"<b>{t('crypto.paidTitle', lang)}</b>\n\n"
+                    f"{t('crypto.credited', lang)}: <b>{format_money(topup_kopecks)}</b>\n"
+                    f"{t('crypto.balance', lang)}: <b>{format_money(user.balance_kopecks)}</b>"
+                )
+            notify_user(tg.telegram_id, text)
     except Exception as tg_err:
         logger.warning("[CRYPTO] Telegram notify failed: %s", tg_err)
     return True

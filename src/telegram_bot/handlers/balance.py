@@ -68,6 +68,7 @@ async def send_balance(message: Message, tg_user, lang: str = 'ru'):
         from django.conf import settings as dj_settings
         site_url = getattr(dj_settings, 'SITE_URL', 'https://aineron.net')
         kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text=t('balance.topUpInBot', lang), callback_data='open_buy')],
             [InlineKeyboardButton(text=t('balance.topUpOnWebsite', lang), url=f'{site_url}/account/billing/')],
         ])
         await message.answer(text, parse_mode='HTML', reply_markup=kb)

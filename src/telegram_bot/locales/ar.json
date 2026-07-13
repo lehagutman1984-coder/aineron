@@ -60,7 +60,8 @@
     "insufficientTitle": "رصيد غير كافٍ",
     "need": "تحتاج",
     "have": "لديك",
-    "topUpBalance": "اشحن رصيدك: /balance"
+    "topUpBalance": "اشحن رصيدك: /balance",
+    "topUpInBot": "اشحن في البوت (Stars / Crypto)"
   },
   "settings": {
     "title": "Aineron · الإعدادات",
@@ -418,5 +419,49 @@
       "weekly_mon": "أسبوعيًا، الاثنين 10:00",
       "weekly_fri": "أسبوعيًا، الجمعة 17:00"
     }
+  },
+  "referral": {
+    "title": "برنامج الإحالة",
+    "yourLink": "رابطك:",
+    "alsoWorks": "هذا يعمل أيضًا:",
+    "statsTitle": "الإحصائيات:",
+    "invited": "مدعوون",
+    "paid": "منهم دفعوا",
+    "earned": "المكتسب",
+    "footer": "تحصل على مكافأة في رصيدك عن كل إحالة تدفع!",
+    "affiliateTitle": "للقنوات والمبدعين",
+    "affiliateBody": "يشارك البوت في برنامج الإحالة الخاص بتليجرام: قم بربطه في قسم \"تحقيق الدخل\" في قناتك واحصل على عمولة على جميع مدفوعات Stars من المستخدمين الذين تحيلهم. يتم الدفع من قبل تليجرام نفسه.",
+    "shareText": "جرّب الذكاء الاصطناعي على aineron.net!",
+    "moreButton": "المزيد عن البرنامج",
+    "shareButton": "مشاركة الرابط"
+  },
+  "crypto": {
+    "paidTitle": "تم الدفع بالعملات الرقمية بنجاح",
+    "credited": "تم الإيداع",
+    "balance": "الرصيد"
+  },
+  "payment": {
+    "linkAccount": "اربط حسابك باستخدام /start",
+    "subscribeUnavailable": "الاشتراكات غير متاحة بعد — قم بشحن رصيدك بدلاً من ذلك: /buy",
+    "successTitle": "تم الدفع بنجاح",
+    "credited": "تم الإيداع",
+    "currentBalance": "الرصيد الحالي",
+    "readyToChat": "اطرح أسئلتك — أنا جاهز",
+    "topUpTitle": "شحن الرصيد",
+    "chooseMethod": "اختر طريقة الدفع:",
+    "methodStars": "Telegram Stars (XTR)",
+    "methodCrypto": "العملات الرقمية (USDT/TON)",
+    "cancel": "إلغاء",
+    "choosePackage": "اختر مبلغ الشحن:",
+    "customAmount": "مبلغ مخصص",
+    "back": "رجوع",
+    "purchaseCancelled": "تم إلغاء الشراء.",
+    "topUpDescription": "شحن الرصيد: {amount}",
+    "enterUsdAmount": "أدخل مبلغ الشحن بالدولار الأمريكي (من $1 إلى $1000):",
+    "invalidUsdAmount": "أدخل رقماً بين 1 و 1000:",
+    "cryptoUnavailable": "الدفع بالعملات الرقمية غير متاح حالياً. يرجى تجربة Telegram Stars بدلاً من ذلك.",
+    "cryptoError": "تعذر إنشاء الفاتورة. يرجى المحاولة مرة أخرى لاحقاً.",
+    "cryptoInvoiceCreated": "<b>تم إنشاء الفاتورة: {amount}</b>\nسيتم إضافة {credits} رصيد عند تأكيد الدفع.",
+    "payButton": "ادفع"
   }
 }

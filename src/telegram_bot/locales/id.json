@@ -60,7 +60,8 @@
     "insufficientTitle": "Saldo tidak mencukupi",
     "need": "Butuh",
     "have": "Anda memiliki",
-    "topUpBalance": "Isi ulang saldo Anda: /balance"
+    "topUpBalance": "Isi ulang saldo Anda: /balance",
+    "topUpInBot": "Isi saldo di bot (Stars / Crypto)"
   },
   "settings": {
     "title": "Aineron · Pengaturan",
@@ -418,5 +419,49 @@
       "weekly_mon": "Mingguan, Senin 10:00",
       "weekly_fri": "Mingguan, Jumat 17:00"
     }
+  },
+  "referral": {
+    "title": "Program Referral",
+    "yourLink": "Tautan Anda:",
+    "alsoWorks": "Ini juga berfungsi:",
+    "statsTitle": "Statistik:",
+    "invited": "Diundang",
+    "paid": "Dari mereka yang membayar",
+    "earned": "Diperoleh",
+    "footer": "Anda mendapatkan bonus pada saldo Anda untuk setiap referral yang membayar!",
+    "affiliateTitle": "Untuk saluran dan kreator",
+    "affiliateBody": "Bot berpartisipasi dalam program afiliasi Telegram: hubungkan di bagian \"Monetisasi\" saluran Anda dan dapatkan komisi dari semua pembayaran Stars dari pengguna yang Anda referensikan. Pembayaran dilakukan oleh Telegram sendiri.",
+    "shareText": "Coba AI di aineron.net!",
+    "moreButton": "Lebih lanjut tentang program",
+    "shareButton": "Bagikan tautan"
+  },
+  "crypto": {
+    "paidTitle": "Pembayaran kripto berhasil",
+    "credited": "Dikreditkan",
+    "balance": "Saldo"
+  },
+  "payment": {
+    "linkAccount": "Hubungkan akun Anda dengan /start",
+    "subscribeUnavailable": "Langganan belum tersedia — isi saldo Anda sebagai gantinya: /buy",
+    "successTitle": "Pembayaran berhasil",
+    "credited": "Dikreditkan",
+    "currentBalance": "Saldo saat ini",
+    "readyToChat": "Ajukan pertanyaan Anda — saya siap",
+    "topUpTitle": "Isi saldo",
+    "chooseMethod": "Pilih metode pembayaran:",
+    "methodStars": "Telegram Stars (XTR)",
+    "methodCrypto": "Kripto (USDT/TON)",
+    "cancel": "Batalkan",
+    "choosePackage": "Pilih jumlah isi saldo:",
+    "customAmount": "Jumlah kustom",
+    "back": "Kembali",
+    "purchaseCancelled": "Pembelian dibatalkan.",
+    "topUpDescription": "Isi saldo: {amount}",
+    "enterUsdAmount": "Masukkan jumlah isi saldo dalam USD (dari $1 hingga $1000):",
+    "invalidUsdAmount": "Masukkan angka antara 1 dan 1000:",
+    "cryptoUnavailable": "Pembayaran kripto saat ini tidak tersedia. Silakan coba Telegram Stars sebagai gantinya.",
+    "cryptoError": "Tidak dapat membuat faktur. Silakan coba lagi nanti.",
+    "cryptoInvoiceCreated": "<b>Faktur dibuat: {amount}</b>\n{credits} kredit akan ditambahkan setelah pembayaran dikonfirmasi.",
+    "payButton": "Bayar"
   }
 }

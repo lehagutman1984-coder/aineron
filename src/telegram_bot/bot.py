@@ -34,13 +34,15 @@ def register_routers():
     dp.inline_query.middleware(AuthMiddleware())
 
     if getattr(settings, 'INTL_MODE', False):
-        # G5 — волна 2: медиа-генерация, продуктивность и утилитарные команды
-        # переведены (dual-path lang=='ru' / t()) и подключены. Payment
-        # (RUB-only ценообразование) и Studio-смежные фичи, требующие
-        # отдельных продуктовых решений (tasks/remind/digest — таймзона,
-        # research/agent — переведены, но не в этой волне, search — локаль
-        # полнотекстового поиска, business/mybot — за отдельными флагами,
-        # group/group2/reggroup — рублёвый org-биллинг), пока не подключены.
+        # G5 — волна 2: медиа-генерация, продуктивность, утилиты и пополнение
+        # баланса (Stars по курсу INTL_XTR_RATE_KOPECKS + Crypto Pay, см.
+        # payment.py) переведены и подключены. Тарифные Stars-подписки
+        # (/subscribe) остаются ru-only — завязаны на Tariff.price (рубли),
+        # отдельная задача. Studio-смежные фичи, требующие отдельных
+        # продуктовых решений (tasks/remind/digest — таймзона, research/agent
+        # — переведены, но не в этой волне, search — локаль полнотекстового
+        # поиска, business/mybot — за отдельными флагами, group/group2/
+        # reggroup — рублёвый org-биллинг), пока не подключены.
         dp.include_router(inline.router)
         dp.include_router(menu.router)
         dp.include_router(onboarding.router)
@@ -50,6 +52,8 @@ def register_routers():
         dp.include_router(projects_cmd.router)
         dp.include_router(chat.router)
         dp.include_router(balance.router)
+        dp.include_router(payment.router)
+        dp.include_router(referral.router)
         dp.include_router(models_cmd.router)
         dp.include_router(voice.router)
         dp.include_router(images.router)

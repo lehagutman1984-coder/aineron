@@ -564,6 +564,9 @@ TG_GIFTS_MONTHLY_BUDGET_STARS = int(os.getenv('TG_GIFTS_MONTHLY_BUDGET_STARS', '
 # Курс XTR→копейки: сколько копеек начисляется за 1 звезду Telegram Stars.
 # Единая точка пересмотра при изменении цен Telegram (S4). 1 XTR = 2 ₽ = 200 коп.
 TG_XTR_RATE_KOPECKS = int(os.getenv('TG_XTR_RATE_KOPECKS', '200'))
+# G5: то же самое, но для aineron.net — 1 XTR = сколько кредитов (1 кредит = 1 коп.
+# в едином леджере). Независимая величина от TG_XTR_RATE_KOPECKS (та — про рубли).
+INTL_XTR_RATE_KOPECKS = int(os.getenv('INTL_XTR_RATE_KOPECKS', '100'))
 # AI-задачи (S2): дневной cap исполнений на пользователя — защита юнит-экономики
 AITASK_DAILY_CAP = int(os.getenv('AITASK_DAILY_CAP', '30'))
 # Deep Research (S3): фиксированная цена запуска в боте, копейки (10 ₽)

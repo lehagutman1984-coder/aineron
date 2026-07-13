@@ -60,7 +60,8 @@
     "insufficientTitle": "Yetersiz bakiye",
     "need": "Gerekli",
     "have": "Sahip olduğunuz",
-    "topUpBalance": "Bakiyenizi yükleyin: /balance"
+    "topUpBalance": "Bakiyenizi yükleyin: /balance",
+    "topUpInBot": "Botta yükle (Stars / Kripto)"
   },
   "settings": {
     "title": "Aineron · Ayarlar",
@@ -418,5 +419,49 @@
       "weekly_mon": "Haftalık, Pazartesi 10:00",
       "weekly_fri": "Haftalık, Cuma 17:00"
     }
+  },
+  "referral": {
+    "title": "Yönlendirme Programı",
+    "yourLink": "Bağlantınız:",
+    "alsoWorks": "Bu da çalışır:",
+    "statsTitle": "İstatistikler:",
+    "invited": "Davet Edilen",
+    "paid": "Ödeme Yapanlar",
+    "earned": "Kazanılan",
+    "footer": "Ödeme yapan her yönlendirme için bakiyenize bonus alırsınız.",
+    "affiliateTitle": "Kanallar ve içerik üreticileri için",
+    "affiliateBody": "Bot, Telegram'ın ortaklık programına katılır: kanalınızın \"Paraya Çevirme\" bölümünde bağlayın ve yönlendirdiğiniz kullanıcıların tüm Stars ödemelerinden komisyon kazanın. Ödemeler Telegram tarafından yapılır.",
+    "shareText": "aineron.net'te AI deneyin!",
+    "moreButton": "Program hakkında daha fazla bilgi",
+    "shareButton": "Bağlantıyı paylaş"
+  },
+  "crypto": {
+    "paidTitle": "Kripto ödemesi başarılı.",
+    "credited": "Hesaba Geçti",
+    "balance": "Bakiye"
+  },
+  "payment": {
+    "linkAccount": "Hesabınızı /start ile bağlayın",
+    "subscribeUnavailable": "Abonelikler henüz mevcut değil — bunun yerine bakiyenizi doldurun: /buy",
+    "successTitle": "Ödeme başarılı.",
+    "credited": "Hesaba Geçti",
+    "currentBalance": "Mevcut bakiye",
+    "readyToChat": "Sorularınızı sorun — hazırım.",
+    "topUpTitle": "Bakiye yükle",
+    "chooseMethod": "Bir ödeme yöntemi seçin:",
+    "methodStars": "Telegram Stars (XTR)",
+    "methodCrypto": "Kripto (USDT/TON)",
+    "cancel": "İptal",
+    "choosePackage": "Bir yükleme miktarı seçin:",
+    "customAmount": "Özel miktar",
+    "back": "Geri",
+    "purchaseCancelled": "Satın alma iptal edildi.",
+    "topUpDescription": "Bakiye yükleme: {amount}",
+    "enterUsdAmount": "Yükleme miktarını USD olarak girin ($1 ile $1000 arasında):",
+    "invalidUsdAmount": "1 ile 1000 arasında bir sayı girin:",
+    "cryptoUnavailable": "Kripto ödeme şu anda kullanılamıyor. Lütfen bunun yerine Telegram Stars'ı deneyin.",
+    "cryptoError": "Fatura oluşturulamadı. Lütfen daha sonra tekrar deneyin.",
+    "cryptoInvoiceCreated": "<b>Fatura oluşturuldu: {amount}</b>\nÖdeme onaylandığında {credits} kredi eklenecek.",
+    "payButton": "Öde"
   }
 }
