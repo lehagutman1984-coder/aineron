@@ -153,4 +153,28 @@ def settings_kb(tg_user, lang: str = 'ru') -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text=f"{t('settings.streaming', lang)}: {streaming}", callback_data='toggle:streaming')],
         [InlineKeyboardButton(text=t('settings.sysPromptButton', lang), callback_data='settings:sysprompt')],
         [InlineKeyboardButton(text=t('settings.changeModelButton', lang), callback_data='settings:model')],
+        [InlineKeyboardButton(text=t('settings.languageButton', lang), callback_data='settings:language')],
     ])
+
+
+# Названия языков на самих себе (не переводятся) — INTL_LOCALES из telegram_bot/i18n.py.
+_LANGUAGE_NAMES = {
+    'en': 'English',
+    'fa': 'فارسی',
+    'tr': 'Türkçe',
+    'id': 'Indonesia',
+    'ar': 'العربية',
+}
+
+
+def language_kb(current: str, lang: str) -> InlineKeyboardMarkup:
+    """current — tg_user.language ('' значит «авто по клиенту Telegram»)."""
+    from telegram_bot.i18n import t, INTL_LOCALES
+    rows = []
+    for code in INTL_LOCALES:
+        label = f'· {_LANGUAGE_NAMES[code]} ·' if current == code else _LANGUAGE_NAMES[code]
+        rows.append([InlineKeyboardButton(text=label, callback_data=f'lang:{code}')])
+    auto_label_raw = t('language.auto', lang)
+    auto_label = f'· {auto_label_raw} ·' if not current else auto_label_raw
+    rows.append([InlineKeyboardButton(text=auto_label, callback_data='lang:auto')])
+    return InlineKeyboardMarkup(inline_keyboard=rows)

@@ -21,7 +21,7 @@
     "imageBody": "تصویر را با یک دستور توصیف کنید:\n\n<code>/image غروب خورشید بر فراز دریا، سبک انیمه</code>",
     "notLinkedShort": "حساب خود را با /start متصل کنید",
     "helpTitle": "Aineron · راهنما",
-    "helpBody": "<b>چت و تولید</b>\nهر سوالی بپرسید — هوش مصنوعی پاسخ خواهد داد.\n/image &lt;توضیحات&gt; — تولید تصویر\n\n<b>کنترل‌ها</b>\n/models — انتخاب مدل هوش مصنوعی\n/balance — موجودی و شارژ\n/settings — تنظیمات\n/newchat — شروع مکالمه جدید\nموجودی خود را شارژ کنید: aineron.net/account/billing/"
+    "helpBody": "<b>چت و تولید</b>\nهر سوالی بپرسید — هوش مصنوعی پاسخ خواهد داد.\n/image &lt;توضیحات&gt; — تولید تصویر\n\n<b>کنترل‌ها</b>\n/models — انتخاب مدل هوش مصنوعی\n/balance — موجودی و شارژ\n/settings — تنظیمات\n/language — تغییر زبان ربات\n/newchat — شروع مکالمه جدید\nموجودی خود را شارژ کنید: aineron.net/account/billing/"
   },
   "start": {
     "dashboardTitle": "Aineron",
@@ -76,6 +76,7 @@
     "off": "خاموش",
     "sysPromptButton": "درخواست سیستم",
     "changeModelButton": "تغییر مدل",
+    "languageButton": "زبان",
     "sysPromptTitle": "درخواست سیستم",
     "current": "فعلی",
     "sendNewPrompt": "درخواست جدیدی ارسال کنید یا /cancel برای لغو.",
@@ -83,6 +84,12 @@
     "promptSavedTitle": "درخواست ذخیره شد",
     "toggledOn": "فعال شد",
     "toggledOff": "غیرفعال شد"
+  },
+  "language": {
+    "title": "زبان",
+    "subtitle": "زبان پیام‌های ربات را انتخاب کنید. حالت خودکار از زبان اپلیکیشن تلگرام شما پیروی می‌کند.",
+    "auto": "خودکار (زبان تلگرام)",
+    "saved": "زبان به‌روزرسانی شد"
   },
   "models": {
     "textModels": "مدل‌های متنی",

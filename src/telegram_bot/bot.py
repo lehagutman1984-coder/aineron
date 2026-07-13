@@ -27,7 +27,7 @@ def register_routers():
         search_cmd, export_cmd, img2img_cmd, img2video_cmd, digest_cmd, scenarios_cmd,
         reggroup_cmd, sticker_cmd, memory_cmd, persona_cmd,
         remind_cmd, poll_cmd, tasks_cmd, research_cmd, business,
-        topics, group2, mybot_cmd, agent_cmd, channel_cmd,
+        topics, group2, mybot_cmd, agent_cmd, channel_cmd, language_cmd,
     )
     dp.message.middleware(AuthMiddleware())
     dp.callback_query.middleware(AuthMiddleware())
@@ -46,6 +46,7 @@ def register_routers():
         dp.include_router(models_cmd.router)
         dp.include_router(images.router)
         dp.include_router(settings_cmd.router)
+        dp.include_router(language_cmd.router)
         _routers_registered = True
         return
 

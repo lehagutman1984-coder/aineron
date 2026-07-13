@@ -21,7 +21,7 @@
     "imageBody": "وصف الصورة باستخدام الأمر:\n\n<code>/image غروب الشمس فوق البحر، بأسلوب الأنمي</code>",
     "notLinkedShort": "اربط حسابك باستخدام /start",
     "helpTitle": "Aineron · مساعدة",
-    "helpBody": "<b>الدردشة والتوليد</b>\nاطرح أي سؤال — سيقوم الذكاء الاصطناعي بالرد.\n/image &lt;الوصف&gt; — توليد صورة\n\n<b>التحكم</b>\n/models — اختيار نموذج الذكاء الاصطناعي\n/balance — الرصيد وإعادة الشحن\n/settings — الإعدادات\n/newchat — بدء محادثة جديدة\nاشحن رصيدك: aineron.net/account/billing/"
+    "helpBody": "<b>الدردشة والتوليد</b>\nاطرح أي سؤال — سيقوم الذكاء الاصطناعي بالرد.\n/image &lt;الوصف&gt; — توليد صورة\n\n<b>التحكم</b>\n/models — اختيار نموذج الذكاء الاصطناعي\n/balance — الرصيد وإعادة الشحن\n/settings — الإعدادات\n/language — تغيير لغة البوت\n/newchat — بدء محادثة جديدة\nاشحن رصيدك: aineron.net/account/billing/"
   },
   "start": {
     "dashboardTitle": "Aineron",
@@ -76,6 +76,7 @@
     "off": "إيقاف",
     "sysPromptButton": "طلب النظام",
     "changeModelButton": "تغيير النموذج",
+    "languageButton": "اللغة",
     "sysPromptTitle": "طلب النظام",
     "current": "الحالي",
     "sendNewPrompt": "أرسل طلباً جديداً أو /cancel للإلغاء.",
@@ -83,6 +84,12 @@
     "promptSavedTitle": "تم حفظ الطلب",
     "toggledOn": "مفعل",
     "toggledOff": "معطل"
+  },
+  "language": {
+    "title": "اللغة",
+    "subtitle": "اختر لغة رسائل البوت. يتبع الوضع التلقائي لغة تطبيق تيليجرام لديك.",
+    "auto": "تلقائي (لغة تيليجرام)",
+    "saved": "تم تحديث اللغة"
   },
   "models": {
     "textModels": "نماذج النصوص",
