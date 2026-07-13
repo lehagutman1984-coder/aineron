@@ -18,13 +18,13 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 LOCALES_DIR = Path(__file__).parent / 'locales'
-DICT_LOCALES = ('ru', 'en', 'fa', 'tr')
+DICT_LOCALES = ('ru', 'en', 'fa', 'tr', 'id', 'ar')
 DEFAULT_LOCALE = 'ru'
 
 # Локали, которые resolve_language() может выбрать пользователю международного
 # бота. 'ru' сюда намеренно не входит — план явно исключает русский с aineron.net,
 # СНГ-аудиторию обслуживает aineron.ru.
-INTL_LOCALES = ('en', 'fa', 'tr')
+INTL_LOCALES = ('en', 'fa', 'tr', 'id', 'ar')
 INTL_DEFAULT_LOCALE = 'en'
 
 

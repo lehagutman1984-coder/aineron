@@ -18,6 +18,8 @@ LOCALES_DIR = Path(__file__).resolve().parent.parent.parent / 'locales'
 LOCALE_NAMES = {
     'fa': 'Persian (Farsi)',
     'tr': 'Turkish',
+    'id': 'Indonesian',
+    'ar': 'Arabic (Modern Standard)',
 }
 DO_NOT_TRANSLATE = ['Aineron', 'aineron', 'GPT-4o', 'Claude', 'Gemini', 'HTML']
 

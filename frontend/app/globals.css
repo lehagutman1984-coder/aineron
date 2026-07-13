@@ -69,10 +69,11 @@
   --btn-primary:           #D97757;
   --surface-inverse:       #1A1A1A; /* dark chip/tooltip on light; elevated on dark */
   --font-primary:          "Inter", sans-serif;
-  /* fa (G4): Vazirmatn, self-hosted через next/font в app/[locale]/layout.tsx.
-     ar (G5, ещё не включена) захочет свой шрифт — IBM Plex Sans Arabic
-     заметно отличается от Vazirmatn визуально, менять здесь при добавлении ar. */
+  /* fa (G4): Vazirmatn. ar (G5): IBM Plex Sans Arabic — визуально заметно
+     отличается от Vazirmatn, поэтому не переиспользуем один RTL-шрифт на оба
+     языка. Оба self-hosted через next/font в app/[locale]/layout.tsx. */
   --font-primary-rtl:      "Vazirmatn", "Inter", sans-serif;
+  --font-primary-ar:       "IBM Plex Sans Arabic", "Inter", sans-serif;
 
   /* Studio shorthand variables */
   --bg:          #FAF9F7;
@@ -154,6 +155,12 @@ html {
 
 html[dir="rtl"] {
   --font-primary: var(--font-primary-rtl);
+}
+
+/* Более специфичный отбор ar: должен идти ПОСЛЕ [dir="rtl"] в исходном
+   коде — та же специфичность (0,0,1,0), побеждает порядок объявления. */
+html[lang="ar"] {
+  --font-primary: var(--font-primary-ar);
 }
 
 html,

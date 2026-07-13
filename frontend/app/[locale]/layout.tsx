@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Inter, Vazirmatn } from "next/font/google";
+import { Inter, Vazirmatn, IBM_Plex_Sans_Arabic } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
 import { routing, RTL_LOCALES, type AppLocale } from "@/i18n/routing";
@@ -20,10 +20,18 @@ const inter = Inter({
   display: "swap",
 });
 
-// fa (G4). ar — своя гарнитура при добавлении в G5 (см. globals.css).
+// fa (G4).
 const vazirmatn = Vazirmatn({
   subsets: ["arabic", "latin"],
   variable: "--font-vazirmatn",
+  display: "swap",
+});
+
+// ar (G5) — отдельная гарнитура, а не Vazirmatn (та оптимизирована под фарси).
+const ibmPlexSansArabic = IBM_Plex_Sans_Arabic({
+  subsets: ["arabic", "latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-ibm-plex-arabic",
   display: "swap",
 });
 
@@ -98,7 +106,7 @@ export default async function RootLayout({
     <html
       lang={locale}
       dir={RTL_LOCALES.includes(locale) ? "rtl" : "ltr"}
-      className={`${inter.variable} ${vazirmatn.variable}`}
+      className={`${inter.variable} ${vazirmatn.variable} ${ibmPlexSansArabic.variable}`}
     >
       <head>
         {/* Anti-FOUC: apply theme before React hydrates to avoid flash */}
