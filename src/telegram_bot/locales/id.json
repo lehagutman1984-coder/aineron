@@ -463,5 +463,44 @@
     "cryptoError": "Tidak dapat membuat faktur. Silakan coba lagi nanti.",
     "cryptoInvoiceCreated": "<b>Faktur dibuat: {amount}</b>\n{credits} kredit akan ditambahkan setelah pembayaran dikonfirmasi.",
     "payButton": "Bayar"
+  },
+  "timezone": {
+    "title": "Zona Waktu",
+    "subtitle": "Digunakan untuk /remind dan /digest agar waktu sesuai dengan jam lokal Anda.",
+    "current": "Saat Ini",
+    "notSet": "belum diatur",
+    "customButton": "Lainnya (masukkan secara manual)",
+    "enterCustom": "Masukkan offset UTC Anda, misalnya <code>+3</code>, <code>-5</code>, atau <code>+3:30</code>:",
+    "invalidCustom": "Tidak dapat memproses itu. Masukkan offset seperti <code>+3</code>, <code>-5</code>, atau <code>+3:30</code> (antara UTC-12 dan UTC+14):",
+    "saved": "Zona waktu diatur ke {offset}."
+  },
+  "remind": {
+    "setTimezoneFirst": "Atur zona waktu Anda terlebih dahulu: /timezone",
+    "newTitle": "Pengingat baru",
+    "askText": "Apa yang harus saya ingatkan? Ketik teks pengingat.",
+    "askTime": "Kapan saya harus mengingatkan Anda?",
+    "formats": "Format",
+    "parseError": "Tidak dapat memahami waktu itu. Coba:\n<code>+30m</code>, <code>15:30</code>, <code>besok 09:00</code>",
+    "set": "Pengingat diatur untuk <b>{time}</b>.\n\nTeks: {text}",
+    "emptyList": "Anda tidak memiliki pengingat aktif.",
+    "listTitle": "Pengingat Anda:",
+    "cancelButton": "Batalkan",
+    "cancelled": "Pengingat dibatalkan.",
+    "notFound": "Pengingat tidak ditemukan atau sudah dikirim."
+  },
+  "digest": {
+    "linkFirst": "Hubungkan akun Anda dengan /start sebelum mengatur digest.",
+    "setTimezoneFirst": "Atur zona waktu Anda terlebih dahulu: /timezone",
+    "disabled": "Digest harian dinonaktifkan.",
+    "offTitle": "Digest harian dinonaktifkan",
+    "offBody": "Ini mengirimkan ringkasan berita AI harian singkat dan satu tip setiap hari.\n\nKirim /digest on, atau atur waktu: /digest 09:00",
+    "enableButton": "Aktifkan digest",
+    "disableButton": "Nonaktifkan digest",
+    "enabledAt": "<b>Digest harian diaktifkan.</b> Akan tiba pada {time} (waktu lokal Anda).",
+    "invalidTime": "Waktu tidak valid. Gunakan format HH:MM, misalnya /digest 09:00",
+    "onStatus": "Digest harian diaktifkan, waktu: {time}",
+    "onCommands": "Perintah:\n• /digest off — nonaktifkan\n• /digest HH:MM — ubah waktu",
+    "offStatus": "Digest harian dinonaktifkan",
+    "offCommands": "Aktifkan: /digest on atau /digest 09:00"
   }
 }

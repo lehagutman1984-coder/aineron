@@ -463,5 +463,44 @@
     "cryptoError": "Fatura oluşturulamadı. Lütfen daha sonra tekrar deneyin.",
     "cryptoInvoiceCreated": "<b>Fatura oluşturuldu: {amount}</b>\nÖdeme onaylandığında {credits} kredi eklenecek.",
     "payButton": "Öde"
+  },
+  "timezone": {
+    "title": "Saat Dilimi",
+    "subtitle": "/remind ve /digest için yerel saatinizle eşleşmesi amacıyla kullanılır.",
+    "current": "Mevcut",
+    "notSet": "ayarlanmadı",
+    "customButton": "Diğer (manuel girin)",
+    "enterCustom": "UTC ofsetinizi girin, örn. <code>+3</code>, <code>-5</code> veya <code>+3:30</code>:",
+    "invalidCustom": "Bunu çözemedi. <code>+3</code>, <code>-5</code> veya <code>+3:30</code> gibi bir ofset girin (UTC-12 ile UTC+14 arasında):",
+    "saved": "Saat dilimi {offset} olarak ayarlandı."
+  },
+  "remind": {
+    "setTimezoneFirst": "Önce saat diliminizi ayarlayın: /timezone",
+    "newTitle": "Yeni hatırlatıcı",
+    "askText": "Size neyi hatırlatmamı istersiniz? Hatırlatma metnini yazın.",
+    "askTime": "Size ne zaman hatırlatmamı istersiniz?",
+    "formats": "Formatlar",
+    "parseError": "Bu zamanı anlayamadım. Şunları deneyin:\n<code>+30m</code>, <code>15:30</code>, <code>yarın 09:00</code>",
+    "set": "Hatırlatıcı <b>{time}</b> için ayarlandı.\n\nMetin: {text}",
+    "emptyList": "Aktif hatırlatıcınız yok.",
+    "listTitle": "Hatırlatıcılarınız:",
+    "cancelButton": "İptal",
+    "cancelled": "Hatırlatıcı iptal edildi.",
+    "notFound": "Hatırlatıcı bulunamadı veya zaten gönderildi."
+  },
+  "digest": {
+    "linkFirst": "Önce hesabınızı /start ile bağlayın, ardından özeti ayarlayın.",
+    "setTimezoneFirst": "Önce saat diliminizi ayarlayın: /timezone",
+    "disabled": "Günlük özet devre dışı bırakıldı.",
+    "offTitle": "Günlük özet devre dışı bırakıldı",
+    "offBody": "Günde bir kez kısa bir AI haber özeti ve bir ipucu gönderir.\n\n/digest on gönderin veya bir saat ayarlayın: /digest 09:00",
+    "enableButton": "Özeti etkinleştir",
+    "disableButton": "Özeti devre dışı bırak",
+    "enabledAt": "<b>Günlük özet etkinleştirildi.</b> {time} (yerel saatiniz) saatinde gelecek.",
+    "invalidTime": "Geçersiz saat. HH:MM formatını kullanın, örn. /digest 09:00",
+    "onStatus": "Günlük özet etkin, saat: {time}",
+    "onCommands": "Komutlar:\n• /digest off — devre dışı bırak\n• /digest HH:MM — saati değiştir",
+    "offStatus": "Günlük özet devre dışı",
+    "offCommands": "Etkinleştir: /digest on veya /digest 09:00"
   }
 }

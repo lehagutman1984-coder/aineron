@@ -463,5 +463,44 @@
     "cryptoError": "تعذر إنشاء الفاتورة. يرجى المحاولة مرة أخرى لاحقاً.",
     "cryptoInvoiceCreated": "<b>تم إنشاء الفاتورة: {amount}</b>\nسيتم إضافة {credits} رصيد عند تأكيد الدفع.",
     "payButton": "ادفع"
+  },
+  "timezone": {
+    "title": "المنطقة الزمنية",
+    "subtitle": "تُستخدم لـ /remind و /digest لتتطابق الأوقات مع ساعتك المحلية.",
+    "current": "الحالية",
+    "notSet": "غير محددة",
+    "customButton": "أخرى (أدخل يدوياً)",
+    "enterCustom": "أدخل تعويض التوقيت العالمي المنسق (UTC)، مثل <code>+3</code>، <code>-5</code>، أو <code>+3:30</code>:",
+    "invalidCustom": "تعذر تحليل ذلك. أدخل تعويضاً مثل <code>+3</code>، <code>-5</code>، أو <code>+3:30</code> (بين UTC-12 و UTC+14):",
+    "saved": "تم تعيين المنطقة الزمنية إلى {offset}."
+  },
+  "remind": {
+    "setTimezoneFirst": "قم بتعيين منطقتك الزمنية أولاً: /timezone",
+    "newTitle": "تذكير جديد",
+    "askText": "بماذا يجب أن أذكرك؟ اكتب نص التذكير.",
+    "askTime": "متى يجب أن أذكرك؟",
+    "formats": "الصيغ",
+    "parseError": "تعذر فهم ذلك الوقت. حاول:\n<code>+30m</code>، <code>15:30</code>، <code>غداً 09:00</code>",
+    "set": "تم تعيين التذكير لـ <b>{time}</b>.\n\nالنص: {text}",
+    "emptyList": "ليس لديك تذكيرات نشطة.",
+    "listTitle": "تذكيراتك:",
+    "cancelButton": "إلغاء",
+    "cancelled": "تم إلغاء التذكير.",
+    "notFound": "التذكير غير موجود أو تم إرساله بالفعل."
+  },
+  "digest": {
+    "linkFirst": "اربط حسابك مع /start قبل إعداد الملخص.",
+    "setTimezoneFirst": "قم بتعيين منطقتك الزمنية أولاً: /timezone",
+    "disabled": "تم تعطيل الملخص اليومي.",
+    "offTitle": "تم تعطيل الملخص اليومي",
+    "offBody": "يرسل ملخصاً يومياً قصيراً لأخبار الذكاء الاصطناعي ونصيحة مرة في اليوم.\n\nأرسل /digest on، أو حدد وقتاً: /digest 09:00",
+    "enableButton": "تمكين الملخص",
+    "disableButton": "تعطيل الملخص",
+    "enabledAt": "<b>تم تمكين الملخص اليومي.</b> سيصل عند {time} (بتوقيتك المحلي).",
+    "invalidTime": "وقت غير صالح. استخدم صيغة HH:MM، مثل /digest 09:00",
+    "onStatus": "تم تمكين الملخص اليومي، الوقت: {time}",
+    "onCommands": "الأوامر:\n• /digest off — تعطيل\n• /digest HH:MM — تغيير الوقت",
+    "offStatus": "تم تعطيل الملخص اليومي",
+    "offCommands": "تمكين: /digest on أو /digest 09:00"
   }
 }

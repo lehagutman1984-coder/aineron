@@ -5,7 +5,7 @@ from asgiref.sync import async_to_sync
 
 logger = logging.getLogger(__name__)
 
-_DIGEST_PROMPT = (
+_DIGEST_PROMPT_RU = (
     "Сделай краткий ежедневный дайджест для пользователя AI-платформы. "
     "Включи: 1) Один интересный факт или новость об AI, "
     "2) Практический совет по работе с языковыми моделями, "
@@ -13,21 +13,49 @@ _DIGEST_PROMPT = (
     "Формат: лаконично, 3 абзаца с эмодзи. Отвечай на русском."
 )
 
+# G5: тот же дайджест-промт, но с целевым языком, подставляемым в конце
+# (см. LOCALE_NAMES в telegram_bot/i18n.py-совместимых пайплайнах —
+# используем полные английские названия языков для однозначности LLM).
+_DIGEST_PROMPT_INTL = (
+    "Write a short daily digest for a user of an AI platform. "
+    "Include: 1) One interesting AI fact or news item, "
+    "2) A practical tip for working with language models, "
+    "3) A brief motivating thought. "
+    "Format: concise, 3 paragraphs with emoji. Respond in {language_name}."
+)
+_LANGUAGE_NAMES = {
+    'en': 'English', 'fa': 'Persian (Farsi)', 'tr': 'Turkish',
+    'id': 'Indonesian', 'ar': 'Arabic (Modern Standard)',
+}
+
 
 @shared_task(bind=True, max_retries=2, ignore_result=True,
              name='telegram_bot.tasks.send_daily_digests')
 def send_daily_digests(self):
     """
     Runs every minute; sends digest to users whose digest_hour:digest_minute
-    matches the current Moscow time.
-    """
-    import pytz
-    from datetime import datetime
+    matches the current time.
 
-    moscow = pytz.timezone('Europe/Moscow')
-    now_moscow = datetime.now(moscow)
-    current_hour = now_moscow.hour
-    current_minute = now_moscow.minute
+    aineron.ru (INTL_MODE=0): digest_hour/digest_minute — литеральное
+    московское время (как было, не изменено). aineron.net (INTL_MODE=1):
+    поля хранят UTC-эквивалент (конвертация в digest_cmd.py на границе
+    ввода/вывода через tg_user.timezone_offset_minutes) — сравниваем с
+    текущим UTC. Разделение по INTL_MODE безопасно: это независимые
+    деплойменты с отдельными БД (aineron.ru и aineron.net никогда не
+    делят одну и ту же таблицу telegram_bot_telegramuser).
+    """
+    from django.conf import settings
+
+    if getattr(settings, 'INTL_MODE', False):
+        from datetime import datetime, timezone as dt_timezone
+        now = datetime.now(dt_timezone.utc)
+        current_hour, current_minute = now.hour, now.minute
+    else:
+        import pytz
+        from datetime import datetime
+        moscow = pytz.timezone('Europe/Moscow')
+        now_moscow = datetime.now(moscow)
+        current_hour, current_minute = now_moscow.hour, now_moscow.minute
 
     try:
         from telegram_bot.models import TelegramUser
@@ -45,7 +73,7 @@ def send_daily_digests(self):
 
     logger.info(
         f"send_daily_digests: sending to {len(users)} users "
-        f"at {current_hour}:{current_minute:02d} MSK"
+        f"at {current_hour}:{current_minute:02d} ({'UTC' if getattr(settings, 'INTL_MODE', False) else 'MSK'})"
     )
     for tg_user in users:
         try:
@@ -55,8 +83,10 @@ def send_daily_digests(self):
 
 
 def _send_digest_to_user(tg_user):
+    from django.conf import settings
     from aitext.tasks import get_laozhang_client
     from aitext.models import NeuralNetwork
+    from telegram_bot.i18n import resolve_language
 
     user = tg_user.user
     if not user:
@@ -73,13 +103,21 @@ def _send_digest_to_user(tg_user):
     if not network or not network.model_name:
         return
 
+    lang = resolve_language(tg_user, None)
+    if lang == 'ru':
+        system_prompt = "Ты — полезный AI-ассистент платформы aineron.ru."
+        user_prompt = _DIGEST_PROMPT_RU
+    else:
+        system_prompt = "You are a helpful AI assistant for the aineron.net platform."
+        user_prompt = _DIGEST_PROMPT_INTL.format(language_name=_LANGUAGE_NAMES.get(lang, 'English'))
+
     try:
         client = get_laozhang_client()
         resp = client.chat.completions.create(
             model=network.model_name,
             messages=[
-                {"role": "system", "content": "Ты — полезный AI-ассистент платформы aineron.ru."},
-                {"role": "user", "content": _DIGEST_PROMPT},
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
             ],
             max_tokens=600,
             temperature=0.7,
@@ -92,10 +130,11 @@ def _send_digest_to_user(tg_user):
     if not content.strip():
         return
 
-    text = (
-        f"*Ваш ежедневный AI-дайджест*\n\n{content}"
-        f"\n\n_aineron.ru_ — отключить: /digest off"
-    )
+    if lang == 'ru':
+        text = f"*Ваш ежедневный AI-дайджест*\n\n{content}\n\n_aineron.ru_ — отключить: /digest off"
+    else:
+        site = 'aineron.net'
+        text = f"*Your daily AI digest*\n\n{content}\n\n_{site}_ — disable: /digest off"
     async_to_sync(_bot_send)(tg_user.telegram_id, text)
 
 

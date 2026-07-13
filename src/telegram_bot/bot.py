@@ -28,21 +28,24 @@ def register_routers():
         reggroup_cmd, sticker_cmd, memory_cmd, persona_cmd,
         remind_cmd, poll_cmd, tasks_cmd, research_cmd, business,
         topics, group2, mybot_cmd, agent_cmd, channel_cmd, language_cmd,
+        timezone_cmd,
     )
     dp.message.middleware(AuthMiddleware())
     dp.callback_query.middleware(AuthMiddleware())
     dp.inline_query.middleware(AuthMiddleware())
 
     if getattr(settings, 'INTL_MODE', False):
-        # G5 — волна 2: медиа-генерация, продуктивность, утилиты и пополнение
+        # G5 — волна 2: медиа-генерация, продуктивность, утилиты, пополнение
         # баланса (Stars по курсу INTL_XTR_RATE_KOPECKS + Crypto Pay, см.
-        # payment.py) переведены и подключены. Тарифные Stars-подписки
+        # payment.py) и напоминания/дайджест с часовым поясом на пользователя
+        # (timezone_cmd.py, гейт при /remind и /digest — см. remind_cmd.py/
+        # digest_cmd.py) переведены и подключены. Тарифные Stars-подписки
         # (/subscribe) остаются ru-only — завязаны на Tariff.price (рубли),
         # отдельная задача. Studio-смежные фичи, требующие отдельных
-        # продуктовых решений (tasks/remind/digest — таймзона, research/agent
-        # — переведены, но не в этой волне, search — локаль полнотекстового
-        # поиска, business/mybot — за отдельными флагами, group/group2/
-        # reggroup — рублёвый org-биллинг), пока не подключены.
+        # продуктовых решений (tasks/agent — переведены, но не в этой волне
+        # (RUB-пресеты/format_rub), search — локаль полнотекстового поиска,
+        # business/mybot — за отдельными флагами, group/group2/reggroup —
+        # рублёвый org-биллинг), пока не подключены.
         dp.include_router(inline.router)
         dp.include_router(menu.router)
         dp.include_router(onboarding.router)
@@ -72,6 +75,9 @@ def register_routers():
         dp.include_router(poll_cmd.router)
         dp.include_router(topics.router)
         dp.include_router(channel_cmd.router)
+        dp.include_router(timezone_cmd.router)
+        dp.include_router(remind_cmd.router)
+        dp.include_router(digest_cmd.router)
         _routers_registered = True
         return
 

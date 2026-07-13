@@ -463,5 +463,44 @@
     "cryptoError": "صدور فاکتور ممکن نیست. لطفاً بعداً دوباره تلاش کنید.",
     "cryptoInvoiceCreated": "<b>فاکتور ایجاد شد: {amount}</b>\n{credits} اعتبار پس از تأیید پرداخت اضافه خواهد شد.",
     "payButton": "پرداخت"
+  },
+  "timezone": {
+    "title": "منطقه زمانی",
+    "subtitle": "برای /remind و /digest استفاده می‌شود تا زمان‌ها با ساعت محلی شما هماهنگ باشند.",
+    "current": "فعلی",
+    "notSet": "تنظیم نشده",
+    "customButton": "دیگر (ورود دستی)",
+    "enterCustom": "افست UTC خود را وارد کنید، مثلاً <code>+3</code>، <code>-5</code>، یا <code>+3:30</code>:",
+    "invalidCustom": "قابل تجزیه نیست. افستی مانند <code>+3</code>، <code>-5</code>، یا <code>+3:30</code> وارد کنید (بین UTC-12 و UTC+14):",
+    "saved": "منطقه زمانی به {offset} تنظیم شد."
+  },
+  "remind": {
+    "setTimezoneFirst": "ابتدا منطقه زمانی خود را تنظیم کنید: /timezone",
+    "newTitle": "یادآوری جدید",
+    "askText": "درباره چه چیزی باید به شما یادآوری کنم؟ متن یادآوری را تایپ کنید.",
+    "askTime": "چه زمانی باید به شما یادآوری کنم؟",
+    "formats": "فرمت‌ها",
+    "parseError": "زمان را نمی‌توان فهمید. امتحان کنید:\n<code>+30m</code>، <code>15:30</code>، <code>فردا 09:00</code>",
+    "set": "یادآوری برای <b>{time}</b> تنظیم شد.\n\nمتن: {text}",
+    "emptyList": "شما هیچ یادآوری فعالی ندارید.",
+    "listTitle": "یادآوری‌های شما:",
+    "cancelButton": "لغو",
+    "cancelled": "یادآوری لغو شد.",
+    "notFound": "یادآوری یافت نشد یا قبلاً ارسال شده است."
+  },
+  "digest": {
+    "linkFirst": "قبل از تنظیم خلاصه، حساب خود را با /start لینک کنید.",
+    "setTimezoneFirst": "ابتدا منطقه زمانی خود را تنظیم کنید: /timezone",
+    "disabled": "خلاصه روزانه غیرفعال شد.",
+    "offTitle": "خلاصه روزانه غیرفعال شد",
+    "offBody": "یک خلاصه کوتاه از اخبار AI و یک نکته روزانه ارسال می‌کند.\n\nارسال /digest on، یا تنظیم زمان: /digest 09:00",
+    "enableButton": "فعال‌سازی خلاصه",
+    "disableButton": "غیرفعال‌سازی خلاصه",
+    "enabledAt": "<b>خلاصه روزانه فعال شد.</b> در {time} (زمان محلی شما) خواهد رسید.",
+    "invalidTime": "زمان نامعتبر. از فرمت HH:MM استفاده کنید، مثلاً /digest 09:00",
+    "onStatus": "خلاصه روزانه فعال شد، زمان: {time}",
+    "onCommands": "دستورات:\n• /digest off — غیرفعال‌سازی\n• /digest HH:MM — تغییر زمان",
+    "offStatus": "خلاصه روزانه غیرفعال شد",
+    "offCommands": "فعال‌سازی: /digest on یا /digest 09:00"
   }
 }

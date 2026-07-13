@@ -136,6 +136,16 @@
     "auto": "Automatic (Telegram language)",
     "saved": "Language updated"
   },
+  "timezone": {
+    "title": "Timezone",
+    "subtitle": "Used for /remind and /digest so times match your local clock.",
+    "current": "Current",
+    "notSet": "not set",
+    "customButton": "Other (enter manually)",
+    "enterCustom": "Enter your UTC offset, e.g. <code>+3</code>, <code>-5</code>, or <code>+3:30</code>:",
+    "invalidCustom": "Couldn't parse that. Enter an offset like <code>+3</code>, <code>-5</code>, or <code>+3:30</code> (between UTC-12 and UTC+14):",
+    "saved": "Timezone set to {offset}."
+  },
   "models": {
     "textModels": "Text models",
     "imageModels": "Image models",
@@ -155,6 +165,35 @@
     "unknownModelType": "Unknown model type",
     "errorPrefix": "Error",
     "modelChangedTitle": "Aineron · Model changed"
+  },
+  "remind": {
+    "setTimezoneFirst": "Set your timezone first: /timezone",
+    "newTitle": "New reminder",
+    "askText": "What should I remind you about? Type the reminder text.",
+    "askTime": "When should I remind you?",
+    "formats": "Formats",
+    "parseError": "Couldn't understand that time. Try:\n<code>+30m</code>, <code>15:30</code>, <code>tomorrow 09:00</code>",
+    "set": "Reminder set for <b>{time}</b>.\n\nText: {text}",
+    "emptyList": "You have no active reminders.",
+    "listTitle": "Your reminders:",
+    "cancelButton": "Cancel",
+    "cancelled": "Reminder cancelled.",
+    "notFound": "Reminder not found or already sent."
+  },
+  "digest": {
+    "linkFirst": "Link your account with /start before setting up the digest.",
+    "setTimezoneFirst": "Set your timezone first: /timezone",
+    "disabled": "Daily digest disabled.",
+    "offTitle": "Daily digest disabled",
+    "offBody": "It sends a short daily AI news summary and a tip once a day.\n\nSend /digest on, or set a time: /digest 09:00",
+    "enableButton": "Enable digest",
+    "disableButton": "Disable digest",
+    "enabledAt": "<b>Daily digest enabled.</b> Will arrive at {time} (your local time).",
+    "invalidTime": "Invalid time. Use HH:MM format, e.g. /digest 09:00",
+    "onStatus": "Daily digest enabled, time: {time}",
+    "onCommands": "Commands:\n• /digest off — disable\n• /digest HH:MM — change time",
+    "offStatus": "Daily digest disabled",
+    "offCommands": "Enable: /digest on or /digest 09:00"
   },
   "images": {
     "title": "Aineron · Image",

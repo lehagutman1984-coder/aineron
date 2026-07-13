@@ -19,6 +19,15 @@ class TelegramUser(models.Model):
     # resolve_language() в telegram_bot/i18n.py решает по from_user.language_code
     # (только при INTL_MODE=1; на aineron.ru язык всегда 'ru' независимо от поля).
     language = models.CharField(max_length=8, blank=True, verbose_name='Язык бота')
+    # G5: часовой пояс для /remind и /digest на aineron.net — смещение от UTC
+    # в минутах (поддерживает получасовые/45-минутные пояса вроде Ирана
+    # +3:30). None = не задан явно — используется только при INTL_MODE=1,
+    # запрашивается один раз при первом обращении к /remind или /digest
+    # (см. telegram_bot/handlers/timezone_cmd.py). На aineron.ru не
+    # используется — там таймзона всегда Europe/Moscow (см. tasks.py).
+    timezone_offset_minutes = models.IntegerField(
+        null=True, blank=True, verbose_name='Часовой пояс (смещение от UTC, мин.)',
+    )
 
     default_network = models.ForeignKey(
         'aitext.NeuralNetwork',
