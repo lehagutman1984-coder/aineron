@@ -14,6 +14,39 @@ if [ ! -d "src" ]; then
     exit 1
 fi
 
+# ---------- SSL: синхронизация сертификата Let's Encrypt + автопродление ----------
+# Certbot продлевает сертификат в /etc/letsencrypt/live/aineron.ru/ сам по
+# своему таймеру, но nginx в docker читает копию из ./ssl/ — если её не
+# синхронизировать, nginx годами отдаёт протухший сертификат, а обновлённый
+# файл просто лежит рядом никем не тронутый (инцидент 2026-07-13).
+echo -e "${YELLOW}Синхронизируем сертификат Let's Encrypt...${NC}"
+if [ -f /etc/letsencrypt/live/aineron.ru/fullchain.pem ]; then
+    mkdir -p ./ssl
+    cp /etc/letsencrypt/live/aineron.ru/fullchain.pem ./ssl/fullchain.pem
+    cp /etc/letsencrypt/live/aineron.ru/privkey.pem ./ssl/privkey.pem
+    echo -e "${GREEN}  Сертификат синхронизирован (действителен до: $(openssl x509 -enddate -noout -in ./ssl/fullchain.pem | cut -d= -f2)).${NC}"
+else
+    echo -e "${YELLOW}  /etc/letsencrypt/live/aineron.ru/ не найден — пропускаем (certbot не установлен?)${NC}"
+fi
+
+# deploy-hook: certbot сам копирует сертификат и перезапускает nginx при
+# каждом автопродлении — без этого шаг выше защищает только на момент
+# деплоя, а между деплоями сертификат снова тихо разойдётся с тем, что
+# видит certbot.
+if command -v certbot >/dev/null 2>&1; then
+    mkdir -p /etc/letsencrypt/renewal-hooks/deploy
+    PROJECT_DIR="$(pwd)"
+    cat > /etc/letsencrypt/renewal-hooks/deploy/aineron.sh <<EOF
+#!/bin/bash
+cp /etc/letsencrypt/live/aineron.ru/fullchain.pem ${PROJECT_DIR}/ssl/fullchain.pem
+cp /etc/letsencrypt/live/aineron.ru/privkey.pem ${PROJECT_DIR}/ssl/privkey.pem
+cd ${PROJECT_DIR} && docker-compose restart nginx
+EOF
+    chmod +x /etc/letsencrypt/renewal-hooks/deploy/aineron.sh
+    systemctl enable --now certbot.timer 2>/dev/null || true
+    echo -e "${GREEN}  certbot deploy-hook установлен (${PROJECT_DIR}), автопродление включено.${NC}"
+fi
+
 echo -e "${YELLOW}Останавливаем старые контейнеры...${NC}"
 docker-compose down
 
