@@ -34,19 +34,40 @@ def register_routers():
     dp.inline_query.middleware(AuthMiddleware())
 
     if getattr(settings, 'INTL_MODE', False):
-        # G4 (GLOBAL_EXPANSION_PLAN.md §4.6): волна 1 — только базовый
-        # денежный/чат-путь. Payment (Stars/Robokassa) и Studio-смежные
-        # фичи (tasks/research/business/topics/mybot/group/inline и т.д.)
-        # не переведены и не подключены на этой волне — см. §16 задачи.
+        # G5 — волна 2: медиа-генерация, продуктивность и утилитарные команды
+        # переведены (dual-path lang=='ru' / t()) и подключены. Payment
+        # (RUB-only ценообразование) и Studio-смежные фичи, требующие
+        # отдельных продуктовых решений (tasks/remind/digest — таймзона,
+        # research/agent — переведены, но не в этой волне, search — локаль
+        # полнотекстового поиска, business/mybot — за отдельными флагами,
+        # group/group2/reggroup — рублёвый org-биллинг), пока не подключены.
+        dp.include_router(inline.router)
         dp.include_router(menu.router)
         dp.include_router(onboarding.router)
         dp.include_router(start.router)
+        dp.include_router(history.router)
+        dp.include_router(files.router)         # photos/docs before generic text
+        dp.include_router(projects_cmd.router)
         dp.include_router(chat.router)
         dp.include_router(balance.router)
         dp.include_router(models_cmd.router)
+        dp.include_router(voice.router)
         dp.include_router(images.router)
+        dp.include_router(video_cmd.router)
+        dp.include_router(video_settings_cmd.router)
+        dp.include_router(prompts_cmd.router)
         dp.include_router(settings_cmd.router)
         dp.include_router(language_cmd.router)
+        dp.include_router(admin.router)         # админ-only, не требует перевода
+        dp.include_router(export_cmd.router)
+        dp.include_router(img2img_cmd.router)
+        dp.include_router(img2video_cmd.router)
+        dp.include_router(sticker_cmd.router)
+        dp.include_router(memory_cmd.router)
+        dp.include_router(persona_cmd.router)
+        dp.include_router(poll_cmd.router)
+        dp.include_router(topics.router)
+        dp.include_router(channel_cmd.router)
         _routers_registered = True
         return
 

@@ -15,6 +15,7 @@ from django.conf import settings
 
 from telegram_bot import capabilities
 from telegram_bot.utils import card
+from telegram_bot.i18n import t, resolve_language
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -80,36 +81,48 @@ resolve_topic_chat = sync_to_async(_resolve_topic_chat, thread_sensitive=True)
 
 @router.message(Command('topics'))
 async def cmd_topics(message: Message, tg_user=None):
+    lang = resolve_language(tg_user, message.from_user)
     if tg_user is None:
-        await message.answer('Привяжите аккаунт через /start')
+        text = 'Привяжите аккаунт через /start' if lang == 'ru' else t('topics.notLinked', lang)
+        await message.answer(text)
         return
     if not capabilities.is_enabled('topics'):
-        await message.answer(
+        text = (
             'Топики-проекты скоро появятся. Пока используйте /projects '
-            'для переключения контекста.',
-        )
+            'для переключения контекста.'
+        ) if lang == 'ru' else t('topics.comingSoon', lang)
+        await message.answer(text)
         return
     if not capabilities.bot_supports(message.bot, 'create_forum_topic'):
-        await message.answer('Эта версия бота не поддерживает топики — используйте /projects.')
+        text = (
+            'Эта версия бота не поддерживает топики — используйте /projects.'
+            if lang == 'ru' else t('topics.unsupported', lang)
+        )
+        await message.answer(text)
         return
 
     projects = await list_projects(tg_user.user)
     if not projects:
-        await message.answer(
-            card('Топики-проекты',
-                 'У вас пока нет проектов. Создайте первый: /projects'),
-            parse_mode='HTML',
-        )
+        if lang == 'ru':
+            body = card('Топики-проекты',
+                        'У вас пока нет проектов. Создайте первый: /projects')
+        else:
+            body = card(t('topics.title', lang), t('topics.noProjects', lang))
+        await message.answer(body, parse_mode='HTML')
         return
 
     rows = [
         [InlineKeyboardButton(text=p.name[:40], callback_data=f'topic_new:{p.pk}')]
         for p in projects
     ]
+    if lang == 'ru':
+        body = card('Топики-проекты',
+                     'Выберите проект — создам для него отдельный топик в этом чате. '
+                     'У каждого топика свой контекст, персона и база знаний проекта.')
+    else:
+        body = card(t('topics.title', lang), t('topics.chooseProject', lang))
     await message.answer(
-        card('Топики-проекты',
-             'Выберите проект — создам для него отдельный топик в этом чате. '
-             'У каждого топика свой контекст, персона и база знаний проекта.'),
+        body,
         parse_mode='HTML',
         reply_markup=InlineKeyboardMarkup(inline_keyboard=rows),
     )
@@ -117,6 +130,7 @@ async def cmd_topics(message: Message, tg_user=None):
 
 @router.callback_query(F.data.startswith('topic_new:'))
 async def cb_topic_new(query: CallbackQuery, tg_user=None):
+    lang = resolve_language(tg_user, query.from_user)
     if tg_user is None:
         await query.answer()
         return
@@ -129,12 +143,15 @@ async def cb_topic_new(query: CallbackQuery, tg_user=None):
 
     project = await _get_project()
     if project is None:
-        await query.answer('Проект не найден')
+        text = 'Проект не найден' if lang == 'ru' else t('topics.projectNotFound', lang)
+        await query.answer(text)
         return
 
     existing = await topic_for_project(tg_user, project_id)
     if existing:
-        await query.answer(f'Топик «{existing.title}» уже создан', show_alert=True)
+        text = (f'Топик «{existing.title}» уже создан' if lang == 'ru'
+                else t('topics.topicAlreadyExists', lang, title=existing.title))
+        await query.answer(text, show_alert=True)
         return
 
     try:
@@ -144,21 +161,30 @@ async def cb_topic_new(query: CallbackQuery, tg_user=None):
         thread_id = forum_topic.message_thread_id
     except Exception as e:
         logger.warning(f'create_forum_topic failed: {e}')
-        await query.answer(
-            'Не удалось создать топик. Убедитесь, что в чате с ботом включены темы.',
-            show_alert=True,
+        text = (
+            'Не удалось создать топик. Убедитесь, что в чате с ботом включены темы.'
+            if lang == 'ru' else t('topics.createFailed', lang)
         )
+        await query.answer(text, show_alert=True)
         return
 
     await save_topic(tg_user, thread_id, project, project.name)
-    await query.answer('Топик создан')
+    answer_text = 'Топик создан' if lang == 'ru' else t('topics.created', lang)
+    await query.answer(answer_text)
     try:
+        if lang == 'ru':
+            card_text = card(f'Проект «{html_mod.escape(project.name)}»',
+                              'Пишите сюда — контекст, персона и база знаний этого '
+                              'проекта подключены автоматически.')
+        else:
+            card_text = card(
+                t('topics.projectCardTitle', lang, name=html_mod.escape(project.name)),
+                t('topics.projectCardBody', lang),
+            )
         await query.bot.send_message(
             chat_id=query.message.chat.id,
             message_thread_id=thread_id,
-            text=card(f'Проект «{html_mod.escape(project.name)}»',
-                      'Пишите сюда — контекст, персона и база знаний этого '
-                      'проекта подключены автоматически.'),
+            text=card_text,
             parse_mode='HTML',
         )
     except Exception:

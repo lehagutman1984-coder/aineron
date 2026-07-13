@@ -5,7 +5,14 @@ LLM-пайплайн перевода словарей Telegram-бота (GLOBAL
 locales/en.json (уже адаптирован под aineron.net — крипта/кредиты, без
 рублей/Robokassa), НЕ ru.json (там инвентарь под aineron.ru).
 
-Запуск: python manage.py translate_bot_locales fa tr
+Идемпотентна: переводит только ключи, которых нет в целевом файле (или
+--force для полного перезапуска) — не перезаписывает уже переведённые/
+вручную поправленные строки при добавлении новых namespace'ов.
+
+Запуск:
+  python manage.py translate_bot_locales fa tr        # только недостающие ключи
+  python manage.py translate_bot_locales --force       # перевести всё заново
+  python manage.py translate_bot_locales --dry-run     # показать объём без вызова API
 """
 import json
 from pathlib import Path
@@ -51,21 +58,34 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument('locales', nargs='*', default=list(LOCALE_NAMES.keys()))
+        parser.add_argument('--force', action='store_true', help='Retranslate every key, even already-filled ones')
+        parser.add_argument('--dry-run', action='store_true', help='Show pending key counts without calling the API')
 
     def handle(self, *args, **options):
         import requests
 
-        api_key = getattr(settings, 'LAOZHANG_API_KEY', '') or __import__('os').environ.get('LAOZHANG_API_KEY', '')
-        if not api_key:
-            self.stderr.write('LAOZHANG_API_KEY not set')
-            return
-
         source = json.loads((LOCALES_DIR / 'en.json').read_text(encoding='utf-8'))
         source_flat = flatten(source)
+
+        api_key = getattr(settings, 'LAOZHANG_API_KEY', '') or __import__('os').environ.get('LAOZHANG_API_KEY', '')
+        if not api_key and not options['dry_run']:
+            self.stderr.write('LAOZHANG_API_KEY not set')
+            return
 
         for locale in options['locales']:
             if locale not in LOCALE_NAMES:
                 self.stderr.write(f'Unknown locale: {locale}')
+                continue
+
+            out_path = LOCALES_DIR / f'{locale}.json'
+            existing_flat = flatten(json.loads(out_path.read_text(encoding='utf-8'))) if out_path.exists() else {}
+
+            pending = {
+                k: v for k, v in source_flat.items()
+                if options['force'] or not (existing_flat.get(k) or '').strip()
+            }
+            self.stdout.write(f'[{locale}] к переводу: {len(pending)} из {len(source_flat)} ключей')
+            if options['dry_run'] or not pending:
                 continue
 
             system_prompt = (
@@ -78,7 +98,7 @@ class Command(BaseCommand):
                 f"and URLs (aineron.net/...) exactly, untranslated.\n"
                 f"Respond with ONLY a JSON object mapping each input key to its translation."
             )
-            user_prompt = json.dumps(source_flat, ensure_ascii=False, indent=2)
+            user_prompt = json.dumps(pending, ensure_ascii=False, indent=2)
 
             resp = requests.post(
                 f"{getattr(settings, 'LAOZHANG_API_URL', 'https://api.laozhang.ai/v1')}/chat/completions",
@@ -97,15 +117,18 @@ class Command(BaseCommand):
             resp.raise_for_status()
             translated = json.loads(resp.json()['choices'][0]['message']['content'])
 
-            missing = [k for k in source_flat if k not in translated or not translated[k].strip()]
+            missing = [k for k in pending if k not in translated or not translated[k].strip()]
             if missing:
                 self.stderr.write(f'[{locale}] missing/empty: {missing}')
                 for k in missing:
-                    translated[k] = source_flat[k]  # fallback to English rather than blank
+                    translated[k] = pending[k]  # fallback to English rather than blank
 
-            out_path = LOCALES_DIR / f'{locale}.json'
+            merged = {**existing_flat, **translated}
+            # Убираем ключи, которых больше нет в источнике (переименованные/удалённые)
+            merged = {k: v for k, v in merged.items() if k in source_flat}
+
             out_path.write_text(
-                json.dumps(unflatten(translated), ensure_ascii=False, indent=2) + '\n',
+                json.dumps(unflatten(merged), ensure_ascii=False, indent=2) + '\n',
                 encoding='utf-8',
             )
-            self.stdout.write(f'[{locale}] written: {out_path} ({len(translated)} keys)')
+            self.stdout.write(f'[{locale}] written: {out_path} ({len(translated)} new, {len(merged)} total)')

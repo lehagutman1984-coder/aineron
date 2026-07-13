@@ -6,6 +6,7 @@ from aiogram import Router, F
 from aiogram.filters import StateFilter
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from asgiref.sync import sync_to_async
+from telegram_bot.i18n import t, resolve_language
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -80,10 +81,13 @@ async def _download_and_save(bot, file_id: str, original_name: str, mime_type: s
 async def handle_photo(message: Message, tg_user=None):
     if tg_user is None:
         return
+    lang = resolve_language(tg_user, message.from_user)
     caption = (message.caption or '').strip()
-    prompt = caption if caption else 'Опиши это изображение подробно'
+    default_prompt = 'Опиши это изображение подробно' if lang == 'ru' else t('files.describeImagePrompt', lang)
+    prompt = caption if caption else default_prompt
 
-    status = await message.answer('Анализирую изображение...')
+    status_text = 'Анализирую изображение...' if lang == 'ru' else t('files.analyzingImage', lang)
+    status = await message.answer(status_text)
     try:
         photo = message.photo[-1]
         att = await _download_and_save(
@@ -92,7 +96,7 @@ async def handle_photo(message: Message, tg_user=None):
         )
         from telegram_bot.handlers.chat import process_text
         # Build user text with file reference
-        full_text = f'{prompt}\n[Изображение прикреплено: {att.id}]'
+        full_text = f'{prompt}\n[Изображение прикреплено: {att.id}]' if lang == 'ru' else f'{prompt}\n[Image attached: {att.id}]'
         await process_text(message, tg_user, prompt, attachment=att)
         try:
             await status.delete()
@@ -100,56 +104,72 @@ async def handle_photo(message: Message, tg_user=None):
             pass
     except Exception as e:
         logger.error(f'Photo handler error: {e}')
-        await status.edit_text('Не удалось обработать изображение. Попробуй ещё раз.')
+        error_text = 'Не удалось обработать изображение. Попробуй ещё раз.' if lang == 'ru' else t('files.photoError', lang)
+        await status.edit_text(error_text)
 
 
 @router.message(F.document, StateFilter(None))
 async def handle_document(message: Message, tg_user=None):
     if tg_user is None:
         return
+    lang = resolve_language(tg_user, message.from_user)
     doc = message.document
     caption = (message.caption or '').strip()
     name = doc.file_name or 'document'
     ext = os.path.splitext(name)[1].lower()
 
     if ext not in ALLOWED_EXTS:
-        await message.answer(f'Поддерживаются: PDF, TXT, DOC, DOCX. Получен: {ext or "без расширения"}')
+        if lang == 'ru':
+            text = f'Поддерживаются: PDF, TXT, DOC, DOCX. Получен: {ext or "без расширения"}'
+        else:
+            text = t('files.unsupportedFormat', lang, ext=ext or t('files.noExtension', lang))
+        await message.answer(text)
         return
     if doc.file_size and doc.file_size > MAX_FILE_SIZE:
-        await message.answer('Файл слишком большой (макс. 20 МБ).')
+        text = 'Файл слишком большой (макс. 20 МБ).' if lang == 'ru' else t('files.tooLarge', lang)
+        await message.answer(text)
         return
 
     # Sprint 5.6: if user has an active project, offer to save to knowledge base
     from django.conf import settings as djsettings
     if getattr(djsettings, 'PROJECT_TG_UPLOAD', False) and tg_user.active_project_id:
-        active_proj_name = await _get_project_name(tg_user.active_project_id)
+        active_proj_name = await _get_project_name(tg_user.active_project_id, lang)
+        if lang == 'ru':
+            kb_button_text = f'В базу знаний «{active_proj_name[:25]}»'
+            chat_button_text = 'В чат (без сохранения)'
+            prompt_text = f'Куда отправить <b>{name}</b>?'
+        else:
+            kb_button_text = t('files.toKnowledgeBase', lang, name=active_proj_name[:25])
+            chat_button_text = t('files.toChatNoSave', lang)
+            prompt_text = t('files.whereToSend', lang, name=name)
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text=f'В базу знаний «{active_proj_name[:25]}»',
+                    text=kb_button_text,
                     callback_data=f'tgupload:kb:{tg_user.active_project_id}:{doc.file_id}:{name[:60]}',
                 ),
             ],
             [
                 InlineKeyboardButton(
-                    text='В чат (без сохранения)',
+                    text=chat_button_text,
                     callback_data=f'tgupload:chat:{doc.file_id}:{name[:60]}',
                 ),
             ],
         ])
         await message.answer(
-            f'Куда отправить <b>{name}</b>?',
+            prompt_text,
             reply_markup=kb,
             parse_mode='HTML',
         )
         return
 
-    await _process_document_to_chat(message, tg_user, doc, name, ext, caption)
+    await _process_document_to_chat(message, tg_user, doc, name, ext, caption, lang)
 
 
-async def _process_document_to_chat(message: Message, tg_user, doc, name: str, ext: str, caption: str):
+async def _process_document_to_chat(message: Message, tg_user, doc, name: str, ext: str, caption: str, lang: str = 'ru'):
     """Download document and send to chat as attachment."""
-    status = await message.answer(f'Читаю документ {name}...')
+    status_text = f'Читаю документ {name}...' if lang == 'ru' else t('files.readingDocument', lang, name=name)
+    status = await message.answer(status_text)
     try:
         media_type = 'pdf' if ext == '.pdf' else 'other'
         att = await _download_and_save(
@@ -158,7 +178,8 @@ async def _process_document_to_chat(message: Message, tg_user, doc, name: str, e
         )
         await _extract_text_async(att)
 
-        prompt = caption if caption else f'Проанализируй содержимое документа "{name}"'
+        default_prompt = f'Проанализируй содержимое документа "{name}"' if lang == 'ru' else t('files.analyzeDocumentPrompt', lang, name=name)
+        prompt = caption if caption else default_prompt
         from telegram_bot.handlers.chat import process_text
         await process_text(message, tg_user, prompt, attachment=att)
         try:
@@ -167,20 +188,21 @@ async def _process_document_to_chat(message: Message, tg_user, doc, name: str, e
             pass
     except Exception as e:
         logger.error(f'Document handler error: {e}')
-        await status.edit_text('Не удалось обработать файл. Попробуй ещё раз.')
+        error_text = 'Не удалось обработать файл. Попробуй ещё раз.' if lang == 'ru' else t('files.documentError', lang)
+        await status.edit_text(error_text)
 
 
 @sync_to_async
-def _get_project_name(project_id: int) -> str:
+def _get_project_name(project_id: int, lang: str = 'ru') -> str:
     from aitext.models import Project
     try:
         return Project.objects.values_list('name', flat=True).get(id=project_id)
     except Project.DoesNotExist:
-        return 'Проект'
+        return 'Проект' if lang == 'ru' else t('files.defaultProjectName', lang)
 
 
 @sync_to_async
-def _save_to_project_kb(project_id: int, user, file_bytes: bytes, filename: str) -> tuple[bool, str]:
+def _save_to_project_kb(project_id: int, user, file_bytes: bytes, filename: str, lang: str = 'ru') -> tuple[bool, str]:
     """Save file bytes as ProjectFile and trigger processing. Returns (ok, message)."""
     from aitext.models import Project, ProjectFile
     from django.core.files.base import ContentFile
@@ -189,10 +211,12 @@ def _save_to_project_kb(project_id: int, user, file_bytes: bytes, filename: str)
     try:
         project = Project.objects.get(id=project_id)
     except Project.DoesNotExist:
-        return False, 'Проект не найден'
+        return False, ('Проект не найден' if lang == 'ru' else t('files.projectNotFound', lang))
 
     if project.knowledge_files.count() >= MAX_FILES:
-        return False, f'В проекте уже {MAX_FILES} файлов (максимум)'
+        if lang == 'ru':
+            return False, f'В проекте уже {MAX_FILES} файлов (максимум)'
+        return False, t('files.projectFull', lang, max=MAX_FILES)
 
     ext = os.path.splitext(filename)[1].lower()
     if ext == '.pdf':
@@ -221,14 +245,17 @@ def _save_to_project_kb(project_id: int, user, file_bytes: bytes, filename: str)
 @router.callback_query(F.data.startswith('tgupload:kb:'))
 async def cb_upload_to_kb(query: CallbackQuery, tg_user=None):
     """Download file from Telegram and save to project knowledge base."""
+    lang = resolve_language(tg_user, query.from_user)
     if tg_user is None:
-        await query.answer('Привяжи аккаунт через /start', show_alert=True)
+        text = 'Привяжи аккаунт через /start' if lang == 'ru' else t('files.linkAccount', lang)
+        await query.answer(text, show_alert=True)
         return
 
     # callback_data: tgupload:kb:{project_id}:{file_id}:{filename}
     parts = query.data.split(':', 4)
     if len(parts) < 5:
-        await query.answer('Ошибка', show_alert=True)
+        text = 'Ошибка' if lang == 'ru' else t('files.genericError', lang)
+        await query.answer(text, show_alert=True)
         return
 
     project_id = int(parts[2])
@@ -237,7 +264,8 @@ async def cb_upload_to_kb(query: CallbackQuery, tg_user=None):
     ext = os.path.splitext(filename)[1].lower()
 
     await query.answer()
-    status_msg = await query.message.edit_text(f'Загружаю {filename} в базу знаний...')
+    uploading_text = f'Загружаю {filename} в базу знаний...' if lang == 'ru' else t('files.uploadingToKb', lang, filename=filename)
+    status_msg = await query.message.edit_text(uploading_text)
 
     try:
         file_info = await query.bot.get_file(file_id)
@@ -253,30 +281,38 @@ async def cb_upload_to_kb(query: CallbackQuery, tg_user=None):
             except OSError:
                 pass
 
-        ok, msg = await _save_to_project_kb(project_id, tg_user.user, file_bytes, filename)
+        ok, msg = await _save_to_project_kb(project_id, tg_user.user, file_bytes, filename, lang)
         if ok:
-            await status_msg.edit_text(
-                f'Файл <b>{filename}</b> добавлен в базу знаний проекта «{msg}».\n'
-                'Обработка займёт несколько секунд.',
-                parse_mode='HTML',
-            )
+            if lang == 'ru':
+                success_text = (
+                    f'Файл <b>{filename}</b> добавлен в базу знаний проекта «{msg}».\n'
+                    'Обработка займёт несколько секунд.'
+                )
+            else:
+                success_text = t('files.addedToKb', lang, filename=filename, project=msg)
+            await status_msg.edit_text(success_text, parse_mode='HTML')
         else:
-            await status_msg.edit_text(f'Не удалось добавить файл: {msg}')
+            fail_text = f'Не удалось добавить файл: {msg}' if lang == 'ru' else t('files.addFailed', lang, reason=msg)
+            await status_msg.edit_text(fail_text)
     except Exception as e:
         logger.error(f'tgupload:kb error: {e}')
-        await status_msg.edit_text('Ошибка загрузки файла. Попробуй ещё раз.')
+        error_text = 'Ошибка загрузки файла. Попробуй ещё раз.' if lang == 'ru' else t('files.uploadError', lang)
+        await status_msg.edit_text(error_text)
 
 
 @router.callback_query(F.data.startswith('tgupload:chat:'))
 async def cb_upload_to_chat(query: CallbackQuery, tg_user=None):
     """User chose to send file to chat instead of KB."""
+    lang = resolve_language(tg_user, query.from_user)
     if tg_user is None:
-        await query.answer('Привяжи аккаунт через /start', show_alert=True)
+        text = 'Привяжи аккаунт через /start' if lang == 'ru' else t('files.linkAccount', lang)
+        await query.answer(text, show_alert=True)
         return
 
     parts = query.data.split(':', 3)
     if len(parts) < 4:
-        await query.answer('Ошибка', show_alert=True)
+        text = 'Ошибка' if lang == 'ru' else t('files.genericError', lang)
+        await query.answer(text, show_alert=True)
         return
 
     file_id = parts[2]
@@ -291,14 +327,15 @@ async def cb_upload_to_chat(query: CallbackQuery, tg_user=None):
 
     # Build a synthetic document-like object and process normally
     media_type = 'pdf' if ext == '.pdf' else 'other'
-    status = await query.message.answer(f'Читаю документ {filename}...')
+    reading_text = f'Читаю документ {filename}...' if lang == 'ru' else t('files.readingDocument', lang, name=filename)
+    status = await query.message.answer(reading_text)
     try:
         att = await _download_and_save(
             query.bot, file_id, filename, 'application/octet-stream',
             tg_user.user, media_type,
         )
         await _extract_text_async(att)
-        prompt = f'Проанализируй содержимое документа "{filename}"'
+        prompt = f'Проанализируй содержимое документа "{filename}"' if lang == 'ru' else t('files.analyzeDocumentPrompt', lang, name=filename)
         from telegram_bot.handlers.chat import process_text
         await process_text(query.message, tg_user, prompt, attachment=att)
         try:
@@ -307,4 +344,5 @@ async def cb_upload_to_chat(query: CallbackQuery, tg_user=None):
             pass
     except Exception as e:
         logger.error(f'tgupload:chat error: {e}')
-        await status.edit_text('Не удалось обработать файл. Попробуй ещё раз.')
+        error_text = 'Не удалось обработать файл. Попробуй ещё раз.' if lang == 'ru' else t('files.documentError', lang)
+        await status.edit_text(error_text)

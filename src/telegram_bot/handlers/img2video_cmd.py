@@ -23,6 +23,7 @@ from asgiref.sync import sync_to_async
 from django.conf import settings as djsettings
 
 from telegram_bot.analytics import async_log_event
+from telegram_bot.i18n import t, resolve_language
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -115,23 +116,37 @@ save_photo = sync_to_async(_save_photo_to_storage, thread_sensitive=True)
 async def cmd_img2video(message: Message, state: FSMContext, tg_user=None):
     if tg_user is None:
         return
+    lang = resolve_language(tg_user, message.from_user)
     prompt = message.text.removeprefix('/img2video').strip()
     if not prompt:
-        await message.answer(
-            '<b>Image-to-Video</b>\n\n'
-            'Оживи своё фото — AI создаёт видео из изображения.\n\n'
-            'Использование:\n'
-            '<code>/img2video плавное движение камеры вперёд</code>\n\n'
-            'После команды отправь фото.',
-            parse_mode='HTML',
-        )
+        if lang == 'ru':
+            await message.answer(
+                '<b>Image-to-Video</b>\n\n'
+                'Оживи своё фото — AI создаёт видео из изображения.\n\n'
+                'Использование:\n'
+                '<code>/img2video плавное движение камеры вперёд</code>\n\n'
+                'После команды отправь фото.',
+                parse_mode='HTML',
+            )
+        else:
+            await message.answer(
+                f"<b>{t('img2video.usageTitle', lang)}</b>\n\n"
+                f"{t('img2video.usageDescription', lang)}\n\n"
+                f"{t('img2video.usageLabel', lang)}\n"
+                f"{t('img2video.usageExample', lang)}\n\n"
+                f"{t('img2video.usageSendPhoto', lang)}",
+                parse_mode='HTML',
+            )
         return
 
     network = await get_img2video_network(tg_user)
     if not network:
-        await message.answer(
-            'Нет доступных видео-моделей. Попробуй позже или напиши /models.'
-        )
+        if lang == 'ru':
+            await message.answer(
+                'Нет доступных видео-моделей. Попробуй позже или напиши /models.'
+            )
+        else:
+            await message.answer(t('img2video.noModels', lang))
         return
 
     from telegram_bot.handlers.video_cmd import get_stored_video_settings
@@ -139,22 +154,34 @@ async def cmd_img2video(message: Message, state: FSMContext, tg_user=None):
     total_kopecks = network.cost_kopecks + extra_rub * 100
 
     if not tg_user.user.has_enough_kopecks(total_kopecks):
-        from core.money import format_rub
-        await message.answer(
-            f'Недостаточно средств.\n'
-            f'Нужно: {format_rub(total_kopecks)}, у вас: {format_rub(tg_user.user.balance_kopecks)}\n\n'
-            '/balance — пополнить'
-        )
+        from core.money import format_money
+        if lang == 'ru':
+            await message.answer(
+                f'Недостаточно средств.\n'
+                f'Нужно: {format_money(total_kopecks)}, у вас: {format_money(tg_user.user.balance_kopecks)}\n\n'
+                '/balance — пополнить'
+            )
+        else:
+            await message.answer(
+                t('img2video.insufficientFunds', lang,
+                  need=format_money(total_kopecks), have=format_money(tg_user.user.balance_kopecks))
+            )
         return
 
     await state.set_state(Img2VideoFSM.waiting_photo)
     await state.update_data(prompt=prompt, network_id=network.id)
-    await message.answer(
-        f'Промт: <i>{prompt}</i>\n\n'
-        f'Отправь фото для анимации.\n'
-        f'Модель: <b>{network.name}</b>',
-        parse_mode='HTML',
-    )
+    if lang == 'ru':
+        await message.answer(
+            f'Промт: <i>{prompt}</i>\n\n'
+            f'Отправь фото для анимации.\n'
+            f'Модель: <b>{network.name}</b>',
+            parse_mode='HTML',
+        )
+    else:
+        await message.answer(
+            t('img2video.promptSaved', lang, prompt=prompt, name=network.name),
+            parse_mode='HTML',
+        )
 
 
 @router.message(Img2VideoFSM.waiting_photo, F.photo)
@@ -162,6 +189,7 @@ async def handle_img2video_photo(message: Message, state: FSMContext, tg_user=No
     if tg_user is None:
         await state.clear()
         return
+    lang = resolve_language(tg_user, message.from_user)
 
     data = await state.get_data()
     prompt = data.get('prompt', '')
@@ -169,10 +197,16 @@ async def handle_img2video_photo(message: Message, state: FSMContext, tg_user=No
     await state.clear()
 
     if not prompt or not network_id:
-        await message.answer('Сессия истекла. Начни заново: /img2video <промт>')
+        if lang == 'ru':
+            await message.answer('Сессия истекла. Начни заново: /img2video <промт>')
+        else:
+            await message.answer(t('img2video.sessionExpired', lang))
         return
 
-    status_msg = await message.answer('Скачиваю фото и запускаю генерацию видео...')
+    if lang == 'ru':
+        status_msg = await message.answer('Скачиваю фото и запускаю генерацию видео...')
+    else:
+        status_msg = await message.answer(t('img2video.downloading', lang))
 
     try:
         photo = message.photo[-1]
@@ -206,11 +240,17 @@ async def handle_img2video_photo(message: Message, state: FSMContext, tg_user=No
         from aitext.tasks import generate_ai_response
         generate_ai_response.delay(assistant_msg.id)
 
-        await status_msg.edit_text(
-            f'Генерирую видео ({network.name})...\n'
-            f'Это займёт 3-8 минут. Промт: <i>{prompt}</i>',
-            parse_mode='HTML',
-        )
+        if lang == 'ru':
+            await status_msg.edit_text(
+                f'Генерирую видео ({network.name})...\n'
+                f'Это займёт 3-8 минут. Промт: <i>{prompt}</i>',
+                parse_mode='HTML',
+            )
+        else:
+            await status_msg.edit_text(
+                t('img2video.generating', lang, name=network.name, prompt=prompt),
+                parse_mode='HTML',
+            )
 
         for i in range(POLL_MAX_TRIES):
             await asyncio.sleep(POLL_INTERVAL)
@@ -228,46 +268,81 @@ async def handle_img2video_photo(message: Message, state: FSMContext, tg_user=No
                     await status_msg.delete()
                     video_url = f"{djsettings.SITE_URL}{gen_item.image.url}"
                     try:
-                        await message.answer_video(
-                            URLInputFile(video_url),
-                            caption=f'{network.name} · <i>{prompt}</i>',
-                            parse_mode='HTML',
-                        )
+                        if lang == 'ru':
+                            await message.answer_video(
+                                URLInputFile(video_url),
+                                caption=f'{network.name} · <i>{prompt}</i>',
+                                parse_mode='HTML',
+                            )
+                        else:
+                            await message.answer_video(
+                                URLInputFile(video_url),
+                                caption=t('img2video.resultCaption', lang, name=network.name, prompt=prompt),
+                                parse_mode='HTML',
+                            )
                     except Exception:
-                        await message.answer(f'Видео готово: {video_url}')
+                        if lang == 'ru':
+                            await message.answer(f'Видео готово: {video_url}')
+                        else:
+                            await message.answer(t('img2video.resultReady', lang, url=video_url))
                 else:
-                    await status_msg.edit_text('Видео готово, но не найдено. Смотри /account/files/')
+                    if lang == 'ru':
+                        await status_msg.edit_text('Видео готово, но не найдено. Смотри /account/files/')
+                    else:
+                        await status_msg.edit_text(t('img2video.notFound', lang))
 
                 await async_log_event(tg_user, 'video', network=network, cost_kopecks=network.cost_kopecks)
                 return
 
             elif msg.status == 'failed':
-                await status_msg.edit_text('Ошибка генерации видео. Попробуй ещё раз.')
+                if lang == 'ru':
+                    await status_msg.edit_text('Ошибка генерации видео. Попробуй ещё раз.')
+                else:
+                    await status_msg.edit_text(t('img2video.error', lang))
                 await async_log_event(tg_user, 'error', network=network, reason='img2video_failed')
                 return
 
             if i % 6 == 0 and i > 0:
                 elapsed_min = (i * POLL_INTERVAL) // 60
                 try:
-                    await status_msg.edit_text(
-                        f'Генерирую видео... (~{elapsed_min} мин, обычно 3-8 мин)\n'
-                        f'Промт: <i>{prompt}</i>',
-                        parse_mode='HTML',
-                    )
+                    if lang == 'ru':
+                        await status_msg.edit_text(
+                            f'Генерирую видео... (~{elapsed_min} мин, обычно 3-8 мин)\n'
+                            f'Промт: <i>{prompt}</i>',
+                            parse_mode='HTML',
+                        )
+                    else:
+                        await status_msg.edit_text(
+                            t('img2video.generatingDots', lang, min=elapsed_min, prompt=prompt),
+                            parse_mode='HTML',
+                        )
                 except Exception:
                     pass
 
-        await status_msg.edit_text(
-            'Превышено время ожидания (15 мин). Если видео сгенерировалось, '
-            'оно появится в aineron.ru/account/files/'
-        )
+        # Domain hardcode fix: use settings.SITE_URL instead of a literal
+        # 'aineron.ru' so the correct instance domain (.ru vs .net) is shown.
+        site_url = getattr(djsettings, 'SITE_URL', 'https://aineron.ru')
+        if lang == 'ru':
+            await status_msg.edit_text(
+                'Превышено время ожидания (15 мин). Если видео сгенерировалось, '
+                f'оно появится в {site_url}/account/files/'
+            )
+        else:
+            await status_msg.edit_text(t('img2video.timeout', lang, url=site_url))
 
     except Exception as e:
         logger.error(f'img2video error: {e}')
-        await status_msg.edit_text('Ошибка обработки. Попробуй ещё раз.')
+        if lang == 'ru':
+            await status_msg.edit_text('Ошибка обработки. Попробуй ещё раз.')
+        else:
+            await status_msg.edit_text(t('img2video.processingError', lang))
 
 
 @router.message(Img2VideoFSM.waiting_photo)
 async def handle_img2video_not_photo(message: Message, state: FSMContext, tg_user=None):
+    lang = resolve_language(tg_user, message.from_user)
     await state.clear()
-    await message.answer('Ожидал фото — отменяю. Начни заново: /img2video <промт>')
+    if lang == 'ru':
+        await message.answer('Ожидал фото — отменяю. Начни заново: /img2video <промт>')
+    else:
+        await message.answer(t('img2video.notPhotoCancelled', lang))

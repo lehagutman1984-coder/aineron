@@ -18,6 +18,7 @@ from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKe
 from asgiref.sync import sync_to_async
 
 from telegram_bot.utils import DIVIDER
+from telegram_bot.i18n import t, resolve_language
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -47,9 +48,11 @@ def _effective_value(field: dict, stored: dict, api_defaults: dict):
     return options[0]['value'] if options else None
 
 
-def _value_label(field: dict, value) -> str:
+def _value_label(field: dict, value, lang: str = 'ru') -> str:
     if field.get('type') == 'checkbox':
-        return 'вкл' if value else 'выкл'
+        if lang == 'ru':
+            return 'вкл' if value else 'выкл'
+        return t('videoSettings.on', lang) if value else t('videoSettings.off', lang)
     for opt in field.get('options') or []:
         if str(opt.get('value')) == str(value):
             return str(opt.get('label', value))
@@ -142,8 +145,8 @@ reset_settings = sync_to_async(_reset_settings, thread_sensitive=True)
 # Rendering
 # ---------------------------------------------------------------------------
 
-def _build_screen(network, stored: dict):
-    from core.money import format_rub
+def _build_screen(network, stored: dict, lang: str = 'ru'):
+    from core.money import format_money
 
     config = network.config_json or {}
     api_defaults = config.get('api_defaults') or {}
@@ -152,39 +155,60 @@ def _build_screen(network, stored: dict):
     extra = _calc_extra_cost(config, stored)
     total_kopecks = network.cost_kopecks + extra * 100
 
-    price_line = f'Цена за видео: <b>{format_rub(total_kopecks)}</b>'
-    if extra:
-        price_line += f' (базовая {format_rub(network.cost_kopecks)} + опции {extra} ₽)'
+    if lang == 'ru':
+        price_line = f'Цена за видео: <b>{format_money(total_kopecks)}</b>'
+        if extra:
+            price_line += f' (базовая {format_money(network.cost_kopecks)} + опции {extra} ₽)'
 
-    text = (
-        f'<b>Aineron · Настройки видео</b>\n{DIVIDER}\n'
-        f'Модель: <b>{network.name}</b>\n'
-        f'{price_line}\n\n'
-        'Нажатие на кнопку переключает значение. Настройки сохраняются '
-        'для этой модели и применяются в /video и /img2video.'
-    )
+        text = (
+            f'<b>Aineron · Настройки видео</b>\n{DIVIDER}\n'
+            f'Модель: <b>{network.name}</b>\n'
+            f'{price_line}\n\n'
+            'Нажатие на кнопку переключает значение. Настройки сохраняются '
+            'для этой модели и применяются в /video и /img2video.'
+        )
+    else:
+        price_line = f"{t('videoSettings.priceLabel', lang)}: <b>{format_money(total_kopecks)}</b>"
+        if extra:
+            price_line += ' ' + t(
+                'videoSettings.priceBreakdown', lang,
+                base=format_money(network.cost_kopecks),
+                extra=format_money(extra * 100),
+            )
+
+        text = (
+            f"<b>{t('videoSettings.title', lang)}</b>\n{DIVIDER}\n"
+            f"{t('videoSettings.modelLabel', lang)}: <b>{network.name}</b>\n"
+            f"{price_line}\n\n"
+            f"{t('videoSettings.hint', lang)}"
+        )
 
     rows = []
     for f in fields:
         value = _effective_value(f, stored, api_defaults)
-        label = f"{f.get('label', f['name'])}: {_value_label(f, value)}"
+        label = f"{f.get('label', f['name'])}: {_value_label(f, value, lang)}"
         action = 't' if f.get('type') == 'checkbox' else 'c'
         rows.append([InlineKeyboardButton(
             text=label[:60],
             callback_data=f"vset:{action}:{f['name']}"[:64],
         )])
 
+    reset_label = 'Сбросить' if lang == 'ru' else t('videoSettings.resetButton', lang)
+    back_label = 'К моделям' if lang == 'ru' else t('videoSettings.backButton', lang)
     rows.append([
-        InlineKeyboardButton(text='Сбросить', callback_data='vset:r'),
-        InlineKeyboardButton(text='К моделям', callback_data='models_tab:video'),
+        InlineKeyboardButton(text=reset_label, callback_data='vset:r'),
+        InlineKeyboardButton(text=back_label, callback_data='models_tab:video'),
     ])
     return text, InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-async def _render(target, tg_user, edit: bool):
+async def _render(target, tg_user, edit: bool, lang: str = 'ru'):
     network = await get_video_network(tg_user)
     if network is None:
-        text = f'<b>Aineron · Настройки видео</b>\n{DIVIDER}\nНет доступных видео-моделей.'
+        if lang == 'ru':
+            text = f'<b>Aineron · Настройки видео</b>\n{DIVIDER}\nНет доступных видео-моделей.'
+        else:
+            text = f"<b>{t('videoSettings.title', lang)}</b>\n{DIVIDER}\n{t('videoSettings.noModels', lang)}"
         if edit:
             await target.edit_text(text, parse_mode='HTML')
         else:
@@ -192,7 +216,7 @@ async def _render(target, tg_user, edit: bool):
         return
 
     stored = await get_stored(tg_user.telegram_id, network.id)
-    text, kb = _build_screen(network, stored)
+    text, kb = _build_screen(network, stored, lang)
     if edit:
         await target.edit_text(text, parse_mode='HTML', reply_markup=kb)
     else:
@@ -207,16 +231,18 @@ async def _render(target, tg_user, edit: bool):
 async def cmd_videoset(message: Message, tg_user=None):
     if tg_user is None:
         return
-    await _render(message, tg_user, edit=False)
+    lang = resolve_language(tg_user, message.from_user)
+    await _render(message, tg_user, edit=False, lang=lang)
 
 
 @router.callback_query(F.data == 'vset:o')
 async def cb_vset_open(query: CallbackQuery, tg_user=None):
     if tg_user is None:
         return
+    lang = resolve_language(tg_user, query.from_user)
     await query.answer()
     try:
-        await _render(query.message, tg_user, edit=True)
+        await _render(query.message, tg_user, edit=True, lang=lang)
     except Exception as e:
         logger.warning('vset open error: %s', e, exc_info=True)
 
@@ -225,14 +251,15 @@ async def cb_vset_open(query: CallbackQuery, tg_user=None):
 async def cb_vset_reset(query: CallbackQuery, tg_user=None):
     if tg_user is None:
         return
+    lang = resolve_language(tg_user, query.from_user)
     network = await get_video_network(tg_user)
     if network is None:
-        await query.answer('Нет видео-модели')
+        await query.answer('Нет видео-модели' if lang == 'ru' else t('videoSettings.noVideoModel', lang))
         return
     await reset_settings(tg_user.telegram_id, network.id)
-    await query.answer('Настройки сброшены')
+    await query.answer('Настройки сброшены' if lang == 'ru' else t('videoSettings.settingsReset', lang))
     try:
-        text, kb = _build_screen(network, {})
+        text, kb = _build_screen(network, {}, lang)
         await query.message.edit_text(text, parse_mode='HTML', reply_markup=kb)
     except Exception as e:
         logger.warning('vset reset render error: %s', e)
@@ -242,28 +269,29 @@ async def cb_vset_reset(query: CallbackQuery, tg_user=None):
 async def cb_vset_change(query: CallbackQuery, tg_user=None):
     if tg_user is None:
         return
+    lang = resolve_language(tg_user, query.from_user)
     parts = query.data.split(':', 2)
     if len(parts) != 3:
-        await query.answer('Неверный формат')
+        await query.answer('Неверный формат' if lang == 'ru' else t('videoSettings.invalidFormat', lang))
         return
     kind = 'toggle' if parts[1] == 't' else 'cycle'
     field_name = parts[2]
 
     network = await get_video_network(tg_user)
     if network is None:
-        await query.answer('Нет видео-модели')
+        await query.answer('Нет видео-модели' if lang == 'ru' else t('videoSettings.noVideoModel', lang))
         return
 
     try:
         stored = await apply_change(tg_user.telegram_id, network, field_name, kind)
     except Exception as e:
         logger.warning('vset change error: %s', e, exc_info=True)
-        await query.answer('Ошибка, попробуй ещё раз')
+        await query.answer('Ошибка, попробуй ещё раз' if lang == 'ru' else t('videoSettings.changeError', lang))
         return
 
     await query.answer()
     try:
-        text, kb = _build_screen(network, stored)
+        text, kb = _build_screen(network, stored, lang)
         await query.message.edit_text(text, parse_mode='HTML', reply_markup=kb)
     except Exception as e:
         # «message is not modified» — если значение не поменялось

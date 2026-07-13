@@ -6,6 +6,7 @@ from asgiref.sync import sync_to_async
 
 from telegram_bot.analytics import async_log_event
 from telegram_bot.utils import DIVIDER
+from telegram_bot.i18n import t, resolve_language
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -63,33 +64,56 @@ async def cmd_video(message: Message, tg_user=None):
     if tg_user is None:
         return
 
+    lang = resolve_language(tg_user, message.from_user)
+
     prompt = message.text.removeprefix('/video').strip()
     if not prompt:
-        await message.answer(
-            f'<b>Aineron · Видео</b>\n{DIVIDER}\n'
-            'Опишите видео:\n\n'
-            '<code>/video закат над морем, медленный полёт камеры</code>\n\n'
-            'Длительность, качество и звук: /videoset',
-            parse_mode='HTML',
-        )
+        if lang == 'ru':
+            await message.answer(
+                f'<b>Aineron · Видео</b>\n{DIVIDER}\n'
+                'Опишите видео:\n\n'
+                '<code>/video закат над морем, медленный полёт камеры</code>\n\n'
+                'Длительность, качество и звук: /videoset',
+                parse_mode='HTML',
+            )
+        else:
+            await message.answer(
+                f"<b>{t('video.title', lang)}</b>\n{DIVIDER}\n"
+                f"{t('video.describe', lang)}\n\n"
+                f"{t('video.example', lang)}\n\n"
+                f"{t('video.settingsHint', lang)}",
+                parse_mode='HTML',
+            )
         return
 
     network = await get_video_network(tg_user)
     if not network:
-        await message.answer('Нет доступных моделей для генерации видео. Выберите модель: /models')
+        await message.answer(
+            'Нет доступных моделей для генерации видео. Выберите модель: /models'
+            if lang == 'ru' else t('video.noModels', lang)
+        )
         return
 
     stored_settings, extra_rub = get_stored_video_settings(tg_user, network)
     total_kopecks = network.cost_kopecks + extra_rub * 100
 
     if not tg_user.user.has_enough_kopecks(total_kopecks):
-        from core.money import format_rub
-        await message.answer(
-            f'<b>Недостаточно средств</b>\n{DIVIDER}\n'
-            f'Нужно: <b>{format_rub(total_kopecks)}</b>   У вас: {format_rub(tg_user.user.balance_kopecks)}\n\n'
-            'Пополните баланс: /balance',
-            parse_mode='HTML',
-        )
+        from core.money import format_money
+        if lang == 'ru':
+            await message.answer(
+                f'<b>Недостаточно средств</b>\n{DIVIDER}\n'
+                f'Нужно: <b>{format_money(total_kopecks)}</b>   У вас: {format_money(tg_user.user.balance_kopecks)}\n\n'
+                'Пополните баланс: /balance',
+                parse_mode='HTML',
+            )
+        else:
+            await message.answer(
+                f"<b>{t('video.insufficientTitle', lang)}</b>\n{DIVIDER}\n"
+                f"{t('video.need', lang)}: <b>{format_money(total_kopecks)}</b>   "
+                f"{t('video.have', lang)}: {format_money(tg_user.user.balance_kopecks)}\n\n"
+                f"{t('video.topUp', lang)}",
+                parse_mode='HTML',
+            )
         return
 
     # S1: реакция-статус «запрос принят» (результат придёт из Celery позже)
@@ -103,14 +127,24 @@ async def cmd_video(message: Message, tg_user=None):
     from aitext.tasks import generate_ai_response
     generate_ai_response.delay(assistant_msg.id)
 
-    from core.money import format_rub
-    settings_line = '\nНастройки из /videoset применены.' if stored_settings else ''
-    await message.answer(
-        f'<b>Aineron · Видео</b>\n{DIVIDER}\n'
-        f'Запрос принят.\n\n'
-        f'Модель: <b>{network.name}</b>  ·  {format_rub(total_kopecks)}{settings_line}\n'
-        f'Готово через 5–15 минут — пришлю результат.',
-        parse_mode='HTML',
-    )
+    from core.money import format_money
+    if lang == 'ru':
+        settings_line = '\nНастройки из /videoset применены.' if stored_settings else ''
+        await message.answer(
+            f'<b>Aineron · Видео</b>\n{DIVIDER}\n'
+            f'Запрос принят.\n\n'
+            f'Модель: <b>{network.name}</b>  ·  {format_money(total_kopecks)}{settings_line}\n'
+            f'Готово через 5–15 минут — пришлю результат.',
+            parse_mode='HTML',
+        )
+    else:
+        settings_line = t('video.settingsApplied', lang) if stored_settings else ''
+        await message.answer(
+            f"<b>{t('video.title', lang)}</b>\n{DIVIDER}\n"
+            f"{t('video.requestAccepted', lang)}\n\n"
+            f"{t('video.modelLabel', lang)}: <b>{network.name}</b>  ·  {format_money(total_kopecks)}{settings_line}\n"
+            f"{t('video.readyHint', lang)}",
+            parse_mode='HTML',
+        )
     await async_log_event(tg_user, 'video', network=network,
                           cost_kopecks=total_kopecks)

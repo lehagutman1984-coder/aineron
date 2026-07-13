@@ -72,8 +72,24 @@ class Command(BaseCommand):
             )
             self.stdout.write(self.style.SUCCESS(f'Webhook set: {webhook_url}'))
 
-            # Register Russian command list visible in Telegram menu
             from aiogram.types import BotCommand
+
+            if getattr(settings, 'INTL_MODE', False):
+                # G4/G5 — только команды, реально зарегистрированные в
+                # bot.py register_routers() для INTL_MODE (wave 1). Каждый
+                # язык — отдельный вызов set_my_commands(language_code=...):
+                # Telegram сам показывает нужный список по языку клиента,
+                # список без language_code — дефолт для всех остальных
+                # (см. https://core.telegram.org/bots/api#setmycommands).
+                for lang_code, cmds in INTL_COMMANDS.items():
+                    commands = [BotCommand(command=c, description=d) for c, d in cmds]
+                    await bot.set_my_commands(commands, language_code=lang_code or None)
+                self.stdout.write(self.style.SUCCESS(
+                    f'Bot commands registered for: default(en), {", ".join(k for k in INTL_COMMANDS if k)}.'
+                ))
+                return
+
+            # Register Russian command list visible in Telegram menu
             commands = [
                 BotCommand(command='start', description='Главное меню'),
                 BotCommand(command='newchat', description='Начать новый чат'),
@@ -102,3 +118,60 @@ class Command(BaseCommand):
             ]
             await bot.set_my_commands(commands)
             self.stdout.write(self.style.SUCCESS('Bot commands registered.'))
+
+
+# Ключ '' — список без language_code (дефолт Telegram для всех клиентов,
+# чей язык не перечислен явно ниже); используем английские описания, т.к.
+# INTL_DEFAULT_LOCALE = 'en' (telegram_bot/i18n.py).
+INTL_COMMANDS = {
+    '': [
+        ('start', 'Main menu'),
+        ('newchat', 'Start a new chat'),
+        ('models', 'Choose an AI model'),
+        ('image', 'Generate an image'),
+        ('balance', 'Balance and top-up'),
+        ('settings', 'Bot settings'),
+        ('language', 'Change bot language'),
+        ('help', 'Help'),
+    ],
+    'fa': [
+        ('start', 'منوی اصلی'),
+        ('newchat', 'شروع چت جدید'),
+        ('models', 'انتخاب مدل هوش مصنوعی'),
+        ('image', 'تولید تصویر'),
+        ('balance', 'موجودی و شارژ'),
+        ('settings', 'تنظیمات ربات'),
+        ('language', 'تغییر زبان ربات'),
+        ('help', 'راهنما'),
+    ],
+    'tr': [
+        ('start', 'Ana menü'),
+        ('newchat', 'Yeni sohbet başlat'),
+        ('models', 'AI modeli seç'),
+        ('image', 'Görüntü oluştur'),
+        ('balance', 'Bakiye ve yükleme'),
+        ('settings', 'Bot ayarları'),
+        ('language', 'Bot dilini değiştir'),
+        ('help', 'Yardım'),
+    ],
+    'id': [
+        ('start', 'Menu utama'),
+        ('newchat', 'Mulai obrolan baru'),
+        ('models', 'Pilih model AI'),
+        ('image', 'Buat gambar'),
+        ('balance', 'Saldo dan isi ulang'),
+        ('settings', 'Pengaturan bot'),
+        ('language', 'Ubah bahasa bot'),
+        ('help', 'Bantuan'),
+    ],
+    'ar': [
+        ('start', 'القائمة الرئيسية'),
+        ('newchat', 'بدء محادثة جديدة'),
+        ('models', 'اختيار نموذج الذكاء الاصطناعي'),
+        ('image', 'توليد صورة'),
+        ('balance', 'الرصيد وإعادة الشحن'),
+        ('settings', 'إعدادات البوت'),
+        ('language', 'تغيير لغة البوت'),
+        ('help', 'مساعدة'),
+    ],
+}

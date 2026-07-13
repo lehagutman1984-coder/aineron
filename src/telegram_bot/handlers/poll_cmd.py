@@ -13,6 +13,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message, Poll, PollAnswer
 from asgiref.sync import sync_to_async
+from telegram_bot.i18n import t, resolve_language
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -76,37 +77,58 @@ def _close_poll_session(telegram_poll_id: str):
 async def cmd_poll(message: Message, state: FSMContext, tg_user=None):
     if tg_user is None:
         return
+    lang = resolve_language(tg_user, message.from_user)
     await state.set_state(PollStates.waiting_question)
-    await message.answer(
-        '<b>Создать AI-опрос</b>\n\nВведите вопрос опроса:',
-        parse_mode='HTML',
-    )
+    if lang == 'ru':
+        await message.answer(
+            '<b>Создать AI-опрос</b>\n\nВведите вопрос опроса:',
+            parse_mode='HTML',
+        )
+    else:
+        await message.answer(
+            f"<b>{t('poll.createTitle', lang)}</b>\n\n{t('poll.askQuestion', lang)}",
+            parse_mode='HTML',
+        )
 
 
 @router.message(PollStates.waiting_question)
 async def poll_got_question(message: Message, state: FSMContext, tg_user=None):
     if tg_user is None:
         return
+    lang = resolve_language(tg_user, message.from_user)
     await state.update_data(poll_question=message.text or '')
     await state.set_state(PollStates.waiting_options)
-    await message.answer(
-        'Введите варианты ответа через запятую (2–10 вариантов):\n\n'
-        '<i>Пример: Да, Нет, Затрудняюсь ответить</i>',
-        parse_mode='HTML',
-    )
+    if lang == 'ru':
+        await message.answer(
+            'Введите варианты ответа через запятую (2–10 вариантов):\n\n'
+            '<i>Пример: Да, Нет, Затрудняюсь ответить</i>',
+            parse_mode='HTML',
+        )
+    else:
+        await message.answer(
+            f"{t('poll.askOptions', lang)}\n\n<i>{t('poll.optionsExample', lang)}</i>",
+            parse_mode='HTML',
+        )
 
 
 @router.message(PollStates.waiting_options)
 async def poll_got_options(message: Message, state: FSMContext, tg_user=None):
     if tg_user is None:
         return
+    lang = resolve_language(tg_user, message.from_user)
     raw = message.text or ''
     options = [o.strip() for o in raw.split(',') if o.strip()]
     if len(options) < 2:
-        await message.answer('Нужно минимум 2 варианта ответа, введите их через запятую.')
+        await message.answer(
+            'Нужно минимум 2 варианта ответа, введите их через запятую.' if lang == 'ru'
+            else t('poll.needMoreOptions', lang)
+        )
         return
     if len(options) > 10:
-        await message.answer('Максимум 10 вариантов. Сократите список.')
+        await message.answer(
+            'Максимум 10 вариантов. Сократите список.' if lang == 'ru'
+            else t('poll.tooManyOptions', lang)
+        )
         return
 
     data = await state.get_data()
@@ -123,10 +145,13 @@ async def poll_got_options(message: Message, state: FSMContext, tg_user=None):
 
     tg_poll_id = sent.poll.id if sent.poll else ''
     await _create_poll_session(tg_user, question, options, tg_poll_id, message.chat.id)
-    await message.answer(
-        'Опрос отправлен! После завершения я сделаю AI-анализ результатов.\n'
-        'Закройте опрос через меню Telegram, когда будете готовы.',
-    )
+    if lang == 'ru':
+        await message.answer(
+            'Опрос отправлен! После завершения я сделаю AI-анализ результатов.\n'
+            'Закройте опрос через меню Telegram, когда будете готовы.',
+        )
+    else:
+        await message.answer(t('poll.sent', lang))
 
 
 @router.poll()

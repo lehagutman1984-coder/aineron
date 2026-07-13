@@ -4,6 +4,8 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, BufferedInputFile
 from asgiref.sync import sync_to_async
 
+from telegram_bot.i18n import t, resolve_language
+
 logger = logging.getLogger(__name__)
 router = Router()
 
@@ -51,7 +53,10 @@ async def handle_voice_message(message: Message, tg_user=None, bot=None):
     if tg_user is None:
         return
 
-    status_msg = await message.answer("Распознаю голосовое сообщение...")
+    lang = resolve_language(tg_user, message.from_user)
+    status_msg = await message.answer(
+        "Распознаю голосовое сообщение..." if lang == 'ru' else t('voice.transcribing', lang)
+    )
 
     try:
         file_id = message.voice.file_id if message.voice else message.video_note.file_id
@@ -61,7 +66,8 @@ async def handle_voice_message(message: Message, tg_user=None, bot=None):
 
         text = await transcribe_audio(ogg_bytes)
 
-        await status_msg.edit_text(f"<b>[Голосовое]:</b> {text}", parse_mode='HTML')
+        label = '[Голосовое]:' if lang == 'ru' else t('voice.label', lang)
+        await status_msg.edit_text(f"<b>{label}</b> {text}", parse_mode='HTML')
 
         # Передаём в обычный чат-пайплайн; S10 — ответ голосом на голосовое
         from telegram_bot.handlers.chat import process_text
@@ -69,7 +75,9 @@ async def handle_voice_message(message: Message, tg_user=None, bot=None):
 
     except Exception as e:
         logger.exception(f'Voice transcription error: {e}')
-        await status_msg.edit_text("Не удалось распознать голосовое. Попробуй ещё раз.")
+        await status_msg.edit_text(
+            "Не удалось распознать голосовое. Попробуй ещё раз." if lang == 'ru' else t('voice.recognitionFailed', lang)
+        )
 
 
 @router.callback_query(F.data.startswith('tts:'))
@@ -77,6 +85,7 @@ async def cb_tts(query: CallbackQuery, tg_user=None, bot=None):
     if tg_user is None:
         return
 
+    lang = resolve_language(tg_user, query.from_user)
     msg_id = int(query.data.split(':')[1])
 
     def _get_msg_text(m_id):
@@ -86,11 +95,13 @@ async def cb_tts(query: CallbackQuery, tg_user=None, bot=None):
 
     get_text = sync_to_async(_get_msg_text, thread_sensitive=True)
 
-    await query.answer("Синтезирую речь...")
+    await query.answer("Синтезирую речь..." if lang == 'ru' else t('voice.synthesizing', lang))
     try:
         text = await get_text(msg_id)
         if not text:
-            await query.message.answer("Нет текста для озвучивания.")
+            await query.message.answer(
+                "Нет текста для озвучивания." if lang == 'ru' else t('voice.noTextToSpeak', lang)
+            )
             return
 
         audio_bytes = await synthesize_speech(text)
@@ -99,4 +110,6 @@ async def cb_tts(query: CallbackQuery, tg_user=None, bot=None):
 
     except Exception as e:
         logger.exception(f'TTS error: {e}')
-        await query.message.answer("Ошибка синтеза речи. Попробуй позже.")
+        await query.message.answer(
+            "Ошибка синтеза речи. Попробуй позже." if lang == 'ru' else t('voice.synthesisError', lang)
+        )

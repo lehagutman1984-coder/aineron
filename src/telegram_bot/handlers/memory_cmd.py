@@ -11,6 +11,7 @@ from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message
 from asgiref.sync import sync_to_async
+from telegram_bot.i18n import t, resolve_language
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -62,44 +63,62 @@ CATEGORY_ICONS = {
 async def cmd_memory(message: Message, tg_user=None):
     if tg_user is None:
         return
+    lang = resolve_language(tg_user, message.from_user)
 
     args = message.text.removeprefix('/memory').strip()
 
     if args.startswith('add '):
         content = args[4:].strip()
         if not content:
-            await message.answer('Использование: <code>/memory add Я предпочитаю Python</code>', parse_mode='HTML')
+            usage = ('Использование: <code>/memory add Я предпочитаю Python</code>' if lang == 'ru'
+                      else t('memory.usage', lang))
+            await message.answer(usage, parse_mode='HTML')
             return
         created = await add_memory_async(tg_user.user, content)
         if created:
-            await message.answer(f'Запомнил: <i>{content}</i>', parse_mode='HTML')
+            text = f'Запомнил: <i>{content}</i>' if lang == 'ru' else t('memory.remembered', lang, content=content)
         else:
-            await message.answer(f'Обновил: <i>{content}</i>', parse_mode='HTML')
+            text = f'Обновил: <i>{content}</i>' if lang == 'ru' else t('memory.updated', lang, content=content)
+        await message.answer(text, parse_mode='HTML')
         return
 
     if args == 'clear':
         await clear_memories_async(tg_user.user)
-        await message.answer('Память очищена.')
+        await message.answer('Память очищена.' if lang == 'ru' else t('memory.cleared', lang))
         return
 
     # List memories
     mems = await list_memories_async(tg_user.user)
     if not mems:
-        await message.answer(
-            '<b>Память пуста</b>\n\n'
-            'AI запоминает факты о тебе автоматически в процессе разговора.\n\n'
-            'Добавить вручную: <code>/memory add Я работаю Python-разработчиком</code>',
-            parse_mode='HTML',
-        )
+        if lang == 'ru':
+            await message.answer(
+                '<b>Память пуста</b>\n\n'
+                'AI запоминает факты о тебе автоматически в процессе разговора.\n\n'
+                'Добавить вручную: <code>/memory add Я работаю Python-разработчиком</code>',
+                parse_mode='HTML',
+            )
+        else:
+            await message.answer(
+                f"<b>{t('memory.emptyTitle', lang)}</b>\n\n{t('memory.emptyBody', lang)}",
+                parse_mode='HTML',
+            )
         return
 
-    lines = ['<b>Что я помню о тебе:</b>\n']
+    if lang == 'ru':
+        lines = ['<b>Что я помню о тебе:</b>\n']
+    else:
+        lines = [f"<b>{t('memory.listTitle', lang)}</b>\n"]
     for m in mems:
         icon = CATEGORY_ICONS.get(m.category, '•')
         lines.append(f'{icon} {m.content}')
 
-    lines.append(f'\n<i>Всего: {len(mems)} фактов</i>')
-    lines.append('\n/memory clear — очистить всё')
-    lines.append('/memory add &lt;текст&gt; — добавить факт')
+    if lang == 'ru':
+        lines.append(f'\n<i>Всего: {len(mems)} фактов</i>')
+        lines.append('\n/memory clear — очистить всё')
+        lines.append('/memory add &lt;текст&gt; — добавить факт')
+    else:
+        lines.append(f"\n<i>{t('memory.totalCount', lang, count=len(mems))}</i>")
+        lines.append(f"\n{t('memory.clearHint', lang)}")
+        lines.append(t('memory.addHint', lang))
 
     await message.answer('\n'.join(lines), parse_mode='HTML')

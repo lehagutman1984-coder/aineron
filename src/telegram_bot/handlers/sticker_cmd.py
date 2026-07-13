@@ -20,6 +20,7 @@ from aiogram.types import Message, BufferedInputFile
 from asgiref.sync import sync_to_async
 
 from telegram_bot.analytics import async_log_event
+from telegram_bot.i18n import t, resolve_language
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -88,28 +89,47 @@ def _convert_to_sticker_png(image_bytes: bytes) -> bytes:
 async def cmd_sticker(message: Message, tg_user=None):
     if tg_user is None:
         return
+    lang = resolve_language(tg_user, message.from_user)
     prompt = message.text.removeprefix('/sticker').strip()
     if not prompt:
-        await message.answer(
-            '<b>AI-стикер</b>\n\n'
-            'Создай стикер из любого описания!\n\n'
-            'Использование:\n'
-            '<code>/sticker милый котик в шапке детектива</code>',
-            parse_mode='HTML',
-        )
+        if lang == 'ru':
+            await message.answer(
+                '<b>AI-стикер</b>\n\n'
+                'Создай стикер из любого описания!\n\n'
+                'Использование:\n'
+                '<code>/sticker милый котик в шапке детектива</code>',
+                parse_mode='HTML',
+            )
+        else:
+            await message.answer(
+                f"<b>{t('sticker.usageTitle', lang)}</b>\n\n"
+                f"{t('sticker.usageDescription', lang)}\n\n"
+                f"{t('sticker.usageLabel', lang)}\n"
+                f"{t('sticker.usageExample', lang)}",
+                parse_mode='HTML',
+            )
         return
 
     network = await get_image_network()
     if not network:
-        await message.answer('Нет доступных моделей для генерации изображений.')
+        if lang == 'ru':
+            await message.answer('Нет доступных моделей для генерации изображений.')
+        else:
+            await message.answer(t('sticker.noModels', lang))
         return
 
     if not tg_user.user.has_enough_kopecks(network.cost_kopecks):
-        from core.money import format_rub
-        await message.answer(
-            f'Недостаточно средств. Нужно: {format_rub(network.cost_kopecks)}, у вас: {format_rub(tg_user.user.balance_kopecks)}\n'
-            '/balance — пополнить'
-        )
+        from core.money import format_money
+        if lang == 'ru':
+            await message.answer(
+                f'Недостаточно средств. Нужно: {format_money(network.cost_kopecks)}, у вас: {format_money(tg_user.user.balance_kopecks)}\n'
+                '/balance — пополнить'
+            )
+        else:
+            await message.answer(
+                t('sticker.insufficientFunds', lang,
+                  need=format_money(network.cost_kopecks), have=format_money(tg_user.user.balance_kopecks))
+            )
         return
 
     full_prompt = prompt + STICKER_SUFFIX
@@ -118,7 +138,10 @@ async def cmd_sticker(message: Message, tg_user=None):
     from aitext.tasks import generate_ai_response
     generate_ai_response.delay(assistant_msg.id)
 
-    status_msg = await message.answer(f'Рисую стикер: <i>{prompt}</i>...', parse_mode='HTML')
+    if lang == 'ru':
+        status_msg = await message.answer(f'Рисую стикер: <i>{prompt}</i>...', parse_mode='HTML')
+    else:
+        status_msg = await message.answer(t('sticker.drawing', lang, prompt=prompt), parse_mode='HTML')
 
     for i in range(POLL_MAX_TRIES):
         await asyncio.sleep(POLL_INTERVAL)
@@ -150,27 +173,45 @@ async def cmd_sticker(message: Message, tg_user=None):
                     await message.answer_sticker(
                         BufferedInputFile(sticker_bytes, filename='sticker.png')
                     )
-                    await message.answer(
-                        f'Стикер готов! Ещё стикер: <code>/sticker ваш промт</code>',
-                        parse_mode='HTML',
-                    )
+                    if lang == 'ru':
+                        await message.answer(
+                            f'Стикер готов! Ещё стикер: <code>/sticker ваш промт</code>',
+                            parse_mode='HTML',
+                        )
+                    else:
+                        await message.answer(t('sticker.ready', lang), parse_mode='HTML')
                 except Exception as e:
                     logger.error(f'sticker send error: {e}')
-                    await message.answer(f'Стикер создан: {img_url}')
+                    if lang == 'ru':
+                        await message.answer(f'Стикер создан: {img_url}')
+                    else:
+                        await message.answer(t('sticker.resultReady', lang, url=img_url))
 
                 await async_log_event(tg_user, 'image', network=network, cost_kopecks=network.cost_kopecks)
             else:
-                await status_msg.edit_text('Стикер создан, но не найден. Попробуй ещё раз.')
+                if lang == 'ru':
+                    await status_msg.edit_text('Стикер создан, но не найден. Попробуй ещё раз.')
+                else:
+                    await status_msg.edit_text(t('sticker.notFound', lang))
             return
 
         elif msg.status == 'failed':
-            await status_msg.edit_text('Ошибка генерации. Попробуй ещё раз.')
+            if lang == 'ru':
+                await status_msg.edit_text('Ошибка генерации. Попробуй ещё раз.')
+            else:
+                await status_msg.edit_text(t('sticker.error', lang))
             return
 
         if i % 5 == 0 and i > 0:
             try:
-                await status_msg.edit_text(f'Рисую стикер ({i * POLL_INTERVAL}с)...', parse_mode='HTML')
+                if lang == 'ru':
+                    await status_msg.edit_text(f'Рисую стикер ({i * POLL_INTERVAL}с)...', parse_mode='HTML')
+                else:
+                    await status_msg.edit_text(t('sticker.drawingDots', lang, sec=i * POLL_INTERVAL), parse_mode='HTML')
             except Exception:
                 pass
 
-    await status_msg.edit_text('Превышено время ожидания. Попробуй ещё раз.')
+    if lang == 'ru':
+        await status_msg.edit_text('Превышено время ожидания. Попробуй ещё раз.')
+    else:
+        await status_msg.edit_text(t('sticker.timeout', lang))

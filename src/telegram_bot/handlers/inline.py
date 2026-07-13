@@ -8,6 +8,7 @@ from aiogram.types import (
 from asgiref.sync import sync_to_async
 
 from telegram_bot.analytics import async_log_event
+from telegram_bot.i18n import t, resolve_language
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -54,29 +55,54 @@ _create_inline_message_async = sync_to_async(_create_inline_message, thread_sens
 async def handle_inline(query: InlineQuery):
     text = query.query.strip()
     tg_user = await _get_tg_user_async(query.from_user.id)
+    lang = resolve_language(tg_user, query.from_user)
 
     if not tg_user:
-        result = InlineQueryResultArticle(
-            id='auth',
-            title='Привяжи аккаунт aineron.ru',
-            description='Нажми чтобы узнать как',
-            input_message_content=InputTextMessageContent(
-                message_text='Для использования: напиши /start боту @aineron_bot и привяжи аккаунт aineron.ru'
-            ),
-        )
+        if lang == 'ru':
+            result = InlineQueryResultArticle(
+                id='auth',
+                title='Привяжи аккаунт aineron.ru',
+                description='Нажми чтобы узнать как',
+                input_message_content=InputTextMessageContent(
+                    message_text='Для использования: напиши /start боту @aineron_bot и привяжи аккаунт aineron.ru'
+                ),
+            )
+        else:
+            from django.conf import settings as dj
+            bot_username = getattr(dj, 'TELEGRAM_BOT_USERNAME', 'aineron_bot')
+            result = InlineQueryResultArticle(
+                id='auth',
+                title=t('inline.notLinkedTitle', lang),
+                description=t('inline.notLinkedDesc', lang),
+                input_message_content=InputTextMessageContent(
+                    message_text=t('inline.notLinkedMessage', lang, bot=bot_username)
+                ),
+            )
         await query.answer([result], cache_time=10, is_personal=True)
         return
 
     if not text:
         # Inline 2.0: пустой запрос — свои свежие генерации, шаринг одним тапом
-        results = [InlineQueryResultArticle(
-            id='hint',
-            title='Задай вопрос AI',
-            description='Введи запрос после @aineron_bot',
-            input_message_content=InputTextMessageContent(
-                message_text='Введи запрос после @aineron_bot для получения ответа AI'
-            ),
-        )]
+        if lang == 'ru':
+            results = [InlineQueryResultArticle(
+                id='hint',
+                title='Задай вопрос AI',
+                description='Введи запрос после @aineron_bot',
+                input_message_content=InputTextMessageContent(
+                    message_text='Введи запрос после @aineron_bot для получения ответа AI'
+                ),
+            )]
+        else:
+            from django.conf import settings as dj
+            bot_username = getattr(dj, 'TELEGRAM_BOT_USERNAME', 'aineron_bot')
+            results = [InlineQueryResultArticle(
+                id='hint',
+                title=t('inline.hintTitle', lang),
+                description=t('inline.hintDesc', lang, bot=bot_username),
+                input_message_content=InputTextMessageContent(
+                    message_text=t('inline.hintMessage', lang, bot=bot_username)
+                ),
+            )]
 
         def _recent_images(user):
             from django.conf import settings as dj
@@ -99,11 +125,16 @@ async def handle_inline(query: InlineQuery):
         try:
             images = await sync_to_async(_recent_images, thread_sensitive=True)(tg_user.user)
             for pk, url, prompt in images:
+                if lang == 'ru':
+                    caption = f'Создано в aineron: {prompt}' if prompt else 'Создано в aineron'
+                else:
+                    caption = (t('inline.createdInCaption', lang, prompt=prompt) if prompt
+                               else t('inline.createdIn', lang))
                 results.append(InlineQueryResultPhoto(
                     id=f'gen{pk}',
                     photo_url=url,
                     thumbnail_url=url,
-                    caption=f'Создано в aineron: {prompt}' if prompt else 'Создано в aineron',
+                    caption=caption,
                 ))
         except Exception as e:
             logger.debug(f'inline gallery skipped: {e}')
@@ -114,15 +145,26 @@ async def handle_inline(query: InlineQuery):
     result_id = hashlib.md5(f'{query.from_user.id}:{text}'.encode()).hexdigest()[:8]
     model_name = tg_user.default_network.name if tg_user.default_network else 'AI'
 
-    result = InlineQueryResultArticle(
-        id=result_id,
-        title=f'Спросить {model_name}',
-        description=text[:100],
-        input_message_content=InputTextMessageContent(
-            message_text=f'<i>Генерирую ответ...</i>\n\n<b>Вопрос:</b> {text[:200]}',
-            parse_mode='HTML',
-        ),
-    )
+    if lang == 'ru':
+        result = InlineQueryResultArticle(
+            id=result_id,
+            title=f'Спросить {model_name}',
+            description=text[:100],
+            input_message_content=InputTextMessageContent(
+                message_text=f'<i>Генерирую ответ...</i>\n\n<b>Вопрос:</b> {text[:200]}',
+                parse_mode='HTML',
+            ),
+        )
+    else:
+        result = InlineQueryResultArticle(
+            id=result_id,
+            title=t('inline.askModel', lang, name=model_name),
+            description=text[:100],
+            input_message_content=InputTextMessageContent(
+                message_text=t('inline.generatingAnswer', lang, text=text[:200]),
+                parse_mode='HTML',
+            ),
+        )
     await query.answer([result], cache_time=0, is_personal=True)
 
 
