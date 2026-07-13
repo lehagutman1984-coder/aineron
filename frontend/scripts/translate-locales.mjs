@@ -111,14 +111,25 @@ function loadJson(file, fallback = {}) {
 // ── translation ─────────────────────────────────────────────────────────────
 
 async function translateBatch(entries, locale, glossary) {
+  // glossary.terms — ключи на русском (баланс, промт, ...). Показывать их модели
+  // имеет смысл только когда источник сам на русском: при --source=en строка
+  // "промт" в system prompt — чистый шум, который модель иногда путает с
+  // требованием сохранить кириллический токен в выводе (см. инцидент:
+  // "промт" утёк в 3 ключа ar.json при переводе с en).
+  const termsSection =
+    SOURCE_LOCALE === "ru"
+      ? [
+          `Glossary (reference term -> canonical English meaning, follow the intent in your language regardless of source language):`,
+          ...Object.entries(glossary.terms).map(
+            ([ru, t]) => `- "${ru}" -> "${t.en}"${t.note ? ` (${t.note})` : ""}`,
+          ),
+        ]
+      : [];
   const systemPrompt = [
     `You are a professional UI localizer translating a SaaS product interface from ${LOCALE_NAMES[SOURCE_LOCALE]} to ${LOCALE_NAMES[locale]}.`,
     `Tone: ${glossary.tone}`,
     `NEVER translate these terms (keep verbatim): ${glossary.do_not_translate.join(", ")}.`,
-    `Glossary (reference term -> canonical English meaning, follow the intent in your language regardless of source language):`,
-    ...Object.entries(glossary.terms).map(
-      ([ru, t]) => `- "${ru}" -> "${t.en}"${t.note ? ` (${t.note})` : ""}`,
-    ),
+    ...termsSection,
     `Strings use ICU MessageFormat: preserve all {placeholders} and {count, plural, ...} structures exactly (translate only the human-readable words inside plural branches).`,
     `Respond with ONLY a JSON object mapping each input key to its translation. No commentary.`,
   ].join("\n");
