@@ -25,20 +25,22 @@ export const serverListNetworks = (params?: {
   is_popular?: boolean;
   is_free?: boolean;
   category?: string;
+  lang?: string;
 }) => {
   const qs = new URLSearchParams();
   if (params?.is_popular) qs.set("is_popular", "1");
   if (params?.is_free) qs.set("is_free", "1");
   if (params?.category) qs.set("category", params.category);
+  if (params?.lang) qs.set("lang", params.lang);
   const query = qs.toString();
   return serverFetch<NetworkListItem[]>(`/catalog/networks/${query ? "?" + query : ""}`);
 };
 
-export const serverListCategories = () =>
-  serverFetch<Category[]>("/catalog/categories/");
+export const serverListCategories = (lang?: string) =>
+  serverFetch<Category[]>(`/catalog/categories/${lang ? `?lang=${lang}` : ""}`);
 
-export const serverGetNetwork = (slug: string) =>
-  serverFetch<NetworkDetail>(`/catalog/networks/${slug}/`);
+export const serverGetNetwork = (slug: string, lang?: string) =>
+  serverFetch<NetworkDetail>(`/catalog/networks/${slug}/${lang ? `?lang=${lang}` : ""}`);
 
 export const serverListBlogCategories = () =>
   serverFetch<BlogCategory[]>("/blog/categories/");

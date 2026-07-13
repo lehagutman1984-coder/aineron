@@ -14,15 +14,17 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function ModelsPage({
+  params,
   searchParams,
 }: {
+  params: { locale: string };
   searchParams: { category?: string; project_id?: string };
 }) {
   const t = await getTranslations("catalog");
   const [networks, freeNetworks, categories] = await Promise.all([
-    serverListNetworks(),
-    serverListNetworks({ is_free: true }),
-    serverListCategories(),
+    serverListNetworks({ lang: params.locale }),
+    serverListNetworks({ is_free: true, lang: params.locale }),
+    serverListCategories(params.locale),
   ]);
 
   const projectId = searchParams.project_id ? parseInt(searchParams.project_id, 10) : undefined;

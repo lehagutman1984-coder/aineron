@@ -8,12 +8,12 @@ import { CURRENCY, formatMoney, kopecksToRub } from "@/lib/money";
 import { ChatStartForm } from "./ChatStartForm";
 
 interface Props {
-  params: { slug: string };
+  params: { slug: string; locale: string };
   searchParams?: { project_id?: string };
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const network = await serverGetNetwork(params.slug);
+  const network = await serverGetNetwork(params.slug, params.locale);
   if (!network) {
     const t = await getTranslations("catalog");
     return { title: t("modelNotFound") };
@@ -42,8 +42,8 @@ export const dynamic = "force-dynamic";
 
 export default async function ModelDetailPage({ params, searchParams }: Props) {
   const [network, allNetworks] = await Promise.all([
-    serverGetNetwork(params.slug),
-    serverListNetworks(),
+    serverGetNetwork(params.slug, params.locale),
+    serverListNetworks({ lang: params.locale }),
   ]);
   if (!network) notFound();
 

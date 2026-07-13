@@ -168,12 +168,24 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # ========== INTERNATIONALIZATION ==========
 # Язык инстанса: ru — aineron.ru, en — международный (INTL_MODE).
-# Определяет, какие поля modeltranslation отдаются в API (с fallback на ru).
+# LANGUAGE_CODE — статический дефолт (используется modeltranslation-полями
+# БЕЗ явного ?lang= в запросе, см. api/i18n.py: get_language() всегда
+# возвращает LANGUAGE_CODE, т.к. USE_I18N=False отключает django.utils.translation
+# на уровне фреймворка — activate() тут no-op). Per-request выбор языка
+# каталога (fa/tr/id/ar) реализован вручную в api/i18n.py + сериализаторах,
+# в обход стандартного модуля Django-переводов.
 # env читается напрямую: настройка INTL_MODE объявлена ниже по файлу.
 LANGUAGE_CODE = 'en' if os.environ.get('INTL_MODE', '0') == '1' else 'ru'
+# LANGUAGES — общий для .ru и .net (один репозиторий/схема БД, см. CLAUDE.md).
+# fa/tr/id/ar (GLOBAL_EXPANSION_PLAN.md G4/G5) дают modeltranslation-колонки
+# на обоих инстансах; на .ru они просто не используются (как и _en сейчас).
 LANGUAGES = [
     ('ru', 'Russian'),
     ('en', 'English'),
+    ('fa', 'Persian'),
+    ('tr', 'Turkish'),
+    ('id', 'Indonesian'),
+    ('ar', 'Arabic'),
 ]
 MODELTRANSLATION_DEFAULT_LANGUAGE = 'ru'
 MODELTRANSLATION_FALLBACK_LANGUAGES = ('ru',)
