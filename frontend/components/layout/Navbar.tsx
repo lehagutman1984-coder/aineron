@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/money";
 import { siteHost } from "@/lib/site";
 import { useTranslations } from "next-intl";
+import { LocaleSwitcher } from "./LocaleSwitcher";
 
 const THEME_CYCLE: Theme[] = ["system", "light", "dark"];
 
@@ -63,6 +64,8 @@ export function Navbar() {
 
         {/* Desktop auth + theme toggle */}
         <div className="hidden items-center gap-2 md:flex">
+          <LocaleSwitcher />
+
           {/* Theme toggle */}
           <button
             onClick={cycleTheme}
@@ -140,6 +143,7 @@ export function Navbar() {
             <MobileNavLink href="/docs/" onClick={() => setMobileOpen(false)}>{t("docs")}</MobileNavLink>
             <MobileNavLink href="/api-docs/" onClick={() => setMobileOpen(false)}>{t("api")}</MobileNavLink>
             <MobileNavLink href="/blog/" onClick={() => setMobileOpen(false)}>{t("blog")}</MobileNavLink>
+            <LocaleSwitcher variant="mobile" />
             <div className="my-2 border-t border-[rgba(13,13,13,0.08)] dark:border-[rgba(255,255,255,0.06)]" />
             {user ? (
               <>

@@ -8,7 +8,7 @@ import {
   Search, Plus, Trash2, Copy, Check, X,
 } from "lucide-react";
 
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { listPrompts, createPrompt, deletePrompt } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 import type { PromptTemplate } from "@/lib/api/types";
@@ -27,6 +27,7 @@ type CategoryKey = (typeof CATEGORIES)[number]["key"];
 
 export default function PromptsPage() {
   const t = useTranslations("prompts");
+  const locale = useLocale();
   const { user } = useAuthStore();
   const qc = useQueryClient();
   const [activeCategory, setActiveCategory] = useState<CategoryKey>("all");
@@ -35,8 +36,8 @@ export default function PromptsPage() {
   const [copiedId, setCopiedId] = useState<number | null>(null);
 
   const { data: prompts = [], isLoading } = useQuery({
-    queryKey: ["prompts"],
-    queryFn: () => listPrompts(),
+    queryKey: ["prompts", locale],
+    queryFn: () => listPrompts(undefined, locale),
   });
 
   const deleteMutation = useMutation({

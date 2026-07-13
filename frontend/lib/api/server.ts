@@ -68,9 +68,10 @@ export interface LegalDoc {
 const LEGAL_PLACEHOLDER = "Содержание будет добавлено через админку";
 
 export const serverGetLegalDoc = async (
-  type: "privacy" | "terms"
+  type: "privacy" | "terms",
+  lang?: string
 ): Promise<LegalDoc | null> => {
-  const doc = await serverFetch<LegalDoc>(`/legal/${type}/`);
+  const doc = await serverFetch<LegalDoc>(`/legal/${type}/${lang ? `?lang=${lang}` : ""}`);
   if (!doc || !doc.content?.trim() || doc.content.includes(LEGAL_PLACEHOLDER)) {
     return null;
   }

@@ -693,8 +693,13 @@ export const getPublicGeneration = (slug: string): Promise<PublicGeneration> =>
 
 // ============ Prompt Library ============
 
-export const listPrompts = (category?: string): Promise<PromptTemplate[]> =>
-  request<PromptTemplate[]>(`/prompts/${category ? `?category=${category}` : ""}`);
+export const listPrompts = (category?: string, lang?: string): Promise<PromptTemplate[]> => {
+  const qs = new URLSearchParams();
+  if (category) qs.set("category", category);
+  if (lang) qs.set("lang", lang);
+  const query = qs.toString();
+  return request<PromptTemplate[]>(`/prompts/${query ? `?${query}` : ""}`);
+};
 
 export const createPrompt = (body: {
   title: string;

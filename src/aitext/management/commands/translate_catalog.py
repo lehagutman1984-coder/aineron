@@ -1,9 +1,10 @@
 """
 Перевод контента каталога (GLOBAL_EXPANSION_PLAN.md §4.3, §5 G5).
 
-Заполняет пустые *_{locale} поля моделей Category / NeuralNetwork / FAQ
-переводом через LLM (laozhang). Уже заполненные поля не трогает (ручные
-правки имеют приоритет). Идемпотентна — можно запускать повторно.
+Заполняет пустые *_{locale} поля моделей Category / NeuralNetwork / FAQ /
+PromptTemplate (только встроенные, user=None) переводом через LLM (laozhang).
+Уже заполненные поля не трогает (ручные правки имеют приоритет). Идемпотентна
+— можно запускать повторно.
 
 Запуск:
   python manage.py translate_catalog                       # en из ru (умолчание, как раньше)
@@ -52,7 +53,7 @@ class Command(BaseCommand):
         parser.add_argument('--dry-run', action='store_true')
 
     def handle(self, *args, **options):
-        from aitext.models import Category, FAQ, NeuralNetwork
+        from aitext.models import Category, FAQ, NeuralNetwork, PromptTemplate
 
         source = options['source']
         source_suffix = FIELD_SUFFIX.get(source, source)
@@ -68,11 +69,15 @@ class Command(BaseCommand):
         for locale in locales:
             target_suffix = FIELD_SUFFIX.get(locale, locale)
             system_prompt = (
-                f"You are a professional localizer translating a Russian AI-platform catalog "
-                f"to {LOCALE_NAMES[locale]}.\n"
+                f"You are a professional localizer translating an AI-platform's catalog "
+                f"content and built-in prompt templates to {LOCALE_NAMES[locale]}.\n"
                 f"Tone: professional, concise product copy (like Linear/Vercel/Stripe). "
                 f"No exclamation marks, no emoji.\n"
                 f"Never translate these terms (keep verbatim): {', '.join(DO_NOT_TRANSLATE)}.\n"
+                f"Some inputs are prompt template bodies: preserve markdown code fences "
+                f"(```) and their contents verbatim; translate bracketed placeholder "
+                f"instructions like [paste your code] into natural phrasing in the target "
+                f"language, keeping the brackets.\n"
                 f"Respond with ONLY a JSON object mapping each input key to its translation."
             )
 
@@ -96,6 +101,9 @@ class Command(BaseCommand):
             collect_fields(Category.objects.all(), ['name'])
             collect_fields(NeuralNetwork.objects.all(), ['description', 'seo_title', 'seo_description', 'seo_keywords'])
             collect_fields(FAQ.objects.all(), ['question', 'answer'])
+            # Только встроенные промты (user=None) — пользовательские шаблоны
+            # переводить нельзя, это чужой авторский текст на своём языке.
+            collect_fields(PromptTemplate.objects.filter(user__isnull=True), ['title', 'content'])
 
             self.stdout.write(f'[{locale}] к переводу (источник {source}): {len(jobs)} полей')
             if options['dry_run'] or not jobs:

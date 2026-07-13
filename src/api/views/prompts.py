@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework import serializers, status
 from django.shortcuts import get_object_or_404
 
+from api.i18n import resolve_catalog_lang, translated_field
 from aitext.models import PromptTemplate
 
 
@@ -21,6 +22,17 @@ class PromptTemplateSerializer(serializers.ModelSerializer):
             return False
         return obj.user_id == request.user.id
 
+    def to_representation(self, instance):
+        # title/content остаются обычными полями для записи (POST/PATCH пишут
+        # «сырое» поле как раньше) — перевод подставляется только на чтение,
+        # и только когда явно запрошен ?lang= (см. api/i18n.py).
+        data = super().to_representation(instance)
+        lang = self.context.get('lang')
+        if lang:
+            data['title'] = translated_field(instance, 'title', lang)
+            data['content'] = translated_field(instance, 'content', lang)
+        return data
+
 
 class PromptListCreateView(APIView):
     permission_classes = [IsAuthenticatedOrReadOnly]
@@ -37,7 +49,8 @@ class PromptListCreateView(APIView):
         if category:
             qs = qs.filter(category=category)
 
-        return Response(PromptTemplateSerializer(qs, many=True, context={'request': request}).data)
+        context = {'request': request, 'lang': resolve_catalog_lang(request)}
+        return Response(PromptTemplateSerializer(qs, many=True, context=context).data)
 
     def post(self, request):
         serializer = PromptTemplateSerializer(data=request.data, context={'request': request})

@@ -8,7 +8,8 @@ import { supportEmail } from "@/lib/site";
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata() {
-  const doc = await serverGetLegalDoc("privacy");
+  const locale = await getLocale();
+  const doc = await serverGetLegalDoc("privacy", locale);
   const t = await getTranslations("legalChrome");
   return {
     title: doc?.title ?? t("privacyFallbackTitle"),
@@ -18,7 +19,7 @@ export async function generateMetadata() {
 export default async function PrivacyPolicyPage() {
   const t = await getTranslations("legalChrome");
   const locale = await getLocale();
-  const doc = await serverGetLegalDoc("privacy");
+  const doc = await serverGetLegalDoc("privacy", locale);
 
   const date = doc?.last_updated
     ? new Date(doc.last_updated).toLocaleDateString(locale, {
