@@ -1325,7 +1325,8 @@
     "breadcrumbBlog": "Blog",
     "backToAllPosts": "All Articles",
     "viewsCount": "{count, plural, one {# view} other {# views}}",
-    "relatedNetworks": "Related AI Models"
+    "relatedNetworks": "Related AI Models",
+    "faqHeading": "Frequently Asked Questions"
   },
   "legalChrome": {
     "privacyFallbackTitle": "Privacy Policy",

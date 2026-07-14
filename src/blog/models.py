@@ -44,8 +44,25 @@ class Category(models.Model):
 
 
 class Post(models.Model):
+    LANGUAGE_CHOICES = [
+        ('ru', 'Русский'),
+        ('en', 'English'),
+        ('fa', 'Persian'),
+        ('tr', 'Turkish'),
+        ('id', 'Indonesian'),
+        ('ar', 'Arabic'),
+    ]
+
     title = models.CharField(max_length=200, verbose_name='Заголовок')
     slug = models.SlugField(unique=True, verbose_name='URL')
+    language = models.CharField(
+        max_length=8,
+        choices=LANGUAGE_CHOICES,
+        default='ru',
+        db_index=True,
+        verbose_name='Язык',
+        help_text='Статьи под разные рынки — самостоятельный контент, не перевод одного источника (GLOBAL_EXPANSION_PLAN.md §4.3)'
+    )
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, related_name='posts',
                                  verbose_name='Категория')
     preview_image = models.ImageField(upload_to='blog/previews/', blank=True, null=True,
@@ -85,6 +102,12 @@ class Post(models.Model):
         null=True,
         verbose_name='SEO ключевые слова (keywords)',
         help_text='Ключевые слова через запятую'
+    )
+    faq_items = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='FAQ (для FAQPage schema)',
+        help_text='Список {"question": ..., "answer": ...} для структурированных данных'
     )
 
     class Meta:

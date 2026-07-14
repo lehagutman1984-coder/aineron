@@ -1325,7 +1325,8 @@
     "breadcrumbBlog": "Blog",
     "backToAllPosts": "Semua Artikel",
     "viewsCount": "{count, plural, one {# tampilan} other {# tampilan}}",
-    "relatedNetworks": "Model AI Terkait"
+    "relatedNetworks": "Model AI Terkait",
+    "faqHeading": "Pertanyaan yang Sering Diajukan"
   },
   "legalChrome": {
     "privacyFallbackTitle": "Kebijakan Privasi",

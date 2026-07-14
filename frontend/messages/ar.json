@@ -1325,7 +1325,8 @@
     "breadcrumbBlog": "مدونة",
     "backToAllPosts": "جميع المقالات",
     "viewsCount": "{count, plural, one {# مشاهدة} other {# مشاهدات}}",
-    "relatedNetworks": "نماذج الذكاء الاصطناعي ذات الصلة"
+    "relatedNetworks": "نماذج الذكاء الاصطناعي ذات الصلة",
+    "faqHeading": "الأسئلة الشائعة"
   },
   "legalChrome": {
     "privacyFallbackTitle": "سياسة الخصوصية",

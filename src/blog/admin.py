@@ -17,8 +17,8 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Post)
 class PostAdmin(admin.ModelAdmin):
-    list_display = ('title', 'category', 'is_published', 'show_in_notification', 'show_on_main', 'views_count', 'published_at')
-    list_filter = ('category', 'is_published', 'show_in_notification', 'show_on_main', 'published_at', 'neural_networks')
+    list_display = ('title', 'language', 'category', 'is_published', 'show_in_notification', 'show_on_main', 'views_count', 'published_at')
+    list_filter = ('language', 'category', 'is_published', 'show_in_notification', 'show_on_main', 'published_at', 'neural_networks')
     search_fields = ('title', 'preview_text', 'content')
     prepopulated_fields = {'slug': ('title',)}
     readonly_fields = ('created_at', 'updated_at', 'views_count')
@@ -26,8 +26,9 @@ class PostAdmin(admin.ModelAdmin):
     filter_horizontal = ('neural_networks',)
 
     fieldsets = (
-        (None, {'fields': ('title', 'slug', 'category', 'is_published', 'show_in_notification', 'show_on_main')}),
+        (None, {'fields': ('title', 'slug', 'language', 'category', 'is_published', 'show_in_notification', 'show_on_main')}),
         ('Контент', {'fields': ('preview_image', 'preview_text', 'content')}),
+        ('FAQ (schema)', {'fields': ('faq_items',), 'classes': ('collapse',)}),
         ('Связанные нейросети', {'fields': ('neural_networks',)}),
         ('SEO', {'fields': ('seo_title', 'seo_description', 'seo_keywords'), 'classes': ('wide',)}),
         ('Даты', {'fields': ('published_at', 'created_at', 'updated_at')}),

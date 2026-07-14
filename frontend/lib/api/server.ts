@@ -48,16 +48,18 @@ export const serverListBlogCategories = () =>
 export const serverListBlogPosts = (params?: {
   category?: string;
   show_on_main?: boolean;
+  lang?: string;
 }) => {
   const qs = new URLSearchParams();
   if (params?.category) qs.set("category", params.category);
   if (params?.show_on_main) qs.set("show_on_main", "1");
+  if (params?.lang) qs.set("lang", params.lang);
   const query = qs.toString();
   return serverFetch<BlogPost[]>(`/blog/posts/${query ? "?" + query : ""}`);
 };
 
-export const serverGetBlogPost = (slug: string) =>
-  serverFetch<BlogPostDetail>(`/blog/posts/${slug}/`);
+export const serverGetBlogPost = (slug: string, lang?: string) =>
+  serverFetch<BlogPostDetail>(`/blog/posts/${slug}/${lang ? `?lang=${lang}` : ""}`);
 
 export interface LegalDoc {
   title: string;

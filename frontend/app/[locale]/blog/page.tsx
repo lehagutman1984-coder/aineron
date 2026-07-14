@@ -24,7 +24,7 @@ export default async function BlogListPage({
   const t = await getTranslations("blog");
   const locale = await getLocale();
   const [posts, categories] = await Promise.all([
-    serverListBlogPosts({ category: searchParams.category }),
+    serverListBlogPosts({ category: searchParams.category, lang: locale }),
     serverListBlogCategories(),
   ]);
 

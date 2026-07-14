@@ -623,6 +623,7 @@ export interface BlogPost {
   id: number;
   title: string;
   slug: string;
+  language: string;
   category: BlogCategory | null;
   preview_image_url: string | null;
   preview_text: string;
@@ -639,6 +640,7 @@ export interface BlogPostDetail extends BlogPost {
   content: string;
   updated_at: string;
   network_slugs: string[];
+  faq_items: { question: string; answer: string }[];
 }
 
 // ============ Billing ============

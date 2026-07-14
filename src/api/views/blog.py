@@ -22,6 +22,9 @@ class BlogPostListView(ListAPIView):
         show_on_main = self.request.query_params.get('show_on_main')
         if show_on_main:
             qs = qs.filter(show_on_main=True)
+        lang = (self.request.query_params.get('lang') or '').strip().lower()
+        if lang in dict(Post.LANGUAGE_CHOICES):
+            qs = qs.filter(language=lang)
         return qs.order_by('-published_at')
 
 

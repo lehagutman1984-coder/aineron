@@ -1325,7 +1325,8 @@
     "breadcrumbBlog": "Blog",
     "backToAllPosts": "Tüm Makaleler",
     "viewsCount": "{count, plural, one {# görüntüleme} other {# görüntüleme}}",
-    "relatedNetworks": "İlgili AI Modelleri"
+    "relatedNetworks": "İlgili AI Modelleri",
+    "faqHeading": "Sıkça Sorulan Sorular"
   },
   "legalChrome": {
     "privacyFallbackTitle": "Gizlilik Politikası",

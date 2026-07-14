@@ -1325,7 +1325,8 @@
     "breadcrumbBlog": "بلاگ",
     "backToAllPosts": "همه مقالات",
     "viewsCount": "{count, plural, one {# بازدید} other {# بازدید}}",
-    "relatedNetworks": "مدل‌های هوش مصنوعی مرتبط"
+    "relatedNetworks": "مدل‌های هوش مصنوعی مرتبط",
+    "faqHeading": "سوالات متداول"
   },
   "legalChrome": {
     "privacyFallbackTitle": "سیاست حفظ حریم خصوصی",

@@ -10,7 +10,8 @@ interface Props {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const post = await serverGetBlogPost(params.slug);
+  const locale = await getLocale();
+  const post = await serverGetBlogPost(params.slug, locale);
   if (!post) {
     const t = await getTranslations("blogPost");
     return { title: t("notFoundTitle") };
@@ -44,7 +45,7 @@ export const dynamic = "force-dynamic";
 export default async function BlogPostPage({ params }: Props) {
   const t = await getTranslations("blogPost");
   const locale = await getLocale();
-  const post = await serverGetBlogPost(params.slug);
+  const post = await serverGetBlogPost(params.slug, locale);
   if (!post) notFound();
 
   const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://aineron.ru";
@@ -82,6 +83,18 @@ export default async function BlogPostPage({ params }: Props) {
     ],
   };
 
+  const faqJsonLd = post.faq_items?.length
+    ? {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: post.faq_items.map((item) => ({
+          "@type": "Question",
+          name: item.question,
+          acceptedAnswer: { "@type": "Answer", text: item.answer },
+        })),
+      }
+    : null;
+
   return (
     <>
       <script
@@ -92,6 +105,12 @@ export default async function BlogPostPage({ params }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
+      {faqJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+        />
+      )}
 
       <article className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
         {/* Breadcrumbs */}
@@ -176,6 +195,21 @@ export default async function BlogPostPage({ params }: Props) {
             [&_blockquote]:border-l-4 [&_blockquote]:border-[#D97757] [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-[rgba(13,13,13,0.6)]"
           dangerouslySetInnerHTML={{ __html: post.content }}
         />
+
+        {/* FAQ */}
+        {post.faq_items?.length > 0 && (
+          <div className="mt-10 border-t border-[rgba(13,13,13,0.08)] pt-8">
+            <h2 className="mb-4 text-[20px] font-bold text-[#1A1A1A]">{t("faqHeading")}</h2>
+            <div className="space-y-5">
+              {post.faq_items.map((item, i) => (
+                <div key={i}>
+                  <p className="mb-1.5 text-[16px] font-semibold text-[#1A1A1A]">{item.question}</p>
+                  <p className="text-[15px] leading-relaxed text-[rgba(13,13,13,0.7)]">{item.answer}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Related networks */}
         {post.network_slugs.length > 0 && (

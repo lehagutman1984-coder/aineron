@@ -16,7 +16,7 @@ class BlogPostListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Post
         fields = [
-            'id', 'title', 'slug', 'category', 'preview_image_url',
+            'id', 'title', 'slug', 'language', 'category', 'preview_image_url',
             'preview_text', 'author_name', 'published_at',
             'views_count', 'show_on_main',
             'seo_title', 'seo_description', 'seo_keywords',
@@ -40,7 +40,7 @@ class BlogPostDetailSerializer(BlogPostListSerializer):
     network_slugs = serializers.SerializerMethodField()
 
     class Meta(BlogPostListSerializer.Meta):
-        fields = BlogPostListSerializer.Meta.fields + ['content', 'updated_at', 'network_slugs']
+        fields = BlogPostListSerializer.Meta.fields + ['content', 'updated_at', 'network_slugs', 'faq_items']
 
     def get_network_slugs(self, obj):
         return list(obj.neural_networks.values_list('slug', flat=True))

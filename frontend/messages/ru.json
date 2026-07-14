@@ -1325,7 +1325,8 @@
     "breadcrumbBlog": "Блог",
     "backToAllPosts": "Все статьи",
     "viewsCount": "{count, plural, one {# просмотр} few {# просмотра} many {# просмотров} other {# просмотров}}",
-    "relatedNetworks": "Связанные нейросети"
+    "relatedNetworks": "Связанные нейросети",
+    "faqHeading": "Часто задаваемые вопросы"
   },
   "legalChrome": {
     "privacyFallbackTitle": "Политика конфиденциальности",
