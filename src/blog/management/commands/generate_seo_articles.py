@@ -34,16 +34,22 @@ MODEL = 'claude-sonnet-5'
 LOCALE_META = {
     'id': {'name': 'Indonesian', 'market': 'Indonesia'},
     'ar': {'name': 'Modern Standard Arabic (MENA-neutral, readable across Egypt/Gulf/Levant/Morocco)', 'market': 'MENA (Egypt, Gulf states, Morocco)'},
+    'fa': {'name': 'Persian (contemporary standard Persian, the register of tech media like Digiato/Zoomit)', 'market': 'Persian-speaking users (Iran and diaspora)'},
+    'tr': {'name': 'Turkish (contemporary tech-journalism register like Webrazzi/ShiftDelete)', 'market': 'Turkey'},
 }
 
 DO_NOT_TRANSLATE = ['GPT-4o', 'Claude', 'Gemini', 'Sora', 'Veo', 'Kling', 'DALL-E', 'Flux', 'aineron', 'Telegram', 'USDT', 'TON']
 
 # --------------------------------------------------------------------------
-# Брифы (GLOBAL_EXPANSION_PLAN.md §4.3, §6). Для ar сознательно НЕ используем
-# рамку "обход блокировки/цензуры" — юридический вопрос по санкционным
-# регионам пока не решён (см. project_telegram_supremacy §7 в памяти сессии).
-# Фокус ar: оплата без международной карты, сравнение по цене/гибкости,
-# студенческие/бизнес-кейсы. Без конкретных цифр цен в тексте (дрейфуют).
+# Брифы (GLOBAL_EXPANSION_PLAN.md §4.3, §6). Для ar/fa сознательно НЕ
+# используем рамку "обход блокировки/цензуры/санкций" — юридический вопрос
+# по санкционным регионам не решён (см. project_telegram_supremacy §7).
+# Для fa дополнительно НЕТ отдельной статьи про оплату: платёжная тема для
+# Ирана упирается в санкционный вопрос напрямую, кредитная модель упоминается
+# только нейтрально внутри других статей. Фокус ar: оплата без международной
+# карты, сравнение по цене/гибкости, студенческие/бизнес-кейсы. Фокус tr:
+# экономика подписок в валюте vs оплата по использованию (без конкретных цен).
+# Без конкретных цифр цен в тексте нигде (дрейфуют).
 # --------------------------------------------------------------------------
 BRIEFS = {
     'id': [
@@ -196,6 +202,156 @@ BRIEFS = {
                 'إمكانية مقارنة إجابات عدة نماذج LLM لنفس السؤال البحثي',
             ],
             related_model_hints=['gpt-4o', 'claude-sonnet-5', 'gemini-3-pro'],
+        ),
+    ],
+    'fa': [
+        dict(
+            slug='chatgpt-vs-claude-vs-gemini-2026-farsi-comparison',
+            title_hint='مقایسه ChatGPT و Claude و Gemini در ۲۰۲۶: کدام برای شما مناسب‌تر است',
+            keywords=['مقایسه ChatGPT و Claude و Gemini', 'بهترین هوش مصنوعی ۲۰۲۶', 'هوش مصنوعی به زبان فارسی'],
+            search_intent='comparison',
+            angle='تمرکز بر معیاری که مقایسه‌های انگلیسی‌زبان پوشش نمی‌دهند: کیفیت درک و تولید متن فارسی در هر مدل، به‌علاوه چارچوب تصمیم عملی بر اساس نوع کار (نوشتن، برنامه‌نویسی، پژوهش).',
+            must_include_facts=[
+                'aineron دسترسی به GPT-4o و Claude و Gemini را از یک رابط واحد فراهم می‌کند',
+                'سیستم اعتباری پرداخت به‌ازای استفاده، بدون اجبار به اشتراک ماهانه',
+            ],
+            related_model_hints=['gpt-4o', 'claude-sonnet-5', 'gemini-3-pro'],
+        ),
+        dict(
+            slug='sora-veo-kling-video-ai-farsi-comparison',
+            title_hint='مقایسه Sora و Veo و Kling برای ساخت ویدیو با هوش مصنوعی',
+            keywords=['مقایسه Sora و Veo و Kling', 'ساخت ویدیو با هوش مصنوعی', 'بهترین ابزار ویدیوی هوش مصنوعی ۲۰۲۶'],
+            search_intent='comparison',
+            angle='مقایسه بر اساس کاربرد واقعی: محتوای کوتاه شبکه‌های اجتماعی در برابر تبلیغات حرفه‌ای در برابر تجربه‌های خلاقانه، با تفاوت‌های عملی هر مدل.',
+            must_include_facts=[
+                'aineron دسترسی به Sora و Veo و Kling را در یک پلتفرم فراهم می‌کند',
+                'هزینه به‌ازای هر تولید ویدیو محاسبه می‌شود، نه اشتراک ثابت',
+            ],
+            related_model_hints=['sora', 'veo-3-1', 'kling'],
+        ),
+        dict(
+            slug='ai-image-generation-small-business-farsi',
+            title_hint='ابزارهای هوش مصنوعی تولید تصویر برای کسب‌وکارهای کوچک',
+            keywords=['تولید تصویر با هوش مصنوعی', 'عکس محصول با هوش مصنوعی', 'هوش مصنوعی برای کسب‌وکار کوچک'],
+            search_intent='how-to',
+            angle='سیر کار عملی برای صاحبان کسب‌وکارهای کوچک (رستوران، پوشاک، صنایع‌دستی) از ایده تا تصویر آماده انتشار در اینستاگرام و تلگرام — نه توضیح نظری.',
+            must_include_facts=[
+                'aineron چند مدل تولید تصویر (مانند Flux و DALL-E و GPT-image) را در یک پلتفرم ارائه می‌دهد',
+                'هزینه به‌ازای هر تصویر محاسبه می‌شود و با بودجه‌های کوچک سازگار است',
+            ],
+            related_model_hints=['flux', 'dall-e', 'gpt-image'],
+        ),
+        dict(
+            slug='ai-tools-for-students-farsi',
+            title_hint='بهترین ابزارهای هوش مصنوعی برای دانشجویان و پژوهشگران',
+            keywords=['هوش مصنوعی برای دانشجویان', 'هوش مصنوعی و پایان‌نامه', 'ابزار پژوهش با هوش مصنوعی'],
+            search_intent='informational/FAQ',
+            angle='موضع روشن: هوش مصنوعی به‌عنوان دستیار پژوهش و خلاصه‌سازی و ایده‌پردازی، نه ابزار تقلب. بخش پرسش‌های متداول فشرده برای سوالات عملی دانشجویان.',
+            must_include_facts=[
+                'aineron جستجوی وب یکپارچه برای پژوهش مبتنی بر منابع به‌روز را پشتیبانی می‌کند',
+                'امکان مقایسه پاسخ چند مدل LLM برای یک پرسش پژوهشی واحد',
+            ],
+            related_model_hints=['gpt-4o', 'claude-sonnet-5', 'gemini-3-pro'],
+        ),
+        dict(
+            slug='chatgpt-plus-alternative-pay-per-use-farsi',
+            title_hint='جایگزین ChatGPT Plus در ۲۰۲۶: پرداخت به‌ازای استفاده به‌جای اشتراک ثابت',
+            keywords=['جایگزین ChatGPT Plus', 'پرداخت به‌ازای استفاده هوش مصنوعی', 'مقایسه هزینه مدل‌های هوش مصنوعی'],
+            search_intent='comparison/transactional',
+            angle='مقایسه صادقانه بین اشتراک ثابت یک شرکت و پرداخت به‌ازای استفاده از چند مدل — چه زمانی هر گزینه منطقی است، بدون ادعای اینکه یکی همیشه ارزان‌تر است.',
+            must_include_facts=[
+                'aineron دسترسی به چند مدل را با یک سیستم اعتباری واحد فراهم می‌کند',
+                'تعهد ماهانه وجود ندارد — اعتبار بر اساس نیاز واقعی مصرف می‌شود',
+            ],
+            related_model_hints=['gpt-4o', 'claude-sonnet-5', 'gemini-3-pro'],
+        ),
+        dict(
+            slug='ai-content-creation-instagram-telegram-farsi',
+            title_hint='تولید محتوا با هوش مصنوعی برای اینستاگرام و تلگرام: راهنمای عملی',
+            keywords=['تولید محتوا با هوش مصنوعی', 'هوش مصنوعی برای اینستاگرام', 'ساخت محتوای فارسی با هوش مصنوعی'],
+            search_intent='how-to',
+            angle='سیر کار واقعی تولیدکنندگان محتوای فارسی‌زبان: از ایده تا کپشن و تصویر و ویدیوی کوتاه، با تمرکز بر کیفیت خروجی فارسی و اشتباهات رایجی که محتوا را مصنوعی جلوه می‌دهد.',
+            must_include_facts=[
+                'aineron مدل‌های متن و تصویر و ویدیو را در یک پلتفرم گرد هم می‌آورد',
+                'سیستم اعتباری اجازه می‌دهد فقط به اندازه نیاز واقعی هزینه شود',
+            ],
+            related_model_hints=['gpt-4o', 'flux', 'sora'],
+        ),
+    ],
+    'tr': [
+        dict(
+            slug='chatgpt-vs-claude-vs-gemini-2026-karsilastirma',
+            title_hint='ChatGPT vs Claude vs Gemini: 2026\'da hangisi size daha uygun',
+            keywords=['ChatGPT vs Claude vs Gemini', 'en iyi yapay zeka 2026', 'yapay zeka karşılaştırma Türkçe'],
+            search_intent='comparison',
+            angle='İngilizce karşılaştırmaların atladığı kriter: her modelin Türkçe anlama ve yazma kalitesi, artı görev tipine göre pratik karar çerçevesi (yazı, kod, araştırma).',
+            must_include_facts=[
+                'aineron, GPT-4o, Claude ve Gemini\'ye tek arayüzden erişim sağlar',
+                'kullandıkça öde kredi sistemi, zorunlu aylık abonelik yok',
+                'kripto ödeme (USDT/TON) ek seçenek olarak mevcut',
+            ],
+            related_model_hints=['gpt-4o', 'claude-sonnet-5', 'gemini-3-pro'],
+        ),
+        dict(
+            slug='yapay-zeka-abonelik-mi-kullandikca-ode-mi',
+            title_hint='Yapay zeka için abonelik mi, kullandıkça ödeme mi? Dürüst bir hesaplaşma',
+            keywords=['ChatGPT Plus alternatifi', 'kullandıkça öde yapay zeka', 'yapay zeka abonelik fiyatları'],
+            search_intent='comparison/transactional',
+            angle='Döviz kuruna bağlı sabit aboneliklerin öngörülemezliği ile kullandıkça ödemenin esnekliği arasında dürüst bir kıyas — hangi kullanım profiline hangisi mantıklı, "her zaman daha ucuz" iddiası olmadan.',
+            must_include_facts=[
+                'aineron birden fazla modele tek kredi sistemiyle erişim sunar',
+                'aylık taahhüt yok — kredi gerçek ihtiyaca göre harcanır',
+                'kripto ödeme (USDT/TON) ek seçenek olarak mevcut',
+            ],
+            related_model_hints=['gpt-4o', 'claude-sonnet-5', 'gemini-3-pro'],
+        ),
+        dict(
+            slug='sora-veo-kling-video-yapay-zeka-karsilastirma',
+            title_hint='Sora vs Veo vs Kling: yapay zeka ile video üretiminde hangisi ne zaman',
+            keywords=['Sora vs Veo vs Kling', 'yapay zeka video oluşturma', 'en iyi AI video aracı 2026'],
+            search_intent='comparison',
+            angle='Kullanım senaryosuna göre kıyas: kısa sosyal medya içeriği vs profesyonel reklam vs yaratıcı deneyler — her modelin pratik farklarıyla.',
+            must_include_facts=[
+                'aineron, Sora, Veo ve Kling\'e tek platformdan erişim sağlar',
+                'ücret video üretimi başına hesaplanır, sabit abonelik yok',
+            ],
+            related_model_hints=['sora', 'veo-3-1', 'kling'],
+        ),
+        dict(
+            slug='kobiler-icin-yapay-zeka-gorsel-uretimi-rehberi',
+            title_hint='KOBİ\'ler için yapay zeka ile görsel üretimi: üründen paylaşıma pratik rehber',
+            keywords=['yapay zeka görsel oluşturma', 'ürün fotoğrafı yapay zeka', 'KOBİ için yapay zeka'],
+            search_intent='how-to',
+            angle='Küçük işletme sahipleri (yemek, moda, el sanatları, e-ticaret) için gerçek iş akışı: fikirden Instagram/Trendyol\'a hazır görsele — teorik anlatım değil.',
+            must_include_facts=[
+                'aineron birden fazla görsel üretim modelini (ör. Flux, DALL-E, GPT-image) tek platformda sunar',
+                'ücret görsel başına hesaplanır, küçük bütçelere uygundur',
+            ],
+            related_model_hints=['flux', 'dall-e', 'gpt-image'],
+        ),
+        dict(
+            slug='ogrenciler-icin-yapay-zeka-etik-rehber',
+            title_hint='Öğrenciler için yapay zeka: tezde ve ödevde etik ve etkili kullanım',
+            keywords=['öğrenciler için yapay zeka', 'yapay zeka ile tez yazımı', 'akademik yapay zeka araçları'],
+            search_intent='informational/FAQ',
+            angle='Net duruş: yapay zeka araştırma asistanı, özetleyici ve beyin fırtınası ortağı — intihal aracı değil. Öğrencilerin pratik sorularına yoğun SSS bölümü.',
+            must_include_facts=[
+                'aineron güncel kaynaklara dayalı araştırma için entegre web aramasını destekler',
+                'aynı araştırma sorusu için birden fazla LLM\'in yanıtını karşılaştırma imkânı',
+            ],
+            related_model_hints=['gpt-4o', 'claude-sonnet-5', 'gemini-3-pro'],
+        ),
+        dict(
+            slug='icerik-ureticileri-icin-yapay-zeka-is-akisi',
+            title_hint='İçerik üreticileri için yapay zeka iş akışı: fikirden yayına',
+            keywords=['yapay zeka ile içerik üretimi', 'sosyal medya için yapay zeka', 'yapay zeka içerik araçları'],
+            search_intent='how-to',
+            angle='Türk içerik üreticilerinin gerçek iş akışı: fikir, başlık, görsel ve kısa video üretiminde yapay zekanın yeri — ve içeriği yapay gösteren yaygın hatalar.',
+            must_include_facts=[
+                'aineron metin, görsel ve video modellerini tek platformda bir araya getirir',
+                'kredi sistemi yalnızca gerçek ihtiyaç kadar harcama yapmayı sağlar',
+            ],
+            related_model_hints=['gpt-4o', 'flux', 'sora'],
         ),
     ],
 }
