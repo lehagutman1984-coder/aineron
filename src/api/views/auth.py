@@ -111,6 +111,10 @@ class RegisterView(APIView):
         user = User.objects.create_user(
             username=username, email=email, password=password
         )
+        lang = (request.data.get('lang') or '').strip().lower()
+        if lang in dict(User.LANGUAGE_CHOICES):
+            user.language = lang
+            user.save(update_fields=['language'])
         apply_referral(user, request)
         if settings.INTL_MODE:
             # Международный инстанс: SMTP недоступен (порты хостера закрыты) —

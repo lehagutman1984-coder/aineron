@@ -725,8 +725,9 @@ def generate_ai_response(self, message_id, web_search=False):
         # ========== изображения / видео (laozhang.ai) ==========
         if network.provider == 'fal-ai':
             if not network.model_name:
+                from core.errors_i18n import t_error
                 message.status = Message.Status.FAILED
-                message.error_message = "У нейросети не указан model_name"
+                message.error_message = t_error('no_model_configured', user.get_language())
                 message.save()
                 return
 
@@ -799,10 +800,10 @@ def generate_ai_response(self, message_id, web_search=False):
                         send_media_to_telegram(tg_chat_id, saved_images[0], network.name, network.cost_kopecks)
                     elif tg_chat_id:
                         from telegram_bot.notify import maybe_notify_chat
-                        maybe_notify_chat(tg_chat_id, f"Видео готово. Смотри в кабинете: https://aineron.ru/account/files/")
+                        maybe_notify_chat(tg_chat_id, f"Видео готово. Смотри в кабинете: {settings.SITE_URL}/account/files/")
                     else:
                         from telegram_bot.notify import maybe_notify
-                        maybe_notify(user, f"Генерация завершена: {network.name}\nОткрыть: https://aineron.ru/chat/{message.chat.id}/")
+                        maybe_notify(user, f"Генерация завершена: {network.name}\nОткрыть: {settings.SITE_URL}/chat/{message.chat.id}/")
                 except Exception:
                     pass
                 return
@@ -815,17 +816,19 @@ def generate_ai_response(self, message_id, web_search=False):
                     from core.money import format_rub
                     logger.info(f"Возвращено {format_rub(total_cost_kopecks)} пользователю {user.email} из-за ошибки генерации")
                 message.status = Message.Status.FAILED
+                from core.errors_i18n import t_error
                 if 'billing' in error_str.lower() or 'balance' in error_str.lower() or 'quota' in error_str.lower():
-                    message.error_message = "Проблема с провайдером, обратитесь к администратору сервиса для решения проблем."
+                    message.error_message = t_error('provider_billing_issue', user.get_language())
                 else:
-                    message.error_message = "Произошла ошибка генерации, средства возвращены на ваш баланс, пожалуйста выберите другую нейросеть из каталога, пока мы будем устранять проблему."
+                    message.error_message = t_error('media_generation_failed_refunded', user.get_language())
                 message.save()
                 return
 
         # ========== laozhang.ai текст провайдер ==========
         if not network.model_name:
+            from core.errors_i18n import t_error
             message.status = Message.Status.FAILED
-            message.error_message = "У нейросети не указана модель"
+            message.error_message = t_error('no_model_configured', user.get_language())
             message.save()
             return
 
@@ -988,8 +991,9 @@ def generate_ai_response(self, message_id, web_search=False):
             mod_result = check_moderation(mod_text)
             log_moderation(user=chat.user, message=message, text=mod_text, result=mod_result, source='web_chat')
             if mod_result['flagged']:
+                from core.errors_i18n import t_error
                 message.status = Message.Status.FAILED
-                message.error_message = 'Контент нарушает политику использования'
+                message.error_message = t_error('content_policy_violation', user.get_language())
                 message.save(update_fields=['status', 'error_message'])
                 return
 
@@ -1013,8 +1017,9 @@ def generate_ai_response(self, message_id, web_search=False):
             status_code = getattr(api_error, 'status_code', None)
             if status_code == 404 or 'deprecated' in error_str.lower() or 'free model' in error_str.lower():
                 logger.error(f"Ошибка при вызове модели {network.model_name}: {error_str}")
+                from core.errors_i18n import t_error
                 message.status = Message.Status.FAILED
-                message.error_message = "Пожалуйста выберите другую бесплатную нейросеть. Эта нейросеть более не предоставляется бесплатно, и скоро пропадет из каталога."
+                message.error_message = t_error('free_model_deprecated', user.get_language())
                 message.save()
                 return
             else:
@@ -1151,11 +1156,8 @@ def generate_ai_response(self, message_id, web_search=False):
             message = Message.objects.get(id=message_id)
             is_free_network = bool(getattr(message.chat.network, 'is_free', False))
             if is_free_network and _is_rate_limit_error(e):
-                message.error_message = (
-                    "Эта бесплатная модель сейчас перегружена (лимит провайдера исчерпан). "
-                    "Попробуйте отправить сообщение ещё раз через минуту или выберите другую "
-                    "бесплатную модель."
-                )
+                from core.errors_i18n import t_error
+                message.error_message = t_error('free_model_overloaded', message.chat.user.get_language())
             else:
                 message.error_message = str(e)
             message.status = Message.Status.FAILED

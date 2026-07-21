@@ -524,6 +524,22 @@ class CustomUser(AbstractUser):
     )
     gitea_username = models.CharField(max_length=64, blank=True, verbose_name='Gitea username')
     gitea_password = models.CharField(max_length=128, blank=True, verbose_name='Gitea password')
+    LANGUAGE_CHOICES = [
+        ('ru', 'Русский'),
+        ('en', 'English'),
+        ('fa', 'Persian'),
+        ('tr', 'Turkish'),
+        ('id', 'Indonesian'),
+        ('ar', 'Arabic'),
+    ]
+    language = models.CharField(
+        max_length=8,
+        choices=LANGUAGE_CHOICES,
+        blank=True,
+        verbose_name='Язык интерфейса',
+        help_text='Заполняется фронтендом из текущей locale при регистрации. Пусто — '
+                   'фолбэк на INTL_DEFAULT_LOCALE (INTL_MODE=1) или ru (см. get_language())',
+    )
     referral_code = models.CharField(
         max_length=20,
         unique=True,
@@ -600,6 +616,21 @@ class CustomUser(AbstractUser):
                 self.active_subscription = free_subscription
 
             self.save(update_fields=['tariff', 'pages_count', 'balance_kopecks', 'active_subscription'])
+
+    def get_language(self) -> str:
+        """Язык пользователя с фолбэком — для локализации сообщений вне
+        request-цикла (Celery-задачи генерации, см. core/errors_i18n.py).
+        Пусто ⇒ INTL_DEFAULT_LOCALE на INTL_MODE=1 (пользователь ещё не
+        сохранил locale — например, зарегистрирован до этого поля), иначе 'ru'.
+        """
+        if self.language:
+            return self.language
+        from django.conf import settings
+        # INTL_DEFAULT_LOCALE = 'en' — GLOBAL_EXPANSION_PLAN.md §1: английский
+        # базовый и обязательный на международном инстансе (совпадает с
+        # telegram_bot.i18n.INTL_DEFAULT_LOCALE; не импортируем оттуда, чтобы
+        # users не зависел от telegram_bot).
+        return 'en' if getattr(settings, 'INTL_MODE', False) else 'ru'
 
     # ========== БАЛАНС (копейки) — атомарные операции ==========
     # Источник истины — balance_kopecks. pages_count остаётся dual-write

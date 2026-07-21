@@ -7,10 +7,11 @@ import { Check } from "lucide-react";
 import { authRegister } from "@/lib/api/client";
 import { APIError } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 
 function RegisterForm() {
   const t = useTranslations("auth");
+  const locale = useLocale();
   const router = useRouter();
   const params = useSearchParams();
   const { setUser } = useAuthStore();
@@ -32,7 +33,7 @@ function RegisterForm() {
     setLoading(true);
     setError(null);
     try {
-      const user = await authRegister(email.trim().toLowerCase(), password);
+      const user = await authRegister(email.trim().toLowerCase(), password, locale);
       setUser(user);
       // На intl-инстансе email верифицируется при регистрации — сразу в кабинет
       router.push(user.email_verified ? next : "/verify-email/");

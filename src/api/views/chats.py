@@ -728,14 +728,12 @@ class StreamMessageView(APIView):
                     from core.money import format_rub
                     logger.info(f"Refunded {format_rub(cost_kopecks)} to {user.email} after streaming error")
                 from aitext.tasks import _is_rate_limit_error
+                from core.errors_i18n import t_error
+                user_lang = user.get_language()
                 if network.is_free and _is_rate_limit_error(e):
-                    user_msg = (
-                        "Эта бесплатная модель сейчас перегружена (лимит провайдера исчерпан). "
-                        "Попробуйте отправить сообщение ещё раз через минуту или выберите другую "
-                        "бесплатную модель."
-                    )
+                    user_msg = t_error('free_model_overloaded', user_lang)
                 else:
-                    user_msg = "Ошибка при генерации ответа. Попробуйте ещё раз."
+                    user_msg = t_error('generation_error_generic', user_lang)
                 assistant_message.status = Message.Status.FAILED
                 assistant_message.error_message = user_msg
                 assistant_message.save()

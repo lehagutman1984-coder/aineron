@@ -12,8 +12,14 @@ User = get_user_model()
 
 @receiver(post_save, sender=User)
 def ensure_gitea_account(sender, instance, created, **kwargs):
-    """Create a Gitea user account when a new site user registers."""
-    if not created or instance.gitea_username:
+    """Create a Gitea user account when a new site user registers.
+
+    aineron.net (INTL_MODE=1) не разворачивает Gitea вообще (см. CLAUDE.md,
+    «Два инстанса, один репозиторий») — Studio там использует GitHub, не
+    самохостed git. Без этой проверки каждая регистрация на .net кидала
+    перехваченную, но шумную ошибку резолва хоста 'gitea' в лог.
+    """
+    if not created or instance.gitea_username or getattr(settings, 'INTL_MODE', False):
         return
     username = f'u{instance.id}'
     password = secrets.token_urlsafe(16)
@@ -35,7 +41,7 @@ def ensure_gitea_account(sender, instance, created, **kwargs):
 @receiver(post_save, sender='studio.StudioProject')
 def ensure_repo(sender, instance, created, **kwargs):
     """Create a private Gitea repo when a new StudioProject is created."""
-    if not created or instance.repo_url or not instance.user.gitea_username:
+    if not created or instance.repo_url or not instance.user.gitea_username or getattr(settings, 'INTL_MODE', False):
         return
     repo_name = f'project-{str(instance.id)[:8]}'
     try:

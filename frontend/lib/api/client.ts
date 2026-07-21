@@ -180,10 +180,10 @@ export const authLogin = (email: string, password: string): Promise<AuthUser> =>
 export const authLogout = (): Promise<{ ok: boolean }> =>
   request<{ ok: boolean }>("/auth/logout/", { method: "POST" });
 
-export const authRegister = (email: string, password: string): Promise<AuthUser> =>
+export const authRegister = (email: string, password: string, lang?: string): Promise<AuthUser> =>
   request<AuthUser>("/auth/register/", {
     method: "POST",
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, ...(lang && { lang }) }),
   });
 
 export const authVerifyEmail = (code: string): Promise<{ ok: boolean }> =>
