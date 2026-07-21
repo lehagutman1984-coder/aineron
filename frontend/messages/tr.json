@@ -4,12 +4,12 @@
     "compare": "Karşılaştır",
     "gallery": "Galeri",
     "projects": "Projeler",
-    "personas": "Kişiler",
+    "personas": "Kişilikler",
     "docs": "Dokümantasyon",
     "api": "API",
     "blog": "Blog",
-    "account": "Dashboard",
-    "accountFull": "Dashboard",
+    "account": "Panel",
+    "accountFull": "Panel",
     "logout": "Çıkış yap",
     "login": "Giriş yap",
     "startFree": "Ücretsiz başla",
@@ -34,13 +34,13 @@
     "popularSubtitle": "En çok talep gören AI modelleri",
     "allModels": "Tüm modeller",
     "freeTitle": "{count} ücretsiz metin modeli",
-    "freeText": "GPT-OSS, Qwen3, Gemma, DeepSeek R1 ve diğer chat modelleri — ücretsiz, balance top-up gerekmez. Kayıttan hemen sonra kullanılabilir.",
+    "freeText": "GPT-OSS, Qwen3, Gemma, DeepSeek R1 ve diğer sohbet modelleri — ücretsiz, bakiye yüklemeye gerek yok. Kayıttan hemen sonra kullanılabilir.",
     "freeCta": "Ücretsiz modelleri aç",
     "whyTitle": "Neden aineron",
     "features": [
       {
         "title": "Tüm modeller bir arada",
-        "text": "GPT-4o, Claude, Gemini, Midjourney ve 200+ model — tek hesap ve ortak balance."
+        "text": "GPT-4o, Claude, Gemini, Midjourney ve 200+ model — tek hesap ve ortak bakiye."
       },
       {
         "title": "VPN yok",
@@ -52,7 +52,7 @@
       },
       {
         "title": "Metin, fotoğraf ve video",
-        "text": "Tek bir arayüzde chat, görüntü ve video üretimi."
+        "text": "Tek bir arayüzde sohbet, görüntü ve video üretimi."
       }
     ],
     "comparisonTitle": "Adil Karşılaştırma",
@@ -69,17 +69,17 @@
       "AI modelleri ile Telegram botu"
     ],
     "pricingTitle": "Kripto ile Basit Ödeme",
-    "pricingSubtitle": "Bakiyenizi artırın ve herhangi bir modelde harcayın. Fonlar süresizdir.",
+    "pricingSubtitle": "Bakiyenizi yükleyin ve dilediğiniz modelde harcayın. Yüklenen tutarın son kullanma tarihi yoktur.",
     "pricing": [
       {
         "title": "Başlangıç",
-        "price": "1,000 kredi",
+        "price": "1.000 kredi",
         "sub": "kayıttan sonra ücretsiz"
       },
       {
         "title": "Bakiye Yükle",
         "price": "kripto ile",
-        "sub": "USDT, TON ile Crypto Pay"
+        "sub": "Crypto Pay ile USDT, TON"
       },
       {
         "title": "Abonelikler",
@@ -92,7 +92,7 @@
     "faq": [
       {
         "q": "Bakiye nasıl çalışır?",
-        "a": "aineron bakiyesi kredilerle ifade edilir. Her AI modeline gönderilen mesaj az bir maliyetle (genellikle birkaç kredi) ücretlendirilir. Fonlar süresizdir, bakiye kripto (USDT, TON) ile komisyonsuz olarak artırılır."
+        "a": "aineron bakiyesi kredilerle ifade edilir. Her AI modeline gönderilen mesaj az bir maliyetle (genellikle birkaç kredi) ücretlendirilir. Bakiyenizin süresi dolmaz, bakiye kripto (USDT, TON) ile komisyonsuz olarak yüklenir."
       },
       {
         "q": "Hizmeti kullanmak için VPN gerekli mi?",
@@ -112,20 +112,20 @@
       },
       {
         "q": "AI kötü bir yanıt verirse ne olur?",
-        "a": "Her mesajda 'Yeniden Üret' düğmesi vardır — AI ek bir ücret olmadan yeni bir yanıt üretir. Teknik bir hata oluşursa, fonlar otomatik olarak iade edilir."
+        "a": "Her mesajda 'Yeniden Üret' düğmesi vardır — AI ek ücret almadan yeni bir yanıt üretir. Teknik bir hata oluşursa, harcanan tutar otomatik olarak iade edilir."
       }
     ],
     "finalTitle": "Şimdi Başlayın",
-    "finalText": "1,000 kredi ücretsiz. VPN yok, kripto ile ödeme.",
+    "finalText": "1.000 kredi ücretsiz. VPN yok, kripto ile ödeme.",
     "perMessage": "{price} / mesaj",
     "cta": {
-      "topUp": "Bakiyeyi artır",
-      "startFreeAmount": "1,000 kredi ile ücretsiz başla",
+      "topUp": "Bakiye yükle",
+      "startFreeAmount": "1.000 kredi ile ücretsiz başla",
       "openAccount": "Paneli aç",
       "createAccount": "Hesap oluştur",
       "viewModels": "Modelleri görüntüle",
       "startFree": "Ücretsiz başla",
-      "newChat": "Yeni chat",
+      "newChat": "Yeni sohbet",
       "viewCatalog": "Kataloğu görüntüle"
     }
   },
@@ -143,18 +143,18 @@
     "registerTitle": "Hesap oluştur",
     "haveAccount": "Zaten bir hesabınız var mı?",
     "loginLink": "Giriş yap",
-    "bonus": "Kayıt sırasında 1,000 kredi ücretsiz",
+    "bonus": "Kayıt sırasında 1.000 kredi ücretsiz",
     "passwordTooShort": "Şifre en az 8 karakter olmalı",
     "registerError": "Kayıt hatası. Tekrar deneyin.",
     "registering": "Hesap oluşturuluyor...",
     "registerButton": "Hesap oluştur",
-    "agreePrefix": "Devam ederek,",
-    "agreeTerms": "hizmet şartlarını",
+    "agreePrefix": "Devam ederek şunları kabul edersiniz:",
+    "agreeTerms": "hizmet şartları",
     "agreeAnd": "ve",
-    "agreePrivacy": "gizlilik politikasını",
+    "agreePrivacy": "gizlilik politikası",
     "verifyTitle": "E-postanızı doğrulayın",
-    "verifySentTo": "6 haneli bir kod gönderdik",
-    "verifyYourEmail": "e-postanıza",
+    "verifySentTo": "6 haneli doğrulama kodunu şu adrese gönderdik:",
+    "verifyYourEmail": "e-posta adresiniz",
     "verifyInvalidCode": "Geçersiz kod. Lütfen tekrar deneyin.",
     "verifyResendFailed": "E-posta gönderilemedi. Lütfen daha sonra tekrar deneyin.",
     "verifyResent": "E-posta tekrar gönderildi",
@@ -173,7 +173,7 @@
       "compare": "Model karşılaştırma",
       "gallery": "Galeri",
       "projects": "Projeler",
-      "prompts": "Promtlar",
+      "prompts": "Promptlar",
       "personas": "Kişilikler",
       "arena": "Model arenası"
     },
@@ -184,7 +184,7 @@
       "sandboxes": "Sandboxes",
       "playground": "Playground",
       "ide": "IDE Entegrasyonları",
-      "account": "Dashboard"
+      "account": "Panel"
     },
     "company": {
       "title": "Şirket",
@@ -289,7 +289,7 @@
     "statusFailed": "Başarısız",
     "statusRefunded": "İade edildi",
     "typeSubscription": "Plan",
-    "typePages": "Bakiye Yükle",
+    "typePages": "Bakiye yükleme",
     "typePromo": "Promosyon kodu",
     "promoPlaceholder": "Promosyon kodunu girin",
     "promoApply": "Uygula",
@@ -893,7 +893,7 @@
         ]
       },
       {
-        "label": "Çalışma",
+        "label": "Eğitim",
         "description": "Açıklamalar, notlar, hazırlık",
         "prompts": [
           "Kuantum dolanıklığı basit terimlerle açıkla",
@@ -928,8 +928,8 @@
     },
     "step3": {
       "title": "Her şey hazır",
-      "subtitle": "Bakiyeniz başlangıç talepleri için zaten fon içeriyor",
-      "yourFirstPrompt": "İlk promtunuz",
+      "subtitle": "Bakiyenizde ilk istekleriniz için yeterli tutar bulunuyor",
+      "yourFirstPrompt": "İlk promptunuz",
       "quickLinks": [
         {
           "label": "AI Model Kataloğu",
@@ -937,14 +937,14 @@
         },
         {
           "label": "Model Karşılaştırma",
-          "sub": "Birden fazla modele aynı anda promt gönderin"
+          "sub": "Birden fazla modele aynı anda prompt gönderin"
         },
         {
           "label": "Bakiye Yükle",
           "sub": "Bakiye yükleyin veya abone olun"
         }
       ],
-      "goToAccount": "Kontrol paneline git"
+      "goToAccount": "Panele git"
     }
   },
   "projectsKb": {
@@ -2354,7 +2354,7 @@
   },
   "payment": {
     "successTitle": "Ödeme başarılı",
-    "successText": "Fonlar hesabınıza eklendi. Hizmeti kullanmaya devam edebilirsiniz.",
+    "successText": "Yüklediğiniz tutar hesabınıza eklendi. Hizmeti kullanmaya devam edebilirsiniz.",
     "failTitle": "Ödeme başarısız",
     "failText": "Ödeme tamamlanmadı. Tekrar deneyin veya başka bir ödeme yöntemi seçin.",
     "invoiceNumber": "Ödeme ID: {id}",

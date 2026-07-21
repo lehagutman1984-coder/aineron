@@ -24,7 +24,7 @@
     "subtitle": "GPT-4o, Claude, Gemini, Midjourney, dan 200+ model. Satu akun, bayar dengan kripto.",
     "typewriter": [
       "GPT-4o menulis kode dalam hitungan detik",
-      "Claude menjelaskan hal kompleks dengan sederhana",
+      "Claude menjelaskan hal kompleks secara sederhana",
       "Gemini menganalisis dokumen",
       "Midjourney menggambar sesuai permintaan",
       "DeepSeek menyelesaikan masalah matematika",
@@ -34,17 +34,17 @@
     "popularSubtitle": "Model AI paling diminati",
     "allModels": "Semua model",
     "freeTitle": "{count} model teks gratis",
-    "freeText": "GPT-OSS, Qwen3, Gemma, DeepSeek R1, dan model chat lainnya — gratis, tanpa top up balance. Tersedia segera setelah registrasi.",
+    "freeText": "GPT-OSS, Qwen3, Gemma, DeepSeek R1, dan model chat lainnya — gratis, tanpa top up saldo. Tersedia segera setelah registrasi.",
     "freeCta": "Buka model gratis",
     "whyTitle": "Mengapa aineron",
     "features": [
       {
         "title": "Semua model sekaligus",
-        "text": "GPT-4o, Claude, Gemini, Midjourney, dan 200+ model — satu akun dan balance bersama."
+        "text": "GPT-4o, Claude, Gemini, Midjourney, dan 200+ model — satu akun dan saldo bersama."
       },
       {
         "title": "Tanpa VPN",
-        "text": "Tidak perlu VPN, bayar dengan kripto. Bekerja di perangkat apa pun, di mana saja."
+        "text": "Tidak perlu VPN, bayar dengan kripto. Berfungsi di perangkat apa pun, di mana saja."
       },
       {
         "title": "API untuk pengembang",
@@ -52,7 +52,7 @@
       },
       {
         "title": "Teks, foto, dan video",
-        "text": "Generasi chat, gambar, dan video dalam satu antarmuka."
+        "text": "Chat, pembuatan gambar dan video dalam satu antarmuka."
       }
     ],
     "comparisonTitle": "Perbandingan Adil",
@@ -63,13 +63,13 @@
       "Bayar dengan kripto — tidak perlu kartu bank",
       "GPT, Claude, Gemini dalam satu jendela",
       "Perbandingan model berdampingan",
-      "Generasi gambar dan video",
+      "Pembuatan gambar dan video",
       "Unggah file dan pencarian web",
       "API kompatibel dengan OpenAI",
       "Bot Telegram dengan model AI"
     ],
     "pricingTitle": "Pembayaran Sederhana dengan Kripto",
-    "pricingSubtitle": "Top up balance Anda dan gunakan pada model apa pun. Dana tidak kedaluwarsa.",
+    "pricingSubtitle": "Top up saldo Anda dan gunakan untuk model apa pun. Dana tidak kedaluwarsa.",
     "pricing": [
       {
         "title": "Mulai",
@@ -82,7 +82,7 @@
         "sub": "USDT, TON melalui Crypto Pay"
       },
       {
-        "title": "Subscriptions",
+        "title": "Langganan",
         "price": "dengan diskon",
         "sub": "paket untuk pengguna aktif"
       }
@@ -91,8 +91,8 @@
     "faqTitle": "Pertanyaan yang Sering Diajukan",
     "faq": [
       {
-        "q": "Bagaimana cara kerja balance?",
-        "a": "Balance aineron dalam bentuk credits. Setiap pesan ke model AI memerlukan sedikit biaya (biasanya beberapa credits). Dana tidak kedaluwarsa, balance dapat di-top up melalui kripto (USDT, TON) tanpa komisi."
+        "q": "Bagaimana cara kerja saldo?",
+        "a": "Saldo aineron dalam bentuk credits. Setiap pesan ke model AI memerlukan sedikit biaya (biasanya beberapa credits). Dana tidak kedaluwarsa, saldo dapat di-top up melalui kripto (USDT, TON) tanpa komisi."
       },
       {
         "q": "Apakah diperlukan VPN untuk menggunakan layanan ini?",
@@ -108,7 +108,7 @@
       },
       {
         "q": "Bagaimana cara melakukan pembayaran?",
-        "a": "Melalui Crypto Pay: USDT, TON, dan mata uang kripto lainnya. Top up balance untuk jumlah berapa pun dan paket subscription dengan diskon tersedia."
+        "a": "Melalui Crypto Pay: USDT, TON, dan mata uang kripto lainnya. Top up saldo untuk jumlah berapa pun dan paket langganan dengan diskon tersedia."
       },
       {
         "q": "Bagaimana jika AI memberikan respons yang buruk?",
@@ -119,7 +119,7 @@
     "finalText": "1.000 credits gratis. Tanpa VPN, bayar dengan kripto.",
     "perMessage": "{price} / pesan",
     "cta": {
-      "topUp": "Top up balance",
+      "topUp": "Top up saldo",
       "startFreeAmount": "Mulai dengan 1.000 credits gratis",
       "openAccount": "Buka dashboard",
       "createAccount": "Buat akun",
@@ -136,7 +136,7 @@
     "email": "Email",
     "password": "Kata sandi",
     "passwordPlaceholder": "Minimal 8 karakter",
-    "loginError": "Kesalahan masuk. Coba lagi.",
+    "loginError": "Gagal masuk. Coba lagi.",
     "loggingIn": "Sedang masuk...",
     "loginButton": "Masuk",
     "forgotPassword": "Lupa kata sandi?",
@@ -145,7 +145,7 @@
     "loginLink": "Masuk",
     "bonus": "1.000 credits gratis saat pendaftaran",
     "passwordTooShort": "Kata sandi harus minimal 8 karakter",
-    "registerError": "Kesalahan pendaftaran. Coba lagi.",
+    "registerError": "Gagal mendaftar. Coba lagi.",
     "registering": "Membuat akun...",
     "registerButton": "Buat akun",
     "agreePrefix": "Dengan melanjutkan, Anda setuju dengan",
@@ -174,7 +174,7 @@
       "gallery": "Galeri",
       "projects": "Proyek",
       "prompts": "Prompts",
-      "personas": "Personas",
+      "personas": "Persona",
       "arena": "Arena model"
     },
     "developers": {
@@ -862,7 +862,7 @@
     "skip": "Lewati",
     "step1": {
       "title": "Selamat Datang",
-      "subtitle": "Apa rencana Anda menggunakan AI?"
+      "subtitle": "Untuk apa Anda ingin menggunakan AI?"
     },
     "interests": [
       {
@@ -944,7 +944,7 @@
           "sub": "Top up saldo atau berlangganan"
         }
       ],
-      "goToAccount": "Pergi ke dashboard"
+      "goToAccount": "Buka dashboard"
     }
   },
   "projectsKb": {
