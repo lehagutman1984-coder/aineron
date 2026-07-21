@@ -323,6 +323,25 @@ TEXT_MODELS = [
          description='Обновлённая модель Zhipu AI — умная и доступная.'),
     dict(name='MiniMax M2.5', slug='minimax-m2-5', model_name='MiniMax-M2.5', cost_per_message=2, cost_kopecks=150, order=74,
          description='Мощная модель MiniMax для разнообразных задач.'),
+
+    # ── Ещё более новые флагманы (добавлено 2026-07-21) ────────────────────────
+    dict(name='Claude Fable 5', slug='claude-fable-5', model_name='claude-fable-5', cost_per_message=6, cost_kopecks=650, order=18,
+         description='Новая модель Claude от Anthropic для творческого письма и глубокого повествования.',
+         handle_photo=True, is_popular=True),
+    dict(name='GPT-5.5 Pro', slug='gpt-5-5-pro', model_name='gpt-5.5-pro', cost_per_message=16, cost_kopecks=1600, order=4,
+         description='Профессиональная версия GPT-5.5 — максимальная точность для сложных задач.',
+         handle_photo=True),
+    dict(name='Grok 4.5', slug='grok-4-5', model_name='grok-4.5', cost_per_message=11, cost_kopecks=1100, order=59,
+         description='Новейший флагман xAI — расширенные рассуждения и актуальные знания.',
+         is_popular=True),
+    dict(name='DeepSeek V4 Pro', slug='deepseek-v4-pro', model_name='deepseek-v4-pro', cost_per_message=1, cost_kopecks=120, order=44,
+         description='Новое поколение DeepSeek — повышенная точность и скорость.'),
+    dict(name='Qwen 3.6 Max', slug='qwen3-6-max', model_name='qwen3.6-max-preview', cost_per_message=2, cost_kopecks=220, order=54,
+         description='Новейшая флагманская модель Qwen от Alibaba.'),
+    dict(name='GLM 5.2', slug='glm-5-2', model_name='glm-5.2', cost_per_message=1, cost_kopecks=110, order=75,
+         description='Новейшая флагманская модель Zhipu AI.'),
+    dict(name='Kimi K2.6', slug='kimi-k2-6', model_name='kimi-k2.6', cost_per_message=2, cost_kopecks=220, order=76,
+         description='Обновлённая модель Moonshot AI с расширенным контекстом.'),
 ]
 
 IMAGE_MODELS = [
@@ -370,6 +389,14 @@ IMAGE_MODELS = [
     dict(name='Seedream 4.0', slug='seedream-4-0', model_name='seedream-4-0-250828', cost_per_message=8, cost_kopecks=800, order=31,
          description='Мощная модель генерации изображений ByteDance с высокой детализацией.',
          config_key='seedream'),
+
+    # ── Ещё более новые модели изображений (добавлено 2026-07-21) ──────────────
+    dict(name='Gemini 3.1 Flash Image', slug='gemini-3-1-flash-image', model_name='gemini-3.1-flash-image', cost_per_message=7, cost_kopecks=650, order=22,
+         description='Обновлённая быстрая модель редактирования и генерации изображений Google.',
+         config_key='gemini_image'),
+    dict(name='Seedream 5.0', slug='seedream-5-0', model_name='seedream-5-0-260128', cost_per_message=11, cost_kopecks=1100, order=29,
+         description='Новейшая модель ByteDance для фотореалистичной генерации изображений.',
+         config_key='seedream', is_popular=True),
 ]
 
 
