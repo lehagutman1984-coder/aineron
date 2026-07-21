@@ -619,6 +619,7 @@ class Command(BaseCommand):
             model=MODEL,
             temperature=0.7,
             max_tokens=16000,
+            timeout=180.0,
             messages=[
                 {'role': 'system', 'content': system_prompt},
                 {'role': 'user', 'content': user_prompt},
@@ -665,6 +666,7 @@ class Command(BaseCommand):
             model=MODEL,
             temperature=0.3,
             max_tokens=16000,
+            timeout=180.0,
             messages=[
                 {'role': 'system', 'content': system_prompt},
                 {'role': 'user', 'content': user_prompt},
