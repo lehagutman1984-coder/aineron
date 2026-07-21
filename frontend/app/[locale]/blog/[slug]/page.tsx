@@ -4,9 +4,21 @@ import { Link } from "@/i18n/navigation";
 import { getTranslations, getLocale } from "next-intl/server";
 import { ArrowLeft, CalendarDays, Eye, Tag } from "lucide-react";
 import { serverGetBlogPost, serverListBlogPosts } from "@/lib/api/server";
+import { routing } from "@/i18n/routing";
 
 interface Props {
   params: { slug: string };
+}
+
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://aineron.ru").replace(/\/$/, "");
+
+// Посты блога не параллельные переводы (GLOBAL_EXPANSION_PLAN.md §4.3) — статья существует
+// только на своём языке, но detail-эндпоинт ищет по slug без фильтра по lang, так что тот же
+// slug технически открывается и под чужим locale-префиксом. Canonical всегда указывает на
+// URL под собственным языком статьи, чтобы Google не индексировал дубли под другими локалями.
+function canonicalUrl(postLanguage: string, slug: string): string {
+  const prefix = postLanguage === routing.defaultLocale ? "" : `/${postLanguage}`;
+  return `${SITE_URL}${prefix}/blog/${slug}/`;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -24,6 +36,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     keywords: post.seo_keywords ?? undefined,
+    alternates: { canonical: canonicalUrl(post.language, post.slug) },
     openGraph: {
       title,
       description,

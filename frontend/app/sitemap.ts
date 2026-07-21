@@ -54,13 +54,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     entry(`/models/${n.slug}/`, { changeFrequency: "weekly", priority: 0.85 }),
   );
 
-  const postRoutes: MetadataRoute.Sitemap = (posts ?? []).map((p) =>
-    entry(`/blog/${p.slug}/`, {
+  // Посты блога НЕ параллельные переводы друг друга (GLOBAL_EXPANSION_PLAN.md §4.3/§4.5) —
+  // каждая статья существует только на своём языке. URL строим по post.language, а не по
+  // дефолтной локали инстанса, и alternates не генерируем (нет reciprocal-переводов).
+  const postRoutes: MetadataRoute.Sitemap = (posts ?? [])
+    .filter((p) => (routing.locales as readonly string[]).includes(p.language))
+    .map((p) => ({
+      url: urlFor(p.language, `/blog/${p.slug}/`),
+      lastModified: new Date(p.published_at),
       changeFrequency: "monthly",
       priority: 0.7,
-      lastModified: new Date(p.published_at),
-    }),
-  );
+    }));
 
   return [...staticRoutes, ...networkRoutes, ...postRoutes];
 }
