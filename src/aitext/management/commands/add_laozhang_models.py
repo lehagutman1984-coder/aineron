@@ -404,15 +404,13 @@ class Command(BaseCommand):
     help = 'Добавляет популярные модели laozhang.ai в базу данных'
 
     def _get_or_create_category(self, name, slug, icon, order):
-        cat = Category.objects.filter(name=name).first()
+        # Ищем по slug, а не по name: под modeltranslation (INTL_MODE=1,
+        # активный язык 'en') name фильтруется по переведённому полю
+        # (name_en), которое может не совпадать с переданным ru-текстом,
+        # что приводило к попытке создать дубликат и падению на unique(name).
+        cat = Category.objects.filter(slug=slug).first()
         if cat:
             return cat
-        # Если slug занят — добавляем суффикс
-        base_slug = slug
-        i = 1
-        while Category.objects.filter(slug=slug).exists():
-            slug = f"{base_slug}-{i}"
-            i += 1
         cat = Category.objects.create(name=name, slug=slug, icon=icon, order=order)
         return cat
 
