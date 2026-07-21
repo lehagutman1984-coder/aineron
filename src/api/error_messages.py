@@ -22,6 +22,7 @@ MESSAGES: dict[str, dict[str, str]] = {
     # api/views/connectors.py
     "max_connectors_per_project": {"ru": "Максимум 3 коннектора на проект", "en": "Maximum 3 connectors per project"},
     "invalid_connector_type": {"ru": "Тип коннектора: github, gitea, website или rss", "en": "Connector type must be one of: github, gitea, website, rss"},
+    "gitea_unavailable_intl": {"ru": "Gitea недоступна на этом инстансе", "en": "Gitea is not available on this instance — use GitHub instead"},
     "repo_url_required": {"ru": "Укажите URL", "en": "URL is required"},
     "website_rss_disabled": {"ru": "Website/RSS коннекторы отключены", "en": "Website/RSS connectors are disabled"},
     "invalid_url": {"ru": "Некорректный URL", "en": "Invalid URL"},

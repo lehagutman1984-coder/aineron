@@ -77,6 +77,16 @@ import {
 } from "@/lib/api/client";
 import type { ChatListItem, Project, ProjectFile, ProjectConnector, ProjectCollaborator, ProjectAuditEntry, RepoTreeItem, ProjectCommit, CommitFile, DeployStatusResponse } from "@/lib/api/types";
 import dynamic from "next/dynamic";
+import { IS_RU } from "@/lib/site";
+
+// Gitea-коннектор указывает на СОБСТВЕННУЮ Gitea aineron (studio.gitea_client,
+// STUDIO_GITEA_URL) — на aineron.net (INTL_MODE) Gitea структурно не развёрнута
+// (см. CLAUDE.md, «Два инстанса, один репозиторий»), поэтому там доступен
+// только GitHub. IS_RU (frontend/lib/site.ts) — тот же флаг, что уже
+// используется для аналогичных .ru-only веток UI.
+const CONNECTOR_TYPES_RU = ["github", "gitea", "website", "rss"] as const;
+const CONNECTOR_TYPES_INTL = ["github", "website", "rss"] as const;
+const CONNECTOR_TYPES: readonly ("github" | "gitea" | "website" | "rss")[] = IS_RU ? CONNECTOR_TYPES_RU : CONNECTOR_TYPES_INTL;
 
 const CodeEditor = dynamic(() => import("@/components/projects/CodeEditor"), { ssr: false });
 
@@ -1341,7 +1351,7 @@ function ConnectorsTab({ projectId }: { projectId: number }) {
             <div>
               <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.55)]">{t("typeLabel")}</label>
               <div className="flex flex-wrap gap-2">
-                {(["github", "gitea", "website", "rss"] as const).map((ctType) => (
+                {CONNECTOR_TYPES.map((ctType) => (
                   <button key={ctType} type="button" onClick={() => setConnType(ctType)}
                     className={[
                       "flex items-center gap-1.5 rounded-[7px] border px-3 py-1.5 text-[15px] font-medium transition-colors",

@@ -106,6 +106,12 @@ class ConnectorListCreateView(APIView):
 
         if connector_type not in ('github', 'gitea', 'website', 'rss'):
             return Response({'error': em('invalid_connector_type')}, status=400)
+        # Gitea-коннектор указывает на собственную Gitea aineron (STUDIO_GITEA_URL) —
+        # на aineron.net (INTL_MODE) она структурно не развёрнута (см. CLAUDE.md).
+        if connector_type == 'gitea':
+            from django.conf import settings as dj
+            if getattr(dj, 'INTL_MODE', False):
+                return Response({'error': em('gitea_unavailable_intl')}, status=400)
         if not repo_url:
             return Response({'error': em('repo_url_required')}, status=400)
 

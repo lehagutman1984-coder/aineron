@@ -23,6 +23,56 @@ AI_COMMIT_INSTRUCTION = (
     "Можно выводить несколько файлов подряд. Заканчивай маркером: === END RESPONSE ==="
 )
 
+# EN-версии для aineron.net (INTL_MODE=1) — та же логика, что api/error_messages.py:
+# инстанс-уровневый выбор языка (ru/en), не per-user. Маркеры блоков (=== FILE: ===
+# и т.д.) НЕ переводятся — extract_commit_from_response() парсит их регуляркой
+# по этим точным строкам независимо от языка окружающего текста.
+AI_COMMIT_INSTRUCTION_EN = (
+    "This project has a \"Confirm commit\" button — it writes the whole file to GitHub.\n\n"
+    "When you propose any fix to a file (found a bug, added a feature, refactoring):\n"
+    "1. First explain what's wrong and what exactly you're changing (regular text).\n"
+    "2. Then output the FULL corrected file in this format:\n"
+    "=== FILE: path/to/file.ext ===\n"
+    "<the complete file content from the first line to the last>\n"
+    "=== END FILE ===\n"
+    "The user will see a \"Confirm\" button and push the changes to GitHub with one click.\n\n"
+    "You MUST output the FULL file — even if it's 1000+ lines. "
+    "The commit button only works with the complete file. A partial output will break the repository.\n\n"
+    "STRICTLY FORBIDDEN:\n"
+    "- replacing code with placeholders: \"# ...\", \"# rest of code unchanged\", \"// ...\"\n"
+    "- truncating the file mid-sentence\n"
+    "- saying \"the file is too large\" — that's not a reason to skip it, always output it in full\n\n"
+    "You can output multiple files in a row. End with the marker: === END RESPONSE ==="
+)
+
+AI_COMMIT_INSTRUCTION_WITH_EDITS_EN = (
+    "This project has a \"Confirm commit\" button — it writes the changes to GitHub.\n\n"
+    "This project contains files > 30,000 characters. Use the correct format based on file size:\n\n"
+    "-- SMALL files (<30,000 chars) — output the FULL file:\n"
+    "=== FILE: path/to/file.ext ===\n"
+    "<the complete file content from the first line to the last>\n"
+    "=== END FILE ===\n\n"
+    "-- LARGE files (>=30,000 chars) — output only the CHANGES (EDIT blocks):\n"
+    "=== EDIT: path/to/file.ext ===\n"
+    "<<<SEARCH>>>\n"
+    "<exact existing text, 5-20 lines with unique surrounding context>\n"
+    "<<<REPLACE>>>\n"
+    "<new text>\n"
+    "<<<END>>>\n"
+    "=== END EDIT ===\n\n"
+    "EDIT block rules:\n"
+    "- Copy SEARCH verbatim from the knowledge base (spaces, indentation, punctuation — unchanged).\n"
+    "- SEARCH must be unique in the file (5-20 lines, including context around the change).\n"
+    "- Multiple edits to the same file — multiple <<<SEARCH>>>...<<<END>>> in one EDIT block.\n"
+    "- Multiple files — multiple === EDIT ===...=== END EDIT === blocks in a row.\n\n"
+    "STRICTLY FORBIDDEN:\n"
+    "- placeholders: \"# ...\", \"# rest of code unchanged\", \"// ...\"\n"
+    "- truncating a FILE block mid-sentence\n"
+    "- saying \"the file is too large\" — large files use EDIT blocks\n"
+    "- changing the SEARCH text (copy verbatim from the source)\n\n"
+    "End with the marker: === END RESPONSE ==="
+)
+
 AI_COMMIT_INSTRUCTION_WITH_EDITS = (
     "В этом проекте есть кнопка «Подтвердить коммит» — она записывает изменения в GitHub.\n\n"
     "Этот проект содержит файлы > 30 000 символов. Используй правильный формат по размеру файла:\n\n"
@@ -287,7 +337,11 @@ def inject_commit_instruction(project, messages_for_api: list) -> None:
         except Exception as e:
             logger.debug(f"[commit] large-file check failed: {e}")
 
-        instruction = AI_COMMIT_INSTRUCTION_WITH_EDITS if has_large else AI_COMMIT_INSTRUCTION
+        from django.conf import settings
+        if getattr(settings, 'INTL_MODE', False):
+            instruction = AI_COMMIT_INSTRUCTION_WITH_EDITS_EN if has_large else AI_COMMIT_INSTRUCTION_EN
+        else:
+            instruction = AI_COMMIT_INSTRUCTION_WITH_EDITS if has_large else AI_COMMIT_INSTRUCTION
         messages_for_api.append({"role": "system", "content": instruction})
     except Exception:
         pass
@@ -403,17 +457,25 @@ def extract_commit_from_response(project, assistant_text: str):
         if not connector:
             return None
 
+        from django.conf import settings
+        intl = getattr(settings, 'INTL_MODE', False)
+        fallback_msg = (
+            f"AI: {len(safe_files)} file(s)" if intl else f"AI: {len(safe_files)} файл(ов)"
+        )
         first_line = assistant_text.split('\n')[0].strip().lstrip('#').strip()
-        commit_msg = first_line[:200] if first_line else f"AI: {len(safe_files)} файл(ов)"
+        commit_msg = first_line[:200] if first_line else fallback_msg
         if not commit_msg:
-            commit_msg = f"AI: {len(safe_files)} файл(ов)"
+            commit_msg = fallback_msg
 
         if tail_stitched:
             commit_flags.append(
+                "[WARNING: file tail taken from KB unchanged — check the end of the file]" if intl else
                 "[ВНИМАНИЕ: хвост файла взят из KB без изменений — проверьте конец файла]"
             )
         elif tail_stitch_failed:
             commit_flags.append(
+                "[WARNING: file truncated by API (~55K limit) — file tail is missing, "
+                "check before merging]" if intl else
                 "[ВНИМАНИЕ: файл обрезан API (~55K лимит) — хвост файла отсутствует, "
                 "проверьте перед мержем]"
             )
