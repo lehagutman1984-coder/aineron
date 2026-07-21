@@ -21,7 +21,10 @@
     "imageBody": "وصف الصورة باستخدام الأمر:\n\n<code>/image غروب الشمس فوق البحر، بأسلوب الأنمي</code>",
     "notLinkedShort": "اربط حسابك باستخدام /start",
     "helpTitle": "Aineron · مساعدة",
-    "helpBody": "<b>الدردشة والتوليد</b>\nاطرح أي سؤال — سيقوم الذكاء الاصطناعي بالرد.\n/image &lt;الوصف&gt; — توليد صورة\n\n<b>التحكم</b>\n/models — اختيار نموذج الذكاء الاصطناعي\n/balance — الرصيد وإعادة الشحن\n/settings — الإعدادات\n/language — تغيير لغة البوت\n/newchat — بدء محادثة جديدة\nاشحن رصيدك: aineron.net/account/billing/"
+    "helpBody": "<b>الدردشة والتوليد</b>\nاطرح أي سؤال — سيقوم الذكاء الاصطناعي بالرد.\n/image &lt;الوصف&gt; — توليد صورة\n\n<b>التحكم</b>\n/models — اختيار نموذج الذكاء الاصطناعي\n/balance — الرصيد وإعادة الشحن\n/settings — الإعدادات\n/language — تغيير لغة البوت\n/newchat — بدء محادثة جديدة\nاشحن رصيدك: aineron.net/account/billing/",
+    "videoTitle": "Aineron · توليد الفيديو",
+    "videoBody": "صف الفيديو باستخدام الأمر:\n\n<code>/video غروب الشمس فوق البحر، حركة كاميرا بطيئة</code>\n\n<i>جاهز خلال 5-15 دقيقة — سأرسل لك النتيجة.</i>",
+    "featureUnavailable": "هذه الميزة غير متاحة بعد على aineron.net."
   },
   "start": {
     "dashboardTitle": "Aineron",
@@ -355,7 +358,8 @@
     "createFailed": "تعذر إنشاء الموضوع. تأكد من تمكين المواضيع في المحادثة مع الروبوت.",
     "created": "تم إنشاء الموضوع",
     "projectCardTitle": "مشروع \"{name}\"",
-    "projectCardBody": "اكتب هنا — يتم ربط سياق المشروع، وشخصيته، وقاعدة المعرفة تلقائيًا."
+    "projectCardBody": "اكتب هنا — يتم ربط سياق المشروع، وشخصيته، وقاعدة المعرفة تلقائيًا.",
+    "chatTitle": "الموضوع — {name}"
   },
   "inline": {
     "notLinkedTitle": "اربط حسابك في aineron",

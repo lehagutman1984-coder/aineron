@@ -21,7 +21,10 @@
     "imageBody": "Deskripsikan gambar dengan perintah:\n\n<code>/image matahari terbenam di atas laut, gaya anime</code>",
     "notLinkedShort": "Tautkan akun Anda dengan /start",
     "helpTitle": "Aineron · Bantuan",
-    "helpBody": "<b>Obrolan & pembuatan</b>\nAjukan pertanyaan apa pun — AI akan menjawab.\n/image &lt;deskripsi&gt; — buat gambar\n\n<b>Kontrol</b>\n/models — pilih model AI\n/balance — saldo dan isi ulang\n/settings — pengaturan\n/language — ubah bahasa bot\n/newchat — mulai percakapan baru\nIsi ulang saldo Anda: aineron.net/account/billing/"
+    "helpBody": "<b>Obrolan & pembuatan</b>\nAjukan pertanyaan apa pun — AI akan menjawab.\n/image &lt;deskripsi&gt; — buat gambar\n\n<b>Kontrol</b>\n/models — pilih model AI\n/balance — saldo dan isi ulang\n/settings — pengaturan\n/language — ubah bahasa bot\n/newchat — mulai percakapan baru\nIsi ulang saldo Anda: aineron.net/account/billing/",
+    "videoTitle": "Aineron · Pembuatan Video",
+    "videoBody": "Deskripsikan video dengan perintah:\n\n<code>/video matahari terbenam di atas laut, gerakan kamera lambat</code>\n\n<i>Siap dalam 5-15 menit — akan saya kirimkan hasilnya.</i>",
+    "featureUnavailable": "Fitur ini belum tersedia di aineron.net."
   },
   "start": {
     "dashboardTitle": "Aineron",
@@ -355,7 +358,8 @@
     "createFailed": "Tidak dapat membuat topik. Pastikan topik diaktifkan dalam obrolan dengan bot.",
     "created": "Topik dibuat",
     "projectCardTitle": "Proyek \"{name}\"",
-    "projectCardBody": "Tulis di sini — konteks proyek ini, persona, dan basis pengetahuan terhubung secara otomatis."
+    "projectCardBody": "Tulis di sini — konteks proyek ini, persona, dan basis pengetahuan terhubung secara otomatis.",
+    "chatTitle": "Topik — {name}"
   },
   "inline": {
     "notLinkedTitle": "Hubungkan akun aineron Anda",

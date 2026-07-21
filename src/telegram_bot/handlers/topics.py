@@ -64,7 +64,9 @@ def _resolve_topic_chat(tg_user, thread_id: int):
         from aitext.models import NeuralNetwork
         network = NeuralNetwork.objects.filter(
             provider='openrouter', is_active=True).order_by('order').first()
-    title = f'Топик — {topic.title or topic.topic_id}'
+    lang = resolve_language(tg_user, None)
+    name = topic.title or topic.topic_id
+    title = f'Топик — {name}' if lang == 'ru' else t('topics.chatTitle', lang, name=name)
     chat = Chat.objects.create(
         user=tg_user.user, network=network, title=title, project=topic.project,
     )

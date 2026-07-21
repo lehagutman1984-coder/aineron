@@ -191,7 +191,11 @@ async def cb_substars(query: CallbackQuery, tg_user=None):
     from telegram_bot import capabilities
 
     if tg_user is None:
-        await query.answer('Привяжите аккаунт через /start', show_alert=True)
+        lang = resolve_language(None, query.from_user)
+        await query.answer(
+            t('menu.notLinkedShort', lang) if lang != 'ru' else 'Привяжите аккаунт через /start',
+            show_alert=True,
+        )
         return
 
     lang = resolve_language(tg_user, query.from_user)

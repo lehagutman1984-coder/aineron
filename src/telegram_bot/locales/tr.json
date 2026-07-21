@@ -21,7 +21,10 @@
     "imageBody": "Komutla görüntüyü tanımlayın:\n\n<code>/image deniz üzerinde gün batımı, anime tarzı</code>",
     "notLinkedShort": "Hesabınızı /start ile bağlayın",
     "helpTitle": "Aineron · Yardım",
-    "helpBody": "<b>Sohbet & oluşturma</b>\nHerhangi bir soru sor — AI yanıtlayacak.\n/image &lt;açıklama&gt; — bir görüntü oluştur\n\n<b>Kontroller</b>\n/models — bir AI modeli seç\n/balance — bakiye ve yükleme\n/settings — ayarlar\n/language — bot dilini değiştir\n/newchat — yeni bir konuşma başlat\nBakiyenizi yükleyin: aineron.net/account/billing/"
+    "helpBody": "<b>Sohbet & oluşturma</b>\nHerhangi bir soru sor — AI yanıtlayacak.\n/image &lt;açıklama&gt; — bir görüntü oluştur\n\n<b>Kontroller</b>\n/models — bir AI modeli seç\n/balance — bakiye ve yükleme\n/settings — ayarlar\n/language — bot dilini değiştir\n/newchat — yeni bir konuşma başlat\nBakiyenizi yükleyin: aineron.net/account/billing/",
+    "videoTitle": "Aineron · Video oluşturma",
+    "videoBody": "Videoyu bir komutla tanımlayın:\n\n<code>/video deniz üzerinde gün batımı, yavaş kamera uçuşu</code>\n\n<i>5-15 dakika içinde hazır olur — sonucu size gönderirim.</i>",
+    "featureUnavailable": "Bu özellik henüz aineron.net'te mevcut değil."
   },
   "start": {
     "dashboardTitle": "Aineron",
@@ -355,7 +358,8 @@
     "createFailed": "Konu oluşturulamadı. Konuların bot ile sohbette etkin olduğundan emin olun.",
     "created": "Konu oluşturuldu",
     "projectCardTitle": "Proje \"{name}\"",
-    "projectCardBody": "Buraya yazın — bu projenin bağlamı, kişiliği ve bilgi tabanı otomatik olarak bağlanır."
+    "projectCardBody": "Buraya yazın — bu projenin bağlamı, kişiliği ve bilgi tabanı otomatik olarak bağlanır.",
+    "chatTitle": "Konu — {name}"
   },
   "inline": {
     "notLinkedTitle": "Hesabınızı aineron ile bağlayın",

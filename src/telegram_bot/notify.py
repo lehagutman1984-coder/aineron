@@ -74,12 +74,14 @@ class DraftStreamer:
         self.sent = None          # placeholder-сообщение (fallback-режим)
         self._last_edit = 0.0
         self._last_text = ''
+        self._placeholder = ''    # локализованный текст из start(), переиспользуется в fallback update()
 
     def _answer_kwargs(self) -> dict:
         return {'message_thread_id': self.thread_id} if self.thread_id else {}
 
     async def start(self, placeholder: str):
         """Показать начальный статус («Генерирую...» или пустой черновик)."""
+        self._placeholder = placeholder
         if self._use_draft:
             try:
                 await self.bot.send_message_draft(chat_id=self.chat_id, text=placeholder)
@@ -106,7 +108,7 @@ class DraftStreamer:
                 if self.sent is None:
                     try:
                         self.sent = await self.tg_message.answer(
-                            'Генерирую ответ...', **self._answer_kwargs())
+                            self._placeholder or 'Генерирую ответ...', **self._answer_kwargs())
                     except Exception:
                         return
         now = time.monotonic()

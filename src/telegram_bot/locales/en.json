@@ -65,7 +65,10 @@
     "imageBody": "Describe the image with a command:\n\n<code>/image sunset over the sea, anime style</code>",
     "notLinkedShort": "Link your account with /start",
     "helpTitle": "Aineron · Help",
-    "helpBody": "<b>Chat & generation</b>\nAsk any question — the AI will reply.\n/image &lt;description&gt; — generate an image\n\n<b>Controls</b>\n/models — choose an AI model\n/balance — balance and top-up\n/settings — settings\n/language — change bot language\n/newchat — start a new conversation\nTop up your balance: aineron.net/account/billing/"
+    "helpBody": "<b>Chat & generation</b>\nAsk any question — the AI will reply.\n/image &lt;description&gt; — generate an image\n\n<b>Controls</b>\n/models — choose an AI model\n/balance — balance and top-up\n/settings — settings\n/language — change bot language\n/newchat — start a new conversation\nTop up your balance: aineron.net/account/billing/",
+    "videoTitle": "Aineron · Video generation",
+    "videoBody": "Describe the video with a command:\n\n<code>/video sunset over the sea, slow camera flyover</code>\n\n<i>Ready in 5-15 minutes — I'll send you the result.</i>",
+    "featureUnavailable": "This feature isn't available yet on aineron.net."
   },
   "start": {
     "dashboardTitle": "Aineron",
@@ -438,7 +441,8 @@
     "createFailed": "Couldn't create the topic. Make sure topics are enabled in the chat with the bot.",
     "created": "Topic created",
     "projectCardTitle": "Project \"{name}\"",
-    "projectCardBody": "Write here — this project's context, persona, and knowledge base are connected automatically."
+    "projectCardBody": "Write here — this project's context, persona, and knowledge base are connected automatically.",
+    "chatTitle": "Topic — {name}"
   },
   "inline": {
     "notLinkedTitle": "Link your aineron account",

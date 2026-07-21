@@ -58,13 +58,19 @@ async def handle_menu_button(message: Message, state=None, tg_user=None):
         )
 
     elif action == 'video':
-        await message.answer(
-            f'<b>Aineron · Генерация видео</b>\n{DIVIDER}\n'
-            'Опишите видео командой:\n\n'
-            '<code>/video закат над морем, медленный полёт камеры</code>\n\n'
-            '<i>Готово через 5–15 минут — пришлю результат.</i>',
-            parse_mode='HTML',
-        )
+        if lang == 'ru':
+            await message.answer(
+                '<b>Aineron · Генерация видео</b>\n' + DIVIDER + '\n'
+                'Опишите видео командой:\n\n'
+                '<code>/video закат над морем, медленный полёт камеры</code>\n\n'
+                '<i>Готово через 5–15 минут — пришлю результат.</i>',
+                parse_mode='HTML',
+            )
+        else:
+            await message.answer(
+                f"<b>{t('menu.videoTitle', lang)}</b>\n{DIVIDER}\n{t('menu.videoBody', lang)}",
+                parse_mode='HTML',
+            )
 
     elif action == 'balance':
         if tg_user:
@@ -92,28 +98,35 @@ async def handle_menu_button(message: Message, state=None, tg_user=None):
             from telegram_bot.handlers.history import cmd_history
             await cmd_history(message, state=None, tg_user=tg_user)
         else:
-            await message.answer('Привяжите аккаунт через /start')
+            await message.answer(t('menu.notLinkedShort', lang) if lang != 'ru' else 'Привяжите аккаунт через /start')
 
     elif action == 'projects':
         if tg_user:
             from telegram_bot.handlers.projects_cmd import send_project_list
             await send_project_list(message, None, tg_user, offset=0)
         else:
-            await message.answer('Привяжите аккаунт через /start')
+            await message.answer(t('menu.notLinkedShort', lang) if lang != 'ru' else 'Привяжите аккаунт через /start')
 
     elif action == 'tasks':
-        if tg_user:
+        if not tg_user:
+            await message.answer(t('menu.notLinkedShort', lang) if lang != 'ru' else 'Привяжите аккаунт через /start')
+        elif lang != 'ru':
+            # tasks_cmd не подключён для INTL_MODE (bot.py::register_routers) —
+            # завязан на рублёвые пресеты, отдельная задача (GLOBAL_EXPANSION_PLAN.md)
+            await message.answer(t('menu.featureUnavailable', lang))
+        else:
             from telegram_bot.handlers.tasks_cmd import _send_task_list
             await _send_task_list(message, tg_user)
-        else:
-            await message.answer('Привяжите аккаунт через /start')
 
     elif action == 'research':
-        if tg_user:
+        if not tg_user:
+            await message.answer(t('menu.notLinkedShort', lang) if lang != 'ru' else 'Привяжите аккаунт через /start')
+        elif lang != 'ru':
+            # research_cmd не подключён для INTL_MODE — та же причина, что tasks
+            await message.answer(t('menu.featureUnavailable', lang))
+        else:
             from telegram_bot.handlers.research_cmd import _ask_confirmation
             await _ask_confirmation(message, state, tg_user, '')
-        else:
-            await message.answer('Привяжите аккаунт через /start')
 
     elif action == 'help':
         await message.answer(
