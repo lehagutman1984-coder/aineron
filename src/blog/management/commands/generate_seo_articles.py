@@ -36,6 +36,7 @@ LOCALE_META = {
     'ar': {'name': 'Modern Standard Arabic (MENA-neutral, readable across Egypt/Gulf/Levant/Morocco)', 'market': 'MENA (Egypt, Gulf states, Morocco)'},
     'fa': {'name': 'Persian (contemporary standard Persian, the register of tech media like Digiato/Zoomit)', 'market': 'Persian-speaking users (Iran and diaspora)'},
     'tr': {'name': 'Turkish (contemporary tech-journalism register like Webrazzi/ShiftDelete)', 'market': 'Turkey'},
+    'en': {'name': 'English', 'market': 'international / global English-speaking users (aineron.net is the default fallback locale for any visitor outside id/ar/fa/tr — a broad, non-US/EU-centric audience, many in markets with weak card networks or geo-restricted AI access)'},
 }
 
 DO_NOT_TRANSLATE = ['GPT-4o', 'Claude', 'Gemini', 'Sora', 'Veo', 'Kling', 'DALL-E', 'Flux', 'aineron', 'Telegram', 'USDT', 'TON']
@@ -352,6 +353,83 @@ BRIEFS = {
                 'kredi sistemi yalnızca gerçek ihtiyaç kadar harcama yapmayı sağlar',
             ],
             related_model_hints=['gpt-4o', 'flux', 'sora'],
+        ),
+    ],
+    'en': [
+        dict(
+            slug='chatgpt-vs-claude-vs-gemini-2026-comparison',
+            title_hint='ChatGPT vs Claude vs Gemini in 2026: which one actually fits your workflow',
+            keywords=['ChatGPT vs Claude vs Gemini', 'best AI model 2026', 'AI model comparison'],
+            search_intent='comparison',
+            angle='Skip the spec-sheet recap — a practical decision framework by task type (writing, coding, research) and by pricing model (subscription vs pay-per-use), for readers evaluating whether they need one model or several.',
+            must_include_facts=[
+                'aineron gives access to GPT-4o, Claude, and Gemini from one interface',
+                'pay-as-you-go credit system, no mandatory monthly subscription',
+                'crypto payment (USDT/TON) available as an additional option',
+                'no VPN needed to access it',
+            ],
+            related_model_hints=['gpt-4o', 'claude-sonnet-5', 'gemini-3-pro'],
+        ),
+        dict(
+            slug='ai-payment-without-international-card',
+            title_hint='How to pay for ChatGPT, Claude, and other premium AI tools without an international credit card',
+            keywords=['pay for AI without credit card', 'AI subscription no international card', 'crypto payment for AI tools'],
+            search_intent='transactional/informational',
+            angle='A real friction point for a large share of global users: USD-denominated cards are hard or impossible to get outside a handful of countries, and even a working card gets declined by foreign-merchant fraud filters. Practical alternative via prepaid credit and crypto — not vague promises.',
+            must_include_facts=[
+                'aineron accepts crypto payment (USDT/TON) as an alternative to international cards',
+                'credit system — buy only what you need, no recurring monthly charge',
+                'no VPN needed to access it',
+            ],
+            related_model_hints=['gpt-4o', 'claude-sonnet-5'],
+        ),
+        dict(
+            slug='ai-image-generation-tools-for-small-business',
+            title_hint='AI image generation tools for small business: a practical guide from product photo to ad-ready visual',
+            keywords=['AI image generator for business', 'AI product photography', 'AI tools for small business marketing'],
+            search_intent='how-to',
+            angle='Concrete workflows for small operators (food, fashion/e-commerce, handmade goods) — from a phone photo to a publish-ready image, not a generic "how AI image generation works" explainer.',
+            must_include_facts=[
+                'aineron offers several image generation models (e.g. Flux, DALL-E, GPT-image) in one platform',
+                'cost is calculated per generation, which scales with small-business budgets',
+            ],
+            related_model_hints=['flux', 'dall-e', 'gpt-image'],
+        ),
+        dict(
+            slug='sora-veo-kling-ai-video-comparison-2026',
+            title_hint='Sora vs Veo vs Kling: which AI video model fits your project in 2026',
+            keywords=['Sora vs Veo vs Kling', 'best AI video tool 2026', 'AI video generation comparison'],
+            search_intent='comparison',
+            angle='Use-case-driven comparison: short social content vs professional ads vs creative experiments, including the real gap between advertised duration/resolution and what actually ships.',
+            must_include_facts=[
+                'aineron gives access to Sora, Veo, and Kling on one platform',
+                'cost is billed per video generation, not a flat subscription',
+            ],
+            related_model_hints=['sora', 'veo-3-1', 'kling'],
+        ),
+        dict(
+            slug='ai-tools-for-students-and-researchers',
+            title_hint='AI tools for students and researchers: an ethical, effective guide to academic use',
+            keywords=['AI for students', 'AI academic research tools', 'AI for thesis writing'],
+            search_intent='informational/FAQ',
+            angle='A clear stance: AI as a research assistant for summarizing, brainstorming, and literature triage — not a plagiarism shortcut. Dense FAQ answering the practical questions students actually have (citations, disclosure policies, detection tools).',
+            must_include_facts=[
+                'aineron supports integrated web search for research grounded in current sources',
+                'ability to compare answers from multiple LLMs for the same research question',
+            ],
+            related_model_hints=['gpt-4o', 'claude-sonnet-5', 'gemini-3-pro'],
+        ),
+        dict(
+            slug='chatgpt-plus-alternative-pay-per-use-2026',
+            title_hint='ChatGPT Plus alternative in 2026: fixed subscription vs pay-per-use across multiple models',
+            keywords=['ChatGPT Plus alternative', 'pay-per-use AI', 'AI subscription cost comparison'],
+            search_intent='comparison/transactional',
+            angle='An honest trade-off, not a "always cheaper" claim: single-vendor fixed subscriptions vs a shared credit balance spent across models — when each one actually makes sense, based on real usage patterns (heavy daily single-model use vs sporadic/multi-model use).',
+            must_include_facts=[
+                'aineron gives access to multiple models through one credit system',
+                'no monthly commitment — credit is spent according to actual need',
+            ],
+            related_model_hints=['gpt-4o', 'claude-sonnet-5', 'gemini-3-pro'],
         ),
     ],
 }
