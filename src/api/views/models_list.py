@@ -1,3 +1,5 @@
+from urllib.parse import urlparse
+from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -16,11 +18,14 @@ class ModelsListView(APIView):
             provider='openrouter',
         ).order_by('order', 'name')
 
+        site_url = getattr(settings, 'SITE_URL', 'https://aineron.ru')
+        owned_by = urlparse(site_url).netloc or 'aineron.ru'
+
         data = [
             {
                 'id': n.model_name or n.slug,
                 'object': 'model',
-                'owned_by': 'aineron.ru',
+                'owned_by': owned_by,
                 'name': n.name,
                 'description': n.description,
                 'cost_per_1k_tokens': float(n.stars_per_1k_tokens) if n.stars_per_1k_tokens else None,

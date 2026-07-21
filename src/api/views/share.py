@@ -5,6 +5,7 @@
 - POST /v1/generations/<int:pk>/share/    — сделать публичной + выдать slug (владелец)
 - POST /v1/generations/<int:pk>/unshare/  — сделать приватной (владелец)
 """
+from django.conf import settings
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
@@ -168,7 +169,7 @@ class GenerationShareView(APIView):
             'id': gen.id,
             'is_public': True,
             'share_slug': gen.share_slug,
-            'share_url': f'https://aineron.ru/g/{gen.share_slug}',
+            'share_url': f"{getattr(settings, 'SITE_URL', 'https://aineron.ru')}/g/{gen.share_slug}",
         })
 
 

@@ -226,19 +226,33 @@ def _send_invite_email_async(invite):
     """Отправляет письмо-приглашение в отдельном потоке."""
     from django.core.mail import send_mail
 
+    from urllib.parse import urlparse
     site_url = getattr(settings, 'SITE_URL', 'https://aineron.ru')
     accept_url = f'{site_url}/account/invites/{invite.token}/'
+    brand = urlparse(site_url).netloc or 'aineron.ru'
+    default_from = f'noreply@{brand}'
+
+    if getattr(settings, 'INTL_MODE', False):
+        subject = f'Invitation to join {invite.organization.name}'
+        body = (
+            f'You have been invited to join the organization "{invite.organization.name}" on {brand}.\n\n'
+            f'Accept the invitation: {accept_url}\n\n'
+            f'This link is valid for 7 days.'
+        )
+    else:
+        subject = f'Приглашение в организацию {invite.organization.name}'
+        body = (
+            f'Вас пригласили в организацию «{invite.organization.name}» на {brand}.\n\n'
+            f'Примите приглашение: {accept_url}\n\n'
+            f'Ссылка действительна 7 дней.'
+        )
 
     def send():
         try:
             send_mail(
-                subject=f'Приглашение в организацию {invite.organization.name}',
-                message=(
-                    f'Вас пригласили в организацию «{invite.organization.name}» на aineron.ru.\n\n'
-                    f'Примите приглашение: {accept_url}\n\n'
-                    f'Ссылка действительна 7 дней.'
-                ),
-                from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@aineron.ru'),
+                subject=subject,
+                message=body,
+                from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', default_from),
                 recipient_list=[invite.email],
                 fail_silently=True,
             )
