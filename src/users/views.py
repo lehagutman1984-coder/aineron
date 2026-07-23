@@ -1282,10 +1282,14 @@ def apply_promo_code(request):
         # Фиксируем использование ДО начисления: unique-констрейнт (user, promo_code)
         # гасит гонку двойного применения — параллельный запрос упадёт здесь,
         # а не после того, как деньги уже начислены.
-        from django.db import IntegrityError
+        from django.db import IntegrityError, transaction
         from django.db.models import F
         try:
-            UsedPromoCode.objects.create(user=request.user, promo_code=promo)
+            # savepoint — без него IntegrityError оставляет внешнюю транзакцию
+            # "отравленной" в любом контексте с внешним atomic-блоком (тесты,
+            # ATOMIC_REQUESTS). См. тот же фикс в api/views/billing.py (B12).
+            with transaction.atomic():
+                UsedPromoCode.objects.create(user=request.user, promo_code=promo)
         except IntegrityError:
             return JsonResponse({'success': False, 'message': 'Вы уже использовали этот промокод'})
         request.user.add_kopecks(

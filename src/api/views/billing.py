@@ -337,10 +337,17 @@ class ApplyPromoView(APIView):
 
         # Фиксируем использование ДО начисления: unique (user, promo_code)
         # гасит гонку двойного применения (как в legacy users/views.py)
-        from django.db import IntegrityError
+        from django.db import IntegrityError, transaction
         from django.db.models import F
         try:
-            UsedPromoCode.objects.create(user=request.user, promo_code=promo)
+            # savepoint: без него пойманный здесь IntegrityError оставляет внешнюю
+            # транзакцию "отравленной" (TransactionManagementError на любой
+            # следующий запрос) в любом контексте, где эта вью вызвана внутри
+            # более широкого atomic-блока — например под TestCase (тесты всегда
+            # оборачивают тест в atomic) или если ATOMIC_REQUESTS когда-нибудь
+            # включат. См. тот же фикс в api/views/memory.py (B12).
+            with transaction.atomic():
+                UsedPromoCode.objects.create(user=request.user, promo_code=promo)
         except IntegrityError:
             return Response({'error': {'message': 'Промокод уже был использован', 'type': 'invalid_request_error', 'code': 'promo_already_used'}}, status=status.HTTP_400_BAD_REQUEST)
         PromoCode.objects.filter(pk=promo.pk).update(used_count=F('used_count') + 1)

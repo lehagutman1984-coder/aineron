@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 
-from users.models import BalanceTransaction, PromoCode, Tariff
+from users.models import BalanceTransaction, PromoCode, Tariff, UsedPromoCode
 
 User = get_user_model()
 
@@ -230,3 +230,42 @@ class LegalDocumentsCommandTests(TestCase):
         LegalDocument.get_privacy()
         call_command('setup_legal_documents')
         self.assertIn('aineron.ru', LegalDocument.objects.get(document_type='privacy').content)
+
+
+class LegacyApplyPromoCodeTests(TestCase):
+    """users/views.py::apply_promo_code (users/api/apply-promo/, legacy HTML-ЛК путь).
+
+    Регрессия на тот же баг, что и ApplyPromoView в api/tests.py: повторное
+    применение промокода ловится через UniqueConstraint(user, promo_code), но
+    без transaction.atomic()-savepoint пойманный IntegrityError оставлял
+    транзакцию "отравленной" — под TestCase любой следующий ORM-запрос падал
+    с TransactionManagementError вместо чистого JSON-ответа."""
+
+    URL = '/users/api/apply-promo/'
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='legacypromo', email='legacypromo@t.ru', password='x')
+        self.user.email_verified = True
+        self.user.save(update_fields=['email_verified'])
+        self.promo = PromoCode.objects.create(code='LEGACY10', stars=10)
+        self.client.force_login(self.user)
+
+    def _post(self, code):
+        import json
+        return self.client.post(self.URL, data=json.dumps({'code': code}), content_type='application/json')
+
+    def test_second_apply_rejected_without_double_credit(self):
+        self.user.refresh_from_db(fields=['balance_kopecks'])
+        balance_before = self.user.balance_kopecks  # free_tariff может выдать стартовый баланс
+
+        r1 = self._post('LEGACY10')
+        self.assertEqual(r1.status_code, 200)
+        self.assertTrue(r1.json()['success'])
+
+        r2 = self._post('legacy10')  # регистр не важен — та же проверка code__iexact
+        self.assertEqual(r2.status_code, 200)  # legacy-эндпоинт всегда 200, ошибка в success=False
+        self.assertFalse(r2.json()['success'])
+
+        self.user.refresh_from_db(fields=['balance_kopecks'])
+        self.assertEqual(self.user.balance_kopecks, balance_before + self.promo.kopecks)  # начислено один раз
+        self.assertEqual(UsedPromoCode.objects.filter(user=self.user, promo_code=self.promo).count(), 1)
