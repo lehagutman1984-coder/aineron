@@ -17,7 +17,7 @@ from django.contrib.auth import get_user_model
 
 from aitext.memory import (
     estimate_tokens, build_memory_context,
-    normalize_fact, should_compress,
+    normalize_fact, scoped_content_key, should_compress,
     RECENT_WINDOW, COMPRESS_TRIGGER,
 )
 
@@ -72,6 +72,46 @@ class NormalizeFactTests(TestCase):
         self.assertEqual(normalize_fact(None), '')  # type: ignore
 
 
+# ── scoped_content_key (B12) ────────────────────────────────────────────────────
+
+class ScopedContentKeyTests(TestCase):
+    """Ключ дедупликации должен учитывать скоуп (project/organization),
+    иначе одинаковый по тексту факт в разных скоупах схлопывается в одну строку
+    по UniqueConstraint(user, content_key) — см. UserMemoryContentKeyTests ниже
+    для регрессионного теста на реальных моделях."""
+
+    def test_no_scope_matches_plain_normalize(self):
+        self.assertEqual(scoped_content_key('Любит Go'), normalize_fact('Любит Go'))
+
+    def test_project_scope_gets_prefix(self):
+        key = scoped_content_key('Использует Python', project_id=5)
+        self.assertEqual(key, 'proj5:использует python')
+
+    def test_org_scope_gets_prefix(self):
+        key = scoped_content_key('Стек: Django', organization_id=7)
+        self.assertEqual(key, 'org7:стек django')
+
+    def test_project_and_org_and_global_keys_all_differ(self):
+        keys = {
+            scoped_content_key('Работает с Django'),
+            scoped_content_key('Работает с Django', project_id=1),
+            scoped_content_key('Работает с Django', project_id=2),
+            scoped_content_key('Работает с Django', organization_id=1),
+        }
+        self.assertEqual(len(keys), 4)  # ни одна пара не совпала
+
+    def test_project_id_takes_precedence_over_organization_id(self):
+        key = scoped_content_key('факт', project_id=3, organization_id=9)
+        self.assertTrue(key.startswith('proj3:'))
+
+    def test_empty_text_returns_empty_key_even_with_scope(self):
+        self.assertEqual(scoped_content_key('   ', project_id=5), '')
+
+    def test_stays_within_255_chars(self):
+        key = scoped_content_key('a' * 300, project_id=12345)
+        self.assertLessEqual(len(key), 255)
+
+
 # ── UserMemory content_key ─────────────────────────────────────────────────────
 
 class UserMemoryContentKeyTests(TestCase):
@@ -105,11 +145,63 @@ class UserMemoryContentKeyTests(TestCase):
                 content_key=m1.content_key, category='skill'
             )
 
+    def _make_project(self, name):
+        from aitext.models import Project
+        return Project.objects.create(user=self.user, name=name)
+
+    def test_same_text_in_two_projects_creates_two_rows(self):
+        """B12 regression: до фикса второй create() либо падал IntegrityError
+        (общий ключ без скоупа), либо (в update_or_create-путях) тихо
+        перезаписывал факт первого проекта вместо создания отдельной записи."""
+        from aitext.models import UserMemory
+        proj_a = self._make_project('A')
+        proj_b = self._make_project('B')
+        content = 'Использует Python'
+
+        m_a = UserMemory.objects.create(user=self.user, content=content, project=proj_a)
+        m_b = UserMemory.objects.create(user=self.user, content=content, project=proj_b)
+
+        self.assertNotEqual(m_a.content_key, m_b.content_key)
+        self.assertEqual(UserMemory.objects.filter(user=self.user, content=content).count(), 2)
+        m_a.refresh_from_db()
+        self.assertEqual(m_a.project_id, proj_a.id)  # факт проекта A не "перескочил" в B
+
+    def test_project_scoped_fact_does_not_collide_with_global(self):
+        from aitext.models import UserMemory
+        proj = self._make_project('A')
+        content = 'Работает удалённо'
+
+        UserMemory.objects.create(user=self.user, content=content)  # глобальный
+        m_proj = UserMemory.objects.create(user=self.user, content=content, project=proj)
+
+        self.assertEqual(UserMemory.objects.filter(user=self.user, content=content).count(), 2)
+        self.assertIsNone(UserMemory.objects.get(project__isnull=True, user=self.user).project_id)
+        self.assertEqual(m_proj.project_id, proj.id)
+
+    def test_deleting_project_keeps_fact_but_unscopes_it(self):
+        """B12: project FK — SET_NULL, не CASCADE. Удаление папки-проекта не должно
+        тихо уничтожать долговременный факт, извлечённый из чатов пользователя."""
+        from aitext.models import UserMemory
+        proj = self._make_project('Disposable')
+        m = UserMemory.objects.create(user=self.user, content='Факт проекта', project=proj)
+
+        proj.delete()
+
+        m.refresh_from_db()
+        self.assertIsNone(m.project_id)
+
 
 # ── build_memory_context ───────────────────────────────────────────────────────
 
 class BuildMemoryContextTests(TestCase):
     def setUp(self):
+        # Тесты в этом классе переиспользуют один и тот же user_id (SQLite сбрасывает
+        # автоинкремент между TestCase), а build_memory_context кэширует факты по
+        # memfacts:{user_id} на 5 минут — без сброса кэша между тестами более ранний
+        # тест с тем же user_id "протекает" в следующий (например test_empty_when_no_facts
+        # кэширует '', и test_includes_facts_when_present получает эту стухшую пустую строку).
+        from django.core.cache import cache
+        cache.clear()
         self.user = User.objects.create_user(
             username='ctxuser', email='ctxuser@test.com', password='x'
         )

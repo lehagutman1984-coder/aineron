@@ -1001,8 +1001,11 @@ class UserMemory(models.Model):
     # этого проекта (приоритетный блок «Контекст проекта»); organization —
     # общий факт команды (виден всем членам в орг-контекстах). Оба NULL =
     # глобальный личный факт (прежнее поведение).
+    # B12: SET_NULL, не CASCADE — удаление проекта не должно тихо уничтожать
+    # долговременные факты пользователя, извлечённые из его чатов; факт просто
+    # теряет скоуп и становится глобальным (виден во всех чатах), а не исчезает.
     project = models.ForeignKey(
-        'Project', on_delete=models.CASCADE, null=True, blank=True,
+        'Project', on_delete=models.SET_NULL, null=True, blank=True,
         related_name='memories', verbose_name='Проект (скоуп)',
     )
     organization = models.ForeignKey(
@@ -1037,8 +1040,8 @@ class UserMemory(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.content_key and self.content:
-            from aitext.memory import normalize_fact
-            self.content_key = normalize_fact(self.content)
+            from aitext.memory import scoped_content_key
+            self.content_key = scoped_content_key(self.content, self.project_id, self.organization_id)
         super().save(*args, **kwargs)
 
 

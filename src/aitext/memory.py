@@ -62,6 +62,28 @@ def normalize_fact(text: str) -> str:
     return t[:255]
 
 
+def scoped_content_key(text: str, project_id: int | None = None, organization_id: int | None = None) -> str:
+    """
+    Ключ дедупликации с учётом скоупа памяти (B12).
+
+    Без этого префикса одинаковый по тексту факт в разных проектах (или проект vs
+    глобальный) схлопывался в ОДНУ строку по общему UniqueConstraint(user, content_key) —
+    факт молча "перескакивал" между проектами при повторной экстракции, теряясь для
+    одного из них. Префикс делает (user, scope, текст) — а не только (user, текст) —
+    единицей дедупликации, что и требует UniqueConstraint(user, content_key).
+    """
+    base = normalize_fact(text)
+    if not base:
+        return ''
+    if project_id:
+        prefix = f'proj{project_id}:'
+    elif organization_id:
+        prefix = f'org{organization_id}:'
+    else:
+        prefix = ''
+    return (prefix + base)[:255]
+
+
 def estimate_tokens(text: str) -> int:
     """
     Быстрая оценка токенов без tiktoken.

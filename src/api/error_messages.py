@@ -108,6 +108,7 @@ MESSAGES: dict[str, dict[str, str]] = {
     "memory_content_required": {"ru": "content обязателен", "en": "content is required"},
     "memory_fact_id_required": {"ru": "fact_id обязателен", "en": "fact_id is required"},
     "memory_enabled_required": {"ru": "memory_enabled обязателен", "en": "memory_enabled is required"},
+    "memory_duplicate_fact": {"ru": "Такой факт уже сохранён в этой области памяти.", "en": "This fact is already saved in this memory scope."},
     "tasks_run_time_required": {"ru": "Для daily/weekly укажите время запуска (HH:MM, МСК)", "en": "For daily/weekly schedules, specify a run time (HH:MM, Moscow time)"},
     "tasks_weekday_required": {"ru": "Для weekly укажите день недели 0–6 (0 = понедельник)", "en": "For weekly schedules, specify a weekday 0-6 (0 = Monday)"},
     "tasks_cron_fields_required": {"ru": "Cron-выражение должно содержать 5 полей", "en": "The cron expression must contain 5 fields"},

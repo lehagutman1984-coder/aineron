@@ -1,6 +1,5 @@
 from rest_framework import serializers
 from aitext.models import UserMemory, ChatSummary
-from aitext.memory import normalize_fact
 
 
 class UserMemorySerializer(serializers.ModelSerializer):
@@ -27,9 +26,11 @@ class UserMemorySerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
-        content = validated_data.get('content', '')
+        # B12: content_key НЕ выставляем здесь — UserMemory.save() сам построит
+        # его через scoped_content_key(), учтя validated_data['project'] (если
+        # передан). Раньше здесь стоял normalize_fact() без скоупа, из-за чего
+        # ключ конфликтовал с фактами в других проектах/глобальными.
         validated_data['source'] = 'user'
-        validated_data['content_key'] = normalize_fact(content)  # B3: единая нормализация
         validated_data['user'] = self.context['request'].user
         return super().create(validated_data)
 

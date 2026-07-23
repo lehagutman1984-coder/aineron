@@ -1272,6 +1272,7 @@ def extract_memory_facts(self, chat_id: int):
     """
     import json
     import re
+    from django.db.models import Q
     from .models import Chat, UserMemory
 
     try:
@@ -1299,11 +1300,26 @@ def extract_memory_facts(self, chat_id: int):
         for m in msgs
     )
 
-    # Существующие факты для дедупликации (один запрос вместо двух)
+    # B12: скоуп памяти для этого чата — факты проекта пишутся туда, а не глобально
+    project_scope_id = chat.project_id if (
+        chat.project_id and getattr(settings, 'MEMORY_PROJECT_SCOPE', True)
+    ) else None
+
+    # Существующие факты для дедупликации (один запрос вместо двух).
+    # B12: скоупим превью под LLM тем же правилом, что и запись ниже — глобальные
+    # факты + факты ЭТОГО проекта, а не все факты пользователя по всем проектам.
+    # Иначе факт, уже известный в другом проекте, никогда не извлекается заново
+    # здесь ("уже запомнено") и просто теряется для текущего проекта.
+    existing_qs = UserMemory.objects.filter(user=user, is_active=True)
+    if project_scope_id:
+        existing_qs = existing_qs.filter(
+            Q(project_id=project_scope_id) | Q(project__isnull=True)
+        )
+    else:
+        existing_qs = existing_qs.filter(project__isnull=True)
     existing_facts = {
         f['content_key']: f['content']
-        for f in UserMemory.objects.filter(user=user, is_active=True)
-        .values('content_key', 'content')
+        for f in existing_qs.values('content_key', 'content')
         .order_by('-is_pinned', '-created_at')[:100]
     }
     existing_keys = set(existing_facts.keys())
@@ -1346,7 +1362,7 @@ def extract_memory_facts(self, chat_id: int):
     if not isinstance(facts, list):
         return
 
-    from .memory import normalize_fact, invalidate_memory_cache
+    from .memory import scoped_content_key, invalidate_memory_cache
 
     added = 0
     new_labels = []
@@ -1356,7 +1372,10 @@ def extract_memory_facts(self, chat_id: int):
         if not content or len(content) < 5:
             continue
 
-        content_key = normalize_fact(content)  # B3: пробелы сохраняются
+        # B12: ключ учитывает скоуп — факт с одинаковым текстом в разных проектах
+        # (или проект vs глобально) больше не схлопывается в одну строку по
+        # UniqueConstraint(user, content_key) и не "перескакивает" между проектами.
+        content_key = scoped_content_key(content, project_scope_id)
         if not content_key:
             continue
 
@@ -1365,7 +1384,10 @@ def extract_memory_facts(self, chat_id: int):
             category = 'fact'
 
         try:
-            # update_or_create сохраняет переформулированные факты с тем же ключом
+            # update_or_create сохраняет переформулированные факты с тем же ключом.
+            # project_id — часть defaults всегда (не только при создании): ключ уже
+            # скоупит lookup, так что тут либо создаётся новая запись с верным скоупом,
+            # либо обновляется запись, уже принадлежащая этому же скоупу.
             obj, was_created = UserMemory.objects.update_or_create(
                 user=user,
                 content_key=content_key,
@@ -1375,15 +1397,10 @@ def extract_memory_facts(self, chat_id: int):
                     'source': 'auto',
                     'source_chat': chat,
                     'is_active': True,
+                    'project_id': project_scope_id,
                 },
             )
             if was_created:
-                # U1: НОВЫЙ факт, извлечённый в чате проекта, скоупится на проект
-                # (существующие глобальные факты не перескоупливаются — иначе они
-                # исчезли бы из остальных чатов пользователя)
-                if chat.project_id and getattr(settings, 'MEMORY_PROJECT_SCOPE', True):
-                    obj.project_id = chat.project_id
-                    obj.save(update_fields=['project'])
                 existing_keys.add(content_key)
                 added += 1
                 new_labels.append(content[:80])

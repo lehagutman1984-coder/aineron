@@ -9,14 +9,16 @@ POST   /api/v1/memory/clear/         — удалить все авто-факт
 GET    /api/v1/memory/summaries/     — список ChatSummary (readonly)
 PATCH  /api/v1/memory/settings/      — toggle memory_enabled на пользователе
 """
+from django.db import IntegrityError, transaction
 from rest_framework.views import APIView
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework import serializers as drf_serializers
 from rest_framework import status
 
 from aitext.models import UserMemory, ChatSummary
-from aitext.memory import invalidate_memory_cache
+from aitext.memory import invalidate_memory_cache, scoped_content_key
 from api.serializers.memory import UserMemorySerializer, ChatSummarySerializer
 from api.error_messages import em
 
@@ -47,7 +49,19 @@ class MemoryListCreateView(ListCreateAPIView):
         return qs.order_by('-is_pinned', '-created_at')
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user, source='user')
+        # B12: content_key уникален per (user, scope) — при коллизии с уже
+        # существующим фактом того же скоупа INSERT падает IntegrityError.
+        # Раньше это улетало наружу необработанным 500; теперь — понятная 400.
+        # atomic()-savepoint: без него IntegrityError оставляет внешнюю транзакцию
+        # "отравленной" (TransactionManagementError на любой следующий запрос),
+        # если вью вызвана внутри более широкого atomic-блока — например под тестами
+        # (django.test.TestCase всегда оборачивает тест в atomic) или если проект
+        # когда-нибудь включит ATOMIC_REQUESTS.
+        try:
+            with transaction.atomic():
+                serializer.save(user=self.request.user, source='user')
+        except IntegrityError:
+            raise drf_serializers.ValidationError({'content': em('memory_duplicate_fact')})
         invalidate_memory_cache(self.request.user.id)  # B11: сбрасываем кэш
 
 
@@ -67,13 +81,25 @@ class MemoryDetailView(RetrieveUpdateDestroyAPIView):
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
-        obj = serializer.save()
-        if 'content' in data:
-            from aitext.memory import normalize_fact
-            new_key = normalize_fact(str(data['content']))
-            if new_key:
-                obj.content_key = new_key
-                obj.save(update_fields=['content_key'])
+
+        # B12: content и content_key должны меняться вместе, атомарно. Раньше
+        # serializer.save() коммитил новый content первым, и если следующий шаг
+        # (пересчёт content_key под новый текст) падал на коллизии — content
+        # оставался обновлён, а content_key — от старого текста: факт и его
+        # ключ дедупликации расходились. atomic() откатывает оба шага разом.
+        try:
+            with transaction.atomic():
+                obj = serializer.save()
+                if 'content' in data:
+                    # Ключ должен учитывать текущий скоуп факта (project/organization),
+                    # иначе редактирование текста молча ссорит его с фактом другого скоупа.
+                    new_key = scoped_content_key(str(data['content']), obj.project_id, obj.organization_id)
+                    if new_key and new_key != obj.content_key:
+                        obj.content_key = new_key
+                        obj.save(update_fields=['content_key'])
+        except IntegrityError:
+            raise drf_serializers.ValidationError({'content': em('memory_duplicate_fact')})
+
         invalidate_memory_cache(request.user.id)  # B11: сбрасываем кэш
         return Response(serializer.data)
 
@@ -117,8 +143,8 @@ class QuickSaveFactView(APIView):
         if not text:
             return Response({'error': em('memory_text_required')}, status=400)
 
-        from aitext.memory import normalize_fact
-        content_key = normalize_fact(text)[:200]
+        # B12: единая (не подрезанная отдельно от остальных путей) схема ключа
+        content_key = scoped_content_key(text)
 
         fact, created = UserMemory.objects.update_or_create(
             user=request.user,
@@ -206,10 +232,10 @@ class OrgMemoryView(APIView):
         if not text:
             return Response({'error': em('memory_content_required')}, status=400)
 
-        from aitext.memory import normalize_fact
-        # content_key уникален per-user — org-префикс исключает конфликт
+        # content_key уникален per-user — org-префикс (через scoped_content_key,
+        # B12: та же схема, что и для project-скоупа) исключает конфликт
         # с личным фактом создателя с тем же текстом
-        org_key = f'org{org.pk}:{normalize_fact(text)[:180]}'
+        org_key = scoped_content_key(text, organization_id=org.pk)
         fact, _created = UserMemory.objects.update_or_create(
             user=request.user,
             content_key=org_key,
