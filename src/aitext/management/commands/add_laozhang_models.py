@@ -342,6 +342,41 @@ TEXT_MODELS = [
          description='Новейшая флагманская модель Zhipu AI.'),
     dict(name='Kimi K2.6', slug='kimi-k2-6', model_name='kimi-k2.6', cost_per_message=2, cost_kopecks=220, order=76,
          description='Обновлённая модель Moonshot AI с расширенным контекстом.'),
+
+    # ── GPT-5.3/5.4/5.6 и Gemini 3.6 (добавлено 2026-07-24) ─────────────────────
+    # Цены — оценка по соседним тарифам (gpt-5.2=14, gpt-5.5-pro=16, gpt-5-pro=60),
+    # не подтверждённые реальные данные laozhang для этих конкретных новых
+    # моделей — перепроверить после первых реальных запросов и поправить при
+    # расхождении с фактическим token-биллингом.
+    dict(name='GPT-5.3', slug='gpt-5-3', model_name='gpt-5.3', cost_per_message=14, cost_kopecks=1400, order=5,
+         description='Промежуточное поколение GPT-5 с улучшенными рассуждениями.',
+         handle_photo=True),
+    dict(name='GPT-5.4', slug='gpt-5-4', model_name='gpt-5.4', cost_per_message=15, cost_kopecks=1500, order=5,
+         description='GPT-5.4 — новое поколение с расширенными возможностями.',
+         handle_photo=True),
+    dict(name='GPT-5.4 Mini', slug='gpt-5-4-mini', model_name='gpt-5.4-mini', cost_per_message=5, cost_kopecks=500, order=7,
+         description='Компактная и быстрая версия GPT-5.4.',
+         handle_photo=True),
+    dict(name='GPT-5.4 Nano', slug='gpt-5-4-nano', model_name='gpt-5.4-nano', cost_per_message=2, cost_kopecks=200, order=7,
+         description='Самая быстрая и дешёвая версия GPT-5.4 для простых задач.'),
+    dict(name='GPT-5.4 Pro', slug='gpt-5-4-pro', model_name='gpt-5.4-pro', cost_per_message=55, cost_kopecks=5500, order=8,
+         description='Профессиональная версия GPT-5.4 для сложнейших задач.',
+         handle_photo=True),
+    dict(name='GPT-5.5', slug='gpt-5-5', model_name='gpt-5.5', cost_per_message=15, cost_kopecks=1500, order=4,
+         description='GPT-5.5 — новое поколение перед профессиональной версией.',
+         handle_photo=True),
+    dict(name='GPT-5.6 Luna', slug='gpt-5-6-luna', model_name='gpt-5.6-luna', cost_per_message=16, cost_kopecks=1600, order=4,
+         description='Одна из веток нового семейства GPT-5.6.',
+         handle_photo=True),
+    dict(name='GPT-5.6 Sol', slug='gpt-5-6-sol', model_name='gpt-5.6-sol', cost_per_message=16, cost_kopecks=1600, order=4,
+         description='Одна из веток нового семейства GPT-5.6.',
+         handle_photo=True),
+    dict(name='GPT-5.6 Terra', slug='gpt-5-6-terra', model_name='gpt-5.6-terra', cost_per_message=16, cost_kopecks=1600, order=4,
+         description='Одна из веток нового семейства GPT-5.6.',
+         handle_photo=True),
+    dict(name='Gemini 3.6 Flash', slug='gemini-3-6-flash', model_name='gemini-3.6-flash', cost_per_message=3, cost_kopecks=200, order=34,
+         description='Новейший быстрый Gemini следующего поколения.',
+         handle_photo=True),
 ]
 
 IMAGE_MODELS = [
