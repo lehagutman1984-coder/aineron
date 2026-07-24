@@ -1208,8 +1208,19 @@ def generate_video_laozhang(network, user_msg, message, user_settings=None):
     seconds = str(final_args.get('seconds') or final_args.get('duration') or '8')
     aspect_ratio = str(final_args.get('aspect_ratio') or 'landscape')
     size = '720x1280' if aspect_ratio.startswith('9') else '1280x720'
-    # img2video: image_url приходит только через user_settings (нет в ui_settings.sections)
+    # img2video: image_url приходит только через user_settings (нет в ui_settings.sections).
+    # Мультиреференс (B14.1) шлёт image_urls (список) — laozhang как фолбэк-провайдер
+    # поддерживает только один кадр, поэтому берём первое фото и не теряем его молча.
     image_url = final_args.get('image_url') or (user_settings or {}).get('image_url', '')
+    if not image_url:
+        extra_images = final_args.get('image_urls') or (user_settings or {}).get('image_urls') or []
+        if extra_images:
+            image_url = extra_images[0]
+            if len(extra_images) > 1:
+                logger.info(
+                    f"Laozhang video fallback: получено {len(extra_images)} референсных фото, "
+                    f"фолбэк-провайдер поддерживает только 1 — используется первое"
+                )
     image_url = _make_absolute_url(image_url)
 
     body = {"model": model_id, "prompt": prompt, "seconds": seconds, "size": size}
