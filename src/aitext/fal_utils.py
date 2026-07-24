@@ -15,6 +15,15 @@ logger = logging.getLogger(__name__)
 _image_client = None
 
 
+def _make_absolute_url(url: str) -> str:
+    """Конвертирует относительный /media/... URL в абсолютный — внешние провайдеры
+    (apimart, laozhang) не могут скачать файл по относительному пути."""
+    if url and url.startswith('/'):
+        site = (getattr(settings, 'SITE_URL', '') or 'https://aineron.ru').rstrip('/')
+        return site + url
+    return url
+
+
 def get_laozhang_image_client():
     """
     Клиент для генерации изображений. Возвращает FallbackClient: основной сервис —
@@ -721,14 +730,7 @@ def generate_image_edit(network, user_msg, message, user_settings=None):
     import io as _io
     import requests as _req
 
-    def _make_absolute(url: str) -> str:
-        """Конвертирует относительный URL (/media/...) в абсолютный."""
-        if url and url.startswith('/'):
-            _site = (getattr(settings, 'SITE_URL', '') or 'https://aineron.ru').rstrip('/')
-            return _site + url
-        return url
-
-    image_url = _make_absolute(image_url)
+    image_url = _make_absolute_url(image_url)
 
     try:
         resp = _req.get(image_url, timeout=30)
@@ -802,7 +804,7 @@ def generate_image_edit(network, user_msg, message, user_settings=None):
     elif mask_url:
         try:
             from PIL import Image as _PILImage
-            mresp = _req.get(_make_absolute(mask_url), timeout=30)
+            mresp = _req.get(_make_absolute_url(mask_url), timeout=30)
             mresp.raise_for_status()
             if model_id in _MODEL_SUPPORTED_SIZES:
                 # OpenAI-семейство: зеркалим подход outpaint (commit 12bf4e6).
@@ -1208,6 +1210,7 @@ def generate_video_laozhang(network, user_msg, message, user_settings=None):
     size = '720x1280' if aspect_ratio.startswith('9') else '1280x720'
     # img2video: image_url приходит только через user_settings (нет в ui_settings.sections)
     image_url = final_args.get('image_url') or (user_settings or {}).get('image_url', '')
+    image_url = _make_absolute_url(image_url)
 
     body = {"model": model_id, "prompt": prompt, "seconds": seconds, "size": size}
     if image_url:
@@ -1548,7 +1551,9 @@ def generate_video_apimart(network, user_msg, message, user_settings=None):
     if not raw_images:
         single = final_args.get('image_url') or (user_settings or {}).get('image_url', '')
         raw_images = [single] if single else []
-    images = [u for u in raw_images if u]
+    # /media/... относительные пути не резолвятся apimart (внешний сервис) —
+    # обязательно абсолютизируем перед отправкой.
+    images = [_make_absolute_url(u) for u in raw_images if u]
 
     meta = config.get('metadata') or {}
     # max_images отсутствует у моделей, для которых мультиреференс не проверен
