@@ -201,6 +201,8 @@ export interface NetworkListItem {
   model_name: string;
   order: number;
   output_type?: "video" | "image" | null;
+  /** Мультиреференс image-to-video (B14). null/undefined = только 1 фото. */
+  i2v?: { max_images: number; mode: "reference" | "first_last" } | null;
 }
 
 export interface FAQ {
@@ -321,6 +323,8 @@ export interface NetworkMini {
   handle_photo: boolean;
   handle_video: boolean;
   config_json?: ModelConfigJson | null;
+  /** Мультиреференс image-to-video (B14). null/undefined = только 1 фото. */
+  i2v?: { max_images: number; mode: "reference" | "first_last" } | null;
 }
 
 export interface Project {

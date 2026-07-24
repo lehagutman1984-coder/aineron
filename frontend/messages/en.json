@@ -339,6 +339,9 @@
     "removeSourceImage": "Remove source image",
     "sourceImageAlt": "Source image",
     "uploadImageTitle": "Upload image for editing (img2img)",
+    "addAnotherPhoto": "Add another photo",
+    "firstFrameLabel": "First frame",
+    "lastFrameLabel": "Last frame",
     "scrollToBottom": "Scroll to bottom",
     "aiCommitProposed": "AI proposed commit ({files})",
     "commitFilesCount": "{count, plural, one {# file} few {# files} many {# files} other {# files}}",
@@ -514,7 +517,11 @@
       "motionPromptPlaceholder": "e.g., smooth camera zoom, gentle breeze, moving clouds...",
       "genericError": "Failed to start generation. Try again.",
       "cancel": "Cancel",
-      "animate": "Animate"
+      "animate": "Animate",
+      "addAnotherPhoto": "Add photo",
+      "uploadError": "Upload failed",
+      "lastFrameSectionLabel": "Last frame (optional)",
+      "extraReferencesLabel": "Extra reference photos (optional)"
     },
     "editImageModal": {
       "title": "Edit Image",

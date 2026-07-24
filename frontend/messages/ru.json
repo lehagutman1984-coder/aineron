@@ -339,6 +339,9 @@
     "removeSourceImage": "Убрать исходное изображение",
     "sourceImageAlt": "Исходное изображение",
     "uploadImageTitle": "Загрузить изображение для редактирования (img2img)",
+    "addAnotherPhoto": "Добавить ещё фото",
+    "firstFrameLabel": "1-й кадр",
+    "lastFrameLabel": "Последний",
     "scrollToBottom": "Прокрутить вниз",
     "aiCommitProposed": "AI предложил коммит ({files})",
     "commitFilesCount": "{count, plural, one {# файл} few {# файла} many {# файлов} other {# файлов}}",
@@ -514,7 +517,11 @@
       "motionPromptPlaceholder": "Например: плавный наезд камеры, лёгкий ветер, движение облаков...",
       "genericError": "Не удалось запустить генерацию. Попробуйте снова.",
       "cancel": "Отмена",
-      "animate": "Оживить"
+      "animate": "Оживить",
+      "addAnotherPhoto": "Добавить фото",
+      "uploadError": "Ошибка загрузки",
+      "lastFrameSectionLabel": "Последний кадр (необязательно)",
+      "extraReferencesLabel": "Дополнительные референсы (необязательно)"
     },
     "editImageModal": {
       "title": "Редактирование изображения",

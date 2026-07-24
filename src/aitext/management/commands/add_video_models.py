@@ -1,4 +1,4 @@
-"""
+﻿"""
 Видео-модели через apimart.ai.
 Запуск: docker-compose exec web python manage.py add_video_models
 
@@ -138,6 +138,7 @@ VIDEO_CONFIG = {
         "metadata": {
             "output_type": "video", "video_api": "apimart",
             "supports_image_to_video": True, "i2v_param": "image_urls",
+            "i2v_max_images": 3, "i2v_mode": "reference",
             # B14: единственные 2 модели с подтверждённым вживую фолбэком на
             # laozhang (см. generate_video_laozhang) — для остальных 11 laozhang
             # не провижинировал канал под наш аккаунт (503 no available channels),
@@ -175,6 +176,7 @@ VIDEO_CONFIG = {
         "metadata": {
             "output_type": "video", "video_api": "apimart",
             "supports_image_to_video": True, "i2v_param": "image_urls",
+            "i2v_max_images": 3, "i2v_mode": "reference",
             "laozhang_fallback_model": "veo-3.1-generate-preview",  # B14, см. veo3_fast
         },
     },
@@ -223,6 +225,7 @@ VIDEO_CONFIG = {
         "metadata": {
             "output_type": "video", "video_api": "apimart",
             "supports_image_to_video": True, "i2v_param": "image_urls",
+            "i2v_max_images": 2, "i2v_mode": "first_last",
         },
     },
 
@@ -269,6 +272,7 @@ VIDEO_CONFIG = {
         "metadata": {
             "output_type": "video", "video_api": "apimart",
             "supports_image_to_video": True, "i2v_param": "image_urls",
+            "i2v_max_images": 2, "i2v_mode": "first_last",
         },
     },
 
@@ -375,6 +379,7 @@ VIDEO_CONFIG = {
         "metadata": {
             "output_type": "video", "video_api": "apimart",
             "supports_image_to_video": True, "i2v_param": "image_urls",
+            "i2v_max_images": 9, "i2v_mode": "reference",
         },
     },
 
@@ -587,6 +592,7 @@ VIDEO_CONFIG = {
         "metadata": {
             "output_type": "video", "video_api": "apimart",
             "supports_image_to_video": True, "i2v_param": "image_urls",
+            "i2v_max_images": 2, "i2v_mode": "first_last",
         },
     },
 
@@ -632,6 +638,7 @@ VIDEO_CONFIG = {
         "metadata": {
             "output_type": "video", "video_api": "apimart",
             "supports_image_to_video": True, "i2v_param": "image_urls",
+            "i2v_max_images": 7, "i2v_mode": "reference",
         },
     },
 
@@ -723,6 +730,7 @@ VIDEO_CONFIG = {
         "metadata": {
             "output_type": "video", "video_api": "apimart",
             "supports_image_to_video": True, "i2v_param": "image_urls",
+            "i2v_max_images": 9, "i2v_mode": "reference",
         },
     },
 
@@ -753,6 +761,7 @@ VIDEO_CONFIG = {
         "metadata": {
             "output_type": "video", "video_api": "apimart",
             "supports_image_to_video": True, "i2v_param": "image_urls",
+            "i2v_max_images": 2, "i2v_mode": "first_last",
         },
     },
 
@@ -784,6 +793,7 @@ VIDEO_CONFIG = {
         "metadata": {
             "output_type": "video", "video_api": "apimart",
             "supports_image_to_video": True, "i2v_param": "image_urls",
+            "i2v_max_images": 2, "i2v_mode": "first_last",
         },
     },
 
@@ -815,6 +825,7 @@ VIDEO_CONFIG = {
         "metadata": {
             "output_type": "video", "video_api": "apimart",
             "supports_image_to_video": True, "i2v_param": "image_urls",
+            "i2v_max_images": 2, "i2v_mode": "first_last",
         },
     },
 
@@ -871,6 +882,7 @@ VIDEO_CONFIG = {
         "metadata": {
             "output_type": "video", "video_api": "apimart",
             "supports_image_to_video": True, "i2v_param": "image_urls",
+            "i2v_max_images": 2, "i2v_mode": "first_last",
         },
     },
 
@@ -932,6 +944,7 @@ VIDEO_CONFIG = {
         "metadata": {
             "output_type": "video", "video_api": "apimart",
             "supports_image_to_video": True, "i2v_param": "image_urls",
+            "i2v_max_images": 9, "i2v_mode": "reference",
         },
     },
 
@@ -951,6 +964,7 @@ VIDEO_CONFIG = {
         "metadata": {
             "output_type": "video", "video_api": "apimart",
             "supports_image_to_video": True, "i2v_param": "image_urls",
+            "i2v_max_images": 3, "i2v_mode": "reference",
         },
     },
 }

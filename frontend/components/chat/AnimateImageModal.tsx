@@ -1,12 +1,12 @@
 ﻿"use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "@/i18n/navigation";
 
 import { useTranslations } from "next-intl";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { X, Film, Loader2, Sparkles } from "lucide-react";
-import { listNetworks, createChat } from "@/lib/api/client";
+import { X, Film, ImagePlus, Loader2, Sparkles } from "lucide-react";
+import { listNetworks, createChat, uploadReferenceImage } from "@/lib/api/client";
 import type { NetworkListItem } from "@/lib/api/types";
 import { formatMoney } from "@/lib/money";
 
@@ -38,6 +38,10 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
   const [generateAudio, setGenerateAudio] = useState(false);
   const [soraDuration, setSoraDuration] = useState<5 | 10 | 20>(5);
   const [soraAspect, setSoraAspect] = useState<string>("16:9");
+  // B14: доп. референсные фото сверх основного imageUrl (первый+последний
+  // кадр у Kling/Vidu, набор референсов у Veo/Seedance/Grok) — см. i2v ниже.
+  const [extraImages, setExtraImages] = useState<Array<{ url: string; localUrl: string; uploading: boolean; error?: boolean }>>([]);
+  const extraInputRef = useRef<HTMLInputElement>(null);
 
   const { data: networks, isLoading } = useQuery({
     queryKey: ["networks", "fal-ai"],
@@ -69,6 +73,30 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
   const isSora = modelName.includes("sora");
   const isVeo = modelName.includes("veo");
 
+  // B14: imageUrl (проп) уже занимает один слот, поэтому доступно max_images-1
+  // дополнительных фото. Смена модели на ту, что поддерживает меньше — обрежет лишнее.
+  const i2v = selectedModel?.i2v ?? null;
+  const maxExtraImages = Math.max((i2v?.max_images ?? 1) - 1, 0);
+  const visibleExtraImages = extraImages.slice(0, maxExtraImages);
+
+  const handleAddExtraImage = async (file: File) => {
+    const localUrl = URL.createObjectURL(file);
+    setExtraImages((prev) => [...prev, { url: "", localUrl, uploading: true }]);
+    try {
+      const result = await uploadReferenceImage(file);
+      setExtraImages((prev) => prev.map((s) => (s.localUrl === localUrl ? { url: result.url, localUrl, uploading: false } : s)));
+    } catch {
+      setExtraImages((prev) => prev.map((s) => (s.localUrl === localUrl ? { url: "", localUrl, uploading: false, error: true } : s)));
+    }
+  };
+  const handleRemoveExtraImage = (localUrl: string) => {
+    setExtraImages((prev) => {
+      const target = prev.find((s) => s.localUrl === localUrl);
+      if (target?.localUrl?.startsWith("blob:")) URL.revokeObjectURL(target.localUrl);
+      return prev.filter((s) => s.localUrl !== localUrl);
+    });
+  };
+
   const createMutation = useMutation({
     mutationFn: () => {
       const extra: Record<string, unknown> = {};
@@ -77,6 +105,10 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
       if (isVeo) { extra.audio_response = generateAudio; }
       if (isSora) { extra.aspect_ratio = soraAspect; }
       const activeDuration = isSora ? soraDuration : duration;
+      // B14: image_urls — imageUrl + доп. референсы, только если модель их
+      // поддерживает и хотя бы одно доп. фото реально загружено без ошибки.
+      const extraUrls = visibleExtraImages.filter((s) => s.url && !s.error).map((s) => s.url);
+      if (extraUrls.length > 0) extra.image_urls = [imageUrl, ...extraUrls];
       return createChat({
         network_slug: selectedSlug,
         message: prompt.trim() || " ",
@@ -94,7 +126,7 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
     },
   });
 
-  const canSubmit = Boolean(selectedSlug) && !createMutation.isPending;
+  const canSubmit = Boolean(selectedSlug) && !createMutation.isPending && !visibleExtraImages.some((s) => s.uploading);
 
   return (
     <div
@@ -170,6 +202,60 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
               </div>
             )}
           </div>
+
+          {/* B14: доп. референсные фото — первый+последний кадр (Kling/Vidu) или
+              набор референсов (Veo/Seedance/Grok), поверх основного imageUrl */}
+          {maxExtraImages > 0 && (
+            <div>
+              <p className="mb-2 text-[14px] font-medium text-[rgba(13,13,13,0.55)] dark:text-[rgba(236,236,236,0.55)]">
+                {i2v?.mode === "first_last" ? t("lastFrameSectionLabel") : t("extraReferencesLabel")}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {visibleExtraImages.map((img) => (
+                  <div key={img.localUrl} className="relative shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={img.localUrl || img.url}
+                      alt={t("sourceAlt")}
+                      className="h-14 w-14 rounded-[10px] border object-cover dark:border-[rgba(255,255,255,0.12)]"
+                    />
+                    {img.uploading && (
+                      <div className="absolute inset-0 flex items-center justify-center rounded-[10px] bg-black/40">
+                        <Loader2 size={16} className="animate-spin text-white" />
+                      </div>
+                    )}
+                    {img.error && (
+                      <div className="absolute inset-0 rounded-[10px] bg-red-500/30" title={t("uploadError")} />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveExtraImage(img.localUrl)}
+                      className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-[rgba(13,13,13,0.10)] bg-white shadow-sm transition-colors hover:bg-[rgba(13,13,13,0.06)]"
+                    >
+                      <X size={11} className="text-[rgba(13,13,13,0.55)]" />
+                    </button>
+                  </div>
+                ))}
+                {visibleExtraImages.length < maxExtraImages && (
+                  <button
+                    type="button"
+                    onClick={() => extraInputRef.current?.click()}
+                    title={t("addAnotherPhoto")}
+                    className="flex h-14 w-14 items-center justify-center rounded-[10px] border border-dashed border-[rgba(13,13,13,0.15)] text-[rgba(13,13,13,0.35)] transition-colors hover:bg-[rgba(13,13,13,0.04)] dark:border-[rgba(255,255,255,0.15)] dark:text-[rgba(236,236,236,0.35)]"
+                  >
+                    <ImagePlus size={16} />
+                  </button>
+                )}
+              </div>
+              <input
+                ref={extraInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => { if (e.target.files?.[0]) { void handleAddExtraImage(e.target.files[0]); e.target.value = ""; } }}
+              />
+            </div>
+          )}
 
           {/* Duration (hidden for Sora — uses its own duration in per-model settings) */}
           {!isSora && <div>

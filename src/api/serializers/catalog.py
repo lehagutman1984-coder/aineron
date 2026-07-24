@@ -36,6 +36,7 @@ class NeuralNetworkListSerializer(serializers.ModelSerializer):
     description = serializers.SerializerMethodField()
     seo_title = serializers.SerializerMethodField()
     seo_description = serializers.SerializerMethodField()
+    i2v = serializers.SerializerMethodField()
 
     class Meta:
         model = NeuralNetwork
@@ -44,7 +45,7 @@ class NeuralNetworkListSerializer(serializers.ModelSerializer):
             'description', 'cost_per_message', 'cost_kopecks', 'provider',
             'is_popular', 'is_free', 'unlimited', 'messages_limit',
             'handle_photo', 'handle_video', 'handle_archive', 'handle_text_files',
-            'seo_title', 'seo_description', 'model_name', 'order', 'output_type',
+            'seo_title', 'seo_description', 'model_name', 'order', 'output_type', 'i2v',
         ]
 
     def get_category(self, obj):
@@ -71,6 +72,25 @@ class NeuralNetworkListSerializer(serializers.ModelSerializer):
         """
         try:
             return (obj.config_json or {}).get('metadata', {}).get('output_type')
+        except Exception:
+            return None
+
+    def get_i2v(self, obj):
+        """Мультиреференс image-to-video (B14): {max_images, mode} | None.
+
+        mode: 'reference' — до max_images независимых референсных фото;
+        'first_last' — ровно 2 фото трактуются как первый и последний кадр.
+        None — модель не поддерживает image-to-video вовсе, либо поддерживает
+        только одно фото (старое поведение, max_images не проставлен).
+        """
+        try:
+            meta = (obj.config_json or {}).get('metadata', {})
+            if not meta.get('supports_image_to_video'):
+                return None
+            max_images = meta.get('i2v_max_images')
+            if not max_images or max_images < 2:
+                return None
+            return {'max_images': max_images, 'mode': meta.get('i2v_mode') or 'reference'}
         except Exception:
             return None
 

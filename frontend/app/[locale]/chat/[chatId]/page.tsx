@@ -72,8 +72,12 @@ export default function ChatPage() {
   const [showPromptPicker, setShowPromptPicker] = useState(false);
   const [attachments, setAttachments] = useState<AttachmentState[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  // img2img: исходное изображение для редактирования (только для fal-ai моделей)
-  const [sourceImage, setSourceImage] = useState<{ url: string; localUrl: string; uploading: boolean; error?: boolean } | null>(null);
+  // img2img/img2video: исходные изображения (только для fal-ai моделей).
+  // Массив, а не одно значение — B14: часть видео-моделей (Kling, Veo,
+  // Seedance, Vidu, Grok) принимает несколько референсных фото (первый+
+  // последний кадр или набор референсов); для остальных моделей и для
+  // img2img максимум по-прежнему 1 — вся остальная логика ниже это уважает.
+  const [sourceImages, setSourceImages] = useState<Array<{ url: string; localUrl: string; uploading: boolean; error?: boolean }>>([]);
   const sourceInputRef = useRef<HTMLInputElement>(null);
   // img2img: модалка редактирования (маска / outpaint) для сгенерированного изображения
   const [editModalUrl, setEditModalUrl] = useState<string | null>(null);
@@ -134,6 +138,12 @@ export default function ChatPage() {
     staleTime: 0,
     retry: 1,
   });
+
+  // B14: сколько референсных фото принимает текущая модель и в каком режиме
+  // (first_last — первый+последний кадр; reference — независимые референсы).
+  // 1 (по умолчанию) = старое поведение, одно фото.
+  const maxSourceImages = chat?.network.i2v?.max_images ?? 1;
+  const i2vMode = chat?.network.i2v?.mode;
 
   // Polling query — only active for fal-ai image models
   const { data: polledMessage } = useQuery<WebMessage>({
@@ -287,7 +297,7 @@ export default function ChatPage() {
       );
       setText("");
       clearAttachments();
-      setSourceImage((prev) => { if (prev?.localUrl?.startsWith("blob:")) URL.revokeObjectURL(prev.localUrl); return null; });
+      clearAllSourceImages();
       if (textareaRef.current) textareaRef.current.style.height = "auto";
     },
     onSuccess: (res) => {
@@ -545,23 +555,35 @@ export default function ChatPage() {
     });
   }, []);
 
-  // img2img: загрузка исходного изображения для редактирования
+  // img2img/img2video: загрузка исходного изображения — добавляется в конец
+  // sourceImages (не заменяет), вызывающий код сам следит за maxSourceImages.
   const handleSourceImage = useCallback(
     async (file: File) => {
       const localUrl = URL.createObjectURL(file);
-      setSourceImage((prev) => { if (prev?.localUrl?.startsWith("blob:")) URL.revokeObjectURL(prev.localUrl); return { url: "", localUrl, uploading: true }; });
+      setSourceImages((prev) => [...prev, { url: "", localUrl, uploading: true }]);
       try {
         const result = await uploadFile(id, file);
-        setSourceImage({ url: result.url, localUrl, uploading: false });
+        setSourceImages((prev) => prev.map((s) => (s.localUrl === localUrl ? { url: result.url, localUrl, uploading: false } : s)));
       } catch {
-        setSourceImage({ url: "", localUrl, uploading: false, error: true });
+        setSourceImages((prev) => prev.map((s) => (s.localUrl === localUrl ? { url: "", localUrl, uploading: false, error: true } : s)));
       }
     },
     [id]
   );
 
-  const clearSourceImage = useCallback(() => {
-    setSourceImage((prev) => { if (prev?.localUrl?.startsWith("blob:")) URL.revokeObjectURL(prev.localUrl); return null; });
+  const clearSourceImage = useCallback((localUrl: string) => {
+    setSourceImages((prev) => {
+      const target = prev.find((s) => s.localUrl === localUrl);
+      if (target?.localUrl?.startsWith("blob:")) URL.revokeObjectURL(target.localUrl);
+      return prev.filter((s) => s.localUrl !== localUrl);
+    });
+  }, []);
+
+  const clearAllSourceImages = useCallback(() => {
+    setSourceImages((prev) => {
+      prev.forEach((s) => { if (s.localUrl?.startsWith("blob:")) URL.revokeObjectURL(s.localUrl); });
+      return [];
+    });
   }, []);
 
   // img2img: "Редактировать" из пузыря сообщения — открывает модалку (маска / outpaint)
@@ -738,16 +760,19 @@ export default function ChatPage() {
       const files = e.dataTransfer.files;
       if (files.length === 0) return;
       // fal-ai (генерация изображений): нет отдельного вложений-пайплайна в
-      // генерации — перетащенное фото должно стать источником для img2img
-      // (settings.image_url), иначе оно молча теряется (см. handleFiles).
+      // генерации — перетащенное фото должно стать источником для img2img/
+      // img2video (settings.image_url(s)), иначе оно молча теряется (см.
+      // handleFiles). B14: если модель поддерживает несколько референсных
+      // фото — берём столько файлов, сколько ещё влезает до maxSourceImages.
       if (chat?.network.provider === "fal-ai") {
-        const imageFile = Array.from(files).find((f) => f.type.startsWith("image/"));
-        if (imageFile) handleSourceImage(imageFile);
+        const imageFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
+        const remaining = maxSourceImages - sourceImages.length;
+        imageFiles.slice(0, Math.max(remaining, 0)).forEach((f) => handleSourceImage(f));
         return;
       }
       handleFiles(files);
     },
-    [handleFiles, handleSourceImage, chat?.network.provider]
+    [handleFiles, handleSourceImage, chat?.network.provider, maxSourceImages, sourceImages.length]
   );
 
   const isPending = pendingMessageId !== null;
@@ -769,8 +794,8 @@ export default function ChatPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const msg = text.trim();
-    const hasUploading = attachments.some((a) => a.uploading) || sourceImage?.uploading === true;
-    if ((!msg && attachments.filter((a) => !a.error && !a.uploading).length === 0 && !sourceImage) || isBusy || hasUploading) return;
+    const hasUploading = attachments.some((a) => a.uploading) || sourceImages.some((s) => s.uploading);
+    if ((!msg && attachments.filter((a) => !a.error && !a.uploading).length === 0 && sourceImages.length === 0) || isBusy || hasUploading) return;
     if (researchMode && msg) {
       setText("");
       setAttachments([]);
@@ -780,8 +805,13 @@ export default function ChatPage() {
     const attachmentIds = attachments.filter((a) => !a.uploading && !a.error).map((a) => a.id);
     if (chat?.network.provider === "fal-ai") {
       const falSettings: Record<string, unknown> = { ...mediaSettings };
-      if (sourceImage && sourceImage.url && !sourceImage.error) {
-        falSettings.image_url = sourceImage.url;
+      // B14: image_url — первое фото (обратная совместимость), image_urls —
+      // полный список, если модель поддерживает больше одного (fal_utils.py
+      // читает image_urls в первую очередь и капает по metadata.i2v_max_images).
+      const validImages = sourceImages.filter((s) => s.url && !s.error).map((s) => s.url);
+      if (validImages.length > 0) {
+        falSettings.image_url = validImages[0];
+        if (validImages.length > 1) falSettings.image_urls = validImages;
       }
       if (styleReferenceUrl) {
         falSettings.style_image_url = styleReferenceUrl;
@@ -1200,40 +1230,65 @@ export default function ChatPage() {
               attachments={attachments}
               onRemove={(removeId) => setAttachments((prev) => prev.filter((a) => a.id !== removeId))}
             />
-            {/* img2img: превью исходного изображения */}
-            {sourceImage && (
-              <div className="flex items-center gap-2.5 px-4 pt-3 pb-1">
-                <div className="relative shrink-0">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={sourceImage.localUrl || sourceImage.url}
-                    alt={t("sourceImageAlt")}
-                    className="h-14 w-14 rounded-[10px] border object-cover"
-                    style={{ borderColor: "var(--chat-input-border)" }}
-                  />
-                  {sourceImage.uploading && (
-                    <div className="absolute inset-0 flex items-center justify-center rounded-[10px] bg-black/40">
-                      <Loader2 size={16} className="animate-spin text-white" />
+            {/* img2img/img2video: превью исходных изображений (B14: до maxSourceImages) */}
+            {sourceImages.length > 0 && (
+              <div className="flex items-start gap-2.5 px-4 pt-3 pb-1">
+                <div className="flex flex-wrap gap-2">
+                  {sourceImages.map((img, idx) => (
+                    <div key={img.localUrl} className="relative shrink-0">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={img.localUrl || img.url}
+                        alt={t("sourceImageAlt")}
+                        className="h-14 w-14 rounded-[10px] border object-cover"
+                        style={{ borderColor: "var(--chat-input-border)" }}
+                      />
+                      {img.uploading && (
+                        <div className="absolute inset-0 flex items-center justify-center rounded-[10px] bg-black/40">
+                          <Loader2 size={16} className="animate-spin text-white" />
+                        </div>
+                      )}
+                      {img.error && (
+                        <div className="absolute inset-0 flex items-center justify-center rounded-[10px] bg-red-500/30" title={t("uploadError")} />
+                      )}
+                      {/* B14: подпись кадра только в режиме first_last (Kling/Vidu), где порядок значит "первый"/"последний" */}
+                      {i2vMode === "first_last" && maxSourceImages === 2 && (
+                        <span className="absolute bottom-0.5 left-0.5 rounded-[4px] bg-black/60 px-1 text-[10px] font-medium leading-tight text-white">
+                          {idx === 0 ? t("firstFrameLabel") : t("lastFrameLabel")}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => clearSourceImage(img.localUrl)}
+                        className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-[rgba(13,13,13,0.10)] bg-white shadow-sm transition-colors hover:bg-[rgba(13,13,13,0.06)]"
+                        title={t("removeSourceImage")}
+                      >
+                        <X size={11} className="text-[rgba(13,13,13,0.55)]" />
+                      </button>
                     </div>
+                  ))}
+                  {/* B14: добавить ещё одно референсное фото, пока не достигнут лимит модели */}
+                  {maxSourceImages > 1 && sourceImages.length < maxSourceImages && (
+                    <button
+                      type="button"
+                      onClick={() => sourceInputRef.current?.click()}
+                      title={t("addAnotherPhoto")}
+                      className="flex h-14 w-14 items-center justify-center rounded-[10px] border border-dashed text-[rgba(13,13,13,0.35)] transition-colors hover:bg-[rgba(13,13,13,0.04)] dark:text-[rgba(236,236,236,0.35)]"
+                      style={{ borderColor: "var(--chat-input-border)" }}
+                    >
+                      <ImagePlus size={16} />
+                    </button>
                   )}
-                  <button
-                    type="button"
-                    onClick={clearSourceImage}
-                    className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-[rgba(13,13,13,0.10)] bg-white shadow-sm transition-colors hover:bg-[rgba(13,13,13,0.06)]"
-                    title={t("removeSourceImage")}
-                  >
-                    <X size={11} className="text-[rgba(13,13,13,0.55)]" />
-                  </button>
                 </div>
-                <div className="min-w-0">
+                <div className="min-w-0 pt-1">
                   <p className="flex items-center gap-1 text-[14px] font-medium text-[#1A1A1A] dark:text-[#EDE8E3]">
                     <ImagePlus size={12} className="text-[#D97757]" />
                     {t("editSourceImage")}
                   </p>
                   <p className="mt-0.5 text-[13px] text-[rgba(13,13,13,0.42)] dark:text-[rgba(236,236,236,0.4)]">
-                    {sourceImage.uploading
+                    {sourceImages.some((s) => s.uploading)
                       ? t("uploading")
-                      : sourceImage.error
+                      : sourceImages.some((s) => s.error)
                         ? t("uploadError")
                         : t("describeChanges")}
                   </p>
@@ -1266,13 +1321,23 @@ export default function ChatPage() {
               ref={sourceInputRef}
               type="file"
               accept="image/*"
+              multiple={maxSourceImages > 1}
               className="hidden"
-              onChange={(e) => { if (e.target.files?.[0]) { handleSourceImage(e.target.files[0]); e.target.value = ""; } }}
+              onChange={(e) => {
+                if (e.target.files) {
+                  // B14: если модель принимает несколько фото — берём столько,
+                  // сколько ещё влезает до maxSourceImages; иначе только первое.
+                  const files = Array.from(e.target.files);
+                  const remaining = maxSourceImages - sourceImages.length;
+                  files.slice(0, Math.max(remaining, 0)).forEach((f) => handleSourceImage(f));
+                }
+                e.target.value = "";
+              }}
             />
             {chat.network.provider === "fal-ai" ? (
               <button
                 type="button"
-                disabled={isBusy}
+                disabled={isBusy || sourceImages.length >= maxSourceImages}
                 onClick={() => sourceInputRef.current?.click()}
                 title={t("uploadImageTitle")}
                 className="absolute bottom-2.5 right-[50px] flex h-9 w-9 items-center justify-center rounded-[10px] text-[rgba(13,13,13,0.4)] transition-all hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A] disabled:cursor-not-allowed disabled:opacity-30 dark:text-[rgba(236,236,236,0.4)] dark:hover:bg-[rgba(255,255,255,0.08)] dark:hover:text-[#EDE8E3]"
@@ -1291,7 +1356,7 @@ export default function ChatPage() {
             )}
             <button
               type="submit"
-              disabled={(text.trim() === "" && attachments.filter((a) => !a.error && !a.uploading).length === 0 && !sourceImage) || isBusy || sourceImage?.uploading === true}
+              disabled={(text.trim() === "" && attachments.filter((a) => !a.error && !a.uploading).length === 0 && sourceImages.length === 0) || isBusy || sourceImages.some((s) => s.uploading)}
               className="absolute bottom-2.5 right-2.5 flex h-9 w-9 items-center justify-center rounded-[10px] text-white transition-all disabled:cursor-not-allowed disabled:opacity-25"
               style={{ background: "var(--surface-inverse)" }}
             >

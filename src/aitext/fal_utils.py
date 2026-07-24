@@ -1537,15 +1537,40 @@ def generate_video_apimart(network, user_msg, message, user_settings=None):
     # Имя параметра у моделей разное: большинство ждёт МАССИВ image_urls,
     # Hailuo — строку first_frame_image. Берём из metadata.i2v_param
     # (add_video_models), фолбэк — по имени модели.
-    image_url = final_args.get('image_url') or (user_settings or {}).get('image_url', '')
-    if image_url:
-        i2v_param = (config.get('metadata') or {}).get('i2v_param')
+    # B14: мультиреференс — image_urls (список) приходит из user_settings.image_urls;
+    # image_url (одиночный, старый контракт) остаётся рабочим для обратной
+    # совместимости — оборачивается в список из одного элемента.
+    raw_images = (
+        final_args.get('image_urls')
+        or (user_settings or {}).get('image_urls')
+        or []
+    )
+    if not raw_images:
+        single = final_args.get('image_url') or (user_settings or {}).get('image_url', '')
+        raw_images = [single] if single else []
+    images = [u for u in raw_images if u]
+
+    meta = config.get('metadata') or {}
+    # max_images отсутствует у моделей, для которых мультиреференс не проверен
+    # (см. add_video_models.py) — тогда, как и раньше, используем только первое фото.
+    max_images = meta.get('i2v_max_images') or 1
+    if len(images) > max_images:
+        logger.info(
+            f"APIMart video: получено {len(images)} референсных фото, модель {model_id} "
+            f"поддерживает максимум {max_images} — лишние отброшены"
+        )
+        images = images[:max_images]
+
+    if images:
+        i2v_param = meta.get('i2v_param')
         if not i2v_param:
             i2v_param = 'first_frame_image' if 'hailuo' in model_lower else 'image_urls'
         if i2v_param == 'image_urls':
-            body['image_urls'] = [image_url]
+            body['image_urls'] = images
         else:
-            body[i2v_param] = image_url
+            # Параметр принимает одну строку (напр. Hailuo first_frame_image) —
+            # мультиреференс для таких моделей не поддержан, берём первое фото.
+            body[i2v_param] = images[0]
         # Формат кадра при оживлении фото определяется самим фото; часть
         # моделей (wan, pixverse, sora) отклоняет size/aspect_ratio вместе с
         # изображением — убираем, кроме adaptive-подобных дефолтов
@@ -1577,7 +1602,7 @@ def generate_video_apimart(network, user_msg, message, user_settings=None):
     video_urls = []
     try:
         if not task_id:
-            logger.info(f"APIMart Video POST model={model_id} img2video={bool(image_url)} params={body}")
+            logger.info(f"APIMart Video POST model={model_id} img2video={len(images)} params={body}")
             resp = requests.post(
                 f"{base_url}/videos/generations",
                 headers=auth_headers,
