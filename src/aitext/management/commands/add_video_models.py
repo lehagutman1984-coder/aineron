@@ -138,6 +138,11 @@ VIDEO_CONFIG = {
         "metadata": {
             "output_type": "video", "video_api": "apimart",
             "supports_image_to_video": True, "i2v_param": "image_urls",
+            # B14: единственные 2 модели с подтверждённым вживую фолбэком на
+            # laozhang (см. generate_video_laozhang) — для остальных 11 laozhang
+            # не провижинировал канал под наш аккаунт (503 no available channels),
+            # проставлять им этот ключ значит тихо ловить гарантированную ошибку.
+            "laozhang_fallback_model": "veo-3.1-fast-generate-preview",
         },
     },
 
@@ -170,6 +175,7 @@ VIDEO_CONFIG = {
         "metadata": {
             "output_type": "video", "video_api": "apimart",
             "supports_image_to_video": True, "i2v_param": "image_urls",
+            "laozhang_fallback_model": "veo-3.1-generate-preview",  # B14, см. veo3_fast
         },
     },
 
@@ -317,7 +323,7 @@ VIDEO_CONFIG = {
     # ------------------------------------------------------------------
     'seedance20': {
         "name": "Seedance 2.0",
-        "api_defaults": {"duration": "5", "size": "adaptive", "resolution": "720p", "generate_audio": False},
+        "api_defaults": {"duration": "5", "size": "adaptive", "resolution": "720p", "generate_audio": False, "camerafixed": False},
         "ui_settings": {
             "sections": [{
                 "title": "Настройки видео",
@@ -354,6 +360,12 @@ VIDEO_CONFIG = {
                         "name": "generate_audio",
                         "type": "checkbox",
                         "label": "Сгенерировать аудиодорожку",
+                        "extra_cost": 0,
+                    },
+                    {
+                        "name": "camerafixed",
+                        "type": "checkbox",
+                        "label": "Фиксированная камера",
                         "extra_cost": 0,
                     },
                 ]
@@ -622,6 +634,325 @@ VIDEO_CONFIG = {
             "supports_image_to_video": True, "i2v_param": "image_urls",
         },
     },
+
+    # ══════════════════════════════════════════════════════════════════
+    # B14 (2026-07-24) — расширение каталога. Настройки для моделей,
+    # которые являются старшей версией уже интегрированной модели того же
+    # вендора (wan27, seedance45, klingturbo, hailuo23fast, viduq3pro,
+    # seedance20fast, veo3lite) — скопированы с проверенного на практике
+    # конфига-донора, тот же вендор почти наверняка сохраняет контракт
+    # параметров между поколениями. Для моделей с уникальной, ранее не
+    # интегрированной способностью (kling-v3-motion-control, kling-v3-omni,
+    # ltx text-to-video) сознательно даём БАЗОВЫЙ набор полей (общий с
+    # ближайшим родственником), а не гадаем экзотические имена параметров
+    # под саму уникальную способность (motion trajectory / multi-reference
+    # omni) — это не проверено вживую, добавить отдельным полем можно после
+    # реальной проверки контракта, чем сейчас рисковать отклонённым запросом
+    # на придуманном имени параметра.
+    # ══════════════════════════════════════════════════════════════════
+
+    # Wan 2.7 — следующее поколение Wan после уже интегрированного wan2.6,
+    # тот же вендор (Alibaba), тот же набор полей.
+    'wan27': {
+        "name": "Wan 2.7",
+        "api_defaults": {"duration": "5", "resolution": "720p", "aspect_ratio": "16:9", "audio": False},
+        "ui_settings": {
+            "sections": [{
+                "title": "Настройки видео",
+                "fields": [
+                    _aspect_field(["16:9", "9:16", "1:1", "4:3", "3:4"]),
+                    _duration_field([(5, 0), (10, 8), (15, 15)]),
+                    {
+                        "name": "resolution", "type": "select", "label": "Качество", "extra_cost": 0,
+                        "options": [
+                            {"value": "720p", "label": "720p (HD)", "extra_cost": 0},
+                            {"value": "1080p", "label": "1080p (Full HD)", "extra_cost": 10},
+                        ]
+                    },
+                    {"name": "audio", "type": "checkbox", "label": "Сгенерировать звук", "extra_cost": 0},
+                    {
+                        "name": "shot_type", "type": "select", "label": "Съёмка", "extra_cost": 0,
+                        "options": [
+                            {"value": "single", "label": "Один план", "extra_cost": 0},
+                            {"value": "multi", "label": "Смена планов", "extra_cost": 0},
+                        ]
+                    },
+                ]
+            }]
+        },
+        "constraints": {},
+        "metadata": {
+            "output_type": "video", "video_api": "apimart",
+            "supports_image_to_video": True, "i2v_param": "image_urls",
+        },
+    },
+
+    # Seedance 4.5 — новое поколение ByteDance после уже интегрированного 2.0,
+    # шире диапазон длительности/разрешений (флагманский тир).
+    'seedance45': {
+        "name": "Seedance 4.5",
+        "api_defaults": {"duration": "5", "size": "adaptive", "resolution": "1080p", "generate_audio": False},
+        "ui_settings": {
+            "sections": [{
+                "title": "Настройки видео",
+                "fields": [
+                    {
+                        "name": "size", "type": "select", "label": "Формат", "extra_cost": 0,
+                        "options": [
+                            {"value": "adaptive", "label": "Адаптивный", "extra_cost": 0},
+                            {"value": "16:9", "label": "16:9 (горизонталь)", "extra_cost": 0},
+                            {"value": "9:16", "label": "9:16 (вертикаль)", "extra_cost": 0},
+                            {"value": "1:1", "label": "1:1 (квадрат)", "extra_cost": 0},
+                        ]
+                    },
+                    _duration_field([(4, 0), (5, 0), (8, 10), (10, 18), (12, 25), (15, 35)]),
+                    {
+                        "name": "resolution", "type": "select", "label": "Качество", "extra_cost": 0,
+                        "options": [
+                            {"value": "720p", "label": "720p (HD)", "extra_cost": 0},
+                            {"value": "1080p", "label": "1080p (Full HD)", "extra_cost": 0},
+                            {"value": "4k", "label": "4K (Ultra HD)", "extra_cost": 25},
+                        ]
+                    },
+                    {"name": "generate_audio", "type": "checkbox", "label": "Сгенерировать аудиодорожку", "extra_cost": 0},
+                    {"name": "camerafixed", "type": "checkbox", "label": "Фиксированная камера", "extra_cost": 0},
+                ]
+            }]
+        },
+        "constraints": {},
+        "metadata": {
+            "output_type": "video", "video_api": "apimart",
+            "supports_image_to_video": True, "i2v_param": "image_urls",
+        },
+    },
+
+    # Kling 3.0 Turbo — новый флагман Kuaishou (турбо-тир) поверх уже
+    # интегрированного kling-v3, тот же набор полей.
+    'kling30turbo': {
+        "name": "Kling 3.0 Turbo",
+        "api_defaults": {"mode": "std", "duration": "5", "aspect_ratio": "16:9", "audio": False},
+        "ui_settings": {
+            "sections": [{
+                "title": "Настройки видео",
+                "fields": [
+                    _aspect_field(["16:9", "9:16", "1:1"]),
+                    _duration_field([(3, 0), (5, 0), (8, 10), (10, 18)]),
+                    {
+                        "name": "mode", "type": "select", "label": "Качество", "extra_cost": 0,
+                        "options": [
+                            {"value": "std", "label": "720p (стандарт)", "extra_cost": 0},
+                            {"value": "pro", "label": "1080p (профессионал)", "extra_cost": 15},
+                        ]
+                    },
+                    {"name": "audio", "type": "checkbox", "label": "Сгенерировать звук", "extra_cost": 5},
+                    {"name": "negative_prompt", "type": "text", "label": "Negative prompt", "extra_cost": 0, "max_length": 2500},
+                ]
+            }]
+        },
+        "constraints": {"max_negative_prompt_length": 2500},
+        "metadata": {
+            "output_type": "video", "video_api": "apimart",
+            "supports_image_to_video": True, "i2v_param": "image_urls",
+        },
+    },
+
+    # Kling v3 Motion Control — базовый набор полей идентичен kling_v3;
+    # сам параметр управления траекторией камеры не проверен вживую и
+    # намеренно не добавлен полем (см. комментарий выше блока).
+    'klingv3motion': {
+        "name": "Kling v3 Motion Control",
+        "api_defaults": {"mode": "std", "duration": "5", "aspect_ratio": "16:9", "audio": False},
+        "ui_settings": {
+            "sections": [{
+                "title": "Настройки видео",
+                "fields": [
+                    _aspect_field(["16:9", "9:16", "1:1"]),
+                    _duration_field([(3, 0), (5, 0), (8, 10), (10, 18), (15, 30)]),
+                    {
+                        "name": "mode", "type": "select", "label": "Качество", "extra_cost": 0,
+                        "options": [
+                            {"value": "std", "label": "720p (стандарт)", "extra_cost": 0},
+                            {"value": "pro", "label": "1080p (профессионал)", "extra_cost": 15},
+                            {"value": "4k", "label": "4K (Ultra HD)", "extra_cost": 40},
+                        ]
+                    },
+                    {"name": "audio", "type": "checkbox", "label": "Сгенерировать звук", "extra_cost": 5},
+                ]
+            }]
+        },
+        "constraints": {},
+        "metadata": {
+            "output_type": "video", "video_api": "apimart",
+            "supports_image_to_video": True, "i2v_param": "image_urls",
+        },
+    },
+
+    # Kling v3 Omni — многореференсный режим (персонаж+сцена); базовый набор
+    # полей идентичен kling_v3, параметры мульти-референса не проверены
+    # вживую и намеренно не добавлены (см. комментарий выше блока).
+    'klingv3omni': {
+        "name": "Kling v3 Omni",
+        "api_defaults": {"mode": "std", "duration": "5", "aspect_ratio": "16:9", "audio": False},
+        "ui_settings": {
+            "sections": [{
+                "title": "Настройки видео",
+                "fields": [
+                    _aspect_field(["16:9", "9:16", "1:1"]),
+                    _duration_field([(3, 0), (5, 0), (8, 10), (10, 18), (15, 30)]),
+                    {
+                        "name": "mode", "type": "select", "label": "Качество", "extra_cost": 0,
+                        "options": [
+                            {"value": "std", "label": "720p (стандарт)", "extra_cost": 0},
+                            {"value": "pro", "label": "1080p (профессионал)", "extra_cost": 15},
+                            {"value": "4k", "label": "4K (Ultra HD)", "extra_cost": 40},
+                        ]
+                    },
+                    {"name": "audio", "type": "checkbox", "label": "Сгенерировать звук", "extra_cost": 5},
+                ]
+            }]
+        },
+        "constraints": {},
+        "metadata": {
+            "output_type": "video", "video_api": "apimart",
+            "supports_image_to_video": True, "i2v_param": "image_urls",
+        },
+    },
+
+    # MiniMax Hailuo 2.3 Fast — бюджетный/быстрый тир уже интегрированного
+    # Hailuo 2.3, тот же набор полей.
+    'hailuo23fast': {
+        "name": "Hailuo 2.3 Fast",
+        "api_defaults": {"duration": "6", "resolution": "768p", "prompt_optimizer": True},
+        "ui_settings": {
+            "sections": [{
+                "title": "Настройки видео",
+                "fields": [
+                    _duration_field([(6, 0), (10, 6)]),
+                    {
+                        "name": "resolution", "type": "select", "label": "Качество", "extra_cost": 0,
+                        "options": [
+                            {"value": "768p", "label": "768p (HD)", "extra_cost": 0},
+                            {"value": "1080p", "label": "1080p (Full HD, только 6 сек)", "extra_cost": 8},
+                        ]
+                    },
+                    {"name": "prompt_optimizer", "type": "checkbox", "label": "Автоулучшение промта", "extra_cost": 0},
+                ]
+            }]
+        },
+        "constraints": {},
+        "metadata": {
+            "output_type": "video", "video_api": "apimart",
+            "supports_image_to_video": True, "i2v_param": "first_frame_image",
+        },
+    },
+
+    # Vidu Q3 Pro — старший тир над уже интегрированным viduq3-turbo.
+    'viduq3pro': {
+        "name": "Vidu Q3 Pro",
+        "api_defaults": {"duration": "5", "resolution": "1080p", "aspect_ratio": "16:9", "audio": True},
+        "ui_settings": {
+            "sections": [{
+                "title": "Настройки видео",
+                "fields": [
+                    _aspect_field(["16:9", "9:16", "1:1", "4:3", "3:4"]),
+                    _duration_field([(4, 0), (5, 0), (8, 8), (12, 15), (16, 22)]),
+                    {
+                        "name": "resolution", "type": "select", "label": "Качество", "extra_cost": 0,
+                        "options": [
+                            {"value": "720p", "label": "720p (HD)", "extra_cost": 0},
+                            {"value": "1080p", "label": "1080p (Full HD)", "extra_cost": 0},
+                        ]
+                    },
+                    {"name": "audio", "type": "checkbox", "label": "Сгенерировать звук", "extra_cost": 0},
+                ]
+            }]
+        },
+        "constraints": {},
+        "metadata": {
+            "output_type": "video", "video_api": "apimart",
+            "supports_image_to_video": True, "i2v_param": "image_urls",
+        },
+    },
+
+    # Lightricks LTX 2.3 (text-to-video) — новый вендор, бюджетный/быстрый
+    # тир. Контракт параметров не проверен вживую — только универсальные
+    # aspect_ratio/duration, без вендор-специфичных полей (см. комментарий
+    # выше блока).
+    'ltx23': {
+        "name": "LTX 2.3",
+        "api_defaults": {"duration": "5", "aspect_ratio": "16:9"},
+        "ui_settings": {
+            "sections": [{
+                "title": "Настройки видео",
+                "fields": [
+                    _aspect_field(["16:9", "9:16", "1:1"]),
+                    _duration_field([(3, 0), (5, 0), (8, 5)]),
+                ]
+            }]
+        },
+        "constraints": {},
+        "metadata": {
+            "output_type": "video", "video_api": "apimart",
+            "supports_image_to_video": False,
+        },
+    },
+
+    # Seedance 2.0 Fast — быстрый/дешёвый тир уже интегрированного seedance20,
+    # тот же набор полей (без 4K — быстрый тир его не даёт).
+    'seedance20fast': {
+        "name": "Seedance 2.0 Fast",
+        "api_defaults": {"duration": "5", "size": "adaptive", "resolution": "720p", "generate_audio": False},
+        "ui_settings": {
+            "sections": [{
+                "title": "Настройки видео",
+                "fields": [
+                    {
+                        "name": "size", "type": "select", "label": "Формат", "extra_cost": 0,
+                        "options": [
+                            {"value": "adaptive", "label": "Адаптивный", "extra_cost": 0},
+                            {"value": "16:9", "label": "16:9 (горизонталь)", "extra_cost": 0},
+                            {"value": "9:16", "label": "9:16 (вертикаль)", "extra_cost": 0},
+                            {"value": "1:1", "label": "1:1 (квадрат)", "extra_cost": 0},
+                        ]
+                    },
+                    _duration_field([(4, 0), (5, 0), (6, 3), (8, 6), (10, 10)]),
+                    {
+                        "name": "resolution", "type": "select", "label": "Качество", "extra_cost": 0,
+                        "options": [
+                            {"value": "480p", "label": "480p (стандарт)", "extra_cost": 0},
+                            {"value": "720p", "label": "720p (HD)", "extra_cost": 0},
+                            {"value": "1080p", "label": "1080p (Full HD)", "extra_cost": 8},
+                        ]
+                    },
+                    {"name": "generate_audio", "type": "checkbox", "label": "Сгенерировать аудиодорожку", "extra_cost": 0},
+                ]
+            }]
+        },
+        "constraints": {},
+        "metadata": {
+            "output_type": "video", "video_api": "apimart",
+            "supports_image_to_video": True, "i2v_param": "image_urls",
+        },
+    },
+
+    # Veo 3.1 Lite — бюджетный тир Veo 3.1 ниже уже интегрированного Fast.
+    'veo3lite': {
+        "name": "Veo 3.1 Lite",
+        "api_defaults": {"duration": 8, "aspect_ratio": "16:9", "resolution": "720p"},
+        "ui_settings": {
+            "sections": [{
+                "title": "Настройки видео (8 сек, фиксировано)",
+                "fields": [
+                    _aspect_field(["16:9", "9:16"]),
+                ]
+            }]
+        },
+        "constraints": {},
+        "metadata": {
+            "output_type": "video", "video_api": "apimart",
+            "supports_image_to_video": True, "i2v_param": "image_urls",
+        },
+    },
 }
 
 
@@ -754,6 +1085,108 @@ VIDEO_MODELS = [
         order=13,
         description='Pixverse v6 — самая доступная видео-модель: до 15 секунд, звук, 8 форматов кадра.',
         config_key='pixverse6',
+        is_popular=False,
+    ),
+
+    # ── B14 (2026-07-24) — расширение каталога ──────────────────────────
+    dict(
+        name='Wan 2.7',
+        slug='wan-2-7',
+        model_name='wan2.7',
+        cost_per_message=45,
+        order=14,
+        description='Alibaba Wan 2.7 — новое поколение: до 15 секунд со звуком, смена планов.',
+        config_key='wan27',
+        is_popular=False,
+    ),
+    dict(
+        name='Seedance 4.5',
+        slug='seedance-4-5',
+        model_name='doubao-seedance-4-5',
+        cost_per_message=70,
+        order=15,
+        description='Флагман ByteDance Seedance 4.5 — до 15 секунд, 4K, аудиодорожка, фиксированная камера.',
+        config_key='seedance45',
+        is_popular=True,
+    ),
+    dict(
+        name='Kling 3.0 Turbo',
+        slug='kling-3-0-turbo',
+        model_name='kling-3.0-turbo',
+        cost_per_message=65,
+        order=16,
+        description='Новый флагман Kuaishou — турбо-режим для более быстрой генерации в высоком качестве.',
+        config_key='kling30turbo',
+        is_popular=True,
+    ),
+    dict(
+        name='Kling v3 Motion Control',
+        slug='kling-v3-motion-control',
+        model_name='kling-v3-motion-control',
+        cost_per_message=75,
+        order=17,
+        description='Kling v3 с управлением траекторией камеры — для сложной операторской работы.',
+        config_key='klingv3motion',
+        is_popular=False,
+    ),
+    dict(
+        name='Kling v3 Omni',
+        slug='kling-v3-omni',
+        model_name='kling-v3-omni',
+        cost_per_message=75,
+        order=18,
+        description='Kling v3 в мультиреференсном режиме — согласованность персонажа и сцены между кадрами.',
+        config_key='klingv3omni',
+        is_popular=False,
+    ),
+    dict(
+        name='Hailuo 2.3 Fast',
+        slug='hailuo-2-3-fast',
+        model_name='MiniMax-Hailuo-2.3-Fast',
+        cost_per_message=25,
+        order=19,
+        description='Быстрый и бюджетный тир MiniMax Hailuo 2.3 — то же кинематографичное движение, дешевле.',
+        config_key='hailuo23fast',
+        is_popular=False,
+    ),
+    dict(
+        name='Vidu Q3 Pro',
+        slug='vidu-q3-pro',
+        model_name='viduq3-pro',
+        cost_per_message=45,
+        order=20,
+        description='Старший тир Vidu Q3 — более высокое качество, чем Turbo, до 1080p.',
+        config_key='viduq3pro',
+        is_popular=False,
+    ),
+    dict(
+        name='LTX 2.3',
+        slug='ltx-2-3',
+        model_name='ltx-2.3-text-video',
+        cost_per_message=18,
+        order=21,
+        description='Lightricks LTX 2.3 — сверхбыстрая и доступная генерация видео по тексту.',
+        config_key='ltx23',
+        is_popular=False,
+    ),
+    dict(
+        name='Seedance 2.0 Fast',
+        slug='seedance-2-0-fast',
+        model_name='doubao-seedance-2.0-fast',
+        cost_per_message=28,
+        order=22,
+        description='Быстрый и доступный тир Seedance 2.0 — тот же движок ByteDance, ниже цена.',
+        config_key='seedance20fast',
+        is_popular=False,
+    ),
+    dict(
+        name='Veo 3.1 Lite',
+        slug='veo-3-1-lite',
+        model_name='veo3.1-lite',
+        cost_per_message=30,
+        order=23,
+        description='Бюджетная версия Veo 3.1 от Google DeepMind — доступный вход в экосистему Veo.',
+        config_key='veo3lite',
         is_popular=False,
     ),
 ]

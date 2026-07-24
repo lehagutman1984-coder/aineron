@@ -1074,25 +1074,6 @@ def generate_upscale(generation_id, user_id=None, factor=2, image_url=None, plac
     return gen
 
 
-def _size_to_resolution_and_ratio(size_str):
-    """Из '1280x720' возвращает ('720p', '16:9')"""
-    try:
-        w, h = (int(x) for x in str(size_str).lower().split('x'))
-    except Exception:
-        return '720p', '16:9'
-    if max(w, h) >= 3000:
-        res = '4k'
-    elif max(w, h) >= 1900:
-        res = '1080p'
-    else:
-        res = '720p'
-    ratio_map = {(16, 9): '16:9', (9, 16): '9:16', (1, 1): '1:1', (4, 3): '4:3', (3, 4): '3:4'}
-    from math import gcd
-    g = gcd(w, h)
-    ratio = ratio_map.get((w // g, h // g), '16:9' if w > h else ('9:16' if h > w else '1:1'))
-    return res, ratio
-
-
 def _save_video_binary(content, message, prompt, gen=None):
     """Сохраняет бинарные данные как mp4, возвращает GeneratedImage.
 
@@ -1184,9 +1165,17 @@ def _fail_video_gen(gen):
 def generate_video_laozhang(network, user_msg, message, user_settings=None):
     """
     Генерирует видео через laozhang.ai.
-    Правильный эндпоинт: POST /v1/videos (multipart/form-data).
-    Статус: GET /v1/videos/{id}
-    Скачать: GET /v1/videos/{id}/content
+
+    Эндпоинт создания (B14, проверено вживую 2026-07-24): POST /v1/video/generations
+    (JSON, ЕДИНСТВЕННОЕ число "video") — НЕ /v1/videos (multipart), тот путь отдаёт
+    503 "no available channels" для любой модели, это отдельный нерабочий роут.
+    Статус:  GET /v1/videos/{id}          (уже было верно)
+    Скачать: GET /v1/videos/{id}/content  (уже было верно, бинарный MP4, без URL в JSON)
+
+    Сейчас реально работает только для двух моделей (per-model провижининг
+    каналов на laozhang, не наша конфигурация): veo-3.1-fast-generate-preview,
+    veo-3.1-generate-preview — см. metadata.laozhang_fallback_model в
+    add_video_models.py (проставлен только для Veo 3.1 Fast/Quality).
     """
     config = network.config_json or {}
     model_id = network.model_name
@@ -1204,28 +1193,25 @@ def generate_video_laozhang(network, user_msg, message, user_settings=None):
     total_cost = base_cost + extra_cost
 
     base_url = settings.LAOZHANG_API_URL.rstrip('/')  # https://api.laozhang.ai/v1
-    auth_headers = {"Authorization": f"Bearer {settings.LAOZHANG_API_KEY}"}
+    auth_headers = {"Authorization": f"Bearer {settings.LAOZHANG_API_KEY}", "Content-Type": "application/json"}
 
-    size = str(final_args.get('size', '1280x720'))
-    seconds = str(final_args.get('seconds', '8'))
-    resolution, aspect_ratio = _size_to_resolution_and_ratio(size)
+    # B14: config_json — общий с apimart-путём, поэтому длительность/формат
+    # приходят под apimart-именами (duration, aspect_ratio), а не seconds/size,
+    # которые эта функция раньше (ошибочно) искала сама у себя и никогда не
+    # находила. seconds — единственный параметр, который проверен вживую как
+    # реально принимаемый laozhang; size шлём только с одним из двух буквально
+    # подтверждённых значений (720p-эквивалент), остальные resolution-варианты
+    # (1080p/4k) на этом фолбэк-пути не гарантированы — деградируем до 720p,
+    # это лучше, чем рисковать отклонённым запросом на непроверенном значении.
+    seconds = str(final_args.get('seconds') or final_args.get('duration') or '8')
+    aspect_ratio = str(final_args.get('aspect_ratio') or 'landscape')
+    size = '720x1280' if aspect_ratio.startswith('9') else '1280x720'
     # img2video: image_url приходит только через user_settings (нет в ui_settings.sections)
     image_url = final_args.get('image_url') or (user_settings or {}).get('image_url', '')
 
-    # multipart/form-data — requests задаёт Content-Type автоматически через files=
-    fields = {
-        "model": model_id,
-        "prompt": prompt,
-        "seconds": seconds,
-        "duration": seconds,
-        "size": size,
-        "resolution": resolution,
-        "aspectRatio": aspect_ratio,
-    }
-    if final_args.get('negativePrompt'):
-        fields['negativePrompt'] = str(final_args['negativePrompt'])
+    body = {"model": model_id, "prompt": prompt, "seconds": seconds, "size": size}
     if image_url:
-        fields['image_url'] = image_url
+        body['image_url'] = image_url
 
     # Placeholder для трекинга прогресса (SSE) — создаём ДО polling
     gen_ph = _create_video_placeholder(message, prompt, model_id, 'laozhang')
@@ -1233,11 +1219,11 @@ def generate_video_laozhang(network, user_msg, message, user_settings=None):
     saved_media_direct = []
     video_urls = []
     try:
-        logger.info(f"Video POST /v1/videos model={model_id} size={size} seconds={seconds} img2video={bool(image_url)}")
+        logger.info(f"Video POST /v1/video/generations model={model_id} size={size} seconds={seconds} img2video={bool(image_url)}")
         resp = requests.post(
-            f"{base_url}/videos",
+            f"{base_url}/video/generations",
             headers=auth_headers,
-            files={k: (None, v) for k, v in fields.items()},
+            json=body,
             timeout=120,
         )
         resp.raise_for_status()
@@ -1256,13 +1242,26 @@ def generate_video_laozhang(network, user_msg, message, user_settings=None):
             if job_id:
                 logger.info(f"Video async job_id={job_id}, polling /v1/videos/{job_id}")
                 MAX_ATTEMPTS = 120
+                MAX_CONSECUTIVE_POLL_FAILURES = 5  # B14: не бросаем принятую задачу из-за одного сетевого сбоя
+                consecutive_poll_failures = 0
                 for attempt in range(MAX_ATTEMPTS):
                     # Первые 20 итераций — каждые 3 сек (первая минута),
                     # затем каждые 8 сек (до 15 мин суммарно)
                     time.sleep(3 if attempt < 20 else 8)
-                    poll = requests.get(f"{base_url}/videos/{job_id}", headers=auth_headers, timeout=30)
-                    poll.raise_for_status()
-                    pd = poll.json()
+                    try:
+                        poll = requests.get(f"{base_url}/videos/{job_id}", headers=auth_headers, timeout=30)
+                        poll.raise_for_status()
+                        pd = poll.json()
+                    except Exception as poll_exc:
+                        consecutive_poll_failures += 1
+                        logger.warning(
+                            f"Video poll {attempt + 1}/{MAX_ATTEMPTS} failed "
+                            f"({consecutive_poll_failures}/{MAX_CONSECUTIVE_POLL_FAILURES}): {poll_exc}"
+                        )
+                        if consecutive_poll_failures >= MAX_CONSECUTIVE_POLL_FAILURES:
+                            raise
+                        continue
+                    consecutive_poll_failures = 0
                     status = (pd.get('status') or '').lower()
                     logger.info(f"Video poll {attempt + 1}/{MAX_ATTEMPTS}: status={status} progress={pd.get('progress', '?')}")
                     _bump_video_progress(gen_ph, pd.get('progress'), attempt, MAX_ATTEMPTS)
@@ -1621,15 +1620,28 @@ def generate_video_apimart(network, user_msg, message, user_settings=None):
                 pass
 
         MAX_ATTEMPTS = 120
+        MAX_CONSECUTIVE_POLL_FAILURES = 5  # B14: не бросаем уже принятую задачу из-за одного сетевого сбоя
+        consecutive_poll_failures = 0
         for attempt in range(MAX_ATTEMPTS):
             time.sleep(3 if attempt < 20 else 8)
-            poll_resp = requests.get(
-                f"{base_url}/tasks/{task_id}",
-                headers={"Authorization": f"Bearer {api_key}"},
-                timeout=30,
-            )
-            poll_resp.raise_for_status()
-            pd = poll_resp.json()
+            try:
+                poll_resp = requests.get(
+                    f"{base_url}/tasks/{task_id}",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                    timeout=30,
+                )
+                poll_resp.raise_for_status()
+                pd = poll_resp.json()
+            except Exception as poll_exc:
+                consecutive_poll_failures += 1
+                logger.warning(
+                    f"APIMart poll {attempt + 1}/{MAX_ATTEMPTS} failed "
+                    f"({consecutive_poll_failures}/{MAX_CONSECUTIVE_POLL_FAILURES}): {poll_exc}"
+                )
+                if consecutive_poll_failures >= MAX_CONSECUTIVE_POLL_FAILURES:
+                    raise
+                continue
+            consecutive_poll_failures = 0
 
             # Поддержка как top-level, так и вложенного в data
             status_obj = pd['data'] if isinstance(pd.get('data'), dict) else pd
