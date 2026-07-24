@@ -439,11 +439,14 @@ class Command(BaseCommand):
     help = 'Добавляет популярные модели laozhang.ai в базу данных'
 
     def _get_or_create_category(self, name, slug, icon, order):
-        # Ищем по slug, а не по name: под modeltranslation (INTL_MODE=1,
-        # активный язык 'en') name фильтруется по переведённому полю
-        # (name_en), которое может не совпадать с переданным ru-текстом,
-        # что приводило к попытке создать дубликат и падению на unique(name).
-        cat = Category.objects.filter(slug=slug).first()
+        # Ищем сначала по slug (см. ниже про modeltranslation), но реальные
+        # slug в БД — транслит ('tekst', 'izobrazheniya'), а не 'text'/'images'
+        # из этой команды: чистый lookup по slug их не находил и падал на
+        # unique(name) при попытке создать дубликат с тем же name. Фоллбэк на
+        # name закрывает этот случай, не теряя оригинальную защиту по slug
+        # (INTL_MODE=1, активный язык 'en': name фильтруется по переведённому
+        # полю name_en, которое может не совпадать с переданным ru-текстом).
+        cat = Category.objects.filter(slug=slug).first() or Category.objects.filter(name=name).first()
         if cat:
             return cat
         cat = Category.objects.create(name=name, slug=slug, icon=icon, order=order)

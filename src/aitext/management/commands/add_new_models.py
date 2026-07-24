@@ -170,7 +170,11 @@ class Command(BaseCommand):
     help = 'Добавляет новые модели: Seedream, Gemini Image, GPT Image 1.5, DeepSeek V4, Gemini 3.x, Grok 4.3 и др.'
 
     def _get_or_create_category(self, name, slug, icon, order):
-        cat = Category.objects.filter(name=name).first()
+        # slug-первый lookup (не только name): под modeltranslation (INTL_MODE=1,
+        # aineron.net) name фильтруется по переведённому полю name_en, которое
+        # может не совпадать с переданным ru-текстом — тот же класс бага, что
+        # чинили в add_laozhang_models.py (см. его _get_or_create_category).
+        cat = Category.objects.filter(slug=slug).first() or Category.objects.filter(name=name).first()
         if cat:
             return cat
         base_slug = slug
