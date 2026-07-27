@@ -1092,8 +1092,10 @@ def _save_video_binary(content, message, prompt, gen=None):
     return GeneratedImage.objects.create(message=message, image=path, prompt=prompt, media_type='video')
 
 
-def _create_video_placeholder(message, prompt, model_id, provider):
-    """Создаёт placeholder-строку GeneratedImage для видео ДО начала polling.
+def _create_video_placeholder(message, prompt, model_id, provider, media_type='video'):
+    """Создаёт placeholder-строку GeneratedImage для видео/task-based изображений
+    ДО начала polling (имя сохранено для совместимости — исходно только для видео,
+    media_type добавлен для generate_image_apimart_async).
 
     Нужно, чтобы SSE-эндпоинт прогресса (в web-процессе) мог читать прогресс,
     обновляемый Celery-воркером во время генерации. image='' до завершения —
@@ -1104,19 +1106,19 @@ def _create_video_placeholder(message, prompt, model_id, provider):
         # Переиспользуем пустой placeholder, если он уже есть (apimart resume после
         # рестарта воркера) — чтобы не плодить дубли.
         existing = GeneratedImage.objects.filter(
-            message=message, media_type='video', image=''
+            message=message, media_type=media_type, image=''
         ).order_by('-created_at').first()
         if existing is not None:
             existing.status = 'running'
             existing.save(update_fields=['status'])
             return existing
         return GeneratedImage.objects.create(
-            message=message, image='', prompt=prompt, media_type='video',
+            message=message, image='', prompt=prompt, media_type=media_type,
             model_name=model_id or '', provider=provider, source='chat',
             status='running', progress=0,
         )
     except Exception as e:
-        logger.warning(f"Не удалось создать placeholder видео: {e}")
+        logger.warning(f"Не удалось создать placeholder {media_type}: {e}")
         return None
 
 
@@ -1748,6 +1750,140 @@ def generate_video_apimart(network, user_msg, message, user_settings=None):
     return f"Модель \"{model_name}\" не вернула видео. Попробуйте изменить промт.", [], total_cost
 
 
+def generate_image_apimart_async(network, user_msg, message, user_settings=None):
+    """
+    Генерирует изображение через apimart.ai по task-полу контракту:
+    POST /v1/images/generations → task_id, GET /v1/tasks/{id} → result.images[].url.
+
+    Это НЕ синхронный OpenAI-совместимый images.generate() (который использует
+    обычный путь ниже в generate_with_falai) — некоторые модели apimart (Qwen
+    Image 2.0, Imagen 4.0, Z-Image Turbo — проверено вживую 2026-07-27) отдают
+    только задачу с опросом, как видео. Роутится через metadata.image_api ==
+    'apimart_async' (add_laozhang_models.py).
+    """
+    config = network.config_json or {}
+    model_id = network.model_name
+    prompt = user_msg.content if user_msg else ""
+    base_cost = network.cost_per_message
+
+    if user_settings:
+        final_args, errors, extra_cost = validate_and_merge_settings(config, user_settings)
+        if errors:
+            raise Exception("Ошибки в настройках: " + "; ".join(errors))
+    else:
+        final_args = config.get('api_defaults', {}).copy()
+        extra_cost = 0
+
+    total_cost = base_cost + extra_cost
+
+    api_key = getattr(settings, 'APIMART_API_KEY', '')
+    base_url = getattr(settings, 'APIMART_API_URL', 'https://api.apimart.ai/v1').rstrip('/')
+    auth_headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+
+    body = {"model": model_id, "prompt": prompt}
+    for param in ['size', 'n', 'aspect_ratio', 'quality']:
+        if param in final_args and final_args[param] is not None:
+            body[param] = final_args[param]
+
+    gen_ph = _create_video_placeholder(message, prompt, model_id, 'apimart', media_type='image')
+
+    image_urls = []
+    try:
+        logger.info(f"APIMart Image POST model={model_id} params={body}")
+        resp = requests.post(f"{base_url}/images/generations", headers=auth_headers, json=body, timeout=60)
+        resp.raise_for_status()
+        data = resp.json()
+        logger.info(f"APIMart image creation response: {str(data)[:400]}")
+
+        items = data.get('data') or []
+        task_id = None
+        if isinstance(items, list):
+            for item in items:
+                task_id = item.get('task_id')
+                if task_id:
+                    break
+        elif isinstance(items, dict):
+            task_id = items.get('task_id')
+        if not task_id:
+            raise Exception(f"Нет task_id в ответе APIMart: {str(data)[:200]}")
+
+        logger.info(f"APIMart image task_id={task_id}, polling...")
+
+        MAX_ATTEMPTS = 40
+        MAX_CONSECUTIVE_POLL_FAILURES = 5
+        consecutive_poll_failures = 0
+        for attempt in range(MAX_ATTEMPTS):
+            time.sleep(3)
+            try:
+                poll_resp = requests.get(
+                    f"{base_url}/tasks/{task_id}",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                    timeout=30,
+                )
+                poll_resp.raise_for_status()
+                pd = poll_resp.json()
+            except Exception as poll_exc:
+                consecutive_poll_failures += 1
+                logger.warning(
+                    f"APIMart image poll {attempt + 1}/{MAX_ATTEMPTS} failed "
+                    f"({consecutive_poll_failures}/{MAX_CONSECUTIVE_POLL_FAILURES}): {poll_exc}"
+                )
+                if consecutive_poll_failures >= MAX_CONSECUTIVE_POLL_FAILURES:
+                    raise
+                continue
+            consecutive_poll_failures = 0
+
+            status_obj = pd['data'] if isinstance(pd.get('data'), dict) else pd
+            status = (status_obj.get('status') or '').lower()
+            progress = status_obj.get('progress', '?')
+            logger.info(f"APIMart image poll {attempt + 1}/{MAX_ATTEMPTS}: status={status} progress={progress}")
+            _bump_video_progress(gen_ph, status_obj.get('progress'), attempt, MAX_ATTEMPTS)
+
+            if status == 'completed':
+                result = status_obj.get('result') or {}
+                images = result.get('images', [])
+                for img in images:
+                    url = img.get('url')
+                    if isinstance(url, list):
+                        url = url[0] if url else None
+                    if url and str(url).startswith('http'):
+                        image_urls.append(url)
+                if not image_urls:
+                    logger.warning(f"APIMart image completed но нет URL. result={str(result)[:400]}")
+                break
+            elif status in ('failed', 'error', 'cancelled'):
+                raise Exception(f"APIMart генерация изображения завершилась ошибкой: {status_obj.get('message', status)}")
+        else:
+            raise Exception("APIMart изображение: превышено время ожидания генерации")
+    except Exception:
+        _fail_video_gen(gen_ph)
+        raise
+
+    model_name = config.get('name', network.name)
+    saved_media = []
+    for url in image_urls:
+        target = gen_ph if (gen_ph is not None and not gen_ph.image) else None
+        gen = save_media_from_url(url, message, prompt, media_type='image', gen=target, max_retries=3)
+        if gen:
+            saved_media.append(gen)
+
+    if _finalize_video_gen(gen_ph):
+        if gen_ph not in saved_media:
+            saved_media.append(gen_ph)
+    else:
+        _fail_video_gen(gen_ph)
+
+    if saved_media:
+        text_parts = [f"Сгенерировано {len(saved_media)} изображение(й) моделью \"{model_name}\"."]
+        for m in saved_media:
+            text_parts.append(
+                f"<img src='{m.image.url}' style='max-width:100%; border-radius:12px;' />"
+            )
+        return "\n\n".join(text_parts), saved_media, total_cost
+
+    return f"Модель \"{model_name}\" не вернула изображение. Попробуйте изменить промт.", [], total_cost
+
+
 def generate_with_falai(network, user_msg, message, user_settings=None):
     """
     Генерирует изображения/видео через laozhang.ai.
@@ -1786,6 +1922,11 @@ def generate_with_falai(network, user_msg, message, user_settings=None):
         if video_api == 'seedance':
             return generate_seedance_video(network, user_msg, message, user_settings)
         return generate_video_laozhang(network, user_msg, message, user_settings)
+
+    # Изображения с task-полом контрактом apimart (не синхронный images.generate()) —
+    # см. generate_image_apimart_async().
+    if config.get('metadata', {}).get('image_api') == 'apimart_async':
+        return generate_image_apimart_async(network, user_msg, message, user_settings)
 
     model_id = network.model_name
     if not model_id:

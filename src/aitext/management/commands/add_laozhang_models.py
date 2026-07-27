@@ -154,6 +154,17 @@ IMAGE_CONFIG = {
         "constraints": {},
         "metadata": {"requires_input_images": False, "minimal_params": True, "output_type": "image"}
     },
+    # apimart отдаёт эти модели через task-полл контракт (POST → task_id →
+    # GET /tasks/{id} → result.images[].url), а не синхронный images.generate() —
+    # image_api='apimart_async' роутит на generate_image_apimart_async()
+    # в fal_utils.py вместо обычного пути. Проверено вживую 2026-07-27.
+    'apimart_async_image': {
+        "name": "APIMart Image",
+        "api_defaults": {},
+        "ui_settings": {"sections": []},
+        "constraints": {},
+        "metadata": {"requires_input_images": False, "minimal_params": True, "output_type": "image", "image_api": "apimart_async"}
+    },
 }
 
 # Sprint 4: поля Creative Controls для миграции уже задеплоенных строк
@@ -445,6 +456,22 @@ IMAGE_MODELS = [
     dict(name='Seedream 5.0', slug='seedream-5-0', model_name='seedream-5-0-260128', cost_per_message=11, cost_kopecks=1100, order=29,
          description='Новейшая модель ByteDance для фотореалистичной генерации изображений.',
          config_key='seedream', is_popular=True),
+
+    # ── Новые модели apimart с task-полл контрактом (добавлено 2026-07-27) ──
+    # Проверены вживую: реальная генерация, задача дошла до completed с URL
+    # готового изображения. Только apimart (нет на laozhang) — провайдер
+    # для этих моделей задаётся не полем provider (остаётся 'fal-ai' как у
+    # всех image-моделей), а роутингом внутри generate_with_falai по
+    # metadata.image_api.
+    dict(name='Imagen 4.0', slug='imagen-4-0', model_name='imagen-4.0-apimart', cost_per_message=10, cost_kopecks=1000, order=23,
+         description='Флагманская модель генерации изображений Google Imagen.',
+         config_key='apimart_async_image', is_popular=True),
+    dict(name='Qwen Image 2.0', slug='qwen-image-2-0', model_name='qwen-image-2.0', cost_per_message=8, cost_kopecks=800, order=40,
+         description='Новая модель генерации изображений от Alibaba Qwen.',
+         config_key='apimart_async_image'),
+    dict(name='Z-Image Turbo', slug='z-image-turbo', model_name='z-image-turbo', cost_per_message=5, cost_kopecks=500, order=41,
+         description='Быстрая и доступная модель генерации изображений.',
+         config_key='apimart_async_image'),
 ]
 
 
