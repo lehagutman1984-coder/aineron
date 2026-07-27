@@ -20,6 +20,8 @@
     "imageTitle": "Aineron · Pembuatan Gambar",
     "imageBody": "Deskripsikan gambar dengan perintah:\n\n<code>/image matahari terbenam di atas laut, gaya anime</code>",
     "notLinkedShort": "Tautkan akun Anda dengan /start",
+    "cancelNothing": "Tidak ada yang perlu dibatalkan.",
+    "cancelDone": "Dibatalkan.",
     "helpTitle": "Aineron · Bantuan",
     "helpBody": "<b>Obrolan & pembuatan</b>\nAjukan pertanyaan apa pun — AI akan menjawab.\n/image &lt;deskripsi&gt; — buat gambar\n\n<b>Kontrol</b>\n/models — pilih model AI\n/balance — saldo dan isi ulang\n/settings — pengaturan\n/language — ubah bahasa bot\n/newchat — mulai percakapan baru\nIsi ulang saldo Anda: aineron.net/account/billing/",
     "videoTitle": "Aineron · Pembuatan Video",
@@ -159,7 +161,8 @@
     "recognitionFailed": "Tidak dapat mengenali pesan suara. Silakan coba lagi.",
     "synthesizing": "Mensintesis ucapan...",
     "noTextToSpeak": "Tidak ada teks untuk dibacakan.",
-    "synthesisError": "Sintesis ucapan gagal. Silakan coba lagi nanti."
+    "synthesisError": "Sintesis ucapan gagal. Silakan coba lagi nanti.",
+    "insufficientBalance": "Saldo tidak cukup untuk ini ({price})."
   },
   "video": {
     "title": "Aineron · Video",

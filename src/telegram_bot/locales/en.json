@@ -64,6 +64,8 @@
     "imageTitle": "Aineron · Image generation",
     "imageBody": "Describe the image with a command:\n\n<code>/image sunset over the sea, anime style</code>",
     "notLinkedShort": "Link your account with /start",
+    "cancelNothing": "Nothing to cancel.",
+    "cancelDone": "Cancelled.",
     "helpTitle": "Aineron · Help",
     "helpBody": "<b>Chat & generation</b>\nAsk any question — the AI will reply.\n/image &lt;description&gt; — generate an image\n\n<b>Controls</b>\n/models — choose an AI model\n/balance — balance and top-up\n/settings — settings\n/language — change bot language\n/newchat — start a new conversation\nTop up your balance: aineron.net/account/billing/",
     "videoTitle": "Aineron · Video generation",
@@ -242,7 +244,8 @@
     "recognitionFailed": "Couldn't recognize the voice message. Please try again.",
     "synthesizing": "Synthesizing speech...",
     "noTextToSpeak": "No text to read aloud.",
-    "synthesisError": "Speech synthesis failed. Please try later."
+    "synthesisError": "Speech synthesis failed. Please try later.",
+    "insufficientBalance": "Insufficient balance for this ({price})."
   },
   "video": {
     "title": "Aineron · Video",

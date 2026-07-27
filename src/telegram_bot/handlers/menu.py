@@ -1,6 +1,6 @@
 import logging
 from aiogram import Router
-from aiogram.filters import StateFilter
+from aiogram.filters import Command, StateFilter
 from aiogram.types import Message
 from asgiref.sync import sync_to_async
 from django.conf import settings as dj_settings
@@ -10,6 +10,23 @@ from telegram_bot.i18n import t, resolve_language
 
 logger = logging.getLogger(__name__)
 router = Router()
+
+
+# BUG-N (TELEGRAM_SUPREMACY_PLAN_V2.md): не было глобального выхода из FSM —
+# /cancel работал только точечно в паре хендлеров. menu.router подключается
+# одним из первых (bot.py), поэтому /cancel здесь перехватывает и сбрасывает
+# состояние независимо от того, в каком именно мастере (напоминание, /task,
+# /mybot, секретарь и т.д.) сейчас находится пользователь.
+@router.message(Command('cancel'))
+async def cmd_cancel(message: Message, state=None, tg_user=None):
+    lang = resolve_language(tg_user, message.from_user)
+    current_state = await state.get_state() if state else None
+    if current_state is None:
+        text = 'Нечего отменять.' if lang == 'ru' else t('menu.cancelNothing', lang)
+    else:
+        await state.clear()
+        text = 'Отменено.' if lang == 'ru' else t('menu.cancelDone', lang)
+    await message.answer(text)
 
 MENU_ACTION_KEYS = (
     'chat', 'image', 'video', 'balance', 'models', 'settings',

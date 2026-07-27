@@ -20,6 +20,8 @@
     "imageTitle": "Aineron · توليد الصور",
     "imageBody": "وصف الصورة باستخدام الأمر:\n\n<code>/image غروب الشمس فوق البحر، بأسلوب الأنمي</code>",
     "notLinkedShort": "اربط حسابك باستخدام /start",
+    "cancelNothing": "لا يوجد شيء لإلغائه.",
+    "cancelDone": "تم الإلغاء.",
     "helpTitle": "Aineron · مساعدة",
     "helpBody": "<b>الدردشة والتوليد</b>\nاطرح أي سؤال — سيقوم الذكاء الاصطناعي بالرد.\n/image &lt;الوصف&gt; — توليد صورة\n\n<b>التحكم</b>\n/models — اختيار نموذج الذكاء الاصطناعي\n/balance — الرصيد وإعادة الشحن\n/settings — الإعدادات\n/language — تغيير لغة البوت\n/newchat — بدء محادثة جديدة\nاشحن رصيدك: aineron.net/account/billing/",
     "videoTitle": "Aineron · توليد الفيديو",
@@ -159,7 +161,8 @@
     "recognitionFailed": "تعذر التعرف على الرسالة الصوتية. يرجى المحاولة مرة أخرى.",
     "synthesizing": "جارٍ توليد الصوت...",
     "noTextToSpeak": "لا يوجد نص للقراءة بصوت عالٍ.",
-    "synthesisError": "فشل توليد الصوت. يرجى المحاولة لاحقًا."
+    "synthesisError": "فشل توليد الصوت. يرجى المحاولة لاحقًا.",
+    "insufficientBalance": "الرصيد غير كافٍ لهذا ({price})."
   },
   "video": {
     "title": "Aineron · فيديو",

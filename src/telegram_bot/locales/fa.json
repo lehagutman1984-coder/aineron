@@ -20,6 +20,8 @@
     "imageTitle": "Aineron · تولید تصویر",
     "imageBody": "تصویر را با یک دستور توصیف کنید:\n\n<code>/image غروب خورشید بر فراز دریا، سبک انیمه</code>",
     "notLinkedShort": "حساب خود را با /start متصل کنید",
+    "cancelNothing": "چیزی برای لغو وجود ندارد.",
+    "cancelDone": "لغو شد.",
     "helpTitle": "Aineron · راهنما",
     "helpBody": "<b>چت و تولید</b>\nهر سوالی بپرسید — هوش مصنوعی پاسخ خواهد داد.\n/image &lt;توضیحات&gt; — تولید تصویر\n\n<b>کنترل‌ها</b>\n/models — انتخاب مدل هوش مصنوعی\n/balance — موجودی و شارژ\n/settings — تنظیمات\n/language — تغییر زبان ربات\n/newchat — شروع مکالمه جدید\nموجودی خود را شارژ کنید: aineron.net/account/billing/",
     "videoTitle": "Aineron · تولید ویدیو",
@@ -159,7 +161,8 @@
     "recognitionFailed": "تشخیص پیام صوتی ممکن نشد. لطفاً دوباره تلاش کنید.",
     "synthesizing": "در حال تولید گفتار...",
     "noTextToSpeak": "متنی برای خواندن وجود ندارد.",
-    "synthesisError": "تولید گفتار ناموفق بود. لطفاً بعداً دوباره تلاش کنید."
+    "synthesisError": "تولید گفتار ناموفق بود. لطفاً بعداً دوباره تلاش کنید.",
+    "insufficientBalance": "موجودی برای این کار کافی نیست ({price})."
   },
   "video": {
     "title": "Aineron · ویدیو",

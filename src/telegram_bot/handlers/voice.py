@@ -1,6 +1,7 @@
 import io
 import logging
 from aiogram import Router, F
+from aiogram.filters import StateFilter
 from aiogram.types import Message, CallbackQuery, BufferedInputFile
 from asgiref.sync import sync_to_async
 
@@ -8,6 +9,13 @@ from telegram_bot.i18n import t, resolve_language
 
 logger = logging.getLogger(__name__)
 router = Router()
+
+# BUG-Q (TELEGRAM_SUPREMACY_PLAN_V2.md): та же ставка, что и на вебе
+# для тех же вызовов laozhang.ai (api/views/audio.py: ASR_COST_KOPECKS /
+# TTS_COST_KOPECKS) — раньше голос в боте не тарифицировался вообще,
+# расход у провайдера был всегда, оплата — никогда.
+ASR_COST_KOPECKS = 100
+TTS_COST_KOPECKS = 100
 
 
 def _get_laozhang_client():
@@ -48,12 +56,38 @@ async def synthesize_speech(text: str) -> bytes:
     return await do_tts(text)
 
 
-@router.message(F.voice | F.video_note)
+def _has_enough(tg_user, cost):
+    return tg_user.user.has_enough_kopecks(cost)
+
+
+def _charge(tg_user, cost, reference):
+    return tg_user.user.spend_kopecks(cost, type='spend', reference=reference)
+
+
+has_enough_kopecks = sync_to_async(_has_enough, thread_sensitive=True)
+charge_kopecks = sync_to_async(_charge, thread_sensitive=True)
+
+
+# StateFilter(None) — voice.router подключается раньше нескольких FSM-роутеров
+# (img2img, img2video, remind, poll, tasks, business, mybot, channel — см.
+# bot.py). Без фильтра голосовое сообщение посреди любого мастера уходило
+# сюда и списывалось как обычный чат, не завершая мастер (BUG-N).
+@router.message(StateFilter(None), F.voice | F.video_note)
 async def handle_voice_message(message: Message, tg_user=None, bot=None):
     if tg_user is None:
         return
 
     lang = resolve_language(tg_user, message.from_user)
+
+    if not await has_enough_kopecks(tg_user, ASR_COST_KOPECKS):
+        from core.money import format_money
+        price = format_money(ASR_COST_KOPECKS)
+        await message.answer(
+            f"Недостаточно средств для распознавания голоса ({price})."
+            if lang == 'ru' else t('voice.insufficientBalance', lang, price=price)
+        )
+        return
+
     status_msg = await message.answer(
         "Распознаю голосовое сообщение..." if lang == 'ru' else t('voice.transcribing', lang)
     )
@@ -65,6 +99,11 @@ async def handle_voice_message(message: Message, tg_user=None, bot=None):
         ogg_bytes = ogg_io.read()
 
         text = await transcribe_audio(ogg_bytes)
+
+        # Списание ПОСЛЕ успешного распознавания (как на вебе, api/views/audio.py) —
+        # неудачные попытки не тарифицируются, возврат не нужен.
+        import uuid as _uuid
+        await charge_kopecks(tg_user, ASR_COST_KOPECKS, f'tg-asr:{_uuid.uuid4().hex[:12]}')
 
         label = '[Голосовое]:' if lang == 'ru' else t('voice.label', lang)
         await status_msg.edit_text(f"<b>{label}</b> {text}", parse_mode='HTML')
@@ -95,6 +134,16 @@ async def cb_tts(query: CallbackQuery, tg_user=None, bot=None):
 
     get_text = sync_to_async(_get_msg_text, thread_sensitive=True)
 
+    if not await has_enough_kopecks(tg_user, TTS_COST_KOPECKS):
+        from core.money import format_money
+        price = format_money(TTS_COST_KOPECKS)
+        await query.answer(
+            f"Недостаточно средств для озвучивания ({price})."
+            if lang == 'ru' else t('voice.insufficientBalance', lang, price=price),
+            show_alert=True,
+        )
+        return
+
     await query.answer("Синтезирую речь..." if lang == 'ru' else t('voice.synthesizing', lang))
     try:
         text = await get_text(msg_id)
@@ -105,6 +154,11 @@ async def cb_tts(query: CallbackQuery, tg_user=None, bot=None):
             return
 
         audio_bytes = await synthesize_speech(text)
+
+        # Списание ПОСЛЕ успешного синтеза — неудачные попытки не тарифицируются.
+        import uuid as _uuid
+        await charge_kopecks(tg_user, TTS_COST_KOPECKS, f'tg-tts:{_uuid.uuid4().hex[:12]}')
+
         audio_file = BufferedInputFile(audio_bytes, filename='response.mp3')
         await query.message.answer_voice(audio_file)
 
