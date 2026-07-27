@@ -969,6 +969,78 @@ VIDEO_CONFIG = {
             "i2v_max_images": 3, "i2v_mode": "reference",
         },
     },
+
+    # ══════════════════════════════════════════════════════════════════
+    # Добавлено 2026-07-27, каждый конфиг проверен вживую до status=completed
+    # с реальным URL готового видео (не просто "create-запрос принят") — см.
+    # project_model_catalog_2026_07_27 в памяти сессии про предыдущий баг
+    # (kling-v3-motion-control), где "200 submitted" оказалось недостаточным
+    # доказательством и модель на деле всегда падала.
+    # ══════════════════════════════════════════════════════════════════
+
+    # Kling Video O1 — новое поколение Kling поверх уже интегрированного v3.
+    # Проверено вживую ТОЛЬКО text-to-video (mode=std) — img2video-контракт
+    # для этой модели не проверялся, поэтому img2video-метаданные сознательно
+    # не проставлены (см. комментарий про kling-v3-motion-control выше).
+    'klingvideoo1': {
+        "name": "Kling Video O1",
+        "api_defaults": {"mode": "std", "duration": "5", "aspect_ratio": "16:9", "audio": False},
+        "ui_settings": {
+            "sections": [{
+                "title": "Настройки видео",
+                "fields": [
+                    _aspect_field(["16:9", "9:16", "1:1"]),
+                    _duration_field([(3, 0), (5, 0), (8, 10), (10, 18)]),
+                    {
+                        "name": "mode", "type": "select", "label": "Качество", "extra_cost": 0,
+                        "options": [
+                            {"value": "std", "label": "720p (стандарт)", "extra_cost": 0},
+                            {"value": "pro", "label": "1080p (профессионал)", "extra_cost": 15},
+                        ]
+                    },
+                    {"name": "audio", "type": "checkbox", "label": "Сгенерировать звук", "extra_cost": 5},
+                ]
+            }]
+        },
+        "constraints": {},
+        "metadata": {
+            "output_type": "video", "video_api": "apimart",
+        },
+    },
+
+    # Vidu Q3 (базовый тир) — в отличие от Turbo/Pro этот тир ТОЛЬКО
+    # reference2video: apimart отклоняет запрос без фото ("requires 1 to 7
+    # reference images"), чистого text-to-video здесь нет. requires_input_images
+    # заставляет validate_and_merge_settings отклонить запрос без фото ДО
+    # отправки — иначе пользователь заплатит и получит гарантированный сбой.
+    'viduq3base': {
+        "name": "Vidu Q3",
+        "api_defaults": {"duration": "5", "resolution": "540p", "aspect_ratio": "16:9", "audio": False},
+        "ui_settings": {
+            "sections": [{
+                "title": "Настройки видео",
+                "fields": [
+                    _aspect_field(["16:9", "9:16", "1:1", "4:3", "3:4"]),
+                    _duration_field([(4, 0), (5, 0), (8, 6)]),
+                    {
+                        "name": "resolution", "type": "select", "label": "Качество", "extra_cost": 0,
+                        "options": [
+                            {"value": "540p", "label": "540p (стандарт)", "extra_cost": 0},
+                            {"value": "720p", "label": "720p (HD)", "extra_cost": 0},
+                        ]
+                    },
+                    {"name": "audio", "type": "checkbox", "label": "Сгенерировать звук", "extra_cost": 0},
+                ]
+            }]
+        },
+        "constraints": {},
+        "metadata": {
+            "output_type": "video", "video_api": "apimart",
+            "requires_input_images": True,
+            "supports_image_to_video": True, "i2v_param": "image_urls",
+            "i2v_max_images": 7, "i2v_mode": "reference",
+        },
+    },
 }
 
 
@@ -1203,6 +1275,28 @@ VIDEO_MODELS = [
         order=23,
         description='Бюджетная версия Veo 3.1 от Google DeepMind — доступный вход в экосистему Veo.',
         config_key='veo3lite',
+        is_popular=False,
+    ),
+
+    # Добавлено 2026-07-27, проверено вживую до status=completed с реальным видео.
+    dict(
+        name='Kling Video O1',
+        slug='kling-video-o1',
+        model_name='kling-video-o1',
+        cost_per_message=70,
+        order=24,
+        description='Новое поколение Kling — флагманская модель Kuaishou для видео.',
+        config_key='klingvideoo1',
+        is_popular=False,
+    ),
+    dict(
+        name='Vidu Q3',
+        slug='vidu-q3',
+        model_name='viduq3',
+        cost_per_message=25,
+        order=25,
+        description='Базовый тир Vidu Q3 — объединяет несколько референсных фото в одну сцену.',
+        config_key='viduq3base',
         is_popular=False,
     ),
 ]
