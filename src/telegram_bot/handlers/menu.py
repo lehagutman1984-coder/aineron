@@ -1,11 +1,12 @@
 import logging
-from aiogram import Router, F
+from aiogram import Router
+from aiogram.filters import StateFilter
 from aiogram.types import Message
 from asgiref.sync import sync_to_async
 from django.conf import settings as dj_settings
 
 from telegram_bot.utils import DIVIDER
-from telegram_bot.i18n import t, resolve_language, DICT_LOCALES
+from telegram_bot.i18n import t, resolve_language
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -16,29 +17,30 @@ MENU_ACTION_KEYS = (
 )
 
 
-def _all_menu_labels() -> set:
-    """Все возможные подписи кнопок меню по всем локалям — для фильтра хендлера."""
-    labels = set()
-    for locale in DICT_LOCALES:
-        for key in MENU_ACTION_KEYS:
-            labels.add(t(f'menu.{key}', locale))
-    return labels
-
-
 def _label_to_action(text: str, lang: str) -> str | None:
+    """Матчинг только по подписям ТЕКУЩЕГО языка пользователя (BUG-M,
+    TELEGRAM_SUPREMACY_PLAN_V2.md) — раньше сравнение шло по всем локалям
+    сразу, и обычное сообщение, случайно совпавшее с подписью кнопки на
+    ДРУГОМ языке (например, слово «Chat» или «Help» от русского
+    пользователя), перехватывалось статичной карточкой меню вместо ответа
+    нейросети."""
     for key in MENU_ACTION_KEYS:
         if t(f'menu.{key}', lang) == text:
             return key
-    # fallback: подпись могла прийти на другой локали (сменил язык клиента
-    # Telegram между нажатиями) — ищем по всем словарям
-    for locale in DICT_LOCALES:
-        for key in MENU_ACTION_KEYS:
-            if t(f'menu.{key}', locale) == text:
-                return key
     return None
 
 
-@router.message(F.text.func(lambda text: text in _all_menu_labels()))
+async def _is_menu_button(message: Message, tg_user=None) -> bool:
+    if not message.text:
+        return False
+    lang = resolve_language(tg_user, message.from_user)
+    return _label_to_action(message.text, lang) is not None
+
+
+# StateFilter(None) — тот же паттерн, что и на catch-all чата (chat.py):
+# без него нажатие кнопки меню посреди любого FSM-шага (например, ввод
+# текста напоминания) съедало сообщение сюда и не сбрасывало состояние.
+@router.message(StateFilter(None), _is_menu_button)
 async def handle_menu_button(message: Message, state=None, tg_user=None):
     lang = resolve_language(tg_user, message.from_user)
     action = _label_to_action(message.text, lang)
