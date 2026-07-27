@@ -765,9 +765,13 @@ VIDEO_CONFIG = {
         },
     },
 
-    # Kling v3 Motion Control — базовый набор полей идентичен kling_v3;
-    # сам параметр управления траекторией камеры не проверен вживую и
-    # намеренно не добавлен полем (см. комментарий выше блока).
+    # Kling v3 Motion Control — базовый набор полей идентичен kling_v3.
+    # ПРОВЕРЕНО ВЖИВУЮ (2026-07-27): модель НЕ принимает фото. apimart
+    # отвечает 400 "video_url is required for kling motion-control models" —
+    # это перенос движения/траектории камеры с ИСХОДНОГО ВИДЕО, не img2video
+    # по фото. Загрузки видео в проекте нет, поэтому img2video-метаданные
+    # сюда сознательно не добавляем (раньше здесь ошибочно стояли
+    # image_urls/i2v_max_images — снято той же правкой).
     'klingv3motion': {
         "name": "Kling v3 Motion Control",
         "api_defaults": {"mode": "std", "duration": "5", "aspect_ratio": "16:9", "audio": False},
@@ -792,8 +796,6 @@ VIDEO_CONFIG = {
         "constraints": {},
         "metadata": {
             "output_type": "video", "video_api": "apimart",
-            "supports_image_to_video": True, "i2v_param": "image_urls",
-            "i2v_max_images": 2, "i2v_mode": "first_last",
         },
     },
 
