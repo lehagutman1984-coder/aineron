@@ -293,11 +293,16 @@ def validate_and_merge_settings(config, user_settings):
         if sound_insert is None:
             errors.append("При указании времени обрезки аудио необходимо указать sound_insert_time")
 
-    # Проверка: если есть image_url и требуется input image
+    # Проверка: если есть image_url и требуется input image.
+    # image_url/image_urls намеренно не декларируются в ui_settings.sections
+    # (см. комментарии в generate_video_apimart и др.), поэтому merge-цикл
+    # выше их в final_args не кладёт — проверять нужно исходный user_settings,
+    # а не final_args (баг: final_args всегда пуст по этим двум ключам,
+    # проверка была всегда либо ложно-положительной, либо ложно-отрицательной).
     metadata = config.get('metadata', {})
     if metadata.get('requires_input_images', False):
-        has_image_url = final_args.get('image_url')
-        has_image_urls = final_args.get('image_urls')
+        has_image_url = user_settings.get('image_url')
+        has_image_urls = user_settings.get('image_urls')
         if not has_image_url and not has_image_urls:
             errors.append("Эта модель требует загруженное изображение (image_url или image_urls)")
 
@@ -696,7 +701,12 @@ def generate_image_edit(network, user_msg, message, user_settings=None):
     prompt = user_msg.content if user_msg else ""
     base_cost = network.cost_per_message
 
-    if user_settings:
+    if user_settings is not None:
+        # is not None, а не просто truthy: пустой {} — валидные "настройки по
+        # умолчанию", не "настроек нет". truthiness-проверка тихо пропускала
+        # validate_and_merge_settings (и все её проверки, включая
+        # requires_input_images) на любом запросе с settings={} — а это
+        # обычный путь фронтенда, когда пользователь не трогал настройки.
         final_args, errors, extra_cost = validate_and_merge_settings(config, user_settings)
         if errors:
             raise Exception("Ошибки в настройках: " + "; ".join(errors))
@@ -1186,7 +1196,12 @@ def generate_video_laozhang(network, user_msg, message, user_settings=None):
     prompt = user_msg.content if user_msg else ""
     base_cost = network.cost_per_message
 
-    if user_settings:
+    if user_settings is not None:
+        # is not None, а не просто truthy: пустой {} — валидные "настройки по
+        # умолчанию", не "настроек нет". truthiness-проверка тихо пропускала
+        # validate_and_merge_settings (и все её проверки, включая
+        # requires_input_images) на любом запросе с settings={} — а это
+        # обычный путь фронтенда, когда пользователь не трогал настройки.
         final_args, errors, extra_cost = validate_and_merge_settings(config, user_settings)
         if errors:
             raise Exception("Ошибки в настройках: " + "; ".join(errors))
@@ -1355,7 +1370,12 @@ def generate_seedance_video(network, user_msg, message, user_settings=None):
     prompt = user_msg.content if user_msg else ""
     base_cost = network.cost_per_message
 
-    if user_settings:
+    if user_settings is not None:
+        # is not None, а не просто truthy: пустой {} — валидные "настройки по
+        # умолчанию", не "настроек нет". truthiness-проверка тихо пропускала
+        # validate_and_merge_settings (и все её проверки, включая
+        # requires_input_images) на любом запросе с settings={} — а это
+        # обычный путь фронтенда, когда пользователь не трогал настройки.
         final_args, errors, extra_cost = validate_and_merge_settings(config, user_settings)
         if errors:
             raise Exception("Ошибки в настройках: " + "; ".join(errors))
@@ -1498,7 +1518,12 @@ def generate_video_apimart(network, user_msg, message, user_settings=None):
     prompt = user_msg.content if user_msg else ""
     base_cost = network.cost_per_message
 
-    if user_settings:
+    if user_settings is not None:
+        # is not None, а не просто truthy: пустой {} — валидные "настройки по
+        # умолчанию", не "настроек нет". truthiness-проверка тихо пропускала
+        # validate_and_merge_settings (и все её проверки, включая
+        # requires_input_images) на любом запросе с settings={} — а это
+        # обычный путь фронтенда, когда пользователь не трогал настройки.
         final_args, errors, extra_cost = validate_and_merge_settings(config, user_settings)
         if errors:
             raise Exception("Ошибки в настройках: " + "; ".join(errors))
@@ -1766,7 +1791,12 @@ def generate_image_apimart_async(network, user_msg, message, user_settings=None)
     prompt = user_msg.content if user_msg else ""
     base_cost = network.cost_per_message
 
-    if user_settings:
+    if user_settings is not None:
+        # is not None, а не просто truthy: пустой {} — валидные "настройки по
+        # умолчанию", не "настроек нет". truthiness-проверка тихо пропускала
+        # validate_and_merge_settings (и все её проверки, включая
+        # requires_input_images) на любом запросе с settings={} — а это
+        # обычный путь фронтенда, когда пользователь не трогал настройки.
         final_args, errors, extra_cost = validate_and_merge_settings(config, user_settings)
         if errors:
             raise Exception("Ошибки в настройках: " + "; ".join(errors))
@@ -1935,7 +1965,12 @@ def generate_with_falai(network, user_msg, message, user_settings=None):
     base_cost = network.cost_per_message
 
     # Валидируем и сливаем настройки
-    if user_settings:
+    if user_settings is not None:
+        # is not None, а не просто truthy: пустой {} — валидные "настройки по
+        # умолчанию", не "настроек нет". truthiness-проверка тихо пропускала
+        # validate_and_merge_settings (и все её проверки, включая
+        # requires_input_images) на любом запросе с settings={} — а это
+        # обычный путь фронтенда, когда пользователь не трогал настройки.
         final_args, errors, extra_cost = validate_and_merge_settings(config, user_settings)
         if errors:
             raise Exception("Ошибки в настройках: " + "; ".join(errors))
