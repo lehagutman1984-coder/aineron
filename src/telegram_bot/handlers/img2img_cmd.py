@@ -55,7 +55,7 @@ def _get_img2img_network():
     return None
 
 
-def _create_img2img_request(tg_user, network, prompt: str, image_url: str):
+def _create_img2img_request(tg_user, network, prompt: str, image_url: str, user_settings=None):
     from aitext.models import Chat, Message as AiMsg
     chat = Chat.objects.create(
         user=tg_user.user,
@@ -64,7 +64,7 @@ def _create_img2img_request(tg_user, network, prompt: str, image_url: str):
     )
     user_msg = AiMsg.objects.create(
         chat=chat, role='user', content=prompt,
-        settings={"image_url": image_url},
+        settings={**(user_settings or {}), "image_url": image_url},
     )
     assistant_msg = AiMsg.objects.create(
         chat=chat, role='assistant',
@@ -131,18 +131,22 @@ async def cmd_img2img(message: Message, state: FSMContext, tg_user=None):
             await message.answer(t('img2img.noModels', lang))
         return
 
-    if not tg_user.user.has_enough_kopecks(network.cost_kopecks):
+    from telegram_bot.handlers.images import get_stored_image_settings
+    _, extra_rub = get_stored_image_settings(tg_user, network)
+    total_kopecks = network.cost_kopecks + extra_rub * 100
+
+    if not tg_user.user.has_enough_kopecks(total_kopecks):
         from core.money import format_money
         if lang == 'ru':
             await message.answer(
                 f'Недостаточно средств.\n'
-                f'Нужно: {format_money(network.cost_kopecks)}, у вас: {format_money(tg_user.user.balance_kopecks)}\n\n'
+                f'Нужно: {format_money(total_kopecks)}, у вас: {format_money(tg_user.user.balance_kopecks)}\n\n'
                 f'Пополните баланс: /balance'
             )
         else:
             await message.answer(
                 t('img2img.insufficientFunds', lang,
-                  need=format_money(network.cost_kopecks), have=format_money(tg_user.user.balance_kopecks))
+                  need=format_money(total_kopecks), have=format_money(tg_user.user.balance_kopecks))
             )
         return
 
@@ -212,8 +216,12 @@ async def handle_img2img_photo(message: Message, state: FSMContext, tg_user=None
             return NeuralNetwork.objects.get(id=nid)
         network = await sync_to_async(_get_net, thread_sensitive=True)(network_id)
 
+        from telegram_bot.handlers.images import get_stored_image_settings
+        stored_settings, extra_rub = get_stored_image_settings(tg_user, network)
+        total_kopecks = network.cost_kopecks + extra_rub * 100
+
         # Create generation request
-        assistant_msg = await create_img2img_request(tg_user, network, prompt, image_url)
+        assistant_msg = await create_img2img_request(tg_user, network, prompt, image_url, user_settings=stored_settings)
 
         from aitext.tasks import generate_ai_response
         generate_ai_response.delay(assistant_msg.id)
@@ -271,7 +279,7 @@ async def handle_img2img_photo(message: Message, state: FSMContext, tg_user=None
                     else:
                         await status_msg.edit_text(t('img2img.notFound', lang))
 
-                await async_log_event(tg_user, 'image', network=network, cost_kopecks=network.cost_kopecks)
+                await async_log_event(tg_user, 'image', network=network, cost_kopecks=total_kopecks)
                 return
 
             elif msg.status == 'failed':

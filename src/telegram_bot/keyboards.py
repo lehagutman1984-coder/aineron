@@ -108,6 +108,9 @@ def models_tabs_kb(active_tab: str, networks: list, current_id: int | None = Non
     if active_tab == 'video' and networks:
         from telegram_bot.i18n import t as _t
         rows.append([InlineKeyboardButton(text=_t('models.videoSettingsButton', lang), callback_data='vset:o')])
+    if active_tab == 'image' and networks:
+        from telegram_bot.i18n import t as _t
+        rows.append([InlineKeyboardButton(text=_t('models.imageSettingsButton', lang), callback_data='iset:o')])
 
     return InlineKeyboardMarkup(inline_keyboard=rows)
 

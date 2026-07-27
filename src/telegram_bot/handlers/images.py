@@ -34,7 +34,16 @@ def _get_image_network(tg_user):
     return None
 
 
-def _create_image_request(tg_user, network, prompt):
+def get_stored_image_settings(tg_user, network) -> tuple[dict, int]:
+    """Настройки /imgset для модели + доплата в рублях (чистая функция)."""
+    stored = dict((getattr(tg_user, 'image_settings', None) or {}).get(str(network.id), {}))
+    if not stored:
+        return {}, 0
+    from telegram_bot.handlers.video_settings_cmd import _calc_extra_cost
+    return stored, _calc_extra_cost(network.config_json or {}, stored)
+
+
+def _create_image_request(tg_user, network, prompt, user_settings=None):
     from aitext.models import Chat, Message as AiMsg
     from telegram_bot.models import TelegramChat
     # Используем отдельный чат для изображений (не мешаем текстовому контексту)
@@ -43,7 +52,7 @@ def _create_image_request(tg_user, network, prompt):
         network=network,
         title=f'Telegram image: {prompt[:50]}',
     )
-    user_msg = AiMsg.objects.create(chat=chat, role='user', content=prompt)
+    user_msg = AiMsg.objects.create(chat=chat, role='user', content=prompt, settings=user_settings or {})
     assistant_msg = AiMsg.objects.create(
         chat=chat, role='assistant',
         status=AiMsg.Status.PENDING, content='',
@@ -81,11 +90,14 @@ async def cmd_image(message: Message, tg_user=None):
         await message.answer(t('images.noModels', lang))
         return
 
-    if not tg_user.user.has_enough_kopecks(network.cost_kopecks):
+    stored_settings, extra_rub = get_stored_image_settings(tg_user, network)
+    total_kopecks = network.cost_kopecks + extra_rub * 100
+
+    if not tg_user.user.has_enough_kopecks(total_kopecks):
         from core.money import format_money
         await message.answer(
             f"<b>{t('images.insufficientTitle', lang)}</b>\n{DIVIDER}\n"
-            f"{t('images.need', lang)}: <b>{format_money(network.cost_kopecks)}</b>   "
+            f"{t('images.need', lang)}: <b>{format_money(total_kopecks)}</b>   "
             f"{t('images.have', lang)}: {format_money(tg_user.user.balance_kopecks)}\n\n"
             f"{t('images.topUp', lang)}",
             parse_mode='HTML',
@@ -98,7 +110,7 @@ async def cmd_image(message: Message, tg_user=None):
 
     status_msg = await message.answer(t('images.generating', lang, name=network.name))
 
-    assistant_msg = await create_image_request(tg_user, network, prompt)
+    assistant_msg = await create_image_request(tg_user, network, prompt, user_settings=stored_settings)
 
     from aitext.tasks import generate_ai_response
     generate_ai_response.delay(assistant_msg.id)
@@ -125,14 +137,14 @@ async def cmd_image(message: Message, tg_user=None):
                     from core.money import format_money
                     await message.answer_photo(
                         URLInputFile(img_url),
-                        caption=f"{network.name} · {format_money(network.cost_kopecks)}",
+                        caption=f"{network.name} · {format_money(total_kopecks)}",
                     )
                 except Exception:
                     await message.answer(t('images.resultReady', lang, url=img_url))
             else:
                 await status_msg.edit_text(t('images.notFound', lang))
             await async_log_event(tg_user, 'image', network=network,
-                                  cost_kopecks=network.cost_kopecks)
+                                  cost_kopecks=total_kopecks)
             return
 
         elif msg.status == 'failed':

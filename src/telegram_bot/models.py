@@ -63,6 +63,8 @@ class TelegramUser(models.Model):
     streaming = models.BooleanField(default=True, verbose_name='Streaming (edit_message)')
     # Настройки видео-генерации per-модель: {str(network_id): {field: value}}
     video_settings = models.JSONField(default=dict, blank=True, verbose_name='Настройки видео')
+    # BUG-D: то же самое для изображений, см. /imgset (images_settings_cmd.py)
+    image_settings = models.JSONField(default=dict, blank=True, verbose_name='Настройки изображений')
 
     # Daily digest settings
     digest_enabled = models.BooleanField(default=False, verbose_name='Дайджест включён')
