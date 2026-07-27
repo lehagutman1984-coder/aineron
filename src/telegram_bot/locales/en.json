@@ -79,11 +79,14 @@
     "dashboardHint": "Type a question or pick a section from the menu.",
     "openingModel": "Opening model: {url}",
     "promptLoading": "Loading the prompt, type your request!",
-    "refApplied": "Referral code applied. To get started, link your account:\n\n1. Go to <b>aineron.net</b>\n2. Account → Telegram → Connect\n3. Come back here via the link",
+    "refApplied": "Referral code applied.",
     "linkedTitle": "Account linked",
+    "createdTitle": "Account created",
+    "newUserButton": "I'm new here",
+    "hasAccountButton": "I already have an account",
     "linkInvalidTitle": "Invalid link",
     "linkInvalidBody": "This link has expired or was already used.\n\nGo to <b>aineron.net</b> → Account → Telegram to get a new link.",
-    "introBody": "An AI platform: GPT-4o, Claude, Gemini and other models.\n\nTo get started:\n1. Go to <b>aineron.net</b>\n2. Account → Telegram → Connect\n3. Come back here via the link\n\nOnce linked, you'll have access to all models and your balance."
+    "introBody": "An AI platform: GPT-5, Claude, Gemini and other models.\n\nDo you already have an account on aineron.net?"
   },
   "onboarding": {
     "title": "Choose a model",

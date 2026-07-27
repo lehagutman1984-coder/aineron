@@ -35,11 +35,14 @@
     "dashboardHint": "اكتب سؤالاً أو اختر قسماً من القائمة.",
     "openingModel": "فتح النموذج: {url}",
     "promptLoading": "جارٍ تحميل الطلب، اكتب طلبك!",
-    "refApplied": "تم تطبيق رمز الإحالة. لبدء الاستخدام، اربط حسابك:\n\n1. اذهب إلى <b>aineron.net</b>\n2. الحساب → Telegram → ربط\n3. عد هنا عبر الرابط",
+    "refApplied": "تم تطبيق رمز الإحالة.",
     "linkedTitle": "تم ربط الحساب",
+    "createdTitle": "تم إنشاء الحساب",
+    "newUserButton": "أنا جديد هنا",
+    "hasAccountButton": "لدي حساب بالفعل",
     "linkInvalidTitle": "رابط غير صالح",
     "linkInvalidBody": "هذا الرابط منتهي الصلاحية أو تم استخدامه بالفعل.\n\nاذهب إلى <b>aineron.net</b> → الحساب → Telegram للحصول على رابط جديد.",
-    "introBody": "منصة ذكاء اصطناعي: GPT-4o, Claude, Gemini ونماذج أخرى.\n\nلبدء الاستخدام:\n1. اذهب إلى <b>aineron.net</b>\n2. الحساب → Telegram → ربط\n3. عد هنا عبر الرابط\n\nبمجرد الربط، ستحصل على الوصول إلى جميع النماذج ورصيدك."
+    "introBody": "منصة ذكاء اصطناعي: GPT-5, Claude, Gemini ونماذج أخرى.\n\nهل لديك حساب بالفعل على aineron.net؟"
   },
   "onboarding": {
     "title": "اختر نموذجاً",

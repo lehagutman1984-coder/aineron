@@ -35,11 +35,14 @@
     "dashboardHint": "Ketik pertanyaan atau pilih bagian dari menu.",
     "openingModel": "Membuka model: {url}",
     "promptLoading": "Memuat prompt, ketik permintaan Anda!",
-    "refApplied": "Kode referensi diterapkan. Untuk memulai, tautkan akun Anda:\n\n1. Kunjungi <b>aineron.net</b>\n2. Akun → Telegram → Hubungkan\n3. Kembali ke sini melalui tautan",
+    "refApplied": "Kode referensi diterapkan.",
     "linkedTitle": "Akun ditautkan",
+    "createdTitle": "Akun dibuat",
+    "newUserButton": "Saya baru di sini",
+    "hasAccountButton": "Saya sudah punya akun",
     "linkInvalidTitle": "Tautan tidak valid",
     "linkInvalidBody": "Tautan ini telah kedaluwarsa atau sudah digunakan.\n\nKunjungi <b>aineron.net</b> → Akun → Telegram untuk mendapatkan tautan baru.",
-    "introBody": "Platform AI: GPT-4o, Claude, Gemini, dan model lainnya.\n\nUntuk memulai:\n1. Kunjungi <b>aineron.net</b>\n2. Akun → Telegram → Hubungkan\n3. Kembali ke sini melalui tautan\n\nSetelah ditautkan, Anda akan memiliki akses ke semua model dan saldo Anda."
+    "introBody": "Platform AI: GPT-5, Claude, Gemini, dan model lainnya.\n\nApakah Anda sudah memiliki akun di aineron.net?"
   },
   "onboarding": {
     "title": "Pilih model",

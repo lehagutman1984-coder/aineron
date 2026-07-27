@@ -35,11 +35,14 @@
     "dashboardHint": "Bir soru yazın veya menüden bir bölüm seçin.",
     "openingModel": "Model açılıyor: {url}",
     "promptLoading": "İstek yükleniyor, isteğinizi yazın!",
-    "refApplied": "Referans kodu uygulandı. Başlamak için hesabınızı bağlayın:\n\n1. <b>aineron.net</b> adresine gidin\n2. Hesap → Telegram → Bağlan\n3. Bağlantı üzerinden buraya geri dönün",
+    "refApplied": "Referans kodu uygulandı.",
     "linkedTitle": "Hesap bağlandı",
+    "createdTitle": "Hesap oluşturuldu",
+    "newUserButton": "Yeniyim",
+    "hasAccountButton": "Zaten bir hesabım var",
     "linkInvalidTitle": "Geçersiz bağlantı",
     "linkInvalidBody": "Bu bağlantı süresi dolmuş veya zaten kullanılmış.\n\nYeni bir bağlantı almak için <b>aineron.net</b> → Hesap → Telegram'a gidin.",
-    "introBody": "Bir AI platformu: GPT-4o, Claude, Gemini ve diğer modeller.\n\nBaşlamak için:\n1. <b>aineron.net</b> adresine gidin\n2. Hesap → Telegram → Bağlan\n3. Bağlantı üzerinden buraya geri dönün\n\nBağlandıktan sonra tüm modellere ve bakiyenize erişiminiz olacak."
+    "introBody": "Bir AI platformu: GPT-5, Claude, Gemini ve diğer modeller.\n\naineron.net üzerinde zaten bir hesabınız var mı?"
   },
   "onboarding": {
     "title": "Bir model seçin",
