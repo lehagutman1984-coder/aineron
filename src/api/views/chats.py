@@ -805,7 +805,12 @@ class RegenerateView(APIView):
         last_assistant.content = ''
         last_assistant.plain_text = ''
         last_assistant.status = Message.Status.PENDING
-        last_assistant.error_message = None
+        # BUG-R (найден живым тестом BUG-A): Message.error_message —
+        # TextField(blank=True) БЕЗ null=True, колонка в БД NOT NULL.
+        # error_message=None здесь всегда падал IntegrityError на save() —
+        # регенерация была сломана 500-й ошибкой для любого сообщения,
+        # не только бесплатна для медиа.
+        last_assistant.error_message = ''
         last_assistant.settings = regen_settings
         last_assistant.save()
 
