@@ -463,9 +463,13 @@ IMAGE_MODELS = [
     # для этих моделей задаётся не полем provider (остаётся 'fal-ai' как у
     # всех image-моделей), а роутингом внутри generate_with_falai по
     # metadata.image_api.
-    dict(name='Imagen 4.0', slug='imagen-4-0', model_name='imagen-4.0-apimart', cost_per_message=10, cost_kopecks=1000, order=23,
-         description='Флагманская модель генерации изображений Google Imagen.',
-         config_key='apimart_async_image', is_popular=True),
+    #
+    # Imagen 4.0 (imagen-4.0-apimart) НЕ добавлена: create-запрос принимается
+    # (200, submitted), но задача 100% детерминированно завершается ошибкой
+    # апстрима Google "404 Requested entity was not found" — канал заведён
+    # у apimart, но сам GCP-ресурс модели недоступен на этом аккаунте.
+    # Проверено вживую 2026-07-27, не флаки — не добавлять, пока apimart не
+    # починит провижининг на своей стороне.
     dict(name='Qwen Image 2.0', slug='qwen-image-2-0', model_name='qwen-image-2.0', cost_per_message=8, cost_kopecks=800, order=40,
          description='Новая модель генерации изображений от Alibaba Qwen.',
          config_key='apimart_async_image'),
