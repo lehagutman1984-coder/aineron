@@ -114,6 +114,7 @@ class Command(BaseCommand):
                 BotCommand(command='settings', description='Настройки бота'),
                 BotCommand(command='prompts', description='Библиотека промтов'),
                 BotCommand(command='referral', description='Реферальная программа'),
+                BotCommand(command='cancel', description='Отменить текущее действие'),
                 BotCommand(command='help', description='Справка'),
             ]
             await bot.set_my_commands(commands)
@@ -132,6 +133,7 @@ INTL_COMMANDS = {
         ('balance', 'Balance and top-up'),
         ('settings', 'Bot settings'),
         ('language', 'Change bot language'),
+        ('cancel', 'Cancel the current action'),
         ('help', 'Help'),
     ],
     'fa': [
@@ -142,6 +144,7 @@ INTL_COMMANDS = {
         ('balance', 'موجودی و شارژ'),
         ('settings', 'تنظیمات ربات'),
         ('language', 'تغییر زبان ربات'),
+        ('cancel', 'لغو عملیات جاری'),
         ('help', 'راهنما'),
     ],
     'tr': [
@@ -152,6 +155,7 @@ INTL_COMMANDS = {
         ('balance', 'Bakiye ve yükleme'),
         ('settings', 'Bot ayarları'),
         ('language', 'Bot dilini değiştir'),
+        ('cancel', 'Geçerli işlemi iptal et'),
         ('help', 'Yardım'),
     ],
     'id': [
@@ -162,6 +166,7 @@ INTL_COMMANDS = {
         ('balance', 'Saldo dan isi ulang'),
         ('settings', 'Pengaturan bot'),
         ('language', 'Ubah bahasa bot'),
+        ('cancel', 'Batalkan tindakan saat ini'),
         ('help', 'Bantuan'),
     ],
     'ar': [
@@ -172,6 +177,7 @@ INTL_COMMANDS = {
         ('balance', 'الرصيد وإعادة الشحن'),
         ('settings', 'إعدادات البوت'),
         ('language', 'تغيير لغة البوت'),
+        ('cancel', 'إلغاء الإجراء الحالي'),
         ('help', 'مساعدة'),
     ],
 }
