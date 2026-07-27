@@ -26,9 +26,15 @@ class AuthMiddleware(BaseMiddleware):
         if not from_user:
             return await handler(event, data)
 
-        # /start обрабатывается без авторизации — это точка входа
+        # /start обрабатывается без авторизации — это точка входа.
+        # BUG-I: CallbackQuery не имеет .text, поэтому кнопки выбора
+        # «новый пользователь / уже есть аккаунт» из cmd_start (start.py,
+        # NEW_USER_CB='start_new', HAS_ACCOUNT_CB='start_has_account')
+        # нужно пропускать отдельно — иначе они попадают под tg_user is None
+        # ниже и никогда не доходят до хендлера.
         text = getattr(event, 'text', '') or ''
-        if text.startswith('/start'):
+        cb_data = getattr(event, 'data', '') or ''
+        if text.startswith('/start') or cb_data.startswith('start_new:') or cb_data == 'start_has_account':
             data['lang'] = resolve_language(None, from_user)
             return await handler(event, data)
 
