@@ -377,6 +377,19 @@ TEXT_MODELS = [
     dict(name='Gemini 3.6 Flash', slug='gemini-3-6-flash', model_name='gemini-3.6-flash', cost_per_message=3, cost_kopecks=200, order=34,
          description='Новейший быстрый Gemini следующего поколения.',
          handle_photo=True),
+
+    # ── Новые модели, проверены вживую реальным chat.completions запросом
+    # перед добавлением (добавлено 2026-07-27). Цены — оценка по соседним
+    # тарифам того же семейства, перепроверить после первых реальных запросов.
+    dict(name='Claude Opus 5', slug='claude-opus-5', model_name='claude-opus-5', cost_per_message=22, cost_kopecks=2200, order=17,
+         description='Новейший флагманский Claude — самый мощный на сегодня.',
+         handle_photo=True, is_popular=True),
+    dict(name='DeepSeek V4 Flash', slug='deepseek-v4-flash', model_name='deepseek-v4-flash', cost_per_message=1, cost_kopecks=80, order=45,
+         description='Быстрая и экономичная версия DeepSeek V4.'),
+    dict(name='Qwen 3.6 Plus', slug='qwen3-6-plus', model_name='qwen3.6-plus', cost_per_message=2, cost_kopecks=180, order=55,
+         description='Средний тир нового поколения Qwen — баланс цены и качества.'),
+    dict(name='Qwen 3.6 Flash', slug='qwen3-6-flash', model_name='qwen3.6-flash', cost_per_message=1, cost_kopecks=100, order=56,
+         description='Быстрая и доступная версия Qwen 3.6.'),
 ]
 
 IMAGE_MODELS = [
