@@ -6,7 +6,6 @@ import logging
 import datetime
 import requests as _req
 from celery import shared_task
-from celery.exceptions import MaxRetriesExceededError
 from openai import OpenAI
 from django.conf import settings
 from django.core.files.base import ContentFile
@@ -734,6 +733,11 @@ def generate_ai_response(self, message_id, web_search=False):
             logger.info(f"=== Генерация медиа для сообщения {message_id}, нейросеть: {network.name} ===")
             stars_deducted = False
             total_cost_kopecks = 0
+            # Инициализируется здесь (не только в блоке списания), чтобы except
+            # ниже мог вернуть деньги по ТОЙ ЖЕ reference, что была списана —
+            # иначе на регенерации refund с чужим/дефолтным reference коллизирует
+            # по unique(type, reference) с предыдущим refund и молча не проходит.
+            billing_reference = (message.settings or {}).get('media_billing_ref') or f'media:{message.id}'
             try:
                 user_settings = user_msg.settings if user_msg else {}
 
@@ -759,7 +763,14 @@ def generate_ai_response(self, message_id, web_search=False):
                         from core.money import format_rub
                         raise Exception(f"Недостаточно средств. Нужно {format_rub(total_cost_kopecks)}, у вас {format_rub(user.balance_kopecks)}.")
 
-                    user.spend_kopecks(total_cost_kopecks, type='spend', reference=f'media:{message.id}')
+                    # BUG-B: возврат spend_kopecks игнорировался — при False (гонка
+                    # между has_enough_kopecks и spend_kopecks, баланс списан другой
+                    # задачей между проверкой и списанием) генерация ранее всё равно
+                    # запускалась бесплатно, а неудачный refund потом мог начислить
+                    # деньги, которые не списывались.
+                    if not user.spend_kopecks(total_cost_kopecks, type='spend', reference=billing_reference):
+                        from core.money import format_rub
+                        raise Exception(f"Недостаточно средств. Нужно {format_rub(total_cost_kopecks)}, у вас {format_rub(user.balance_kopecks)}.")
                     stars_deducted = True
                     UserSpending.objects.create(
                         user=user,
@@ -812,7 +823,10 @@ def generate_ai_response(self, message_id, web_search=False):
                 error_str = str(e)
                 logger.error(f"Ошибка генерации медиа для сообщения {message_id}: {e}")
                 if stars_deducted:
-                    user.add_kopecks(total_cost_kopecks, type='refund', reference=f'media:{message.id}')
+                    # BUG-A: refund идёт по той же reference, что и списание выше
+                    # (billing_reference, уникальная на попытку регенерации) — иначе
+                    # повторный refund коллизирует с предыдущим по unique(type, reference).
+                    user.add_kopecks(total_cost_kopecks, type='refund', reference=billing_reference)
                     from core.money import format_rub
                     logger.info(f"Возвращено {format_rub(total_cost_kopecks)} пользователю {user.email} из-за ошибки генерации")
                 message.status = Message.Status.FAILED
@@ -1164,19 +1178,23 @@ def generate_ai_response(self, message_id, web_search=False):
             message.save()
         except Message.DoesNotExist:
             message = None
-        try:
-            raise self.retry(exc=e, countdown=60)
-        except MaxRetriesExceededError:
-            # Окончательный провал: вернуть pre-charge веб-списание за текст
-            # (media-ветка возвращает средства сама, у неё billing_reference нет).
-            if message is not None:
-                try:
-                    from aitext.billing import refund_message_billing
-                    if refund_message_billing(message):
-                        logger.info(f"Возврат средств за проваленную генерацию, сообщение {message_id}")
-                except Exception as refund_err:
-                    logger.error(f"Не удалось вернуть средства за сообщение {message_id}: {refund_err}")
-            raise
+
+        # Окончательный провал: вернуть pre-charge веб-списание за текст
+        # (media-ветка возвращает средства сама, у неё billing_reference нет).
+        # Возврат делаем ДО self.retry(), а не в except MaxRetriesExceededError:
+        # при exc=e задан Celery на исчерпании ретраев поднимает исходное
+        # исключение e, а не MaxRetriesExceededError (см. celery.app.task.Task.retry),
+        # поэтому тот блок никогда не выполнялся (BUG-C, TELEGRAM_SUPREMACY_PLAN_V2.md).
+        is_final_attempt = self.request.retries >= self.max_retries
+        if is_final_attempt and message is not None:
+            try:
+                from aitext.billing import refund_message_billing
+                if refund_message_billing(message):
+                    logger.info(f"Возврат средств за проваленную генерацию, сообщение {message_id}")
+            except Exception as refund_err:
+                logger.error(f"Не удалось вернуть средства за сообщение {message_id}: {refund_err}")
+
+        raise self.retry(exc=e, countdown=60)
 
 
 # ──────────────────────────────────────────────────────────────────────────────

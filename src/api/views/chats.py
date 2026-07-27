@@ -791,10 +791,22 @@ class RegenerateView(APIView):
             )
             record_message_billing(last_assistant, billing_ref, cost_kopecks)
 
+        regen_settings = dict(last_assistant.settings or {})
+        if network.provider == 'fal-ai':
+            import uuid as _uuid
+            # BUG-A (TELEGRAM_SUPREMACY_PLAN_V2.md): списание медиа-генерации
+            # происходит в generate_ai_response с reference=f'media:{message.id}'.
+            # На регенерации message.id не меняется, поэтому повторное списание
+            # схлопывалось в no-op по unique(type, reference) — регенерация
+            # изображений/видео была бесплатной начиная со второго раза.
+            # Уникальный reference на попытку задаётся здесь же, где и для текста.
+            regen_settings['media_billing_ref'] = f'media-regen:{last_assistant.id}:{_uuid.uuid4().hex[:12]}'
+
         last_assistant.content = ''
         last_assistant.plain_text = ''
         last_assistant.status = Message.Status.PENDING
         last_assistant.error_message = None
+        last_assistant.settings = regen_settings
         last_assistant.save()
 
         chat.updated_at = timezone.now()
