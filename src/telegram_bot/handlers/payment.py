@@ -244,8 +244,42 @@ async def cb_substars(query: CallbackQuery, tg_user=None):
     await query.answer()
 
 
+# BUG-P (TELEGRAM_SUPREMACY_PLAN_V2.md): Telegram уже провёл платёж Stars
+# (деньги реально списаны у пользователя) к моменту, когда мы решаем, что
+# payload не распознан — раньше это тихо терялось в WARNING-логе: баланс не
+# пополнялся, возврата не было, сигнала в поддержку не было. Единственное
+# безопасное автоматическое действие — не угадывать начисление (payload может
+# быть от версии кода, которой мы не знаем), а немедленно позвать админов с
+# charge_id, по которому платёж находится в Stats Transactions Telegram и
+# может быть вручную зачислен или возвращён (refundStarPayment).
+async def _alert_admins_unresolved_payment(bot, tg_user, payload: str, charge_id: str, reason: str) -> None:
+    from django.conf import settings as dj_settings
+    admin_ids = getattr(dj_settings, 'TELEGRAM_ADMIN_IDS', [])
+    if not admin_ids:
+        logger.error(
+            f'Нераспознанный платёж БЕЗ администраторов для алерта: user={tg_user.telegram_id} '
+            f'payload={payload} charge_id={charge_id} reason={reason}'
+        )
+        return
+    text = (
+        '<b>⚠ Нераспознанный платёж Stars</b>\n\n'
+        f'Пользователь: <code>{tg_user.telegram_id}</code> (@{tg_user.telegram_username or "—"})\n'
+        f'Payload: <code>{payload}</code>\n'
+        f'charge_id: <code>{charge_id}</code>\n'
+        f'Причина: {reason}\n\n'
+        'Деньги у Telegram списаны, баланс НЕ пополнен. Найти платёж по '
+        'charge_id в Star Transactions бота и зачислить вручную или '
+        'вернуть через refundStarPayment.'
+    )
+    for admin_id in admin_ids:
+        try:
+            await bot.send_message(admin_id, text, parse_mode='HTML')
+        except Exception as e:
+            logger.error(f'Не удалось отправить алерт админу {admin_id}: {e}')
+
+
 @router.message(F.successful_payment)
-async def on_successful_payment(message: Message, tg_user=None):
+async def on_successful_payment(message: Message, tg_user=None, bot=None):
     from core.money import format_rub, format_money
 
     if tg_user is None:
@@ -263,11 +297,13 @@ async def on_successful_payment(message: Message, tg_user=None):
             tariff_id, xtr = int(tariff_id_s), int(xtr_s)
         except ValueError:
             logger.warning(f'Malformed subscription payload: {payload}')
+            await _alert_admins_unresolved_payment(bot, tg_user, payload, charge_id, 'malformed subtariff: payload')
             return
         expires_at = getattr(message.successful_payment, 'subscription_expiration_date', None)
         tariff = await activate_stars_subscription(tg_user, tariff_id, charge_id, xtr, expires_at)
         if tariff is None:
             await message.answer('Тариф не найден — обратитесь в поддержку.')
+            await _alert_admins_unresolved_payment(bot, tg_user, payload, charge_id, f'tariff_id={tariff_id} не найден')
             return
         is_recurring = bool(getattr(message.successful_payment, 'is_recurring', False))
         await async_log_event(tg_user, 'subscription',
@@ -292,6 +328,7 @@ async def on_successful_payment(message: Message, tg_user=None):
         pack = INTL_CREDIT_PACKS.get(pack_key)
         if not pack:
             logger.warning(f'Unknown intl pack payload: {payload}')
+            await _alert_admins_unresolved_payment(bot, tg_user, payload, charge_id, f'неизвестный ключ пакета {pack_key!r}')
             return
         credit_kopecks = pack['credits']
     elif payload.startswith('credits_custom:'):
@@ -299,9 +336,11 @@ async def on_successful_payment(message: Message, tg_user=None):
             credit_kopecks = int(payload.split(':', 1)[1])
         except (ValueError, IndexError):
             logger.warning(f'Malformed custom intl payment payload: {payload}')
+            await _alert_admins_unresolved_payment(bot, tg_user, payload, charge_id, 'malformed credits_custom: payload')
             return
     elif not (payload in RUB_PACKS or payload.startswith('stars_custom:')):
         logger.warning(f'Unknown payment payload: {payload}')
+        await _alert_admins_unresolved_payment(bot, tg_user, payload, charge_id, 'payload не совпал ни с одним известным форматом')
         return
     else:
         credit_kopecks = None  # обрабатывается ru-веткой ниже
@@ -341,9 +380,11 @@ async def on_successful_payment(message: Message, tg_user=None):
             rub_amount = int(payload.split(':', 1)[1])
         except (ValueError, IndexError):
             logger.warning(f'Malformed custom payment payload: {payload}')
+            await _alert_admins_unresolved_payment(bot, tg_user, payload, charge_id, 'malformed stars_custom: payload')
             return
     else:
         logger.warning(f'Unknown payment payload: {payload}')
+        await _alert_admins_unresolved_payment(bot, tg_user, payload, charge_id, 'payload не совпал ни с одним известным форматом (ru-ветка)')
         return
 
     def _add_rub(user, rub, reference):
