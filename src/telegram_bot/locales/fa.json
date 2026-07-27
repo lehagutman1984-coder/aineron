@@ -23,7 +23,7 @@
     "cancelNothing": "چیزی برای لغو وجود ندارد.",
     "cancelDone": "لغو شد.",
     "helpTitle": "Aineron · راهنما",
-    "helpBody": "<b>چت و تولید</b>\nهر سوالی بپرسید — هوش مصنوعی پاسخ خواهد داد.\n/image &lt;توضیحات&gt; — تولید تصویر\n\n<b>کنترل‌ها</b>\n/models — انتخاب مدل هوش مصنوعی\n/balance — موجودی و شارژ\n/settings — تنظیمات\n/language — تغییر زبان ربات\n/newchat — شروع مکالمه جدید\nموجودی خود را شارژ کنید: aineron.net/account/billing/",
+    "helpBody": "<b>چت و تولید</b>\nهر سوالی بپرسید — هوش مصنوعی پاسخ خواهد داد.\n/image &lt;توضیحات&gt; — تولید تصویر\n\n<b>کنترل‌ها</b>\n/models — انتخاب مدل هوش مصنوعی\n/balance — موجودی و شارژ\n/settings — تنظیمات\n/language — تغییر زبان ربات\n/newchat — شروع مکالمه جدید",
     "videoTitle": "Aineron · تولید ویدیو",
     "videoBody": "ویدیو را با یک دستور توصیف کنید:\n\n<code>/video غروب خورشید بر فراز دریا، پرواز آهسته دوربین</code>\n\n<i>آماده در ۵ تا ۱۵ دقیقه — نتیجه را برایتان ارسال می‌کنم.</i>",
     "featureUnavailable": "این قابلیت هنوز در aineron.net در دسترس نیست."

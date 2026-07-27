@@ -69,7 +69,7 @@ def _apply_referral(user, referral_code):
         from users.models import CustomUser
         if user.referrer:
             return
-        referrer = CustomUser.objects.filter(referral_code=referral_code).first()
+        referrer = CustomUser.objects.filter(referral_code__iexact=referral_code).first()
         if referrer and referrer != user:
             user.referrer = referrer
             user.save(update_fields=['referrer'])

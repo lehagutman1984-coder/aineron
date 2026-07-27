@@ -23,7 +23,7 @@
     "cancelNothing": "İptal edilecek bir şey yok.",
     "cancelDone": "İptal edildi.",
     "helpTitle": "Aineron · Yardım",
-    "helpBody": "<b>Sohbet & oluşturma</b>\nHerhangi bir soru sor — AI yanıtlayacak.\n/image &lt;açıklama&gt; — bir görüntü oluştur\n\n<b>Kontroller</b>\n/models — bir AI modeli seç\n/balance — bakiye ve yükleme\n/settings — ayarlar\n/language — bot dilini değiştir\n/newchat — yeni bir konuşma başlat\nBakiyenizi yükleyin: aineron.net/account/billing/",
+    "helpBody": "<b>Sohbet & oluşturma</b>\nHerhangi bir soru sor — AI yanıtlayacak.\n/image &lt;açıklama&gt; — bir görüntü oluştur\n\n<b>Kontroller</b>\n/models — bir AI modeli seç\n/balance — bakiye ve yükleme\n/settings — ayarlar\n/language — bot dilini değiştir\n/newchat — yeni bir konuşma başlat",
     "videoTitle": "Aineron · Video oluşturma",
     "videoBody": "Videoyu bir komutla tanımlayın:\n\n<code>/video deniz üzerinde gün batımı, yavaş kamera uçuşu</code>\n\n<i>5-15 dakika içinde hazır olur — sonucu size gönderirim.</i>",
     "featureUnavailable": "Bu özellik henüz aineron.net'te mevcut değil."

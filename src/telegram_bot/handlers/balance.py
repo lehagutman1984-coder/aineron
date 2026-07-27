@@ -65,13 +65,16 @@ async def send_balance(message: Message, tg_user, lang: str = 'ru'):
             lines.append(f"\n{t('balance.last7days', lang)}: -{format_money(week_total_kopecks)}")
         text = '\n'.join(lines)
 
-        from django.conf import settings as dj_settings
-        site_url = getattr(dj_settings, 'SITE_URL', 'https://aineron.net')
-        kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text=t('balance.topUpInBot', lang), callback_data='open_buy')],
-            [InlineKeyboardButton(text=t('balance.topUpOnWebsite', lang), url=f'{site_url}/account/billing/')],
-        ])
-        await message.answer(text, parse_mode='HTML', reply_markup=kb)
+        rows = [[InlineKeyboardButton(text=t('balance.topUpInBot', lang), callback_data='open_buy')]]
+        # BUG-I: у bot-native аккаунтов (созданы прямо в боте, без сайта)
+        # нет пароля для входа — кнопка на сайт вела бы на стену логина без
+        # выхода. Показываем её только тем, кто реально может войти.
+        can_login = await sync_to_async(lambda: tg_user.user.has_usable_password(), thread_sensitive=True)()
+        if can_login:
+            from django.conf import settings as dj_settings
+            site_url = getattr(dj_settings, 'SITE_URL', 'https://aineron.net')
+            rows.append([InlineKeyboardButton(text=t('balance.topUpOnWebsite', lang), url=f'{site_url}/account/billing/')])
+        await message.answer(text, parse_mode='HTML', reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
         return
 
     network = tg_user.default_network
@@ -112,13 +115,18 @@ async def send_balance(message: Message, tg_user, lang: str = 'ru'):
     lines += [DIVIDER, 'Пополнение:']
     text = '\n'.join(lines)
 
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text='Пополнить на сайте', url='https://aineron.ru/account/billing/')],
+    rows = [
         [InlineKeyboardButton(text='Telegram Stars (XTR)', callback_data='buy_stars')],
         [InlineKeyboardButton(text='Карта / СБП (Robokassa)', callback_data='buy_robokassa')],
         *sub_rows,
-    ])
-    await message.answer(text, parse_mode='HTML', reply_markup=kb)
+    ]
+    # BUG-I: bot-native аккаунты (без сайта) не могут войти — кнопка на
+    # сайт вела бы на стену логина без выхода. Показываем только тем,
+    # у кого реально есть пароль для входа.
+    can_login = await sync_to_async(lambda: tg_user.user.has_usable_password(), thread_sensitive=True)()
+    if can_login:
+        rows.insert(0, [InlineKeyboardButton(text='Пополнить на сайте', url='https://aineron.ru/account/billing/')])
+    await message.answer(text, parse_mode='HTML', reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
 
 
 @router.callback_query(F.data == 'substars_open')

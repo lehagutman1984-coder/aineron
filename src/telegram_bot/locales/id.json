@@ -23,7 +23,7 @@
     "cancelNothing": "Tidak ada yang perlu dibatalkan.",
     "cancelDone": "Dibatalkan.",
     "helpTitle": "Aineron · Bantuan",
-    "helpBody": "<b>Obrolan & pembuatan</b>\nAjukan pertanyaan apa pun — AI akan menjawab.\n/image &lt;deskripsi&gt; — buat gambar\n\n<b>Kontrol</b>\n/models — pilih model AI\n/balance — saldo dan isi ulang\n/settings — pengaturan\n/language — ubah bahasa bot\n/newchat — mulai percakapan baru\nIsi ulang saldo Anda: aineron.net/account/billing/",
+    "helpBody": "<b>Obrolan & pembuatan</b>\nAjukan pertanyaan apa pun — AI akan menjawab.\n/image &lt;deskripsi&gt; — buat gambar\n\n<b>Kontrol</b>\n/models — pilih model AI\n/balance — saldo dan isi ulang\n/settings — pengaturan\n/language — ubah bahasa bot\n/newchat — mulai percakapan baru",
     "videoTitle": "Aineron · Pembuatan Video",
     "videoBody": "Deskripsikan video dengan perintah:\n\n<code>/video matahari terbenam di atas laut, gerakan kamera lambat</code>\n\n<i>Siap dalam 5-15 menit — akan saya kirimkan hasilnya.</i>",
     "featureUnavailable": "Fitur ini belum tersedia di aineron.net."

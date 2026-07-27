@@ -23,7 +23,7 @@
     "cancelNothing": "لا يوجد شيء لإلغائه.",
     "cancelDone": "تم الإلغاء.",
     "helpTitle": "Aineron · مساعدة",
-    "helpBody": "<b>الدردشة والتوليد</b>\nاطرح أي سؤال — سيقوم الذكاء الاصطناعي بالرد.\n/image &lt;الوصف&gt; — توليد صورة\n\n<b>التحكم</b>\n/models — اختيار نموذج الذكاء الاصطناعي\n/balance — الرصيد وإعادة الشحن\n/settings — الإعدادات\n/language — تغيير لغة البوت\n/newchat — بدء محادثة جديدة\nاشحن رصيدك: aineron.net/account/billing/",
+    "helpBody": "<b>الدردشة والتوليد</b>\nاطرح أي سؤال — سيقوم الذكاء الاصطناعي بالرد.\n/image &lt;الوصف&gt; — توليد صورة\n\n<b>التحكم</b>\n/models — اختيار نموذج الذكاء الاصطناعي\n/balance — الرصيد وإعادة الشحن\n/settings — الإعدادات\n/language — تغيير لغة البوت\n/newchat — بدء محادثة جديدة",
     "videoTitle": "Aineron · توليد الفيديو",
     "videoBody": "صف الفيديو باستخدام الأمر:\n\n<code>/video غروب الشمس فوق البحر، حركة كاميرا بطيئة</code>\n\n<i>جاهز خلال 5-15 دقيقة — سأرسل لك النتيجة.</i>",
     "featureUnavailable": "هذه الميزة غير متاحة بعد على aineron.net."
