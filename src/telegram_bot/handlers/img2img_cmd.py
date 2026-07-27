@@ -43,6 +43,13 @@ def _get_img2img_network():
     for net in nets:
         cfg = net.config_json or {}
         meta = cfg.get('metadata', {})
+        # requires_input_images/supports_input_image также используются
+        # image-to-VIDEO моделями (Vidu Q3 и т.п.) — без исключения
+        # output_type='video' /img2img молча роутил запросы на видео-модель
+        # (найдено 2026-07-27 при проверке /imgset для BUG-D, live: Vidu Q3
+        # был единственным совпадением по этим флагам).
+        if meta.get('output_type') == 'video':
+            continue
         if meta.get('supports_input_image') or meta.get('requires_input_images'):
             return net
     # Fallback: use default image network (GPT Image or Flux support img2img via image_url)
