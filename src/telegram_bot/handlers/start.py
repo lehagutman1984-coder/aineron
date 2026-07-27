@@ -80,11 +80,11 @@ def _apply_referral(user, referral_code):
 def _create_standalone_account(from_user, lang='', referral_code=None):
     """
     BUG-I: self-serve регистрация прямо в боте, без предварительного
-    аккаунта на сайте. Email — детерминированный placeholder на базе
-    telegram_id (глобально уникален, де-дуп username не нужен — CustomUser.save()
-    сама выведет username из email). Пароль не задаётся (create_user(password=None)
-    -> set_unusable_password()) — вход по email/паролю на сайте для такого
-    аккаунта недоступен, пока пользователь не привяжет реальный email.
+    аккаунта на сайте. Email и username — детерминированные placeholder'ы
+    на базе telegram_id (глобально уникален, де-дуп не нужен). Пароль не
+    задаётся (create_user(password=None) -> set_unusable_password()) —
+    вход по email/паролю на сайте для такого аккаунта недоступен, пока
+    пользователь не привяжет реальный email.
     """
     import secrets
     import string
@@ -94,12 +94,13 @@ def _create_standalone_account(from_user, lang='', referral_code=None):
     from telegram_bot.models import TelegramUser
 
     email = f'tg{from_user.id}@telegram.local'
+    username = f'tg{from_user.id}'
     user = CustomUser.objects.filter(email=email).first()
     created = False
     if user is None:
         try:
             with transaction.atomic():
-                user = CustomUser.objects.create_user(username='', email=email, password=None)
+                user = CustomUser.objects.create_user(username=username, email=email, password=None)
             created = True
         except IntegrityError:
             # Гонка: параллельный /start (повтор вебхука) уже создал аккаунт.
