@@ -31,11 +31,19 @@ class AuthMiddleware(BaseMiddleware):
         # «новый пользователь / уже есть аккаунт» из cmd_start (start.py,
         # NEW_USER_CB='start_new', HAS_ACCOUNT_CB='start_has_account')
         # нужно пропускать отдельно — иначе они попадают под tg_user is None
-        # ниже и никогда не доходят до хендлера.
+        # ниже и никогда не доходят до хендлера. tg_user всё равно
+        # резолвится и прокидывается (если найден) — иначе повторный
+        # /start уже привязанного пользователя всегда попадал бы в
+        # cmd_start с tg_user=None и не видел бы свой дашборд (был найден
+        # живым тестом BUG-I на aineron.net, не сам баг BUG-I).
         text = getattr(event, 'text', '') or ''
         cb_data = getattr(event, 'data', '') or ''
         if text.startswith('/start') or cb_data.startswith('start_new:') or cb_data == 'start_has_account':
-            data['lang'] = resolve_language(None, from_user)
+            get_tg = sync_to_async(self._get_tg_user, thread_sensitive=True)
+            tg_user = await get_tg(from_user.id)
+            data['lang'] = resolve_language(tg_user, from_user)
+            if tg_user is not None:
+                data['tg_user'] = tg_user
             return await handler(event, data)
 
         get_tg = sync_to_async(self._get_tg_user, thread_sensitive=True)
