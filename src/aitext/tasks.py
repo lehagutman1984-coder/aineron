@@ -1212,6 +1212,19 @@ def generate_ai_response(self, message_id, web_search=False):
             except Exception as refund_err:
                 logger.error(f"Не удалось вернуть средства за сообщение {message_id}: {refund_err}")
 
+            # §2 мониторинг: алерт админам на окончательный провал (не на
+            # каждую промежуточную попытку) — раньше ни один из багов A-P
+            # не был бы виден без ручного SSH-аудита логов.
+            try:
+                from telegram_bot.notify import notify_admins
+                notify_admins(
+                    '<b>Генерация провалилась окончательно</b>\n'
+                    f'Сообщение #{message_id} · {message.chat.network.name}\n'
+                    f'{str(e)[:300]}'
+                )
+            except Exception:
+                pass
+
         raise self.retry(exc=e, countdown=60)
 
 
@@ -2256,3 +2269,143 @@ def deep_research_task(self, research_id: int):
         research.error = str(e)
         research.finished_at = timezone.now()
         research.save(update_fields=['status', 'error', 'finished_at'])
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# §2 TELEGRAM_SUPREMACY_PLAN_V2.md — мониторинг вместо ручного SSH-аудита
+# ═══════════════════════════════════════════════════════════════════════════
+
+@shared_task(bind=True, max_retries=0, ignore_result=True,
+             name='aitext.tasks.reconcile_stuck_spends')
+def reconcile_stuck_spends(self):
+    """Дашборд «списано без результата»: pre-charge списание без парного
+    возврата и без завершённого сообщения спустя разумное окно — сигнал
+    скрытой денежной утечки того же класса, что BUG-C/A (которые иначе
+    нашлись только ручным SSH-аудитом).
+
+    `BalanceTransaction` не хранит FK на `Message` — единственная связь это
+    `reference`. Важно: покрываем ТОЛЬКО префиксы из `aitext/billing.py`
+    (`chat:`, `chat-regen:`, `compare:` — `record_message_billing`/
+    `refund_message_billing` гарантированно пишут и читают один и тот же
+    `reference`, идемпотентность через unique(type, reference)) и `media:`
+    (fal-ветка `generate_ai_response` — `billing_reference` та же переменная
+    что и в `spend_kopecks`/`add_kopecks`). НЕ включаем `text:{message.id}`
+    (tasks.py, TEXT_BILLING_ENABLED — выключен по умолчанию) — это списание
+    выполняется ТОЛЬКО в успешном пути ПОСЛЕ `status=COMPLETED`, физически
+    не может быть «без результата», false positive исключён самой природой
+    кода, но и сигнала не даёт — не проверяем. Регенерации медиа
+    (`media-regen:...`) и другие домены (`bizreply:`, `aitask:`, `studio:`,
+    ...) сознательно не охвачены — у каждого свой формат и свой путь
+    возврата, отдельная задача при необходимости.
+    """
+    from datetime import timedelta
+    from django.db.models import Q
+    from django.utils import timezone as tz
+    from django.core.cache import cache
+    from users.models import BalanceTransaction
+    from telegram_bot.notify import notify_admins
+    from core.money import format_rub
+
+    now = tz.now()
+    # Младше 20 минут — генерация ещё может быть в процессе (ретраи, poll),
+    # рано считать аномалией. Старше 6 часов — вне окна, чтобы не пере-
+    # сканировать всю историю на каждый прогон.
+    window_start = now - timedelta(hours=6)
+    window_end = now - timedelta(minutes=20)
+
+    candidates = BalanceTransaction.objects.filter(
+        type=BalanceTransaction.Type.SPEND,
+        created_at__gte=window_start,
+        created_at__lt=window_end,
+    ).filter(
+        Q(reference__startswith='chat:') | Q(reference__startswith='chat-regen:')
+        | Q(reference__startswith='compare:') | Q(reference__startswith='media:')
+    )
+
+    anomalies = []
+    for tx in candidates.iterator():
+        # id сообщения — первый цифровой сегмент после префикса; у
+        # chat-regen: за ним ещё идёт uuid-хвост (`chat-regen:2853:523f...`).
+        _, _, rest = tx.reference.partition(':')
+        msg_id_str = rest.split(':', 1)[0]
+        if not msg_id_str.isdigit():
+            continue
+        has_refund = BalanceTransaction.objects.filter(
+            type=BalanceTransaction.Type.REFUND, reference=tx.reference,
+        ).exists()
+        if has_refund:
+            continue
+        msg = Message.objects.filter(pk=int(msg_id_str)).only('status').first()
+        if msg is None or msg.status == Message.Status.COMPLETED:
+            continue
+        # Не алертить один и тот же reference чаще раза в 6 часов — иначе
+        # нерешённая аномалия спамит на каждом прогоне задачи.
+        if not cache.add(f'monitor_stuck_spend:{tx.reference}', 1, timeout=6 * 3600):
+            continue
+        anomalies.append((tx, msg))
+
+    if not anomalies:
+        return
+
+    lines = [f'Списано без результата за 20мин–6ч: {len(anomalies)}']
+    for tx, msg in anomalies[:20]:
+        status = msg.status if msg else 'нет Message'
+        lines.append(f'· {tx.reference} — {format_rub(abs(tx.amount_kopecks))}, status={status}')
+    if len(anomalies) > 20:
+        lines.append(f'...и ещё {len(anomalies) - 20}')
+    notify_admins('<b>Мониторинг: списания без результата</b>\n' + '\n'.join(lines))
+
+
+@shared_task(bind=True, max_retries=0, ignore_result=True,
+             name='aitext.tasks.check_model_health')
+def check_model_health(self):
+    """Еженедельная проверка живости активных текстовых моделей минимальным
+    пробным вызовом — поймала бы BUG-E (мёртвая deepseek-v3) за 5 минут
+    вместо случайного обнаружения при ручном аудите.
+
+    Только provider='openrouter' (текст, laozhang.ai): пробный вызов дешёвый
+    и быстрый (пара токенов). Изображения/видео (provider='fal-ai') намеренно
+    не пингуются — реальная генерация стоит денег и времени; для них
+    reconcile_stuck_spends выше — более дешёвый прокси-сигнал проблем.
+    Только алертит, НЕ деактивирует модели автоматически — is_active
+    остаётся ручным решением админа (как и везде в проекте), чтобы разовый
+    сбой провайдера не выключил рабочую модель.
+
+    Осознанно: `get_laozhang_client()` — это `FallbackClient` (laozhang→apimart
+    прозрачно при AI_PROVIDER_FALLBACK=1), тот же клиент, что видит реальный
+    пользовательский трафик. Если laozhang мёртв, а apimart тем же именем
+    модели отвечает — для нас это `success`, и это ПРАВИЛЬНО: пользователь
+    в проде получает точно такой же рескью, значит модель не мертва с его
+    точки зрения. Проверяем эффективную доступность, а не «жив ли конкретно
+    laozhang» — если оба провайдера недоступны, FallbackClient поднимет
+    исключение и попадёт в `failed`, как и должно быть.
+    """
+    from telegram_bot.notify import notify_admins
+
+    networks = NeuralNetwork.objects.filter(is_active=True, provider='openrouter').exclude(model_name='')
+    failed = []
+    for network in networks:
+        try:
+            client = get_laozhang_client()
+            resp = client.chat.completions.create(
+                model=network.model_name,
+                messages=[{'role': 'user', 'content': 'ping'}],
+                max_tokens=5,
+                # 15с, не 30 — с ~69 активными текстовыми моделями худший случай
+                # (все таймаутят) должен уложиться в CELERY_TASK_TIME_LIMIT=30мин
+                # с запасом (69×15с ≈ 17мин), а не почти упереться в лимит.
+                timeout=15,
+            )
+            if not resp.choices:
+                raise ValueError('empty choices')
+        except Exception as e:
+            failed.append((network, str(e)[:200]))
+
+    if not failed:
+        return
+
+    lines = [f'Не отвечают {len(failed)} из {networks.count()} активных текстовых моделей:']
+    for network, err in failed:
+        lines.append(f'· {network.name} ({network.model_name}): {err}')
+    lines.append('\nis_active НЕ менялся автоматически — проверьте вручную в админке.')
+    notify_admins('<b>Мониторинг: здоровье моделей</b>\n' + '\n'.join(lines))

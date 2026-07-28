@@ -73,6 +73,18 @@ TASKS = [
         "schedule": {"day_of_month": "1", "hour": "0", "minute": "0"},
         "cron": True,
     },
+    {
+        "name": "Мониторинг: списания без результата (каждые 30 минут)",
+        "task": "aitext.tasks.reconcile_stuck_spends",
+        "schedule": {"minute": "*/30"},
+        "cron": True,
+    },
+    {
+        "name": "Мониторинг: здоровье текстовых моделей (понедельник 08:00 МСК)",
+        "task": "aitext.tasks.check_model_health",
+        "schedule": {"day_of_week": "1", "hour": "5", "minute": "0"},  # UTC 05:00 = MSK 08:00
+        "cron": True,
+    },
 ]
 
 

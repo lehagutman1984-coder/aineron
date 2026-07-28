@@ -217,6 +217,18 @@ def notify_user(telegram_id: int, text: str) -> None:
     _send_sync(telegram_id, text)
 
 
+def notify_admins(text: str) -> None:
+    """§2 мониторинг (TELEGRAM_SUPREMACY_PLAN_V2.md): единая точка алертов
+    админам — до этого паттерн `for admin_id in TELEGRAM_ADMIN_IDS: notify_user(...)`
+    дублировался в payment.py/tasks.py по месту использования."""
+    from django.conf import settings
+    for admin_id in getattr(settings, 'TELEGRAM_ADMIN_IDS', []):
+        try:
+            notify_user(admin_id, text)
+        except Exception:
+            pass
+
+
 def notify_user_rich(telegram_id: int, md_text: str, reply_markup=None) -> bool:
     """Синхронная доставка markdown-текста rich-сообщением с HTML-fallback.
 
