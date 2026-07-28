@@ -808,7 +808,10 @@ def generate_ai_response(self, message_id, web_search=False):
                     tg_chat_id = chat_settings.get('telegram_chat_id')
                     if tg_chat_id and saved_images:
                         from telegram_bot.notify import send_media_to_telegram
-                        send_media_to_telegram(tg_chat_id, saved_images[0], network.name, network.cost_kopecks)
+                        # total_cost_kopecks (база + доплата за /videoset и /imgset),
+                        # не network.cost_kopecks — иначе подпись занижает цену, если
+                        # были применены платные настройки (НИЗКО в TELEGRAM_SUPREMACY_PLAN_V2.md)
+                        send_media_to_telegram(tg_chat_id, saved_images[0], network.name, total_cost_kopecks)
                     elif tg_chat_id:
                         from telegram_bot.notify import maybe_notify_chat
                         maybe_notify_chat(tg_chat_id, f"Видео готово. Смотри в кабинете: {settings.SITE_URL}/account/files/")
@@ -836,6 +839,21 @@ def generate_ai_response(self, message_id, web_search=False):
                 else:
                     message.error_message = t_error('media_generation_failed_refunded', user.get_language())
                 message.save()
+                # BUG-H: до этого фикса ни одна ошибка медиа-генерации (видео,
+                # изображение, img2img) не долетала до Telegram вообще — только
+                # успешная доставка была push-based (chat_settings.telegram_chat_id
+                # выше), провал молча оставался виден только на сайте. Бот-сторонний
+                # поллинг в /image (до BUG-H) закрывал это только для картинок и
+                # только пока сам не истекал раньше реальной ошибки.
+                try:
+                    chat_settings = message.chat.settings or {}
+                    tg_chat_id = chat_settings.get('telegram_chat_id')
+                    if tg_chat_id:
+                        from telegram_bot.notify import maybe_notify_chat
+                        # error_message уже локализован по языку пользователя (t_error выше)
+                        maybe_notify_chat(tg_chat_id, f"{network.name}: {message.error_message}")
+                except Exception:
+                    pass
                 return
 
         # ========== laozhang.ai текст провайдер ==========

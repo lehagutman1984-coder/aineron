@@ -135,7 +135,11 @@
     "notFound": "Gambar dibuat tetapi tidak ditemukan. Periksa /account/files/",
     "error": "Pembuatan gagal. Silakan coba lagi nanti — saldo Anda telah dikembalikan.",
     "timeout": "Waktu habis. Silakan coba lagi.",
-    "resultReady": "Gambar siap: {url}"
+    "resultReady": "Gambar siap: {url}",
+    "settingsApplied": "\nPengaturan dari /imgset diterapkan.",
+    "requestAccepted": "Permintaan diterima.",
+    "modelLabel": "Model",
+    "readyHint": "Saya akan mengirimkan hasilnya segera setelah siap."
   },
   "chat": {
     "noModels": "Tidak ada model yang tersedia. Silakan hubungi dukungan.",

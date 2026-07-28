@@ -135,7 +135,11 @@
     "notFound": "Görüntü oluşturuldu ancak bulunamadı. /account/files/ kontrol edin",
     "error": "Oluşturma başarısız oldu. Lütfen daha sonra tekrar deneyin — bakiyeniz iade edildi.",
     "timeout": "Zaman aşımına uğradı. Lütfen tekrar deneyin.",
-    "resultReady": "Görüntü hazır: {url}"
+    "resultReady": "Görüntü hazır: {url}",
+    "settingsApplied": "\n/imgset ayarları uygulandı.",
+    "requestAccepted": "İstek alındı.",
+    "modelLabel": "Model",
+    "readyHint": "Hazır olduğunda sonucu göndereceğim."
   },
   "chat": {
     "noModels": "Kullanılabilir model yok. Lütfen destekle iletişime geçin.",

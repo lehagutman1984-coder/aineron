@@ -218,7 +218,11 @@
     "notFound": "Image generated but not found. Check /account/files/",
     "error": "Generation failed. Please try later — your balance has been refunded.",
     "timeout": "Timed out. Please try again.",
-    "resultReady": "Image ready: {url}"
+    "resultReady": "Image ready: {url}",
+    "settingsApplied": "\nSettings from /imgset applied.",
+    "requestAccepted": "Request accepted.",
+    "modelLabel": "Model",
+    "readyHint": "I'll send the result as soon as it's ready."
   },
   "chat": {
     "noModels": "No models available. Please contact support.",

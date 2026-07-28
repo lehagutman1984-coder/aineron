@@ -7,7 +7,6 @@
   3. Бот скачивает фото → сохраняет в storage → получает URL
   4. Передаёт URL и промт в image-модель с supports_input_image=True
 """
-import asyncio
 import logging
 import os
 import tempfile
@@ -17,7 +16,7 @@ from aiogram import Router, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import Message, URLInputFile
+from aiogram.types import Message
 from asgiref.sync import sync_to_async
 from django.conf import settings as djsettings
 
@@ -26,9 +25,6 @@ from telegram_bot.i18n import t, resolve_language
 
 logger = logging.getLogger(__name__)
 router = Router()
-
-POLL_INTERVAL = 3
-POLL_MAX_TRIES = 40  # 2 мин
 
 
 class Img2ImgFSM(StatesGroup):
@@ -62,12 +58,17 @@ def _get_img2img_network():
     return None
 
 
-def _create_img2img_request(tg_user, network, prompt: str, image_url: str, user_settings=None):
+def _create_img2img_request(tg_user, network, prompt: str, image_url: str, telegram_chat_id, user_settings=None):
     from aitext.models import Chat, Message as AiMsg
+    # BUG-H: settings={'telegram_chat_id': ...} — без него Celery не может
+    # push-доставить результат (см. images.py::_create_image_request), а
+    # бот-сторонний поллинг (до фикса) обрывался по таймауту раньше реальной
+    # ошибки/готовности на генерациях дольше 2 минут.
     chat = Chat.objects.create(
         user=tg_user.user,
         network=network,
         title=f'Img2Img: {prompt[:50]}',
+        settings={'telegram_chat_id': telegram_chat_id},
     )
     user_msg = AiMsg.objects.create(
         chat=chat, role='user', content=prompt,
@@ -78,11 +79,6 @@ def _create_img2img_request(tg_user, network, prompt: str, image_url: str, user_
         status=AiMsg.Status.PENDING, content='',
     )
     return assistant_msg
-
-
-def _get_message_state(msg_id):
-    from aitext.models import Message as AiMsg
-    return AiMsg.objects.prefetch_related('generated_images').get(id=msg_id)
 
 
 def _save_photo_to_storage(file_bytes: bytes, user) -> str:
@@ -99,7 +95,6 @@ def _save_photo_to_storage(file_bytes: bytes, user) -> str:
 
 get_img2img_network = sync_to_async(_get_img2img_network, thread_sensitive=True)
 create_img2img_request = sync_to_async(_create_img2img_request, thread_sensitive=True)
-get_message_state = sync_to_async(_get_message_state, thread_sensitive=True)
 save_photo = sync_to_async(_save_photo_to_storage, thread_sensitive=True)
 
 
@@ -227,8 +222,11 @@ async def handle_img2img_photo(message: Message, state: FSMContext, tg_user=None
         stored_settings, extra_rub = get_stored_image_settings(tg_user, network)
         total_kopecks = network.cost_kopecks + extra_rub * 100
 
-        # Create generation request
-        assistant_msg = await create_img2img_request(tg_user, network, prompt, image_url, user_settings=stored_settings)
+        # Create generation request — telegram_chat_id включает push-доставку
+        # результата из Celery (BUG-H), поллинг ниже больше не нужен.
+        assistant_msg = await create_img2img_request(
+            tg_user, network, prompt, image_url, message.chat.id, user_settings=stored_settings,
+        )
 
         from aitext.tasks import generate_ai_response
         generate_ai_response.delay(assistant_msg.id)
@@ -236,88 +234,17 @@ async def handle_img2img_photo(message: Message, state: FSMContext, tg_user=None
         if lang == 'ru':
             await status_msg.edit_text(
                 f'🎨 Генерирую ({network.name})...\n'
-                f'Промт: <i>{prompt}</i>',
+                f'Промт: <i>{prompt}</i>\n\n'
+                f'Пришлю результат, как только будет готово.',
                 parse_mode='HTML',
             )
         else:
             await status_msg.edit_text(
-                t('img2img.generating', lang, name=network.name, prompt=prompt),
+                t('img2img.generating', lang, name=network.name, prompt=prompt)
+                + '\n\n' + t('images.readyHint', lang),
                 parse_mode='HTML',
             )
-
-        # Poll for result
-        for i in range(POLL_MAX_TRIES):
-            await asyncio.sleep(POLL_INTERVAL)
-            try:
-                msg = await get_message_state(assistant_msg.id)
-            except Exception:
-                continue
-
-            if msg.status == 'completed':
-                def _get_img(m):
-                    return m.generated_images.first()
-                get_img = sync_to_async(_get_img, thread_sensitive=True)
-                image = await get_img(msg)
-
-                if image:
-                    await status_msg.delete()
-                    img_url = f"{djsettings.SITE_URL}{image.image.url}"
-                    try:
-                        if lang == 'ru':
-                            await message.answer_photo(
-                                URLInputFile(img_url),
-                                caption=f'🎨 {network.name} · <i>{prompt}</i>',
-                                parse_mode='HTML',
-                            )
-                        else:
-                            await message.answer_photo(
-                                URLInputFile(img_url),
-                                caption=t('img2img.resultCaption', lang, name=network.name, prompt=prompt),
-                                parse_mode='HTML',
-                            )
-                    except Exception:
-                        if lang == 'ru':
-                            await message.answer(f'Готово: {img_url}')
-                        else:
-                            await message.answer(t('img2img.resultReady', lang, url=img_url))
-                else:
-                    if lang == 'ru':
-                        await status_msg.edit_text('Изображение готово, но не найдено. Проверь /account/files/')
-                    else:
-                        await status_msg.edit_text(t('img2img.notFound', lang))
-
-                await async_log_event(tg_user, 'image', network=network, cost_kopecks=total_kopecks)
-                return
-
-            elif msg.status == 'failed':
-                if lang == 'ru':
-                    await status_msg.edit_text('Ошибка генерации. Попробуй ещё раз.')
-                else:
-                    await status_msg.edit_text(t('img2img.error', lang))
-                await async_log_event(tg_user, 'error', network=network, reason='img2img_failed')
-                return
-
-            if i % 5 == 0 and i > 0:
-                dots = '.' * ((i // 5) % 4 + 1)
-                try:
-                    if lang == 'ru':
-                        await status_msg.edit_text(
-                            f'🎨 Генерирую{dots} ({i * POLL_INTERVAL}с)\n'
-                            f'Промт: <i>{prompt}</i>',
-                            parse_mode='HTML',
-                        )
-                    else:
-                        await status_msg.edit_text(
-                            t('img2img.generatingDots', lang, dots=dots, sec=i * POLL_INTERVAL, prompt=prompt),
-                            parse_mode='HTML',
-                        )
-                except Exception:
-                    pass
-
-        if lang == 'ru':
-            await status_msg.edit_text('Превышено время ожидания. Попробуй ещё раз.')
-        else:
-            await status_msg.edit_text(t('img2img.timeout', lang))
+        await async_log_event(tg_user, 'image', network=network, cost_kopecks=total_kopecks)
 
     except Exception as e:
         logger.error(f'img2img error: {e}')

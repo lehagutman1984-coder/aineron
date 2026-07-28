@@ -1,10 +1,8 @@
-import asyncio
 import logging
 from aiogram import Router
 from aiogram.filters import Command
-from aiogram.types import Message, URLInputFile
+from aiogram.types import Message
 from asgiref.sync import sync_to_async
-from django.conf import settings
 
 from telegram_bot.analytics import async_log_event
 from telegram_bot.utils import DIVIDER
@@ -12,9 +10,6 @@ from telegram_bot.i18n import t, resolve_language
 
 logger = logging.getLogger(__name__)
 router = Router()
-
-POLL_INTERVAL = 3
-POLL_MAX_TRIES = 30  # 90 секунд
 
 
 def _get_image_network(tg_user):
@@ -25,7 +20,6 @@ def _get_image_network(tg_user):
         except NeuralNetwork.DoesNotExist:
             pass
     # Исключаем видео-модели (они имеют config_json.metadata.output_type = "video")
-    from django.db.models import Q
     nets = NeuralNetwork.objects.filter(provider='fal-ai', is_active=True).order_by('order')
     for net in nets:
         cfg = net.config_json or {}
@@ -43,16 +37,20 @@ def get_stored_image_settings(tg_user, network) -> tuple[dict, int]:
     return stored, _calc_extra_cost(network.config_json or {}, stored)
 
 
-def _create_image_request(tg_user, network, prompt, user_settings=None):
+def _create_image_request(tg_user, network, prompt, telegram_chat_id, user_settings=None):
     from aitext.models import Chat, Message as AiMsg
-    from telegram_bot.models import TelegramChat
-    # Используем отдельный чат для изображений (не мешаем текстовому контексту)
+    # BUG-H: без settings={'telegram_chat_id': ...} Celery не может доставить
+    # готовое изображение push'ем (tasks.py читает именно это поле) — раньше
+    # доставка держалась только на бот-стороннем поллинге в 90 секунд, и любая
+    # генерация дольше этого срока приходила голой ссылкой уже после того, как
+    # бот сказал пользователю «таймаут» (см. TELEGRAM_SUPREMACY_PLAN_V2.md).
     chat = Chat.objects.create(
         user=tg_user.user,
         network=network,
         title=f'Telegram image: {prompt[:50]}',
+        settings={'telegram_chat_id': telegram_chat_id},
     )
-    user_msg = AiMsg.objects.create(chat=chat, role='user', content=prompt, settings=user_settings or {})
+    AiMsg.objects.create(chat=chat, role='user', content=prompt, settings=user_settings or {})
     assistant_msg = AiMsg.objects.create(
         chat=chat, role='assistant',
         status=AiMsg.Status.PENDING, content='',
@@ -60,14 +58,8 @@ def _create_image_request(tg_user, network, prompt, user_settings=None):
     return assistant_msg
 
 
-def _get_message_state(msg_id):
-    from aitext.models import Message as AiMsg
-    return AiMsg.objects.select_related('chat__user').prefetch_related('generated_images').get(id=msg_id)
-
-
 get_image_network = sync_to_async(_get_image_network, thread_sensitive=True)
 create_image_request = sync_to_async(_create_image_request, thread_sensitive=True)
-get_message_state = sync_to_async(_get_message_state, thread_sensitive=True)
 
 
 @router.message(Command('image'))
@@ -104,59 +96,25 @@ async def cmd_image(message: Message, tg_user=None):
         )
         return
 
-    # S1: реакция-статус «запрос принят»
+    # S1: реакция-статус «запрос принят» (результат придёт из Celery позже —
+    # push-доставка, та же схема, что у /video, см. _create_image_request)
     from telegram_bot.notify import set_status_reaction
     await set_status_reaction(message.bot, message.chat.id, message.message_id, '👀')
 
-    status_msg = await message.answer(t('images.generating', lang, name=network.name))
-
-    assistant_msg = await create_image_request(tg_user, network, prompt, user_settings=stored_settings)
+    assistant_msg = await create_image_request(
+        tg_user, network, prompt, message.chat.id, user_settings=stored_settings,
+    )
 
     from aitext.tasks import generate_ai_response
     generate_ai_response.delay(assistant_msg.id)
 
-    for i in range(POLL_MAX_TRIES):
-        await asyncio.sleep(POLL_INTERVAL)
-        try:
-            msg = await get_message_state(assistant_msg.id)
-        except Exception:
-            continue
-
-        if msg.status == 'completed':
-            def _get_first_image(m):
-                return m.generated_images.first()
-
-            get_img = sync_to_async(_get_first_image, thread_sensitive=True)
-            image = await get_img(msg)
-
-            if image:
-                await set_status_reaction(message.bot, message.chat.id, message.message_id, None)
-                await status_msg.delete()
-                img_url = f"{settings.SITE_URL}{image.image.url}"
-                try:
-                    from core.money import format_money
-                    await message.answer_photo(
-                        URLInputFile(img_url),
-                        caption=f"{network.name} · {format_money(total_kopecks)}",
-                    )
-                except Exception:
-                    await message.answer(t('images.resultReady', lang, url=img_url))
-            else:
-                await status_msg.edit_text(t('images.notFound', lang))
-            await async_log_event(tg_user, 'image', network=network,
-                                  cost_kopecks=total_kopecks)
-            return
-
-        elif msg.status == 'failed':
-            await status_msg.edit_text(t('images.error', lang))
-            await async_log_event(tg_user, 'error', network=network, reason='image_failed')
-            return
-
-        if i % 5 == 0 and i > 0:
-            dots = '.' * ((i // 5) % 4 + 1)
-            try:
-                await status_msg.edit_text(t('images.generatingDots', lang, dots=dots, sec=i * POLL_INTERVAL))
-            except Exception:
-                pass
-
-    await status_msg.edit_text(t('images.timeout', lang))
+    from core.money import format_money
+    settings_line = t('images.settingsApplied', lang) if stored_settings else ''
+    await message.answer(
+        f"<b>{t('images.title', lang)}</b>\n{DIVIDER}\n"
+        f"{t('images.requestAccepted', lang)}\n\n"
+        f"{t('images.modelLabel', lang)}: <b>{network.name}</b>  ·  {format_money(total_kopecks)}{settings_line}\n"
+        f"{t('images.readyHint', lang)}",
+        parse_mode='HTML',
+    )
+    await async_log_event(tg_user, 'image', network=network, cost_kopecks=total_kopecks)
