@@ -56,6 +56,26 @@ _save_file_async = sync_to_async(_save_file_to_storage, thread_sensitive=True)
 _extract_text_async = sync_to_async(_extract_text, thread_sensitive=True)
 
 
+async def _topic_chat_override(message: Message, tg_user):
+    """S7: то же разрешение топика-проекта, что chat.py::handle_text_message
+    (message_thread_id -> resolve_topic_chat) — без этого файлы/фото внутри
+    топика-проекта молча уходили в дефолтный чат пользователя вместо чата
+    проекта. Не сам BUG-G, но стало весомым только после него: раньше
+    вложения физически не доходили до модели (см. chat.py::_create_messages),
+    теперь любой не туда попавший файл тихо портит контекст не того проекта
+    (найдено при ревью BUG-G)."""
+    from telegram_bot import capabilities
+    thread_id = getattr(message, 'message_thread_id', None)
+    if not thread_id or not capabilities.is_enabled('topics'):
+        return None
+    try:
+        from telegram_bot.handlers.topics import resolve_topic_chat
+        return await resolve_topic_chat(tg_user, thread_id)
+    except Exception as e:
+        logger.debug(f'topic routing skipped for attachment: {e}')
+        return None
+
+
 async def _download_and_save(bot, file_id: str, original_name: str, mime_type: str, user, media_type: str):
     """Download file from Telegram and save to storage."""
     file_info = await bot.get_file(file_id)
@@ -101,7 +121,8 @@ async def handle_photo(message: Message, tg_user=None):
             tg_user.user, 'image',
         )
         from telegram_bot.handlers.chat import process_text
-        await process_text(message, tg_user, prompt, attachment=att)
+        chat_override = await _topic_chat_override(message, tg_user)
+        await process_text(message, tg_user, prompt, attachment=att, chat_override=chat_override)
         try:
             await status.delete()
         except Exception:
@@ -185,7 +206,8 @@ async def _process_document_to_chat(message: Message, tg_user, doc, name: str, e
         default_prompt = f'Проанализируй содержимое документа "{name}"' if lang == 'ru' else t('files.analyzeDocumentPrompt', lang, name=name)
         prompt = caption if caption else default_prompt
         from telegram_bot.handlers.chat import process_text
-        await process_text(message, tg_user, prompt, attachment=att)
+        chat_override = await _topic_chat_override(message, tg_user)
+        await process_text(message, tg_user, prompt, attachment=att, chat_override=chat_override)
         try:
             await status.delete()
         except Exception:
@@ -341,7 +363,8 @@ async def cb_upload_to_chat(query: CallbackQuery, tg_user=None):
         await _extract_text_async(att)
         prompt = f'Проанализируй содержимое документа "{filename}"' if lang == 'ru' else t('files.analyzeDocumentPrompt', lang, name=filename)
         from telegram_bot.handlers.chat import process_text
-        await process_text(query.message, tg_user, prompt, attachment=att)
+        chat_override = await _topic_chat_override(query.message, tg_user)
+        await process_text(query.message, tg_user, prompt, attachment=att, chat_override=chat_override)
         try:
             await status.delete()
         except Exception:

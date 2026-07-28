@@ -101,20 +101,31 @@ async def cmd_image(message: Message, tg_user=None):
     from telegram_bot.notify import set_status_reaction
     await set_status_reaction(message.bot, message.chat.id, message.message_id, '👀')
 
-    assistant_msg = await create_image_request(
-        tg_user, network, prompt, message.chat.id, user_settings=stored_settings,
-    )
+    # Найдено при ревью BUG-H: img2img_cmd.py уже оборачивал этот же участок
+    # (создание запроса + постановка в Celery) в try/except, здесь не было —
+    # при сбое БД или брокера (Redis/Celery недоступен) пользователь получал
+    # реакцию «👀» и полную тишину дальше, ни подтверждения, ни ошибки.
+    try:
+        assistant_msg = await create_image_request(
+            tg_user, network, prompt, message.chat.id, user_settings=stored_settings,
+        )
 
-    from aitext.tasks import generate_ai_response
-    generate_ai_response.delay(assistant_msg.id)
+        from aitext.tasks import generate_ai_response
+        generate_ai_response.delay(assistant_msg.id)
 
-    from core.money import format_money
-    settings_line = t('images.settingsApplied', lang) if stored_settings else ''
-    await message.answer(
-        f"<b>{t('images.title', lang)}</b>\n{DIVIDER}\n"
-        f"{t('images.requestAccepted', lang)}\n\n"
-        f"{t('images.modelLabel', lang)}: <b>{network.name}</b>  ·  {format_money(total_kopecks)}{settings_line}\n"
-        f"{t('images.readyHint', lang)}",
-        parse_mode='HTML',
-    )
-    await async_log_event(tg_user, 'image', network=network, cost_kopecks=total_kopecks)
+        from core.money import format_money
+        settings_line = t('images.settingsApplied', lang) if stored_settings else ''
+        await message.answer(
+            f"<b>{t('images.title', lang)}</b>\n{DIVIDER}\n"
+            f"{t('images.requestAccepted', lang)}\n\n"
+            f"{t('images.modelLabel', lang)}: <b>{network.name}</b>  ·  {format_money(total_kopecks)}{settings_line}\n"
+            f"{t('images.readyHint', lang)}",
+            parse_mode='HTML',
+        )
+        await async_log_event(tg_user, 'image', network=network, cost_kopecks=total_kopecks)
+    except Exception as e:
+        logger.error(f'cmd_image error: {e}')
+        if lang == 'ru':
+            await message.answer('Ошибка обработки. Попробуй ещё раз.')
+        else:
+            await message.answer(t('img2img.processingError', lang))

@@ -854,6 +854,24 @@ def generate_ai_response(self, message_id, web_search=False):
                         maybe_notify_chat(tg_chat_id, f"{network.name}: {message.error_message}")
                 except Exception:
                     pass
+
+                # §2 мониторинг: этот except заканчивается `return`, не `raise` —
+                # медиа-ветка НЕ ретраится через Celery (см. комментарий у
+                # `raise self.retry` в текстовой ветке ниже), то есть каждый
+                # провал здесь УЖЕ финальный. Алерт в текстовой ветке (по
+                # is_final_attempt) сюда никогда не долетает — этот `return`
+                # обрывает выполнение раньше внешнего except, поэтому нашёлся
+                # при ревью: без этого дубля весь класс ошибок изображений/видео
+                # был бы невидим для нового мониторинга.
+                try:
+                    from telegram_bot.notify import notify_admins
+                    notify_admins(
+                        '<b>Генерация медиа провалилась</b>\n'
+                        f'Сообщение #{message_id} · {network.name}\n'
+                        f'{error_str[:300]}'
+                    )
+                except Exception:
+                    pass
                 return
 
         # ========== laozhang.ai текст провайдер ==========

@@ -173,8 +173,17 @@ def _charge_reply(conn, draft_id: int) -> tuple:
     """Биллинг ответа: тарифы «Бизнес» и «Макс» — 300/мес включено, сверх —
     по цене BUSINESS_REPLY_PRICE_KOPECKS; без тарифа — каждый ответ платный.
 
-    Возвращает (ok, paid): paid=True если было реальное списание —
-    при неудачной отправке вызывающий код обязан вызвать _refund_reply.
+    Возвращает (ok, paid, reference): reference — уникальная строка списания
+    НА ЭТУ ПОПЫТКУ (None если ответ бесплатный). При неудачной отправке
+    вызывающий код обязан передать ЭТОТ reference обратно в _refund_reply.
+    Найдено при ревью: reference раньше был `f'bizreply:{draft_id}'` —
+    одинаковый на каждую попытку отправки одного черновика. После неудачной
+    отправки и возврата денег повторный тап «Отправить» списывал по ТОМУ ЖЕ
+    reference — `spend_kopecks` при коллизии (type, reference) молча
+    возвращает True БЕЗ повторного списания (идемпотентность от Celery-
+    ретраев), а вызывающий код видел «списано» и пытался доставить ответ
+    бесплатно. Тот же класс бага, что уже чинился для media-regen/chat-regen
+    в этой же сессии (уникальный reference на попытку регенерации).
     """
     from django.db.models import F
     from django.utils import timezone
@@ -207,9 +216,12 @@ def _charge_reply(conn, draft_id: int) -> tuple:
         free = claimed > 0
 
     paid = False
+    reference = None
     if not free:
-        if not user.spend_kopecks(price, type='spend', reference=f'bizreply:{draft_id}'):
-            return False, False
+        import uuid
+        reference = f'bizreply:{draft_id}:{uuid.uuid4().hex[:12]}'
+        if not user.spend_kopecks(price, type='spend', reference=reference):
+            return False, False, None
         paid = True
         # Платный ответ не занимал бесплатный слот выше — инкремент отдельно
         # (счётчик replies_this_month отражает ВСЕ ответы, не только бесплатные,
@@ -217,17 +229,20 @@ def _charge_reply(conn, draft_id: int) -> tuple:
         BusinessConnection.objects.filter(pk=conn.pk).update(
             replies_this_month=F('replies_this_month') + 1,
         )
-    return True, paid
+    return True, paid, reference
 
 
-def _refund_reply(conn, draft_id: int, paid: bool):
-    """Возврат списания за недоставленный ответ + откат счётчика."""
+def _refund_reply(conn, paid: bool, reference: str = None):
+    """Возврат списания за недоставленный ответ + откат счётчика.
+    `reference` — ТА ЖЕ строка, что вернул `_charge_reply` на эту попытку
+    (не реконструируется из draft_id — см. комментарий в _charge_reply про
+    почему это важно при повторных тапах после отказа)."""
     from django.db.models import F
     from django.db.models.functions import Greatest
     from telegram_bot.models import BusinessConnection
-    if paid:
+    if paid and reference:
         price = getattr(settings, 'BUSINESS_REPLY_PRICE_KOPECKS', 100)
-        conn.tg_user.user.add_kopecks(price, type='refund', reference=f'bizreply:{draft_id}')
+        conn.tg_user.user.add_kopecks(price, type='refund', reference=reference)
     BusinessConnection.objects.filter(pk=conn.pk).update(
         replies_this_month=Greatest(F('replies_this_month') - 1, 0),
     )
@@ -287,6 +302,28 @@ def _autopilot_burst_exceeded(conn, chat_id: int) -> bool:
     return count > limit
 
 
+def _claim_pending_draft(draft_id: int, tg_user):
+    """Атомарно занимает черновик для отправки: pending -> sent ОДНИМ
+    условным UPDATE, ДО реального обращения к Telegram/списания — иначе
+    двойной тап на «Отправить» (или редоставленный Telegram callback) успевает
+    пройти проверку `status == 'pending'` дважды за то время, что уходит на
+    сетевой round-trip до send_message, и клиент получает ответ дважды, а
+    бесплатный слот квоты (см. _charge_reply) списывается дважды за одно
+    логическое сообщение (найдено при ревью, не было в исходном BUG-O).
+    Возвращает None, если черновик уже занят/обработан — в этом случае
+    вызывающий код должен молча выйти, не пытаться отправить повторно.
+    Если после claim'а списание или отправка не удались — вызывающий код
+    обязан откатить статус обратно на 'pending' через mark_draft.
+    """
+    from telegram_bot.models import BusinessDraft
+    claimed = BusinessDraft.objects.filter(
+        pk=draft_id, connection__tg_user=tg_user, status=BusinessDraft.Status.PENDING,
+    ).update(status=BusinessDraft.Status.SENT)
+    if not claimed:
+        return None
+    return _get_draft(draft_id, tg_user)
+
+
 def _mark_draft(draft_id: int, status: str, new_text: str = None):
     from telegram_bot.models import BusinessDraft
     updates = {'status': status}
@@ -304,6 +341,7 @@ get_draft = sync_to_async(_get_draft, thread_sensitive=True)
 charge_reply = sync_to_async(_charge_reply, thread_sensitive=True)
 refund_reply = sync_to_async(_refund_reply, thread_sensitive=True)
 mark_draft = sync_to_async(_mark_draft, thread_sensitive=True)
+claim_pending_draft = sync_to_async(_claim_pending_draft, thread_sensitive=True)
 claim_can_reply_notice = sync_to_async(_claim_can_reply_notice, thread_sensitive=True)
 check_daily_cap = sync_to_async(_check_daily_cap, thread_sensitive=True)
 autopilot_burst_exceeded = sync_to_async(_autopilot_burst_exceeded, thread_sensitive=True)
@@ -472,7 +510,7 @@ async def on_business_message(message: Message):
     if autopilot_ok:
         draft = await create_draft(conn, chat_id, client_name, text,
                                    result['reply'], status='auto')
-        charged, paid = await charge_reply(conn, draft.pk)
+        charged, paid, charge_ref = await charge_reply(conn, draft.pk)
         if not charged:
             await mark_draft(draft.pk, 'pending')
             try:
@@ -487,7 +525,7 @@ async def on_business_message(message: Message):
         sent = await _send_business_reply(message.bot, conn, chat_id, result['reply'])
         if not sent:
             # Возврат средств + эскалация владельцу карточкой-черновиком
-            await refund_reply(conn, draft.pk, paid)
+            await refund_reply(conn, paid, charge_ref)
             await mark_draft(draft.pk, 'pending')
             try:
                 await message.bot.send_message(
@@ -541,18 +579,18 @@ async def cb_bizdraft_send(query: CallbackQuery, tg_user=None):
         await query.answer()
         return
     draft_id = int(query.data.split(':')[1])
-    draft = await get_draft(draft_id, tg_user)
-    if draft is None or draft.status != 'pending':
+    draft = await claim_pending_draft(draft_id, tg_user)
+    if draft is None:
         await query.answer('Черновик не найден или уже обработан')
         return
-    charged, paid = await charge_reply(draft.connection, draft.pk)
+    charged, paid, charge_ref = await charge_reply(draft.connection, draft.pk)
     if not charged:
+        await mark_draft(draft.pk, 'pending')  # откат claim'а — денег не было
         await query.answer('Недостаточно средств — пополните баланс: /balance', show_alert=True)
         return
     sent = await _send_business_reply(query.bot, draft.connection,
                                       draft.client_chat_id, draft.draft_text)
     if sent:
-        await mark_draft(draft.pk, 'sent')
         await async_log_event(tg_user, 'business_reply', mode='draft')
         await query.answer('Отправлено клиенту')
         try:
@@ -560,7 +598,8 @@ async def cb_bizdraft_send(query: CallbackQuery, tg_user=None):
         except Exception:
             pass
     else:
-        await refund_reply(draft.connection, draft.pk, paid)
+        await refund_reply(draft.connection, paid, charge_ref)
+        await mark_draft(draft.pk, 'pending')  # откат claim'а — не отправилось
         await query.answer('Не удалось отправить (проверьте права бота в Telegram Business). '
                            'Средства возвращены.', show_alert=True)
 
@@ -604,22 +643,25 @@ async def on_bizdraft_new_text(message: Message, state: FSMContext, tg_user=None
     if not draft_id or not new_text:
         await message.answer('Пустой текст — черновик не изменён.')
         return
-    draft = await get_draft(draft_id, tg_user)
-    if draft is None or draft.status != 'pending':
+    draft = await claim_pending_draft(draft_id, tg_user)
+    if draft is None:
         await message.answer('Черновик не найден или уже обработан.')
         return
-    charged, paid = await charge_reply(draft.connection, draft.pk)
+    charged, paid, charge_ref = await charge_reply(draft.connection, draft.pk)
     if not charged:
+        await mark_draft(draft.pk, 'pending')  # откат claim'а — денег не было
         await message.answer('Недостаточно средств — пополните баланс: /balance')
         return
     sent = await _send_business_reply(message.bot, draft.connection,
                                       draft.client_chat_id, new_text)
     if sent:
+        # status уже 'sent' от claim'а — здесь только персистим итоговый текст
         await mark_draft(draft.pk, 'sent', new_text=new_text)
         await async_log_event(tg_user, 'business_reply', mode='edited')
         await message.answer('Отправлено клиенту.')
     else:
-        await refund_reply(draft.connection, draft.pk, paid)
+        await refund_reply(draft.connection, paid, charge_ref)
+        await mark_draft(draft.pk, 'pending')  # откат claim'а — не отправилось
         await message.answer('Не удалось отправить — проверьте права бота. Средства возвращены.')
 
 
