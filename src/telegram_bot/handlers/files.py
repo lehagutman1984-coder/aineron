@@ -77,7 +77,13 @@ async def _download_and_save(bot, file_id: str, original_name: str, mime_type: s
 # StateFilter(None): роутер подключён в bot.py раньше FSM-роутеров (img2img,
 # img2video, admin-рассылка) — без фильтра он перехватывал фото, отправленные
 # внутри FSM-сценария, и отдавал их в текстовый чат вместо нужного шага.
-@router.message(F.photo, StateFilter(None))
+# F.chat.type == 'private': files.router регистрируется раньше group.router,
+# и без этого фильтра фото/документы из ГРУПП тоже ловились здесь — process_text
+# без chat_override/skip_billing списывал с ЛИЧНОГО баланса отправителя и уводил
+# запрос в его личный чат с ботом, в обход org-биллинга group.py (найдено при
+# проверке BUG-G — раньше это молча давало бесполезный ответ без файла, теперь,
+# когда вложение реально доходит до модели, последствие стало весомее).
+@router.message(F.photo, F.chat.type == 'private', StateFilter(None))
 async def handle_photo(message: Message, tg_user=None):
     if tg_user is None:
         return
@@ -106,7 +112,7 @@ async def handle_photo(message: Message, tg_user=None):
         await status.edit_text(error_text)
 
 
-@router.message(F.document, StateFilter(None))
+@router.message(F.document, F.chat.type == 'private', StateFilter(None))
 async def handle_document(message: Message, tg_user=None):
     if tg_user is None:
         return
