@@ -72,6 +72,27 @@ class Command(BaseCommand):
             )
             self.stdout.write(self.style.SUCCESS(f'Webhook set: {webhook_url}'))
 
+            # BUG-K: включённые env-флагом business/topics/managed_bots молча
+            # не работают, если не активированы отдельно в BotFather —
+            # раньше это обнаруживалось только ручным вызовом getMe().
+            # Проверяем на каждом деплое (setup_webhook запускается deploy.sh).
+            from telegram_bot.capabilities import capability_mismatches
+            me = await bot.get_me()
+            mismatches = capability_mismatches(me)
+            if mismatches:
+                self.stdout.write(self.style.WARNING(
+                    'BUG-K: включены флагом, но НЕ подтверждены BotFather (getMe): '
+                    + ', '.join(f'{feat} ({field}=False)' for feat, field in mismatches)
+                ))
+                self.stdout.write(self.style.WARNING(
+                    'Фича физически не работает для пользователей, пока владелец бота '
+                    'не включит её вручную в @BotFather (Bot Settings), затем повторите setup_webhook.'
+                ))
+            elif any(getattr(settings, flag, False) for flag in ('TG_BUSINESS', 'TG_TOPICS', 'TG_MANAGED_BOTS')):
+                self.stdout.write(self.style.SUCCESS(
+                    'BUG-K: включённые Telegram-фичи (business/topics/managed_bots) подтверждены BotFather.'
+                ))
+
             from aiogram.types import BotCommand
 
             if getattr(settings, 'INTL_MODE', False):

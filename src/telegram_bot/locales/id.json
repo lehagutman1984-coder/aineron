@@ -383,7 +383,7 @@
     "chooseProject": "Pilih proyek — Saya akan membuat topik terpisah untuknya dalam obrolan ini. Setiap topik memiliki konteks, persona, dan basis pengetahuan proyeknya sendiri.",
     "projectNotFound": "Proyek tidak ditemukan",
     "topicAlreadyExists": "Topik \"{title}\" sudah ada",
-    "createFailed": "Tidak dapat membuat topik. Pastikan topik diaktifkan dalam obrolan dengan bot.",
+    "createFailed": "Topik proyek sementara tidak tersedia. Gunakan /projects sebagai gantinya.",
     "created": "Topik dibuat",
     "projectCardTitle": "Proyek \"{name}\"",
     "projectCardBody": "Tulis di sini — konteks proyek ini, persona, dan basis pengetahuan terhubung secara otomatis.",

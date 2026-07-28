@@ -466,7 +466,7 @@
     "chooseProject": "Choose a project — I'll create a separate topic for it in this chat. Each topic has its own context, persona, and project knowledge base.",
     "projectNotFound": "Project not found",
     "topicAlreadyExists": "Topic \"{title}\" already exists",
-    "createFailed": "Couldn't create the topic. Make sure topics are enabled in the chat with the bot.",
+    "createFailed": "Project topics are temporarily unavailable. Use /projects instead.",
     "created": "Topic created",
     "projectCardTitle": "Project \"{name}\"",
     "projectCardBody": "Write here — this project's context, persona, and knowledge base are connected automatically.",

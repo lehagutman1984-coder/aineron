@@ -383,7 +383,7 @@
     "chooseProject": "Bir proje seçin — bu sohbette ayrı bir konu oluşturacağım. Her konunun kendi bağlamı, kişiliği ve proje bilgi tabanı vardır.",
     "projectNotFound": "Proje bulunamadı",
     "topicAlreadyExists": "\"{title}\" başlıklı konu zaten mevcut",
-    "createFailed": "Konu oluşturulamadı. Konuların bot ile sohbette etkin olduğundan emin olun.",
+    "createFailed": "Proje konuları şu anda kullanılamıyor. Bunun yerine /projects kullanın.",
     "created": "Konu oluşturuldu",
     "projectCardTitle": "Proje \"{name}\"",
     "projectCardBody": "Buraya yazın — bu projenin bağlamı, kişiliği ve bilgi tabanı otomatik olarak bağlanır.",

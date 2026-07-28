@@ -62,3 +62,27 @@ def available(feature: str, bot=None) -> bool:
 def enabled_features() -> list:
     """Список включённых фич — для /admin-диагностики и логов старта."""
     return [name for name in _FEATURES if is_enabled(name)]
+
+
+# BUG-K: env-флаг включает фичу в нашем коде, но business/topics/managed_bots
+# отдельно требуют ручной активации в BotFather — до этого рассинхрон был
+# виден только ручным вызовом getMe(), нигде не диагностировался.
+_TELEGRAM_CAPABILITY_FIELD = {
+    'business':     'can_connect_to_business',
+    'topics':       'has_topics_enabled',
+    'managed_bots': 'can_manage_bots',
+}
+
+
+def capability_mismatches(me) -> list:
+    """Фичи, включённые нашим env-флагом, но не подтверждённые getMe().
+
+    `me` — результат `bot.get_me()` (aiogram `User`). Возвращает список
+    `(feature, telegram_field)` для рассинхронизированных пар; пусто, если
+    все включённые флагом фичи реально активны в BotFather.
+    """
+    return [
+        (feature, field)
+        for feature, field in _TELEGRAM_CAPABILITY_FIELD.items()
+        if is_enabled(feature) and not getattr(me, field, False)
+    ]

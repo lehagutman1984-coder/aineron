@@ -162,9 +162,13 @@ async def cb_topic_new(query: CallbackQuery, tg_user=None):
         )
         thread_id = forum_topic.message_thread_id
     except Exception as e:
-        logger.warning(f'create_forum_topic failed: {e}')
+        # BUG-K: TG_TOPICS включён нашим флагом, но has_topics_enabled — это
+        # отдельная настройка бота в BotFather, а не свойство конкретного
+        # чата — прежний текст ошибочно советовал пользователю «включить
+        # темы в чате», хотя это физически не в его власти.
+        logger.warning(f'create_forum_topic failed (has_topics_enabled может быть выключен в BotFather): {e}')
         text = (
-            'Не удалось создать топик. Убедитесь, что в чате с ботом включены темы.'
+            'Топики-проекты временно недоступны. Используйте /projects.'
             if lang == 'ru' else t('topics.createFailed', lang)
         )
         await query.answer(text, show_alert=True)
