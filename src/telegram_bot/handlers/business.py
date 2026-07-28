@@ -192,17 +192,31 @@ def _charge_reply(conn, draft_id: int) -> tuple:
 
     tariff_name = (getattr(user.tariff, 'display_name', '') or '').lower()
     has_secretary = any(k in tariff_name for k in ('бизнес', 'business', 'макс', 'max'))
-    free = has_secretary and conn.replies_this_month < allowance
+
+    # BUG-O: раньше `free` решался по значению `conn.replies_this_month`,
+    # прочитанному ДО инкремента (read-then-increment) — два одновременных
+    # клиента могли оба увидеть счётчик < allowance и оба пройти как
+    # бесплатные, реально уйдя за квоту. Занимаем бесплатный слот одним
+    # условным UPDATE (WHERE replies_this_month < allowance): под гонкой
+    # только один из параллельных вызовов получит rowcount > 0.
+    free = False
+    if has_secretary:
+        claimed = BusinessConnection.objects.filter(
+            pk=conn.pk, replies_month=month, replies_this_month__lt=allowance,
+        ).update(replies_this_month=F('replies_this_month') + 1)
+        free = claimed > 0
 
     paid = False
     if not free:
         if not user.spend_kopecks(price, type='spend', reference=f'bizreply:{draft_id}'):
             return False, False
         paid = True
-    # Атомарный инкремент — без гонки при параллельных клиентах
-    BusinessConnection.objects.filter(pk=conn.pk).update(
-        replies_this_month=F('replies_this_month') + 1,
-    )
+        # Платный ответ не занимал бесплатный слот выше — инкремент отдельно
+        # (счётчик replies_this_month отражает ВСЕ ответы, не только бесплатные,
+        # см. индикатор в /secretary).
+        BusinessConnection.objects.filter(pk=conn.pk).update(
+            replies_this_month=F('replies_this_month') + 1,
+        )
     return True, paid
 
 
@@ -217,6 +231,60 @@ def _refund_reply(conn, draft_id: int, paid: bool):
     BusinessConnection.objects.filter(pk=conn.pk).update(
         replies_this_month=Greatest(F('replies_this_month') - 1, 0),
     )
+
+
+def _claim_can_reply_notice(conn) -> bool:
+    """BUG-O: True не чаще раза в сутки — не спамить владельца на каждое
+    сообщение клиента, если у бота нет прав отвечать (can_reply=False)."""
+    from django.core.cache import cache
+    from django.utils import timezone
+    key = f'bizcanreplynotice:{conn.pk}:{timezone.now().date().isoformat()}'
+    try:
+        return cache.add(key, 1, timeout=86400)
+    except Exception:
+        return False
+
+
+def _check_daily_cap(conn) -> tuple:
+    """BUG-O: дневной cap AI-генераций секретаря на подключение — без него
+    поток сообщений одного клиента (особенно при scope_all) мог выкачивать
+    баланс и провайдерские токены без верхней границы. Атомарный INCR
+    (Redis) — не read-then-set, иначе та же гонка, что была в квоте выше.
+    Возвращает (exceeded, first_overflow) — first_overflow=True только на
+    сообщении, которым лимит впервые превышен за сегодня (для одноразового
+    уведомления владельца).
+    """
+    from django.core.cache import cache
+    from django.utils import timezone
+    cap = int(getattr(settings, 'BUSINESS_DAILY_REPLY_CAP', 200))
+    if cap <= 0:
+        return False, False
+    key = f'bizreply_cap:{conn.pk}:{timezone.now().date().isoformat()}'
+    try:
+        cache.add(key, 0, timeout=86400)
+        count = cache.incr(key)
+    except Exception:
+        return False, False  # fail-open — сбой Redis не должен глушить секретаря
+    return count > cap, count == cap + 1
+
+
+def _autopilot_burst_exceeded(conn, chat_id: int) -> bool:
+    """BUG-O: burst-лимит автопилота на один чат клиента. Не общий счётчик —
+    короткое скользящее окно (TTL сбрасывает его), при превышении автопилот
+    для ЭТОГО диалога временно откатывается на «Черновики» (эскалация
+    владельцу), а не молчит и не шлёт автоответы без ограничения."""
+    from django.core.cache import cache
+    limit = int(getattr(settings, 'BUSINESS_AUTOPILOT_BURST_LIMIT', 5))
+    window = int(getattr(settings, 'BUSINESS_AUTOPILOT_BURST_WINDOW_SECONDS', 60))
+    if limit <= 0:
+        return False
+    key = f'bizburst:{conn.pk}:{chat_id}'
+    try:
+        cache.add(key, 0, timeout=window)
+        count = cache.incr(key)
+    except Exception:
+        return False
+    return count > limit
 
 
 def _mark_draft(draft_id: int, status: str, new_text: str = None):
@@ -236,6 +304,9 @@ get_draft = sync_to_async(_get_draft, thread_sensitive=True)
 charge_reply = sync_to_async(_charge_reply, thread_sensitive=True)
 refund_reply = sync_to_async(_refund_reply, thread_sensitive=True)
 mark_draft = sync_to_async(_mark_draft, thread_sensitive=True)
+claim_can_reply_notice = sync_to_async(_claim_can_reply_notice, thread_sensitive=True)
+check_daily_cap = sync_to_async(_check_daily_cap, thread_sensitive=True)
+autopilot_burst_exceeded = sync_to_async(_autopilot_burst_exceeded, thread_sensitive=True)
 
 
 def _draft_kb(draft_id: int) -> InlineKeyboardMarkup:
@@ -330,6 +401,24 @@ async def on_business_message(message: Message):
     if message.from_user and message.from_user.id == owner_id:
         return
 
+    # BUG-O: can_reply=False (владелец не выдал боту право отвечать в
+    # Telegram Business) раньше нигде не проверялся — каждое сообщение
+    # клиента платно генерировало AI-ответ, заведомо не отправляемый:
+    # деньги возвращались (refund), токены провайдера — нет.
+    if not conn.can_reply:
+        if await claim_can_reply_notice(conn):
+            try:
+                await message.bot.send_message(
+                    chat_id=owner_id,
+                    text='AI-секретарь подключён, но у бота нет права отвечать от '
+                         'вашего имени в Telegram Business. Переподключите бота: '
+                         'Настройки → Telegram Business → Чат-боты — и убедитесь, '
+                         'что включено разрешение «Отвечать на сообщения».',
+                )
+            except Exception:
+                pass
+        return
+
     chat_id = message.chat.id
     if not conn.scope_all and chat_id not in (conn.allowed_chat_ids or []):
         return
@@ -351,11 +440,36 @@ async def on_business_message(message: Message):
             pass
         return
 
+    # BUG-O: дневной cap AI-генераций на подключение — раньше троттлинга не
+    # было вообще, поток сообщений одного клиента (особенно при scope_all)
+    # мог выкачивать баланс и провайдерские токены без верхней границы.
+    cap_exceeded, first_overflow = await check_daily_cap(conn)
+    if cap_exceeded:
+        if first_overflow:
+            try:
+                await message.bot.send_message(
+                    chat_id=owner_id,
+                    text='AI-секретарь: дневной лимит автоответов исчерпан. '
+                         'Новые сообщения клиентов сегодня не обрабатываются '
+                         'автоматически — ответьте лично или дождитесь завтра.',
+                )
+            except Exception:
+                pass
+        return
+
     result = await generate_reply(conn, text, client_name)
     if result is None:
         return
 
-    if conn.mode == 'autopilot' and result['confident']:
+    autopilot_ok = conn.mode == 'autopilot' and result['confident']
+    if autopilot_ok and await autopilot_burst_exceeded(conn, chat_id):
+        # BUG-O: burst-защита — после нескольких мгновенных автоответов на
+        # ОДИН диалог за короткое окно автопилот временно откатывается на
+        # «Черновики» (владелец подтверждает вручную), вместо неограниченной
+        # серии авто-списаний в один и тот же чат.
+        autopilot_ok = False
+
+    if autopilot_ok:
         draft = await create_draft(conn, chat_id, client_name, text,
                                    result['reply'], status='auto')
         charged, paid = await charge_reply(conn, draft.pk)

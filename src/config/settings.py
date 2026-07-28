@@ -575,6 +575,17 @@ RESEARCH_PRICE_KOPECKS = int(os.getenv('RESEARCH_PRICE_KOPECKS', '1000'))
 BUSINESS_REPLY_PRICE_KOPECKS = int(os.getenv('BUSINESS_REPLY_PRICE_KOPECKS', '100'))
 # Сколько авто-ответов в месяц включено в тарифы «Бизнес» и «Макс»
 BUSINESS_TARIFF_ALLOWANCE = int(os.getenv('BUSINESS_TARIFF_ALLOWANCE', '300'))
+# BUG-O: дневной cap AI-генераций секретаря на одно подключение — защита
+# баланса/провайдерских токенов от потока сообщений одного клиента (0 = выкл)
+BUSINESS_DAILY_REPLY_CAP = int(os.getenv('BUSINESS_DAILY_REPLY_CAP', '200'))
+# BUG-O: burst-лимит автопилота на один чат клиента — после стольких мгновенных
+# автоответов за окно ниже автопилот временно откатывается на «Черновики».
+# По умолчанию выключен (0) — живого трафика секретаря пока нет (0 подключений
+# в проде), калибровать порог не по чему; дневной cap выше уже бьёт по описанному
+# в BUG-O сценарию («баланс без верхней границы»). Включайте явно через env,
+# когда появятся реальные диалоги, чтобы не обрубать легитимные быстрые обмены.
+BUSINESS_AUTOPILOT_BURST_LIMIT = int(os.getenv('BUSINESS_AUTOPILOT_BURST_LIMIT', '0'))
+BUSINESS_AUTOPILOT_BURST_WINDOW_SECONDS = int(os.getenv('BUSINESS_AUTOPILOT_BURST_WINDOW_SECONDS', '60'))
 # Managed Bots (S8): дневной cap сообщений гостей на одного бота (антиспам)
 MANAGEDBOT_DAILY_CAP = int(os.getenv('MANAGEDBOT_DAILY_CAP', '300'))
 # Agent Mode (S9): фиксированная цена запуска, копейки (5 ₽; себестоимость —
