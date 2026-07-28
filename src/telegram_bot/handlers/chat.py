@@ -76,7 +76,7 @@ def _ensure_chat(tg_user, network):
     return chat
 
 
-def _create_messages(chat, user_text, network, system_prompt='', extra_settings=None):
+def _create_messages(chat, user_text, network, system_prompt='', extra_settings=None, attachment=None):
     from aitext.models import Message as AiMessage
     # Персона / системный промт пользователя → на уровень чата (его читает генератор)
     desired = (system_prompt or '').strip()
@@ -90,6 +90,24 @@ def _create_messages(chat, user_text, network, system_prompt='', extra_settings=
         chat.settings = s
         chat.save(update_fields=['settings'])
     user_msg = AiMessage.objects.create(chat=chat, role='user', content=user_text)
+    if attachment is not None:
+        # BUG-G: attachment создаётся в files.py с message=None (файл ещё не
+        # привязан к сообщению на момент загрузки) — линкуем здесь тем же
+        # приёмом, что и веб-API (api/views/chats.py: attachment_ids →
+        # FileAttachment.filter(message__isnull=True).update(message=...)).
+        # Без этого user_msg.attachments.all() в tasks.py всегда пуст, и
+        # прикреплённый файл/фото в ответ модели никогда не попадает.
+        from aitext.models import FileAttachment
+        FileAttachment.objects.filter(pk=attachment.pk, message__isnull=True).update(message=user_msg)
+        if attachment.extracted_text:
+            # Текстовые документы (PDF/DOCX): tasks.py читает extracted-текст
+            # либо из Message.extracted_content, либо (для attachment без
+            # extracted_text — картинки) через prepare_media_for_ai. Для
+            # непустого att.extracted_text вторая ветка сознательно
+            # пропускается (та же логика, что в aitext/views.py), поэтому
+            # текст нужно продублировать сюда явно.
+            user_msg.extracted_content = attachment.extracted_text
+            user_msg.save(update_fields=['extracted_content'])
     assistant_msg = AiMessage.objects.create(
         chat=chat, role='assistant',
         status=AiMessage.Status.PENDING,
@@ -161,7 +179,9 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
 
     extra_settings = {'skip_star_billing': True} if skip_billing else {}
     chat = chat_override if chat_override is not None else await ensure_chat(tg_user, network)
-    user_msg, assistant_msg = await create_messages(chat, text, network, tg_user.system_prompt, extra_settings)
+    user_msg, assistant_msg = await create_messages(
+        chat, text, network, tg_user.system_prompt, extra_settings, attachment,
+    )
 
     generate_ai_response.delay(assistant_msg.id, web_search=getattr(tg_user, 'web_search', False))
 

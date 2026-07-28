@@ -95,8 +95,6 @@ async def handle_photo(message: Message, tg_user=None):
             tg_user.user, 'image',
         )
         from telegram_bot.handlers.chat import process_text
-        # Build user text with file reference
-        full_text = f'{prompt}\n[Изображение прикреплено: {att.id}]' if lang == 'ru' else f'{prompt}\n[Image attached: {att.id}]'
         await process_text(message, tg_user, prompt, attachment=att)
         try:
             await status.delete()
