@@ -18,7 +18,20 @@ class HistoryFSM(StatesGroup):
 
 def _get_chat_page(user, page=0):
     from aitext.models import Chat
-    qs = Chat.objects.filter(user=user).order_by('-updated_at').select_related('network')
+    # Найдено при повторном ревью: без исключения fal-ai (медиа) чатов
+    # /history показывал «Telegram image: …» / «Img2Video: …» / «Sticker: …»
+    # наравне с текстовыми — активация такого чата (_activate_chat ниже)
+    # заставляла ОБЫЧНОЕ текстовое сообщение уйти в fal-ai ветку
+    # generate_ai_response (тарифицируется как медиа, не как текст, и
+    # промт уходит в картиночную/видео-модель вместо диалоговой). Research
+    # (`provider='openrouter'`, см. research_cmd.py) — обычный текстовый
+    # чат, реактивация для него безопасна и полезна, не исключаем.
+    qs = (
+        Chat.objects.filter(user=user)
+        .exclude(network__provider='fal-ai')
+        .order_by('-updated_at')
+        .select_related('network')
+    )
     total = qs.count()
     chats = list(qs[page * PAGE_SIZE:(page + 1) * PAGE_SIZE])
     return chats, total
@@ -27,7 +40,9 @@ def _get_chat_page(user, page=0):
 def _activate_chat(tg_user, chat_id):
     from aitext.models import Chat
     from telegram_bot.models import TelegramChat
-    chat = Chat.objects.get(id=chat_id, user=tg_user.user)
+    # Защита от подделанного/устаревшего callback_data (hist_open:<id>) —
+    # тот же фильтр, что и в списке выше.
+    chat = Chat.objects.exclude(network__provider='fal-ai').get(id=chat_id, user=tg_user.user)
     TelegramChat.objects.filter(tg_user=tg_user, is_active=True).update(is_active=False)
     tc, _ = TelegramChat.objects.get_or_create(tg_user=tg_user, chat=chat)
     if not tc.is_active:

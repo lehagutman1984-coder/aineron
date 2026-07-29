@@ -44,9 +44,18 @@ def _get_video_networks():
 
 def _set_text_network(tg_user, network_id):
     from aitext.models import NeuralNetwork
+    from telegram_bot.models import TelegramChat
     net = NeuralNetwork.objects.get(id=network_id, provider='openrouter', is_active=True)
     tg_user.default_network = net
     tg_user.save(update_fields=['default_network'])
+    # Найдено при повторном ревью: смена модели была no-op посреди диалога —
+    # _ensure_chat (chat.py) возвращает уже активный TelegramChat.chat со
+    # СТАРОЙ сетью (единственное условие для нового чата там — смена
+    # проекта, не модели), новые сообщения продолжали идти в старую модель,
+    # хотя баланс/аналитика уже смотрели на новую цену. Деактивируем
+    # активный чат тем же приёмом, что уже есть для смены проекта — следующее
+    # сообщение создаст новый чат с новой моделью.
+    TelegramChat.objects.filter(tg_user=tg_user, is_active=True).update(is_active=False)
     return net
 
 

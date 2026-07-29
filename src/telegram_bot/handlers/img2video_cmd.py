@@ -8,7 +8,6 @@ Pipeline:
   4. Создаёт запрос к video-модели с image_url в settings
   5. Polling результата → отправляет видео документом
 """
-import asyncio
 import logging
 import os
 import tempfile
@@ -18,7 +17,7 @@ from aiogram import Router, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import Message, URLInputFile, BufferedInputFile
+from aiogram.types import Message, BufferedInputFile
 from asgiref.sync import sync_to_async
 from django.conf import settings as djsettings
 
@@ -27,11 +26,6 @@ from telegram_bot.i18n import t, resolve_language
 
 logger = logging.getLogger(__name__)
 router = Router()
-
-POLL_INTERVAL = 5
-# 15 мин — столько же ждёт apimart-polling в fal_utils; раньше бот сдавался
-# через 5 мин, хотя сам обещал «3-8 минут», и видео пропадало для пользователя
-POLL_MAX_TRIES = 180
 
 
 class Img2VideoFSM(StatesGroup):
@@ -71,13 +65,19 @@ def _get_img2video_network(tg_user=None):
     return nets[0]
 
 
-def _create_video_request(tg_user, network, prompt: str, image_url: str, extra_settings=None):
+def _create_video_request(tg_user, network, prompt: str, image_url: str, telegram_chat_id, extra_settings=None):
     from aitext.models import Chat, Message as AiMsg
+    # Найдено при повторном ревью: было tg_user.telegram_id вместо
+    # message.chat.id (единственный хендлер, отклонявшийся от конвенции
+    # остальных push-путей — images.py/sticker_cmd.py и т.д. везде
+    # используют message.chat.id). Сейчас безвредно (хендлер уже
+    # приватный-only, для личного чата оба значения совпадают), но при
+    # любом будущем изменении маршрутизации push ушёл бы не туда.
     chat = Chat.objects.create(
         user=tg_user.user,
         network=network,
         title=f'Img2Video: {prompt[:50]}',
-        settings={'telegram_chat_id': tg_user.telegram_id},
+        settings={'telegram_chat_id': telegram_chat_id},
     )
     # Настройки из /videoset (длительность, качество, звук) + фото
     user_msg = AiMsg.objects.create(
@@ -235,7 +235,7 @@ async def handle_img2video_photo(message: Message, state: FSMContext, tg_user=No
         stored_settings, _ = get_stored_video_settings(tg_user, network)
 
         assistant_msg = await create_video_request(
-            tg_user, network, prompt, image_url, extra_settings=stored_settings,
+            tg_user, network, prompt, image_url, message.chat.id, extra_settings=stored_settings,
         )
 
         from aitext.tasks import generate_ai_response
@@ -253,83 +253,27 @@ async def handle_img2video_photo(message: Message, state: FSMContext, tg_user=No
                 parse_mode='HTML',
             )
 
-        for i in range(POLL_MAX_TRIES):
-            await asyncio.sleep(POLL_INTERVAL)
-            try:
-                msg = await get_message_state(assistant_msg.id)
-            except Exception:
-                continue
-
-            if msg.status == 'completed':
-                def _get_video(m):
-                    return m.generated_images.first()
-                gen_item = await sync_to_async(_get_video, thread_sensitive=True)(msg)
-
-                if gen_item:
-                    await status_msg.delete()
-                    video_url = f"{djsettings.SITE_URL}{gen_item.image.url}"
-                    try:
-                        if lang == 'ru':
-                            await message.answer_video(
-                                URLInputFile(video_url),
-                                caption=f'{network.name} · <i>{prompt}</i>',
-                                parse_mode='HTML',
-                            )
-                        else:
-                            await message.answer_video(
-                                URLInputFile(video_url),
-                                caption=t('img2video.resultCaption', lang, name=network.name, prompt=prompt),
-                                parse_mode='HTML',
-                            )
-                    except Exception:
-                        if lang == 'ru':
-                            await message.answer(f'Видео готово: {video_url}')
-                        else:
-                            await message.answer(t('img2video.resultReady', lang, url=video_url))
-                else:
-                    if lang == 'ru':
-                        await status_msg.edit_text('Видео готово, но не найдено. Смотри /account/files/')
-                    else:
-                        await status_msg.edit_text(t('img2video.notFound', lang))
-
-                await async_log_event(tg_user, 'video', network=network, cost_kopecks=network.cost_kopecks)
-                return
-
-            elif msg.status == 'failed':
-                if lang == 'ru':
-                    await status_msg.edit_text('Ошибка генерации видео. Попробуй ещё раз.')
-                else:
-                    await status_msg.edit_text(t('img2video.error', lang))
-                await async_log_event(tg_user, 'error', network=network, reason='img2video_failed')
-                return
-
-            if i % 6 == 0 and i > 0:
-                elapsed_min = (i * POLL_INTERVAL) // 60
-                try:
-                    if lang == 'ru':
-                        await status_msg.edit_text(
-                            f'Генерирую видео... (~{elapsed_min} мин, обычно 3-8 мин)\n'
-                            f'Промт: <i>{prompt}</i>',
-                            parse_mode='HTML',
-                        )
-                    else:
-                        await status_msg.edit_text(
-                            t('img2video.generatingDots', lang, min=elapsed_min, prompt=prompt),
-                            parse_mode='HTML',
-                        )
-                except Exception:
-                    pass
-
-        # Domain hardcode fix: use settings.SITE_URL instead of a literal
-        # 'aineron.ru' so the correct instance domain (.ru vs .net) is shown.
-        site_url = getattr(djsettings, 'SITE_URL', 'https://aineron.ru')
+        # Найдено при повторном ревью: раньше здесь одновременно (а) стоял
+        # telegram_chat_id в Chat.settings (push-доставка из Celery,
+        # send_media_to_telegram) И (б) свой 15-минутный поллинг-цикл,
+        # который САМ отправлял видео при status=='completed' — типичная
+        # (не только пограничная) генерация укладывается в 15 минут,
+        # получая ДВЕ отправки одного видео. Тот же класс, что уже решён
+        # для /image и /video (BUG-H) — убираем поллинг, push остаётся
+        # единственным путём доставки.
+        await async_log_event(tg_user, 'video', network=network, cost_kopecks=network.cost_kopecks)
         if lang == 'ru':
             await status_msg.edit_text(
-                'Превышено время ожидания (15 мин). Если видео сгенерировалось, '
-                f'оно появится в {site_url}/account/files/'
+                f'Запрос принят: {network.name}.\n'
+                f'Обычно занимает 3-8 минут — видео придёт отдельным сообщением.\n'
+                f'Промт: <i>{prompt}</i>',
+                parse_mode='HTML',
             )
         else:
-            await status_msg.edit_text(t('img2video.timeout', lang, url=site_url))
+            await status_msg.edit_text(
+                t('img2video.generating', lang, name=network.name, prompt=prompt),
+                parse_mode='HTML',
+            )
 
     except Exception as e:
         logger.error(f'img2video error: {e}')
