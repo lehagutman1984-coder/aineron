@@ -31,7 +31,9 @@ import {
   getTg,
 } from "@/lib/telegram-webapp";
 
-const BOT_USERNAME = "aineron_bot";
+// NEXT_PUBLIC_TELEGRAM_BOT_USERNAME зашивается при сборке (Dockerfile.frontend),
+// свой на каждый инстанс — см. account/telegram/page.tsx для полного описания находки.
+const BOT_USERNAME = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "aineron_bot";
 
 interface UserInfo {
   id: number;

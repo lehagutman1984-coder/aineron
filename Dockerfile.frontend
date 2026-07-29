@@ -12,6 +12,12 @@ ARG NEXT_PUBLIC_SITE_URL=https://aineron.ru
 ARG NEXT_PUBLIC_E2B_PREVIEW=1
 ARG NEXT_PUBLIC_YM_ID=
 ARG NEXT_PUBLIC_GA_ID=
+# Username бота для ссылок t.me/... в UI (кабинет → Telegram и т.п.):
+# aineron_bot — aineron.ru, aineron_global_bot — международный инстанс.
+# Найдено при живом тестировании: страница account/telegram зашивала
+# "aineron_bot" буквально в коде — на aineron.net кнопка «Открыть бота»
+# у уже привязанных аккаунтов вела на РУССКИЙ бот вместо международного.
+ARG NEXT_PUBLIC_TELEGRAM_BOT_USERNAME=aineron_bot
 # Локаль инстанса (G2): ru — aineron.ru, en — международный инстанс
 ARG NEXT_PUBLIC_DEFAULT_LOCALE=ru
 # Активные локали инстанса (G4, [locale]-роутинг): список через запятую.
@@ -24,6 +30,7 @@ ENV NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
 ENV NEXT_PUBLIC_E2B_PREVIEW=${NEXT_PUBLIC_E2B_PREVIEW}
 ENV NEXT_PUBLIC_YM_ID=${NEXT_PUBLIC_YM_ID}
 ENV NEXT_PUBLIC_GA_ID=${NEXT_PUBLIC_GA_ID}
+ENV NEXT_PUBLIC_TELEGRAM_BOT_USERNAME=${NEXT_PUBLIC_TELEGRAM_BOT_USERNAME}
 ENV NEXT_PUBLIC_DEFAULT_LOCALE=${NEXT_PUBLIC_DEFAULT_LOCALE}
 ENV NEXT_PUBLIC_ENABLED_LOCALES=${NEXT_PUBLIC_ENABLED_LOCALES}
 ENV NEXT_PUBLIC_CURRENCY=${NEXT_PUBLIC_CURRENCY}

@@ -18,6 +18,12 @@ interface LinkTokenResponse {
   token: string;
 }
 
+// Найдено при живом тестировании: было захардкожено "aineron_bot" — на
+// aineron.net кнопка «Открыть бота» для уже привязанных аккаунтов вела на
+// РУССКИЙ бот вместо международного. NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
+// зашивается при сборке (Dockerfile.frontend), свой на каждый инстанс.
+const BOT_USERNAME = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "aineron_bot";
+
 export default function TelegramPage() {
   const [status, setStatus] = useState<TelegramStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -146,7 +152,7 @@ export default function TelegramPage() {
 
           <div className="mt-5 flex flex-wrap gap-3">
             <a
-              href="https://t.me/aineron_bot"
+              href={`https://t.me/${BOT_USERNAME}`}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-2 rounded-[10px] bg-[#D97757] px-4 py-2.5 text-[15px] font-medium text-white hover:opacity-90 transition-opacity"

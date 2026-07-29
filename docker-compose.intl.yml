@@ -124,6 +124,7 @@ services:
         NEXT_PUBLIC_ENABLED_LOCALES: en,fa,tr,id,ar
         NEXT_PUBLIC_CURRENCY: credits
         NEXT_PUBLIC_YM_ID: "110622120"
+        NEXT_PUBLIC_TELEGRAM_BOT_USERNAME: aineron_global_bot
     container_name: neiro_frontend
     restart: unless-stopped
     environment:
