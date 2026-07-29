@@ -45,15 +45,31 @@ def _get_default_network(tg_user):
     return network
 
 
-def _ensure_chat(tg_user, network):
+def _ensure_chat(tg_user, network, telegram_chat_id=None):
     """Возвращает активный чат, создавая новый если нужно.
 
     При наличии active_project чат привязывается к проекту.
     Если активный проект изменился — создаём новый чат.
+
+    telegram_chat_id (#2/#3 повторного ревью): без него push-фолбэк в
+    generate_ai_response (aitext/tasks.py) не может доставить текстовый
+    ответ, если поллинг хендлера уже сдался (ретрай после провала или
+    генерация дольше окна поллинга) — раньше это поле ставилось только для
+    медиа-чатов (BUG-H).
     """
     from aitext.models import Chat
     from telegram_bot.models import TelegramChat
     project = tg_user.active_project  # может быть None
+
+    def _with_push_target(chat):
+        if telegram_chat_id is None:
+            return chat
+        s = dict(chat.settings) if isinstance(chat.settings, dict) else {}
+        if s.get('telegram_chat_id') != telegram_chat_id:
+            s['telegram_chat_id'] = telegram_chat_id
+            chat.settings = s
+            chat.save(update_fields=['settings'])
+        return chat
 
     tc = TelegramChat.objects.filter(tg_user=tg_user, is_active=True).select_related('chat').first()
     if tc and tc.chat_id:
@@ -62,12 +78,17 @@ def _ensure_chat(tg_user, network):
         if chat.project_id != (project.id if project else None):
             TelegramChat.objects.filter(tg_user=tg_user, is_active=True).update(is_active=False)
             title = f'Telegram — {project.name}' if project else 'Telegram'
-            chat = Chat.objects.create(user=tg_user.user, network=network, title=title, project=project)
+            settings_ = {'telegram_chat_id': telegram_chat_id} if telegram_chat_id is not None else {}
+            chat = Chat.objects.create(user=tg_user.user, network=network, title=title, project=project,
+                                       settings=settings_)
             TelegramChat.objects.create(tg_user=tg_user, chat=chat, is_active=True)
-        return chat
+            return chat
+        return _with_push_target(chat)
 
     title = f'Telegram — {project.name}' if project else 'Telegram'
-    chat = Chat.objects.create(user=tg_user.user, network=network, title=title, project=project)
+    settings_ = {'telegram_chat_id': telegram_chat_id} if telegram_chat_id is not None else {}
+    chat = Chat.objects.create(user=tg_user.user, network=network, title=title, project=project,
+                               settings=settings_)
     if tc:
         tc.chat = chat
         tc.save(update_fields=['chat'])
@@ -183,7 +204,7 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
     extra_settings = {'skip_star_billing': True} if skip_billing else {}
     if org_billing:
         extra_settings['org_billing'] = org_billing
-    chat = chat_override if chat_override is not None else await ensure_chat(tg_user, network)
+    chat = chat_override if chat_override is not None else await ensure_chat(tg_user, network, tg_message.chat.id)
     user_msg, assistant_msg = await create_messages(
         chat, text, network, tg_user.system_prompt, extra_settings, attachment,
     )
@@ -241,13 +262,32 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
                 await streamer.finish(parts, reply_markup=markup)
             # S10: голос-в-голос — озвучиваем ответ на голосовое сообщение
             # (или всегда, если включена настройка «Голосовые ответы»)
+            #
+            # Найдено при повторном ревью: тот же вызов synthesize_speech,
+            # что в voice.py::cb_tts (тариф TTS_COST_KOPECKS), здесь был
+            # бесплатным — revenue leak, не вред пользователю. По решению
+            # пользователя (не тихий фикс) — тарифицируется так же.
+            # Недостаточно средств / любой сбой — просто пропускаем голосовой
+            # бонус молча: текстовый ответ уже доставлен выше, это доп. фича,
+            # не блокирующая основной путь.
             if voice_reply or tg_user.voice_responses:
                 try:
                     from aiogram.types import BufferedInputFile
-                    from telegram_bot.handlers.voice import synthesize_speech
-                    audio = await synthesize_speech(full_text[:700])
-                    await tg_message.answer_voice(
-                        BufferedInputFile(audio, filename='answer.mp3'))
+                    from telegram_bot.handlers.voice import (
+                        synthesize_speech, TTS_COST_KOPECKS,
+                        has_enough_kopecks, charge_kopecks, refund_kopecks,
+                    )
+                    if await has_enough_kopecks(tg_user, TTS_COST_KOPECKS):
+                        import uuid as _uuid
+                        audio = await synthesize_speech(full_text[:700])
+                        tts_reference = f'tg-tts:{_uuid.uuid4().hex[:12]}'
+                        if await charge_kopecks(tg_user, TTS_COST_KOPECKS, tts_reference):
+                            try:
+                                await tg_message.answer_voice(
+                                    BufferedInputFile(audio, filename='answer.mp3'))
+                            except Exception as send_err:
+                                logger.warning(f'voice reply delivery failed, refunding: {send_err}')
+                                await refund_kopecks(tg_user, TTS_COST_KOPECKS, tts_reference)
                 except Exception as e:
                     logger.debug(f'voice reply skipped: {e}')
             await set_status_reaction(tg_message.bot, tg_message.chat.id, tg_message.message_id, None)

@@ -1169,6 +1169,37 @@ def generate_ai_response(self, message_id, web_search=False):
 
         logger.info(f"AI ответ сгенерирован для сообщения {message_id}, сохранено изображений: {len(saved_images)}")
 
+        # Найдено при повторном ревью: #2/#3 — текстовые ответы не имели
+        # push-доставки (только медиа, после BUG-H). Два разных провала одним
+        # фиксом: (а) генерация падает FAILED, ретраится и УСПЕШНО
+        # завершается на повторной попытке — хендлер уже показал ошибку и
+        # вышел из поллинга (chat.py:1213 ставит FAILED до self.retry),
+        # новый ответ никуда не приходит; (б) генерация дольше окна
+        # поллинга хендлера (POLL_MAX_TRIES×POLL_INTERVAL=150с, chat.py) —
+        # хендлер уже показал «превышено время ожидания» и вышел.
+        #
+        # Push здесь — ТОЛЬКО фолбэк для этих двух случаев, НЕ замена
+        # обычной поллинг-доставки (которая даёт живой стриминг и остаётся
+        # основной для типичного быстрого первого успеха) — иначе типичный
+        # быстрый ответ доставлялся бы ДВАЖДЫ (поллингом и пушем). Условие
+        # согласовано с advisor: это уже не первая попытка (после FAILED
+        # хендлер точно вышел, поллить больше некому) ИЛИ прошло больше
+        # времени, чем максимум поллинга хендлера.
+        try:
+            from django.utils import timezone as _tz
+            is_retry_attempt = self.request.retries > 0
+            poll_window_expired = (_tz.now() - message.created_at).total_seconds() > 150
+            if is_retry_attempt or poll_window_expired:
+                chat_settings = chat.settings or {}
+                tg_chat_id = chat_settings.get('telegram_chat_id')
+                if tg_chat_id:
+                    from telegram_bot.notify import notify_user_rich
+                    delivered = notify_user_rich(tg_chat_id, plain_text or formatted_html)
+                    if delivered:
+                        logger.info(f"[push] текстовый ответ {message_id} доставлен фолбэком (retry={is_retry_attempt}, expired={poll_window_expired})")
+        except Exception as push_err:
+            logger.warning(f"[push] не удалось доставить текстовый ответ {message_id}: {push_err}")
+
         # TEXT_BILLING_ENABLED: списание за текстовые сообщения (off by default)
         if getattr(settings, 'TEXT_BILLING_ENABLED', False):
             _msg_settings = message.settings or {}
