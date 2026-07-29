@@ -271,6 +271,12 @@ SOCIALACCOUNT_PROVIDERS = {
 
 
 # ========== CSRF И TRUSTED ORIGINS ==========
+# Найдено при живом тестировании: aineron.net отсутствовал в списке — любой
+# POST (включая логин в /admin/) на aineron.net падал "CSRF verification
+# failed" (Django 4+ проверяет Origin/Referer против этого списка, не только
+# CSRF-куку). Список общий для обоих инстансов — это НАШИ собственные
+# домены, безопасно доверять обоим независимо от того, какой инстанс сейчас
+# запущен (INTL_MODE тут ни на что не влияет).
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:3000',
     'http://localhost:8000',
@@ -278,6 +284,8 @@ CSRF_TRUSTED_ORIGINS = [
     'http://127.0.0.1:8000',
     'https://aineron.ru',
     'https://www.aineron.ru',
+    'https://aineron.net',
+    'https://www.aineron.net',
 ]
 
 
