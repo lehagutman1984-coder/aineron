@@ -1,6 +1,6 @@
 import logging
 from aiogram import Router, F
-from aiogram.filters import Command, or_f
+from aiogram.filters import Command, or_f, StateFilter
 from aiogram.types import Message, CallbackQuery
 from asgiref.sync import sync_to_async
 from telegram_bot.keyboards import models_tabs_kb
@@ -132,7 +132,9 @@ async def _send_tab(target, tg_user, tab: str, edit: bool = False, lang: str = '
 # Command /models
 # ---------------------------------------------------------------------------
 
-@router.message(or_f(Command('models'), F.text == 'Модели'))
+# StateFilter(None) — см. balance.py:cmd_balance, тот же класс: reply-кнопка
+# обходила активный FSM-визард без сброса.
+@router.message(StateFilter(None), or_f(Command('models'), F.text == 'Модели'))
 async def cmd_models(message: Message, tg_user=None):
     if tg_user is None:
         return

@@ -1,7 +1,7 @@
 import logging
 import httpx
 from aiogram import Router, F
-from aiogram.filters import Command, or_f
+from aiogram.filters import Command, or_f, StateFilter
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from asgiref.sync import sync_to_async
 from telegram_bot.keyboards import star_packs_kb
@@ -177,7 +177,14 @@ async def cb_substars_cancel(query: CallbackQuery, tg_user=None):
     )
 
 
-@router.message(or_f(Command('balance'), F.text == 'Баланс'))
+# Найдено при повторном ревью: кнопка reply-клавиатуры «Баланс» обходила
+# ЛЮБОЙ активный FSM-визард без сброса (в отличие от catch-all в chat.py/
+# menu.py, у которых уже есть StateFilter(None)) — флагманский сценарий:
+# /buy → «Своя сумма» → тап «Баланс» посреди PurchaseFSM.custom_amount →
+# пользователь видел баланс, но состояние оставалось висеть, каждое
+# следующее сообщение ловилось как «введи сумму». Выход из визарда — /cancel
+# (зарегистрирован одним из первых роутеров, см. menu.py).
+@router.message(StateFilter(None), or_f(Command('balance'), F.text == 'Баланс'))
 async def cmd_balance(message: Message, tg_user=None):
     if tg_user is None:
         return

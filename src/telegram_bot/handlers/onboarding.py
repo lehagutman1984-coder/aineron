@@ -10,6 +10,15 @@ from telegram_bot.analytics import async_log_event
 from telegram_bot.utils import DIVIDER
 from telegram_bot.i18n import t, resolve_language
 
+# Найдено при повторном ревью: OnboardingFSM.choosing_model не имел ни
+# одного message-хендлера (только callback-и model_chosen/skip) — новый
+# пользователь, написавший текст вместо тапа по кнопке модели, не попадал
+# НИ В ОДИН хендлер вообще (catch-all'ы chat.py/menu.py требуют
+# StateFilter(None)): полная тишина, состояние висит в Redis бессрочно,
+# /cancel не подсказан. INTL usernet усугубляет: reply-кнопки (тоже теперь
+# под StateFilter(None)) матчат только конкретные локализованные строки —
+# без них тоже мёртвая зона.
+
 logger = logging.getLogger(__name__)
 router = Router()
 
@@ -89,6 +98,33 @@ async def cb_onboard_model(query: CallbackQuery, state: FSMContext, tg_user=None
     if state:
         await state.clear()
     await async_log_event(tg_user, 'onboarding', step='model_chosen', model=net.name)
+
+
+@router.message(OnboardingFSM.choosing_model, F.text & ~F.text.startswith('/'))
+async def on_free_text_during_onboarding(message: Message, state: FSMContext, tg_user=None):
+    """Фолбэк: пользователь написал текст вместо тапа по кнопке модели.
+
+    Ставим модель по умолчанию (первую из топа, как будто нажали её), чистим
+    состояние и сразу обрабатываем введённый текст как первое сообщение —
+    не теряем то, что человек написал, вместо того чтобы просто извиниться
+    и попросить начать заново.
+    """
+    lang = resolve_language(tg_user, message.from_user)
+    if tg_user is None:
+        if state:
+            await state.clear()
+        return
+
+    nets = await _get_top_text_networks_async()
+    if nets:
+        net = await _set_default_network_async(tg_user, nets[0].id)
+        tg_user.default_network = net
+    if state:
+        await state.clear()
+    await async_log_event(tg_user, 'onboarding', step='free_text_fallback')
+
+    from telegram_bot.handlers.chat import process_text
+    await process_text(message, tg_user, message.text, lang=lang)
 
 
 @router.callback_query(F.data == 'onboard_skip')

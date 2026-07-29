@@ -12,7 +12,7 @@ Sprint 4.4 — Project Spaces в Telegram боте.
 import logging
 from asgiref.sync import sync_to_async
 from aiogram import Router, F
-from aiogram.filters import Command
+from aiogram.filters import Command, StateFilter
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from django.conf import settings
 from telegram_bot.i18n import t, resolve_language, INTL_LOCALES
@@ -132,8 +132,10 @@ async def send_project_list(message: Message | None, query: CallbackQuery | None
         await message.answer(text, reply_markup=kb, parse_mode='HTML')
 
 
-@router.message(Command('projects'))
-@router.message(F.text.in_(_PROJECTS_BUTTON_TEXTS))
+# StateFilter(None) — см. balance.py:cmd_balance, тот же класс: reply-кнопка
+# обходила активный FSM-визард без сброса.
+@router.message(StateFilter(None), Command('projects'))
+@router.message(StateFilter(None), F.text.in_(_PROJECTS_BUTTON_TEXTS))
 async def cmd_projects(message: Message, tg_user=None):
     lang = resolve_language(tg_user, message.from_user)
     if not tg_user:

@@ -1,6 +1,6 @@
 import logging
 from aiogram import Router, F
-from aiogram.filters import Command, or_f
+from aiogram.filters import Command, or_f, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message, CallbackQuery
@@ -45,7 +45,10 @@ async def send_settings(message: Message, tg_user, lang: str = 'ru'):
     await message.answer(text, parse_mode='HTML', reply_markup=settings_kb(tg_user, lang))
 
 
-@router.message(or_f(Command('settings'), F.text == 'Настройки'))
+# StateFilter(None) — см. balance.py:cmd_balance, тот же класс: reply-кнопка
+# обходила активный FSM-визард без сброса (включая собственный
+# SettingsFSM.waiting_system_prompt этого же модуля).
+@router.message(StateFilter(None), or_f(Command('settings'), F.text == 'Настройки'))
 async def cmd_settings(message: Message, tg_user=None):
     if tg_user is None:
         return
