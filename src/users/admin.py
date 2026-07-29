@@ -382,6 +382,23 @@ class CustomUserAdmin(UserAdmin):
         if obj:
             readonly.append('email')
         return readonly
+    def save_model(self, request, obj, form, change):
+        # Найдено при живом тестировании: обычное сохранение формы пишет
+        # pages_count («Количество звёзд») напрямую в БД, не синхронизируя
+        # balance_kopecks — сайт и весь биллинг читают именно balance_kopecks,
+        # поэтому баланс пользователя оставался прежним, хотя это поле в
+        # админке менялось (синхронизация balance_kopecks -> pages_count
+        # работает только в одну сторону, внутри spend_kopecks/add_kopecks/
+        # set_kopecks — обычный save() формы её не вызывает). Ловим здесь
+        # изменение поля и проводим его через set_pages(), которая
+        # синхронизирует оба поля атомарно — форма начинает работать так,
+        # как выглядит.
+        new_pages_count = obj.pages_count if change and 'pages_count' in form.changed_data else None
+        if new_pages_count is not None:
+            obj.pages_count = CustomUser.objects.only('pages_count').get(pk=obj.pk).pages_count
+        super().save_model(request, obj, form, change)
+        if new_pages_count is not None:
+            obj.set_pages(new_pages_count)
     def tariff_info(self, obj):
         if obj.tariff:
             if obj.tariff.is_free:
