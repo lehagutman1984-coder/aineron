@@ -31,22 +31,42 @@ class Img2ImgFSM(StatesGroup):
     waiting_photo = State()
 
 
-def _get_img2img_network():
-    """Find best image-to-image capable network."""
+def _supports_img2img(net) -> bool:
+    cfg = net.config_json or {}
+    meta = cfg.get('metadata', {})
+    # requires_input_images/supports_input_image также используются
+    # image-to-VIDEO моделями (Vidu Q3 и т.п.) — без исключения
+    # output_type='video' /img2img молча роутил запросы на видео-модель
+    # (найдено 2026-07-27 при проверке /imgset для BUG-D, live: Vidu Q3
+    # был единственным совпадением по этим флагам).
+    if meta.get('output_type') == 'video':
+        return False
+    return bool(meta.get('supports_input_image') or meta.get('requires_input_images'))
+
+
+def _get_img2img_network(tg_user=None):
+    """Find best image-to-image capable network.
+
+    Найдено при живом тестировании: полностью игнорировала выбор
+    пользователя (/models → Изображения) — всегда брала первую по `order`
+    img2img-совместимую модель, даже если tg_user.default_image_network
+    указывал на другую (например DALL-E 3 подставлялась вместо выбранной
+    Flux Kontext Max). Теперь сперва проверяет выбор пользователя — тот же
+    приём, что уже есть в images.py::_get_image_network для /image.
+    """
     from aitext.models import NeuralNetwork
-    # Prefer networks with supports_input_image in metadata
+
+    if tg_user is not None and tg_user.default_image_network_id:
+        try:
+            net = NeuralNetwork.objects.get(id=tg_user.default_image_network_id, is_active=True)
+            if _supports_img2img(net):
+                return net
+        except NeuralNetwork.DoesNotExist:
+            pass
+
     nets = NeuralNetwork.objects.filter(is_active=True).order_by('order')
     for net in nets:
-        cfg = net.config_json or {}
-        meta = cfg.get('metadata', {})
-        # requires_input_images/supports_input_image также используются
-        # image-to-VIDEO моделями (Vidu Q3 и т.п.) — без исключения
-        # output_type='video' /img2img молча роутил запросы на видео-модель
-        # (найдено 2026-07-27 при проверке /imgset для BUG-D, live: Vidu Q3
-        # был единственным совпадением по этим флагам).
-        if meta.get('output_type') == 'video':
-            continue
-        if meta.get('supports_input_image') or meta.get('requires_input_images'):
+        if _supports_img2img(net):
             return net
     # Fallback: use default image network (GPT Image or Flux support img2img via image_url)
     for net in nets:
@@ -126,7 +146,7 @@ async def cmd_img2img(message: Message, state: FSMContext, tg_user=None):
             )
         return
 
-    network = await get_img2img_network()
+    network = await get_img2img_network(tg_user)
     if not network:
         if lang == 'ru':
             await message.answer('Нет доступных моделей для image-to-image. Попробуй позже.')
@@ -169,36 +189,24 @@ async def cmd_img2img(message: Message, state: FSMContext, tg_user=None):
         )
 
 
-@router.message(Img2ImgFSM.waiting_photo, F.photo)
-async def handle_img2img_photo(message: Message, state: FSMContext, tg_user=None):
-    if tg_user is None:
-        await state.clear()
-        return
-    lang = resolve_language(tg_user, message.from_user)
+async def run_img2img(message: Message, tg_user, prompt: str, network, lang: str):
+    """Общий пайплайн: скачать фото из ЭТОГО сообщения → сгенерировать.
 
-    data = await state.get_data()
-    prompt = data.get('prompt', '')
-    network_id = data.get('network_id')
-    await state.clear()
-
-    if not prompt or not network_id:
-        if lang == 'ru':
-            await message.answer('Сессия истекла. Начни заново: /img2img <промт>')
-        else:
-            await message.answer(t('img2img.sessionExpired', lang))
-        return
-
+    Вынесен из handle_img2img_photo в отдельную функцию, чтобы им мог
+    пользоваться и двухшаговый FSM-путь (/img2img текстом → бот ждёт фото
+    отдельным сообщением), и однократный путь — фото с подписью «/img2img
+    <промт>» в одном сообщении (files.py::handle_photo). Требует, чтобы
+    message.photo уже было прикреплено к этому сообщению.
+    """
     if lang == 'ru':
         status_msg = await message.answer('⏳ Скачиваю фото и запускаю генерацию...')
     else:
         status_msg = await message.answer(t('img2img.downloading', lang))
 
     try:
-        # Download photo
         photo = message.photo[-1]
         file_info = await message.bot.get_file(photo.file_id)
-        ext = '.jpg'
-        with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
+        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp:
             tmp_path = tmp.name
         try:
             await message.bot.download_file(file_info.file_path, destination=tmp_path)
@@ -210,14 +218,7 @@ async def handle_img2img_photo(message: Message, state: FSMContext, tg_user=None
             except OSError:
                 pass
 
-        # Save to storage and get URL
         image_url = await save_photo(file_bytes, tg_user.user)
-
-        # Get network
-        def _get_net(nid):
-            from aitext.models import NeuralNetwork
-            return NeuralNetwork.objects.get(id=nid)
-        network = await sync_to_async(_get_net, thread_sensitive=True)(network_id)
 
         from telegram_bot.handlers.images import get_stored_image_settings
         stored_settings, extra_rub = get_stored_image_settings(tg_user, network)
@@ -253,6 +254,69 @@ async def handle_img2img_photo(message: Message, state: FSMContext, tg_user=None
             await status_msg.edit_text('Ошибка обработки. Попробуй ещё раз.')
         else:
             await status_msg.edit_text(t('img2img.processingError', lang))
+
+
+async def check_balance_and_run_img2img(message: Message, tg_user, prompt: str, lang: str):
+    """Выбор модели (с учётом выбора пользователя) + проверка баланса + запуск.
+
+    Общий вход для обоих путей: однократного (фото+подпись, files.py) и
+    подтверждения из FSM (см. handle_img2img_photo ниже).
+    """
+    network = await get_img2img_network(tg_user)
+    if not network:
+        await message.answer(
+            'Нет доступных моделей для image-to-image. Попробуй позже.' if lang == 'ru'
+            else t('img2img.noModels', lang)
+        )
+        return
+
+    from telegram_bot.handlers.images import get_stored_image_settings
+    _, extra_rub = get_stored_image_settings(tg_user, network)
+    total_kopecks = network.cost_kopecks + extra_rub * 100
+
+    if not tg_user.user.has_enough_kopecks(total_kopecks):
+        from core.money import format_money
+        if lang == 'ru':
+            await message.answer(
+                f'Недостаточно средств.\n'
+                f'Нужно: {format_money(total_kopecks)}, у вас: {format_money(tg_user.user.balance_kopecks)}\n\n'
+                f'Пополните баланс: /balance'
+            )
+        else:
+            await message.answer(
+                t('img2img.insufficientFunds', lang,
+                  need=format_money(total_kopecks), have=format_money(tg_user.user.balance_kopecks))
+            )
+        return
+
+    await run_img2img(message, tg_user, prompt, network, lang)
+
+
+@router.message(Img2ImgFSM.waiting_photo, F.photo)
+async def handle_img2img_photo(message: Message, state: FSMContext, tg_user=None):
+    if tg_user is None:
+        await state.clear()
+        return
+    lang = resolve_language(tg_user, message.from_user)
+
+    data = await state.get_data()
+    prompt = data.get('prompt', '')
+    network_id = data.get('network_id')
+    await state.clear()
+
+    if not prompt or not network_id:
+        if lang == 'ru':
+            await message.answer('Сессия истекла. Начни заново: /img2img <промт>')
+        else:
+            await message.answer(t('img2img.sessionExpired', lang))
+        return
+
+    def _get_net(nid):
+        from aitext.models import NeuralNetwork
+        return NeuralNetwork.objects.get(id=nid)
+    network = await sync_to_async(_get_net, thread_sensitive=True)(network_id)
+
+    await run_img2img(message, tg_user, prompt, network, lang)
 
 
 @router.message(Img2ImgFSM.waiting_photo)

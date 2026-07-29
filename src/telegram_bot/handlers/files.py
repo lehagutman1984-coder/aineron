@@ -109,6 +109,28 @@ async def handle_photo(message: Message, tg_user=None):
         return
     lang = resolve_language(tg_user, message.from_user)
     caption = (message.caption or '').strip()
+
+    # Найдено при живом тестировании: /img2img требует ДВУХ отдельных
+    # сообщений (сначала команда, потом фото) — естественный способ
+    # прикрепить фото С подписью «/img2img …» в одном сообщении раньше
+    # молча уходил в обычный vision-анализ (подпись становилась промтом
+    # для ОПИСАНИЯ фото), а не в редактирование — пользователь получал
+    # отказ модели вместо генерации. Теперь такое сообщение распознаётся
+    # и уходит в img2img напрямую, без второго шага.
+    if caption.startswith('/img2img'):
+        prompt = caption.removeprefix('/img2img').strip()
+        if not prompt:
+            await message.answer(
+                '🎨 <b>Image-to-Image</b>\n\n'
+                'Укажи, что изменить, в подписи к фото:\n'
+                '<code>/img2img сделай стиль аниме</code>',
+                parse_mode='HTML',
+            )
+            return
+        from telegram_bot.handlers.img2img_cmd import check_balance_and_run_img2img
+        await check_balance_and_run_img2img(message, tg_user, prompt, lang)
+        return
+
     default_prompt = 'Опиши это изображение подробно' if lang == 'ru' else t('files.describeImagePrompt', lang)
     prompt = caption if caption else default_prompt
 
