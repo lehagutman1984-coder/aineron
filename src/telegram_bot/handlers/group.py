@@ -29,12 +29,17 @@ def _get_group_config(group_id: int):
         return None
 
 
-def _charge_org(organization, cost_kopecks: int) -> bool:
+def _charge_org(organization, cost_kopecks: int):
     """
-    Deduct cost from org balance. Returns False if insufficient balance.
+    Deduct cost from org balance. Returns (ok, cost_rub) — cost_rub None if insufficient balance.
     Унифицировано с личным тарифом: 1 звезда = 1 ₽ (settings.ORG_KOPECKS_PER_STAR,
     ранее здесь было 0.10 ₽/звезда — расхождение с личным тарифом устранено
     при миграции биллинга, см. BILLING_MIGRATION_PLAN.md).
+
+    cost_rub возвращается вызывающему, чтобы записать его в settings сообщения
+    (aitext.billing.refund_org_billing) — при провале генерации нужно вернуть
+    РОВНО списанную сумму, а не пересчитывать её заново по текущему ORG_KOPECKS_PER_STAR
+    (который мог измениться между списанием и возвратом).
     """
     from django.conf import settings
     from teams.models import Organization
@@ -46,7 +51,7 @@ def _charge_org(organization, cost_kopecks: int) -> bool:
         id=organization.id,
         balance_rub__gte=cost_rub,
     ).update(balance_rub=DjF('balance_rub') - cost_rub)
-    return updated > 0
+    return (updated > 0), (cost_rub if updated > 0 else None)
 
 
 _get_tg_user_async = sync_to_async(_get_tg_user, thread_sensitive=True)
@@ -68,10 +73,28 @@ def _log_group_message(group_id: int, from_name: str, text: str):
 _log_group_message_async = sync_to_async(_log_group_message, thread_sensitive=True)
 
 
+# Команды, у которых основной хендлер зарегистрирован с F.chat.type == 'private'
+# (фикс group-billing-bypass — см. images.py/video_cmd.py/research_cmd.py и т.д.).
+# Без этого списка команда в группе просто ничего не отвечает — пользователь не
+# понимает, сломался бот или команда недоступна (найдено при повторном ревью).
+_PRIVATE_ONLY_COMMANDS = {
+    'image', 'video', 'research', 'img2img', 'img2video', 'sticker', 'agent',
+}
+
+
 @router.message(F.chat.type.in_({'group', 'supergroup'}))
 async def handle_group_message(message: Message, bot: Bot):
     if not message.text:
         return
+
+    if message.text.startswith('/'):
+        cmd = message.text[1:].split()[0].split('@')[0].lower() if len(message.text) > 1 else ''
+        if cmd in _PRIVATE_ONLY_COMMANDS:
+            await message.reply(
+                f'Команда /{cmd} работает только в личных сообщениях боту. '
+                f'Напишите @{(await bot.get_me()).username} напрямую.'
+            )
+            return
 
     # S7: лог сообщений зарегистрированных групп для /summary (TTL 48 ч)
     try:
@@ -123,7 +146,7 @@ async def handle_group_message(message: Message, bot: Bot):
             return
 
         cost_kopecks = network.cost_kopecks if network else 500
-        ok = await _charge_org_async(group_config.organization, cost_kopecks)
+        ok, cost_rub = await _charge_org_async(group_config.organization, cost_kopecks)
         if not ok:
             await message.reply(
                 f'Баланс организации <b>{group_config.organization.name}</b> исчерпан. '
@@ -131,6 +154,18 @@ async def handle_group_message(message: Message, bot: Bot):
                 parse_mode='HTML',
             )
             return
+
+        # Найдено при повторном ревью: списание org-баланса происходит ЗДЕСЬ,
+        # до генерации, а process_text(skip_billing=True) полностью пропускает
+        # биллинг-блок в tasks.py (нет ни списания, ни возврата для этого
+        # сообщения) — при провале генерации деньги организации терялись
+        # безвозвратно. org_billing передаётся в process_text → settings
+        # сообщения, чтобы generate_ai_response мог вернуть их через
+        # aitext.billing.refund_org_billing при окончательном провале.
+        org_billing = {
+            'organization_id': group_config.organization_id,
+            'cost_rub': str(cost_rub),
+        }
 
         # Anonymous group member — route to per-user isolated chat
         if tg_user is None:
@@ -173,7 +208,8 @@ async def handle_group_message(message: Message, bot: Bot):
             if group_config.system_prompt:
                 owner_tg.system_prompt = group_config.system_prompt
             from telegram_bot.handlers.chat import process_text as _pt
-            await _pt(message, owner_tg, text, skip_billing=True, chat_override=group_chat)
+            await _pt(message, owner_tg, text, skip_billing=True, chat_override=group_chat,
+                      org_billing=org_billing)
             owner_tg.system_prompt = original_prompt
             return
 
@@ -186,9 +222,11 @@ async def handle_group_message(message: Message, bot: Bot):
         original_prompt = tg_user.system_prompt
         tg_user.system_prompt = group_config.system_prompt
         from telegram_bot.handlers.chat import process_text
-        await process_text(message, tg_user, text, skip_billing=bool(group_config))
+        await process_text(message, tg_user, text, skip_billing=bool(group_config),
+                            org_billing=org_billing if group_config else None)
         tg_user.system_prompt = original_prompt
         return
 
     from telegram_bot.handlers.chat import process_text
-    await process_text(message, tg_user, text, skip_billing=bool(group_config))
+    await process_text(message, tg_user, text, skip_billing=bool(group_config),
+                        org_billing=org_billing if group_config else None)

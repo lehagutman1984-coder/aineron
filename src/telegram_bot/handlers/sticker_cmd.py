@@ -14,7 +14,7 @@ import logging
 import os
 import tempfile
 
-from aiogram import Router
+from aiogram import Router, F
 from aiogram.filters import Command
 from aiogram.types import Message, BufferedInputFile
 from asgiref.sync import sync_to_async
@@ -85,7 +85,8 @@ def _convert_to_sticker_png(image_bytes: bytes) -> bytes:
         return image_bytes
 
 
-@router.message(Command('sticker'))
+# F.chat.type == 'private' — см. images.py:cmd_image, тот же класс.
+@router.message(Command('sticker'), F.chat.type == 'private')
 async def cmd_sticker(message: Message, tg_user=None):
     if tg_user is None:
         return

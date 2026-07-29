@@ -97,7 +97,10 @@ get_research = sync_to_async(_get_research, thread_sensitive=True)
 refund = sync_to_async(_refund, thread_sensitive=True)
 
 
-@router.message(Command('research'))
+# F.chat.type == 'private' — см. images.py:cmd_image, тот же класс: без
+# фильтра /research в зарегистрированной на org-биллинг группе списывался бы
+# с личного баланса отправителя вместо баланса организации.
+@router.message(Command('research'), F.chat.type == 'private')
 async def cmd_research(message: Message, state: FSMContext, tg_user=None):
     if tg_user is None:
         await message.answer('Привяжите аккаунт через /start')

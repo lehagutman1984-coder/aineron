@@ -1,5 +1,5 @@
 import logging
-from aiogram import Router
+from aiogram import Router, F
 from aiogram.filters import Command
 from aiogram.types import Message
 from asgiref.sync import sync_to_async
@@ -62,7 +62,11 @@ get_image_network = sync_to_async(_get_image_network, thread_sensitive=True)
 create_image_request = sync_to_async(_create_image_request, thread_sensitive=True)
 
 
-@router.message(Command('image'))
+# F.chat.type == 'private' — команда списывает с ЛИЧНОГО баланса безусловно;
+# без фильтра в ЗАРЕГИСТРИРОВАННОЙ на org-биллинг группе /image списывался бы
+# с отправителя вместо организации (тот же класс, что chat.py:422 — group.py
+# не имеет собственного механизма для команд, только для упоминаний/reply).
+@router.message(Command('image'), F.chat.type == 'private')
 async def cmd_image(message: Message, tg_user=None):
     if tg_user is None:
         return

@@ -29,3 +29,39 @@ def refund_message_billing(message) -> bool:
     if not ref or kop <= 0:
         return False
     return message.chat.user.add_kopecks(kop, type='refund', reference=ref)
+
+
+def refund_org_billing(message) -> bool:
+    """
+    Вернуть организации средства, списанные ДО генерации в group.py::_charge_org
+    (Telegram-группы на org-биллинге). У Organization нет ledger с unique-constraint
+    как у CustomUser.BalanceTransaction, поэтому идемпотентность обеспечивается
+    флагом org_refunded в settings сообщения — вызывающая сторона (generate_ai_response)
+    сама гарантирует не более одного вызова на сообщение (только на is_final_attempt),
+    флаг — вторая линия защиты на случай повторной обработки того же message_id.
+    """
+    s = message.settings or {}
+    org_billing = s.get('org_billing') or {}
+    org_id = org_billing.get('organization_id')
+    cost_rub = org_billing.get('cost_rub')
+    if not org_id or not cost_rub or s.get('org_refunded'):
+        return False
+
+    from decimal import Decimal, InvalidOperation
+    from django.db.models import F
+    from teams.models import Organization
+
+    try:
+        amount = Decimal(str(cost_rub))
+    except InvalidOperation:
+        return False
+
+    updated = Organization.objects.filter(id=org_id).update(
+        balance_rub=F('balance_rub') + amount
+    )
+    if updated:
+        new_settings = dict(s)
+        new_settings['org_refunded'] = True
+        message.settings = new_settings
+        message.save(update_fields=['settings'])
+    return bool(updated)

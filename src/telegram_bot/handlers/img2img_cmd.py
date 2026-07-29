@@ -98,7 +98,8 @@ create_img2img_request = sync_to_async(_create_img2img_request, thread_sensitive
 save_photo = sync_to_async(_save_photo_to_storage, thread_sensitive=True)
 
 
-@router.message(Command('img2img'))
+# F.chat.type == 'private' — см. images.py:cmd_image, тот же класс.
+@router.message(Command('img2img'), F.chat.type == 'private')
 async def cmd_img2img(message: Message, state: FSMContext, tg_user=None):
     if tg_user is None:
         return

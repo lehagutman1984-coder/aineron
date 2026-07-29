@@ -59,14 +59,23 @@ async def cmd_reggroup(message: Message, tg_user=None):
         await message.answer('Эту команду можно использовать только в группах.')
         return
 
-    # Check that user is admin in the group
+    # Check that user is admin in the group.
+    # Найдено при повторном ревью: `except: pass` раньше молча ПРОПУСКАЛ
+    # регистрацию при любом сбое get_chat_member (рейт-лимит, бот без прав
+    # на просмотр участников и т.п.) — fail-open на авторизационной проверке,
+    # любой участник группы (не только админ) мог зарегистрировать её на
+    # org-биллинг. Теперь fail-closed: сбой проверки = отказ, а не пропуск.
     try:
         member = await message.bot.get_chat_member(message.chat.id, message.from_user.id)
         if member.status not in ('administrator', 'creator'):
             await message.reply('Только администраторы группы могут регистрировать группу.')
             return
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f'reggroup: get_chat_member failed, отказ (fail-closed): {e}')
+        await message.reply(
+            'Не удалось проверить права администратора — попробуйте ещё раз чуть позже.'
+        )
+        return
 
     token = message.text.removeprefix('/reggroup').strip()
     if not token:
@@ -88,10 +97,20 @@ async def cmd_reggroup(message: Message, tg_user=None):
         message.from_user.id,
     )
 
+    # Токен вводится в группе открытым текстом — виден всем участникам и
+    # остаётся в истории чата навсегда. Удаляем сообщение сразу после
+    # использования (тот же паттерн, что mybot_cmd.py делает для токена
+    # BotFather — "не оставляем токен в чате"), чтобы не облегчать угон
+    # org-баланса тем, кто позже читает историю чата.
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
     if error:
-        await message.reply(f'Ошибка: {error}')
+        await message.answer(f'Ошибка: {error}')
     else:
-        await message.reply(
+        await message.answer(
             f'Группа подключена к организации <b>{org_name}</b>.\n\n'
             'Теперь бот отвечает за счёт баланса организации. '
             'Упоминайте бота или отвечайте на его сообщения.',

@@ -135,12 +135,15 @@ check_balance = sync_to_async(_check_balance, thread_sensitive=True)
 
 async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
                        skip_billing: bool = False, chat_override=None,
-                       voice_reply: bool = False, lang: str = 'ru'):
+                       voice_reply: bool = False, lang: str = 'ru', org_billing: dict = None):
     """Общий пайплайн: текст → AI → ответ с polling.
 
     skip_billing=True  — биллинг уже снят на стороне вызывающего (оргбиллинг).
     chat_override      — передать готовый объект Chat (напр., для изолированных групповых чатов).
     voice_reply=True   — дополнительно озвучить ответ (S10: голос-в-голос).
+    org_billing        — {'organization_id', 'cost_rub'} от group.py: сумма, уже списанная
+                          с баланса организации, чтобы generate_ai_response мог вернуть её
+                          при окончательном провале (aitext.billing.refund_org_billing).
     """
     from aitext.tasks import generate_ai_response
 
@@ -178,6 +181,8 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
             return
 
     extra_settings = {'skip_star_billing': True} if skip_billing else {}
+    if org_billing:
+        extra_settings['org_billing'] = org_billing
     chat = chat_override if chat_override is not None else await ensure_chat(tg_user, network)
     user_msg, assistant_msg = await create_messages(
         chat, text, network, tg_user.system_prompt, extra_settings, attachment,
@@ -299,9 +304,17 @@ async def cb_regen(query: CallbackQuery, tg_user=None):
     lang = resolve_language(tg_user, query.from_user)
     msg_id = int(query.data.split(':')[1])
 
-    def _get_original_text(m_id):
+    def _get_original_text(m_id, user):
         from aitext.models import Message as AiMsg
-        msg = AiMsg.objects.get(id=m_id)
+        # IDOR: msg_id из callback_data подделываем без владельца — в группе
+        # (process_text/after_answer_kb показываются и там, см. group.py)
+        # участник Б мог нажать кнопку под сообщением участника А и
+        # пересоздать его промт в своём чате. Фильтр по владельцу — тот же
+        # паттерн, что уже есть в cb_del_msg ниже (найдено при повторном
+        # ревью всего бота).
+        msg = AiMsg.objects.filter(id=m_id, chat__user=user).first()
+        if msg is None:
+            return None
         chat = msg.chat
         user_msg = chat.messages.filter(
             role='user', created_at__lt=msg.created_at
@@ -309,7 +322,7 @@ async def cb_regen(query: CallbackQuery, tg_user=None):
         return user_msg.content if user_msg else None
 
     get_orig = sync_to_async(_get_original_text, thread_sensitive=True)
-    text = await get_orig(msg_id)
+    text = await get_orig(msg_id, tg_user.user)
     if text:
         await query.answer(t('chat.regenerating', lang))
         await process_text(query.message, tg_user, text, lang=lang)
@@ -336,9 +349,12 @@ async def cb_react_dislike(query: CallbackQuery, tg_user=None):
     lang = resolve_language(tg_user, query.from_user)
     msg_id = int(query.data.split(':')[1])
 
-    def _get_original_text(m_id):
+    def _get_original_text(m_id, user):
         from aitext.models import Message as AiMsg
-        msg = AiMsg.objects.get(id=m_id)
+        # IDOR: тот же фикс, что и в cb_regen выше — фильтр по владельцу.
+        msg = AiMsg.objects.filter(id=m_id, chat__user=user).first()
+        if msg is None:
+            return None
         chat = msg.chat
         user_msg = chat.messages.filter(
             role='user', created_at__lt=msg.created_at
@@ -348,7 +364,7 @@ async def cb_react_dislike(query: CallbackQuery, tg_user=None):
     get_orig = sync_to_async(_get_original_text, thread_sensitive=True)
     # U6: негативный фидбек — сырьё для тюнинга retrieval и выбора моделей
     await async_log_event(tg_user, 'message', feedback='dislike', message_id=msg_id)
-    text = await get_orig(msg_id)
+    text = await get_orig(msg_id, tg_user.user)
     if text:
         await query.answer(t('chat.reviewing', lang))
         improved_prompt = f"{text}{t('chat.dislikeHint', lang)}"
@@ -419,7 +435,13 @@ async def cb_del_msg(query: CallbackQuery, tg_user=None):
 # StateFilter(None) ОБЯЗАТЕЛЕН: без него catch-all перехватывает текстовые
 # шаги FSM всех роутеров, подключённых после chat (tasks/business/mybot и др.),
 # и списывает деньги за сообщение, ушедшее в обычный AI-чат.
-@router.message(F.text & ~F.text.startswith('/'), StateFilter(None))
+# F.chat.type == 'private' ОБЯЗАТЕЛЕН: chat.router подключён в bot.py задолго
+# до group.router (тот — LAST, "group chat fallback"), а этот catch-all матчит
+# любой текст без разбора чата. Без фильтра упоминание/reply боту в ЗАРЕГИСТРИРОВАННОЙ
+# на org-биллинг группе никогда не долетало до group.py::handle_group_message —
+# списывалось с ЛИЧНОГО баланса участника вместо баланса организации, весь
+# механизм org-биллинга был мёртв (найдено при повторном ревью всего бота).
+@router.message(F.text & ~F.text.startswith('/'), F.chat.type == 'private', StateFilter(None))
 async def handle_text_message(message: Message, tg_user=None):
     if tg_user is None:
         return

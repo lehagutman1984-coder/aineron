@@ -1,5 +1,5 @@
 import logging
-from aiogram import Router
+from aiogram import Router, F
 from aiogram.filters import Command
 from aiogram.types import Message
 from asgiref.sync import sync_to_async
@@ -59,7 +59,10 @@ def get_stored_video_settings(tg_user, network) -> tuple[dict, int]:
     return stored, _calc_extra_cost(network.config_json or {}, stored)
 
 
-@router.message(Command('video'))
+# F.chat.type == 'private' — см. images.py:cmd_image, тот же класс: без
+# фильтра /video в зарегистрированной на org-биллинг группе списывался бы
+# с личного баланса отправителя вместо баланса организации.
+@router.message(Command('video'), F.chat.type == 'private')
 async def cmd_video(message: Message, tg_user=None):
     if tg_user is None:
         return

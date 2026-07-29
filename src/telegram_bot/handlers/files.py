@@ -235,7 +235,12 @@ def _save_to_project_kb(project_id: int, user, file_bytes: bytes, filename: str,
 
     MAX_FILES = 20
     try:
-        project = Project.objects.get(id=project_id)
+        # IDOR: project_id из callback_data (tgupload:kb:{project_id}:...)
+        # без владельца — любой пользователь мог залить файл в чужую базу
+        # знаний проекта (она же контекст для AI-ответов в этом проекте —
+        # ещё и вектор prompt injection). Фильтр по user, тот же класс,
+        # что и IDOR в chat.py/voice.py (найдено при повторном ревью бота).
+        project = Project.objects.get(id=project_id, user=user)
     except Project.DoesNotExist:
         return False, ('Проект не найден' if lang == 'ru' else t('files.projectNotFound', lang))
 

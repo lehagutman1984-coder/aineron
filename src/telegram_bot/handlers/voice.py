@@ -72,7 +72,12 @@ charge_kopecks = sync_to_async(_charge, thread_sensitive=True)
 # (img2img, img2video, remind, poll, tasks, business, mybot, channel — см.
 # bot.py). Без фильтра голосовое сообщение посреди любого мастера уходило
 # сюда и списывалось как обычный чат, не завершая мастер (BUG-N).
-@router.message(StateFilter(None), F.voice | F.video_note)
+# F.chat.type == 'private' — voice.router тоже подключён задолго до group.router
+# (LAST в bot.py) и без фильтра ловил голосовые из ЗАРЕГИСТРИРОВАННЫХ на
+# org-биллинг групп, списывая с личного баланса отправителя вместо баланса
+# организации (тот же класс бага, что и у chat.py:422, найдено при повторном
+# ревью всего бота).
+@router.message(StateFilter(None), F.chat.type == 'private', F.voice | F.video_note)
 async def handle_voice_message(message: Message, tg_user=None, bot=None):
     if tg_user is None:
         return
@@ -127,9 +132,14 @@ async def cb_tts(query: CallbackQuery, tg_user=None, bot=None):
     lang = resolve_language(tg_user, query.from_user)
     msg_id = int(query.data.split(':')[1])
 
-    def _get_msg_text(m_id):
+    def _get_msg_text(m_id, user):
         from aitext.models import Message as AiMsg
-        msg = AiMsg.objects.get(id=m_id)
+        # IDOR: msg_id из callback_data без владельца — озвучивал чужие
+        # сообщения (в группе кнопка видна всем, см. chat.py:295 cb_regen —
+        # тот же класс, тот же фикс: фильтр по владельцу).
+        msg = AiMsg.objects.filter(id=m_id, chat__user=user).first()
+        if msg is None:
+            return ''
         return msg.plain_text or msg.content or ''
 
     get_text = sync_to_async(_get_msg_text, thread_sensitive=True)
@@ -146,7 +156,7 @@ async def cb_tts(query: CallbackQuery, tg_user=None, bot=None):
 
     await query.answer("Синтезирую речь..." if lang == 'ru' else t('voice.synthesizing', lang))
     try:
-        text = await get_text(msg_id)
+        text = await get_text(msg_id, tg_user.user)
         if not text:
             await query.message.answer(
                 "Нет текста для озвучивания." if lang == 'ru' else t('voice.noTextToSpeak', lang)

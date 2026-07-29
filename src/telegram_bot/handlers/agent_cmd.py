@@ -49,7 +49,8 @@ create_run = sync_to_async(_create_run, thread_sensitive=True)
 get_run = sync_to_async(_get_run, thread_sensitive=True)
 
 
-@router.message(Command('agent'))
+# F.chat.type == 'private' — см. images.py:cmd_image, тот же класс.
+@router.message(Command('agent'), F.chat.type == 'private')
 async def cmd_agent(message: Message, state: FSMContext, tg_user=None):
     from core.money import format_rub
 

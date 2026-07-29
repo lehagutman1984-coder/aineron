@@ -832,6 +832,18 @@ def generate_ai_response(self, message_id, web_search=False):
                     user.add_kopecks(total_cost_kopecks, type='refund', reference=billing_reference)
                     from core.money import format_rub
                     logger.info(f"Возвращено {format_rub(total_cost_kopecks)} пользователю {user.email} из-за ошибки генерации")
+                else:
+                    # org-биллинг (Telegram-группа): списание было в group.py ДО
+                    # генерации (skip_star_billing=True, stars_deducted тут всегда
+                    # False) — раньше эта ветка была недостижима из-за бага роутинга
+                    # (BUG chat.py:422), теперь достижима, и без явного возврата
+                    # деньги организации терялись безвозвратно при провале медиа-генерации.
+                    try:
+                        from aitext.billing import refund_org_billing
+                        if refund_org_billing(message):
+                            logger.info(f"Возвращены средства организации за провал медиа-генерации, сообщение {message_id}")
+                    except Exception as org_refund_err:
+                        logger.error(f"Не удалось вернуть средства организации за сообщение {message_id}: {org_refund_err}")
                 message.status = Message.Status.FAILED
                 from core.errors_i18n import t_error
                 if 'billing' in error_str.lower() or 'balance' in error_str.lower() or 'quota' in error_str.lower():
@@ -1224,9 +1236,13 @@ def generate_ai_response(self, message_id, web_search=False):
         is_final_attempt = self.request.retries >= self.max_retries
         if is_final_attempt and message is not None:
             try:
-                from aitext.billing import refund_message_billing
+                from aitext.billing import refund_message_billing, refund_org_billing
                 if refund_message_billing(message):
                     logger.info(f"Возврат средств за проваленную генерацию, сообщение {message_id}")
+                # org-биллинг (Telegram-группа) — см. аналогичный комментарий в
+                # медиа-ветке выше, тот же класс проблемы для текстовой генерации.
+                if refund_org_billing(message):
+                    logger.info(f"Возврат средств организации за проваленную генерацию, сообщение {message_id}")
             except Exception as refund_err:
                 logger.error(f"Не удалось вернуть средства за сообщение {message_id}: {refund_err}")
 
