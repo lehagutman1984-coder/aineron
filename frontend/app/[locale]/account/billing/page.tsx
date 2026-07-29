@@ -37,7 +37,7 @@ import type { CryptoTopupResponse } from "@/lib/api/client";
 import type { PromoCheckResponse } from "@/lib/api/client";
 import type { Tariff, PaymentHistory, RobokassaForm, UserSubscription } from "@/lib/api/types";
 import { formatMoney, rubToKopecks, CURRENCY } from "@/lib/money";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useAuthStore } from "@/lib/stores/auth";
 
 // ── Robokassa redirect ───────────────────────────────────────────────────────
@@ -285,8 +285,11 @@ function ConfirmPurchaseModal({
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("ru-RU", {
+// Найдено при живом тестировании (Opus-аудит): было жёстко "ru-RU" —
+// INTL-пользователь видел дату в русском формате в истории платежей.
+// locale по умолчанию 'ru' — на aineron.ru поведение не меняется.
+function formatDate(iso: string, locale: string = "ru") {
+  return new Date(iso).toLocaleDateString(locale, {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -866,6 +869,7 @@ function PromoSection() {
 
 function HistorySection() {
   const t = useTranslations("billing");
+  const locale = useLocale();
   const { data: payments, isLoading } = useQuery({
     queryKey: ["payment-history"],
     queryFn: getPaymentHistory,
@@ -894,14 +898,21 @@ function HistorySection() {
                 {p.description || paymentTypeLabel(p.payment_type, t)}
               </p>
               <p className="text-xs text-[var(--color-text-secondary)]">
-                {formatDate(p.created_at)} · {paymentTypeLabel(p.payment_type, t)}
+                {formatDate(p.created_at, locale)} · {paymentTypeLabel(p.payment_type, t)}
               </p>
             </div>
           </div>
           <div className="text-end shrink-0">
             {parseFloat(p.amount) > 0 && (
               <p className="text-sm font-semibold text-[var(--color-text-primary)]">
-                {formatMoney(rubToKopecks(parseFloat(p.amount)))}
+                {/* Найдено при живом тестировании (Opus-аудит): на INTL p.amount —
+                    сумма в USD (crypto.py пишет round(amount_usd, 2)), не в рублях.
+                    rubToKopecks(amount) трактовал 5.00 USD как 5 ₽ → "500 credits"
+                    вместо реальных 50000 — противоречило строке ниже с amount_kopecks.
+                    Показываем как есть в валюте платежа, без конвертации через рубли. */}
+                {CURRENCY === "credits"
+                  ? `$${parseFloat(p.amount).toFixed(2)}`
+                  : formatMoney(rubToKopecks(parseFloat(p.amount)))}
               </p>
             )}
             <p className="text-xs text-[var(--color-text-secondary)]">

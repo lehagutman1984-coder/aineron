@@ -6,7 +6,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { Copy, Check, Users, Wallet, Banknote, ArrowDownToLine } from "lucide-react";
 import { getReferral, requestReferralWithdrawal } from "@/lib/api/client";
 import type { ReferralData } from "@/lib/api/types";
-import { formatMoney, CURRENCY } from "@/lib/money";
+import { formatMoney, rubToKopecks, CURRENCY } from "@/lib/money";
 
 function formatDate(iso: string, locale: string) {
   return new Date(iso).toLocaleDateString(locale, {
@@ -16,10 +16,14 @@ function formatDate(iso: string, locale: string) {
   });
 }
 
-function formatRubAmount(amount: number): string {
-  return CURRENCY === "credits"
-    ? `${amount.toLocaleString("en-US", { maximumFractionDigits: 2 })} credits`
-    : `${amount.toFixed(2)} ₽`;
+// Найдено при живом тестировании (Opus-аудит): backend отдаёт эти суммы в
+// рублях (ReferralEarning.amount_rub/amount_stars, WithdrawalRequest.amount —
+// см. api/views/referral.py), а formatCredits в lib/money.ts ожидает
+// КОПЕЙКИ — суммы показывались INTL-пользователю занижены в 100 раз (50 ₽
+// бонуса выглядели как «50 credits» вместо 5000). Конвертируем в копейки
+// перед передачей в общий formatMoney, как и остальной сайт.
+function formatRubAmount(amountRub: number): string {
+  return formatMoney(rubToKopecks(amountRub));
 }
 
 export default function ReferralPage() {

@@ -320,6 +320,11 @@ class ApplyPromoView(APIView):
 
     @extend_schema(summary='Применить промокод', tags=['Billing'])
     def post(self, request):
+        # Найдено при живом тестировании (Opus-аудит): сообщения были жёстко
+        # русскими и в ₽ — на aineron.net PromoSection (billing/page.tsx)
+        # рендерит error.message/data.message как есть, без перевода. Тот же
+        # приём, что уже применяется в crypto.py — ветвление по INTL_MODE.
+        intl = settings.INTL_MODE
         code_str = (request.data.get('code') or '').strip()
         if not code_str:
             return Response({'error': {'message': 'Promo code is required', 'type': 'invalid_request_error', 'code': 'missing_code'}}, status=status.HTTP_400_BAD_REQUEST)
@@ -327,13 +332,18 @@ class ApplyPromoView(APIView):
         try:
             promo = PromoCode.objects.get(code__iexact=code_str)
         except PromoCode.DoesNotExist:
-            return Response({'error': {'message': 'Промокод не найден', 'type': 'invalid_request_error', 'code': 'promo_not_found'}}, status=status.HTTP_400_BAD_REQUEST)
+            msg = 'Promo code not found' if intl else 'Промокод не найден'
+            return Response({'error': {'message': msg, 'type': 'invalid_request_error', 'code': 'promo_not_found'}}, status=status.HTTP_400_BAD_REQUEST)
 
         if not promo.is_valid():
-            return Response({'error': {'message': 'Промокод недействителен или истёк', 'type': 'invalid_request_error', 'code': 'promo_expired'}}, status=status.HTTP_400_BAD_REQUEST)
+            msg = 'Promo code is invalid or expired' if intl else 'Промокод недействителен или истёк'
+            return Response({'error': {'message': msg, 'type': 'invalid_request_error', 'code': 'promo_expired'}}, status=status.HTTP_400_BAD_REQUEST)
 
         if promo.discount_percent > 0:
-            return Response({'error': {'message': f'Это скидочный промокод (−{promo.discount_percent}% на тариф) — введите его при покупке тарифа', 'type': 'invalid_request_error', 'code': 'promo_is_discount'}}, status=status.HTTP_400_BAD_REQUEST)
+            msg = (f'This is a discount code (−{promo.discount_percent}% on a plan) — enter it at checkout'
+                   if intl else
+                   f'Это скидочный промокод (−{promo.discount_percent}% на тариф) — введите его при покупке тарифа')
+            return Response({'error': {'message': msg, 'type': 'invalid_request_error', 'code': 'promo_is_discount'}}, status=status.HTTP_400_BAD_REQUEST)
 
         # Фиксируем использование ДО начисления: unique (user, promo_code)
         # гасит гонку двойного применения (как в legacy users/views.py)
@@ -349,9 +359,19 @@ class ApplyPromoView(APIView):
             with transaction.atomic():
                 UsedPromoCode.objects.create(user=request.user, promo_code=promo)
         except IntegrityError:
-            return Response({'error': {'message': 'Промокод уже был использован', 'type': 'invalid_request_error', 'code': 'promo_already_used'}}, status=status.HTTP_400_BAD_REQUEST)
+            msg = 'Promo code already used' if intl else 'Промокод уже был использован'
+            return Response({'error': {'message': msg, 'type': 'invalid_request_error', 'code': 'promo_already_used'}}, status=status.HTTP_400_BAD_REQUEST)
         PromoCode.objects.filter(pk=promo.pk).update(used_count=F('used_count') + 1)
         request.user.add_kopecks(promo.kopecks, type='promo', reference=f'promo:{promo.pk}:{request.user.id}')
+
+        from core.money import format_money
+        # Найдено при живом тестировании: было "Промокод {code}: +{stars} ₽"
+        # захардкожено — попадает в PaymentHistory.description, который
+        # рендерится в истории платежей и на .net (billing/page.tsx:894).
+        description = (
+            f'Promo code {code_str}: +{format_money(promo.kopecks)}' if intl
+            else f'Промокод {code_str}: +{format_money(promo.kopecks)}'
+        )
         PaymentHistory.objects.create(
             user=request.user,
             payment_type='promo',
@@ -360,17 +380,20 @@ class ApplyPromoView(APIView):
             amount_kopecks=0,
             pages_count=promo.stars,
             status='success',
-            description=f'Промокод {code_str}: +{promo.stars} ₽',
+            description=description,
         )
 
-        from core.money import format_rub
+        message = (
+            f'Promo code accepted! Credited {format_money(promo.kopecks)}.' if intl
+            else f'Промокод принят! Начислено {format_money(promo.kopecks)}.'
+        )
         return Response({
             'ok': True,
             'stars_added': promo.stars,
             'kopecks_added': promo.kopecks,
             'new_balance': request.user.pages_count,
             'new_balance_kopecks': request.user.balance_kopecks,
-            'message': f'Промокод принят! Начислено {format_rub(promo.kopecks)}.',
+            'message': message,
         })
 
 
