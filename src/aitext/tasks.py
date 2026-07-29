@@ -2338,6 +2338,16 @@ def reconcile_stuck_spends(self):
     (`media-regen:...`) и другие домены (`bizreply:`, `aitask:`, `studio:`,
     ...) сознательно не охвачены — у каждого свой формат и свой путь
     возврата, отдельная задача при необходимости.
+
+    Найдено при повторном ревью: `research:{message_id}` (`research_cmd.py`)
+    добавлен в покрытие — все три возврата `/research` живут ТОЛЬКО в
+    in-memory поллинг-цикле бот-хендлера (`_watch_research`), рестарт/
+    редеплой бота во время ожидания (2-5 мин) убивает эту корутину без
+    следа, деньги списаны навсегда без сигнала. Формат reference и семантика
+    `Message.status` у research идентичны `media:` (тот же `aitext.Message`,
+    `deep_research_task` пишет `status='completed'` только на успехе,
+    оставляет `pending` на ошибке) — заводится в существующий скан без
+    отдельной ветки кода.
     """
     from datetime import timedelta
     from django.db.models import Q
@@ -2361,6 +2371,7 @@ def reconcile_stuck_spends(self):
     ).filter(
         Q(reference__startswith='chat:') | Q(reference__startswith='chat-regen:')
         | Q(reference__startswith='compare:') | Q(reference__startswith='media:')
+        | Q(reference__startswith='research:')
     )
 
     anomalies = []
