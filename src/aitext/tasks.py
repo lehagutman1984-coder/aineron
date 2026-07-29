@@ -1293,7 +1293,14 @@ def upscale_generation_task(self, generation_id, user_id, factor=2, image_url=No
             from core.money import format_rub
             if not user.has_enough_kopecks(cost_kopecks):
                 raise Exception(f"Недостаточно средств. Нужно {format_rub(cost_kopecks)}, у вас {format_rub(user.balance_kopecks)}.")
-            user.spend_kopecks(cost_kopecks, type='spend', reference=billing_ref)
+            # Найдено при повторном ревью: возврат spend_kopecks игнорировался
+            # (тот же класс, что и уже пофикшенный BUG-B в fal-ai ветке выше) —
+            # при False (гонка между has_enough_kopecks и spend_kopecks, либо
+            # идемпотентный no-op на повторной попытке с тем же billing_ref)
+            # stars_deducted всё равно ставился True, и провал апскейла ниже
+            # возвращал деньги, которые не списывались — фантомное начисление.
+            if not user.spend_kopecks(cost_kopecks, type='spend', reference=billing_ref):
+                raise Exception(f"Недостаточно средств. Нужно {format_rub(cost_kopecks)}, у вас {format_rub(user.balance_kopecks)}.")
             stars_deducted = True
             UserSpending.objects.create(
                 user=user,

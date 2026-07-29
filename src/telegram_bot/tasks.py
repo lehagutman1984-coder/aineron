@@ -911,12 +911,14 @@ def managed_bot_reply(self, bot_id: int, chat_id: int, text: str, message_id: in
     if managed is None:
         return
 
-    async def _send(reply_text: str):
+    async def _send(reply_text: str) -> bool:
         b = Bot(token=managed.token)
         try:
             await b.send_message(chat_id=chat_id, text=reply_text[:4000])
+            return True
         except Exception as e:
             logger.warning(f'managed_bot_reply send failed ({bot_id}): {e}')
+            return False
         finally:
             await b.session.close()
 
@@ -986,7 +988,16 @@ def managed_bot_reply(self, bot_id: int, chat_id: int, text: str, message_id: in
         async_to_sync(_send)('Не удалось ответить, попробуйте ещё раз.')
         return
 
-    async_to_sync(_send)(reply)
+    delivered = async_to_sync(_send)(reply)
+    if not delivered:
+        # Найдено при повторном ревью: доставка гостю могла провалиться
+        # (заблокировал бота, чат недоступен) ПОСЛЕ успешного LLM-вызова —
+        # владелец платил за ответ, которого никто не получил. Тот же
+        # паттерн, что уже есть в execute_ai_task (tasks.py:438-444), но без
+        # паузы бота целиком — один недоступный гость не значит, что бот
+        # сломан для остальных.
+        owner.add_kopecks(network.cost_kopecks, type='refund', reference=reference)
+        logger.warning(f'managed_bot_reply {bot_id}: доставка гостю провалилась, средства возвращены владельцу')
 
     from django.db.models import F
     ManagedBot.objects.filter(pk=bot_id).update(messages_count=F('messages_count') + 1)

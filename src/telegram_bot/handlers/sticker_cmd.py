@@ -46,12 +46,20 @@ def _get_image_network():
     return None
 
 
-def _create_image_request(tg_user, network, prompt: str):
+def _create_image_request(tg_user, network, prompt: str, telegram_chat_id):
     from aitext.models import Chat, Message as AiMsg
+    # Найдено при повторном ревью: без settings={'telegram_chat_id': ...}
+    # Celery не может доставить готовый стикер push'ом (tasks.py читает
+    # именно это поле) — доставка держалась только на 120-секундном поллинге
+    # в хендлере; генерация дольше этого срока = деньги списаны, стикер
+    # существует только на сайте. Тот же класс, что уже чинился для
+    # /image (BUG-H) — push доставит как обычное фото (не через answer_sticker,
+    # но лучше, чем ничего) при опоздании.
     chat = Chat.objects.create(
         user=tg_user.user,
         network=network,
         title=f'Sticker: {prompt[:40]}',
+        settings={'telegram_chat_id': telegram_chat_id},
     )
     AiMsg.objects.create(chat=chat, role='user', content=prompt)
     assistant_msg = AiMsg.objects.create(
@@ -134,7 +142,7 @@ async def cmd_sticker(message: Message, tg_user=None):
         return
 
     full_prompt = prompt + STICKER_SUFFIX
-    assistant_msg = await create_image_request(tg_user, network, full_prompt)
+    assistant_msg = await create_image_request(tg_user, network, full_prompt, message.chat.id)
 
     from aitext.tasks import generate_ai_response
     generate_ai_response.delay(assistant_msg.id)

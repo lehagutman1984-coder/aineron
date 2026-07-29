@@ -64,8 +64,13 @@ def _charge(tg_user, cost, reference):
     return tg_user.user.spend_kopecks(cost, type='spend', reference=reference)
 
 
+def _refund(tg_user, cost, reference):
+    return tg_user.user.add_kopecks(cost, type='refund', reference=reference)
+
+
 has_enough_kopecks = sync_to_async(_has_enough, thread_sensitive=True)
 charge_kopecks = sync_to_async(_charge, thread_sensitive=True)
+refund_kopecks = sync_to_async(_refund, thread_sensitive=True)
 
 
 # StateFilter(None) — voice.router подключается раньше нескольких FSM-роутеров
@@ -110,8 +115,17 @@ async def handle_voice_message(message: Message, tg_user=None, bot=None):
         import uuid as _uuid
         await charge_kopecks(tg_user, ASR_COST_KOPECKS, f'tg-asr:{_uuid.uuid4().hex[:12]}')
 
+        # Найдено при повторном ревью: edit_text — чисто косметическая подпись
+        # («[Голосовое]: …»), но раньше делила try/except с самим переходом в
+        # чат-пайплайн ниже — на длинной транскрипции edit_text падал
+        # MessageTooLong (Telegram, лимит 4096 симв.), исключение уходило в
+        # общий except, process_text НИКОГДА не вызывался: деньги списаны,
+        # ответа нет. Теперь сбой подписи не блокирует основной пайплайн.
         label = '[Голосовое]:' if lang == 'ru' else t('voice.label', lang)
-        await status_msg.edit_text(f"<b>{label}</b> {text}", parse_mode='HTML')
+        try:
+            await status_msg.edit_text(f"<b>{label}</b> {text}", parse_mode='HTML')
+        except Exception as label_err:
+            logger.warning(f'voice label edit failed (non-fatal): {label_err}')
 
         # Передаём в обычный чат-пайплайн; S10 — ответ голосом на голосовое
         from telegram_bot.handlers.chat import process_text
@@ -167,10 +181,20 @@ async def cb_tts(query: CallbackQuery, tg_user=None, bot=None):
 
         # Списание ПОСЛЕ успешного синтеза — неудачные попытки не тарифицируются.
         import uuid as _uuid
-        await charge_kopecks(tg_user, TTS_COST_KOPECKS, f'tg-tts:{_uuid.uuid4().hex[:12]}')
+        tts_reference = f'tg-tts:{_uuid.uuid4().hex[:12]}'
+        await charge_kopecks(tg_user, TTS_COST_KOPECKS, tts_reference)
 
         audio_file = BufferedInputFile(audio_bytes, filename='response.mp3')
-        await query.message.answer_voice(audio_file)
+        # Найдено при повторном ревью: если answer_voice падает ПОСЛЕ списания
+        # (файл великоват, сетевой сбой) — деньги были списаны за синтез, но
+        # ничего не доставлено, возврата не было. Тот же reference — refund
+        # идёт по той же записи, что и списание (established pattern).
+        try:
+            await query.message.answer_voice(audio_file)
+        except Exception as send_err:
+            logger.warning(f'TTS delivery failed after charge, refunding: {send_err}')
+            await refund_kopecks(tg_user, TTS_COST_KOPECKS, tts_reference)
+            raise
 
     except Exception as e:
         logger.exception(f'TTS error: {e}')
