@@ -548,6 +548,12 @@ TELEGRAM_WEBHOOK_SECRET = os.getenv('TELEGRAM_WEBHOOK_SECRET', '')
 TELEGRAM_BOT_USERNAME   = os.getenv('TELEGRAM_BOT_USERNAME',   'aineron_bot')
 TELEGRAM_ADMIN_IDS      = [int(x) for x in os.getenv('TELEGRAM_ADMIN_IDS', '').split(',') if x.strip().isdigit()]
 
+# Staging-бот (QA, живое тестирование через MTProto-аккаунт) — отдельный
+# токен от BotFather, свой webhook НЕ настраивается, работает polling'ом
+# через manage.py run_staging_bot. Тот же код/БД, что и прод — изолирован
+# только identity бота, чтобы не трогать реальный @aineron_bot.
+TELEGRAM_STAGING_BOT_TOKEN = os.getenv('TELEGRAM_STAGING_BOT_TOKEN', '')
+
 # Фиче-флаги Bot API 9.3+/10.1 (TELEGRAM_SUPREMACY_PLAN, S0).
 # Каждая супер-фича включается отдельно и откатывается без деплоя кода.
 TG_NATIVE_STREAMING    = os.getenv('TG_NATIVE_STREAMING',    '0') == '1'  # sendMessageDraft (S1)
