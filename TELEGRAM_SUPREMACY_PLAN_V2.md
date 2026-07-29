@@ -501,18 +501,21 @@ money-recoverable-by-refund баги, затем механическая пач
   `on_free_text_during_onboarding` — ставит модель по умолчанию (первую из
   топа, как будто нажали её), чистит состояние и сразу обрабатывает
   введённый текст как первое сообщение (не теряет то, что человек написал).
-- [ ] #16 `scenarios_cmd.py:167,178` (`.ru`) — `ScenarioFSM.waiting_code_input`/
-  `waiting_summary_input` принимают любое сообщение без фильтра команд;
+- [x] #16 **[ИСПРАВЛЕНО]** `scenarios_cmd.py` — `ScenarioFSM.waiting_code_input`/
+  `waiting_summary_input` принимали любое сообщение без фильтра команд;
   роутер зарегистрирован раньше sticker/memory/persona/remind/poll/tasks/
-  research/business/mybot/agent/channel. `/ai summary` → написать `/remind`
-  → строка «/remind» уходит как текст в AI-чат и тарифицируется, сама
-  команда не срабатывает.
-- [ ] #17 `tasks_cmd.py:269-282` (`.ru`) — при упоре в лимит тарифа `return`
-  на `:279` без сброса состояния `TaskFSM.preset_topic`; дальше каждое
-  сообщение повторно ловит ту же карточку лимита, `/cancel` не подсказан.
-- [ ] #18 `scenarios_cmd.py:271` (`.ru`) — `cb_translate` вызывает
+  research/business/mybot/agent/channel. Добавлен `F.text & ~F.text.startswith('/')`
+  на оба хендлера — команды теперь проваливаются к своим роутерам дальше.
+- [x] #17 **[ИСПРАВЛЕНО]** `tasks_cmd.py` — при упоре в лимит тарифа `return`
+  в `_start_confirmation` не сбрасывал состояние (`TaskFSM.preset_topic` при
+  заходе через `on_preset_topic`); дальше каждое сообщение повторно ловило
+  ту же карточку лимита. Добавлен `state.clear()` перед показом карточки.
+- [x] #18 **[ИСПРАВЛЕНО]** `scenarios_cmd.py` — `cb_translate` вызывал
   `state.clear()` безусловно при тапе на язык, стирая ЛЮБОЙ чужой активный
   визард (например `ChannelFSM.waiting_topic`) без предупреждения.
+  `cmd_translate` не устанавливает собственное FSM-состояние (только кладёт
+  `translate_source` в data) — полный `clear()` был избыточен и опасен;
+  теперь чистится только свой ключ.
 
 **Прочее / низкий приоритет (последняя очередь):**
 

@@ -164,7 +164,13 @@ async def cb_scenario(callback: CallbackQuery, state: FSMContext, tg_user=None):
     await state.update_data(scenario_key=key, scenario_mode='topic')
 
 
-@router.message(ScenarioFSM.waiting_code_input)
+# Найдено при повторном ревью: без исключения команд эти два хендлера
+# перехватывали ЛЮБОЕ следующее сообщение, включая команды других модулей
+# (/remind, /poll, /task и т.д. — все зарегистрированы ПОЗЖЕ scenarios_cmd.router
+# в bot.py). Сценарий: /ai summary → написать /remind → строка "/remind"
+# уходит как текст в AI-чат и тарифицируется, сама команда /remind никогда
+# не срабатывает. Команды теперь проваливаются к своим роутерам дальше.
+@router.message(ScenarioFSM.waiting_code_input, F.text & ~F.text.startswith('/'))
 async def handle_code_input(message: Message, state: FSMContext, tg_user=None):
     code = message.text or ''
     await state.clear()
@@ -175,7 +181,8 @@ async def handle_code_input(message: Message, state: FSMContext, tg_user=None):
     await _run_scenario(message, tg_user, prompt)
 
 
-@router.message(ScenarioFSM.waiting_summary_input)
+# См. комментарий у handle_code_input — тот же класс.
+@router.message(ScenarioFSM.waiting_summary_input, F.text & ~F.text.startswith('/'))
 async def handle_summary_input(message: Message, state: FSMContext, tg_user=None):
     data = await state.get_data()
     scenario_mode = data.get('scenario_mode', 'text')
@@ -268,7 +275,13 @@ async def cb_translate(callback: CallbackQuery, state: FSMContext, tg_user=None)
 
     data = await state.get_data()
     source = data.get('translate_source', '')
-    await state.clear()
+    # Найдено при повторном ревью: cmd_translate НЕ устанавливает
+    # собственное FSM-состояние (только кладёт translate_source в data) —
+    # безусловный state.clear() здесь стирал ЛЮБОЙ ЧУЖОЙ активный визард
+    # (например ChannelFSM.waiting_topic), если пользователь тапнул кнопку
+    # языка на старом /translate-сообщении, уже находясь в другом мастере.
+    # Чистим только свой ключ, не трогая state целиком.
+    await state.update_data(translate_source=None)
 
     if not source:
         await callback.answer('Текст не найден, попробуйте снова')

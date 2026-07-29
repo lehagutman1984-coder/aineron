@@ -270,6 +270,12 @@ async def _start_confirmation(message: Message, state: FSMContext, tg_user, pars
     count = await active_count(tg_user.user)
     limit = await task_limit(tg_user.user)
     if count >= limit:
+        # Найдено при повторном ревью: при упоре в лимит тарифа состояние
+        # (например TaskFSM.preset_topic, если пришли через on_preset_topic)
+        # раньше не сбрасывалось — каждое следующее сообщение пользователя
+        # повторно ловилось тем же state-хендлером и снова показывало эту
+        # же карточку лимита, без выхода и без подсказки про /cancel.
+        await state.clear()
         await message.answer(
             card('Лимит задач',
                  f'Активных задач: {count} из {limit} по вашему тарифу.\n'
