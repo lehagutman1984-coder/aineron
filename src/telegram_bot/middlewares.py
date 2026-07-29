@@ -58,15 +58,27 @@ class AuthMiddleware(BaseMiddleware):
         if tg_user.user.shadow_banned:
             await asyncio.sleep(random.uniform(5, 10))
 
-        # Antispam: 30 сообщений/мин через Django cache (Redis).
-        # cache.* — блокирующие вызовы, поэтому уводим их с event loop.
-        rate_key = f'tg_rate:{tg_user.telegram_id}'
-        count = await sync_to_async(cache.get, thread_sensitive=False)(rate_key, 0)
-        if count >= RATE_LIMIT_PER_MINUTE:
-            if hasattr(event, 'answer'):
-                await event.answer(t('auth.rateLimited', lang))
-            return
-        await sync_to_async(cache.set, thread_sensitive=False)(rate_key, count + 1, 60)
+        # Найдено при повторном ревью: successful_payment считался в тот же
+        # 30/мин antispam-счётчик, что и обычные сообщения/тапы по меню.
+        # Telegram уже списал деньги (XTR) к моменту доставки этого апдейта —
+        # он не переотправляется при отказе (webhook отвечает 200 сразу,
+        # views.py::telegram_webhook). Если пользователь до этого успел
+        # набрать 30 взаимодействий за минуту (обычные тапы по меню), апдейт
+        # с оплатой молча дропался ЗДЕСЬ, до хендлера — деньги у Telegram
+        # списаны, баланс не пополнен, никакого алерта. Оплата не участвует
+        # в antispam — Telegram сам не даёт оплатить чаще одного раза за
+        # инвойс, троттлить здесь нечего.
+        is_payment = getattr(event, 'successful_payment', None) is not None
+        if not is_payment:
+            # Antispam: 30 сообщений/мин через Django cache (Redis).
+            # cache.* — блокирующие вызовы, поэтому уводим их с event loop.
+            rate_key = f'tg_rate:{tg_user.telegram_id}'
+            count = await sync_to_async(cache.get, thread_sensitive=False)(rate_key, 0)
+            if count >= RATE_LIMIT_PER_MINUTE:
+                if hasattr(event, 'answer'):
+                    await event.answer(t('auth.rateLimited', lang))
+                return
+            await sync_to_async(cache.set, thread_sensitive=False)(rate_key, count + 1, 60)
 
         data['tg_user'] = tg_user
         return await handler(event, data)

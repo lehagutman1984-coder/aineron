@@ -280,6 +280,35 @@ async def _alert_admins_unresolved_payment(bot, tg_user, payload: str, charge_id
 
 @router.message(F.successful_payment)
 async def on_successful_payment(message: Message, tg_user=None, bot=None):
+    """
+    Найдено при повторном ревью: раньше необработанное исключение внутри
+    (за пределами уже покрытых malformed-payload/tariff-not-found кейсов —
+    сбой БД, неожиданный AttributeError и т.п.) долетало до generic except в
+    views.py::_process_update, где только logger.exception, без алерта.
+    Webhook уже ответил Telegram 200 OK ДО обработки (views.py, fire-and-forget
+    архитектура) — апдейт НЕ переотправляется, а Telegram к этому моменту уже
+    списал деньги (это и есть сам successful_payment). Любой необработанный
+    сбой здесь — это тихая потеря реальных денег пользователя без всякого
+    следа. Обёртка гарантирует алерт админам на ЛЮБОЙ сбой, не только на уже
+    предусмотренные ветки.
+    """
+    try:
+        await _handle_successful_payment(message, tg_user, bot)
+    except Exception as e:
+        logger.exception(f'Необработанная ошибка обработки Stars-платежа: {e}')
+        if tg_user is not None:
+            try:
+                payload = message.successful_payment.invoice_payload
+                charge_id = message.successful_payment.telegram_payment_charge_id
+                await _alert_admins_unresolved_payment(
+                    bot, tg_user, payload, charge_id,
+                    f'необработанное исключение в обработчике: {e}',
+                )
+            except Exception:
+                pass
+
+
+async def _handle_successful_payment(message: Message, tg_user, bot):
     from core.money import format_rub, format_money
 
     if tg_user is None:

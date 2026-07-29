@@ -118,8 +118,18 @@ def managed_bot_webhook(request, bot_id: int):
 @csrf_exempt
 @require_POST
 def telegram_webhook(request):
+    # Найдено при повторном ревью: пустой TELEGRAM_WEBHOOK_SECRET (не задан в
+    # .env) отключал проверку целиком — `if settings.TELEGRAM_WEBHOOK_SECRET
+    # and ...` короткозамкнётся на False. Подделанный апдейт с любым from.id
+    # (включая значение из TELEGRAM_ADMIN_IDS) дошёл бы до admin-команд вроде
+    # /grant. На обоих продах секрет реально задан (не эксплуатируется
+    # сейчас), но фикс — на случай забытой переменной в .env. Fail-closed:
+    # пустой секрет = бот не принимает апдейты, а не «принимает без проверки».
+    if not settings.TELEGRAM_WEBHOOK_SECRET:
+        logger.error('Telegram webhook: TELEGRAM_WEBHOOK_SECRET не задан — апдейты отклоняются')
+        return HttpResponse(status=403)
     secret = request.headers.get('X-Telegram-Bot-Api-Secret-Token', '')
-    if settings.TELEGRAM_WEBHOOK_SECRET and secret != settings.TELEGRAM_WEBHOOK_SECRET:
+    if secret != settings.TELEGRAM_WEBHOOK_SECRET:
         logger.warning('Telegram webhook: invalid secret token')
         return HttpResponse(status=403)
 
