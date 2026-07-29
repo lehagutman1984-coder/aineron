@@ -57,6 +57,11 @@ class Command(BaseCommand):
             allowed_updates = [
                 'message', 'callback_query', 'pre_checkout_query',
                 'successful_payment', 'inline_query', 'chosen_inline_result',
+                # Найдено при повторном ревью: /poll полностью не работал —
+                # хендлеры poll_cmd.py (единственные writer'ы результатов
+                # голосования) никогда не вызывались, потому что Telegram не
+                # присылал эти типы апдейтов вообще (не входили в подписку).
+                'poll', 'poll_answer',
             ]
             # S5: AI-секретарь — апдейты Telegram Business (за флагом)
             if getattr(settings, 'TG_BUSINESS', False):

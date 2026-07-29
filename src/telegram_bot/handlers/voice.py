@@ -113,7 +113,19 @@ async def handle_voice_message(message: Message, tg_user=None, bot=None):
         # Списание ПОСЛЕ успешного распознавания (как на вебе, api/views/audio.py) —
         # неудачные попытки не тарифицируются, возврат не нужен.
         import uuid as _uuid
-        await charge_kopecks(tg_user, ASR_COST_KOPECKS, f'tg-asr:{_uuid.uuid4().hex[:12]}')
+        # Найдено при повторном ревью: bool-возврат charge_kopecks
+        # игнорировался — has_enough_kopecks проверялся РАНЬШЕ (до долгой
+        # транскрипции), баланс мог утечь гонкой за это время (параллельный
+        # запрос), spend_kopecks тогда тихо не спишет ничего (условный
+        # UPDATE), а результат всё равно доставлялся бы бесплатно.
+        if not await charge_kopecks(tg_user, ASR_COST_KOPECKS, f'tg-asr:{_uuid.uuid4().hex[:12]}'):
+            from core.money import format_money
+            price = format_money(ASR_COST_KOPECKS)
+            await status_msg.edit_text(
+                f"Недостаточно средств для распознавания голоса ({price})." if lang == 'ru'
+                else t('voice.insufficientBalance', lang, price=price)
+            )
+            return
 
         # Найдено при повторном ревью: edit_text — чисто косметическая подпись
         # («[Голосовое]: …»), но раньше делила try/except с самим переходом в
@@ -129,7 +141,7 @@ async def handle_voice_message(message: Message, tg_user=None, bot=None):
 
         # Передаём в обычный чат-пайплайн; S10 — ответ голосом на голосовое
         from telegram_bot.handlers.chat import process_text
-        await process_text(message, tg_user, text, voice_reply=True)
+        await process_text(message, tg_user, text, voice_reply=True, lang=lang)
 
     except Exception as e:
         logger.exception(f'Voice transcription error: {e}')
@@ -182,7 +194,18 @@ async def cb_tts(query: CallbackQuery, tg_user=None, bot=None):
         # Списание ПОСЛЕ успешного синтеза — неудачные попытки не тарифицируются.
         import uuid as _uuid
         tts_reference = f'tg-tts:{_uuid.uuid4().hex[:12]}'
-        await charge_kopecks(tg_user, TTS_COST_KOPECKS, tts_reference)
+        # Найдено при повторном ревью: bool-возврат charge_kopecks
+        # игнорировался — has_enough_kopecks проверялся ДО синтеза, баланс
+        # мог утечь гонкой за это время; без проверки результат доставлялся
+        # бы бесплатно.
+        if not await charge_kopecks(tg_user, TTS_COST_KOPECKS, tts_reference):
+            from core.money import format_money
+            price = format_money(TTS_COST_KOPECKS)
+            await query.message.answer(
+                f"Недостаточно средств для озвучивания ({price})." if lang == 'ru'
+                else t('voice.insufficientBalance', lang, price=price)
+            )
+            return
 
         audio_file = BufferedInputFile(audio_bytes, filename='response.mp3')
         # Найдено при повторном ревью: если answer_voice падает ПОСЛЕ списания

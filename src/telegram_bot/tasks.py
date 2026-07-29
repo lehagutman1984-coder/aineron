@@ -195,17 +195,23 @@ def send_reminders(self):
         return
 
     logger.info(f'send_reminders: {len(due)} due')
-    ids_ok = []
+    # Найдено при повторном ревью: is_sent=True раньше проставлялся ОДНИМ
+    # batch-update'ом после ВСЕГО цикла — beat тикает раз в минуту, каждый
+    # _bot_send создаёт новое TLS-соединение серийно; ~100 просроченных
+    # напоминаний (или один зависший запрос) выталкивают цикл за 60с, и
+    # следующий тик повторно выбирает ТЕ ЖЕ строки → дубль отправки. Клейм
+    # атомарный conditional UPDATE на КАЖДОЕ напоминание ДО отправки (тот
+    # же приём, что run_due_ai_tasks выше) — если этот процесс не успевает,
+    # следующий тик просто не увидит уже клеймленные строки повторно.
     for reminder in due:
+        claimed = Reminder.objects.filter(pk=reminder.pk, is_sent=False).update(is_sent=True)
+        if not claimed:
+            continue
         try:
             text = f'Напоминание:\n\n{reminder.text}'
             async_to_sync(_bot_send)(reminder.tg_user.telegram_id, text)
-            ids_ok.append(reminder.pk)
         except Exception as e:
             logger.warning(f'send_reminders: failed {reminder.pk}: {e}')
-
-    if ids_ok:
-        Reminder.objects.filter(pk__in=ids_ok).update(is_sent=True)
 
 
 @shared_task(bind=True, max_retries=1, ignore_result=True,
@@ -344,11 +350,20 @@ def execute_ai_task(self, task_id: int, run_iso: str):
         logger.warning(f'execute_ai_task {task_id}: no delivery chat')
         return
 
-    # Дневной cap исполнений на пользователя (юнит-экономика, риск §5.3)
+    # Дневной cap исполнений на пользователя (юнит-экономика, риск §5.3).
+    # Найдено при повторном ревью: было read (здесь) → ... (LLM-вызов +
+    # доставка) ... → write (:446, ran_today+1) — окно гонки шире обычного
+    # read-then-set, весь ЛЛМ-вызов внутри. Claim атомарным cache.add+incr
+    # СРАЗУ, до работы (тот же приём, что business.py::_check_daily_cap) —
+    # write в конце убран за ненадобностью.
     cap = getattr(dj_settings, 'AITASK_DAILY_CAP', 30)
     cap_key = f'aitask_cap:{user.pk}:{tz.now().date().isoformat()}'
-    ran_today = cache.get(cap_key, 0)
-    if ran_today >= cap:
+    try:
+        cache.add(cap_key, 0, timeout=86400)
+        ran_today = cache.incr(cap_key)
+    except Exception:
+        ran_today = 0  # fail-open — сбой Redis не должен глушить задачи
+    if ran_today > cap:
         logger.warning(f'execute_ai_task {task_id}: daily cap {cap} reached for user {user.pk}')
         return
 
@@ -442,8 +457,6 @@ def execute_ai_task(self, task_id: int, run_iso: str):
         AITask.objects.filter(pk=task_id).update(is_active=False, paused_reason='delivery')
         logger.warning(f'execute_ai_task {task_id}: delivery failed, refunded and paused')
         return
-
-    cache.set(cap_key, ran_today + 1, timeout=86400)
 
     from django.db.models import F
     updates = {'last_run_at': tz.now(), 'runs_count': F('runs_count') + 1}
@@ -1225,13 +1238,16 @@ def broadcast_message(self, text: str, admin_tg_id: int):
         )
         sent = 0
         failed = 0
+        # Найдено при повторном ревью: notify_user() раньше никогда не
+        # бросала исключение (все сбои гасились внутри _send_sync) — этот
+        # try/except не мог отличить успех от провала, failed был
+        # структурно всегда 0. Теперь читаем bool-возврат напрямую.
         for tg_id in tg_ids:
-            try:
-                notify_user(tg_id, text)
+            if notify_user(tg_id, text):
                 sent += 1
-                time.sleep(0.05)
-            except Exception:
+            else:
                 failed += 1
+            time.sleep(0.05)
         try:
             notify_user(admin_tg_id, f'Рассылка завершена: {sent} отправлено, {failed} ошибок.')
         except Exception:

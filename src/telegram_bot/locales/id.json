@@ -149,6 +149,7 @@
     "topUp": "Isi ulang saldo Anda:",
     "generating": "Membuat balasan...",
     "error": "Pembuatan gagal. Silakan coba lagi.",
+    "queueError": "Gagal memproses permintaan — silakan coba lagi sebentar.",
     "timeout": "Waktu habis. Silakan coba lagi.",
     "newChatStarted": "Percakapan baru dimulai. Ajukan pertanyaan pertama Anda.",
     "emptyEditText": "Teks kosong — pengeditan dibatalkan.",

@@ -21,8 +21,18 @@ def _get_referral_stats(user):
         .distinct()
         .count()
     )
-    result = ReferralEarning.objects.filter(user=user).aggregate(total=Sum('amount_rub'))
-    earned_rub = result['total'] or 0
+    # Найдено при повторном ревью: агрегировался только amount_rub —
+    # ReferralEarning.objects.create (users/views.py) пишет ЛИБО amount_rub,
+    # ЛИБО amount_stars (в зависимости от can_convert_to_rub тарифа), почти
+    # никогда оба одновременно. Для большинства пользователей (у кого
+    # can_convert_to_rub=False, дефолт) начисления идут в amount_stars —
+    # бот показывал «Заработано: 0 ₽» даже реально что-то заработавшим.
+    # Веб-API (api/views/referral.py) уже отдаёт оба поля отдельно; здесь —
+    # единая сумма для бота, 1 звезда = 1 ₽ (тот же инвариант биллинга).
+    result = ReferralEarning.objects.filter(user=user).aggregate(
+        total_rub=Sum('amount_rub'), total_stars=Sum('amount_stars'),
+    )
+    earned_rub = (result['total_rub'] or 0) + (result['total_stars'] or 0)
     return referred_count, paid_count, earned_rub
 
 

@@ -180,41 +180,76 @@ async def set_status_reaction(bot, chat_id: int, message_id: int, emoji: str = N
         logger.debug(f'set_status_reaction skipped: {e}')
 
 
-def _send_sync(telegram_id: int, text: str, parse_mode: str = 'HTML') -> None:
-    """Синхронная отправка уведомления — вызывается из Celery/Django views."""
+def _send_sync(telegram_id: int, text: str, parse_mode: str = 'HTML') -> bool:
+    """Синхронная отправка уведомления — вызывается из Celery/Django views.
+
+    Найдено при повторном ревью: раньше всегда возвращала None (успех
+    неотличим от провала) — единственный вызывающий, которому это важно,
+    broadcast_message (tasks.py), считал `failed` через try/except вокруг
+    notify_user(), но ЛЮБАЯ ошибка здесь гасилась внутри (либо специфичным
+    except ниже, либо общим except на asyncio-обвязке) — счётчик был
+    структурно всегда 0, отчёт рассылки врал «0 ошибок» даже при реальных
+    сбоях. Теперь возвращает True/False; остальные вызывающие (notify_user
+    — публичная обёртка) её как раньше не проверяют, обратная совместимость
+    не нарушена.
+    """
     from django.conf import settings
     if not settings.TELEGRAM_BOT_ENABLED or not settings.TELEGRAM_BOT_TOKEN:
-        return
+        return False
+
+    result = {'ok': False}
 
     async def _send():
         from aiogram import Bot
         from aiogram.client.default import DefaultBotProperties
         from aiogram.enums import ParseMode
-        from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest
+        from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest, TelegramRetryAfter
         async with Bot(
             token=settings.TELEGRAM_BOT_TOKEN,
             default=DefaultBotProperties(parse_mode=ParseMode.HTML),
         ) as b:
             try:
                 await b.send_message(chat_id=telegram_id, text=text, parse_mode=parse_mode)
+                result['ok'] = True
+            except TelegramRetryAfter as e:
+                # Найдено при повторном ревью: 429 раньше не входил в
+                # перехватываемые исключения здесь — уходил в общий except
+                # ниже и терялся без единой попытки повтора, при этом
+                # broadcast_message продолжал слать дальше на той же
+                # скорости (20/с), провоцируя каскад новых 429. Ждём ровно
+                # запрошенное Telegram время и повторяем один раз.
+                await asyncio.sleep(e.retry_after)
+                try:
+                    await b.send_message(chat_id=telegram_id, text=text, parse_mode=parse_mode)
+                    result['ok'] = True
+                except Exception as e2:
+                    logger.warning(f'Telegram notify retry-after-429 failed for {telegram_id}: {e2}')
             except (TelegramForbiddenError, TelegramBadRequest) as e:
                 logger.warning(f'Telegram notify failed for {telegram_id}: {e}')
 
     try:
         loop = asyncio.get_event_loop()
         if loop.is_running():
-            _executor.submit(asyncio.run, _send())
+            _executor.submit(asyncio.run, _send()).result(timeout=60)
         else:
             loop.run_until_complete(_send())
     except RuntimeError:
-        asyncio.run(_send())
+        try:
+            asyncio.run(_send())
+        except Exception as e:
+            logger.error(f'Telegram notify error: {e}')
     except Exception as e:
         logger.error(f'Telegram notify error: {e}')
+    return result['ok']
 
 
-def notify_user(telegram_id: int, text: str) -> None:
-    """Публичный интерфейс — использовать из Celery и views."""
-    _send_sync(telegram_id, text)
+def notify_user(telegram_id: int, text: str) -> bool:
+    """Публичный интерфейс — использовать из Celery и views.
+
+    Возвращает True при успешной доставке (см. _send_sync) — существующие
+    вызывающие результат игнорировали и раньше, обратная совместимость.
+    """
+    return _send_sync(telegram_id, text)
 
 
 def notify_admins(text: str) -> None:

@@ -100,15 +100,23 @@ def managed_bot_webhook(request, bot_id: int):
     if chat.get('type') != 'private':
         return HttpResponse('ok')
 
-    # Дневной cap на владельца — защита от спам-атаки на баланс
+    # Дневной cap на владельца — защита от спам-атаки на баланс.
+    # Найдено при повторном ревью: было read-then-set (cache.get → cache.set),
+    # не атомарный incr — под конкурентной нагрузкой (gevent) флудящий гость
+    # мог обойти MANAGEDBOT_DAILY_CAP гонкой между get и set. Тот же приём,
+    # что уже есть в business.py::_check_daily_cap этой же сессии: cache.add
+    # инициализирует ключ, cache.incr атомарно увеличивает.
     from django.core.cache import cache
     from django.utils import timezone
     cap = int(getattr(settings, 'MANAGEDBOT_DAILY_CAP', 300))
     cap_key = f'managedbot_cap:{managed.pk}:{timezone.now().date().isoformat()}'
-    used = cache.get(cap_key, 0)
-    if used >= cap:
+    try:
+        cache.add(cap_key, 0, timeout=86400)
+        used = cache.incr(cap_key)
+    except Exception:
+        used = 0  # fail-open — сбой Redis не должен глушить бота
+    if used > cap:
         return HttpResponse('ok')
-    cache.set(cap_key, used + 1, timeout=86400)
 
     from telegram_bot.tasks import managed_bot_reply
     managed_bot_reply.delay(bot_id, chat_id, text, message_id or 0)

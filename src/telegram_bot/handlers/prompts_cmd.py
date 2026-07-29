@@ -136,7 +136,7 @@ async def cb_use_prompt(query: CallbackQuery, tg_user=None):
         parse_mode='HTML',
     )
     from telegram_bot.handlers.chat import process_text
-    await process_text(query.message, tg_user, prompt.content)
+    await process_text(query.message, tg_user, prompt.content, lang=lang)
 
 
 @router.callback_query(F.data == 'prompts_back')

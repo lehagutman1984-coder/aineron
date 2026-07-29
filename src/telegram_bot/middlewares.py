@@ -3,7 +3,7 @@ import logging
 import random
 from typing import Any, Awaitable, Callable
 from aiogram import BaseMiddleware
-from aiogram.types import TelegramObject
+from aiogram.types import TelegramObject, InlineQuery
 from asgiref.sync import sync_to_async
 from django.core.cache import cache
 
@@ -52,7 +52,7 @@ class AuthMiddleware(BaseMiddleware):
         data['lang'] = lang
 
         if tg_user is None:
-            await event.answer(t('auth.notLinked', lang))
+            await self._deny(event, t('auth.notLinked', lang))
             return
 
         if tg_user.user.shadow_banned:
@@ -75,13 +75,40 @@ class AuthMiddleware(BaseMiddleware):
             rate_key = f'tg_rate:{tg_user.telegram_id}'
             count = await sync_to_async(cache.get, thread_sensitive=False)(rate_key, 0)
             if count >= RATE_LIMIT_PER_MINUTE:
-                if hasattr(event, 'answer'):
-                    await event.answer(t('auth.rateLimited', lang))
+                await self._deny(event, t('auth.rateLimited', lang))
                 return
             await sync_to_async(cache.set, thread_sensitive=False)(rate_key, count + 1, 60)
 
         data['tg_user'] = tg_user
         return await handler(event, data)
+
+    @staticmethod
+    async def _deny(event: TelegramObject, text: str) -> None:
+        """Отправить отказ (не привязан / rate limit) с учётом типа апдейта.
+
+        Найдено при повторном ревью: `event.answer(text)` вызывался
+        безусловно для ЛЮБОГО типа события. У `Message`/`CallbackQuery`
+        `.answer(text: str)` — корректная сигнатура, но у `InlineQuery`
+        `.answer()` первым аргументом ждёт `results: list`, не строку —
+        падал `ValidationError`, гасился generic except в
+        `views.py::_process_update`. Непривязанный пользователь, набравший
+        инлайн-запрос, получал полную тишину вместо любой обратной связи;
+        `inline.py` был из-за этого недостижим для незалогиненных.
+        """
+        if isinstance(event, InlineQuery):
+            try:
+                await event.answer(
+                    [], cache_time=1, is_personal=True,
+                    switch_pm_text=text[:64], switch_pm_parameter='link',
+                )
+            except Exception as e:
+                logger.warning(f'InlineQuery deny-answer failed: {e}')
+            return
+        if hasattr(event, 'answer'):
+            try:
+                await event.answer(text)
+            except Exception as e:
+                logger.warning(f'deny-answer failed for {type(event).__name__}: {e}')
 
     @staticmethod
     def _get_tg_user(telegram_id):

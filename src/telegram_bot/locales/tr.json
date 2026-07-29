@@ -149,6 +149,7 @@
     "topUp": "Bakiyenizi yükleyin:",
     "generating": "Yanıt oluşturuluyor...",
     "error": "Oluşturma başarısız oldu. Lütfen tekrar deneyin.",
+    "queueError": "İstek işlenemedi — lütfen kısa süre sonra tekrar deneyin.",
     "timeout": "Zaman aşımına uğradı. Lütfen tekrar deneyin.",
     "newChatStarted": "Yeni konuşma başlatıldı. İlk sorunu sor.",
     "emptyEditText": "Boş metin — düzenleme iptal edildi.",

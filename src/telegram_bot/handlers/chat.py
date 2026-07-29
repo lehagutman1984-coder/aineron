@@ -209,7 +209,22 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
         chat, text, network, tg_user.system_prompt, extra_settings, attachment,
     )
 
-    generate_ai_response.delay(assistant_msg.id, web_search=getattr(tg_user, 'web_search', False))
+    # Найдено при повторном ревью: delay() не был обёрнут (в отличие от
+    # images.py) — при недоступном брокере Celery/Redis исключение уходило
+    # необработанным до generic except в views.py::_process_update, до
+    # показа плейсхолдера пользователю — полная тишина вместо любой
+    # обратной связи. process_text — общая точка для chat.py/voice.py/
+    # files.py/onboarding.py/prompts_cmd.py/group.py, фикс здесь закрывает
+    # все вызывающие стороны разом.
+    try:
+        generate_ai_response.delay(assistant_msg.id, web_search=getattr(tg_user, 'web_search', False))
+    except Exception as e:
+        logger.error(f'process_text: не удалось поставить задачу в очередь: {e}')
+        await tg_message.answer(
+            'Не удалось обработать запрос — попробуйте ещё раз чуть позже.'
+            if lang == 'ru' else t('chat.queueError', lang)
+        )
+        return
 
     # S1: реакция-статус «запрос принят» на сообщение пользователя
     await set_status_reaction(tg_message.bot, tg_message.chat.id, tg_message.message_id, '👀')

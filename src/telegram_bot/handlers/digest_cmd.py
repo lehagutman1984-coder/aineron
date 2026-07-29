@@ -104,7 +104,13 @@ async def cmd_digest(message: Message):
             await message.answer(text, parse_mode='HTML', reply_markup=_digest_keyboard(False, lang))
             return
         if lang == 'ru':
-            hour, minute = (DEFAULT_HOUR, DEFAULT_MINUTE) if not arg else (tg_user.digest_hour, tg_user.digest_minute)
+            # Найдено при повторном ревью: тернарник был инвертирован
+            # относительно intl-ветки ниже (:114-119) и смысла команды —
+            # голый /digest (статус-запрос при уже включённом дайджесте)
+            # молча ПЕРЕЗАПИСЫВАЛ настроенное время на DEFAULT (09:00)
+            # вместо того чтобы просто показать текущее. Явный /digest on
+            # — наоборот, должен сбрасывать на дефолт (как в intl).
+            hour, minute = (tg_user.digest_hour, tg_user.digest_minute) if not arg else (DEFAULT_HOUR, DEFAULT_MINUTE)
             await _set_digest(tg_user, True, hour, minute)
             await message.answer(
                 f"Ежедневный дайджест <b>включён</b>. Будет приходить в {hour:02d}:{minute:02d} МСК.",

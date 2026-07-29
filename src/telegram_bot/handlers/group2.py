@@ -67,6 +67,28 @@ def _charge(group_config, tg_user) -> bool:
     return False
 
 
+def _has_enough(group_config, tg_user) -> bool:
+    """Найдено при повторном ревью: /summary и /quiz вызывали LLM ДО
+    какой-либо проверки баланса — списание (charge выше) идёт только ПОСЛЕ
+    успешной генерации (намеренно, «нет платы за ошибку LLM»), но без
+    предварительной проверки баланс с нулём/минусом мог жечь токены
+    провайдера на каждый вызов на скорости антиспам-лимита (30/мин),
+    просто не будучи оштрафован деньгами. Проверка здесь не списывает —
+    сама атомарная защита от гонки остаётся в _charge (spend_kopecks/
+    _charge_org), это только ранний отсеиватель заведомо пустых кошельков."""
+    network = _cheap_network()
+    cost = network.cost_kopecks if network else 100
+    if group_config:
+        from django.conf import settings
+        from core.money import kopecks_to_rub
+        org_rate = int(getattr(settings, 'ORG_KOPECKS_PER_STAR', 100))
+        cost_rub = kopecks_to_rub(cost * org_rate // 100)
+        return group_config.organization.balance_rub >= cost_rub
+    if tg_user is not None:
+        return tg_user.user.has_enough_kopecks(cost)
+    return False
+
+
 def _fetch_log(group_config, hours: int, limit: int = 300):
     from datetime import timedelta
     from django.utils import timezone
@@ -109,6 +131,7 @@ def _usage_stat(group_config, days: int = 30):
 get_group_config = sync_to_async(_get_group_config, thread_sensitive=True)
 llm = sync_to_async(_llm, thread_sensitive=True)
 charge = sync_to_async(_charge, thread_sensitive=True)
+has_enough = sync_to_async(_has_enough, thread_sensitive=True)
 fetch_log = sync_to_async(_fetch_log, thread_sensitive=True)
 usage_stat = sync_to_async(_usage_stat, thread_sensitive=True)
 
@@ -137,6 +160,10 @@ async def cmd_summary(message: Message, tg_user=None):
             f'Слишком мало сообщений за {hours} ч для сводки '
             f'(бот собирает историю с момента подключения).',
         )
+        return
+
+    if not await has_enough(group_config, tg_user):
+        await message.reply('Баланс организации исчерпан — пополните на сайте.')
         return
 
     dialogue = '\n'.join(f'{l.from_name}: {l.text}' for l in logs)
@@ -182,6 +209,10 @@ async def cmd_quiz(message: Message, tg_user=None):
     group_config = await get_group_config(message.chat.id)
     if tg_user is None and group_config is None:
         await message.reply('Привяжите аккаунт: напишите /start боту @aineron_bot')
+        return
+
+    if not await has_enough(group_config, tg_user):
+        await message.reply('Недостаточно средств для генерации квиза.')
         return
 
     status = await message.reply(f'Готовлю квиз по теме «{topic[:60]}»...')

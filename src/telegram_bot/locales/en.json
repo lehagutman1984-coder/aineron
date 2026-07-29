@@ -232,6 +232,7 @@
     "topUp": "Top up your balance:",
     "generating": "Generating reply...",
     "error": "Generation failed. Please try again.",
+    "queueError": "Couldn't process the request — please try again shortly.",
     "timeout": "Timed out. Please try again.",
     "newChatStarted": "New conversation started. Ask your first question.",
     "emptyEditText": "Empty text — edit cancelled.",

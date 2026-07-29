@@ -122,7 +122,7 @@ async def handle_photo(message: Message, tg_user=None):
         )
         from telegram_bot.handlers.chat import process_text
         chat_override = await _topic_chat_override(message, tg_user)
-        await process_text(message, tg_user, prompt, attachment=att, chat_override=chat_override)
+        await process_text(message, tg_user, prompt, attachment=att, chat_override=chat_override, lang=lang)
         try:
             await status.delete()
         except Exception:
@@ -207,7 +207,7 @@ async def _process_document_to_chat(message: Message, tg_user, doc, name: str, e
         prompt = caption if caption else default_prompt
         from telegram_bot.handlers.chat import process_text
         chat_override = await _topic_chat_override(message, tg_user)
-        await process_text(message, tg_user, prompt, attachment=att, chat_override=chat_override)
+        await process_text(message, tg_user, prompt, attachment=att, chat_override=chat_override, lang=lang)
         try:
             await status.delete()
         except Exception:
@@ -369,7 +369,7 @@ async def cb_upload_to_chat(query: CallbackQuery, tg_user=None):
         prompt = f'Проанализируй содержимое документа "{filename}"' if lang == 'ru' else t('files.analyzeDocumentPrompt', lang, name=filename)
         from telegram_bot.handlers.chat import process_text
         chat_override = await _topic_chat_override(query.message, tg_user)
-        await process_text(query.message, tg_user, prompt, attachment=att, chat_override=chat_override)
+        await process_text(query.message, tg_user, prompt, attachment=att, chat_override=chat_override, lang=lang)
         try:
             await status.delete()
         except Exception:
