@@ -23,7 +23,7 @@ router = Router()
 
 def _list_projects(user):
     from aitext.models import Project
-    return list(Project.objects.filter(user=user).order_by('-updated_at')[:15])
+    return list(Project.objects.filter(user=user).order_by('-created_at')[:15])
 
 
 def _topic_for_project(tg_user, project_id):

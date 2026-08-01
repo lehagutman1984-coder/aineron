@@ -67,7 +67,7 @@ def _project_detail_kb(project_id: int, is_active: bool, lang: str = 'ru') -> In
 @sync_to_async
 def _get_projects_page(user, offset: int):
     from aitext.models import Project
-    qs = Project.objects.filter(user=user).prefetch_related('knowledge_files').order_by('-updated_at')
+    qs = Project.objects.filter(user=user).prefetch_related('knowledge_files').order_by('-created_at')
     total = qs.count()
     page = list(qs[offset:offset + PAGE_SIZE])
     return page, total
