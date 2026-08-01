@@ -19,6 +19,7 @@ def web_search(query: str, max_results: int = 5) -> str:
     if not api_key or not query:
         return ''
 
+    proxy_url = getattr(settings, 'TAVILY_PROXY_URL', '')
     try:
         r = requests.post(
             'https://api.tavily.com/search',
@@ -30,6 +31,7 @@ def web_search(query: str, max_results: int = 5) -> str:
                 'include_answer': False,
             },
             timeout=12,
+            proxies={'https': proxy_url} if proxy_url else None,
         )
         r.raise_for_status()
         items = r.json().get('results', [])

@@ -413,6 +413,7 @@ SITEMAP_CACHE_TIMEOUT = 3600
 
 # Веб-поиск (используется в call_web_search)
 TAVILY_API_KEY = os.environ.get('TAVILY_API_KEY', '')  # tavily.com — 1000 req/month free
+TAVILY_PROXY_URL = os.environ.get('TAVILY_PROXY_URL', '')  # HTTP-прокси для обхода геоблокировки Tavily из РФ
 
 # Seedance (ByteDance video) — отдельный токен группы SeeDance2 на laozhang.ai
 SEEDANCE_API_KEY = os.environ.get('SEEDANCE_API_KEY', '')

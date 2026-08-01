@@ -676,6 +676,7 @@ def call_web_search(user_query: str, log_prefix: str = "") -> str:
     if not tavily_key:
         logger.error(f"{log_prefix}TAVILY_API_KEY не задан в .env")
         return ""
+    proxy_url = getattr(settings, "TAVILY_PROXY_URL", "")
     try:
         r = _req.post(
             "https://api.tavily.com/search",
@@ -687,6 +688,7 @@ def call_web_search(user_query: str, log_prefix: str = "") -> str:
                 "include_answer": False,
             },
             timeout=12,
+            proxies={"https": proxy_url} if proxy_url else None,
         )
         r.raise_for_status()
         items = r.json().get("results", [])
@@ -2148,11 +2150,13 @@ def _web_search_chunks(query: str) -> list[dict]:
     tavily_key = getattr(settings, "TAVILY_API_KEY", "")
     if not tavily_key:
         return []
+    proxy_url = getattr(settings, "TAVILY_PROXY_URL", "")
     try:
         r = _req.post(
             "https://api.tavily.com/search",
             json={"api_key": tavily_key, "query": query[:400], "search_depth": "basic", "max_results": 4},
             timeout=10,
+            proxies={"https": proxy_url} if proxy_url else None,
         )
         r.raise_for_status()
         items = r.json().get("results", [])
