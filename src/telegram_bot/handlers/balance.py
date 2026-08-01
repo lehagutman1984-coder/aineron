@@ -208,6 +208,7 @@ async def cmd_help(message: Message, tg_user=None):
         '<b>Чат и генерация</b>\n'
         '/image &lt;промт&gt; — создать изображение\n'
         '/balance — баланс и пополнение\n'
+        '/promo &lt;код&gt; — активировать промокод\n'
         '/newchat — начать новый диалог\n'
         '/settings — настройки (голос, поиск, промт)\n'
         '/models — выбор модели\n'

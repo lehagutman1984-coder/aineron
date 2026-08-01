@@ -192,6 +192,9 @@ def attempt_auto_renewal(subscription):
 
                 user.activate_paid_tariff(new_tariff, {'invoice_id': str(new_inv_id)})
 
+                from users.referral import grant_referral_bonus
+                grant_referral_bonus(user, new_tariff, reference=f'{new_inv_id}:referral', context='автопродление-переход')
+
                 subscription.is_active = False
                 subscription.status = 'expired'
                 subscription.save()
@@ -268,6 +271,9 @@ def attempt_auto_renewal(subscription):
 
             user.add_kopecks(tariff.balance_grant_kopecks, type='subscription', reference=str(new_inv_id))
             user.refresh_from_db(fields=['balance_kopecks', 'pages_count'])
+
+            from users.referral import grant_referral_bonus
+            grant_referral_bonus(user, tariff, reference=f'{new_inv_id}:referral', context='автопродление')
 
             subscription.expires_at = timezone.now() + timedelta(days=tariff.duration_days)
             subscription.robokassa_invoice_id = str(new_inv_id)

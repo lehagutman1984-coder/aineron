@@ -45,6 +45,9 @@ class CustomAccountAdapter(DefaultAccountAdapter):
             except CustomUser.DoesNotExist:
                 pass
 
+        from users.attribution import apply_utm_attribution
+        apply_utm_attribution(user, request, save=False)
+
         if commit:
             user.save()
 
@@ -126,6 +129,9 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
                 request.session.pop('ref_code', None)
             except CustomUser.DoesNotExist:
                 pass
+
+        from users.attribution import apply_utm_attribution
+        apply_utm_attribution(user, request, save=False)
 
         user.save()
 

@@ -25,13 +25,35 @@ export function middleware(request: NextRequest) {
   const refCookie =
     ref && /^[A-Za-z0-9]{4,20}$/.test(ref) ? ref.toUpperCase() : null;
 
-  const withRefCookie = (response: NextResponse) => {
+  // UTM-метки первого захода — тем же способом, что ref_code: cookie на
+  // 30 дней, Django читает её один раз при регистрации (см. GROWTH_PLAN_RU.md
+  // §2.5/§7#4). Без этого нельзя посчитать, какой канал (vc/DTF/каталоги/
+  // TG-посевы) реально приводит платящих пользователей, а не просто визиты.
+  const UTM_RE = /^[A-Za-z0-9_.-]{1,100}$/;
+  const utmParams: Record<string, string> = {};
+  for (const key of ["utm_source", "utm_medium", "utm_campaign"] as const) {
+    const value = searchParams.get(key);
+    if (value && UTM_RE.test(value)) utmParams[key] = value;
+  }
+
+  const withAttributionCookies = (response: NextResponse) => {
     if (refCookie) {
       response.cookies.set("ref_code", refCookie, {
         maxAge: REF_COOKIE_MAX_AGE,
         path: "/",
         sameSite: "lax",
       });
+    }
+    // Пишем только если пришли новые метки — не затираем уже сохранённые
+    // предыдущим визитом, если пользователь потом перешёл по ссылке без UTM.
+    if (Object.keys(utmParams).length > 0) {
+      for (const [key, value] of Object.entries(utmParams)) {
+        response.cookies.set(key, value, {
+          maxAge: REF_COOKIE_MAX_AGE,
+          path: "/",
+          sameSite: "lax",
+        });
+      }
     }
     return response;
   };
@@ -49,11 +71,11 @@ export function middleware(request: NextRequest) {
       const prefix = localeMatch ? localeMatch[0] : "";
       const loginUrl = new URL(`${prefix}/login/`, request.url);
       loginUrl.searchParams.set("next", pathname);
-      return withRefCookie(NextResponse.redirect(loginUrl));
+      return withAttributionCookies(NextResponse.redirect(loginUrl));
     }
   }
 
-  return withRefCookie(handleIntl(request));
+  return withAttributionCookies(handleIntl(request));
 }
 
 export const config = {

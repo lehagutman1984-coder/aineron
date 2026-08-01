@@ -116,6 +116,8 @@ class RegisterView(APIView):
             user.language = lang
             user.save(update_fields=['language'])
         apply_referral(user, request)
+        from users.attribution import apply_utm_attribution
+        apply_utm_attribution(user, request)
         if settings.INTL_MODE:
             # Международный инстанс: SMTP недоступен (порты хостера закрыты) —
             # верифицируем email сразу, чтобы не заводить пользователя в тупик.
@@ -130,6 +132,9 @@ class RegisterView(APIView):
         response = Response(UserSerializer(user).data, status=201)
         if request.COOKIES.get('ref_code'):
             response.delete_cookie('ref_code')
+        for utm_cookie in ('utm_source', 'utm_medium', 'utm_campaign'):
+            if request.COOKIES.get(utm_cookie):
+                response.delete_cookie(utm_cookie)
         return response
 
 

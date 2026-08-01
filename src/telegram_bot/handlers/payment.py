@@ -110,6 +110,9 @@ def _activate_stars_subscription(tg_user, tariff_id: int, charge_id: str,
     user = tg_user.user
     subscription = user.activate_paid_tariff(tariff, payment_data={'invoice_id': charge_id})
 
+    from users.referral import grant_referral_bonus
+    grant_referral_bonus(user, tariff, reference=f'{charge_id}:referral', context='Stars')
+
     # КРИТИЧНО: продление этой подписки делает Telegram (successful_payment
     # с is_recurring), а НЕ Robokassa. auto_renew=True отправил бы её в
     # process_pending_renewals → невалидный PreviousInvoiceID → исчерпание

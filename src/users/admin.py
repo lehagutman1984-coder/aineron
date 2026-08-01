@@ -364,7 +364,7 @@ class CustomUserAdmin(UserAdmin):
     list_display = ('username', 'email', 'email_verified', 'tariff_info',
                     'pages_display', 'rub_balance', 'can_convert_to_rub', 'shadow_banned', 'is_active',
                     'total_logins', 'date_joined')
-    list_filter = ('email_verified', 'shadow_banned', 'is_active', 'is_staff', 'date_joined', 'tariff')
+    list_filter = ('email_verified', 'shadow_banned', 'is_active', 'is_staff', 'date_joined', 'tariff', 'acquisition_utm_source')
     search_fields = ('username', 'email', 'first_name', 'last_name')
     readonly_fields = ('date_joined', 'last_login', 'created_at', 'updated_at', 'subscription_details')
     fieldsets = (
@@ -374,6 +374,7 @@ class CustomUserAdmin(UserAdmin):
         (_('Тарифы и баланс'), {'fields': ('tariff', 'active_subscription', 'pages_count', 'subscription_details')}),
         (_('Баланс в рублях'), {'fields': ('rub_balance', 'can_convert_to_rub')}),
         (_('Security'), {'fields': ('shadow_banned',)}),
+        (_('Атрибуция (откуда пришёл)'), {'fields': ('acquisition_utm_source', 'acquisition_utm_medium', 'acquisition_utm_campaign')}),
         (_('Permissions'), {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
         (_('Important dates'), {'fields': ('last_login', 'date_joined', 'created_at', 'updated_at')}),
     )
@@ -620,6 +621,24 @@ class PromoCodeAdmin(admin.ModelAdmin):
     search_fields = ('code',)
     list_editable = ('stars', 'discount_percent', 'usage_limit', 'is_active')
     readonly_fields = ('used_count', 'created_at')
+    actions = ['duplicate_into_10_codes']
+
+    @admin.action(description='Клонировать в 10 новых кодов с теми же параметрами (для Plati/каналов)')
+    def duplicate_into_10_codes(self, request, queryset):
+        from users.promo import generate_unique_promo_code
+        created = 0
+        for promo in queryset:
+            for _ in range(10):
+                PromoCode.objects.create(
+                    code=generate_unique_promo_code(''),
+                    stars=promo.stars,
+                    usage_limit=promo.usage_limit,
+                    expires_at=promo.expires_at,
+                    is_active=True,
+                )
+                created += 1
+        self.message_user(request, f'Создано {created} новых кодов по образцу выбранных.')
+
     fieldsets = (
         (None, {'fields': ('code',)}),
         ('Тип промокода', {

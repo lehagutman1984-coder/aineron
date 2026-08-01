@@ -28,7 +28,7 @@ def register_routers():
         reggroup_cmd, sticker_cmd, memory_cmd, persona_cmd,
         remind_cmd, poll_cmd, tasks_cmd, research_cmd, business,
         topics, group2, mybot_cmd, agent_cmd, channel_cmd, language_cmd,
-        timezone_cmd,
+        timezone_cmd, promo_cmd,
     )
     dp.message.middleware(AuthMiddleware())
     dp.callback_query.middleware(AuthMiddleware())
@@ -57,6 +57,7 @@ def register_routers():
         dp.include_router(balance.router)
         dp.include_router(payment.router)
         dp.include_router(referral.router)
+        dp.include_router(promo_cmd.router)     # /promo — погашение промокода на баланс
         dp.include_router(models_cmd.router)
         dp.include_router(voice.router)
         dp.include_router(images.router)
@@ -94,6 +95,7 @@ def register_routers():
     dp.include_router(chat.router)
     dp.include_router(balance.router)
     dp.include_router(payment.router)
+    dp.include_router(promo_cmd.router)      # /promo — погашение промокода на баланс
     dp.include_router(models_cmd.router)
     dp.include_router(voice.router)
     dp.include_router(images.router)

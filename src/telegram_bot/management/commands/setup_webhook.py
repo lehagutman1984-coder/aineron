@@ -145,6 +145,7 @@ class Command(BaseCommand):
                 BotCommand(command='memory', description='Что бот помнит о тебе'),
                 BotCommand(command='digest', description='Ежедневный AI-дайджест'),
                 BotCommand(command='balance', description='Баланс и пополнение'),
+                BotCommand(command='promo', description='Активировать промокод'),
                 BotCommand(command='settings', description='Настройки бота'),
                 BotCommand(command='prompts', description='Библиотека промтов'),
                 BotCommand(command='referral', description='Реферальная программа'),

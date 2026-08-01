@@ -173,6 +173,9 @@ def ajax_register(request):
                 except CustomUser.DoesNotExist:
                     pass
 
+            from users.attribution import apply_utm_attribution
+            apply_utm_attribution(user, request)
+
             client_ip, is_routable = get_client_ip(request)
             shadow_banned = False
 
@@ -708,34 +711,8 @@ def payment_success(request):
                             logger.info(f"[PAY] Промокод #{payment.promo_code_id} использован ({user.email}, счёт {inv_id})")
 
                     # ========== РЕФЕРАЛЬНЫЙ БОНУС ==========
-                    if user.referrer:
-                        referrer = user.referrer
-                        if referrer.can_convert_to_rub and tariff.referral_bonus > 0:
-                            from django.db.models import F as _F
-                            type(referrer).objects.filter(pk=referrer.pk).update(
-                                rub_balance=_F('rub_balance') + Decimal(str(tariff.referral_bonus))
-                            )
-                            referrer.refresh_from_db(fields=['rub_balance'])
-                            amount_rub = tariff.referral_bonus
-                            amount_stars = 0
-                            logger.info(f"[PAY] Рефералу {referrer.email} начислено {tariff.referral_bonus} руб за покупку {tariff.display_name} пользователем {user.email}")
-                        else:
-                            referrer.add_kopecks(
-                                tariff.referral_bonus_kopecks, type='referral',
-                                reference=f'{inv_id}:referral',
-                            )
-                            amount_rub = 0
-                            amount_stars = tariff.referral_bonus_stars
-                            logger.info(f" зв. Рефералу {referrer.email} начислено {tariff.referral_bonus_stars} звёзд за покупку {tariff.display_name} пользователем {user.email}")
-
-                        if amount_rub > 0 or amount_stars > 0:
-                            ReferralEarning.objects.create(
-                                user=referrer,
-                                amount_rub=amount_rub,
-                                amount_stars=amount_stars,
-                                tariff=tariff,
-                                description=f'Бонус за приглашение {user.email} (тариф {tariff.display_name})'
-                            )
+                    from users.referral import grant_referral_bonus
+                    grant_referral_bonus(user, tariff, reference=f'{inv_id}:referral', context='Робокасса')
 
                 elif payment.payment_type == 'pages':
                     # Кредитуем ровно уплаченную сумму. pages_count*100 совпадал бы с ней

@@ -556,6 +556,14 @@ class CustomUser(AbstractUser):
         verbose_name='Пригласивший пользователь'
     )
     referral_clicks = models.PositiveIntegerField(default=0, verbose_name='Количество переходов по ссылке')
+    acquisition_utm_source = models.CharField(
+        max_length=100, blank=True, null=True,
+        verbose_name='UTM-источник при регистрации',
+        help_text='Например vc, dtf, sostav, habr, productradar, neurofolder, plati, tg_<канал>. '
+                   'Фиксируется один раз при регистрации, дальше не меняется — см. GROWTH_PLAN_RU.md §2.5.'
+    )
+    acquisition_utm_medium = models.CharField(max_length=100, blank=True, null=True, verbose_name='UTM-канал при регистрации')
+    acquisition_utm_campaign = models.CharField(max_length=100, blank=True, null=True, verbose_name='UTM-кампания при регистрации')
     memory_enabled = models.BooleanField(
         default=True,
         verbose_name='Память включена',
