@@ -22,11 +22,14 @@ class Command(BaseCommand):
         if not tavily_key:
             return
 
+        proxy_url = getattr(settings, "TAVILY_PROXY_URL", "")
+        self.stdout.write(f"Прокси: {'да (' + proxy_url.split('@')[-1] + ')' if proxy_url else 'нет'}")
         try:
             r = requests.post(
                 "https://api.tavily.com/search",
                 json={"api_key": tavily_key, "query": query, "search_depth": "basic", "max_results": 5},
                 timeout=12,
+                proxies={"https": proxy_url} if proxy_url else None,
             )
             r.raise_for_status()
             items = r.json().get("results", [])
