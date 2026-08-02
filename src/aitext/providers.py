@@ -87,13 +87,22 @@ def get_groq_client():
 def get_openrouter_free_client():
     """
     «Сырой» OpenAI-совместимый клиент OpenRouter (openrouter.ai) для бесплатных
-    моделей (`:free`). Доступен из РФ без прокси. Без фолбэка.
+    моделей (`:free`). Без фолбэка.
+
+    ОБНОВЛЕНО 2026-08-02: OpenRouter начал отдавать 403 "Access denied by
+    security policy" на запросы с российских IP (тот же класс блокировки,
+    что и Tavily, см. web_search.py) — прежнее "доступен из РФ без прокси"
+    больше не верно. При заданном OPENROUTER_PROXY_URL заворачиваем через
+    HTTP-прокси на NL-сервере.
     """
     global _openrouter_free_client
     if _openrouter_free_client is None:
+        proxy_url = getattr(settings, 'OPENROUTER_PROXY_URL', '')
+        http_client = httpx.Client(proxy=proxy_url) if proxy_url else None
         _openrouter_free_client = OpenAI(
             base_url=getattr(settings, 'OPENROUTER_API_URL', 'https://openrouter.ai/api/v1'),
             api_key=getattr(settings, 'OPENROUTER_API_KEY', ''),
+            http_client=http_client,
         )
     return _openrouter_free_client
 

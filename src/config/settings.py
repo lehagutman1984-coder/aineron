@@ -433,6 +433,7 @@ GROQ_API_URL = os.environ.get('GROQ_API_URL', 'https://api.groq.com/openai/v1')
 # OpenAI-совместимый эндпоинт. Ключ — console.openrouter.ai.
 OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY', '')
 OPENROUTER_API_URL = os.environ.get('OPENROUTER_API_URL', 'https://openrouter.ai/api/v1')
+OPENROUTER_PROXY_URL = os.environ.get('OPENROUTER_PROXY_URL', '')  # HTTP-прокси для обхода геоблокировки OpenRouter из РФ (403, тот же паттерн, что TAVILY_PROXY_URL)
 
 # Z.ai (Zhipu AI, Китай) — бесплатные модели GLM-*-Flash (GLM-4.7-Flash,
 # GLM-4.5-Flash, GLM-4.6V-Flash), доступно из РФ без прокси (китайский, а не
