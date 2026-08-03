@@ -83,6 +83,7 @@ export function Navbar() {
               </div>
               <Link
                 href="/account/"
+                prefetch={false}
                 className="flex items-center gap-1.5 rounded-[8px] px-3 py-1.5 text-[15px] text-[rgba(13,13,13,0.7)] transition-colors hover:bg-[rgba(13,13,13,0.06)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.65)] dark:hover:bg-[rgba(255,255,255,0.07)] dark:hover:text-[#EDE8E3]"
               >
                 <User size={15} />
@@ -151,7 +152,7 @@ export function Navbar() {
                   <Wallet size={13} className="text-[#D97757]" />
                   <span>{formatMoney(balanceKopecks)}</span>
                 </div>
-                <MobileNavLink href="/account/" onClick={() => setMobileOpen(false)}>{t("accountFull")}</MobileNavLink>
+                <MobileNavLink href="/account/" onClick={() => setMobileOpen(false)} prefetch={false}>{t("accountFull")}</MobileNavLink>
                 <button
                   onClick={() => { setMobileOpen(false); handleLogout(); }}
                   className="py-2 text-start text-[16px] text-[rgba(13,13,13,0.6)] dark:text-[rgba(236,236,236,0.5)]"
@@ -193,15 +194,18 @@ function MobileNavLink({
   href,
   onClick,
   children,
+  prefetch,
 }: {
   href: string;
   onClick: () => void;
   children: React.ReactNode;
+  prefetch?: boolean;
 }) {
   return (
     <Link
       href={href}
       onClick={onClick}
+      prefetch={prefetch}
       className="py-2 text-[16px] text-[rgba(13,13,13,0.8)] transition-colors hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.75)] dark:hover:text-[#EDE8E3]"
     >
       {children}
