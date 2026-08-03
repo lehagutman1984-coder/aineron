@@ -27,7 +27,7 @@ function VerifyEmailForm() {
     if (user?.email_verified) {
       // If onboarding not done yet, send to welcome; otherwise account
       const done = typeof window !== "undefined" && localStorage.getItem("onboarding_done") === "1";
-      router.replace(done ? "/account/" : "/welcome/");
+      router.replace(done ? "/account/?verified=1" : "/welcome/?verified=1");
     }
   }, [user, router]);
 
@@ -72,8 +72,12 @@ function VerifyEmailForm() {
     try {
       await authVerifyEmail(code);
       if (user) setUser({ ...user, email_verified: true });
-      // New users go through onboarding; /welcome/ checks localStorage and skips if already done
-      router.push("/welcome/");
+      // New users go through onboarding; /welcome/ checks localStorage and skips if already done.
+      // ?verified=1 — маркер цели «регистрация» в Яндекс.Метрике (url содержит verified=1).
+      // Раньше этот, самый массовый путь подтверждения (код на той же вкладке, без перехода
+      // по ссылке из письма), никогда не долетал до цели — считался только редкий путь через
+      // legacy Django verify_email (клик по ссылке в письме), который сам добавляет этот параметр.
+      router.push("/welcome/?verified=1");
     } catch (err) {
       setError(err instanceof APIError ? err.message : t("verifyInvalidCode"));
       setDigits(["", "", "", "", "", ""]);
