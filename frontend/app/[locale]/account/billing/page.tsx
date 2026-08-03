@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -46,6 +46,14 @@ function submitRobokassaForm(form: RobokassaForm) {
   const f = document.createElement("form");
   f.method = form.method;
   f.action = form.action;
+  // target=_blank — открываем Робокассу в НОВОЙ вкладке, а не уводим текущую.
+  // Раньше страница биллинга полностью выгружалась, и возврат на /payment-success/
+  // зависел целиком от редиректа Робокассы — который не срабатывает при оплате
+  // по СБП (человек платит в банковском приложении на телефоне, а вкладка на
+  // компьютере ничего об этом не узнаёт) или если пользователь просто закрывает
+  // вкладку Робокассы после оплаты. Теперь вкладка биллинга остаётся жива и сама
+  // опрашивает статус платежа (см. использование ниже), как уже сделано для крипты.
+  f.target = "_blank";
   Object.entries(form.fields).forEach(([name, value]) => {
     const input = document.createElement("input");
     input.type = "hidden";
@@ -55,6 +63,7 @@ function submitRobokassaForm(form: RobokassaForm) {
   });
   document.body.appendChild(f);
   f.submit();
+  f.remove();
 }
 
 // ── Purchase confirmation modal (условия Робокассы) ─────────────────────────
@@ -508,7 +517,7 @@ function TariffCard({
 
 // ── Stars slider ─────────────────────────────────────────────────────────────
 
-function StarsSection() {
+function StarsSection({ onPaymentInitiated }: { onPaymentInitiated: (invoiceId: string) => void }) {
   const queryClient = useQueryClient();
   const { data: settings, isLoading } = useQuery({
     queryKey: ["page-sale-settings"],
@@ -522,6 +531,8 @@ function StarsSection() {
     mutationFn: buyPages,
     onSuccess: (data) => {
       submitRobokassaForm(data.form);
+      onPaymentInitiated(String(data.invoice_id));
+      setConfirmOpen(false);
     },
     onError: (err: Error) => {
       setError(err.message);
@@ -931,6 +942,7 @@ function HistorySection() {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function BillingPage() {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const {
     data: tariffsData,
@@ -945,16 +957,47 @@ export default function BillingPage() {
   const [payError, setPayError] = useState<string | null>(null);
   const [pendingTariff, setPendingTariff] = useState<Tariff | null>(null);
 
+  // Опрос статуса Робокасса-платежа, пока вкладка биллинга открыта — та же
+  // логика, что уже есть для крипты (CryptoSection ниже). Без этого цель
+  // «оплата» в Метрике (url содержит /payment-success) почти никогда не
+  // срабатывала: Робокасса не всегда возвращает браузер на сайт (особенно
+  // при оплате по СБП с телефона, пока сайт открыт на компьютере), хотя
+  // деньги при этом зачисляются надёжно — через отдельный серверный вебхук,
+  // не зависящий от того, вернулся ли пользователь на эту страницу.
+  const [pollingInvoiceId, setPollingInvoiceId] = useState<string | null>(null);
+
+  useQuery({
+    queryKey: ["robokassa-status", pollingInvoiceId],
+    queryFn: async () => {
+      const history = await getPaymentHistory();
+      const match = history.find((p) => p.invoice_id === pollingInvoiceId) ?? null;
+      if (match?.status === "success") {
+        setPollingInvoiceId(null);
+        queryClient.invalidateQueries({ queryKey: ["tariffs"] });
+        queryClient.invalidateQueries({ queryKey: ["payment-history"] });
+        router.push(`/payment-success/?InvId=${pollingInvoiceId}`);
+      } else if (match?.status === "failed") {
+        setPollingInvoiceId(null);
+      }
+      return match;
+    },
+    enabled: pollingInvoiceId !== null,
+    refetchInterval: 5000,
+  });
+
   async function handlePay(tariffId: number, promoCode?: string) {
     setPayLoading(tariffId);
     setPayError(null);
     try {
       const data = await payTariff(tariffId, promoCode);
       submitRobokassaForm(data.form);
+      setPollingInvoiceId(String(data.invoice_id));
+      setPendingTariff(null);
     } catch (err) {
       setPayError((err as Error).message);
-      setPayLoading(null);
       setPendingTariff(null);
+    } finally {
+      setPayLoading(null);
     }
   }
 
@@ -991,6 +1034,13 @@ export default function BillingPage() {
           </p>
         )}
       </div>
+
+      {pollingInvoiceId && (
+        <p className="flex items-center gap-2 rounded-lg bg-yellow-500/8 border border-yellow-500/20 px-3.5 py-2.5 text-sm text-yellow-700">
+          <Clock size={14} className="shrink-0 animate-pulse" />
+          Ожидаем оплату в открывшейся вкладке — эта страница обновится автоматически.
+        </p>
+      )}
 
       {/* Subscription management */}
       {!isCredits && showSubscription && <SubscriptionSection subscription={currentSubscription} />}
@@ -1039,7 +1089,7 @@ export default function BillingPage() {
       <section>
         <SectionHeader icon={Wallet} title="Пополнить баланс" />
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
-          <StarsSection />
+          <StarsSection onPaymentInitiated={setPollingInvoiceId} />
         </div>
       </section>
       )}
