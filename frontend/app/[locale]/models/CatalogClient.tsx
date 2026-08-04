@@ -18,9 +18,36 @@ interface Props {
 
 const FREE_TAB = "__free__";
 
+// Группировка моделей по компании-разработчику — по префиксу slug (та же
+// логика, что в download_avatars.py/FALLBACK_COLORS на бэкенде, здесь не
+// продублирована как отдельное поле БД, т.к. slug уже приходит в каталоге).
+// Список показываемых кнопок вычисляется динамически из реального набора
+// моделей (см. availableCompanies) — тут только полный словарь кандидатов.
+const COMPANIES: { id: string; label: string; prefixes: string[] }[] = [
+  { id: "openai", label: "OpenAI", prefixes: ["gpt", "o1", "o3", "o4", "chatgpt", "dall", "sora", "codex"] },
+  { id: "anthropic", label: "Claude", prefixes: ["claude"] },
+  { id: "google", label: "Gemini", prefixes: ["gemini", "veo"] },
+  { id: "xai", label: "Grok", prefixes: ["grok"] },
+  { id: "deepseek", label: "DeepSeek", prefixes: ["deepseek"] },
+  { id: "alibaba", label: "Qwen", prefixes: ["qwen", "qwq", "wan"] },
+  { id: "bfl", label: "Flux", prefixes: ["flux"] },
+  { id: "bytedance", label: "Seedream", prefixes: ["seedream", "doubao"] },
+  { id: "minimax", label: "MiniMax", prefixes: ["minimax"] },
+  { id: "moonshot", label: "Kimi", prefixes: ["kimi"] },
+  { id: "zhipu", label: "GLM", prefixes: ["glm"] },
+  { id: "kuaishou", label: "Kling", prefixes: ["kling"] },
+];
+
+function matchesCompany(slug: string, companyId: string): boolean {
+  const company = COMPANIES.find((c) => c.id === companyId);
+  if (!company) return false;
+  return company.prefixes.some((p) => slug.startsWith(p));
+}
+
 export function CatalogClient({ networks, freeNetworks = [], categories, initialCategory, projectId }: Props) {
   const t = useTranslations("catalog");
   const [activeCategory, setActiveCategory] = useState(initialCategory ?? "");
+  const [activeCompany, setActiveCompany] = useState("");
   const [query, setQuery] = useState("");
   // Ожидающее изображение из «Мои файлы» (кнопки «Редактировать» / «Стиль»):
   // показываем подсказку и сразу фильтруем каталог на модели изображений.
@@ -49,10 +76,29 @@ export function CatalogClient({ networks, freeNetworks = [], categories, initial
     else setPendingStyle(null);
   };
 
+  // Кнопки компаний считаются от полного платного каталога (не от текущего
+  // среза по категории/поиску), чтобы ряд не «прыгал» при переключении
+  // категорий. Бесплатные модели (Llama/Nemotron/OSS и т.п.) в основном не
+  // относятся ни к одному из этих брендов — ряд не показываем на вкладке
+  // «Бесплатные». Порог >=2 модели и топ-8 — чтобы ряд оставался компактным
+  // и не захламлялся вендорами с одной моделью.
+  const availableCompanies = useMemo(() => {
+    return COMPANIES.map((c) => {
+      const matches = networks.filter((n) => matchesCompany(n.slug, c.id));
+      return { ...c, count: matches.length, avatar: matches[0]?.avatar };
+    })
+      .filter((c) => c.count >= 2)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 8);
+  }, [networks]);
+
   const filtered = useMemo(() => {
     let list = activeCategory === FREE_TAB ? freeNetworks : networks;
     if (activeCategory && activeCategory !== FREE_TAB) {
       list = list.filter((n) => n.category.slug === activeCategory);
+    }
+    if (activeCompany && activeCategory !== FREE_TAB) {
+      list = list.filter((n) => matchesCompany(n.slug, activeCompany));
     }
     if (query.trim()) {
       const q = query.trim().toLowerCase();
@@ -63,7 +109,7 @@ export function CatalogClient({ networks, freeNetworks = [], categories, initial
       );
     }
     return list;
-  }, [networks, freeNetworks, activeCategory, query]);
+  }, [networks, freeNetworks, activeCategory, activeCompany, query]);
 
   return (
     <>
@@ -125,6 +171,24 @@ export function CatalogClient({ networks, freeNetworks = [], categories, initial
             />
           ))}
       </div>
+
+      {/* Company tabs — фильтр по компании-разработчику, отдельная грань
+          от категории по назначению. Повторный клик по активной снимает
+          фильтр. Скрыт на вкладке «Бесплатные» — там бренды почти не
+          совпадают. */}
+      {activeCategory !== FREE_TAB && availableCompanies.length > 0 && (
+        <div className="mb-6 flex flex-wrap gap-1.5">
+          {availableCompanies.map((c) => (
+            <CompanyTab
+              key={c.id}
+              label={c.label}
+              avatar={c.avatar}
+              active={activeCompany === c.id}
+              onClick={() => setActiveCompany(activeCompany === c.id ? "" : c.id)}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Grid */}
       {filtered.length === 0 ? (
@@ -199,6 +263,39 @@ function CategoryTab({
           : "border border-[rgba(13,13,13,0.15)] bg-white text-[rgba(13,13,13,0.65)] hover:border-[rgba(13,13,13,0.25)] hover:text-[#1A1A1A]",
       ].join(" ")}
     >
+      {label}
+    </button>
+  );
+}
+
+function CompanyTab({
+  label,
+  avatar,
+  active,
+  onClick,
+}: {
+  label: string;
+  avatar?: string | null;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={label}
+      className={[
+        "flex items-center gap-1.5 rounded-full py-1 pl-1 pr-3 text-[13px] font-medium transition-all",
+        active
+          ? "bg-[#D97757] text-white"
+          : "border border-[rgba(13,13,13,0.12)] bg-white text-[rgba(13,13,13,0.6)] hover:border-[rgba(13,13,13,0.25)] hover:text-[#1A1A1A]",
+      ].join(" ")}
+    >
+      {avatar ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={avatar} alt="" width={18} height={18} className="rounded-full object-cover shrink-0" />
+      ) : (
+        <span className="h-[18px] w-[18px] shrink-0 rounded-full bg-[rgba(13,13,13,0.12)]" />
+      )}
       {label}
     </button>
   );
