@@ -506,31 +506,12 @@ def _write_audit(project, actor, action: str, target: str = '', files_used: list
         logger.warning(f"_write_audit failed: {e}")
 
 
-def _model_max_tokens_cap(model_name: str) -> int:
-    """Жёсткий потолок completion-токенов по семейству моделей.
-
-    Провайдер возвращает 400 invalid_value, если max_tokens превышает лимит
-    модели (GPT-4o: «max_tokens is too large: 32000. This model supports at
-    most 16384 completion tokens»). Значение из БД тоже клампится к потолку.
-    """
-    m = (model_name or '').lower()
-    if 'gpt-3.5' in m:
-        return 4096
-    if 'gpt-4o' in m or 'chatgpt-4o' in m or 'gpt-4.1' in m or 'gpt-4-turbo' in m:
-        return 16384
-    if 'deepseek' in m:
-        return 8192
-    if 'qwen3-30b-a3b' in m:
-        # Cloudflare @cf/qwen/qwen3-30b-a3b-fp8: контекст всего 32 768 токенов
-        # (вход+выход суммарно) — иначе 400 «total X exceeds 32768» почти на
-        # любом реальном сообщении с историей.
-        return 12000
-    return 1_000_000  # прочие семейства — известного потолка нет
-
-
-def _auto_max_tokens(model_name: str) -> int:
-    """Auto max_tokens by model family when not set in DB."""
-    return min(32000, _model_max_tokens_cap(model_name))
+# Единый источник правды вынесен в core.model_limits (2026-08-04) — раньше
+# этот потолок применялся только к внутреннему чату, а /api/v1/chat/completions
+# и /api/v1/messages принимали max_tokens от клиента без всякой проверки.
+# Имена-обёртки сохранены для обратной совместимости (chats.py их импортирует).
+from core.model_limits import model_max_tokens_cap as _model_max_tokens_cap
+from core.model_limits import auto_max_tokens as _auto_max_tokens
 
 
 def get_laozhang_client():

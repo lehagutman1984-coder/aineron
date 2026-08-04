@@ -94,6 +94,9 @@ class AnthropicMessagesView(APIView):
         openai_messages = _anthropic_to_openai_messages(messages, system)
         client = get_laozhang_client()
 
+        from core.model_limits import clamp_max_tokens
+        max_tokens = clamp_max_tokens(max_tokens, network.model_name)
+
         try:
             completion = client.chat.completions.create(
                 model=network.model_name,

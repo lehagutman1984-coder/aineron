@@ -184,10 +184,15 @@ class ChatCompletionsView(APIView):
             'messages': messages,
             'temperature': temperature,
         }
-        if max_tokens:
-            kwargs['max_tokens'] = max_tokens
-        elif network.max_tokens > 0:
-            kwargs['max_tokens'] = network.max_tokens
+        from core.model_limits import clamp_max_tokens
+        # Клиент управляет max_tokens (или БД-дефолт network.max_tokens), но
+        # всегда клампится к потолку модели — иначе на моделях с дорогим
+        # выходом (Claude и т.п.) при плоской ошибке пересчёта можно запросить
+        # произвольно длинный ответ дешевле реальной себестоимости.
+        kwargs['max_tokens'] = clamp_max_tokens(
+            max_tokens or (network.max_tokens if network.max_tokens > 0 else None),
+            network.model_name,
+        )
 
         if stream:
             gen = _stream_completion(user, network, messages, kwargs, api_key)
