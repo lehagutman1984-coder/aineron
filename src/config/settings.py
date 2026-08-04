@@ -634,6 +634,12 @@ ROBOKASSA_LOGIN = os.environ.get('ROBOKASSA_LOGIN', 'aineron.ru')
 ROBOKASSA_PASS1 = os.environ.get('ROBOKASSA_PASS1', '')
 ROBOKASSA_PASS2 = os.environ.get('ROBOKASSA_PASS2', '')
 ROBOKASSA_TEST_MODE = int(os.environ.get('ROBOKASSA_TEST_MODE', 0))
+# Услуга рекуррентных платежей должна быть отдельно согласована и подключена
+# в личном кабинете Robokassa. Пока не подключена — Recurring=true в форме
+# оплаты валит ВЕСЬ платёж с ошибкой Robokassa 34 ("услуга рекуррентных
+# платежей не разрешена магазину"), а не только отключает автосписание.
+# Дефолт 0, пока подключение не подтверждено поддержкой Robokassa.
+ROBOKASSA_RECURRING_ENABLED = int(os.environ.get('ROBOKASSA_RECURRING_ENABLED', 0))
 
 
 # ========== CRYPTO PAY (@CryptoBot) ==========

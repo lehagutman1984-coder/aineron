@@ -589,6 +589,13 @@ def create_robokassa_payment(request):
         robokassa_url = "https://auth.robokassa.ru/Merchant/Index.aspx"
         success_url = f"{settings.SITE_URL}/payment-success/"
         fail_url = f"{settings.SITE_URL}/users/pages/payment-fail/"
+        # Recurring=true валит ВЕСЬ платёж ошибкой Robokassa 34, если услуга
+        # рекуррентных платежей не согласована и не подключена в личном
+        # кабинете Robokassa — это отдельное подключение, не флаг в форме.
+        recurring_input = (
+            '<input type="hidden" name="Recurring" value="true">'
+            if getattr(settings, 'ROBOKASSA_RECURRING_ENABLED', False) else ''
+        )
 
         form_html = f"""
         <!DOCTYPE html>
@@ -609,7 +616,7 @@ def create_robokassa_payment(request):
                 <input type="hidden" name="Encoding" value="utf-8">
                 <input type="hidden" name="SuccessURL" value="{success_url}">
                 <input type="hidden" name="FailURL" value="{fail_url}">
-                <input type="hidden" name="Recurring" value="true">
+                {recurring_input}
                 <input type="hidden" name="Receipt" value='{receipt_json}'>
             </form>
             <script type="text/javascript">

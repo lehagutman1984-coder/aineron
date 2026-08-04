@@ -195,6 +195,24 @@ class TariffPayView(APIView):
         )
 
         site_url = getattr(settings, 'SITE_URL', 'https://aineron.ru')
+        fields = {
+            'MerchantLogin': merchant_login,
+            'OutSum': out_sum,
+            'InvId': str(inv_id),
+            'Description': description,
+            'SignatureValue': signature,
+            'IsTest': str(getattr(settings, 'ROBOKASSA_TEST_MODE', 0)),
+            'Culture': 'ru',
+            'Encoding': 'utf-8',
+            'SuccessURL': f"{site_url}/payment-success/",
+            'FailURL': f"{site_url}/users/pages/payment-fail/",
+            'Receipt': receipt_json,
+        }
+        # Recurring=true валит ВЕСЬ платёж ошибкой Robokassa 34, если услуга
+        # рекуррентных платежей не согласована и не подключена в личном
+        # кабинете Robokassa — это отдельное подключение, не флаг в форме.
+        if getattr(settings, 'ROBOKASSA_RECURRING_ENABLED', False):
+            fields['Recurring'] = 'true'
         return Response({
             'payment_id': payment.id,
             'invoice_id': inv_id,
@@ -203,20 +221,7 @@ class TariffPayView(APIView):
             'form': {
                 'action': 'https://auth.robokassa.ru/Merchant/Index.aspx',
                 'method': 'POST',
-                'fields': {
-                    'MerchantLogin': merchant_login,
-                    'OutSum': out_sum,
-                    'InvId': str(inv_id),
-                    'Description': description,
-                    'SignatureValue': signature,
-                    'IsTest': str(getattr(settings, 'ROBOKASSA_TEST_MODE', 0)),
-                    'Culture': 'ru',
-                    'Encoding': 'utf-8',
-                    'SuccessURL': f"{site_url}/payment-success/",
-                    'FailURL': f"{site_url}/users/pages/payment-fail/",
-                    'Recurring': 'true',
-                    'Receipt': receipt_json,
-                },
+                'fields': fields,
             },
         })
 
