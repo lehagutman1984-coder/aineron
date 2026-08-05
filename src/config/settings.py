@@ -648,6 +648,25 @@ TOKEN_METERING_STREAM_USAGE_MODELS = [
     m.strip() for m in os.environ.get('TOKEN_METERING_STREAM_USAGE_MODELS', '').split(',') if m.strip()
 ]
 
+# TOKEN_OVERAGE_BILLING_PLAN.md, Спринт 2 — расчёт доплаты за длинный ответ,
+# пишется в MessageTokenUsage.cost_kopecks/overage_kopecks. TOKEN_OVERAGE_ENABLED
+# сам по себе ничего не списывает (это Спринт 3) — здесь только расчёт для
+# dry-run отчёта. TOKEN_OVERAGE_DRY_RUN дефолт 1 — даже если кто-то по ошибке
+# включит TOKEN_OVERAGE_ENABLED раньше срока, settle (Спринт 3) не сработает,
+# пока это явно не выключено.
+TOKEN_OVERAGE_ENABLED = int(os.environ.get('TOKEN_OVERAGE_ENABLED', 0))
+TOKEN_OVERAGE_DRY_RUN = int(os.environ.get('TOKEN_OVERAGE_DRY_RUN', 1))
+TOKEN_OVERAGE_USD_RUB = float(os.environ.get('TOKEN_OVERAGE_USD_RUB', 80))
+TOKEN_OVERAGE_MARKUP = float(os.environ.get('TOKEN_OVERAGE_MARKUP', 1.6))
+TOKEN_OVERAGE_MIN_FRACTION = float(os.environ.get('TOKEN_OVERAGE_MIN_FRACTION', 0.25))
+TOKEN_OVERAGE_MIN_KOPECKS = int(os.environ.get('TOKEN_OVERAGE_MIN_KOPECKS', 100))
+TOKEN_OVERAGE_CAP_MULTIPLE = float(os.environ.get('TOKEN_OVERAGE_CAP_MULTIPLE', 2.0))
+TOKEN_OVERAGE_ABS_CAP_KOPECKS = int(os.environ.get('TOKEN_OVERAGE_ABS_CAP_KOPECKS', 4000))
+# CSV allowlist model_name — пусто = вся таблица MODEL_WHOLESALE (core/model_pricing.py)
+TOKEN_OVERAGE_MODELS = [
+    m.strip() for m in os.environ.get('TOKEN_OVERAGE_MODELS', '').split(',') if m.strip()
+]
+
 
 # ========== ROBOKASSA ==========
 ROBOKASSA_LOGIN = os.environ.get('ROBOKASSA_LOGIN', 'aineron.ru')

@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 
 from aitext.models import Category, Chat, Message, MessageTokenUsage, NeuralNetwork
-from aitext.token_metering import record_usage
+from aitext.token_metering import apply_overage, compute_overage, record_usage
 
 User = get_user_model()
 
@@ -88,3 +88,92 @@ class RecordUsageTests(TestCase):
         # record_usage не должен ронять генерацию ни при каких обстоятельствах.
         row = record_usage(None, self.network, 'web', 1, 2, source='provider')
         self.assertIsNone(row)
+
+
+@override_settings(TOKEN_METERING_ENABLED=True, TOKEN_OVERAGE_USD_RUB=80,
+                    TOKEN_OVERAGE_MARKUP=1.6, TOKEN_OVERAGE_MIN_FRACTION=0.25,
+                    TOKEN_OVERAGE_MIN_KOPECKS=100, TOKEN_OVERAGE_CAP_MULTIPLE=2.0,
+                    TOKEN_OVERAGE_ABS_CAP_KOPECKS=4000, TOKEN_OVERAGE_MODELS=[])
+class ComputeOverageTests(TestCase):
+    """
+    §2.3 плана. Числа для Opus 5 worst-case и Fable 5 worst-case НЕ совпадают
+    с иллюстративной таблицей §2.4 самого плана — там при ручном подсчёте cap
+    посчитан как flat×CAP_MULTIPLE без max(..., ABS_CAP_KOPECKS), что
+    противоречит формуле §2.3 в том же документе (расхождение найдено и
+    зафиксировано здесь при реализации, см. Sprint 2 "Реализовано" в плане).
+    "Реальный инцидент" (единственный число-в-число сверяемый пример) сходится
+    точно: 21,60 ₽ → 34,56 ₽ → 12,56 ₽.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='overage', email='overage@t.ru', password='x')
+        self.opus5 = _make_network(model_name='claude-opus-5', slug='ov-opus5', cost_kopecks=2200)
+        self.fable5 = _make_network(model_name='claude-fable-5', slug='ov-fable5', cost_kopecks=900)
+        self.unaudited = _make_network(model_name='gpt-4o', slug='ov-gpt4o', cost_kopecks=1000)
+        self.chat = Chat.objects.create(user=self.user, network=self.opus5, title='t', settings={})
+
+    def _row(self, network, prompt_tokens, completion_tokens, flat_kopecks, flat_was_charged=True):
+        message = Message.objects.create(chat=self.chat, role='assistant', status=Message.Status.COMPLETED, content='ok')
+        row = record_usage(
+            message, network, 'web', prompt_tokens, completion_tokens,
+            source=MessageTokenUsage.Source.PROVIDER,
+            flat_was_charged=flat_was_charged, flat_kopecks=flat_kopecks if flat_was_charged else 0,
+        )
+        return row
+
+    def test_typical_message_no_overage(self):
+        row = self._row(self.opus5, 1850, 600, 2200)
+        cost, overage = compute_overage(row)
+        self.assertEqual(cost, 194)
+        self.assertEqual(overage, 0)
+
+    def test_real_incident_matches_plan_exactly(self):
+        row = self._row(self.opus5, 1850, 10428, 2200)
+        cost, overage = compute_overage(row)
+        self.assertEqual(cost, 2160)
+        self.assertEqual(overage, 1256)  # 12,56 ₽ — сходится с §2.4 плана
+
+    def test_opus5_worst_case_not_capped(self):
+        row = self._row(self.opus5, 1850, 16384, 2200)
+        cost, overage = compute_overage(row)
+        self.assertEqual(cost, 3351)
+        # raw overage (3162) < cap (max(4400, 4000)=4400) — cap не срабатывает,
+        # итог = target ровно (маржа = MARKUP точно).
+        self.assertEqual(overage, 3162)
+
+    def test_fable5_worst_case_hits_abs_cap(self):
+        row = self._row(self.fable5, 1850, 16384, 900)
+        cost, overage = compute_overage(row)
+        self.assertEqual(cost, 6702)
+        # raw overage (9823) > cap (max(1800, 4000)=4000) — cap срабатывает.
+        self.assertEqual(overage, 4000)
+        total = 900 + overage
+        self.assertLess(total, cost)  # даже с overage у потолка — убыток (осознанный, §2.4)
+
+    def test_flat_was_charged_false_forces_zero_overage(self):
+        # §2.3.1: безлимитный/бесплатный пользователь у потолка токенов не
+        # должен получить overage ни при каких обстоятельствах — guard первый.
+        row = self._row(self.opus5, 1850, 16384, 2200, flat_was_charged=False)
+        cost, overage = compute_overage(row)
+        self.assertEqual(cost, 3351)  # себестоимость всё равно считается — для отчёта
+        self.assertEqual(overage, 0)
+
+    def test_unaudited_model_returns_none_cost_zero_overage(self):
+        row = self._row(self.unaudited, 1850, 600, 1000)
+        cost, overage = compute_overage(row)
+        self.assertIsNone(cost)
+        self.assertEqual(overage, 0)
+
+    def test_allowlist_restricts_to_listed_models(self):
+        row = self._row(self.opus5, 1850, 10428, 2200)
+        with override_settings(TOKEN_OVERAGE_MODELS=['claude-fable-5']):
+            cost, overage = compute_overage(row)
+            self.assertEqual(overage, 0)  # opus5 не в allowlist
+
+    def test_apply_overage_persists_to_row(self):
+        row = self._row(self.opus5, 1850, 10428, 2200)
+        apply_overage(row)
+        row.refresh_from_db()
+        self.assertEqual(row.cost_kopecks, 2160)
+        self.assertEqual(row.overage_kopecks, 1256)
+        self.assertEqual(row.settled_kopecks, 0)  # Спринт 3, не трогаем здесь

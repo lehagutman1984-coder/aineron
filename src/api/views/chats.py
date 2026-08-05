@@ -675,9 +675,9 @@ class StreamMessageView(APIView):
                 # update_or_create по OneToOneField(message) — идемпотентно,
                 # безопасно вызвать повторно (см. except-ветку ниже).
                 try:
-                    from aitext.token_metering import record_usage
+                    from aitext.token_metering import record_usage, apply_overage
                     from aitext.models import MessageTokenUsage
-                    record_usage(
+                    _usage_row = record_usage(
                         assistant_message, network, MessageTokenUsage.Channel.WEB,
                         getattr(_usage, 'prompt_tokens', 0) or 0,
                         getattr(_usage, 'completion_tokens', 0) or 0,
@@ -685,6 +685,7 @@ class StreamMessageView(APIView):
                         flat_was_charged=deduct_stars,
                         flat_kopecks=cost_kopecks if deduct_stars else 0,
                     )
+                    apply_overage(_usage_row)
                 except Exception as _metering_err:
                     logger.warning(f"[token_metering] SSE-путь: не удалось записать usage для {assist_msg_id}: {_metering_err}")
 
@@ -770,9 +771,9 @@ class StreamMessageView(APIView):
                 # refund), поэтому flat_was_charged=False отражает финальное
                 # состояние — списания на этом сообщении не осталось.
                 try:
-                    from aitext.token_metering import record_usage
+                    from aitext.token_metering import record_usage, apply_overage
                     from aitext.models import MessageTokenUsage
-                    record_usage(
+                    _usage_row = record_usage(
                         assistant_message, network, MessageTokenUsage.Channel.WEB,
                         getattr(_usage, 'prompt_tokens', 0) or 0,
                         getattr(_usage, 'completion_tokens', 0) or 0,
@@ -780,6 +781,7 @@ class StreamMessageView(APIView):
                         flat_was_charged=False,
                         flat_kopecks=0,
                     )
+                    apply_overage(_usage_row)
                 except Exception as _metering_err:
                     logger.warning(f"[token_metering] SSE-путь (error): не удалось записать usage для {assist_msg_id}: {_metering_err}")
 

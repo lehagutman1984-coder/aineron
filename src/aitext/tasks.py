@@ -1230,11 +1230,11 @@ def generate_ai_response(self, message_id, web_search=False):
         # billing_reference в settings, только реально списывает — берём из
         # локальной _fallback_charged_kopecks).
         try:
-            from aitext.token_metering import record_usage, channel_for_chat
+            from aitext.token_metering import record_usage, channel_for_chat, apply_overage
             from aitext.models import MessageTokenUsage
             _msg_settings_final = message.settings or {}
             _pre_charged_kopecks = int(_msg_settings_final.get('billing_kopecks') or 0) if _msg_settings_final.get('billing_reference') else 0
-            record_usage(
+            _usage_row = record_usage(
                 message, network, channel_for_chat(message.chat),
                 getattr(_completion_usage_obj, 'prompt_tokens', 0) or 0,
                 getattr(_completion_usage_obj, 'completion_tokens', 0) or 0,
@@ -1242,6 +1242,7 @@ def generate_ai_response(self, message_id, web_search=False):
                 flat_was_charged=bool(_pre_charged_kopecks or _fallback_charged_kopecks),
                 flat_kopecks=_pre_charged_kopecks or _fallback_charged_kopecks,
             )
+            apply_overage(_usage_row)
         except Exception as _metering_err:
             logger.warning(f"[token_metering] Celery-путь: не удалось записать usage для {message_id}: {_metering_err}")
 

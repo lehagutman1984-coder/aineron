@@ -48,6 +48,73 @@ def record_usage(message, network, channel, prompt_tokens, completion_tokens, so
         return None
 
 
+def compute_overage(usage_row):
+    """
+    TOKEN_OVERAGE_BILLING_PLAN.md, §2.3 — расчёт доплаты за длинный ответ.
+    НИЧЕГО не списывает (это Спринт 3, settle) — только вычисляет.
+
+    Возвращает (cost_kopecks, overage_kopecks):
+    - cost_kopecks — реальная себестоимость (int) или None, если модель не
+      аудирована (core.model_pricing.wholesale_rates). Вычисляется НЕЗАВИСИМО
+      от прав на overage ниже — нужна для отчёта по марже (Спринт 2, задача 4)
+      даже на бесплатных/безлимитных сообщениях, где overage всегда 0.
+    - overage_kopecks — 0, если сработал любой guard. ПЕРВЫЙ guard —
+      `flat_was_charged` (см. §2.3.1 плана): при `flat_was_charged=False`
+      (безлимитный/бесплатный тариф — network.unlimited или is_free, реальный
+      flat_kopecks в БД будет 0) overage обязан быть 0 БЕЗУСЛОВНО, а не
+      выводиться из cap-формулы — иначе безлимитный пользователь у потолка
+      токенов получает тихое платное списание на модели, объявленной
+      бесплатной. Проверяется первым, до всей остальной формулы.
+    """
+    from django.conf import settings as dj_settings
+    from core import model_pricing
+    from aitext.models import MessageTokenUsage
+
+    cost = model_pricing.cost_kopecks(usage_row.model_name, usage_row.prompt_tokens, usage_row.completion_tokens)
+    if cost is None:
+        return None, 0
+
+    if not usage_row.flat_was_charged:
+        return cost, 0
+    if usage_row.source != MessageTokenUsage.Source.PROVIDER:
+        return cost, 0
+    allowlist = getattr(dj_settings, 'TOKEN_OVERAGE_MODELS', [])
+    if allowlist and usage_row.model_name not in allowlist:
+        return cost, 0
+
+    flat = int(usage_row.flat_kopecks or 0)
+    markup = float(getattr(dj_settings, 'TOKEN_OVERAGE_MARKUP', 1.6))
+    target = round(cost * markup)
+    overage_raw = target - flat
+
+    min_fraction = float(getattr(dj_settings, 'TOKEN_OVERAGE_MIN_FRACTION', 0.25))
+    min_kopecks = int(getattr(dj_settings, 'TOKEN_OVERAGE_MIN_KOPECKS', 100))
+    threshold = max(min_kopecks, flat * min_fraction)
+
+    cap_multiple = float(getattr(dj_settings, 'TOKEN_OVERAGE_CAP_MULTIPLE', 2.0))
+    abs_cap = int(getattr(dj_settings, 'TOKEN_OVERAGE_ABS_CAP_KOPECKS', 4000))
+    cap = max(flat * cap_multiple, abs_cap)
+
+    overage = overage_raw if overage_raw >= threshold else 0
+    overage = min(overage, cap) if overage > 0 else 0
+    return cost, max(0, int(overage))
+
+
+def apply_overage(usage_row):
+    """Вычисляет и сохраняет cost_kopecks/overage_kopecks на уже записанную
+    MessageTokenUsage строку. Вызывать сразу после record_usage. settled_kopecks
+    здесь не трогается — это Спринт 3 (settle), в Спринте 2 всегда 0."""
+    if usage_row is None or not getattr(usage_row, 'pk', None):
+        return
+    try:
+        cost, overage = compute_overage(usage_row)
+        usage_row.cost_kopecks = cost or 0
+        usage_row.overage_kopecks = overage
+        usage_row.save(update_fields=['cost_kopecks', 'overage_kopecks'])
+    except Exception as e:
+        logger.warning(f"[token_metering] apply_overage failed for usage_row {getattr(usage_row, 'id', None)}: {e}")
+
+
 def channel_for_chat(chat):
     """web | telegram — по наличию TelegramChat на chat."""
     try:
