@@ -638,6 +638,16 @@ ORG_KOPECKS_PER_STAR = int(os.environ.get('ORG_KOPECKS_PER_STAR', '100'))  # у�
 # False) → бот отвечал на текстовые сообщения бесплатно неограниченно (TOKEN_OVERAGE_BILLING_PLAN.md, Sprint 0).
 TEXT_BILLING_ENABLED = int(os.environ.get('TEXT_BILLING_ENABLED', 1))
 
+# TOKEN_OVERAGE_BILLING_PLAN.md, Спринт 1 — только пишет MessageTokenUsage,
+# ни одной копейки не списывает. Дефолт 0: включается явно после ревью на
+# проде. Список моделей, для которых веб-SSE-путь запрашивает usage в стриме
+# (stream_options), — только те, что подтверждены probe_stream_usage
+# (Спринт 1, задача 4/5 плана); пусто по умолчанию.
+TOKEN_METERING_ENABLED = int(os.environ.get('TOKEN_METERING_ENABLED', 0))
+TOKEN_METERING_STREAM_USAGE_MODELS = [
+    m.strip() for m in os.environ.get('TOKEN_METERING_STREAM_USAGE_MODELS', '').split(',') if m.strip()
+]
+
 
 # ========== ROBOKASSA ==========
 ROBOKASSA_LOGIN = os.environ.get('ROBOKASSA_LOGIN', 'aineron.ru')

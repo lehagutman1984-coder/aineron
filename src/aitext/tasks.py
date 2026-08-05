@@ -1149,6 +1149,14 @@ def generate_ai_response(self, message_id, web_search=False):
             _s['used_memory'] = True
             message.settings = _s
         message.save()
+        # Usage провайдера сохраняем для metering ниже, ПОСЛЕ блока
+        # TEXT_BILLING_ENABLED — billing_reference/billing_kopecks в
+        # message.settings к тому моменту отражают ФИНАЛЬНОЕ состояние
+        # списания (pre-charge с веба/бота уже стоит здесь; post-charge
+        # фолбэк ниже допишет его для путей без pre-charge) — иначе
+        # flat_was_charged для файлового пути записался бы как False, хотя
+        # секундами позже деньги всё-таки спишутся.
+        _completion_usage_obj = getattr(completion, 'usage', None)
 
         logger.info(f"AI ответ сгенерирован для сообщения {message_id}, сохранено изображений: {len(saved_images)}")
 
@@ -1184,6 +1192,7 @@ def generate_ai_response(self, message_id, web_search=False):
             logger.warning(f"[push] не удалось доставить текстовый ответ {message_id}: {push_err}")
 
         # TEXT_BILLING_ENABLED: списание за текстовые сообщения (off by default)
+        _fallback_charged_kopecks = 0
         if getattr(settings, 'TEXT_BILLING_ENABLED', False):
             _msg_settings = message.settings or {}
             # billing_reference => веб-view уже списал pre-charge, второй раз нельзя
@@ -1203,6 +1212,7 @@ def generate_ai_response(self, message_id, web_search=False):
                             amount_kopecks=_cost_kopecks,
                             description=f"Сообщение в чате с {network.name}",
                         )
+                        _fallback_charged_kopecks = _cost_kopecks
                     else:
                         logger.warning(
                             f"Text billing: недостаточно средств у user={user.id} "
@@ -1211,6 +1221,29 @@ def generate_ai_response(self, message_id, web_search=False):
                         )
                 except Exception as _bill_err:
                     logger.warning(f"Text billing error for message {message_id}: {_bill_err}")
+
+        # TOKEN_OVERAGE_BILLING_PLAN.md, Спринт 1 — только метрирование, деньги
+        # не трогает. Записываем ПОСЛЕ блока TEXT_BILLING_ENABLED выше, чтобы
+        # flat_was_charged/flat_kopecks отражали финальное состояние списания
+        # для ЛЮБОГО пути: pre-charge (billing_reference уже в message.settings
+        # к этому моменту — веб/бот) ИЛИ post-charge фолбэк выше (тот не пишет
+        # billing_reference в settings, только реально списывает — берём из
+        # локальной _fallback_charged_kopecks).
+        try:
+            from aitext.token_metering import record_usage, channel_for_chat
+            from aitext.models import MessageTokenUsage
+            _msg_settings_final = message.settings or {}
+            _pre_charged_kopecks = int(_msg_settings_final.get('billing_kopecks') or 0) if _msg_settings_final.get('billing_reference') else 0
+            record_usage(
+                message, network, channel_for_chat(message.chat),
+                getattr(_completion_usage_obj, 'prompt_tokens', 0) or 0,
+                getattr(_completion_usage_obj, 'completion_tokens', 0) or 0,
+                source=MessageTokenUsage.Source.PROVIDER if _completion_usage_obj else MessageTokenUsage.Source.ESTIMATE,
+                flat_was_charged=bool(_pre_charged_kopecks or _fallback_charged_kopecks),
+                flat_kopecks=_pre_charged_kopecks or _fallback_charged_kopecks,
+            )
+        except Exception as _metering_err:
+            logger.warning(f"[token_metering] Celery-путь: не удалось записать usage для {message_id}: {_metering_err}")
 
         # AI-коммиты из чата (Sprint 4.3)
         if getattr(settings, 'PROJECT_AI_COMMITS', False) and proj and plain_text:

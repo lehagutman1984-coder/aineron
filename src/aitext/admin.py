@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, NeuralNetwork, Chat, Message, NeuralNetworkDailyUsage, FileAttachment, GeneratedImage, FAQ, Project, UserMemory, Persona, PromptTemplate
+from .models import Category, NeuralNetwork, Chat, Message, NeuralNetworkDailyUsage, FileAttachment, GeneratedImage, FAQ, Project, UserMemory, Persona, PromptTemplate, MessageTokenUsage
 from django.utils.html import format_html
 
 @admin.register(Category)
@@ -179,6 +179,24 @@ class MessageAdmin(admin.ModelAdmin):
     def short_content(self, obj):
         return obj.content[:50] + ('...' if len(obj.content) > 50 else '')
     short_content.short_description = 'Содержание'
+
+@admin.register(MessageTokenUsage)
+class MessageTokenUsageAdmin(admin.ModelAdmin):
+    """Read-only — данные пишутся только через aitext.token_metering.record_usage
+    (TOKEN_OVERAGE_BILLING_PLAN.md, Спринт 1). Ручное редактирование в админке
+    исказило бы отчёт по реальному расходу токенов."""
+    list_display = ('id', 'message_id', 'model_name', 'channel', 'source',
+                     'prompt_tokens', 'completion_tokens', 'flat_was_charged',
+                     'flat_kopecks', 'overage_kopecks', 'settled_kopecks', 'created_at')
+    list_filter = ('channel', 'source', 'model_name', 'flat_was_charged', 'created_at')
+    search_fields = ('model_name', 'message__id')
+    date_hierarchy = 'created_at'
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
 
 @admin.register(Project)
 class ProjectAdmin(admin.ModelAdmin):

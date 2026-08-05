@@ -579,6 +579,7 @@ class StreamMessageView(APIView):
                 })
 
             full_text = ""
+            _usage = None
             try:
                 # ── Шаг 2: основная модель (выбранная пользователем) ────────────
                 client = get_client_for_network(network)
@@ -589,6 +590,14 @@ class StreamMessageView(APIView):
                     "stream": True,
                 }
                 kwargs["max_tokens"] = max_tokens
+                # Метрирование (TOKEN_OVERAGE_BILLING_PLAN.md, Спринт 1): usage
+                # запрашивается ТОЛЬКО для моделей, подтверждённых
+                # probe_stream_usage (allowlist, не глобальный флаг) — laozhang
+                # реселлер, соответствие OpenAI-контракту для stream_options
+                # нельзя предполагать, включение вслепую может уронить чат.
+                _metering_models = getattr(settings, 'TOKEN_METERING_STREAM_USAGE_MODELS', [])
+                if getattr(settings, 'TOKEN_METERING_ENABLED', False) and model_name in _metering_models:
+                    kwargs["stream_options"] = {"include_usage": True}
 
                 stream = client.chat.completions.create(**kwargs)
                 for chunk in stream:
@@ -596,6 +605,8 @@ class StreamMessageView(APIView):
                     if delta and delta.content:
                         full_text += delta.content
                         yield _sse({"type": "token", "text": delta.content})
+                    if getattr(chunk, 'usage', None):
+                        _usage = chunk.usage
 
                 formatted_html = CodeFormatter.format_ai_response(full_text)
                 assistant_message.content = formatted_html
@@ -659,6 +670,23 @@ class StreamMessageView(APIView):
                             pass
 
                 assistant_message.save()
+
+                # TOKEN_OVERAGE_BILLING_PLAN.md, Спринт 1 — только метрирование.
+                # update_or_create по OneToOneField(message) — идемпотентно,
+                # безопасно вызвать повторно (см. except-ветку ниже).
+                try:
+                    from aitext.token_metering import record_usage
+                    from aitext.models import MessageTokenUsage
+                    record_usage(
+                        assistant_message, network, MessageTokenUsage.Channel.WEB,
+                        getattr(_usage, 'prompt_tokens', 0) or 0,
+                        getattr(_usage, 'completion_tokens', 0) or 0,
+                        source=MessageTokenUsage.Source.PROVIDER if _usage else MessageTokenUsage.Source.MISSING,
+                        flat_was_charged=deduct_stars,
+                        flat_kopecks=cost_kopecks if deduct_stars else 0,
+                    )
+                except Exception as _metering_err:
+                    logger.warning(f"[token_metering] SSE-путь: не удалось записать usage для {assist_msg_id}: {_metering_err}")
 
                 # ── Persistent Memory: извлечение фактов (фон, каждые 3 ответа) ──
                 try:
@@ -737,6 +765,24 @@ class StreamMessageView(APIView):
                 assistant_message.status = Message.Status.FAILED
                 assistant_message.error_message = user_msg
                 assistant_message.save()
+
+                # Метрирование провала: деньги уже возвращены выше (add_kopecks
+                # refund), поэтому flat_was_charged=False отражает финальное
+                # состояние — списания на этом сообщении не осталось.
+                try:
+                    from aitext.token_metering import record_usage
+                    from aitext.models import MessageTokenUsage
+                    record_usage(
+                        assistant_message, network, MessageTokenUsage.Channel.WEB,
+                        getattr(_usage, 'prompt_tokens', 0) or 0,
+                        getattr(_usage, 'completion_tokens', 0) or 0,
+                        source=MessageTokenUsage.Source.PROVIDER if _usage else MessageTokenUsage.Source.MISSING,
+                        flat_was_charged=False,
+                        flat_kopecks=0,
+                    )
+                except Exception as _metering_err:
+                    logger.warning(f"[token_metering] SSE-путь (error): не удалось записать usage для {assist_msg_id}: {_metering_err}")
+
                 yield _sse({"type": "error", "message": user_msg})
 
         resp = StreamingHttpResponse(generate(), content_type='text/event-stream; charset=utf-8')

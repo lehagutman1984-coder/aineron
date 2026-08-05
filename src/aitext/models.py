@@ -670,6 +670,57 @@ class Message(models.Model):
         return f"{self.chat.user.username} - {self.role} - {self.created_at.strftime('%H:%M')}"
 
 
+class MessageTokenUsage(models.Model):
+    """
+    Реальный расход токенов на сообщение (TOKEN_OVERAGE_BILLING_PLAN.md, Спринт 1).
+
+    Отдельная модель, не api.models.TokenUsage: та привязана к request_id
+    dev-API и отдаётся в /account/usage/ как отчёт по внешним ключам —
+    смешивание с веб-чатом/ботом исказило бы существующий отчёт. Не
+    Message.settings (JSON): нужны индексируемые поля для маржинального
+    анализа (Спринт 2) и реконсилера (Спринт 3).
+
+    OneToOneField на message даёт защиту от дублей на уровне БД — повторный
+    settle (ретрай Celery) физически не может создать вторую строку.
+    """
+    class Source(models.TextChoices):
+        PROVIDER = 'provider', 'Ответ провайдера'
+        ESTIMATE = 'estimate', 'Локальная оценка (tiktoken)'
+        MISSING = 'missing', 'Недоступно (обрыв клиента)'
+
+    class Channel(models.TextChoices):
+        WEB = 'web', 'Веб'
+        TELEGRAM = 'telegram', 'Telegram'
+
+    message = models.OneToOneField(Message, on_delete=models.CASCADE, related_name='token_usage')
+    network = models.ForeignKey('aitext.NeuralNetwork', on_delete=models.SET_NULL, null=True, blank=True)
+    model_name = models.CharField(max_length=200, blank=True, default='')
+    channel = models.CharField(max_length=16, choices=Channel.choices, default=Channel.WEB)
+    prompt_tokens = models.PositiveIntegerField(default=0)
+    completion_tokens = models.PositiveIntegerField(default=0)
+    source = models.CharField(max_length=16, choices=Source.choices, default=Source.MISSING)
+
+    # flat_was_charged — источник истины для compute_overage (Спринт 2): было
+    # ли вообще плоское списание за это сообщение (spend_kopecks реально
+    # прошёл), а не "flat_kopecks == 0" — ноль легитимен и для безлимитных/
+    # бесплатных тарифов, и compute_overage обязан вернуть 0 через этот флаг,
+    # а не пытаться прикрыть дыру абсолютным cap-ом (см. §2.3.1 плана).
+    flat_was_charged = models.BooleanField(default=False)
+    flat_kopecks = models.BigIntegerField(default=0)      # что списано плоско
+    cost_kopecks = models.BigIntegerField(default=0)       # себестоимость (Спринт 2)
+    overage_kopecks = models.BigIntegerField(default=0)    # рассчитанная доплата
+    settled_kopecks = models.BigIntegerField(default=0)    # фактически списано (Спринт 3)
+    settled_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = 'Расход токенов'
+        verbose_name_plural = 'Расход токенов'
+        indexes = [models.Index(fields=['-created_at', 'model_name'])]
+
+    def __str__(self):
+        return f"msg#{self.message_id} · {self.model_name} · {self.prompt_tokens}/{self.completion_tokens}"
+
 
 class FileAttachment(models.Model):
     """Прикрепленный файл (изображение, видео, аудио, PDF, архив, текст, код и др.)"""
