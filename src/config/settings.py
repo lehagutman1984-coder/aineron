@@ -628,6 +628,16 @@ CONNECTOR_CRAWL_LIMIT = int(os.getenv('CONNECTOR_CRAWL_LIMIT', '50'))  # стр�
 MIN_CHARGE_KOPECKS = int(os.environ.get('MIN_CHARGE_KOPECKS', '10'))  # 0,10 ₽ минимальное списание
 ORG_KOPECKS_PER_STAR = int(os.environ.get('ORG_KOPECKS_PER_STAR', '100'))  # унифицировано с MIN_CHARGE: 1 звезда = 100 коп
 
+# Список читает aitext/tasks.py:generate_ai_response — safety-net post-charge
+# для текстовых сообщений, у которых message.settings НЕ содержит billing_reference
+# (т.е. вызывающая сторона не сделала pre-charge сама). Основные пути уже
+# pre-charge'ат явно: web (api/views/chats.py, compare.py), бот (telegram_bot/
+# handlers/chat.py::process_text) — там этот флаг no-op (billing_reference уже
+# стоит). Явно требуется для редких путей без pre-charge (напр. api/views/files.py
+# регенерация текстовой подписи). Раньше был не определён здесь → getattr(...,
+# False) → бот отвечал на текстовые сообщения бесплатно неограниченно (TOKEN_OVERAGE_BILLING_PLAN.md, Sprint 0).
+TEXT_BILLING_ENABLED = int(os.environ.get('TEXT_BILLING_ENABLED', 1))
+
 
 # ========== ROBOKASSA ==========
 ROBOKASSA_LOGIN = os.environ.get('ROBOKASSA_LOGIN', 'aineron.ru')

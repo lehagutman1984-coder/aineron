@@ -147,11 +147,35 @@ def _check_balance(user, cost_kopecks):
     return user.has_enough_kopecks(cost_kopecks)
 
 
+def _charge_text_message(user, assistant_msg, network, cost_kopecks):
+    """Pre-charge за текстовое сообщение бота — тот же паттерн, что у веба
+    (api/views/chats.py:136-143): списываем ДО генерации, а не полагаемся на
+    TEXT_BILLING_ENABLED-фолбэк в aitext/tasks.py (тот срабатывает уже ПОСЛЕ
+    успешного ответа и не блокирует бесплатную генерацию при гонке балансов —
+    здесь эта гонка закрывается атомарным spend_kopecks до постановки задачи
+    в очередь). Возвращает True/False; при False сообщение не отправлено
+    в очередь, ассистентское сообщение помечается FAILED.
+    """
+    from aitext.billing import record_message_billing
+    from users.models import UserSpending
+
+    reference = f'chat:{assistant_msg.id}'
+    if not user.spend_kopecks(cost_kopecks, type='spend', reference=reference):
+        return False
+    UserSpending.objects.create(
+        user=user, amount=cost_kopecks // 100, amount_kopecks=cost_kopecks,
+        description=f"Сообщение в чате с {network.name}",
+    )
+    record_message_billing(assistant_msg, reference, cost_kopecks)
+    return True
+
+
 get_default_network = sync_to_async(_get_default_network, thread_sensitive=True)
 ensure_chat = sync_to_async(_ensure_chat, thread_sensitive=True)
 create_messages = sync_to_async(_create_messages, thread_sensitive=True)
 get_message_state = sync_to_async(_get_message_state, thread_sensitive=True)
 check_balance = sync_to_async(_check_balance, thread_sensitive=True)
+charge_text_message = sync_to_async(_charge_text_message, thread_sensitive=True)
 
 
 async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
@@ -173,32 +197,35 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
         await tg_message.answer(t('chat.noModels', lang))
         return
 
+    async def _reply_insufficient_balance():
+        from core.money import format_money
+        if lang == 'ru':
+            from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+            kb = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text='Telegram Stars (XTR)', callback_data='buy_stars')],
+                [InlineKeyboardButton(text='Карта / СБП (Robokassa)', callback_data='buy_robokassa')],
+                [InlineKeyboardButton(text='Пополнить на сайте', url='https://aineron.ru/account/billing/')],
+            ])
+        else:
+            from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+            site_url = getattr(dj_settings, 'SITE_URL', 'https://aineron.net')
+            kb = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text=t('balance.topUpOnWebsite', lang), url=f'{site_url}/account/billing/')],
+            ])
+        await tg_message.answer(
+            f"<b>{t('chat.insufficientTitle', lang)}</b>\n{DIVIDER}\n"
+            f"{t('chat.need', lang)}: <b>{format_money(network.cost_kopecks)}</b>   "
+            f"{t('chat.have', lang)}: {format_money(tg_user.user.balance_kopecks)}\n\n"
+            f"{t('chat.topUp', lang)}",
+            parse_mode='HTML',
+            reply_markup=kb,
+        )
+        await async_log_event(tg_user, 'error', network=network, reason='no_balance')
+
     if not skip_billing:
         has_balance = await check_balance(tg_user.user, network.cost_kopecks)
         if not has_balance:
-            from core.money import format_money
-            if lang == 'ru':
-                from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-                kb = InlineKeyboardMarkup(inline_keyboard=[
-                    [InlineKeyboardButton(text='Telegram Stars (XTR)', callback_data='buy_stars')],
-                    [InlineKeyboardButton(text='Карта / СБП (Robokassa)', callback_data='buy_robokassa')],
-                    [InlineKeyboardButton(text='Пополнить на сайте', url='https://aineron.ru/account/billing/')],
-                ])
-            else:
-                from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-                site_url = getattr(dj_settings, 'SITE_URL', 'https://aineron.net')
-                kb = InlineKeyboardMarkup(inline_keyboard=[
-                    [InlineKeyboardButton(text=t('balance.topUpOnWebsite', lang), url=f'{site_url}/account/billing/')],
-                ])
-            await tg_message.answer(
-                f"<b>{t('chat.insufficientTitle', lang)}</b>\n{DIVIDER}\n"
-                f"{t('chat.need', lang)}: <b>{format_money(network.cost_kopecks)}</b>   "
-                f"{t('chat.have', lang)}: {format_money(tg_user.user.balance_kopecks)}\n\n"
-                f"{t('chat.topUp', lang)}",
-                parse_mode='HTML',
-                reply_markup=kb,
-            )
-            await async_log_event(tg_user, 'error', network=network, reason='no_balance')
+            await _reply_insufficient_balance()
             return
 
     extra_settings = {'skip_star_billing': True} if skip_billing else {}
@@ -208,6 +235,23 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
     user_msg, assistant_msg = await create_messages(
         chat, text, network, tg_user.system_prompt, extra_settings, attachment,
     )
+
+    if not skip_billing:
+        # Pre-charge ДО постановки задачи в очередь (тот же паттерн, что у веба).
+        # Провал здесь означает гонку: баланс изменился между проверкой выше и
+        # этим моментом (например, два сообщения подряд) — не отправляем в
+        # очередь бесплатно, помечаем сообщение неудавшимся и просим пополнить.
+        charged = await charge_text_message(tg_user.user, assistant_msg, network, network.cost_kopecks)
+        if not charged:
+            await tg_user.user.arefresh_from_db()
+
+            def _mark_failed():
+                assistant_msg.status = assistant_msg.Status.FAILED
+                assistant_msg.error_message = 'insufficient_balance'
+                assistant_msg.save(update_fields=['status', 'error_message'])
+            await sync_to_async(_mark_failed, thread_sensitive=True)()
+            await _reply_insufficient_balance()
+            return
 
     # Найдено при повторном ревью: delay() не был обёрнут (в отличие от
     # images.py) — при недоступном брокере Celery/Redis исключение уходило

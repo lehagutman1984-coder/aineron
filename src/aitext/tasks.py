@@ -1191,13 +1191,24 @@ def generate_ai_response(self, message_id, web_search=False):
             if not _skip:
                 _cost_kopecks = network.cost_kopecks
                 try:
-                    user.spend_kopecks(_cost_kopecks, type='spend', reference=f'text:{message.id}')
-                    UserSpending.objects.create(
-                        user=user,
-                        amount=_cost_kopecks // 100,
-                        amount_kopecks=_cost_kopecks,
-                        description=f"Сообщение в чате с {network.name}",
-                    )
+                    # spend_kopecks НЕ бросает исключение при нехватке средств —
+                    # возвращает False, баланс не меняется (users/models.py:650).
+                    # Раньше возврат не проверялся: UserSpending создавался как
+                    # успешный, даже когда денег фактически не списали — ответ
+                    # уже сгенерирован и отдан пользователю бесплатно молча.
+                    if user.spend_kopecks(_cost_kopecks, type='spend', reference=f'text:{message.id}'):
+                        UserSpending.objects.create(
+                            user=user,
+                            amount=_cost_kopecks // 100,
+                            amount_kopecks=_cost_kopecks,
+                            description=f"Сообщение в чате с {network.name}",
+                        )
+                    else:
+                        logger.warning(
+                            f"Text billing: недостаточно средств у user={user.id} "
+                            f"для сообщения {message_id} (post-charge путь, "
+                            f"ответ уже сгенерирован) — списание пропущено."
+                        )
                 except Exception as _bill_err:
                     logger.warning(f"Text billing error for message {message_id}: {_bill_err}")
 
