@@ -175,6 +175,85 @@ class _MalformedResponseError(Exception):
     """
 
 
+class _ReconstructedMessage:
+    def __init__(self, content):
+        self.content = content
+
+
+class _ReconstructedUsage:
+    def __init__(self, prompt_tokens, completion_tokens):
+        self.prompt_tokens = prompt_tokens
+        self.completion_tokens = completion_tokens
+
+
+class _ReconstructedChoice:
+    def __init__(self, content):
+        self.message = _ReconstructedMessage(content)
+
+
+class _ReconstructedChatCompletion:
+    """Собранный вручную non-stream ChatCompletion — только то, что реально
+    читают вызывающие (aitext/tasks.py): `.choices[0].message.content` и
+    `.usage.prompt_tokens/.completion_tokens` (может отсутствовать)."""
+
+    def __init__(self, content, usage=None):
+        self.choices = [_ReconstructedChoice(content)]
+        self.usage = usage
+
+
+def _reconstruct_chat_completion_from_sse(text):
+    """
+    2026-08-06, обнаружено живым E2E-тестом на claude-opus-5: apimart на
+    НЕ-стриминговый запрос (без `stream=True`) иногда всё равно отвечает
+    SSE-чанками (`data: {"object":"chat.completion.chunk", ...}\n\n`) вместо
+    единого JSON-объекта. openai-python не распознаёт это как ChatCompletion
+    и отдаёт сырой текст — раньше это било в `_MalformedResponseError` и
+    роняло сообщение целиком, если это был последний провайдер в цепочке
+    (лечения по существу не было, только честная ошибка вместо AttributeError).
+
+    Вместо того чтобы просто переключаться дальше по цепочке (не поможет —
+    проблема не в доступности, а в форме ответа конкретного провайдера для
+    конкретной модели), собираем текст ответа из чанков сами. Возвращает
+    `_ReconstructedChatCompletion` при успехе, `None` — если строка не похожа
+    на SSE или ни одного куска контента собрать не удалось (тогда вызывающий
+    код продолжает считать ответ malformed, как раньше).
+    """
+    import json
+
+    if not isinstance(text, str) or not text.lstrip().startswith('data:'):
+        return None
+
+    content_parts = []
+    prompt_tokens = completion_tokens = None
+    for line in text.splitlines():
+        line = line.strip()
+        if not line.startswith('data:'):
+            continue
+        payload = line[len('data:'):].strip()
+        if not payload or payload == '[DONE]':
+            continue
+        try:
+            chunk = json.loads(payload)
+        except (ValueError, TypeError):
+            continue
+        for choice in (chunk.get('choices') or []):
+            piece = (choice.get('delta') or {}).get('content')
+            if piece:
+                content_parts.append(piece)
+        usage = chunk.get('usage')
+        if usage:
+            prompt_tokens = usage.get('prompt_tokens', prompt_tokens)
+            completion_tokens = usage.get('completion_tokens', completion_tokens)
+
+    if not content_parts:
+        return None
+
+    usage_obj = None
+    if prompt_tokens is not None or completion_tokens is not None:
+        usage_obj = _ReconstructedUsage(prompt_tokens or 0, completion_tokens or 0)
+    return _ReconstructedChatCompletion(''.join(content_parts), usage=usage_obj)
+
+
 def is_availability_error(exc) -> bool:
     """
     True, если ошибка означает недоступность сервиса/модели (стоит попробовать
@@ -362,6 +441,14 @@ class FallbackClient:
             try:
                 result = fn(client)
                 if kind == 'chat' and not hasattr(result, 'choices'):
+                    reconstructed = _reconstruct_chat_completion_from_sse(result)
+                    if reconstructed is not None:
+                        logger.warning(
+                            "[providers] %s отдал SSE-чанки на не-стриминговый запрос (chat) — "
+                            "собрано вручную, фолбэк не потребовался",
+                            provider,
+                        )
+                        return reconstructed
                     raise _MalformedResponseError(
                         f"{provider} вернул {type(result).__name__} вместо ChatCompletion "
                         f"(нет .choices): {str(result)[:200]!r}"

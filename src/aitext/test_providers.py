@@ -166,6 +166,49 @@ class NonStreamFallbackTests(TestCase):
             client.chat.completions.create(model='x', messages=[], timeout=12.5)
         self.assertEqual(primary.chat.completions.calls[0]['timeout'], 12.5)
 
+    def test_sse_chunks_on_nonstream_request_reconstructed_without_fallback(self):
+        """2026-08-06, обнаружено живым E2E-тестом на claude-opus-5: apimart
+        на НЕ-стриминговый запрос иногда всё равно отвечает SSE-чанками
+        (`data: {...}`) вместо единого JSON-объекта. Раньше это било в
+        _MalformedResponseError и валило сообщение целиком, если это был
+        последний провайдер в цепочке — переключаться дальше некуда, форма
+        ответа одна и та же у всех. Теперь собираем текст из чанков сами."""
+        sse_body = (
+            'data: {"id":"gen_1","object":"chat.completion.chunk","choices":'
+            '[{"delta":{"content":"","role":"assistant"}}]}\n\n'
+            'data: {"id":"gen_1","object":"chat.completion.chunk","choices":'
+            '[{"delta":{"content":"Привет"}}]}\n\n'
+            'data: {"id":"gen_1","object":"chat.completion.chunk","choices":'
+            '[{"delta":{"content":", мир!"},"finish_reason":"stop"}],'
+            '"usage":{"prompt_tokens":12,"completion_tokens":3}}\n\n'
+            'data: [DONE]\n\n'
+        )
+        primary = _FakeClient(chat_behavior=sse_body)
+        secondary = _FakeClient(chat_behavior=_FakeChatCompletion('unused-should-not-be-called'))
+        with patch.object(providers, '_get_raw_client', _patched_raw_clients(
+            {'laozhang': primary, 'apimart': secondary})):
+            client = providers.FallbackClient('laozhang')
+            result = client.chat.completions.create(model='x', messages=[])
+        self.assertEqual(result.choices[0].message.content, 'Привет, мир!')
+        self.assertEqual(result.usage.prompt_tokens, 12)
+        self.assertEqual(result.usage.completion_tokens, 3)
+        # Форма ответа одинакова у обоих сервисов — фолбэк ничего бы не решил,
+        # реконструкция должна закрыть вопрос без обращения ко второму.
+        self.assertEqual(len(secondary.chat.completions.calls), 0)
+
+    def test_sse_chunks_without_content_still_falls_back(self):
+        """Если из SSE-чанков не удалось собрать НИ ОДНОГО куска текста
+        (например, тело — просто мусор, случайно похожий на SSE), это не
+        должно тихо сойти за «пустой успешный ответ» — считаем malformed,
+        как раньше, и уходим по цепочке дальше."""
+        primary = _FakeClient(chat_behavior='data: {"not":"a chat chunk"}\n\ndata: [DONE]\n\n')
+        secondary = _FakeClient(chat_behavior=_FakeChatCompletion('ok-secondary'))
+        with patch.object(providers, '_get_raw_client', _patched_raw_clients(
+            {'laozhang': primary, 'apimart': secondary})):
+            client = providers.FallbackClient('laozhang')
+            result = client.chat.completions.create(model='x', messages=[])
+        self.assertEqual(result, _FakeChatCompletion('ok-secondary'))
+
     def test_malformed_chat_response_falls_back(self):
         """2026-08-06: провайдер отдаёт 200 OK, но тело парсится не как
         ChatCompletion, а как голая строка (openai-python не бросает
