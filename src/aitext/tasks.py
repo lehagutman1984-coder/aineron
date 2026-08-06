@@ -1309,11 +1309,14 @@ def generate_ai_response(self, message_id, web_search=False):
         try:
             message = Message.objects.get(id=message_id)
             is_free_network = bool(getattr(message.chat.network, 'is_free', False))
+            from core.errors_i18n import t_error
             if is_free_network and _is_rate_limit_error(e):
-                from core.errors_i18n import t_error
                 message.error_message = t_error('free_model_overloaded', message.chat.user.get_language())
             else:
-                message.error_message = str(e)
+                # Технические детали (ID запроса провайдера, сырой JSON и т.п.)
+                # уже залогированы выше (:1308) — пользователю нужен понятный
+                # текст, а не 'apimart вернул str вместо ChatCompletion...'.
+                message.error_message = t_error('generation_error_generic', message.chat.user.get_language())
             message.status = Message.Status.FAILED
             message.save()
         except Message.DoesNotExist:
