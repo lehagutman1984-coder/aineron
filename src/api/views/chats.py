@@ -559,28 +559,48 @@ class StreamMessageView(APIView):
         requested_max = max(network.max_tokens, auto_max) if network.max_tokens > 0 else auto_max
         max_tokens = min(requested_max, _model_max_tokens_cap(model_name))
 
+        # TOKEN_OVERAGE_BILLING_PLAN.md §3.3 (вариант C): плоское списание уже
+        # прошло выше, поэтому request.user.balance_kopecks здесь — это ровно
+        # «голова», из которой можно будет взять доплату. Сужаем ответ до
+        # оплачиваемого вместо отказа в запросе. Полный no-op при выключенном
+        # overage/dry-run — клэмп виден пользователю (короче ответ), включать
+        # его раньше самой доплаты нельзя.
+        from aitext.token_metering import (
+            estimate_prompt_tokens, overage_settle_active, preflight_max_tokens,
+        )
+        if overage_settle_active():
+            max_tokens = preflight_max_tokens(
+                model_name, max_tokens,
+                prompt_tokens=estimate_prompt_tokens(messages_for_api),
+                flat_kopecks=cost_kopecks if deduct_stars else 0,
+                head_kopecks=request.user.balance_kopecks,
+            )
+
         def _sse(data):
             return f"data: {json.dumps(data, ensure_ascii=False)}\n\n".encode('utf-8')
 
         def generate():
-            yield _sse({
-                "type": "init",
-                "user_message_id": user_msg_id,
-                "assistant_message_id": assist_msg_id,
-                "new_balance": new_balance,
-                "new_balance_kopecks": new_balance_kopecks,
-            })
-
-            # Сообщаем фронтенду итог поиска (поиск уже выполнен синхронно выше)
-            if web_search:
-                yield _sse({
-                    "type": "search_done",
-                    "preview": search_context_text[:400],
-                })
-
             full_text = ""
             _usage = None
+            # Дошли ли до одной из штатных точек выхода (успех/ошибка). False
+            # означает обрыв клиента (GeneratorExit) — см. finally ниже.
+            _finalized = False
             try:
+                yield _sse({
+                    "type": "init",
+                    "user_message_id": user_msg_id,
+                    "assistant_message_id": assist_msg_id,
+                    "new_balance": new_balance,
+                    "new_balance_kopecks": new_balance_kopecks,
+                })
+
+                # Сообщаем фронтенду итог поиска (поиск уже выполнен синхронно выше)
+                if web_search:
+                    yield _sse({
+                        "type": "search_done",
+                        "preview": search_context_text[:400],
+                    })
+
                 # ── Шаг 2: основная модель (выбранная пользователем) ────────────
                 client = get_client_for_network(network)
                 kwargs = {
@@ -657,6 +677,13 @@ class StreamMessageView(APIView):
                     assistant_message.variants = all_variants
 
                     # Sprint 3: 1.5× billing — charge extra 0.5× for the 2 parallel variant calls
+                    #
+                    # TOKEN_OVERAGE_BILLING_PLAN.md §3.5(3): доплата за токены
+                    # (overage) считается ТОЛЬКО по основному вызову — usage,
+                    # который собирается из основного стрима ниже, токены
+                    # вариантов (_gen_variant, отдельные не-стриминговые вызовы)
+                    # не включает. Стоимость вариантов покрывает именно эта
+                    # надбавка ×0.5, а не overage; складывать их нельзя.
                     if all_variants and deduct_stars:
                         import math as _math
                         _extra_kopecks = max(1, _math.ceil(cost_kopecks * 0.5))
@@ -686,6 +713,18 @@ class StreamMessageView(APIView):
                         flat_kopecks=cost_kopecks if deduct_stars else 0,
                     )
                     apply_overage(_usage_row)
+                    # Спринт 3, §1.1.1: settle ЗДЕСЬ — внутри try, после
+                    # assistant_message.save() и строго ДО yield события done,
+                    # чтобы чек в done (Спринт 4) сообщал уже списанную сумму.
+                    # НЕ в finally: там done уже отправлен, а своевременность
+                    # GeneratorExit под Daphne+nginx не гарантирована.
+                    # Только при реально полученном usage: обрыв до usage-чанка
+                    # (_usage is None ⇒ source=MISSING) обязан дать доплату 0
+                    # по правилу §1.1(а) — стоимость незавершённой генерации не
+                    # угадываем.
+                    if _usage is not None:
+                        from aitext.token_metering import settle_overage
+                        settle_overage(_usage_row)
                 except Exception as _metering_err:
                     logger.warning(f"[token_metering] SSE-путь: не удалось записать usage для {assist_msg_id}: {_metering_err}")
 
@@ -733,6 +772,10 @@ class StreamMessageView(APIView):
                     except Exception:
                         pass
 
+                # Флаг ставится ДО yield: на обрыве клиента строки после
+                # последнего yield не выполняются вовсе — ровно тот случай,
+                # ради которого добавлен finally.
+                _finalized = True
                 yield _sse({
                     "type": "done",
                     "content": formatted_html,
@@ -785,7 +828,40 @@ class StreamMessageView(APIView):
                 except Exception as _metering_err:
                     logger.warning(f"[token_metering] SSE-путь (error): не удалось записать usage для {assist_msg_id}: {_metering_err}")
 
+                _finalized = True
                 yield _sse({"type": "error", "message": user_msg})
+
+            finally:
+                # Спринт 3 плана: страховка на обрыв клиента. GeneratorExit
+                # наследуется от BaseException, в except выше не попадает —
+                # без этого блока обе штатные точки остаются недостижимыми:
+                # сообщение висит PENDING навсегда, строки MessageTokenUsage
+                # нет вовсе. Только DB-запись: никаких yield и никакого return
+                # (return при GeneratorExit даёт «generator ignored
+                # GeneratorExit» и рвёт SSE-ответ).
+                #
+                # Доплата здесь НЕ списывается сознательно: usage-чанк приходит
+                # последним, при обрыве он не получен, стоимость незавершённой
+                # генерации не угадываем (§1.1(а)). Плоское списание тоже не
+                # возвращается — предсуществующее поведение, вне скоупа плана
+                # (§6); reconcile_stuck_spends покажет такие сообщения админам.
+                if not _finalized:
+                    try:
+                        from aitext.models import MessageTokenUsage
+                        from aitext.token_metering import record_usage
+                        if not MessageTokenUsage.objects.filter(message_id=assist_msg_id).exists():
+                            record_usage(
+                                assistant_message, network, MessageTokenUsage.Channel.WEB,
+                                0, 0, source=MessageTokenUsage.Source.MISSING,
+                                flat_was_charged=deduct_stars,
+                                flat_kopecks=cost_kopecks if deduct_stars else 0,
+                            )
+                        Message.objects.filter(
+                            id=assist_msg_id, status=Message.Status.PENDING,
+                        ).update(status=Message.Status.FAILED)
+                        logger.warning(f"SSE-поток для сообщения {assist_msg_id} прерван клиентом до завершения")
+                    except Exception as _fin_err:
+                        logger.warning(f"[token_metering] SSE-путь (finally): {assist_msg_id}: {_fin_err}")
 
         resp = StreamingHttpResponse(generate(), content_type='text/event-stream; charset=utf-8')
         resp['Cache-Control'] = 'no-cache'

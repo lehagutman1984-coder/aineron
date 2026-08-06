@@ -1,13 +1,21 @@
 """
-Sprint 1 (TOKEN_OVERAGE_BILLING_PLAN.md): token_metering.record_usage().
+Sprint 1-3 (TOKEN_OVERAGE_BILLING_PLAN.md): token_metering — метрирование
+(record_usage), расчёт доплаты (compute_overage/apply_overage) и её списание
+(settle_overage, preflight_max_tokens, reconcile_unsettled_overage).
 
 Django TestCase (SQLite): python manage.py test aitext.test_token_metering
 """
+from datetime import timedelta
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
+from django.utils import timezone
 
 from aitext.models import Category, Chat, Message, MessageTokenUsage, NeuralNetwork
-from aitext.token_metering import apply_overage, compute_overage, record_usage
+from aitext.token_metering import (
+    apply_overage, compute_overage, preflight_max_tokens, record_usage, settle_overage,
+)
+from users.models import BalanceTransaction, UserSpending
 
 User = get_user_model()
 
@@ -177,3 +185,291 @@ class ComputeOverageTests(TestCase):
         self.assertEqual(row.cost_kopecks, 2160)
         self.assertEqual(row.overage_kopecks, 1256)
         self.assertEqual(row.settled_kopecks, 0)  # Спринт 3, не трогаем здесь
+
+
+_OVERAGE_SETTINGS = dict(
+    TOKEN_METERING_ENABLED=True, TOKEN_OVERAGE_USD_RUB=80, TOKEN_OVERAGE_MARKUP=1.6,
+    TOKEN_OVERAGE_MIN_FRACTION=0.25, TOKEN_OVERAGE_MIN_KOPECKS=100,
+    TOKEN_OVERAGE_CAP_MULTIPLE=2.0, TOKEN_OVERAGE_ABS_CAP_KOPECKS=4000,
+    TOKEN_OVERAGE_MODELS=[],
+)
+
+
+class _OverageBase(TestCase):
+    """Общая фикстура Спринта 3: Opus 5, реальный инцидент 1850/10428 →
+    доплата 1256 коп. (число закреплено ComputeOverageTests выше)."""
+
+    OVERAGE_KOPECKS = 1256
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='settle', email='settle@t.ru', password='x')
+        self.network = _make_network(model_name='claude-opus-5', slug='settle-opus5', cost_kopecks=2200)
+        self.chat = Chat.objects.create(user=self.user, network=self.network, title='t', settings={})
+
+    def _set_balance(self, kopecks):
+        User.objects.filter(pk=self.user.pk).update(balance_kopecks=kopecks)
+        self.user.refresh_from_db(fields=['balance_kopecks'])
+
+    def _usage_row(self, prompt_tokens=1850, completion_tokens=10428,
+                   source=MessageTokenUsage.Source.PROVIDER):
+        message = Message.objects.create(
+            chat=self.chat, role='assistant', status=Message.Status.COMPLETED, content='ok',
+        )
+        row = record_usage(
+            message, self.network, 'web', prompt_tokens, completion_tokens,
+            source=source, flat_was_charged=True, flat_kopecks=2200,
+        )
+        apply_overage(row)
+        row.refresh_from_db()
+        return row
+
+
+@override_settings(TOKEN_OVERAGE_ENABLED=True, TOKEN_OVERAGE_DRY_RUN=False, **_OVERAGE_SETTINGS)
+class SettleOverageTests(_OverageBase):
+    """§3.2 плана — идемпотентность, §3.3 — политика при нехватке баланса."""
+
+    def test_settles_once_and_writes_ledger_and_spending(self):
+        self._set_balance(10000)
+        row = self._usage_row()
+        charged = settle_overage(row)
+        self.assertEqual(charged, self.OVERAGE_KOPECKS)
+
+        row.refresh_from_db()
+        self.assertEqual(row.settled_kopecks, self.OVERAGE_KOPECKS)
+        self.assertIsNotNone(row.settled_at)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.balance_kopecks, 10000 - self.OVERAGE_KOPECKS)
+        self.assertEqual(
+            BalanceTransaction.objects.filter(
+                user=self.user, type=BalanceTransaction.Type.OVERAGE,
+                reference=f'overage:{row.message_id}',
+            ).count(), 1,
+        )
+
+    def test_double_settle_is_noop(self):
+        # Главный риск спринта: ретрай Celery/реконсилер после успешного settle.
+        self._set_balance(10000)
+        row = self._usage_row()
+        settle_overage(row)
+        balance_after_first = User.objects.get(pk=self.user.pk).balance_kopecks
+
+        self.assertEqual(settle_overage(row), 0)
+
+        self.assertEqual(User.objects.get(pk=self.user.pk).balance_kopecks, balance_after_first)
+        self.assertEqual(
+            BalanceTransaction.objects.filter(type=BalanceTransaction.Type.OVERAGE).count(), 1)
+        self.assertEqual(UserSpending.objects.filter(user=self.user).count(), 1)
+        row.refresh_from_db()
+        self.assertEqual(row.settled_kopecks, self.OVERAGE_KOPECKS)
+
+    def test_ledger_exists_but_row_unmarked_marks_without_second_charge(self):
+        # Падение процесса между spend_kopecks и update строки: транзакция в
+        # ledger есть, settled_at пуст. Ровно тот случай, ради которого стоит
+        # явная проба .exists() (идиома studio/billing.py) — spend_kopecks сам
+        # вернул бы True и создал бы вторую UserSpending.
+        self._set_balance(10000)
+        row = self._usage_row()
+        self.user.spend_kopecks(
+            self.OVERAGE_KOPECKS, type=BalanceTransaction.Type.OVERAGE,
+            reference=f'overage:{row.message_id}',
+        )
+        balance_after_manual = User.objects.get(pk=self.user.pk).balance_kopecks
+
+        self.assertEqual(settle_overage(row), 0)
+
+        self.assertEqual(User.objects.get(pk=self.user.pk).balance_kopecks, balance_after_manual)
+        self.assertEqual(
+            BalanceTransaction.objects.filter(type=BalanceTransaction.Type.OVERAGE).count(), 1)
+        self.assertEqual(UserSpending.objects.filter(user=self.user).count(), 0)
+        row.refresh_from_db()
+        self.assertEqual(row.settled_kopecks, self.OVERAGE_KOPECKS)
+        self.assertIsNotNone(row.settled_at)
+
+    def test_insufficient_balance_leaves_row_unsettled_without_raising(self):
+        # §3.3: preflight-клэмп сужает эту ситуацию, но не исключает (гонка с
+        # параллельным запросом). Не падаем, не списываем частично — строку
+        # подберёт реконсилер, после окна остаток прощается и уходит в алерт.
+        self._set_balance(100)
+        row = self._usage_row()
+        self.assertEqual(settle_overage(row), 0)
+
+        self.assertEqual(User.objects.get(pk=self.user.pk).balance_kopecks, 100)
+        row.refresh_from_db()
+        self.assertEqual(row.settled_kopecks, 0)
+        self.assertIsNone(row.settled_at)
+        self.assertFalse(BalanceTransaction.objects.filter(type=BalanceTransaction.Type.OVERAGE).exists())
+        self.assertFalse(UserSpending.objects.filter(user=self.user).exists())
+
+    def test_aborted_stream_source_missing_settles_nothing(self):
+        # §1.1(а): обрыв до usage-чанка → source=MISSING → overage 0 → списывать
+        # нечего. Стоимость незавершённой генерации не угадываем.
+        self._set_balance(10000)
+        row = self._usage_row(source=MessageTokenUsage.Source.MISSING)
+        self.assertEqual(row.overage_kopecks, 0)
+        self.assertEqual(settle_overage(row), 0)
+        self.assertEqual(User.objects.get(pk=self.user.pk).balance_kopecks, 10000)
+        self.assertFalse(BalanceTransaction.objects.filter(type=BalanceTransaction.Type.OVERAGE).exists())
+
+    @override_settings(TOKEN_OVERAGE_ENABLED=False)
+    def test_disabled_settles_nothing(self):
+        self._set_balance(10000)
+        row = self._usage_row()
+        self.assertEqual(settle_overage(row), 0)
+        self.assertEqual(User.objects.get(pk=self.user.pk).balance_kopecks, 10000)
+        self.assertFalse(BalanceTransaction.objects.filter(type=BalanceTransaction.Type.OVERAGE).exists())
+
+
+@override_settings(TOKEN_OVERAGE_ENABLED=True, TOKEN_OVERAGE_DRY_RUN=True, **_OVERAGE_SETTINGS)
+class SettleDryRunTests(_OverageBase):
+    """Дефолт прода на момент этого спринта: считаем и пишем, деньги не трогаем."""
+
+    def test_dry_run_computes_but_does_not_charge(self):
+        self._set_balance(10000)
+        row = self._usage_row()
+        self.assertEqual(row.overage_kopecks, self.OVERAGE_KOPECKS)  # расчёт идёт
+
+        self.assertEqual(settle_overage(row), 0)
+
+        row.refresh_from_db()
+        self.assertEqual(row.settled_kopecks, 0)
+        self.assertIsNone(row.settled_at)
+        self.assertEqual(User.objects.get(pk=self.user.pk).balance_kopecks, 10000)
+        self.assertFalse(BalanceTransaction.objects.filter(type=BalanceTransaction.Type.OVERAGE).exists())
+        self.assertFalse(UserSpending.objects.filter(user=self.user).exists())
+
+
+class PreflightClampTests(TestCase):
+    """§3.3, вариант C. Клэмп обрезает ответ пользователю, поэтому обязан быть
+    полным no-op, пока доплата не включена по-настоящему."""
+
+    OPUS5_ARGS = dict(model_name='claude-opus-5', max_tokens=16384, prompt_tokens=1850, flat_kopecks=2200)
+
+    @override_settings(TOKEN_OVERAGE_ENABLED=True, TOKEN_OVERAGE_DRY_RUN=False, **_OVERAGE_SETTINGS)
+    def test_clamps_when_balance_too_low_for_worst_case(self):
+        clamped = preflight_max_tokens(head_kopecks=500, **self.OPUS5_ARGS)
+        self.assertLess(clamped, 16384)
+        self.assertGreaterEqual(clamped, 1024)
+
+    @override_settings(TOKEN_OVERAGE_ENABLED=True, TOKEN_OVERAGE_DRY_RUN=False, **_OVERAGE_SETTINGS)
+    def test_healthy_balance_leaves_max_tokens_untouched(self):
+        # worst-case overage для Opus 5 при потолке = 3162 коп. (см.
+        # ComputeOverageTests.test_opus5_worst_case_not_capped)
+        self.assertEqual(preflight_max_tokens(head_kopecks=5000, **self.OPUS5_ARGS), 16384)
+
+    @override_settings(TOKEN_OVERAGE_ENABLED=True, TOKEN_OVERAGE_DRY_RUN=False, **_OVERAGE_SETTINGS)
+    def test_never_goes_below_floor(self):
+        clamped = preflight_max_tokens(
+            model_name='claude-fable-5', max_tokens=16384, prompt_tokens=5000,
+            flat_kopecks=900, head_kopecks=0,
+        )
+        self.assertEqual(clamped, 1024)
+
+    @override_settings(TOKEN_OVERAGE_ENABLED=True, TOKEN_OVERAGE_DRY_RUN=False, **_OVERAGE_SETTINGS)
+    def test_unaudited_model_untouched(self):
+        self.assertEqual(
+            preflight_max_tokens(model_name='gpt-4o', max_tokens=16384, prompt_tokens=1850,
+                                 flat_kopecks=1000, head_kopecks=0),
+            16384,
+        )
+
+    @override_settings(TOKEN_OVERAGE_ENABLED=True, TOKEN_OVERAGE_DRY_RUN=False, **_OVERAGE_SETTINGS)
+    def test_free_or_unlimited_message_untouched(self):
+        # flat_kopecks=0 ⇒ flat_was_charged=False ⇒ overage невозможен (§2.3.1),
+        # обрезать ответ не за что.
+        self.assertEqual(preflight_max_tokens(head_kopecks=0, **{**self.OPUS5_ARGS, 'flat_kopecks': 0}), 16384)
+
+    @override_settings(TOKEN_OVERAGE_ENABLED=True, TOKEN_OVERAGE_DRY_RUN=True, **_OVERAGE_SETTINGS)
+    def test_dry_run_never_clamps(self):
+        self.assertEqual(preflight_max_tokens(head_kopecks=0, **self.OPUS5_ARGS), 16384)
+
+    @override_settings(TOKEN_OVERAGE_ENABLED=False, TOKEN_OVERAGE_DRY_RUN=False, **_OVERAGE_SETTINGS)
+    def test_disabled_never_clamps(self):
+        self.assertEqual(preflight_max_tokens(head_kopecks=0, **self.OPUS5_ARGS), 16384)
+
+
+@override_settings(TOKEN_OVERAGE_ENABLED=True, TOKEN_OVERAGE_DRY_RUN=False,
+                    TOKEN_OVERAGE_SETTLE_FROM='2020-01-01', **_OVERAGE_SETTINGS)
+class ReconcileUnsettledOverageTests(_OverageBase):
+    """§3.4 — досписывает то, что не списалось инлайн, в окне 20мин–6ч."""
+
+    def _age(self, row, **delta):
+        MessageTokenUsage.objects.filter(pk=row.pk).update(created_at=timezone.now() - timedelta(**delta))
+
+    def _run(self):
+        from aitext.tasks import reconcile_unsettled_overage
+        reconcile_unsettled_overage.apply()
+
+    def test_settles_row_inside_window(self):
+        self._set_balance(10000)
+        row = self._usage_row()
+        self._age(row, hours=1)
+
+        self._run()
+
+        row.refresh_from_db()
+        self.assertEqual(row.settled_kopecks, self.OVERAGE_KOPECKS)
+        self.assertIsNotNone(row.settled_at)
+        self.assertEqual(User.objects.get(pk=self.user.pk).balance_kopecks, 10000 - self.OVERAGE_KOPECKS)
+
+    def test_ignores_too_fresh_row(self):
+        # Младше 20 минут — инлайн-settle мог ещё не отработать.
+        self._set_balance(10000)
+        row = self._usage_row()
+        self._age(row, minutes=5)
+
+        self._run()
+
+        row.refresh_from_db()
+        self.assertIsNone(row.settled_at)
+        self.assertEqual(User.objects.get(pk=self.user.pk).balance_kopecks, 10000)
+
+    def test_ignores_row_older_than_window(self):
+        # Старше 6 часов — остаток прощается (§3.3, вариант B как страховка).
+        self._set_balance(10000)
+        row = self._usage_row()
+        self._age(row, hours=9)
+
+        self._run()
+
+        row.refresh_from_db()
+        self.assertIsNone(row.settled_at)
+        self.assertEqual(User.objects.get(pk=self.user.pk).balance_kopecks, 10000)
+
+    def test_ignores_already_settled_row(self):
+        self._set_balance(10000)
+        row = self._usage_row()
+        settle_overage(row)
+        self._age(row, hours=1)
+        balance_after_settle = User.objects.get(pk=self.user.pk).balance_kopecks
+
+        self._run()
+
+        self.assertEqual(User.objects.get(pk=self.user.pk).balance_kopecks, balance_after_settle)
+        self.assertEqual(
+            BalanceTransaction.objects.filter(type=BalanceTransaction.Type.OVERAGE).count(), 1)
+
+    @override_settings(TOKEN_OVERAGE_SETTLE_FROM='')
+    def test_does_nothing_without_settle_from_cutoff(self):
+        # Без отсечки реконсилер ретроактивно списал бы весь dry-run-период в
+        # момент выключения TOKEN_OVERAGE_DRY_RUN.
+        self._set_balance(10000)
+        row = self._usage_row()
+        self._age(row, hours=1)
+
+        self._run()
+
+        row.refresh_from_db()
+        self.assertIsNone(row.settled_at)
+        self.assertEqual(User.objects.get(pk=self.user.pk).balance_kopecks, 10000)
+
+    @override_settings(TOKEN_OVERAGE_DRY_RUN=True)
+    def test_dry_run_reconciler_is_noop(self):
+        self._set_balance(10000)
+        row = self._usage_row()
+        self._age(row, hours=1)
+
+        self._run()
+
+        row.refresh_from_db()
+        self.assertIsNone(row.settled_at)
+        self.assertEqual(User.objects.get(pk=self.user.pk).balance_kopecks, 10000)

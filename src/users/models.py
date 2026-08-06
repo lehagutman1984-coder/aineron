@@ -1309,6 +1309,11 @@ class BalanceTransaction(models.Model):
         XTR = 'xtr', 'Telegram Stars'
         ADMIN = 'admin', 'Ручное начисление'
         SANDBOX = 'sandbox', 'Sandbox API'
+        # Доплата за реальные токены сверх плоской цены сообщения
+        # (TOKEN_OVERAGE_BILLING_PLAN.md, Спринт 3). Отдельный тип, а не SPEND:
+        # reference `overage:{message_id}` обязан не пересекаться с плоским
+        # списанием `chat:{message_id}` по unique(type, reference).
+        OVERAGE = 'overage', 'Доплата за токены'
 
     user = models.ForeignKey(
         'CustomUser',

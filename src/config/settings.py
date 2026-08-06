@@ -666,6 +666,14 @@ TOKEN_OVERAGE_ABS_CAP_KOPECKS = int(os.environ.get('TOKEN_OVERAGE_ABS_CAP_KOPECK
 TOKEN_OVERAGE_MODELS = [
     m.strip() for m in os.environ.get('TOKEN_OVERAGE_MODELS', '').split(',') if m.strip()
 ]
+# Спринт 3: с какого момента реконсилер (aitext.tasks.reconcile_unsettled_overage)
+# имеет право досписывать. Пусто (дефолт) = не досписывает ничего. Нужен именно
+# как отдельная отсечка, а не окно реконсилера: в момент выключения
+# TOKEN_OVERAGE_DRY_RUN в БД уже лежат строки dry-run-периода с
+# overage_kopecks > 0 и settled_at IS NULL, и реконсилер без этой отсечки
+# ретроактивно списал бы деньги за сообщения, по которым пользователю ничего
+# не обещали. Формат — ISO-8601 (`2026-08-10T12:00:00+03:00` или `2026-08-10`).
+TOKEN_OVERAGE_SETTLE_FROM = os.environ.get('TOKEN_OVERAGE_SETTLE_FROM', '').strip()
 
 
 # ========== ROBOKASSA ==========

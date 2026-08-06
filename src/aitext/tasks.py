@@ -1053,6 +1053,32 @@ def generate_ai_response(self, message_id, web_search=False):
         requested_max = max(network.max_tokens, auto_max) if network.max_tokens > 0 else auto_max
         completion_kwargs["max_tokens"] = min(requested_max, _model_max_tokens_cap(effective_model))
 
+        # TOKEN_OVERAGE_BILLING_PLAN.md §3.3 (вариант C): сузить ответ до
+        # оплачиваемого, а не сгенерировать и не суметь списать доплату.
+        # No-op при выключенном overage/dry-run. Плоское списание тут в двух
+        # вариантах: pre-charge (веб-поллинг/бот — billing_reference уже стоит,
+        # баланс уже уменьшен) или post-charge фолбэк TEXT_BILLING_ENABLED ниже
+        # (спишется после генерации — вычитаем из головы вручную).
+        try:
+            from aitext.token_metering import (
+                estimate_prompt_tokens, overage_settle_active, preflight_max_tokens,
+            )
+            if overage_settle_active():
+                _pre_settings = message.settings or {}
+                if _pre_settings.get('billing_reference'):
+                    _flat_preflight = int(_pre_settings.get('billing_kopecks') or 0)
+                    _head_preflight = user.balance_kopecks
+                else:
+                    _flat_preflight = network.cost_kopecks
+                    _head_preflight = user.balance_kopecks - _flat_preflight
+                completion_kwargs["max_tokens"] = preflight_max_tokens(
+                    effective_model, completion_kwargs["max_tokens"],
+                    prompt_tokens=estimate_prompt_tokens(messages_for_api),
+                    flat_kopecks=_flat_preflight, head_kopecks=_head_preflight,
+                )
+        except Exception as _preflight_err:
+            logger.warning(f"[overage][preflight] Celery-путь, сообщение {message_id}: {_preflight_err}")
+
         # Обёртка для обработки ошибки deprecated модели
         try:
             completion = client.chat.completions.create(**completion_kwargs)
@@ -1243,6 +1269,13 @@ def generate_ai_response(self, message_id, web_search=False):
                 flat_kopecks=_pre_charged_kopecks or _fallback_charged_kopecks,
             )
             apply_overage(_usage_row)
+            # Спринт 3: списание доплаты. Здесь, а не в finally/при провале —
+            # задача доходит сюда только при успешной генерации (status=COMPLETED),
+            # а при провале overage не считается вовсе. settle_overage сам
+            # идемпотентен (ретрай Celery после частичного успеха — no-op) и
+            # сам молчит при TOKEN_OVERAGE_ENABLED=0/DRY_RUN=1.
+            from aitext.token_metering import settle_overage
+            settle_overage(_usage_row)
         except Exception as _metering_err:
             logger.warning(f"[token_metering] Celery-путь: не удалось записать usage для {message_id}: {_metering_err}")
 
@@ -2467,6 +2500,90 @@ def reconcile_stuck_spends(self):
     if len(anomalies) > 20:
         lines.append(f'...и ещё {len(anomalies) - 20}')
     notify_admins('<b>Мониторинг: списания без результата</b>\n' + '\n'.join(lines))
+
+
+@shared_task(bind=True, max_retries=0, ignore_result=True,
+             name='aitext.tasks.reconcile_unsettled_overage')
+def reconcile_unsettled_overage(self):
+    """TOKEN_OVERAGE_BILLING_PLAN.md §3.4: досписать доплату, которая была
+    рассчитана, но не списана инлайн — процесс упал между apply_overage и
+    settle_overage, или на момент settle не хватило баланса (гонка с
+    параллельным запросом, preflight-клэмп её сужает, но не исключает).
+
+    Отдельная задача, а НЕ расширение reconcile_stuck_spends: та ищет
+    «списано без результата» и явно пропускает COMPLETED-сообщения, а у
+    overage сообщение всегда COMPLETED — там она была бы no-op.
+
+    `TOKEN_OVERAGE_SETTLE_FROM` — обязательная отсечка, без неё задача ничего
+    не делает. Причина: в момент выключения TOKEN_OVERAGE_DRY_RUN в БД уже
+    лежат строки dry-run-периода (overage_kopecks > 0, settled_at IS NULL), и
+    окно 20мин–6ч поймало бы их — пользователи получили бы ретроактивные
+    списания за сообщения, по которым им ничего не показывали. Реконсилер —
+    ретрай пропущенного инлайн-settle, не бэкфилл.
+    """
+    from datetime import timedelta
+    from django.core.cache import cache
+    from django.utils import timezone as tz
+    from django.utils.dateparse import parse_datetime, parse_date
+    from telegram_bot.notify import notify_admins
+    from core.money import format_rub
+    from aitext.models import MessageTokenUsage
+    from aitext.token_metering import settle_overage
+
+    if not getattr(settings, 'TOKEN_OVERAGE_ENABLED', False):
+        return
+    if getattr(settings, 'TOKEN_OVERAGE_DRY_RUN', True):
+        return
+    raw_from = getattr(settings, 'TOKEN_OVERAGE_SETTLE_FROM', '') or ''
+    settle_from = parse_datetime(raw_from) if raw_from else None
+    if settle_from is None and raw_from:
+        _d = parse_date(raw_from)
+        if _d:
+            settle_from = datetime.datetime.combine(_d, datetime.time.min)
+    if settle_from is None:
+        logger.info('[overage][reconcile] TOKEN_OVERAGE_SETTLE_FROM не задан — пропуск')
+        return
+    if tz.is_naive(settle_from):
+        settle_from = tz.make_aware(settle_from)
+
+    now = tz.now()
+    # Те же границы, что у reconcile_stuck_spends: младше 20 минут — settle мог
+    # ещё не отработать; старше 6 часов — вне окна, чтобы не пересканировать
+    # всю историю на каждом прогоне (остаток по §3.3 прощается, уходит в алерт).
+    window_start = max(now - timedelta(hours=6), settle_from)
+    window_end = now - timedelta(minutes=20)
+
+    rows = MessageTokenUsage.objects.filter(
+        overage_kopecks__gt=0,
+        settled_at__isnull=True,
+        created_at__gte=window_start,
+        created_at__lt=window_end,
+    ).select_related('message__chat__user')
+
+    settled_total = 0
+    failures = []
+    for row in rows.iterator():
+        settled_total += settle_overage(row)
+        row.refresh_from_db(fields=['settled_at'])
+        if row.settled_at is not None:
+            continue
+        # Не алертить одну и ту же строку чаще раза в 6 часов (тот же
+        # антиспам-кэш, что у reconcile_stuck_spends).
+        if not cache.add(f'monitor_unsettled_overage:{row.pk}', 1, timeout=6 * 3600):
+            continue
+        failures.append(row)
+
+    if settled_total:
+        logger.info(f'[overage][reconcile] досписано {settled_total} коп. за прогон')
+    if not failures:
+        return
+
+    lines = [f'Доплата рассчитана, но не списана (20мин–6ч): {len(failures)}']
+    for row in failures[:20]:
+        lines.append(f'· overage:{row.message_id} — {format_rub(row.overage_kopecks)}, {row.model_name}')
+    if len(failures) > 20:
+        lines.append(f'...и ещё {len(failures) - 20}')
+    notify_admins('<b>Мониторинг: несписанная доплата за токены</b>\n' + '\n'.join(lines))
 
 
 @shared_task(bind=True, max_retries=0, ignore_result=True,
