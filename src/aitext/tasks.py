@@ -1092,6 +1092,20 @@ def generate_ai_response(self, message_id, web_search=False):
                 message.status = Message.Status.FAILED
                 message.error_message = t_error('free_model_deprecated', user.get_language())
                 message.save()
+                # Найдено живым тестом 2026-08-06 (chat 969, claude-fable-5 —
+                # платная модель, но текст ошибки провайдера содержал "free
+                # model" по совпадению, попав в эту ветку): `return` здесь
+                # выходит из задачи раньше общего блока возврата денег внизу
+                # функции (:1332, `is_final_attempt`) — деньги за pre-charge
+                # оставались списанными на окончательно проваленном сообщении.
+                try:
+                    from aitext.billing import refund_message_billing, refund_org_billing
+                    if refund_message_billing(message):
+                        logger.info(f"Возврат средств за проваленную генерацию (deprecated-ветка), сообщение {message_id}")
+                    if refund_org_billing(message):
+                        logger.info(f"Возврат средств организации (deprecated-ветка), сообщение {message_id}")
+                except Exception as refund_err:
+                    logger.error(f"Не удалось вернуть средства за сообщение {message_id} (deprecated-ветка): {refund_err}")
                 return
             else:
                 # Другие ошибки — пробуем retry
