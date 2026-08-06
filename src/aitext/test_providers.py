@@ -21,6 +21,19 @@ class _FakeAPIError(Exception):
         self.status_code = status_code
 
 
+class _FakeChatCompletion:
+    """Минимальная заглушка под openai.ChatCompletion — только то, что
+    проверяет `_run` (наличие `.choices`) и что нужно тестам для идентификации
+    (`tag`), без полной формы реального объекта."""
+
+    def __init__(self, tag):
+        self.tag = tag
+        self.choices = [tag]
+
+    def __eq__(self, other):
+        return isinstance(other, _FakeChatCompletion) and other.tag == self.tag
+
+
 class _FakeStream:
     """Воспроизводит openai.Stream: __iter__/__next__ шарят один _iterator,
     close() закрывается один раз, поддерживает `with ... as s:`."""
@@ -108,28 +121,28 @@ def _patched_raw_clients(clients):
 @override_settings(AI_PROVIDER_FALLBACK=True, LAOZHANG_API_KEY='x', APIMART_API_KEY='y')
 class NonStreamFallbackTests(TestCase):
     def test_primary_success_no_fallback(self):
-        primary = _FakeClient(chat_behavior='ok-primary')
-        secondary = _FakeClient(chat_behavior='ok-secondary')
+        primary = _FakeClient(chat_behavior=_FakeChatCompletion('ok-primary'))
+        secondary = _FakeClient(chat_behavior=_FakeChatCompletion('ok-secondary'))
         with patch.object(providers, '_get_raw_client', _patched_raw_clients(
             {'laozhang': primary, 'apimart': secondary})):
             client = providers.FallbackClient('laozhang')
             result = client.chat.completions.create(model='x', messages=[])
-        self.assertEqual(result, 'ok-primary')
+        self.assertEqual(result, _FakeChatCompletion('ok-primary'))
         self.assertEqual(len(secondary.chat.completions.calls), 0)
 
     def test_availability_error_falls_back(self):
         primary = _FakeClient(chat_behavior=_FakeAPIError('upstream down', status_code=500))
-        secondary = _FakeClient(chat_behavior='ok-secondary')
+        secondary = _FakeClient(chat_behavior=_FakeChatCompletion('ok-secondary'))
         with patch.object(providers, '_get_raw_client', _patched_raw_clients(
             {'laozhang': primary, 'apimart': secondary})):
             client = providers.FallbackClient('laozhang')
             result = client.chat.completions.create(model='x', messages=[])
-        self.assertEqual(result, 'ok-secondary')
+        self.assertEqual(result, _FakeChatCompletion('ok-secondary'))
         self.assertEqual(len(secondary.chat.completions.calls), 1)
 
     def test_content_error_does_not_fall_back(self):
         primary = _FakeClient(chat_behavior=_FakeAPIError('bad request: invalid role', status_code=400))
-        secondary = _FakeClient(chat_behavior='ok-secondary')
+        secondary = _FakeClient(chat_behavior=_FakeChatCompletion('ok-secondary'))
         with patch.object(providers, '_get_raw_client', _patched_raw_clients(
             {'laozhang': primary, 'apimart': secondary})):
             client = providers.FallbackClient('laozhang')
@@ -138,20 +151,48 @@ class NonStreamFallbackTests(TestCase):
         self.assertEqual(len(secondary.chat.completions.calls), 0)
 
     def test_default_timeout_injected_when_not_specified(self):
-        primary = _FakeClient(chat_behavior='ok')
+        primary = _FakeClient(chat_behavior=_FakeChatCompletion('ok'))
         with patch.object(providers, '_get_raw_client', _patched_raw_clients(
-            {'laozhang': primary, 'apimart': _FakeClient(chat_behavior='unused')})):
+            {'laozhang': primary, 'apimart': _FakeClient(chat_behavior=_FakeChatCompletion('unused'))})):
             client = providers.FallbackClient('laozhang')
             client.chat.completions.create(model='x', messages=[])
         self.assertEqual(primary.chat.completions.calls[0]['timeout'], providers._CHAT_TIMEOUT)
 
     def test_caller_timeout_is_not_overridden(self):
-        primary = _FakeClient(chat_behavior='ok')
+        primary = _FakeClient(chat_behavior=_FakeChatCompletion('ok'))
         with patch.object(providers, '_get_raw_client', _patched_raw_clients(
-            {'laozhang': primary, 'apimart': _FakeClient(chat_behavior='unused')})):
+            {'laozhang': primary, 'apimart': _FakeClient(chat_behavior=_FakeChatCompletion('unused'))})):
             client = providers.FallbackClient('laozhang')
             client.chat.completions.create(model='x', messages=[], timeout=12.5)
         self.assertEqual(primary.chat.completions.calls[0]['timeout'], 12.5)
+
+    def test_malformed_chat_response_falls_back(self):
+        """2026-08-06: провайдер отдаёт 200 OK, но тело парсится не как
+        ChatCompletion, а как голая строка (openai-python не бросает
+        исключение в этом случае) — `_run` обязан распознать это как
+        недоступность и переключиться на следующего в цепочке, а не
+        вернуть строку вызывающему коду (`completion.choices[0]` в
+        aitext/tasks.py упадёт с AttributeError вне зоны видимости фолбэка)."""
+        primary = _FakeClient(chat_behavior='some malformed non-JSON-object body')
+        secondary = _FakeClient(chat_behavior=_FakeChatCompletion('ok-secondary'))
+        with patch.object(providers, '_get_raw_client', _patched_raw_clients(
+            {'laozhang': primary, 'apimart': secondary})):
+            client = providers.FallbackClient('laozhang')
+            result = client.chat.completions.create(model='x', messages=[])
+        self.assertEqual(result, _FakeChatCompletion('ok-secondary'))
+        self.assertEqual(len(secondary.chat.completions.calls), 1)
+
+    def test_malformed_chat_response_on_all_providers_raises(self):
+        """Если оба провайдера в цепочке вернули «сломанный» ответ — цепочка
+        исчерпана, наверх должна уйти ошибка (а не тихо утёкшая строка)."""
+        primary = _FakeClient(chat_behavior='broken-primary')
+        secondary = _FakeClient(chat_behavior='broken-secondary')
+        with patch.object(providers, '_get_raw_client', _patched_raw_clients(
+            {'laozhang': primary, 'apimart': secondary})):
+            client = providers.FallbackClient('laozhang')
+            with self.assertRaises(providers._MalformedResponseError):
+                client.chat.completions.create(model='x', messages=[])
+        self.assertEqual(len(secondary.chat.completions.calls), 1)
 
 
 @override_settings(AI_PROVIDER_FALLBACK=True, LAOZHANG_API_KEY='x', APIMART_API_KEY='y')

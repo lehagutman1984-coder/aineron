@@ -156,6 +156,25 @@ def _provider_available(provider):
     return bool(getattr(settings, key_key, ''))
 
 
+class _MalformedResponseError(Exception):
+    """
+    Провайдер отдал 200 OK, но тело не парсится как ожидаемый объект (например,
+    ChatCompletion) — openai-python в этом случае не бросает исключение, а
+    молча возвращает сырые данные (обычно строку) вместо объекта с `.choices`.
+
+    Обнаружено 2026-08-06: на длинных ответах через фолбэк на apimart
+    `client.chat.completions.create()` изредка возвращал `str` вместо
+    ChatCompletion — `_run()` считал вызов успешным (исключения не было) и
+    ошибка проявлялась только в вызывающем коде (`completion.choices[0]`),
+    вне зоны видимости фолбэка. Ретрай на уровне Celery-задачи в этом случае
+    повторял вызов к тому ЖЕ провайдеру с нуля, вместо переключения на
+    следующий — платили за повторную генерацию, не решая проблему.
+
+    Всегда считается ошибкой доступности (см. `_run`) — независимо от того,
+    что говорит `is_availability_error` по тексту/статусу, которых здесь нет.
+    """
+
+
 def is_availability_error(exc) -> bool:
     """
     True, если ошибка означает недоступность сервиса/модели (стоит попробовать
@@ -341,11 +360,18 @@ class FallbackClient:
         for i, provider in enumerate(chain):
             client = _get_raw_client(provider)
             try:
-                return fn(client)
+                result = fn(client)
+                if kind == 'chat' and not hasattr(result, 'choices'):
+                    raise _MalformedResponseError(
+                        f"{provider} вернул {type(result).__name__} вместо ChatCompletion "
+                        f"(нет .choices): {str(result)[:200]!r}"
+                    )
+                return result
             except Exception as e:  # noqa: BLE001
                 last = e
                 is_last = i == len(chain) - 1
-                if is_last or not is_availability_error(e):
+                is_malformed = isinstance(e, _MalformedResponseError)
+                if is_last or not (is_malformed or is_availability_error(e)):
                     raise
                 nxt = chain[i + 1]
                 logger.warning(
