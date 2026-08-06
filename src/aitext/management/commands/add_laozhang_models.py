@@ -336,7 +336,7 @@ TEXT_MODELS = [
          description='Мощная модель MiniMax для разнообразных задач.'),
 
     # ── Ещё более новые флагманы (добавлено 2026-07-21) ────────────────────────
-    dict(name='Claude Fable 5', slug='claude-fable-5', model_name='claude-fable-5', cost_per_message=6, cost_kopecks=650, order=18,
+    dict(name='Claude Fable 5', slug='claude-fable-5', model_name='claude-fable-5', cost_per_message=15, cost_kopecks=1500, order=18,
          description='Новая модель Claude от Anthropic для творческого письма и глубокого повествования.',
          handle_photo=True, is_popular=True),
     dict(name='GPT-5.5 Pro', slug='gpt-5-5-pro', model_name='gpt-5.5-pro', cost_per_message=16, cost_kopecks=1600, order=4,
