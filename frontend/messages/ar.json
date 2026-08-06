@@ -387,6 +387,7 @@
     "speak": "تحدث",
     "forgetMemoryTitle": "نسيان الذاكرة",
     "memory": "الذاكرة",
+    "overageReceipt": "رد طويل · {tokens, number} توكن · رسوم إضافية {amount}",
     "searchResults": "نتائج البحث",
     "showAllLines": "عرض الكل ({count, plural, one {# سطر} few {# أسطر} many {# سطرًا} other {# سطر}})",
     "sourcesCount": "المصادر ({count})",

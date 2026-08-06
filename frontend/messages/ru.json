@@ -390,6 +390,7 @@
     "speak": "Озвучить",
     "forgetMemoryTitle": "Забыть из памяти",
     "memory": "Память",
+    "overageReceipt": "Длинный ответ · {tokens, number} токенов · доплата {amount}",
     "searchResults": "Результаты поиска",
     "showAllLines": "Показать всё ({count, plural, one {# строку} few {# строки} many {# строк} other {# строк}})",
     "sourcesCount": "Источники ({count})",

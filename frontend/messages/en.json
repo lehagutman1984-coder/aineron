@@ -390,6 +390,7 @@
     "speak": "Speak",
     "forgetMemoryTitle": "Forget Memory",
     "memory": "Memory",
+    "overageReceipt": "Long response · {tokens, number} tokens · extra charge {amount}",
     "searchResults": "Search Results",
     "showAllLines": "Show All ({count, plural, one {# line} few {# lines} many {# lines} other {# lines}})",
     "sourcesCount": "Sources ({count})",

@@ -582,6 +582,14 @@ class StreamMessageView(APIView):
         def generate():
             full_text = ""
             _usage = None
+            # Спринт 4 плана: чек по доплате для события done. Остаётся None на
+            # подавляющем большинстве сообщений — тогда ключа billing в done нет
+            # вовсе. Переменная объявлена ЗДЕСЬ, а не выводится из _usage_row в
+            # момент yield: _usage_row живёт внутри вложенного try и при
+            # TOKEN_METERING_ENABLED=0 равен None (record_usage возвращает None),
+            # а при исключении в record_usage вообще не связан — обращение к нему
+            # в payload уронило бы штатный платный путь в except с возвратом денег.
+            _billing = None
             # Дошли ли до одной из штатных точек выхода (успех/ошибка). False
             # означает обрыв клиента (GeneratorExit) — см. finally ниже.
             _finalized = False
@@ -725,6 +733,29 @@ class StreamMessageView(APIView):
                     if _usage is not None:
                         from aitext.token_metering import settle_overage
                         settle_overage(_usage_row)
+
+                    # Спринт 4, задача 1: чек в событии done. Источник —
+                    # settled_kopecks (ФАКТИЧЕСКИ списанное), а не расчётный
+                    # overage_kopecks: при нехватке баланса settle откатывается
+                    # целиком (§3, расхождение 1) и показывать расчётную сумму
+                    # было бы враньём. Ключ добавляется только при ненулевой
+                    # доплате — обычные сообщения идут байт-в-байт как раньше.
+                    # Баланс перечитываем: settle_overage списывает со своего
+                    # instance (usage_row.message.chat.user), объект user этого
+                    # запроса после него устарел, как и new_balance_kopecks,
+                    # посчитанный до генерации.
+                    if _usage_row is not None and int(_usage_row.settled_kopecks or 0) > 0:
+                        user.refresh_from_db(fields=['balance_kopecks'])
+                        _billing = {
+                            # Локальной переменной flat_kopecks в этом view нет
+                            # (плоская цена — cost_kopecks if deduct_stars else 0);
+                            # берём сохранённое в строке значение — оно же и есть.
+                            "flat_kopecks": int(_usage_row.flat_kopecks or 0),
+                            "overage_kopecks": int(_usage_row.settled_kopecks),
+                            "prompt_tokens": int(_usage_row.prompt_tokens or 0),
+                            "completion_tokens": int(_usage_row.completion_tokens or 0),
+                            "new_balance_kopecks": user.balance_kopecks,
+                        }
                 except Exception as _metering_err:
                     logger.warning(f"[token_metering] SSE-путь: не удалось записать usage для {assist_msg_id}: {_metering_err}")
 
@@ -784,6 +815,7 @@ class StreamMessageView(APIView):
                     **({"sources": kb_sources} if kb_sources else {}),
                     **({"variants": all_variants} if all_variants else {}),
                     **({"commit_proposed": commit_event} if commit_event else {}),
+                    **({"billing": _billing} if _billing else {}),
                 })
 
             except Exception as e:

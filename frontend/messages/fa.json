@@ -387,6 +387,7 @@
     "speak": "صحبت کن",
     "forgetMemoryTitle": "فراموشی حافظه",
     "memory": "حافظه",
+    "overageReceipt": "پاسخ طولانی · {tokens, number} توکن · هزینه اضافی {amount}",
     "searchResults": "نتایج جستجو",
     "showAllLines": "نمایش همه ({count, plural, one {# خط} few {# خط} many {# خط} other {# خط}})",
     "sourcesCount": "منابع ({count})",

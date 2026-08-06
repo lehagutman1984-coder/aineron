@@ -151,6 +151,7 @@
     "error": "Oluşturma başarısız oldu. Lütfen tekrar deneyin.",
     "queueError": "İstek işlenemedi — lütfen kısa süre sonra tekrar deneyin.",
     "timeout": "Zaman aşımına uğradı. Lütfen tekrar deneyin.",
+    "overageReceipt": "Uzun yanıt · {tokens} token · ek ücret {amount}",
     "newChatStarted": "Yeni konuşma başlatıldı. İlk sorunu sor.",
     "emptyEditText": "Boş metin — düzenleme iptal edildi.",
     "sendNewText": "Yeni istek metnini gönderin:",

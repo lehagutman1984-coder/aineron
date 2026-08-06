@@ -387,6 +387,7 @@
     "speak": "Konuş",
     "forgetMemoryTitle": "Hafızayı Unut",
     "memory": "Hafıza",
+    "overageReceipt": "Uzun yanıt · {tokens, number} token · ek ücret {amount}",
     "searchResults": "Arama Sonuçları",
     "showAllLines": "Tümünü Göster ({count, plural, one {# satır} few {# satır} many {# satır} other {# satır}})",
     "sourcesCount": "Kaynaklar ({count})",

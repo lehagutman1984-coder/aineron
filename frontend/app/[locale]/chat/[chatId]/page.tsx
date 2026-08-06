@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Link } from "@/i18n/navigation";
 import { useParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw, Paperclip, BookMarked, Globe, Volume2, Square, Loader, ChevronDown, ChevronRight, Settings2, FileText, X, GitCommit, CheckCircle2, XCircle, Download, Layers, BookmarkPlus, GitBranch, Microscope, Brain, ImagePlus, Pencil, Loader2, Film, Maximize2, Images, Palette, FileSearch, Eraser, Heart } from "lucide-react";
+import { Send, LayoutGrid, PenSquare, Code2, Copy, Check, RotateCcw, Paperclip, BookMarked, Globe, Volume2, Square, Loader, ChevronDown, ChevronRight, Settings2, FileText, X, GitCommit, CheckCircle2, XCircle, Download, Layers, BookmarkPlus, GitBranch, Microscope, Brain, ImagePlus, Pencil, Loader2, Film, Maximize2, Images, Palette, FileSearch, Eraser, Heart, Receipt } from "lucide-react";
 import { MarkdownContent } from "@/components/chat/MarkdownContent";
 import { AttachmentPreview, type AttachmentState } from "@/components/chat/AttachmentPreview";
 import { PromptPicker } from "@/components/chat/PromptPicker";
@@ -25,6 +25,7 @@ import { ZoomableImage } from "@/components/chat/ZoomableImage";
 import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, uploadFile, synthesizeSpeech, confirmCommit, exportChat, quickSaveFact, branchChat, startDeepResearch, getResearchStatus, getMemoryToast, upscaleGeneration, createVariations, describeGeneration, downloadImageUrl, favoriteGeneration, removeBackground, APIError, BASE_URL, type CommitProposed } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 import { useUIStore } from "@/lib/stores/ui";
+import { formatMoney } from "@/lib/money";
 import { useTranslations } from "next-intl";
 import type { WebMessage, ChatDetail, UiSection, KBSource } from "@/lib/api/types";
 
@@ -401,14 +402,18 @@ export default function ChatPage() {
             setSearchPhase("idle");
             setStreamText((prev) => prev + token);
           },
-          onDone: ({ content, plain_text, search_context, sources, variants, commit_proposed, used_memory }) => {
+          onDone: ({ content, plain_text, search_context, sources, variants, commit_proposed, used_memory, billing }) => {
+            // Спринт 4 (TOKEN_OVERAGE_BILLING_PLAN.md): billing приходит ТОЛЬКО
+            // когда доплата за длинный ответ реально списана — на обычных
+            // сообщениях поле отсутствует и вся ветка ниже не выполняется.
+            if (billing) setBalance(billing.new_balance_kopecks);
             qc.setQueryData<ChatDetail>(["chat", id], (prev) => {
               if (!prev) return prev;
               return {
                 ...prev,
                 messages: prev.messages.map((m) =>
                   m.id === realAssistId
-                    ? { ...m, content, plain_text, status: "completed" as const, search_context: search_context ?? "", kb_sources: sources ?? m.kb_sources, variants: variants ?? m.variants, used_memory: used_memory ?? false }
+                    ? { ...m, content, plain_text, status: "completed" as const, search_context: search_context ?? "", kb_sources: sources ?? m.kb_sources, variants: variants ?? m.variants, used_memory: used_memory ?? false, overage_billing: billing ?? m.overage_billing }
                     : m
                 ),
               };
@@ -2003,6 +2008,27 @@ function MessageRow({
                     <ForgetMemoryPanel onClose={() => setForgetPanelMsgId(null)} />
                   )}
                 </div>
+              </div>
+            )}
+            {/* Чек по доплате за длинный ответ (TOKEN_OVERAGE_BILLING_PLAN.md,
+                Спринт 4). Поле приходит только в SSE-событии done живой сессии
+                и только при реально списанной доплате — у подавляющего
+                большинства сообщений его нет, блок не рендерится. */}
+            {message.overage_billing && (
+              <div className="mt-1 flex items-center gap-1.5 px-1.5 text-[12px] text-[rgba(13,13,13,0.42)] dark:text-[rgba(236,236,236,0.38)]">
+                <Receipt size={16} />
+                <span>
+                  {t("overageReceipt", {
+                    // Число уходит числом — форматирует ICU по локали
+                    // ({tokens, number}). Сумму, наоборот, форматируем сами:
+                    // единственный источник истины по валюте инстанса —
+                    // lib/money.ts (рубли на .ru, кредиты на .net).
+                    tokens:
+                      message.overage_billing.prompt_tokens +
+                      message.overage_billing.completion_tokens,
+                    amount: formatMoney(message.overage_billing.overage_kopecks),
+                  })}
+                </span>
               </div>
             )}
           </>

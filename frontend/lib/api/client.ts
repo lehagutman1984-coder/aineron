@@ -316,7 +316,7 @@ type SSEEvent =
   | { type: "init"; user_message_id: number; assistant_message_id: number; new_balance: number; new_balance_kopecks: number }
   | { type: "search_done"; preview: string }
   | { type: "token"; text: string }
-  | { type: "done"; content: string; plain_text: string; search_context?: string; sources?: import("./types").KBSource[]; variants?: import("./types").MessageVariant[]; commit_proposed?: { id: number; commit_message: string; files_count: number; project_id: number } | null; used_memory?: boolean }
+  | { type: "done"; content: string; plain_text: string; search_context?: string; sources?: import("./types").KBSource[]; variants?: import("./types").MessageVariant[]; commit_proposed?: { id: number; commit_message: string; files_count: number; project_id: number } | null; used_memory?: boolean; billing?: OverageBilling }
   | { type: "error"; message: string };
 
 export interface CommitProposed {
@@ -326,6 +326,21 @@ export interface CommitProposed {
   project_id: number;
 }
 
+/**
+ * TOKEN_OVERAGE_BILLING_PLAN.md, Спринт 4 — чек по доплате за длинный ответ.
+ * Приходит в событии `done` ТОЛЬКО когда доплата реально списана
+ * (`MessageTokenUsage.settled_kopecks > 0`); на подавляющем большинстве
+ * сообщений ключа нет вовсе, поэтому поле опциональное.
+ * `overage_kopecks` — фактически списанное, а не расчётное.
+ */
+export interface OverageBilling {
+  flat_kopecks: number;
+  overage_kopecks: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  new_balance_kopecks: number;
+}
+
 export async function streamMessage(
   chatId: number,
   body: { message: string; files?: unknown[]; settings?: Record<string, unknown>; attachment_ids?: string[]; web_search?: boolean; variants_mode?: boolean },
@@ -333,7 +348,7 @@ export async function streamMessage(
     onInit: (data: { user_message_id: number; assistant_message_id: number; new_balance: number; new_balance_kopecks: number }) => void;
     onSearchDone?: (preview: string) => void;
     onToken: (text: string) => void;
-    onDone: (data: { content: string; plain_text: string; search_context?: string; sources?: import("./types").KBSource[]; variants?: import("./types").MessageVariant[]; commit_proposed?: CommitProposed | null; used_memory?: boolean }) => void;
+    onDone: (data: { content: string; plain_text: string; search_context?: string; sources?: import("./types").KBSource[]; variants?: import("./types").MessageVariant[]; commit_proposed?: CommitProposed | null; used_memory?: boolean; billing?: OverageBilling }) => void;
     onError: (message: string) => void;
   }
 ): Promise<void> {

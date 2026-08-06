@@ -387,6 +387,7 @@
     "speak": "Bicara",
     "forgetMemoryTitle": "Lupakan Memori",
     "memory": "Memori",
+    "overageReceipt": "Respons panjang · {tokens, number} token · biaya tambahan {amount}",
     "searchResults": "Hasil Pencarian",
     "showAllLines": "Tampilkan Semua ({count, plural, one {# baris} few {# baris} many {# baris} other {# baris}})",
     "sourcesCount": "Sumber ({count})",

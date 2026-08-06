@@ -251,6 +251,20 @@ export interface WebMessage {
   is_research?: boolean;
   research_id?: number | null;
   used_memory?: boolean;
+  /**
+   * Спринт 4 (TOKEN_OVERAGE_BILLING_PLAN.md) — чек по доплате за длинный ответ.
+   * Поле КЛИЕНТСКОЕ: приходит только в SSE-событии `done` живой сессии и никогда
+   * не отдаётся сериализатором списка сообщений, поэтому после перезагрузки чата
+   * чек не восстанавливается (осознанный скоуп; компенсирующая поверхность —
+   * строка траты в /account/analytics/).
+   */
+  overage_billing?: {
+    flat_kopecks: number;
+    overage_kopecks: number;
+    prompt_tokens: number;
+    completion_tokens: number;
+    new_balance_kopecks: number;
+  };
   generation_id?: number | null;
   image_generation_id?: number | null;
   image_is_favorite?: boolean;

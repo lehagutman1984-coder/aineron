@@ -147,6 +147,39 @@ def _check_balance(user, cost_kopecks):
     return user.has_enough_kopecks(cost_kopecks)
 
 
+def _get_overage_receipt(msg_id):
+    """TOKEN_OVERAGE_BILLING_PLAN.md, Спринт 4 — данные для чека по доплате.
+
+    Возвращает (tokens, settled_kopecks) или None, если доплаты не было.
+    Фильтр по settled_kopecks > 0, а не по overage_kopecks: показываем ровно
+    то, что реально списано (при dry-run и при неудавшемся settle доплата
+    рассчитана, но денег не сняли — чека быть не должно).
+
+    Гонка, о которой стоит знать: generate_ai_response сохраняет статус
+    COMPLETED (tasks.py) ДО вызова settle_overage, а поллер ниже просыпается
+    каждые POLL_INTERVAL секунд. В редком случае «поллер успел между save и
+    settle» строки ещё нет — чек просто не покажется, деньги при этом списаны
+    корректно и видны в /account/analytics/ (компенсирующая поверхность из
+    §1.1(б) плана). Ретраить/ждать здесь сознательно не стали: цена ошибки —
+    отсутствие информационной строки, а не расхождение в деньгах.
+    """
+    from aitext.models import MessageTokenUsage
+    from aitext.token_metering import overage_settle_active
+
+    # Пока доплата выключена/в dry-run, строк с settled_kopecks > 0 не бывает
+    # в принципе — не ходим в БД на каждом ответе бота. Тот же приём, что у
+    # preflight-клэмпа в api/views/chats.py (Спринт 3).
+    if not overage_settle_active():
+        return None
+    row = (MessageTokenUsage.objects
+           .filter(message_id=msg_id, settled_kopecks__gt=0)
+           .only('prompt_tokens', 'completion_tokens', 'settled_kopecks')
+           .first())
+    if row is None:
+        return None
+    return (row.prompt_tokens or 0) + (row.completion_tokens or 0), row.settled_kopecks
+
+
 def _charge_text_message(user, assistant_msg, network, cost_kopecks):
     """Pre-charge за текстовое сообщение бота — тот же паттерн, что у веба
     (api/views/chats.py:136-143): списываем ДО генерации, а не полагаемся на
@@ -175,6 +208,7 @@ ensure_chat = sync_to_async(_ensure_chat, thread_sensitive=True)
 create_messages = sync_to_async(_create_messages, thread_sensitive=True)
 get_message_state = sync_to_async(_get_message_state, thread_sensitive=True)
 check_balance = sync_to_async(_check_balance, thread_sensitive=True)
+get_overage_receipt = sync_to_async(_get_overage_receipt, thread_sensitive=True)
 charge_text_message = sync_to_async(_charge_text_message, thread_sensitive=True)
 
 
@@ -300,6 +334,26 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
                     import html as _html
                     full_text += ('\n\n— Источники: '
                                   + ', '.join(_html.escape(n) for n in names))
+            # Спринт 4 плана: чек по доплате за длинный ответ. Дописывается в
+            # full_text ДО доставки — тем же способом, что источники выше, а не
+            # через card()/отдельное сообщение: full_text уходит либо в
+            # telegram_format(), либо в send_rich_or_markdown(), и вставлять
+            # туда готовый HTML от card() значило бы получить мангленную
+            # разметку на rich-пути. Строка идёт как обычный текст (в ней нет
+            # ни markdown-, ни HTML-спецсимволов), DIVIDER — просто «─».
+            try:
+                _receipt = await get_overage_receipt(msg.id)
+                if _receipt:
+                    from core.money import format_money
+                    _tokens, _settled = _receipt
+                    full_text += ('\n\n' + DIVIDER + '\n'
+                                  + t('chat.overageReceipt', lang,
+                                      tokens=f'{_tokens:,}'.replace(',', ' '),
+                                      amount=format_money(_settled)))
+            except Exception as _receipt_err:
+                # Чек — информационная строка; её отсутствие не должно мешать
+                # доставке уже сгенерированного (и оплаченного) ответа.
+                logger.warning(f'overage receipt skipped for {msg.id}: {_receipt_err}')
             markup = after_answer_kb(msg.id, copy_code=extract_first_code(full_text), lang=lang)
             delivered = False
             # S1: Rich Messages — таблицы, код, thinking-блоки (за флагом)

@@ -151,6 +151,7 @@
     "error": "Pembuatan gagal. Silakan coba lagi.",
     "queueError": "Gagal memproses permintaan — silakan coba lagi sebentar.",
     "timeout": "Waktu habis. Silakan coba lagi.",
+    "overageReceipt": "Respons panjang · {tokens} token · biaya tambahan {amount}",
     "newChatStarted": "Percakapan baru dimulai. Ajukan pertanyaan pertama Anda.",
     "emptyEditText": "Teks kosong — pengeditan dibatalkan.",
     "sendNewText": "Kirim teks permintaan baru:",
