@@ -166,6 +166,21 @@ class NonStreamFallbackTests(TestCase):
         self.assertEqual(result, _FakeChatCompletion('ok-secondary'))
         self.assertEqual(len(secondary.chat.completions.calls), 1)
 
+    def test_max_completion_tokens_below_minimum_falls_back(self):
+        """Тот же баг прокси, другое имя параметра (замечено на
+        gpt-5.6-terra) — матчинг не должен зависеть от конкретного имени
+        token-параметра, иначе каждая новая модель ломает фолбэк заново."""
+        primary = _FakeClient(chat_behavior=_FakeAPIError(
+            "Invalid 'max_completion_tokens': integer below minimum value. Expected a value >= 1, but got 0 instead.",
+            status_code=400))
+        secondary = _FakeClient(chat_behavior=_FakeChatCompletion('ok-secondary'))
+        with patch.object(providers, '_get_raw_client', _patched_raw_clients(
+            {'laozhang': primary, 'apimart': secondary})):
+            client = providers.FallbackClient('laozhang')
+            result = client.chat.completions.create(model='gpt-5.6-terra', messages=[], max_tokens=16384)
+        self.assertEqual(result, _FakeChatCompletion('ok-secondary'))
+        self.assertEqual(len(secondary.chat.completions.calls), 1)
+
     def test_default_timeout_injected_when_not_specified(self):
         primary = _FakeClient(chat_behavior=_FakeChatCompletion('ok'))
         with patch.object(providers, '_get_raw_client', _patched_raw_clients(

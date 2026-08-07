@@ -284,17 +284,22 @@ def is_availability_error(exc) -> bool:
                        'no available', 'no channel')
             if 'model' in msg and any(m in msg for m in markers):
                 return True
-            # 2026-08-07, обнаружено живой раскаткой на gpt-5-pro: laozhang
-            # иногда неверно транслирует запрос в свой внутренний формат
-            # (похоже, модель у него реализована через v1/responses, а не
-            # chat/completions — см. более раннюю находку "only supported in
-            # v1/responses") и отдаёт 400 "Invalid 'max_output_tokens':
-            # integer below minimum value... got 0" — при том что мы сами
-            # всегда шлём валидный положительный max_tokens (проверено:
-            # 16384 для этой модели). Это ошибка на стороне прокси, не
-            # результат нашего запроса — переключаемся на apimart, а не
-            # показываем пользователю «проблема с параметрами».
-            if 'max_output_tokens' in msg or 'max_tokens' in msg:
+            # 2026-08-07, обнаружено живой раскаткой на gpt-5-pro и
+            # gpt-5.6-terra: laozhang иногда неверно транслирует запрос в
+            # свой внутренний формат (похоже, модель у него реализована
+            # через v1/responses, а не chat/completions — см. более раннюю
+            # находку "only supported in v1/responses") и отдаёт 400 на
+            # какой-то из token-limit-параметров — на разных моделях разное
+            # имя параметра (замечены 'max_output_tokens' и
+            # 'max_completion_tokens', возможны другие варианты) — "integer
+            # below minimum value... got 0". При этом мы сами всегда шлём
+            # валидный положительный max_tokens (проверено на обеих моделях).
+            # Это ошибка на стороне прокси, не результат нашего запроса —
+            # переключаемся на apimart, а не показываем пользователю
+            # «проблема с параметрами». Матчим по параметру, а не по
+            # конкретному имени — иначе каждая новая модель с новым именем
+            # параметра требует нового патча.
+            if 'token' in msg and ('param' in msg or 'invalid' in msg):
                 token_markers = ('below minimum', 'integer_below_min_value', 'got 0')
                 if any(m in msg for m in token_markers):
                     return True
