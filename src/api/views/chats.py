@@ -827,6 +827,17 @@ class StreamMessageView(APIView):
                     f"{err_type}: {err_detail}",
                     exc_info=True,
                 )
+                # Долгая генерация (reasoning-модели/фолбэк — минуты) может
+                # держать соединение с БД простаивающим дольше, чем оно живо
+                # на стороне сервера/сети; следующий же запрос тогда падает
+                # с сетевой/протокольной ошибкой БД, а не IntegrityError —
+                # add_kopecks её не ловит, refund молча теряется (обнаружено
+                # 2026-08-07 на chat:3231, gpt-5.4-pro, ~270с до ошибки).
+                # close_if_unusable_or_obsolete() — штатный Django-идиом:
+                # дешёвая проверка, при необходимости переоткрывает соединение
+                # прозрачно для следующего запроса.
+                from django.db import connection
+                connection.close_if_unusable_or_obsolete()
                 if deduct_stars:
                     user.add_kopecks(cost_kopecks, type='refund', reference=f'chat:{assist_msg_id}')
                     from core.money import format_rub
@@ -879,6 +890,8 @@ class StreamMessageView(APIView):
                 # (§6); reconcile_stuck_spends покажет такие сообщения админам.
                 if not _finalized:
                     try:
+                        from django.db import connection
+                        connection.close_if_unusable_or_obsolete()
                         from aitext.models import MessageTokenUsage
                         from aitext.token_metering import record_usage
                         if not MessageTokenUsage.objects.filter(message_id=assist_msg_id).exists():

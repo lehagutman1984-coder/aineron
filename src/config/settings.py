@@ -783,9 +783,18 @@ SPECTACULAR_SETTINGS = {
 
 
 # ========== LOGGING ==========
+# 2026-08-07: ключ верхнего уровня у dictConfig называется
+# disable_existing_loggers, а не disable_existing_handlers — опечатка молча
+# игнорировалась Python logging (неизвестный ключ), из-за чего у dictConfig
+# оставался дефолт disable_existing_loggers=True. Без явного 'root' ниже все
+# логгеры приложения (api.views.*, aitext.*, users.* и т.д.), не
+# перечисленные явно в 'loggers', уходили в root без хендлеров — logger.error
+# из бизнес-кода молча пропадал (не путать с PYTHONUNBUFFERED, тот уже стоял
+# в Dockerfile и тут ни при чём). Добавлен root-логгер, чтобы весь код проекта
+# по умолчанию попадал в консоль.
 LOGGING = {
     'version': 1,
-    'disable_existing_handlers': False,
+    'disable_existing_loggers': False,
     'formatters': {
         'studio': {
             'format': '[%(asctime)s] %(levelname)s %(name)s: %(message)s',
@@ -797,6 +806,10 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'formatter': 'studio',
         },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
     },
     'loggers': {
         'django.request': {
