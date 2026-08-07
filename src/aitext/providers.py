@@ -284,6 +284,20 @@ def is_availability_error(exc) -> bool:
                        'no available', 'no channel')
             if 'model' in msg and any(m in msg for m in markers):
                 return True
+            # 2026-08-07, обнаружено живой раскаткой на gpt-5-pro: laozhang
+            # иногда неверно транслирует запрос в свой внутренний формат
+            # (похоже, модель у него реализована через v1/responses, а не
+            # chat/completions — см. более раннюю находку "only supported in
+            # v1/responses") и отдаёт 400 "Invalid 'max_output_tokens':
+            # integer below minimum value... got 0" — при том что мы сами
+            # всегда шлём валидный положительный max_tokens (проверено:
+            # 16384 для этой модели). Это ошибка на стороне прокси, не
+            # результат нашего запроса — переключаемся на apimart, а не
+            # показываем пользователю «проблема с параметрами».
+            if 'max_output_tokens' in msg or 'max_tokens' in msg:
+                token_markers = ('below minimum', 'integer_below_min_value', 'got 0')
+                if any(m in msg for m in token_markers):
+                    return True
             return False
         # Прочие 4xx (422 и т.п.) — считаем проблемой запроса.
         return False

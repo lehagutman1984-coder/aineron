@@ -150,6 +150,22 @@ class NonStreamFallbackTests(TestCase):
                 client.chat.completions.create(model='x', messages=[])
         self.assertEqual(len(secondary.chat.completions.calls), 0)
 
+    def test_max_output_tokens_below_minimum_falls_back(self):
+        """laozhang иногда мистранслирует запрос для некоторых моделей
+        (gpt-5-pro) и отдаёт 400 "Invalid 'max_output_tokens': integer below
+        minimum value... got 0" даже когда мы шлём валидный max_tokens — это
+        ошибка на стороне прокси, должна триггерить fallback на apimart."""
+        primary = _FakeClient(chat_behavior=_FakeAPIError(
+            "Invalid 'max_output_tokens': integer below minimum value. Expected a value >= 16, but got 0 instead.",
+            status_code=400))
+        secondary = _FakeClient(chat_behavior=_FakeChatCompletion('ok-secondary'))
+        with patch.object(providers, '_get_raw_client', _patched_raw_clients(
+            {'laozhang': primary, 'apimart': secondary})):
+            client = providers.FallbackClient('laozhang')
+            result = client.chat.completions.create(model='gpt-5-pro', messages=[], max_tokens=16384)
+        self.assertEqual(result, _FakeChatCompletion('ok-secondary'))
+        self.assertEqual(len(secondary.chat.completions.calls), 1)
+
     def test_default_timeout_injected_when_not_specified(self):
         primary = _FakeClient(chat_behavior=_FakeChatCompletion('ok'))
         with patch.object(providers, '_get_raw_client', _patched_raw_clients(
