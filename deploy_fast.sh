@@ -14,7 +14,12 @@ echo -e "${YELLOW}Подтягиваем код...${NC}"
 git pull origin main
 
 echo -e "${YELLOW}Перезапускаем Python-сервисы (код монтирован как volume)...${NC}"
-docker-compose up -d --no-build web celery_worker celery_beat
+# --force-recreate обязателен: код меняется только на диске (volume), конфиг
+# самого контейнера — нет, поэтому обычный `up -d` считает контейнер
+# актуальным и НЕ перезапускает процесс — новый код молча не подхватывается
+# (баг найден 2026-08-11: web не перезапускался 4 дня несмотря на редеплои).
+# daphne — тоже Python/Django-процесс (ASGI, SSE) и ранее был пропущен здесь.
+docker-compose up -d --no-build --force-recreate web daphne celery_worker celery_beat
 
 echo -e "${YELLOW}Применяем миграции...${NC}"
 docker-compose exec -T web python manage.py migrate --noinput
