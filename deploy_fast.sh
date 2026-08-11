@@ -28,6 +28,13 @@ echo -e "${YELLOW}Пересобираем и перезапускаем фро�
 docker-compose build frontend
 docker-compose up -d frontend
 
+# --force-recreate выше даёт web/daphne новый IP в docker-сети — nginx держит
+# резолвленный upstream/keepalive-соединения на старый и без рестарта отдаёт
+# 502, пока не истечёт TTL сам (найдено 2026-08-11: живой прод несколько
+# секунд отдавал 502 на /api/ после первого прогона с --force-recreate).
+echo -e "${YELLOW}Перезапускаем nginx (иначе держит IP старого web-контейнера)...${NC}"
+docker-compose restart nginx
+
 echo -e "${GREEN}======================================${NC}"
 echo -e "${GREEN}  Статус контейнеров:                ${NC}"
 echo -e "${GREEN}======================================${NC}"
