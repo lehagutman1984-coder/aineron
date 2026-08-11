@@ -93,7 +93,14 @@ class ChargeForTokensPersonalTests(TestCase):
         self.assertEqual(self.user.balance_kopecks, balance_after_charge + kopecks)
 
 
+@override_settings(PROMO_REDEEM_IP_DAILY_CAP=0)
 class ApplyPromoViewTests(TestCase):
+    """PROMO_REDEEM_IP_DAILY_CAP=0 — эти тесты про механику погашения, не про
+    антифрод; IP-квота отдельно проверена в PromoRedemptionAntifraudTests. Без
+    отключения все тесты класса делят один и тот же реальный IP (127.0.0.1
+    по умолчанию у Django test client) и общий кэш — счётчик квоты копится
+    МЕЖДУ тестами (кэш, в отличие от БД, между тестами не откатывается)."""
+
     URL = '/api/v1/billing/promo/'
 
     def setUp(self):
@@ -102,6 +109,8 @@ class ApplyPromoViewTests(TestCase):
 
         self.user = User.objects.create_user(username='promo', email='promo@t.ru', password='x')
         self.user.set_kopecks(0)
+        self.user.email_verified = True
+        self.user.save(update_fields=['email_verified'])
         self.promo = PromoCode.objects.create(code='BONUS50', stars=50, usage_limit=2)
         self.client = APIClient()
         self.client.force_authenticate(self.user)
@@ -132,11 +141,15 @@ class ApplyPromoViewTests(TestCase):
 
         self.client.post(self.URL, {'code': 'BONUS50'}, format='json')
         other = User.objects.create_user(username='promo2', email='promo2@t.ru', password='x')
+        other.email_verified = True
+        other.save(update_fields=['email_verified'])
         other_client = APIClient()
         other_client.force_authenticate(other)
         self.assertEqual(other_client.post(self.URL, {'code': 'BONUS50'}, format='json').status_code, 200)
 
         third = User.objects.create_user(username='promo3', email='promo3@t.ru', password='x')
+        third.email_verified = True
+        third.save(update_fields=['email_verified'])
         third_client = APIClient()
         third_client.force_authenticate(third)
         resp = third_client.post(self.URL, {'code': 'BONUS50'}, format='json')
@@ -149,6 +162,86 @@ class ApplyPromoViewTests(TestCase):
         resp = self.client.post(self.URL, {'code': 'BONUS50'}, format='json')
         self.assertEqual(resp.status_code, 400)
         self.assertEqual(resp.json()['error']['code'], 'promo_expired')
+
+
+class PromoRedemptionAntifraudTests(TestCase):
+    """GROWTH_PLAN_RU.md §7.7: подтверждённый email + дневная квота по IP на
+    веб-пути погашения промокода (бот эти проверки не проходит — см. промо.py).
+
+    Каждый cache-тест получает свой уникальный LOCATION для LocMemCache — без
+    этого все override_settings(CACHES=...) в процессе делят один и тот же
+    процессный dict (LocMemCache ключуется по LOCATION, а не по тесту), и
+    счётчики IP-квоты утекали бы между тестами этого класса.
+    """
+
+    URL = '/api/v1/billing/promo/'
+
+    def setUp(self):
+        from rest_framework.test import APIClient
+        from users.models import PromoCode
+
+        self.promo_a = PromoCode.objects.create(code='IPCAPA', stars=10, usage_limit=5)
+        self.promo_b = PromoCode.objects.create(code='IPCAPB', stars=10, usage_limit=5)
+
+        self.user_a = User.objects.create_user(username='ipfraud1', email='ipfraud1@t.ru', password='x')
+        self.user_a.email_verified = True
+        self.user_a.save(update_fields=['email_verified'])
+        self.client_a = APIClient()
+        self.client_a.force_authenticate(self.user_a)
+
+        self.user_b = User.objects.create_user(username='ipfraud2', email='ipfraud2@t.ru', password='x')
+        self.user_b.email_verified = True
+        self.user_b.save(update_fields=['email_verified'])
+        self.client_b = APIClient()
+        self.client_b.force_authenticate(self.user_b)
+
+    @override_settings(CACHES={'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache', 'LOCATION': 'promo-email-verify'}})
+    def test_unverified_email_rejected(self):
+        self.user_a.email_verified = False
+        self.user_a.save(update_fields=['email_verified'])
+        resp = self.client_a.post(self.URL, {'code': 'IPCAPA'}, format='json')
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json()['error']['code'], 'email_not_verified')
+
+    @override_settings(
+        PROMO_REDEEM_IP_DAILY_CAP=1,
+        CACHES={'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache', 'LOCATION': 'promo-cap-block'}},
+    )
+    def test_ip_daily_cap_blocks_second_account_same_ip(self):
+        resp1 = self.client_a.post(self.URL, {'code': 'IPCAPA'}, format='json', REMOTE_ADDR='203.0.113.5')
+        self.assertEqual(resp1.status_code, 200)
+
+        resp2 = self.client_b.post(self.URL, {'code': 'IPCAPB'}, format='json', REMOTE_ADDR='203.0.113.5')
+        self.assertEqual(resp2.status_code, 400)
+        self.assertEqual(resp2.json()['error']['code'], 'ip_limit_exceeded')
+
+    @override_settings(
+        PROMO_REDEEM_IP_DAILY_CAP=1,
+        CACHES={'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache', 'LOCATION': 'promo-cap-diffip'}},
+    )
+    def test_ip_cap_does_not_block_different_ip(self):
+        resp1 = self.client_a.post(self.URL, {'code': 'IPCAPA'}, format='json', REMOTE_ADDR='203.0.113.5')
+        self.assertEqual(resp1.status_code, 200)
+
+        resp2 = self.client_b.post(self.URL, {'code': 'IPCAPB'}, format='json', REMOTE_ADDR='198.51.100.7')
+        self.assertEqual(resp2.status_code, 200)
+
+    @override_settings(
+        PROMO_REDEEM_IP_DAILY_CAP=2,
+        CACHES={'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache', 'LOCATION': 'promo-cap-dupe'}},
+    )
+    def test_already_used_code_does_not_burn_ip_quota(self):
+        # Дубль-попытка (код уже погашен этим пользователем) не должна жечь
+        # дневную квоту IP — иначе повторный клик по кнопке наказывает
+        # следующую легитимную попытку с той же сети. Квота = 2: первый слот
+        # уходит на успешное погашение client_a, дубль не должен трогать
+        # второй слот, а client_b обязан им воспользоваться.
+        self.client_a.post(self.URL, {'code': 'IPCAPA'}, format='json', REMOTE_ADDR='203.0.113.5')
+        resp_dupe = self.client_a.post(self.URL, {'code': 'IPCAPA'}, format='json', REMOTE_ADDR='203.0.113.5')
+        self.assertEqual(resp_dupe.json()['error']['code'], 'promo_already_used')
+
+        resp_other = self.client_b.post(self.URL, {'code': 'IPCAPB'}, format='json', REMOTE_ADDR='203.0.113.5')
+        self.assertEqual(resp_other.status_code, 200)
 
 
 @override_settings(ROBOKASSA_LOGIN='testlogin', ROBOKASSA_PASS1='testpass1', ROBOKASSA_PASS2='testpass2')

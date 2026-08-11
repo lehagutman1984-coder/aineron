@@ -628,6 +628,11 @@ CONNECTOR_CRAWL_LIMIT = int(os.getenv('CONNECTOR_CRAWL_LIMIT', '50'))  # стр�
 MIN_CHARGE_KOPECKS = int(os.environ.get('MIN_CHARGE_KOPECKS', '10'))  # 0,10 ₽ минимальное списание
 ORG_KOPECKS_PER_STAR = int(os.environ.get('ORG_KOPECKS_PER_STAR', '100'))  # унифицировано с MIN_CHARGE: 1 звезда = 100 коп
 
+# GROWTH_PLAN_RU.md §7.7: защита от мультиаккаунтов при погашении промокодов —
+# дневной лимит успешных погашений с одного IP (0 = выключено). Не трогает
+# регистрацию — проверяется только на веб-пути погашения (IP на бота не приходит).
+PROMO_REDEEM_IP_DAILY_CAP = int(os.environ.get('PROMO_REDEEM_IP_DAILY_CAP', '3'))
+
 # Список читает aitext/tasks.py:generate_ai_response — safety-net post-charge
 # для текстовых сообщений, у которых message.settings НЕ содержит billing_reference
 # (т.е. вызывающая сторона не сделала pre-charge сама). Основные пути уже

@@ -329,10 +329,16 @@ class ApplyPromoView(APIView):
         # русскими и в ₽ — на aineron.net PromoSection (billing/page.tsx)
         # рендерит error.message/data.message как есть, без перевода. Тот же
         # приём, что уже применяется в crypto.py — ветвление по INTL_MODE.
+        from ipware import get_client_ip
+
         from users.promo import redeem_promo_code
 
         intl = settings.INTL_MODE
-        result = redeem_promo_code(request.user, request.data.get('code'), intl=intl)
+        client_ip, _ = get_client_ip(request)
+        result = redeem_promo_code(
+            request.user, request.data.get('code'), intl=intl,
+            ip=client_ip, require_email_verified=True,
+        )
         if not result['ok']:
             return Response(
                 {'error': {'message': result['message'], 'type': 'invalid_request_error', 'code': result['error_code']}},
