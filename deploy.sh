@@ -125,7 +125,7 @@ echo -e "${YELLOW}  2. Создайте admin-аккаунт и токен      
 echo -e "${YELLOW}  3. Добавьте в .env:                        ${NC}"
 echo -e "${YELLOW}       GITEA_DB_PASSWORD=<пароль>            ${NC}"
 echo -e "${YELLOW}       STUDIO_GITEA_ADMIN_TOKEN=<токен>      ${NC}"
-echo -e "${YELLOW}  4. Перезапустите: docker-compose restart web celery_studio${NC}"
+echo -e "${YELLOW}  4. Перезапустите: docker-compose restart web${NC}"
 echo -e "${YELLOW}-------------------------------------------${NC}"
 
 # Очищаем conntrack для устранения проблем с соединениями после перезапуска

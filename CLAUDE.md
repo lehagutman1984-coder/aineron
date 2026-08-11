@@ -9,7 +9,7 @@ SaaS-платформа для доступа к AI-нейросетям без 
 Поверх базового доступа к моделям построены продукты:
 - **Веб-платформа** (Next.js 14) — чат, каталог, кабинет, блог, Model Arena, Projects, Prompts.
 - **Telegram-бот** (aiogram 3) — полноценный AI-ассистент в мессенджере + Mini App.
-- **Vibe-Coding Studio** — AI-конструктор приложений (многоагентный пайплайн генерации кода в Docker-песочнице с git-хостингом Gitea и деплоем). **Заморожена** на обоих инстансах — на aineron.ru выключена флагом (`STUDIO_ENABLED=false`), на aineron.net сервисы Studio/Gitea вообще отсутствуют в `docker-compose.intl.yml` (не просто выключены — структурно не задеплоены). Код остаётся в репозитории для будущего возобновления, но фичу сейчас не развиваем и не чиним.
+- **Vibe-Coding Studio** — AI-конструктор приложений (многоагентный пайплайн генерации кода в Docker-песочнице с git-хостингом Gitea и деплоем). **Заморожена** на обоих инстансах — на aineron.ru выключена флагом (`STUDIO_ENABLED=false`) и её Celery-воркер (`celery_studio`) с 2026-08-11 удалён из `docker-compose.yml` совсем (не просто выключен: устаревший образ уходил в crash-loop при каждом деплое), на aineron.net сервисы Studio/Gitea вообще отсутствуют в `docker-compose.intl.yml` (не просто выключены — структурно не задеплоены). Код остаётся в репозитории для будущего возобновления, но фичу сейчас не развиваем и не чиним.
 
 Архитектура — разделённый стек: **Django (DRF API + Admin)** на бэкенде и **Next.js 14 (App Router)** на фронтенде. Фронтенд полностью развёрнут в папке `frontend/`, Django работает в режиме API-сервера (`/api/v1/`).
 
@@ -629,20 +629,27 @@ NEXT_PUBLIC_SITE_URL=
 
 Два отдельных compose-файла — по одному на инстанс (см. «Два инстанса, один репозиторий» выше), не смешивать.
 
-### `docker-compose.yml` `[.ru]` — 11 сервисов
+### `docker-compose.yml` `[.ru]` — 10 сервисов (+ 1 за profile)
+
+Studio заморожена (см. «Что это за проект» выше) — `celery_studio` и
+`celery_studio_playwright` удалены из compose совсем (2026-08-11, не просто
+выключены флагом: устаревший образ `celery_studio` без актуального
+`requirements.txt` уходил в crash-loop при каждом деплое). `preview_service`
+(Sandbox API/Studio live preview) спрятан за `profiles: ["studio"]` — не
+поднимается обычным `up -d`, вернуть: `docker-compose --profile studio up -d`.
 
 | Сервис | Образ/build | Описание |
 |--------|-------------|----------|
 | `redis` | redis:7-alpine | Брокер Celery, кэш сессий, FSM бота |
 | `db` | postgres:15-alpine | PostgreSQL (основная БД) |
 | `web` | build (Dockerfile) | Django + Gunicorn, :8000 (makemigrations+migrate при старте) |
+| `daphne` | build (Dockerfile) | ASGI (SSE/WebSocket) |
 | `celery_worker` | build (Dockerfile) | Celery gevent, concurrency 200 (общая очередь) |
 | `celery_beat` | build (Dockerfile) | Периодические задачи (DatabaseScheduler) |
-| `celery_studio` | build (Dockerfile) | Celery для Studio (`studio_queue`), доступ к `docker.sock` |
-| `celery_studio_playwright` | build (Dockerfile.playwright) | Скриншоты/проверки Studio (`studio_playwright_queue`, prefork) |
+| `frontend` | build (Dockerfile.frontend) | Next.js 14, :3000 |
+| `preview_service` | build (`preview-service/`) | Sandbox API/Studio live preview — за `profiles: ["studio"]`, не поднимается по умолчанию |
 | `gitea_db` | postgres:15-alpine | БД для Gitea |
 | `gitea` | gitea/gitea:1.22 | Git-хостинг репозиториев Studio, ROOT_URL `/git/` |
-| `frontend` | build (Dockerfile.frontend) | Next.js 14, :3000 |
 | `nginx` | nginx:1.25-alpine | SSL termination, роутинг, :80/:443 |
 
 Volumes: `postgres_data`, `redis_data`, `static_volume`, `gitea_data`, `gitea_db_data` (медиа — bind-mount `./src/media`).

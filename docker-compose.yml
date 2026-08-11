@@ -140,27 +140,6 @@ services:
     depends_on:
       - web
 
-  celery_studio:
-    # Studio заморожена — воркер studio_queue простаивает. Спрятан за profile.
-    # Вернуть вместе с preview: docker-compose --profile studio up -d
-    profiles: ["studio"]
-    build: .
-    container_name: neiro_celery_studio
-    restart: unless-stopped
-    env_file:
-      - .env
-    command: celery -A config worker --loglevel=info --pool=gevent --concurrency=50 -Q studio_queue
-    volumes:
-      - ./src:/app
-      - /var/run/docker.sock:/var/run/docker.sock
-    ulimits:
-      nofile: 65535
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
   preview_service:
     # Studio заморожена: сервис отключён (E2B-аккаунт заблокирован → warm-pool
     # спамил 403 "team is blocked: missing payment method"). Спрятан за profile,
