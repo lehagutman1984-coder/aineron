@@ -146,11 +146,17 @@ export default function ChatPage() {
   const maxSourceImages = chat?.network.i2v?.max_images ?? 1;
   const i2vMode = chat?.network.i2v?.mode;
 
-  // Polling query — only active for fal-ai image models
+  // Polling query — статус "сообщения в работе" (текст и fal-ai).
   const { data: polledMessage } = useQuery<WebMessage>({
     queryKey: ["message-status", pendingMessageId],
     queryFn: () => getMessageStatus(pendingMessageId!),
     enabled: pendingMessageId !== null,
+    // Без этого TanStack Query по умолчанию ставит refetchInterval на паузу,
+    // как только вкладка уходит в фон (document.visibilityState !== "visible"),
+    // и не возобновляет опрос сам — нужен ручной рефокус/переход. Найдено
+    // 2026-08-12: пользователь переключался на другую вкладку в ожидании
+    // ответа, опрос замирал, ответ "появлялся" только при возврате на чат.
+    refetchIntervalInBackground: true,
     refetchInterval: (query) => {
       const data = query.state.data;
       if (!data || data.status === "pending") return POLL_INTERVAL;
@@ -163,6 +169,9 @@ export default function ChatPage() {
     queryKey: ["deep-research", activeResearchId],
     queryFn: () => getResearchStatus(activeResearchId!),
     enabled: activeResearchId !== null,
+    // См. коммент у message-status poll выше — исследование может идти
+    // минуты, пользователь почти наверняка переключит вкладку в ожидании.
+    refetchIntervalInBackground: true,
     refetchInterval: (query) => {
       const st = query.state.data?.status;
       if (st === "done" || st === "error") return false;
