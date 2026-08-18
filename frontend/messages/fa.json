@@ -2417,5 +2417,30 @@
     "benefit": "بدون مرورگر کار می‌کند و سریع‌تر بارگذاری می‌شود",
     "install": "نصب",
     "close": "بستن"
+  },
+  "tg": {
+    "needTelegram": "از طریق ربات تلگرام (@{bot}) باز کنید",
+    "loading": "در حال بارگذاری...",
+    "authError": "خطای احراز هویت",
+    "networkError": "خطای شبکه",
+    "linkAccount": "حساب خود را متصل کنید: پیام /start را به ربات ارسال کنید و دستورالعمل‌ها را دنبال کنید.",
+    "tabBalance": "موجودی",
+    "tabGallery": "گالری",
+    "tabChat": "چت",
+    "topUp": "افزایش موجودی",
+    "myGenerations": "تولیدات من",
+    "aiTasks": "وظایف زمان‌بندی‌شده AI",
+    "analytics": "تحلیل هزینه‌ها",
+    "addToHomeScreen": "افزودن به صفحه اصلی",
+    "galleryLoading": "در حال بارگذاری گالری...",
+    "galleryEmpty": "هنوز تولیدی وجود ندارد",
+    "galleryEmptyHint": "اولین تولید خود را در ربات ایجاد کنید: /image غروب خورشید بر فراز دریا",
+    "story": "داستان",
+    "chatTitle": "چت با AI",
+    "chatEmptyHint": "سوالی بپرسید — AI همین‌جا پاسخ خواهد داد.",
+    "chatPlaceholder": "سوال شما...",
+    "chatThinking": "در حال فکر کردن...",
+    "chatGenError": "خطا در تولید. لطفاً دوباره تلاش کنید.",
+    "chatSendError": "خطا در ارسال"
   }
 }

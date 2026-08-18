@@ -2417,5 +2417,30 @@
     "benefit": "Работает без браузера, быстрее загружается",
     "install": "Установить",
     "close": "Закрыть"
+  },
+  "tg": {
+    "needTelegram": "Откройте через Telegram-бот (@{bot})",
+    "loading": "Загрузка...",
+    "authError": "Ошибка авторизации",
+    "networkError": "Ошибка сети",
+    "linkAccount": "Привяжите аккаунт: напишите /start боту и следуйте инструкциям.",
+    "tabBalance": "Баланс",
+    "tabGallery": "Галерея",
+    "tabChat": "Чат",
+    "topUp": "Пополнить баланс",
+    "myGenerations": "Мои генерации",
+    "aiTasks": "AI-задачи по расписанию",
+    "analytics": "Аналитика трат",
+    "addToHomeScreen": "Добавить на главный экран",
+    "galleryLoading": "Загрузка галереи...",
+    "galleryEmpty": "Пока нет генераций",
+    "galleryEmptyHint": "Создайте первую в боте: /image закат над морем",
+    "story": "Стори",
+    "chatTitle": "Чат с AI",
+    "chatEmptyHint": "Задайте вопрос — AI ответит прямо здесь.",
+    "chatPlaceholder": "Ваш вопрос...",
+    "chatThinking": "Думаю...",
+    "chatGenError": "Ошибка генерации. Попробуйте ещё раз.",
+    "chatSendError": "Ошибка отправки"
   }
 }

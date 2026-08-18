@@ -2417,5 +2417,30 @@
     "benefit": "Bekerja tanpa browser dan memuat lebih cepat",
     "install": "Pasang",
     "close": "Tutup"
+  },
+  "tg": {
+    "needTelegram": "Buka melalui bot Telegram (@{bot})",
+    "loading": "Memuat...",
+    "authError": "Kesalahan autentikasi",
+    "networkError": "Kesalahan jaringan",
+    "linkAccount": "Hubungkan akun Anda: kirim pesan /start ke bot dan ikuti instruksinya.",
+    "tabBalance": "Saldo",
+    "tabGallery": "Galeri",
+    "tabChat": "Obrolan",
+    "topUp": "Isi saldo",
+    "myGenerations": "Generasi saya",
+    "aiTasks": "Tugas AI terjadwal",
+    "analytics": "Analitik pengeluaran",
+    "addToHomeScreen": "Tambahkan ke layar utama",
+    "galleryLoading": "Memuat galeri...",
+    "galleryEmpty": "Belum ada generasi",
+    "galleryEmptyHint": "Buat yang pertama di bot: /image sunset over the sea",
+    "story": "Cerita",
+    "chatTitle": "Obrolan dengan AI",
+    "chatEmptyHint": "Ajukan pertanyaan — AI akan menjawab di sini.",
+    "chatPlaceholder": "Pertanyaan Anda...",
+    "chatThinking": "Sedang berpikir...",
+    "chatGenError": "Kesalahan generasi. Silakan coba lagi.",
+    "chatSendError": "Kesalahan pengiriman"
   }
 }

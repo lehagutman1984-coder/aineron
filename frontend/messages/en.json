@@ -2417,5 +2417,30 @@
     "benefit": "Works without a browser and loads faster",
     "install": "Install",
     "close": "Close"
+  },
+  "tg": {
+    "needTelegram": "Open via the Telegram bot (@{bot})",
+    "loading": "Loading...",
+    "authError": "Authentication error",
+    "networkError": "Network error",
+    "linkAccount": "Link your account: message /start to the bot and follow the instructions.",
+    "tabBalance": "Balance",
+    "tabGallery": "Gallery",
+    "tabChat": "Chat",
+    "topUp": "Top up balance",
+    "myGenerations": "My generations",
+    "aiTasks": "Scheduled AI tasks",
+    "analytics": "Spending analytics",
+    "addToHomeScreen": "Add to home screen",
+    "galleryLoading": "Loading gallery...",
+    "galleryEmpty": "No generations yet",
+    "galleryEmptyHint": "Create your first one in the bot: /image sunset over the sea",
+    "story": "Story",
+    "chatTitle": "Chat with AI",
+    "chatEmptyHint": "Ask a question — the AI will answer right here.",
+    "chatPlaceholder": "Your question...",
+    "chatThinking": "Thinking...",
+    "chatGenError": "Generation error. Please try again.",
+    "chatSendError": "Send error"
   }
 }

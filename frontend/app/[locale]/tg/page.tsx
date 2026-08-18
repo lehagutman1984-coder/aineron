@@ -18,6 +18,7 @@ import {
   Sparkles,
   SmartphoneNfc,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { formatMoney } from "@/lib/money";
 import {
   initMiniApp,
@@ -74,6 +75,7 @@ async function api<T>(
 }
 
 export default function TelegramMiniApp() {
+  const t = useTranslations("tg");
   const [user, setUser] = useState<UserInfo | null>(null);
   const [token, setToken] = useState<string>("");
   const [error, setError] = useState("");
@@ -85,7 +87,7 @@ export default function TelegramMiniApp() {
     const tg = getTg();
     const initData = tg?.initData || "";
     if (!initData) {
-      setError("Откройте через Telegram-бот (@aineron_bot)");
+      setError(t("needTelegram", { bot: BOT_USERNAME }));
       setLoading(false);
       return;
     }
@@ -105,18 +107,18 @@ export default function TelegramMiniApp() {
         } else {
           const cached = await secureGet("tg_access_token");
           if (cached) setToken(cached);
-          setError(data.error || "Ошибка авторизации");
+          setError(data.error || t("authError"));
         }
         setLoading(false);
       })
       .catch(() => {
-        setError("Ошибка сети");
+        setError(t("networkError"));
         setLoading(false);
       });
-  }, []);
+  }, [t]);
 
   if (loading) {
-    return <div style={{ padding: 40, textAlign: "center", fontFamily: "system-ui" }}>Загрузка...</div>;
+    return <div style={{ padding: 40, textAlign: "center", fontFamily: "system-ui" }}>{t("loading")}</div>;
   }
   if (error && !user) {
     return (
@@ -125,7 +127,7 @@ export default function TelegramMiniApp() {
           {error}
         </p>
         <p style={{ fontSize: 14, color: "var(--tg-theme-hint-color, #666)" }}>
-          Привяжите аккаунт: напишите /start боту и следуйте инструкциям.
+          {t("linkAccount")}
         </p>
       </div>
     );
@@ -164,9 +166,9 @@ export default function TelegramMiniApp() {
       >
         {(
           [
-            { key: "home", label: "Баланс", Icon: Wallet },
-            { key: "gallery", label: "Галерея", Icon: Images },
-            { key: "chat", label: "Чат", Icon: MessageSquare },
+            { key: "home", label: t("tabBalance"), Icon: Wallet },
+            { key: "gallery", label: t("tabGallery"), Icon: Images },
+            { key: "chat", label: t("tabChat"), Icon: MessageSquare },
           ] as { key: Tab; label: string; Icon: typeof Wallet }[]
         ).map(({ key, label, Icon }) => (
           <button
@@ -210,6 +212,7 @@ function HomeScreen({
   user: UserInfo;
   onOpenGallery: () => void;
 }) {
+  const t = useTranslations("tg");
   const linkStyle: React.CSSProperties = {
     display: "flex",
     alignItems: "center",
@@ -245,7 +248,7 @@ function HomeScreen({
             marginBottom: 4,
           }}
         >
-          Баланс
+          {t("tabBalance")}
         </div>
         <div style={{ fontSize: 34, fontWeight: 700 }}>
           {formatMoney(user.balance_kopecks)}
@@ -254,16 +257,16 @@ function HomeScreen({
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <a href="/account/billing/" style={linkStyle}>
-          <Wallet size={18} /> Пополнить баланс
+          <Wallet size={18} /> {t("topUp")}
         </a>
         <button onClick={onOpenGallery} style={linkStyle}>
-          <Images size={18} /> Мои генерации
+          <Images size={18} /> {t("myGenerations")}
         </button>
         <a href="/account/tasks/" style={linkStyle}>
-          <Sparkles size={18} /> AI-задачи по расписанию
+          <Sparkles size={18} /> {t("aiTasks")}
         </a>
         <a href="/account/analytics/" style={linkStyle}>
-          <CircleUser size={18} /> Аналитика трат
+          <CircleUser size={18} /> {t("analytics")}
         </a>
         <button
           onClick={() => {
@@ -272,7 +275,7 @@ function HomeScreen({
           }}
           style={linkStyle}
         >
-          <SmartphoneNfc size={18} /> Добавить на главный экран
+          <SmartphoneNfc size={18} /> {t("addToHomeScreen")}
         </button>
       </div>
 
@@ -293,6 +296,7 @@ function HomeScreen({
 // ─── Галерея ───
 
 function GalleryScreen({ token }: { token: string }) {
+  const t = useTranslations("tg");
   const [files, setFiles] = useState<GalleryFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -338,7 +342,7 @@ function GalleryScreen({ token }: { token: string }) {
     [token]
   );
 
-  if (loading) return <div style={{ padding: 40, textAlign: "center" }}>Загрузка галереи...</div>;
+  if (loading) return <div style={{ padding: 40, textAlign: "center" }}>{t("galleryLoading")}</div>;
   if (!files.length) {
     return (
       <div style={{ textAlign: "center", padding: "48px 16px" }}>
@@ -346,9 +350,9 @@ function GalleryScreen({ token }: { token: string }) {
           size={32}
           style={{ color: "var(--tg-theme-hint-color, #aaa)", marginBottom: 10 }}
         />
-        <p style={{ fontSize: 15 }}>Пока нет генераций</p>
+        <p style={{ fontSize: 15 }}>{t("galleryEmpty")}</p>
         <p style={{ fontSize: 13, color: "var(--tg-theme-hint-color, #888)" }}>
-          Создайте первую в боте: /image закат над морем
+          {t("galleryEmptyHint")}
         </p>
       </div>
     );
@@ -357,7 +361,7 @@ function GalleryScreen({ token }: { token: string }) {
   return (
     <>
       <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 12 }}>
-        Мои генерации
+        {t("myGenerations")}
       </h2>
       <div
         style={{
@@ -418,7 +422,7 @@ function GalleryScreen({ token }: { token: string }) {
                     }
                   }}
                 >
-                  <span style={{ fontSize: 11, fontWeight: 600 }}>Стори</span>
+                  <span style={{ fontSize: 11, fontWeight: 600 }}>{t("story")}</span>
                 </GalleryBtn>
               )}
             </div>
@@ -470,6 +474,7 @@ interface ChatMsg {
 }
 
 function ChatScreen({ token }: { token: string }) {
+  const t = useTranslations("tg");
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
   const [chatId, setChatId] = useState<number | null>(null);
@@ -519,7 +524,7 @@ function ChatScreen({ token }: { token: string }) {
             setMessages((prev) =>
               prev.map((m, idx) =>
                 idx === prev.length - 1
-                  ? { role: "assistant", text: "Ошибка генерации. Попробуйте ещё раз." }
+                  ? { role: "assistant", text: t("chatGenError") }
                   : m
               )
             );
@@ -530,7 +535,7 @@ function ChatScreen({ token }: { token: string }) {
         }
       }
     },
-    [token]
+    [token, t]
   );
 
   const send = useCallback(async () => {
@@ -542,7 +547,7 @@ function ChatScreen({ token }: { token: string }) {
     setMessages((prev) => [
       ...prev,
       { role: "user", text },
-      { role: "assistant", text: "Думаю...", pending: true },
+      { role: "assistant", text: t("chatThinking"), pending: true },
     ]);
     try {
       let assistantId: number;
@@ -572,7 +577,7 @@ function ChatScreen({ token }: { token: string }) {
           idx === prev.length - 1
             ? {
                 role: "assistant",
-                text: e instanceof Error ? e.message : "Ошибка отправки",
+                text: e instanceof Error ? e.message : t("chatSendError"),
               }
             : m
         )
@@ -580,11 +585,11 @@ function ChatScreen({ token }: { token: string }) {
     } finally {
       setSending(false);
     }
-  }, [input, sending, networkSlug, chatId, token, poll]);
+  }, [input, sending, networkSlug, chatId, token, poll, t]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "70vh" }}>
-      <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 12 }}>Чат с AI</h2>
+      <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 12 }}>{t("chatTitle")}</h2>
       <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
         {messages.length === 0 && (
           <p
@@ -595,7 +600,7 @@ function ChatScreen({ token }: { token: string }) {
               padding: "32px 0",
             }}
           >
-            Задайте вопрос — AI ответит прямо здесь.
+            {t("chatEmptyHint")}
           </p>
         )}
         {messages.map((m, i) => (
@@ -638,7 +643,7 @@ function ChatScreen({ token }: { token: string }) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && send()}
-          placeholder="Ваш вопрос..."
+          placeholder={t("chatPlaceholder")}
           style={{
             flex: 1,
             padding: "11px 14px",

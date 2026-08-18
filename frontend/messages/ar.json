@@ -2417,5 +2417,30 @@
     "benefit": "يعمل بدون متصفح ويحمّل بشكل أسرع",
     "install": "تثبيت",
     "close": "إغلاق"
+  },
+  "tg": {
+    "needTelegram": "افتح عبر بوت Telegram (@{bot})",
+    "loading": "جارٍ التحميل...",
+    "authError": "خطأ في المصادقة",
+    "networkError": "خطأ في الشبكة",
+    "linkAccount": "اربط حسابك: أرسل /start إلى البوت واتبع التعليمات.",
+    "tabBalance": "الرصيد",
+    "tabGallery": "المعرض",
+    "tabChat": "الدردشة",
+    "topUp": "شحن الرصيد",
+    "myGenerations": "إبداعاتي",
+    "aiTasks": "مهام الذكاء الاصطناعي المجدولة",
+    "analytics": "تحليلات الإنفاق",
+    "addToHomeScreen": "أضف إلى الشاشة الرئيسية",
+    "galleryLoading": "جارٍ تحميل المعرض...",
+    "galleryEmpty": "لا توجد إبداعات بعد",
+    "galleryEmptyHint": "أنشئ أول إبداع لك في البوت: /image غروب الشمس فوق البحر",
+    "story": "القصة",
+    "chatTitle": "الدردشة مع الذكاء الاصطناعي",
+    "chatEmptyHint": "اطرح سؤالًا — سيجيب الذكاء الاصطناعي هنا.",
+    "chatPlaceholder": "سؤالك...",
+    "chatThinking": "جارٍ التفكير...",
+    "chatGenError": "خطأ في التوليد. يرجى المحاولة مرة أخرى.",
+    "chatSendError": "خطأ في الإرسال"
   }
 }
