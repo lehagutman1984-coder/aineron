@@ -14,12 +14,12 @@ import { HomeCta } from "@/components/landing/HomeCta";
 
 export const revalidate = 3600;
 
-async function getPopularNetworks(): Promise<NetworkListItem[]> {
-  return (await serverListNetworks({ is_popular: true }).catch(() => [])) ?? [];
+async function getPopularNetworks(locale: string): Promise<NetworkListItem[]> {
+  return (await serverListNetworks({ is_popular: true, lang: locale }).catch(() => [])) ?? [];
 }
 
-async function getFreeNetworks(): Promise<NetworkListItem[]> {
-  return (await serverListNetworks({ is_free: true }).catch(() => [])) ?? [];
+async function getFreeNetworks(locale: string): Promise<NetworkListItem[]> {
+  return (await serverListNetworks({ is_free: true, lang: locale }).catch(() => [])) ?? [];
 }
 
 const FEATURE_ICONS = [Layers, ShieldCheck, Code2, ImageIcon];
@@ -36,11 +36,15 @@ const COMPARISON_MARKS: { aineron: boolean; chatgpt: boolean; gemini: boolean }[
   { aineron: true, chatgpt: false, gemini: false },
 ];
 
-export default async function HomePage() {
+export default async function HomePage({
+  params,
+}: {
+  params: { locale: string };
+}) {
   const t = await getTranslations("home");
   const [popular, freeNetworks] = await Promise.all([
-    getPopularNetworks(),
-    getFreeNetworks(),
+    getPopularNetworks(params.locale),
+    getFreeNetworks(params.locale),
   ]);
   const freeCount = freeNetworks.length;
 

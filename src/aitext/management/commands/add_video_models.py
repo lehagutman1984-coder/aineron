@@ -1332,7 +1332,7 @@ class Command(BaseCommand):
                     model_name=m['model_name'],
                     cost_per_message=m['cost_per_message'],
                     order=m.get('order', 0),
-                    description=m.get('description', ''),
+                    description_ru=m.get('description', ''),
                     provider='fal-ai',
                     config_json=config,
                     is_active=True,
@@ -1346,13 +1346,13 @@ class Command(BaseCommand):
                 network.category = video_cat
                 network.model_name = m['model_name']
                 network.order = m.get('order', 0)
-                network.description = m.get('description', '')
+                network.description_ru = m.get('description', '')
                 network.provider = 'fal-ai'
                 network.config_json = config
                 network.is_active = True
                 network.is_popular = m.get('is_popular', False)
                 network.save(update_fields=[
-                    'name', 'category', 'model_name', 'order', 'description',
+                    'name', 'category', 'model_name', 'order', 'description_ru',
                     'provider', 'config_json', 'is_active', 'is_popular',
                 ])
                 self.stdout.write(f'  обновлена: {network.name} ({network.model_name})')

@@ -81,7 +81,7 @@ class Command(BaseCommand):
                     cost_kopecks=0,
                     messages_limit=limit,
                     order=order,
-                    description=description,
+                    description_ru=description,
                     is_active=True,
                     is_popular=False,
                     unlimited=False,
@@ -100,14 +100,14 @@ class Command(BaseCommand):
                 network.cost_kopecks = 0
                 network.messages_limit = limit
                 network.order = order
-                network.description = description
+                network.description_ru = description
                 network.is_active = True
                 network.is_popular = False
                 network.unlimited = False
                 network.save(update_fields=[
                     'name', 'category', 'model_name', 'provider', 'is_free',
                     'cost_per_message', 'cost_kopecks', 'messages_limit', 'order',
-                    'description', 'is_active', 'is_popular', 'unlimited',
+                    'description_ru', 'is_active', 'is_popular', 'unlimited',
                 ])
                 self.stdout.write(
                     f"  обновлена: {network.name} ({network.model_name}, лимит {limit}/день)"

@@ -78,7 +78,7 @@ class Command(BaseCommand):
                     'model_name': m['model_name'],
                     'cost_per_message': m['cost_per_message'],
                     'order': m.get('order', 99),
-                    'description': m.get('description', ''),
+                    'description_ru': m.get('description', ''),
                     'provider': 'openrouter',
                     'is_active': True,
                     'handle_photo': m.get('handle_photo', False),
