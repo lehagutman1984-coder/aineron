@@ -294,7 +294,19 @@
     "promoPlaceholder": "Masukkan kode promo",
     "promoApply": "Terapkan",
     "historyEmpty": "Riwayat pembayaran kosong.",
-    "loading": "Memuat..."
+    "loading": "Memuat...",
+    "cryptoTitle": "Bayar dengan kripto",
+    "cryptoIntro": "Isi saldo Anda dengan {assets} melalui @CryptoBot. Faktur diterbitkan dalam USD.",
+    "cryptoWaiting": "Menunggu pembayaran sebesar ${amount}...",
+    "cryptoOpen": "Buka faktur",
+    "cryptoCancel": "Batalkan",
+    "cryptoNote": "Faktur berlaku selama 30 menit. Saldo Anda akan diperbarui secara otomatis setelah pembayaran.",
+    "cryptoLabel": "Jumlah, $ ({min}–{max})",
+    "cryptoPay": "Buat faktur",
+    "cryptoCreating": "Membuat faktur...",
+    "cryptoPaid": "Pembayaran diterima — saldo diperbarui.",
+    "cryptoFailed": "Faktur kedaluwarsa atau dibatalkan. Buat yang baru.",
+    "cryptoReceive": "Anda akan menerima {count} kredit"
   },
   "chat": {
     "notFound": "Chat tidak ditemukan",

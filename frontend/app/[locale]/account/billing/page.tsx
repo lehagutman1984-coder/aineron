@@ -618,6 +618,7 @@ function StarsSection({ onPaymentInitiated }: { onPaymentInitiated: (invoiceId: 
 // ── Crypto payment (Crypto Pay / @CryptoBot) ─────────────────────────────────
 
 function CryptoSection() {
+  const t = useTranslations("billing");
   const queryClient = useQueryClient();
   const setBalance = useAuthStore((s) => s.setBalance);
 
@@ -654,11 +655,7 @@ function CryptoSection() {
         queryClient.invalidateQueries({ queryKey: ["payment-history"] });
       } else if (status.status === "failed") {
         setInvoice(null);
-        setError(
-          config?.mode === "usd"
-            ? "The invoice expired or was cancelled. Create a new one."
-            : "Счёт истёк или отменён. Создайте новый.",
-        );
+        setError(t("cryptoFailed"));
       }
       return status;
     },
@@ -671,37 +668,24 @@ function CryptoSection() {
 
   const isUsd = config.mode === "usd";
   const value = amount ?? config.min_amount;
-  // Локализация блока: usd-режим = международный инстанс (английский),
-  // rub-режим = aineron.ru (русский). До полного i18n-извлечения (G2).
-  const L = isUsd
-    ? {
-        title: "Pay with crypto",
-        intro: `Top up your balance with ${config.assets.join(", ")} via @CryptoBot. Invoice is issued in USD.`,
-        waiting: (a: string) => `Waiting for payment of $${a}...`,
-        open: "Open invoice",
-        cancel: "Cancel",
-        note: "The invoice is valid for 30 minutes. Your balance updates automatically after payment.",
-        label: `Amount, $ (${config.min_amount}–${config.max_amount})`,
-        pay: "Create invoice",
-        creating: "Creating invoice...",
-        paid: "Payment received — balance updated.",
-        failed: "The invoice expired or was cancelled. Create a new one.",
-        receive: (c: number) => `You will receive ${c.toLocaleString("en-US")} credits`,
-      }
-    : {
-        title: "Оплата криптовалютой",
-        intro: `Пополнение баланса через ${config.assets.join(", ")} — счёт выставляется в @CryptoBot, зачисление в рублях по номиналу счёта.`,
-        waiting: (a: string) => `Ожидаем оплату счёта на ${parseFloat(a).toLocaleString("ru-RU")} ₽...`,
-        open: "Открыть счёт",
-        cancel: "Отмена",
-        note: "Счёт действителен 30 минут. Баланс пополнится автоматически после оплаты.",
-        label: `Сумма, ₽ (от ${config.min_amount} до ${config.max_amount})`,
-        pay: "Выставить счёт",
-        creating: "Создание счёта...",
-        paid: "Оплата получена, баланс пополнен.",
-        failed: "Счёт истёк или отменён. Создайте новый.",
-        receive: () => "",
-      };
+  // Текст берётся из словаря billing.crypto* (messages/{locale}.json) — usd-режим
+  // (aineron.net) читает en/fa/tr/id/ar, rub-режим (aineron.ru) читает только ru.
+  const assetsList = config.assets.join(", ");
+  const L = {
+    title: t("cryptoTitle"),
+    intro: t("cryptoIntro", { assets: assetsList }),
+    waiting: (a: string) =>
+      t("cryptoWaiting", { amount: isUsd ? a : parseFloat(a).toLocaleString("ru-RU") }),
+    open: t("cryptoOpen"),
+    cancel: t("cryptoCancel"),
+    note: t("cryptoNote"),
+    label: t("cryptoLabel", { min: config.min_amount, max: config.max_amount }),
+    pay: t("cryptoPay"),
+    creating: t("cryptoCreating"),
+    paid: t("cryptoPaid"),
+    failed: t("cryptoFailed"),
+    receive: (c: number) => (isUsd ? t("cryptoReceive", { count: c.toLocaleString("en-US") }) : ""),
+  };
 
   const USD_PACKAGES = [5, 10, 25, 50];
 

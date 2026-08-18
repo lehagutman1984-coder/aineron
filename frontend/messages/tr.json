@@ -294,7 +294,19 @@
     "promoPlaceholder": "Promosyon kodunu girin",
     "promoApply": "Uygula",
     "historyEmpty": "Ödeme geçmişi boş.",
-    "loading": "Yükleniyor..."
+    "loading": "Yükleniyor...",
+    "cryptoTitle": "Kripto ile ödeme yap",
+    "cryptoIntro": "@CryptoBot üzerinden {assets} ile bakiyenizi doldurun. Fatura USD cinsinden düzenlenir.",
+    "cryptoWaiting": "${amount} tutarında ödemeniz bekleniyor...",
+    "cryptoOpen": "Faturayı aç",
+    "cryptoCancel": "İptal et",
+    "cryptoNote": "Fatura 30 dakika geçerlidir. Ödeme sonrası bakiyeniz otomatik olarak güncellenir.",
+    "cryptoLabel": "Tutar, $ ({min}–{max})",
+    "cryptoPay": "Fatura oluştur",
+    "cryptoCreating": "Fatura oluşturuluyor...",
+    "cryptoPaid": "Ödeme alındı — bakiye güncellendi.",
+    "cryptoFailed": "Fatura süresi doldu veya iptal edildi. Yeni bir fatura oluşturun.",
+    "cryptoReceive": "{count} kredi alacaksınız"
   },
   "chat": {
     "notFound": "Sohbet bulunamadı",

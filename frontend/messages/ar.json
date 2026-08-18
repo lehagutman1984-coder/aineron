@@ -294,7 +294,19 @@
     "promoPlaceholder": "أدخل الرمز الترويجي",
     "promoApply": "تطبيق",
     "historyEmpty": "سجل المدفوعات فارغ.",
-    "loading": "جارٍ التحميل..."
+    "loading": "جارٍ التحميل...",
+    "cryptoTitle": "الدفع بالعملات الرقمية",
+    "cryptoIntro": "اشحن رصيدك باستخدام {assets} عبر @CryptoBot. يتم إصدار الفاتورة بالدولار الأمريكي.",
+    "cryptoWaiting": "في انتظار دفع ${amount}...",
+    "cryptoOpen": "فتح الفاتورة",
+    "cryptoCancel": "إلغاء",
+    "cryptoNote": "الفاتورة صالحة لمدة 30 دقيقة. يتم تحديث رصيدك تلقائيًا بعد الدفع.",
+    "cryptoLabel": "المبلغ، $ ({min}–{max})",
+    "cryptoPay": "إنشاء فاتورة",
+    "cryptoCreating": "جارٍ إنشاء الفاتورة...",
+    "cryptoPaid": "تم استلام الدفع — تم تحديث الرصيد.",
+    "cryptoFailed": "انتهت صلاحية الفاتورة أو تم إلغاؤها. أنشئ واحدة جديدة.",
+    "cryptoReceive": "ستتلقى {count} أرصدة"
   },
   "chat": {
     "notFound": "الدردشة غير موجودة",

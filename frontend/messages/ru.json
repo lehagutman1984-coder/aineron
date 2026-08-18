@@ -294,7 +294,19 @@
     "promoPlaceholder": "Введите промокод",
     "promoApply": "Применить",
     "historyEmpty": "История платежей пуста.",
-    "loading": "Загрузка..."
+    "loading": "Загрузка...",
+    "cryptoTitle": "Оплата криптовалютой",
+    "cryptoIntro": "Пополнение баланса через {assets} — счёт выставляется в @CryptoBot, зачисление в рублях по номиналу счёта.",
+    "cryptoWaiting": "Ожидаем оплату счёта на {amount} ₽...",
+    "cryptoOpen": "Открыть счёт",
+    "cryptoCancel": "Отмена",
+    "cryptoNote": "Счёт действителен 30 минут. Баланс пополнится автоматически после оплаты.",
+    "cryptoLabel": "Сумма, ₽ (от {min} до {max})",
+    "cryptoPay": "Выставить счёт",
+    "cryptoCreating": "Создание счёта...",
+    "cryptoPaid": "Оплата получена, баланс пополнен.",
+    "cryptoFailed": "Счёт истёк или отменён. Создайте новый.",
+    "cryptoReceive": "Вы получите {count} credits"
   },
   "chat": {
     "notFound": "Чат не найден",

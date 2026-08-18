@@ -294,7 +294,19 @@
     "promoPlaceholder": "Enter promo code",
     "promoApply": "Apply",
     "historyEmpty": "Payment history is empty.",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "cryptoTitle": "Pay with crypto",
+    "cryptoIntro": "Top up your balance with {assets} via @CryptoBot. Invoice is issued in USD.",
+    "cryptoWaiting": "Waiting for payment of ${amount}...",
+    "cryptoOpen": "Open invoice",
+    "cryptoCancel": "Cancel",
+    "cryptoNote": "The invoice is valid for 30 minutes. Your balance updates automatically after payment.",
+    "cryptoLabel": "Amount, $ ({min}–{max})",
+    "cryptoPay": "Create invoice",
+    "cryptoCreating": "Creating invoice...",
+    "cryptoPaid": "Payment received — balance updated.",
+    "cryptoFailed": "The invoice expired or was cancelled. Create a new one.",
+    "cryptoReceive": "You will receive {count} credits"
   },
   "chat": {
     "notFound": "Chat not found",
