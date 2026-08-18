@@ -158,17 +158,17 @@ class Command(BaseCommand):
         for doc_type, title, content in docs:
             obj, created = LegalDocument.objects.get_or_create(
                 document_type=doc_type,
-                defaults={'title': title, 'content': content.strip()},
+                defaults={'title_ru': title, 'content_ru': content.strip()},
             )
             if created:
                 self.stdout.write(self.style.SUCCESS(f'{obj.get_document_type_display()}: создан'))
                 continue
 
-            is_empty = not obj.content.strip() or obj.content.strip() == PLACEHOLDER
+            is_empty = not (obj.content_ru or '').strip() or obj.content_ru.strip() == PLACEHOLDER
             if force or is_empty:
-                obj.title = title
-                obj.content = content.strip()
-                obj.save()
+                obj.title_ru = title
+                obj.content_ru = content.strip()
+                obj.save(update_fields=['title_ru', 'content_ru'])
                 self.stdout.write(self.style.SUCCESS(f'{obj.get_document_type_display()}: обновлён'))
             else:
                 self.stdout.write(
