@@ -160,8 +160,10 @@ export function CatalogClient({ networks, freeNetworks = [], categories, initial
         )}
         {categories
           // Категория «Бесплатно/Бесплатные» дублирует синтетическую вкладку
-          // «Бесплатные» (is_free) и обычно пуста — не показываем её.
-          .filter((c) => !/^(бесплат|free)/i.test(c.name.trim()))
+          // «Бесплатные» (is_free) и обычно пуста — не показываем её. Матчим
+          // по slug (стабилен), а не по name — на fa/tr/id/ar name переведён
+          // и с рус./eng. префиксом больше не совпадает.
+          .filter((c) => !/^(free|бесплат)/i.test(c.slug.trim()))
           .map((c) => (
             <CategoryTab
               key={c.id}
