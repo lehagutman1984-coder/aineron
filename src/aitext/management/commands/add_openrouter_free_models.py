@@ -37,11 +37,6 @@ FREE_MODELS = [
         'Структурированные ответы и сложные многошаговые рассуждения, контекст 1M токенов.',
     ),
     (
-        'free-laguna-m1', 'Laguna M.1 — бесплатно', 'poolside/laguna-m.1:free',
-        15, 3,
-        'Флагманская модель для кода и агентной разработки от Poolside.',
-    ),
-    (
         'free-north-mini-code', 'North Mini Code — бесплатно', 'cohere/north-mini-code:free',
         15, 4,
         'Агентная модель Cohere для кода, terminal-задач и разработки.',
