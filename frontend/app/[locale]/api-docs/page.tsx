@@ -370,7 +370,7 @@ llm = OpenAI(base_url="${API_BASE}", api_key="${S.key}")
 def solve_with_code(task: str) -> str:
     """${S.agentDoc}"""
     code = llm.chat.completions.create(
-        model="deepseek-v3",
+        model="deepseek-v3.2",
         messages=[{
             "role": "user",
             "content": f"${S.agentTask} {task}",
@@ -557,7 +557,7 @@ function buildGroups(t: Awaited<ReturnType<typeof getTranslations>>): DocGroup[]
                 [<IC>claude-sonnet-4-6</IC>, t("endpoints.chatModelSonnet")],
                 [<IC>claude-opus-4-8</IC>, t("endpoints.chatModelOpus")],
                 [<IC>gemini-2.5-pro</IC>, t("endpoints.chatModelGemini")],
-                [<IC>deepseek-v3</IC>, t("endpoints.chatModelDeepseek")],
+                [<IC>deepseek-v3.2</IC>, t("endpoints.chatModelDeepseek")],
               ]}
             />
             <Callout type="info">
