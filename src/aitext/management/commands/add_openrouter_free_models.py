@@ -47,29 +47,14 @@ FREE_MODELS = [
         'Агентная модель Cohere для кода, terminal-задач и разработки.',
     ),
     (
-        'free-gpt-oss-120b', 'GPT-OSS 120B — бесплатно', 'openai/gpt-oss-120b:free',
-        15, 5,
-        'Открытая модель OpenAI для рассуждений и агентных задач общего назначения.',
-    ),
-    (
         'free-gemma-4-31b', 'Gemma 4 31B — бесплатно', 'google/gemma-4-31b-it:free',
         15, 6,
         'Модель Google DeepMind с поддержкой изображений — универсальный чат и код.',
     ),
     (
-        'free-qwen3-coder', 'Qwen3 Coder 480B — бесплатно', 'qwen/qwen3-coder:free',
-        15, 7,
-        'Флагманская модель Qwen для кода и агентных задач, контекст 1M токенов.',
-    ),
-    (
         'free-nemotron-3-nano-30b', 'Nemotron 3 Nano 30B — бесплатно', 'nvidia/nemotron-3-nano-30b-a3b:free',
         15, 8,
         'Компактная эффективная модель NVIDIA для агентных задач.',
-    ),
-    (
-        'free-qwen3-next-80b', 'Qwen3 Next 80B — бесплатно', 'qwen/qwen3-next-80b-a3b-instruct:free',
-        15, 9,
-        'Быстрые и стабильные ответы без «размышлений» — код, знания, много языков.',
     ),
     (
         'free-laguna-xs21', 'Laguna XS 2.1 — бесплатно', 'poolside/laguna-xs-2.1:free',
@@ -81,6 +66,16 @@ FREE_MODELS = [
         15, 11,
         'Универсальная модель NVIDIA с настраиваемым режимом рассуждений.',
     ),
+    (
+        'free-glm-5-2', 'GLM 5.2 — бесплатно', 'z-ai/glm-5.2:free',
+        15, 12,
+        'Новейшая флагманская модель Zhipu AI — рассуждения и код.',
+    ),
+    (
+        'free-nemotron-nano-12b-vl', 'Nemotron Nano 12B VL — бесплатно', 'nvidia/nemotron-nano-12b-v2-vl:free',
+        15, 13,
+        'Модель NVIDIA с поддержкой изображений — понимает фото и скриншоты.',
+    ),
 ]
 
 # Слаги старых бесплатных моделей Groq (add_groq_free_models) — деактивируем,
@@ -91,9 +86,15 @@ OLD_GROQ_FREE_SLUGS = [
 ]
 
 # Слаги первой (неверенной) партии OpenRouter-моделей, заменённой списком выше.
-# 'free-qwen3-coder' сюда не входит — модель осталась в FREE_MODELS (тот же слаг).
 OLD_OPENROUTER_FREE_SLUGS = [
     'free-deepseek-v4-flash', 'free-llama-3-3-70b-or', 'free-glm-4-5-air',
+]
+
+# 2026-08-24: OpenRouter снял с бесплатного тарифа (проверено живым вызовом,
+# 404 "This model is unavailable for free" / "No endpoints found") — раньше
+# работали, теперь только платно или не существуют вовсе под этим слагом.
+RETIRED_FREE_TIER_SLUGS = [
+    'free-gpt-oss-120b', 'free-qwen3-coder', 'free-qwen3-next-80b', 'free-laguna-m1',
 ]
 
 
@@ -125,6 +126,12 @@ class Command(BaseCommand):
             slug__in=OLD_OPENROUTER_FREE_SLUGS, is_active=True,
         ).update(is_active=False)
         self.stdout.write(f'  деактивировано: {deactivated_or}')
+
+        self.stdout.write('\n=== Деактивация моделей, снятых OpenRouter с бесплатного тарифа ===')
+        deactivated_retired = NeuralNetwork.objects.filter(
+            slug__in=RETIRED_FREE_TIER_SLUGS, is_active=True,
+        ).update(is_active=False)
+        self.stdout.write(f'  деактивировано: {deactivated_retired}')
 
         self.stdout.write('\n=== Бесплатные модели (OpenRouter) ===')
         for slug, name, model_name, limit, order, description in FREE_MODELS:
