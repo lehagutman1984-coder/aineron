@@ -333,6 +333,14 @@ footer{border-top:1px solid var(--line);background:var(--bg-2);padding:66px 0 40
 /* ---------- ЛИПКАЯ КНОПКА (МОБИЛКА) ---------- */
 .dock{display:none}
 
+/* ---------- ВОЗМОЖНОСТИ ---------- */
+.feat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:52px}
+.feat{padding:28px 26px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line);transition:border-color .2s ease,transform .2s ease}
+.feat:hover{border-color:rgba(240,114,74,.4);transform:translateY(-3px)}
+.feat-n{display:block;font-size:12px;letter-spacing:.08em;color:var(--coral);margin-bottom:16px}
+.feat h4{font-size:17px;letter-spacing:-.01em;margin-bottom:10px}
+.feat p{color:var(--muted);font-size:14px;line-height:1.62}
+
 /* ---------- АДАПТИВ ---------- */
 @media(max-width:1000px){
   .hero-inner{grid-template-columns:1fr;gap:38px}
@@ -342,6 +350,7 @@ footer{border-top:1px solid var(--line);background:var(--bg-2);padding:66px 0 40
   .nav-links{display:none}
   .burger{display:flex}
   .metrics{display:grid;grid-template-columns:1fr 1fr}
+  .feat-grid{grid-template-columns:1fr 1fr}
 }
 @media(max-width:640px){
   body{padding-bottom:calc(78px + var(--safe-b))}
@@ -376,6 +385,8 @@ footer{border-top:1px solid var(--line);background:var(--bg-2);padding:66px 0 40
   .grid-3{grid-template-columns:1fr 1fr}
   .grid-3 > div:last-child:nth-child(odd){grid-column:1 / -1}
   .grid-2{grid-template-columns:1fr}
+  .feat-grid{grid-template-columns:1fr;gap:14px}
+  .feat{padding:22px}
   .trow{grid-template-columns:1.5fr .5fr .5fr .5fr}
   .trow>div{padding:13px 8px;font-size:12px;line-height:1.35}
   .trow>div:first-child{padding-left:14px}
@@ -410,6 +421,7 @@ footer{border-top:1px solid var(--line);background:var(--bg-2);padding:66px 0 40
     <a href="/" class="logo"><i></i>Aineron</a>
     <nav class="nav-links">
       <a href="#models">Модели</a>
+      <a href="#features">Возможности</a>
       <a href="#compare">Сравнение</a>
       <a href="#save">Экономия</a>
       <a href="#faq">Вопросы</a>
@@ -424,6 +436,7 @@ footer{border-top:1px solid var(--line);background:var(--bg-2);padding:66px 0 40
 
 <div class="drawer" id="drawer">
   <a href="#models" class="dl">Модели</a>
+  <a href="#features" class="dl">Возможности</a>
   <a href="#compare" class="dl">Сравнение</a>
   <a href="#save" class="dl">Экономия</a>
   <a href="#faq" class="dl">Вопросы</a>
@@ -679,10 +692,61 @@ footer{border-top:1px solid var(--line);background:var(--bg-2);padding:66px 0 40
   </div>
 </section>
 
+<!-- ВОЗМОЖНОСТИ -->
+<section class="sec" id="features">
+  <div class="wrap">
+    <div class="eyebrow"><b>II</b> — что уже внутри</div>
+    <h2 class="sec-title">Не просто чат с нейросетью</h2>
+    <p class="sec-sub">Это уже работает и включено в сервис — не отдельные подписки и не «скоро добавим».</p>
+    <div class="feat-grid">
+      <div class="feat">
+        <span class="feat-n mono">01</span>
+        <h4>Telegram-бот</h4>
+        <p>Весь сервис прямо в Telegram: чат, генерация фото и видео, голосовые сообщения, история переписки, работа в группах — без установки приложений.</p>
+      </div>
+      <div class="feat">
+        <span class="feat-n mono">02</span>
+        <h4>Веб-поиск в чате</h4>
+        <p>Модель сама ищет актуальную информацию в интернете во время ответа — не нужно проверять вручную и переключаться между вкладками.</p>
+      </div>
+      <div class="feat">
+        <span class="feat-n mono">03</span>
+        <h4>Память между чатами</h4>
+        <p>Сервис запоминает контекст ваших проектов и переписок — не приходится каждый раз объяснять заново, кто вы и над чем работаете.</p>
+      </div>
+      <div class="feat">
+        <span class="feat-n mono">04</span>
+        <h4>Проекты и связь с GitHub</h4>
+        <p>Папки проектов со своим системным промптом и файлами — коннектор подтягивает код из вашего репозитория и отправляет коммиты обратно.</p>
+      </div>
+      <div class="feat">
+        <span class="feat-n mono">05</span>
+        <h4>API для разработчиков</h4>
+        <p>OpenAI-совместимый API — подключается к Cursor, VS Code и своим приложениям: меняете адрес и ключ, остальной код трогать не нужно.</p>
+      </div>
+      <div class="feat">
+        <span class="feat-n mono">06</span>
+        <h4>Model Arena</h4>
+        <p>Сравнение 2–3 моделей бок о бок на один и тот же запрос — сразу видно, какая справилась лучше, без переключения вкладок.</p>
+      </div>
+      <div class="feat">
+        <span class="feat-n mono">07</span>
+        <h4>Голос: ввод и озвучка</h4>
+        <p>Надиктуйте вопрос голосом и получите голосовой ответ — быстрее, чем печатать, и удобно, когда заняты руки.</p>
+      </div>
+      <div class="feat">
+        <span class="feat-n mono">08</span>
+        <h4>AI-задачи по расписанию</h4>
+        <p>Настройте регулярную задачу один раз — сервис сам выполнит её по расписанию и пришлёт результат, без напоминаний.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- СРАВНЕНИЕ -->
 <section class="sec" id="compare" style="background:var(--bg-2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
   <div class="wrap">
-    <div class="eyebrow"><b>II</b> — честное сравнение</div>
+    <div class="eyebrow"><b>III</b> — честное сравнение</div>
     <h2 class="sec-title">Aineron против мировых сервисов</h2>
     <p class="sec-sub">Без маркетинга: где мы объективно выигрываем, а где возможности совпадают.</p>
     <div class="table" id="cmpTable"></div>
@@ -692,7 +756,7 @@ footer{border-top:1px solid var(--line);background:var(--bg-2);padding:66px 0 40
 <!-- ЭКОНОМИЯ -->
 <section class="sec" id="save">
   <div class="wrap">
-    <div class="eyebrow"><b>III</b> — экономия</div>
+    <div class="eyebrow"><b>IV</b> — экономия</div>
     <h2 class="sec-title">Один счёт вместо пяти подписок</h2>
     <p class="sec-sub">Отдельные подписки на каждый сервис плюс VPN — дороже и неудобнее. Считаем на месяц.</p>
     <div class="save">
@@ -721,7 +785,7 @@ footer{border-top:1px solid var(--line);background:var(--bg-2);padding:66px 0 40
 <!-- FAQ -->
 <section class="sec" id="faq" style="background:var(--bg-2);border-top:1px solid var(--line)">
   <div class="wrap">
-    <div class="eyebrow"><b>IV</b> — справочник</div>
+    <div class="eyebrow"><b>V</b> — справочник</div>
     <h2 class="sec-title">Частые вопросы</h2>
     <div class="faq" id="faqList"></div>
   </div>
