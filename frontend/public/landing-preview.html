@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Aineron — все нейросети в одном окне</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700;800&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0C0A09;
+  --bg-2:#141010;
+  --surface:#191413;
+  --surface-2:#211A18;
+  --coral:#F0724A;
+  --coral-soft:rgba(240,114,74,.14);
+  --cream:#F4EDE8;
+  --muted:#948780;
+  --dim:#6B605B;
+  --line:rgba(244,237,232,.09);
+  --line-2:rgba(244,237,232,.05);
+  --ok:#6FD08C;
+  --no:#5A514D;
+  --maxw:1240px;
+  --r:18px;
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{
+  background:var(--bg);color:var(--cream);
+  font-family:'Manrope',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden;
+}
+h1,h2,h3,h4{font-family:'Unbounded','Manrope',sans-serif;font-weight:800;line-height:1.05;letter-spacing:-.03em}
+a{color:inherit;text-decoration:none}
+img,video{max-width:100%;display:block}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 32px}
+.mono{font-family:'JetBrains Mono',monospace}
+
+/* ---------- ШАПКА ---------- */
+header{
+  position:sticky;top:0;z-index:50;background:rgba(12,10,9,.86);
+  backdrop-filter:blur(18px);border-bottom:1px solid var(--line);
+}
+.nav{display:flex;align-items:center;justify-content:space-between;height:74px}
+.logo{display:flex;align-items:center;gap:10px;font-family:'Unbounded',sans-serif;font-weight:700;font-size:19px;letter-spacing:-.02em}
+.logo i{width:9px;height:9px;border-radius:50%;background:var(--coral);display:block;box-shadow:0 0 14px var(--coral)}
+.nav-links{display:flex;gap:34px;font-size:15px;font-weight:500;color:var(--muted)}
+.nav-links a{transition:color .2s}
+.nav-links a:hover{color:var(--cream)}
+.nav-right{display:flex;align-items:center;gap:22px}
+.btn{
+  position:relative;overflow:hidden;
+  display:inline-flex;align-items:center;justify-content:center;gap:9px;
+  padding:14px 26px;border-radius:12px;border:0;cursor:pointer;
+  font-family:'Manrope',sans-serif;font-weight:700;font-size:15px;
+  transition:transform .22s cubic-bezier(.34,1.3,.64,1),box-shadow .22s ease,background .22s ease,border-color .22s ease;
+}
+/* стрелка внутри кнопки чуть уезжает вперёд */
+.btn .ar{display:inline-block;transition:transform .22s cubic-bezier(.34,1.3,.64,1)}
+.btn:hover .ar{transform:translateX(4px)}
+/* честное нажатие */
+.btn:active{transform:translateY(0) scale(.975);transition-duration:.08s}
+.btn:focus-visible{outline:2px solid var(--coral);outline-offset:3px}
+
+.btn-primary{background:var(--coral);color:#150C08;box-shadow:0 8px 26px rgba(240,114,74,.26)}
+.btn-primary:hover{background:#FF8259;transform:translateY(-2px);box-shadow:0 14px 34px rgba(240,114,74,.38)}
+/* мягкий блик пробегает по коралловой кнопке при наведении */
+.btn-primary::after{
+  content:'';position:absolute;top:0;bottom:0;left:-60%;width:45%;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.42),transparent);
+  transform:skewX(-18deg);opacity:0;pointer-events:none;
+}
+.btn-primary:hover::after{animation:sheen .75s ease-out}
+@keyframes sheen{
+  0%{left:-60%;opacity:0}
+  12%{opacity:1}
+  100%{left:115%;opacity:0}
+}
+
+.btn-ghost{background:rgba(244,237,232,.05);color:var(--cream);border:1px solid var(--line)}
+.btn-ghost:hover{background:rgba(244,237,232,.09);border-color:rgba(240,114,74,.45);transform:translateY(-2px)}
+.btn-sm{padding:11px 20px;font-size:14px}
+.burger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:9px;margin-right:-9px;background:none;border:0}
+.burger span{width:23px;height:2px;background:var(--cream);border-radius:2px;transition:transform .25s,opacity .2s}
+.burger.on span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+.burger.on span:nth-child(2){opacity:0}
+.burger.on span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+
+/* мобильное меню */
+.drawer{
+  position:fixed;inset:0;z-index:49;background:var(--bg);padding:88px 22px 40px;
+  display:flex;flex-direction:column;transform:translateX(100%);
+  transition:transform .32s cubic-bezier(.4,0,.2,1);visibility:hidden;
+}
+.drawer.on{transform:translateX(0);visibility:visible}
+.drawer a.dl{
+  font-family:'Unbounded',sans-serif;font-weight:600;font-size:26px;letter-spacing:-.02em;
+  color:var(--cream);padding:16px 0;border-bottom:1px solid var(--line);
+}
+.drawer .d-actions{margin-top:auto;display:flex;flex-direction:column;gap:12px}
+.drawer .d-login{text-align:center;color:var(--muted);font-size:15px;padding:10px}
+.drawer .btn{width:100%}
+
+/* ---------- ЗАГОЛОВКИ СЕКЦИЙ ---------- */
+.eyebrow{
+  display:flex;align-items:center;gap:14px;
+  font-size:11px;letter-spacing:.24em;text-transform:uppercase;
+  font-weight:700;color:var(--dim);margin-bottom:22px;
+}
+.eyebrow b{color:var(--coral);font-weight:700}
+.eyebrow::after{content:'';flex:1;height:1px;background:var(--line)}
+.sec{padding:110px 0;position:relative}
+.sec-title{font-size:clamp(28px,4vw,44px);line-height:1.1;margin-bottom:16px}
+.sec-sub{color:var(--muted);font-size:17px;max-width:640px;line-height:1.65}
+
+/* ---------- ПЕРВЫЙ ЭКРАН ---------- */
+.hero{position:relative;padding:96px 0 70px;overflow:hidden}
+.hero-glow{
+  position:absolute;top:-320px;left:50%;transform:translateX(-50%);
+  width:1250px;height:900px;pointer-events:none;
+  background:radial-gradient(ellipse at center,rgba(240,114,74,.3) 0%,rgba(217,84,44,.1) 34%,transparent 68%);
+  filter:blur(28px);
+}
+.hero-mesh{
+  position:absolute;inset:0;pointer-events:none;opacity:.5;
+  background-image:radial-gradient(circle at 1px 1px,rgba(240,114,74,.2) 1px,transparent 0);
+  background-size:44px 44px;
+  mask-image:radial-gradient(ellipse 70% 60% at 50% 20%,#000 10%,transparent 72%);
+  -webkit-mask-image:radial-gradient(ellipse 70% 60% at 50% 20%,#000 10%,transparent 72%);
+}
+.hero-inner{position:relative;z-index:2;display:grid;grid-template-columns:1.35fr .85fr;gap:60px;align-items:start}
+.tagline{
+  display:inline-flex;align-items:center;gap:12px;
+  font-size:11px;letter-spacing:.24em;text-transform:uppercase;font-weight:700;
+  color:var(--coral);margin-bottom:30px;line-height:1.5;
+}
+.tagline i{width:6px;height:6px;border-radius:50%;background:var(--coral);display:block;flex-shrink:0}
+h1{font-size:clamp(38px,5.2vw,60px)}
+h1 .dim{color:var(--dim);display:block}
+.hero-sub{margin-top:28px;font-size:19px;color:var(--muted);max-width:520px;line-height:1.6}
+.hero-cta{display:flex;gap:14px;margin-top:38px;flex-wrap:wrap}
+.hero-note{margin-top:18px;font-size:13px;color:var(--dim)}
+
+.metrics{display:flex;flex-direction:column;gap:12px;margin-top:8px}
+.metric{
+  display:flex;align-items:baseline;justify-content:space-between;gap:16px;
+  padding:22px 26px;border-radius:14px;background:var(--surface);border:1px solid var(--line);
+}
+.metric .k{font-size:13px;color:var(--muted)}
+.metric .v{font-family:'Unbounded',sans-serif;font-weight:700;font-size:26px;letter-spacing:-.02em}
+.metric .v.sm{font-size:19px}
+.metric.hl{border-color:rgba(240,114,74,.4);background:linear-gradient(140deg,rgba(240,114,74,.14),rgba(240,114,74,.03))}
+.metric.hl .v{color:var(--coral)}
+
+/* демо-чат */
+.demo{margin-top:66px;position:relative;z-index:2;background:var(--surface);border:1px solid var(--line);border-radius:22px;overflow:hidden}
+.demo-top{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:18px 24px;border-bottom:1px solid var(--line-2);flex-wrap:wrap}
+.dots{display:flex;gap:7px}
+.dots i{width:10px;height:10px;border-radius:50%;background:rgba(244,237,232,.14);display:block}
+.dots i:first-child{background:rgba(240,114,74,.55)}
+.tabs{display:flex;gap:8px;flex-wrap:wrap}
+.tab{
+  display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:9px;cursor:pointer;
+  font-size:13px;font-weight:600;color:var(--muted);background:transparent;border:1px solid transparent;
+  transition:all .18s;font-family:'Manrope',sans-serif;white-space:nowrap;
+}
+.tab i{width:6px;height:6px;border-radius:50%;background:var(--dim);display:block}
+.tab:hover{color:var(--cream)}
+.tab.on{background:var(--coral-soft);border-color:rgba(240,114,74,.4);color:var(--coral)}
+.tab.on i{background:var(--coral)}
+.demo-body{padding:26px}
+.prompt-row{display:flex;gap:12px;align-items:stretch;flex-wrap:wrap}
+.prompt-box{
+  flex:1;min-width:260px;display:flex;align-items:center;gap:12px;
+  padding:18px 20px;border-radius:12px;background:rgba(12,10,9,.6);border:1px solid var(--line);
+  color:var(--cream);font-size:15px;overflow:hidden;
+}
+.prompt-box span.c{color:var(--coral);flex-shrink:0}
+.prompt-box #promptText{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chips{display:flex;gap:9px;margin-top:16px;flex-wrap:wrap}
+.chip{
+  padding:8px 15px;border-radius:8px;font-size:13px;cursor:pointer;white-space:nowrap;
+  background:rgba(244,237,232,.04);border:1px solid var(--line);color:var(--muted);transition:all .18s;
+}
+.chip:hover{color:var(--cream);border-color:rgba(240,114,74,.4)}
+.chip.on{background:var(--coral-soft);border-color:rgba(240,114,74,.45);color:var(--coral)}
+.answer{margin-top:20px;padding:24px;border-radius:14px;background:rgba(12,10,9,.5);border:1px solid var(--line-2);min-height:172px}
+.answer-label{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);margin-bottom:16px}
+.answer ol{margin:0 0 14px 20px;color:var(--cream)}
+.answer li{margin-bottom:7px}
+.answer p{color:var(--muted);font-size:15px}
+.answer a{color:var(--coral);border-bottom:1px dashed rgba(240,114,74,.5)}
+.answer .gen-img{
+  width:200px;max-width:60%;margin-bottom:16px;border-radius:11px;overflow:hidden;
+  border:1px solid rgba(240,114,74,.35);background:var(--surface-2);
+  animation:genPop .4s cubic-bezier(.34,1.3,.64,1);
+}
+.answer .gen-img img{width:100%;aspect-ratio:3/4;object-fit:cover}
+@keyframes genPop{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+.demo-foot{
+  display:flex;gap:30px;flex-wrap:wrap;padding:16px 26px;border-top:1px solid var(--line-2);
+  font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);font-weight:600;
+}
+.demo-foot b{color:var(--cream);font-weight:700}
+
+/* ---------- БЕГУЩАЯ СТРОКА ---------- */
+.marquee{padding:34px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);overflow:hidden;background:var(--bg-2)}
+.marquee-track{display:flex;gap:56px;width:max-content;animation:slide 38s linear infinite}
+.marquee:hover .marquee-track{animation-play-state:paused}
+@keyframes slide{to{transform:translateX(-50%)}}
+.mq{display:flex;align-items:center;gap:12px;font-family:'Unbounded',sans-serif;font-weight:600;font-size:19px;color:var(--dim);white-space:nowrap}
+.mq i{width:9px;height:9px;border-radius:2px;background:currentColor;display:block;opacity:.6}
+.mq.on{color:var(--cream)}
+.mq.on i{background:var(--coral);opacity:1}
+
+/* ---------- КАРТОЧКА МОДЕЛИ ---------- */
+.model{
+  display:grid;grid-template-columns:400px 1fr;gap:44px;align-items:start;
+  padding:44px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line);margin-bottom:26px;
+}
+.model-badge{
+  display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border-radius:100px;
+  font-size:10px;letter-spacing:.18em;text-transform:uppercase;font-weight:700;
+  background:var(--coral-soft);color:var(--coral);border:1px solid rgba(240,114,74,.3);margin-bottom:18px;
+}
+.model h3{font-size:30px;margin-bottom:10px}
+.model .kind{font-size:11px;color:var(--dim);letter-spacing:.14em;text-transform:uppercase;font-weight:700;margin-bottom:18px}
+.model p.desc{color:var(--muted);font-size:15px;line-height:1.65;margin-bottom:22px}
+.model-facts{display:flex;flex-direction:column;gap:10px;margin-bottom:24px}
+.fact{display:flex;justify-content:space-between;gap:14px;padding-bottom:10px;border-bottom:1px solid var(--line-2);font-size:14px}
+.fact span{color:var(--dim)}
+.fact b{font-weight:700}
+.fact b.c{color:var(--coral)}
+
+/* медиа внутри карточки */
+.media-video{position:relative;border-radius:13px;overflow:hidden;border:1px solid var(--line);background:#000}
+.media-video video{width:100%;aspect-ratio:16/9;object-fit:cover}
+.media-tag{
+  position:absolute;top:12px;left:12px;z-index:2;padding:5px 10px;border-radius:6px;
+  background:rgba(12,10,9,.72);font-size:9px;letter-spacing:.16em;text-transform:uppercase;
+  font-weight:700;color:var(--coral);border:1px solid rgba(240,114,74,.25);pointer-events:none;
+}
+.shot{border-radius:9px;overflow:hidden;border:1px solid rgba(126,65,46,.55);background:var(--surface-2)}
+.shot img{width:100%;aspect-ratio:3/4;object-fit:cover}
+.shot.wide img{aspect-ratio:2/1}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.pair{display:flex;flex-direction:column;gap:10px;align-items:center}
+.pair .arrow{
+  width:34px;height:34px;border-radius:50%;flex-shrink:0;
+  border:1px solid rgba(240,114,74,.4);background:var(--coral-soft);color:var(--coral);
+  display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;
+}
+.pair .shot{width:100%}
+.media-caption{
+  display:flex;justify-content:space-between;gap:16px;align-items:flex-start;
+  margin-top:14px;padding-top:14px;border-top:1px solid var(--line-2);flex-wrap:wrap;
+}
+.media-caption .pr{font-size:13px;color:var(--muted);line-height:1.5;flex:1;min-width:200px}
+.media-caption .pr b{color:var(--dim);font-weight:600;letter-spacing:.1em;text-transform:uppercase;font-size:10px;display:block;margin-bottom:5px}
+
+/* ---------- ТАБЛИЦА ---------- */
+.table{border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-top:40px}
+.trow{display:grid;grid-template-columns:1.7fr .8fr .8fr .8fr;align-items:center}
+.trow>div{padding:17px 22px;font-size:14.5px}
+.thead{background:rgba(244,237,232,.045);font-weight:700}
+.thead>div{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.thead .us{color:var(--coral)}
+.trow:not(.thead):nth-child(even){background:rgba(244,237,232,.022)}
+.trow .cell{text-align:center;font-weight:700}
+.yes{color:var(--ok)}
+.no{color:var(--no)}
+
+/* ---------- ЭКОНОМИЯ ---------- */
+.save{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:44px}
+.save-card{padding:34px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line)}
+.save-card.win{border-color:rgba(240,114,74,.45);background:linear-gradient(150deg,rgba(240,114,74,.11),rgba(240,114,74,.02))}
+.save-card h4{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:24px;font-family:'Manrope',sans-serif;font-weight:700}
+.save-card.win h4{color:var(--coral)}
+.srow{display:flex;justify-content:space-between;gap:14px;padding:13px 0;border-bottom:1px solid var(--line-2);font-size:15px}
+.srow b{font-weight:700;text-align:right;flex-shrink:0}
+.stotal{display:flex;justify-content:space-between;align-items:baseline;gap:14px;margin-top:22px;padding-top:20px;border-top:1px solid var(--line)}
+.stotal span{font-size:13px;color:var(--muted)}
+.stotal b{font-family:'Unbounded',sans-serif;font-size:27px;letter-spacing:-.02em;flex-shrink:0}
+.stotal b.c{color:var(--coral)}
+
+/* ---------- FAQ ---------- */
+.faq{margin-top:44px;border-top:1px solid var(--line)}
+.q{border-bottom:1px solid var(--line)}
+.q-head{
+  width:100%;display:flex;align-items:center;justify-content:space-between;gap:22px;
+  padding:26px 4px;background:none;border:0;cursor:pointer;text-align:left;
+  font-family:'Manrope',sans-serif;font-size:17px;font-weight:600;color:var(--cream);line-height:1.4;
+}
+.q-head:hover{color:var(--coral)}
+.q.open .q-head{color:var(--coral)}
+.q-mark{
+  flex-shrink:0;width:28px;height:28px;border-radius:50%;border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;font-size:17px;color:var(--muted);transition:all .25s;
+}
+.q.open .q-mark{transform:rotate(45deg);border-color:var(--coral);color:var(--coral)}
+.q-body{max-height:0;overflow:hidden;transition:max-height .35s ease}
+.q.open .q-body{max-height:400px}
+.q-body p{padding:0 4px 26px;color:var(--muted);max-width:860px;line-height:1.75}
+
+/* ---------- ФИНАЛ ---------- */
+.final{text-align:center;padding:130px 0;position:relative;overflow:hidden}
+.final-glow{
+  position:absolute;bottom:-380px;left:50%;transform:translateX(-50%);
+  width:1000px;height:700px;pointer-events:none;
+  background:radial-gradient(ellipse at center,rgba(240,114,74,.24),transparent 66%);filter:blur(30px);
+}
+.final-inner{position:relative;z-index:2}
+.final h2{font-size:clamp(30px,5vw,56px);margin-bottom:20px}
+.final p{color:var(--muted);font-size:18px;margin-bottom:38px}
+.final-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.final small{display:block;margin-top:22px;font-size:13px;color:var(--dim)}
+
+/* ---------- ПОДВАЛ ---------- */
+footer{border-top:1px solid var(--line);background:var(--bg-2);padding:66px 0 40px}
+.f-grid{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:44px}
+.f-about{color:var(--muted);font-size:14px;line-height:1.65;margin-top:16px;max-width:290px}
+.f-col h5{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin-bottom:18px;font-family:'Manrope',sans-serif;font-weight:700}
+.f-col a{display:block;padding:7px 0;color:var(--muted);font-size:14.5px;transition:color .18s}
+.f-col a:hover{color:var(--coral)}
+.f-bottom{margin-top:52px;padding-top:26px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.f-bottom p{font-size:12.5px;color:var(--dim);line-height:1.6;max-width:700px}
+.f-tag{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--coral);font-weight:700}
+
+/* ---------- ЛИПКАЯ КНОПКА (МОБИЛКА) ---------- */
+.dock{display:none}
+
+/* ---------- АДАПТИВ ---------- */
+@media(max-width:1000px){
+  .hero-inner{grid-template-columns:1fr;gap:38px}
+  .model{grid-template-columns:1fr;gap:30px;padding:30px}
+  .save{grid-template-columns:1fr}
+  .f-grid{grid-template-columns:1fr 1fr;gap:34px}
+  .nav-links{display:none}
+  .burger{display:flex}
+  .metrics{display:grid;grid-template-columns:1fr 1fr}
+}
+@media(max-width:640px){
+  body{padding-bottom:calc(78px + var(--safe-b))}
+  .wrap{padding:0 18px}
+  .nav{height:60px}
+  .sec{padding:64px 0}
+  .hero{padding:44px 0 40px}
+  .hero-sub{font-size:16px;margin-top:22px}
+  .hero-cta{flex-direction:column;gap:11px;margin-top:28px}
+  .hero-cta .btn{width:100%}
+  .nav-right .btn,.nav-right a[href="/login"]{display:none}
+  .metric{flex-direction:column;align-items:flex-start;gap:4px;padding:18px}
+  .metric .k{order:2;font-size:12px}
+  .metric .v{order:1}
+  .demo{margin-top:38px}
+  .demo-top{flex-direction:column;align-items:stretch;gap:14px;padding:16px}
+  .tabs{flex-wrap:nowrap;overflow-x:auto;margin:0 -16px;padding:0 16px;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{flex-shrink:0;background:rgba(244,237,232,.03);border-color:var(--line)}
+  .demo-body{padding:16px}
+  .prompt-row{flex-direction:column}
+  .prompt-row .btn{width:100%}
+  .chips{flex-wrap:nowrap;overflow-x:auto;margin:14px -16px 0;padding:0 16px;scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{flex-shrink:0}
+  .answer{padding:18px}
+  .demo-foot{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px;padding:16px}
+  .marquee{padding:24px 0}
+  .mq{font-size:16px}
+  .model{padding:22px}
+  .model h3{font-size:24px}
+  .grid-3{grid-template-columns:1fr 1fr}
+  .grid-3 > div:last-child:nth-child(odd){grid-column:1 / -1}
+  .grid-2{grid-template-columns:1fr}
+  .trow{grid-template-columns:1.5fr .5fr .5fr .5fr}
+  .trow>div{padding:13px 8px;font-size:12px;line-height:1.35}
+  .trow>div:first-child{padding-left:14px}
+  .thead>div{font-size:9.5px;letter-spacing:.06em}
+  .save-card{padding:26px 22px}
+  .stotal b{font-size:23px}
+  .q-head{font-size:15.5px;padding:20px 2px}
+  .final{padding:76px 0}
+  .final-btns{flex-direction:column}
+  .final-btns .btn{width:100%}
+  .f-grid{grid-template-columns:1fr 1fr}
+  .f-about{grid-column:1 / -1;max-width:none}
+  .dock{
+    display:flex;position:fixed;left:0;right:0;bottom:0;z-index:45;
+    padding:12px 18px calc(12px + var(--safe-b));
+    background:rgba(12,10,9,.92);backdrop-filter:blur(16px);
+    border-top:1px solid var(--line);gap:12px;align-items:center;
+  }
+  .dock .dock-note{flex-shrink:0;font-size:11px;color:var(--dim);line-height:1.3;max-width:88px}
+  .dock .dock-note b{color:var(--coral);font-family:'Unbounded',sans-serif;font-size:15px;display:block}
+  .dock .btn{flex:1}
+}
+@media(prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a href="/" class="logo"><i></i>Aineron</a>
+    <nav class="nav-links">
+      <a href="#models">Модели</a>
+      <a href="#compare">Сравнение</a>
+      <a href="#save">Экономия</a>
+      <a href="#faq">Вопросы</a>
+    </nav>
+    <div class="nav-right">
+      <a href="/login" style="font-size:15px;color:var(--muted)">Войти</a>
+      <a href="#final" class="btn btn-primary btn-sm">Начать бесплатно</a>
+      <button class="burger" id="burger" aria-label="Меню"><span></span><span></span><span></span></button>
+    </div>
+  </div>
+</header>
+
+<div class="drawer" id="drawer">
+  <a href="#models" class="dl">Модели</a>
+  <a href="#compare" class="dl">Сравнение</a>
+  <a href="#save" class="dl">Экономия</a>
+  <a href="#faq" class="dl">Вопросы</a>
+  <div class="d-actions">
+    <a href="/login" class="d-login">Войти</a>
+    <a href="#final" class="btn btn-primary">Начать бесплатно →</a>
+  </div>
+</div>
+
+<!-- ПЕРВЫЙ ЭКРАН -->
+<section class="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-mesh"></div>
+  <div class="wrap hero-inner">
+    <div>
+      <div class="tagline"><i></i>131 модель · один счёт · без VPN</div>
+      <h1>Все нейросети мира<span class="dim">в одном окне</span></h1>
+      <p class="hero-sub">GPT-5, Claude, Gemini, Flux, Sora и ещё сотня моделей. Оплата картой российского банка, рубли, без зарубежных подписок.</p>
+      <div class="hero-cta">
+        <a href="#final" class="btn btn-primary">Начать бесплатно →</a>
+        <a href="#models" class="btn btn-ghost">Смотреть примеры</a>
+      </div>
+      <p class="hero-note">10 ₽ на баланс сразу после регистрации. Карта не нужна.</p>
+    </div>
+    <div class="metrics">
+      <div class="metric"><span class="k">моделей в каталоге</span><span class="v">131</span></div>
+      <div class="metric"><span class="k">бесплатных моделей</span><span class="v">19</span></div>
+      <div class="metric"><span class="k">средний отклик</span><span class="v sm">1,2 сек</span></div>
+      <div class="metric hl"><span class="k">старт</span><span class="v">10 ₽</span></div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="demo">
+      <div class="demo-top">
+        <div class="dots"><i></i><i></i><i></i></div>
+        <div class="tabs">
+          <button class="tab on" data-m="gpt"><i></i>GPT-5</button>
+          <button class="tab" data-m="claude"><i></i>Claude Sonnet 5</button>
+          <button class="tab" data-m="flux"><i></i>Flux 2 Pro</button>
+        </div>
+      </div>
+      <div class="demo-body">
+        <div class="prompt-row">
+          <div class="prompt-box"><span class="c">›</span><span id="promptText">Придумай три слогана для кофейни у метро</span></div>
+          <button class="btn btn-primary">Отправить →</button>
+        </div>
+        <div class="chips">
+          <button class="chip on" data-p="coffee">Слоганы для кофейни</button>
+          <button class="chip" data-p="lease">Разбор договора аренды</button>
+          <button class="chip" data-p="cover">Кадр для обложки</button>
+        </div>
+        <div class="answer" id="answer"></div>
+      </div>
+      <div class="demo-foot">
+        <span><b>131</b> модель</span>
+        <span><b>1,2 с</b> средний отклик</span>
+        <span><b>нет</b> абонентской платы</span>
+        <span><b>рубли</b> без VPN</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- БЕГУЩАЯ СТРОКА -->
+<div class="marquee"><div class="marquee-track" id="mqTrack"></div></div>
+
+<!-- МОДЕЛИ -->
+<section class="sec" id="models">
+  <div class="wrap">
+    <div class="eyebrow"><b>I</b> — модели и примеры</div>
+    <h2 class="sec-title">Каждая модель — со своим примером</h2>
+    <p class="sec-sub">Видео и изображения ниже сгенерированы в Aineron. Под каждой работой указано, какая модель её сделала и по какому запросу.</p>
+
+    <div style="margin-top:52px">
+
+      <!-- SORA 2 -->
+      <article class="model">
+        <div>
+          <div class="model-badge">Видео</div>
+          <h3>Sora 2</h3>
+          <div class="kind">Генерация видео</div>
+          <p class="desc">Видеомодель OpenAI. Держит физику сцены и движение камеры, подходит для рекламных роликов и коротких сцен.</p>
+          <div class="model-facts">
+            <div class="fact"><span>Длительность</span><b>до 20 сек</b></div>
+            <div class="fact"><span>Разрешение</span><b>1080p</b></div>
+            <div class="fact"><span>Звук</span><b>нет</b></div>
+            <div class="fact"><span>Цена</span><b class="c">25 ₽ / ролик</b></div>
+          </div>
+          <a href="#final" class="btn btn-ghost btn-sm">Попробовать Sora 2 →</a>
+        </div>
+        <div>
+          <div class="media-video">
+            <span class="media-tag">Пример генерации</span>
+            <video src="https://www.image2url.com/r2/default/videos/1787135549214-8ba954fc-4b0d-42ae-806d-3695cad9d891.mp4" controls muted loop playsinline preload="metadata"></video>
+          </div>
+          <div class="media-caption">
+            <div class="pr"><b>Запрос</b><span class="mono">бетонный дом один в пустыне, гроза на горизонте, медленный наезд камеры, 5 секунд</span></div>
+          </div>
+        </div>
+      </article>
+
+      <!-- VEO 3.1 -->
+      <article class="model">
+        <div>
+          <div class="model-badge">Видео</div>
+          <h3>Veo 3.1 Fast</h3>
+          <div class="kind">Генерация видео</div>
+          <p class="desc">Видеомодель Google DeepMind. Быстрый рендер и чистое движение — берут для динамичных сцен и предметной съёмки.</p>
+          <div class="model-facts">
+            <div class="fact"><span>Длительность</span><b>до 8 сек</b></div>
+            <div class="fact"><span>Разрешение</span><b>1080p</b></div>
+            <div class="fact"><span>Звук</span><b>да</b></div>
+            <div class="fact"><span>Цена</span><b class="c">15 ₽ / ролик</b></div>
+          </div>
+          <a href="#final" class="btn btn-ghost btn-sm">Попробовать Veo 3.1 Fast →</a>
+        </div>
+        <div>
+          <div class="media-video">
+            <span class="media-tag">Пример генерации</span>
+            <video src="https://www.image2url.com/r2/default/videos/1787135494272-4e7799a1-3069-4a79-a0a1-124bf78e06b7.mp4" controls muted loop playsinline preload="metadata"></video>
+          </div>
+          <div class="media-caption">
+            <div class="pr"><b>Запрос</b><span class="mono">капля молока падает в чашку кофе, макро, замедленная съёмка</span></div>
+          </div>
+        </div>
+      </article>
+
+      <!-- KLING v2.6 -->
+      <article class="model">
+        <div>
+          <div class="model-badge">Видео</div>
+          <h3>Kling v2.6</h3>
+          <div class="kind">Генерация видео</div>
+          <p class="desc">Видеомодель Kuaishou с генерацией звука. Хорошо держит лица и повторяющееся движение.</p>
+          <div class="model-facts">
+            <div class="fact"><span>Длительность</span><b>до 10 сек</b></div>
+            <div class="fact"><span>Разрешение</span><b>1080p</b></div>
+            <div class="fact"><span>Звук</span><b>да</b></div>
+            <div class="fact"><span>Цена</span><b class="c">10 ₽ / ролик</b></div>
+          </div>
+          <a href="#final" class="btn btn-ghost btn-sm">Попробовать Kling v2.6 →</a>
+        </div>
+        <div>
+          <div class="media-video">
+            <span class="media-tag">Пример генерации</span>
+            <video src="https://www.image2url.com/r2/default/videos/1787135595272-4849c562-2315-4eca-8df0-4464d1d645e3.mp4" controls muted loop playsinline preload="metadata"></video>
+          </div>
+          <div class="media-caption">
+            <div class="pr"><b>Запрос</b><span class="mono">бариста готовит латте, тёплый свет из окна, крупный план рук</span></div>
+          </div>
+        </div>
+      </article>
+
+      <!-- FLUX 2 PRO -->
+      <article class="model">
+        <div>
+          <div class="model-badge">Фото</div>
+          <h3>Flux 2 Pro</h3>
+          <div class="kind">Генерация изображений</div>
+          <p class="desc">Модель Black Forest Labs. Фотореализм, точная геометрия и свет — рабочая лошадка для предметной и рекламной съёмки.</p>
+          <div class="model-facts">
+            <div class="fact"><span>Размер</span><b>до 2048 px</b></div>
+            <div class="fact"><span>Стили</span><b>свободный промпт</b></div>
+            <div class="fact"><span>Скорость</span><b>~8 сек</b></div>
+            <div class="fact"><span>Цена</span><b class="c">12 ₽ / кадр</b></div>
+          </div>
+          <a href="#final" class="btn btn-ghost btn-sm">Попробовать Flux 2 Pro →</a>
+        </div>
+        <div class="grid-3">
+          <div>
+            <div class="shot"><img src="https://www.figma.com/api/mcp/asset/a1757825-3516-44ee-8da2-5e74c0aaa6d9.png" alt="флакон духов на мокром камне, утренний свет"></div>
+            <div class="media-caption"><div class="pr"><b>Запрос 1</b><span class="mono">флакон духов на мокром камне, утренний свет</span></div></div>
+          </div>
+          <div>
+            <div class="shot"><img src="https://www.figma.com/api/mcp/asset/43d9166a-8b3d-4a7c-ba70-71bcc5fe95e3.png" alt="керамическая чашка, пар, тёмный фон"></div>
+            <div class="media-caption"><div class="pr"><b>Запрос 2</b><span class="mono">керамическая чашка, пар, тёмный фон</span></div></div>
+          </div>
+          <div>
+            <div class="shot"><img src="https://www.figma.com/api/mcp/asset/e04f4ead-06f9-492b-a384-6ebbe41c5155.png" alt="кроссовок в воздухе, студийный свет"></div>
+            <div class="media-caption"><div class="pr"><b>Запрос 3</b><span class="mono">кроссовок в воздухе, студийный свет</span></div></div>
+          </div>
+        </div>
+      </article>
+
+      <!-- GPT IMAGE 1 -->
+      <article class="model">
+        <div>
+          <div class="model-badge">Фото</div>
+          <h3>GPT Image 1</h3>
+          <div class="kind">Генерация изображений</div>
+          <p class="desc">Модель OpenAI. Понимает сложные описания и аккуратно рисует текст на изображении — годится для обложек и макетов.</p>
+          <div class="model-facts">
+            <div class="fact"><span>Размер</span><b>до 2048 px</b></div>
+            <div class="fact"><span>Текст в кадре</span><b>да</b></div>
+            <div class="fact"><span>Скорость</span><b>~12 сек</b></div>
+            <div class="fact"><span>Цена</span><b class="c">14 ₽ / кадр</b></div>
+          </div>
+          <a href="#final" class="btn btn-ghost btn-sm">Попробовать GPT Image 1 →</a>
+        </div>
+        <div class="grid-3">
+          <div>
+            <div class="shot"><img src="https://www.figma.com/api/mcp/asset/53adb2f3-71e9-42b7-aa6c-ab226d524867.png" alt="обложка журнала с крупным заголовком"></div>
+            <div class="media-caption"><div class="pr"><b>Запрос 1</b><span class="mono">обложка журнала с крупным заголовком</span></div></div>
+          </div>
+          <div>
+            <div class="shot"><img src="https://www.figma.com/api/mcp/asset/31f5b9b3-bcf1-4a72-980f-c61375927aee.png" alt="постер ресторана с надписью на русском"></div>
+            <div class="media-caption"><div class="pr"><b>Запрос 2</b><span class="mono">постер ресторана с надписью на русском</span></div></div>
+          </div>
+          <div>
+            <div class="shot"><img src="https://www.figma.com/api/mcp/asset/803c7423-92ef-4f0b-82d4-4f3249a3b579.png" alt="постер для презентации товара"></div>
+            <div class="media-caption"><div class="pr"><b>Запрос 3</b><span class="mono">постер для презентации товара</span></div></div>
+          </div>
+        </div>
+      </article>
+
+      <!-- NANO BANANA PRO -->
+      <article class="model">
+        <div>
+          <div class="model-badge">Фото</div>
+          <h3>Nano Banana</h3>
+          <div class="kind">Редактирование изображений</div>
+          <p class="desc">Gemini 2.5 Flash Image от Google для правок готовых снимков: заменить фон, убрать объект, поменять свет — с сохранением лица и деталей.</p>
+          <div class="model-facts">
+            <div class="fact"><span>Правка по фото</span><b>да</b></div>
+            <div class="fact"><span>Сохранение лица</span><b>да</b></div>
+            <div class="fact"><span>Скорость</span><b>~6 сек</b></div>
+            <div class="fact"><span>Цена</span><b class="c">6 ₽ / кадр</b></div>
+          </div>
+          <a href="#final" class="btn btn-ghost btn-sm">Попробовать Nano Banana →</a>
+        </div>
+        <div class="grid-2">
+          <div>
+            <div class="pair">
+              <div class="shot wide"><img src="https://www.figma.com/api/mcp/asset/3284bf39-4794-420c-b74b-9d3188a73fed.png" alt="исходный кадр до правки"></div>
+              <div class="arrow">↓</div>
+              <div class="shot wide"><img src="https://www.figma.com/api/mcp/asset/1dce8640-c6c2-462d-b462-36094fdcbd12.png" alt="кадр после замены фона"></div>
+            </div>
+            <div class="media-caption"><div class="pr"><b>Запрос 1</b><span class="mono">заменить фон на улицу ночью</span></div></div>
+          </div>
+          <div>
+            <div class="pair">
+              <div class="shot wide"><img src="https://www.figma.com/api/mcp/asset/0c3a1686-5076-4276-8e72-720a45a23d98.png" alt="исходный кадр до правки"></div>
+              <div class="arrow">↓</div>
+              <div class="shot wide"><img src="https://www.figma.com/api/mcp/asset/0223e8ae-1ae4-49b8-869b-6562694a817a.png" alt="кадр после удаления лишних вещей"></div>
+            </div>
+            <div class="media-caption"><div class="pr"><b>Запрос 2</b><span class="mono">убрать комнату от лишних вещей</span></div></div>
+          </div>
+        </div>
+      </article>
+
+    </div>
+  </div>
+</section>
+
+<!-- СРАВНЕНИЕ -->
+<section class="sec" id="compare" style="background:var(--bg-2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+  <div class="wrap">
+    <div class="eyebrow"><b>II</b> — честное сравнение</div>
+    <h2 class="sec-title">Aineron против мировых сервисов</h2>
+    <p class="sec-sub">Без маркетинга: где мы объективно выигрываем, а где возможности совпадают.</p>
+    <div class="table" id="cmpTable"></div>
+  </div>
+</section>
+
+<!-- ЭКОНОМИЯ -->
+<section class="sec" id="save">
+  <div class="wrap">
+    <div class="eyebrow"><b>III</b> — экономия</div>
+    <h2 class="sec-title">Один счёт вместо пяти подписок</h2>
+    <p class="sec-sub">Отдельные подписки на каждый сервис плюс VPN — дороже и неудобнее. Считаем на месяц.</p>
+    <div class="save">
+      <div class="save-card">
+        <h4>Отдельные подписки</h4>
+        <div class="srow"><span>ChatGPT Plus</span><b>≈ 2 000 ₽</b></div>
+        <div class="srow"><span>Claude Pro</span><b>≈ 2 000 ₽</b></div>
+        <div class="srow"><span>Midjourney</span><b>≈ 1 000 ₽</b></div>
+        <div class="srow"><span>Sora / видео</span><b>≈ 1 800 ₽</b></div>
+        <div class="srow"><span>VPN для доступа</span><b>≈ 500 ₽</b></div>
+        <div class="stotal"><span>в месяц</span><b>≈ 7 300 ₽</b></div>
+      </div>
+      <div class="save-card win">
+        <h4>Aineron</h4>
+        <div class="srow"><span>Все текстовые модели</span><b>по запросу</b></div>
+        <div class="srow"><span>Изображения и видео</span><b>по запросу</b></div>
+        <div class="srow"><span>19 бесплатных моделей</span><b>0 ₽</b></div>
+        <div class="srow"><span>VPN</span><b>не нужен</b></div>
+        <div class="srow"><span>Абонентская плата</span><b>нет</b></div>
+        <div class="stotal"><span>платите только за использованное</span><b class="c">от 10 ₽</b></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="sec" id="faq" style="background:var(--bg-2);border-top:1px solid var(--line)">
+  <div class="wrap">
+    <div class="eyebrow"><b>IV</b> — справочник</div>
+    <h2 class="sec-title">Частые вопросы</h2>
+    <div class="faq" id="faqList"></div>
+  </div>
+</section>
+
+<!-- ФИНАЛ -->
+<section class="final" id="final">
+  <div class="final-glow"></div>
+  <div class="wrap final-inner">
+    <h2>Готовы попробовать?</h2>
+    <p>10 ₽ на баланс сразу. Без VPN, без зарубежных карт, без абонентской платы.</p>
+    <div class="final-btns">
+      <a href="/register" class="btn btn-primary">Открыть Aineron →</a>
+      <a href="#compare" class="btn btn-ghost">Сравнить модели</a>
+    </div>
+    <small>Нажимая кнопку, вы соглашаетесь с условиями сервиса</small>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="f-grid">
+      <div>
+        <a href="/" class="logo"><i></i>Aineron</a>
+        <p class="f-about">Доступ к мировым нейросетям из России. Один аккаунт, один счёт, сто тридцать одна модель.</p>
+      </div>
+      <div class="f-col">
+        <h5>Сервис</h5>
+        <a href="/models">Каталог моделей</a>
+        <a href="/compare">Сравнение</a>
+        <a href="/account/billing">Тарифы</a>
+        <a href="/gallery">Галерея работ</a>
+      </div>
+      <div class="f-col">
+        <h5>Разработчикам</h5>
+        <a href="/api-docs">API и интеграции</a>
+        <a href="/docs">Документация</a>
+        <a href="/api-docs/playground">Playground</a>
+      </div>
+      <div class="f-col">
+        <h5>Связь</h5>
+        <a href="mailto:support@aineron.ru">Поддержка</a>
+        <a href="https://t.me/aineron_bot" target="_blank" rel="noopener">Telegram</a>
+        <a href="/terms">Оферта</a>
+      </div>
+    </div>
+    <div class="f-bottom">
+      <p>© 2026 aineron.ru · Иващенко Алексей Анатольевич · ИНН 220805856949 · support@aineron.ru</p>
+      <span class="f-tag">Работаем в России</span>
+    </div>
+  </div>
+</footer>
+
+<div class="dock">
+  <div class="dock-note"><b>10 ₽</b>на старт</div>
+  <a href="#final" class="btn btn-primary">Начать бесплатно →</a>
+</div>
+
+<script>
+/* стрелки в кнопках → отдельный элемент, чтобы анимировать их отдельно от текста */
+document.querySelectorAll('.btn').forEach(b=>{
+  if(b.children.length===0 && b.textContent.includes('→')){
+    b.innerHTML=b.textContent.replace(/→/,'<span class="ar">→</span>');
+  }
+});
+
+/* бургер */
+const burger=document.getElementById('burger'),drawer=document.getElementById('drawer');
+function closeMenu(){burger.classList.remove('on');drawer.classList.remove('on');document.body.style.overflow=''}
+burger.addEventListener('click',()=>{
+  const open=drawer.classList.toggle('on');
+  burger.classList.toggle('on',open);
+  document.body.style.overflow=open?'hidden':'';
+});
+drawer.querySelectorAll('a').forEach(a=>a.addEventListener('click',closeMenu));
+
+/* демо-чат: ответ зависит и от модели (вкладки), и от запроса (чипа) */
+const IMG_COVER="https://www.figma.com/api/mcp/asset/53adb2f3-71e9-42b7-aa6c-ab226d524867.png";
+const prompts={
+  coffee:{text:"Придумай три слогана для кофейни у метро",kind:"text"},
+  lease:{text:"Разбери договор аренды и выпиши риски",kind:"text"},
+  cover:{text:"Сделай кадр для обложки альбома",kind:"image"}
+};
+const R={
+  'gpt|coffee':`<div class="answer-label">Ответ · GPT-5 · 4 ₽</div>
+    <ol><li>Кофе, пока горит зелёный.</li><li>Две минуты от турникета.</li><li>Утро начинается не с метро.</li></ol>
+    <p>Первый вариант работает на скорость, третий — на настроение. Для вывески короче второй.</p>`,
+  'claude|coffee':`<div class="answer-label">Ответ · Claude Sonnet 5 · 12 ₽</div>
+    <ol><li>Подземка разбудит. Кофе — простит.</li><li>Успеть на поезд. Успеть на вкус.</li><li>Ваш эскалатор в хорошее утро.</li></ol>
+    <p>Сделал акцент на ритме дороги: пассажир читает вывеску на ходу, поэтому фразы короткие и с паузой посередине.</p>`,
+  'flux|coffee':`<div class="answer-label">Ответ · Flux 2 Pro</div>
+    <p>Flux рисует изображения, а не пишет текст. Для этого запроса возьмите <b>GPT-5</b> или <b>Claude</b> — либо попробуйте «Кадр для обложки».</p>`,
+
+  'gpt|lease':`<div class="answer-label">Ответ · GPT-5 · 8 ₽</div>
+    <ol><li>П. 4.2 — плату можно поднять в одностороннем порядке. Риск: рост платежа без согласования.</li><li>Депозит не возвращается при досрочном расторжении. Риск: потеря залога.</li><li>Уведомить о выезде нужно за 3 месяца. Риск: платите даже после переезда.</li></ol>
+    <p>Самый спорный — пункт 4.2. Стоит зафиксировать потолок индексации до подписания.</p>`,
+  'claude|lease':`<div class="answer-label">Ответ · Claude Sonnet 5 · 15 ₽</div>
+    <ol><li>Одностороннее повышение платы (п. 4.2) — просите привязать к инфляции, а не «на усмотрение».</li><li>Невозврат депозита при досрочном выходе — предложите пропорциональный возврат.</li><li>Уведомление за 3 месяца — многовато, попробуйте сократить до одного.</li></ol>
+    <p>Разложил по убыванию риска для кошелька: первые два пункта — то, на чём реально теряют деньги.</p>`,
+  'flux|lease':`<div class="answer-label">Ответ · Flux 2 Pro</div>
+    <p>Разбор текста — задача для <b>GPT-5</b> или <b>Claude</b>. Переключите вкладку сверху, а Flux оставьте для картинок.</p>`,
+
+  'flux|cover':`<div class="answer-label">Ответ · Flux 2 Pro · 12 ₽</div>
+    <div class="gen-img"><img src="${IMG_COVER}" alt="Кадр для обложки"></div>
+    <p>Готовый кадр: вертикальная обложка, крупный заголовок, студийный свет. Можно скачать или отправить на доработку.</p>`,
+  'gpt|cover':`<div class="answer-label">Ответ · GPT-5</div>
+    <p>«Кадр для обложки» — это генерация изображения. Такое рисует <b>Flux 2 Pro</b> — переключите вкладку сверху.</p>`,
+  'claude|cover':`<div class="answer-label">Ответ · Claude Sonnet 5</div>
+    <p>Обложку рисует не Claude, а <b>Flux 2 Pro</b>. Переключите вкладку сверху, чтобы увидеть кадр.</p>`
+};
+
+let curModel='gpt', curPrompt='coffee';
+const answerEl=document.getElementById('answer');
+const promptEl=document.getElementById('promptText');
+function renderChat(){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.m===curModel));
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c.dataset.p===curPrompt));
+  promptEl.textContent=prompts[curPrompt].text;
+  answerEl.innerHTML=R[curModel+'|'+curPrompt];
+}
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click',()=>{curModel=t.dataset.m;renderChat();});
+});
+document.querySelectorAll('.chip').forEach(c=>{
+  c.addEventListener('click',()=>{
+    curPrompt=c.dataset.p;
+    const kind=prompts[curPrompt].kind;
+    /* картинку рисует Flux, текст — GPT: подбираем модель под запрос, чтобы всегда был живой результат */
+    if(kind==='image' && curModel!=='flux') curModel='flux';
+    if(kind==='text' && curModel==='flux') curModel='gpt';
+    renderChat();
+  });
+});
+renderChat();
+
+/* бегущая строка */
+const models=['GPT-5','Claude Sonnet 5','Gemini 3 Pro','Seedream 5.0','Sora 2','Veo 3.1','Kling v2.6','Flux 2 Pro','GPT Image 1','Nano Banana','Grok 4','DeepSeek V3.1'];
+const track=document.getElementById('mqTrack');
+const line=models.map((m,i)=>`<span class="mq ${i%4===1?'on':''}"><i></i>${m}</span>`).join('');
+track.innerHTML=line+line;
+
+/* таблица сравнения */
+const rows=[
+  ['Работает в России без VPN',1,0,0],
+  ['Оплата рублями и картой РФ',1,0,0],
+  ['GPT, Claude, Gemini в одном окне',1,0,0],
+  ['Оплата за запрос, без подписки',1,0,0],
+  ['Генерация изображений и видео',1,1,1],
+  ['Сравнение моделей бок о бок',1,0,0],
+  ['OpenAI-совместимый API',1,1,0],
+  ['Бесплатные модели без карты',1,0,1]
+];
+document.getElementById('cmpTable').innerHTML=
+  `<div class="trow thead"><div>Возможность</div><div class="cell us">Aineron</div><div class="cell">ChatGPT</div><div class="cell">Gemini</div></div>`+
+  rows.map(r=>`<div class="trow"><div>${r[0]}</div>
+    <div class="cell ${r[1]?'yes':'no'}">${r[1]?'✓':'✕'}</div>
+    <div class="cell ${r[2]?'yes':'no'}">${r[2]?'✓':'✕'}</div>
+    <div class="cell ${r[3]?'yes':'no'}">${r[3]?'✓':'✕'}</div></div>`).join('');
+
+/* FAQ */
+const faq=[
+  ['Как работает баланс?','Вы пополняете счёт в рублях и тратите его на любую модель. Списывается за конкретный запрос: текст — по стоимости сообщения, изображение и видео — по стоимости кадра или ролика. Абонентской платы нет, средства не сгорают.'],
+  ['Нужен ли VPN?','Нет. Серверы работают в России, сервис открывается с любого устройства без обходных программ и без зарубежной карты.'],
+  ['Какие нейросети доступны?','131 модель: GPT-5, Claude, Gemini, Grok, DeepSeek для текста; Flux, GPT Image, Nano Banana для изображений; Sora, Veo, Kling для видео. Каталог пополняется по мере выхода новых версий.'],
+  ['Есть ли бесплатные модели?','Да, 19 текстовых моделей доступны бесплатно сразу после регистрации — без пополнения баланса и без привязки карты.'],
+  ['Можно ли подключить к своему приложению?','Да. API совместим с форматом OpenAI: достаточно поменять адрес и ключ, и существующий код заработает. Подключается к Cursor, VS Code и другим редакторам.'],
+  ['Кому принадлежат созданные материалы?','Изображения, видео и тексты, созданные в сервисе, принадлежат вам и могут использоваться в коммерческих проектах.']
+];
+document.getElementById('faqList').innerHTML=faq.map(f=>`
+  <div class="q">
+    <button class="q-head">${f[0]}<span class="q-mark">+</span></button>
+    <div class="q-body"><p>${f[1]}</p></div>
+  </div>`).join('');
+document.querySelectorAll('.q-head').forEach(h=>{
+  h.addEventListener('click',()=>{
+    const q=h.parentElement, open=q.classList.contains('open');
+    document.querySelectorAll('.q').forEach(x=>x.classList.remove('open'));
+    if(!open) q.classList.add('open');
+  });
+});
+document.querySelector('.q').classList.add('open');
+
+/* видео: играет, пока в кадре */
+if('IntersectionObserver' in window){
+  const io=new IntersectionObserver(es=>es.forEach(e=>{
+    const v=e.target;
+    if(e.isIntersecting){v.play().catch(()=>{})}else{v.pause()}
+  }),{threshold:.35});
+  document.querySelectorAll('.media-video video').forEach(v=>io.observe(v));
+}
+</script>
+</body>
+</html>
