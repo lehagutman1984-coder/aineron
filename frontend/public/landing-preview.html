@@ -221,6 +221,9 @@ h1 .dim{color:var(--dim);display:block}
   display:grid;grid-template-columns:400px 1fr;gap:44px;align-items:start;
   padding:44px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line);margin-bottom:26px;
 }
+/* Grid-элементы по умолчанию min-width:auto — не сжимаются меньше своего
+   контента (длинные фразы в .fact/.desc) и распирают карточку на мобилке. */
+.model > div{min-width:0}
 .model-badge{
   display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border-radius:100px;
   font-size:10px;letter-spacing:.18em;text-transform:uppercase;font-weight:700;
@@ -248,6 +251,7 @@ h1 .dim{color:var(--dim);display:block}
 .shot.wide img{aspect-ratio:2/1}
 .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
 .grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.grid-3 > div,.grid-2 > div{min-width:0}
 .pair{display:flex;flex-direction:column;gap:10px;align-items:center}
 .pair .arrow{
   width:34px;height:34px;border-radius:50%;flex-shrink:0;
@@ -385,6 +389,7 @@ footer{border-top:1px solid var(--line);background:var(--bg-2);padding:66px 0 40
   .grid-3{grid-template-columns:1fr 1fr}
   .grid-3 > div:last-child:nth-child(odd){grid-column:1 / -1}
   .grid-2{grid-template-columns:1fr}
+  .media-caption .pr{min-width:0}
   .feat-grid{grid-template-columns:1fr;gap:14px}
   .feat{padding:22px}
   .trow{grid-template-columns:1.5fr .5fr .5fr .5fr}
@@ -531,7 +536,7 @@ footer{border-top:1px solid var(--line);background:var(--bg-2);padding:66px 0 40
         <div>
           <div class="media-video">
             <span class="media-tag">Пример генерации</span>
-            <video src="https://www.image2url.com/r2/default/videos/1787135549214-8ba954fc-4b0d-42ae-806d-3695cad9d891.mp4" controls muted loop playsinline preload="metadata"></video>
+            <video src="/media/landing/sora-2.mp4" controls muted loop playsinline preload="metadata"></video>
           </div>
           <div class="media-caption">
             <div class="pr"><b>Запрос</b><span class="mono">бетонный дом один в пустыне, гроза на горизонте, медленный наезд камеры, 5 секунд</span></div>
@@ -557,7 +562,7 @@ footer{border-top:1px solid var(--line);background:var(--bg-2);padding:66px 0 40
         <div>
           <div class="media-video">
             <span class="media-tag">Пример генерации</span>
-            <video src="https://www.image2url.com/r2/default/videos/1787135494272-4e7799a1-3069-4a79-a0a1-124bf78e06b7.mp4" controls muted loop playsinline preload="metadata"></video>
+            <video src="/media/landing/veo-3-1-fast.mp4" controls muted loop playsinline preload="metadata"></video>
           </div>
           <div class="media-caption">
             <div class="pr"><b>Запрос</b><span class="mono">капля молока падает в чашку кофе, макро, замедленная съёмка</span></div>
@@ -583,7 +588,7 @@ footer{border-top:1px solid var(--line);background:var(--bg-2);padding:66px 0 40
         <div>
           <div class="media-video">
             <span class="media-tag">Пример генерации</span>
-            <video src="https://www.image2url.com/r2/default/videos/1787135595272-4849c562-2315-4eca-8df0-4464d1d645e3.mp4" controls muted loop playsinline preload="metadata"></video>
+            <video src="/media/landing/kling-v2-6.mp4" controls muted loop playsinline preload="metadata"></video>
           </div>
           <div class="media-caption">
             <div class="pr"><b>Запрос</b><span class="mono">бариста готовит латте, тёплый свет из окна, крупный план рук</span></div>
