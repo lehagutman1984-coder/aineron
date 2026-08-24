@@ -675,6 +675,12 @@ function buildGroups(t: Awaited<ReturnType<typeof getTranslations>>): DocGroup[]
         content: (
           <>
             <DocSection title={t("sandboxes.title")}>
+              <Callout type="warn" title="Временно недоступно">
+                Sandboxes сейчас отключены на бэкенде (идёт активация аккаунта у
+                инфраструктурного провайдера) — запросы к <IC>/api/v1/sandboxes/</IC> вернут
+                ошибку. Раздел ниже описывает API таким, каким он будет сразу после включения;
+                актуальный статус — на странице <A href="/status/">/status</A>.
+              </Callout>
               <Lead>
                 {t.rich("sandboxes.lead", { b: (chunks) => <b>{chunks}</b> })}
               </Lead>
