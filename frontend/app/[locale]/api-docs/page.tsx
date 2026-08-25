@@ -55,6 +55,9 @@ const S = IS_RU
       agentTask: "Реши задачу кодом на Python. Верни ТОЛЬКО код:",
       agentErr: "Ошибка выполнения:",
       agentFib: "Найди 100-е число Фибоначчи",
+      sbxUnavailableTitle: "Временно недоступно",
+      sbxUnavailableBody: "Sandboxes сейчас отключены на бэкенде (идёт активация аккаунта у инфраструктурного провайдера) — запросы к",
+      sbxUnavailableBody2: "вернут ошибку. Раздел ниже описывает API таким, каким он будет сразу после включения; актуальный статус — на странице",
     }
   : {
       key: "ak_YOUR_KEY",
@@ -77,6 +80,9 @@ const S = IS_RU
       agentDoc: "LLM writes code → sandbox executes it → result comes back.",
       agentTask: "Solve the task with Python code. Return ONLY the code:",
       agentErr: "Execution error:",
+      sbxUnavailableTitle: "Temporarily unavailable",
+      sbxUnavailableBody: "Sandboxes are currently disabled on the backend (infrastructure provider account activation is in progress) — requests to",
+      sbxUnavailableBody2: "will return an error. The section below describes the API as it will work once enabled; current status is on the",
       agentFib: "Find the 100th Fibonacci number",
     };
 
@@ -675,11 +681,9 @@ function buildGroups(t: Awaited<ReturnType<typeof getTranslations>>): DocGroup[]
         content: (
           <>
             <DocSection title={t("sandboxes.title")}>
-              <Callout type="warn" title="Временно недоступно">
-                Sandboxes сейчас отключены на бэкенде (идёт активация аккаунта у
-                инфраструктурного провайдера) — запросы к <IC>/api/v1/sandboxes/</IC> вернут
-                ошибку. Раздел ниже описывает API таким, каким он будет сразу после включения;
-                актуальный статус — на странице <A href="/status/">/status</A>.
+              <Callout type="warn" title={S.sbxUnavailableTitle}>
+                {S.sbxUnavailableBody} <IC>/api/v1/sandboxes/</IC> {S.sbxUnavailableBody2}{" "}
+                <A href="/status/">/status</A>.
               </Callout>
               <Lead>
                 {t.rich("sandboxes.lead", { b: (chunks) => <b>{chunks}</b> })}

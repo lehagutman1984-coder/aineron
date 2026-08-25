@@ -2008,7 +2008,7 @@
       "topupStarsTitle": "Telegram Stars (in bot)",
       "topupStarsBody": "Payment directly in the messenger in two taps, instant crediting. Command <ic>/balance</ic> in the bot.",
       "topupH3": "Plans or One-Time Top-Up?",
-      "topupTariffsP": "You can simply top up the balance as needed, or subscribe to a monthly plan — it provides more credits on the balance for a lower price (bonus up to +40%) and sometimes unlimited access to certain models. Plans: Start, Standard, Pro, Max, and a separate 'Business' (for AI secretary). More details in the <a>payment section</a>.",
+      "topupTariffsP": "You can simply top up the balance as needed, or subscribe to a monthly plan — it provides more credits on the balance for a lower price (bonus up to +35%) and sometimes unlimited access to certain models. Plans: Start, Standard, Pro, Max, and a separate 'Business' (for AI secretary). More details in the <a>payment section</a>.",
       "topupPromoTitle": "Promo Codes and Referrals",
       "topupPromoBody": "Have a promo code? Enter it in the payment section. Invite a friend using your referral link — receive a bonus when they pay. <a>Referral Program →</a>"
     },
@@ -2068,7 +2068,7 @@
       "videoTableModel": "Model",
       "videoTableFeatures": "Features",
       "videoRowSoraModel": "Sora 2 / Sora 2 Pro",
-      "videoRowSoraFeatures": "Duration 5/10/20 sec, vertical and horizontal",
+      "videoRowSoraFeatures": "Duration 4/8/12/16/20 sec, vertical and horizontal",
       "videoRowVeoModel": "Veo 3.1 / Veo 3.1 Fast",
       "videoRowVeoFeatures": "8 sec, resolution up to 4K",
       "videoRowKlingModel": "Kling v2.6",

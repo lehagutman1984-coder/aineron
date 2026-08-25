@@ -2008,7 +2008,7 @@
       "topupStarsTitle": "Telegram Stars (bot içinde)",
       "topupStarsBody": "Mesajlaşma uygulamasında iki dokunuşla ödeme, anında bakiye yükleme. Botta <ic>/balance</ic> komutunu kullanın.",
       "topupH3": "Planlar mı Yoksa Tek Seferlik Yükleme mi?",
-      "topupTariffsP": "Bakiye ihtiyacınıza göre yükleme yapabilir veya aylık bir plana abone olabilirsiniz — bu, daha düşük bir fiyatla bakiyenize daha fazla kredi ekler (bonus %40'a kadar) ve bazen belirli modellere sınırsız erişim sağlar. Planlar: Başlangıç, Standart, Pro, Maks ve ayrı bir 'İş' (AI sekreteri için). Daha fazla bilgi <a>ödeme bölümünde</a>.",
+      "topupTariffsP": "Bakiyeyi ihtiyacınıza göre doldurabilir veya aylık bir plana abone olabilirsiniz — bu, daha düşük bir fiyatla bakiyeye daha fazla kredi sağlar (bonus %35'e kadar) ve bazen belirli modellere sınırsız erişim sunar. Planlar: Start, Standard, Pro, Max ve ayrı bir 'Business' (AI sekreter için). Daha fazla bilgi <a>ödeme bölümünde</a>.",
       "topupPromoTitle": "Promosyon Kodları ve Yönlendirmeler",
       "topupPromoBody": "Bir promosyon kodunuz mu var? Ödeme bölümünde girin. Arkadaşınızı yönlendirme bağlantınızla davet edin — ödeme yaptıklarında bonus kazanın. <a>Yönlendirme Programı →</a>"
     },
@@ -2068,7 +2068,7 @@
       "videoTableModel": "Model",
       "videoTableFeatures": "Özellikler",
       "videoRowSoraModel": "Sora 2 / Sora 2 Pro",
-      "videoRowSoraFeatures": "Süre 5/10/20 sn, dikey ve yatay",
+      "videoRowSoraFeatures": "Süre 4/8/12/16/20 sn, dikey ve yatay",
       "videoRowVeoModel": "Veo 3.1 / Veo 3.1 Fast",
       "videoRowVeoFeatures": "8 sn, çözünürlük 4K'ya kadar",
       "videoRowKlingModel": "Kling v2.6",

@@ -2008,7 +2008,7 @@
       "topupStarsTitle": "Telegram Stars (dalam bot)",
       "topupStarsBody": "Pembayaran langsung di messenger dalam dua ketukan, kredit instan. Perintah <ic>/balance</ic> di bot.",
       "topupH3": "Plans atau Top-Up Sekali?",
-      "topupTariffsP": "Anda dapat dengan mudah top up balance sesuai kebutuhan, atau berlangganan plan bulanan — ini memberikan lebih banyak credits pada balance dengan harga lebih rendah (bonus hingga +40%) dan terkadang akses tak terbatas ke model tertentu. Plan: Start, Standard, Pro, Max, dan 'Business' terpisah (untuk sekretaris AI). Detail lebih lanjut di <a>bagian pembayaran</a>.",
+      "topupTariffsP": "Anda dapat mengisi saldo sesuai kebutuhan, atau berlangganan paket bulanan — paket ini memberikan lebih banyak kredit pada saldo dengan harga lebih rendah (bonus hingga +35%) dan terkadang akses tak terbatas ke model tertentu. Paket: Start, Standard, Pro, Max, dan 'Business' terpisah (untuk sekretaris AI). Detail lebih lanjut di <a>bagian pembayaran</a>.",
       "topupPromoTitle": "Kode Promo dan Referensi",
       "topupPromoBody": "Punya kode promo? Masukkan di bagian pembayaran. Undang teman menggunakan tautan referensi Anda — dapatkan bonus saat mereka membayar. <a>Program Referensi →</a>"
     },
@@ -2068,7 +2068,7 @@
       "videoTableModel": "Model",
       "videoTableFeatures": "Fitur",
       "videoRowSoraModel": "Sora 2 / Sora 2 Pro",
-      "videoRowSoraFeatures": "Durasi 5/10/20 detik, vertikal dan horizontal",
+      "videoRowSoraFeatures": "Durasi 4/8/12/16/20 detik, vertikal dan horizontal",
       "videoRowVeoModel": "Veo 3.1 / Veo 3.1 Fast",
       "videoRowVeoFeatures": "8 detik, resolusi hingga 4K",
       "videoRowKlingModel": "Kling v2.6",
