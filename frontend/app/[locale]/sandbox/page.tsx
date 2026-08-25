@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { formatMoney } from "@/lib/money";
+import { Callout } from "@/components/docs/DocKit";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://aineron.ru";
 
@@ -81,7 +82,10 @@ export default async function SandboxLandingPage() {
 
       {/* Hero */}
       <section className="mx-auto max-w-5xl px-4 pb-16 pt-20 sm:px-6">
-        <div className="grid items-center gap-10 lg:grid-cols-2">
+        <Callout type="warn" title={t("unavailableTitle")}>
+          {t("unavailableBody")}
+        </Callout>
+        <div className="mt-8 grid items-center gap-10 lg:grid-cols-2">
           <div>
             <p className="mb-4 text-[14px] font-semibold uppercase tracking-wide text-[#D97757]">
               {t("heroEyebrow")}

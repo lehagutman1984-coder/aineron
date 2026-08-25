@@ -21,7 +21,7 @@
   "home": {
     "badge": "لا حاجة لـ VPN — الدفع بالعملات الرقمية",
     "title": "جميع نماذج الذكاء الاصطناعي في نافذة واحدة",
-    "subtitle": "GPT-4o، Claude، Gemini، Midjourney، وأكثر من 200 نموذج. حساب واحد، الدفع بالعملات الرقمية.",
+    "subtitle": "GPT-4o، Claude، Gemini، Flux، وأكثر من 120 نموذجًا. حساب واحد، الدفع بالعملات الرقمية.",
     "typewriter": [
       "GPT-4o يكتب الكود في ثوانٍ",
       "Claude يشرح الأمور المعقدة ببساطة",
@@ -40,7 +40,7 @@
     "features": [
       {
         "title": "جميع النماذج دفعة واحدة",
-        "text": "GPT-4o، Claude، Gemini، Midjourney، وأكثر من 200 نموذج — حساب واحد ورصيد مشترك."
+        "text": "GPT-4o، Claude، Gemini، Flux، وأكثر من 120 نموذجًا — حساب واحد ورصيد مشترك."
       },
       {
         "title": "بدون VPN",
@@ -100,7 +100,7 @@
       },
       {
         "q": "ما هي نماذج الذكاء الاصطناعي المتاحة؟",
-        "a": "تشمل النماذج المتاحة GPT-4o, GPT-4o mini, Claude 3.5 Sonnet, Gemini 1.5 Pro, DeepSeek V3, Mistral, Llama، وأكثر من 200 نموذج آخر. للصور: Stable Diffusion, Flux, نماذج متوافقة مع Midjourney."
+        "a": "النماذج المتاحة تشمل GPT-5، Claude Sonnet 5، Gemini 3 Pro، DeepSeek V4، Grok، Qwen، وأكثر من 120 نموذجًا آخر. للصور والفيديو: Flux، GPT Image، Sora، Veo، Kling، والمزيد."
       },
       {
         "q": "هل هناك API للمطورين؟",
@@ -1955,7 +1955,9 @@
       "truncated": "الإخراج مقتطع (حد 256 كيلوبايت)",
       "keysLink": "مفتاح مع نطاق sandboxes",
       "aboutLink": "حول Sandboxes"
-    }
+    },
+    "unavailableTitle": "غير متوفر مؤقتًا",
+    "unavailableBody": "Sandbox API متوقف حاليًا بينما نقوم بتفعيل حساب مع مزود البنية التحتية لدينا — طلبات API ستعيد خطأ. يوضح القسم أدناه كيفية عمله بمجرد التفعيل؛ الحالة الحالية موجودة في صفحة /status."
   },
   "docs": {
     "metaTitle": "التوثيق — كيفية استخدام aineron",

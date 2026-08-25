@@ -21,7 +21,7 @@
   "home": {
     "badge": "Российский сервис — без VPN и зарубежных карт",
     "title": "Все нейросети в одном окне",
-    "subtitle": "GPT-4o, Claude, Gemini, Midjourney и 200+ моделей. Один аккаунт, оплата рублями.",
+    "subtitle": "GPT-4o, Claude, Gemini, Flux и 120+ моделей. Один аккаунт, оплата рублями.",
     "typewriter": [
       "GPT-4o пишет код за секунды",
       "Claude объясняет сложное просто",
@@ -40,7 +40,7 @@
     "features": [
       {
         "title": "Все модели сразу",
-        "text": "GPT-4o, Claude, Gemini, Midjourney и 200+ моделей — один аккаунт и общий баланс."
+        "text": "GPT-4o, Claude, Gemini, Flux и 120+ моделей — один аккаунт и общий баланс."
       },
       {
         "title": "Без VPN",
@@ -100,7 +100,7 @@
       },
       {
         "q": "Какие нейросети доступны?",
-        "a": "Доступны GPT-4o, GPT-4o mini, Claude 3.5 Sonnet, Gemini 1.5 Pro, DeepSeek V3, Mistral, Llama и более 200 других моделей. Для изображений: Stable Diffusion, Flux, Midjourney-совместимые модели."
+        "a": "Доступны GPT-5, Claude Sonnet 5, Gemini 3 Pro, DeepSeek V4, Grok, Qwen и более 120 других моделей. Для изображений и видео: Flux, GPT Image, Sora, Veo, Kling и другие."
       },
       {
         "q": "Есть ли API для разработчиков?",
@@ -1955,7 +1955,9 @@
       "truncated": "Вывод обрезан (лимит 256 KB)",
       "keysLink": "Ключ со скоупом sandboxes",
       "aboutLink": "О продукте Sandboxes"
-    }
+    },
+    "unavailableTitle": "Временно недоступно",
+    "unavailableBody": "Sandbox API сейчас на паузе — идёт активация аккаунта у инфраструктурного провайдера, запросы к API вернут ошибку. Ниже — как это будет работать сразу после включения; актуальный статус на странице /status."
   },
   "docs": {
     "metaTitle": "Документация — как пользоваться aineron",

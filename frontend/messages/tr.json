@@ -21,7 +21,7 @@
   "home": {
     "badge": "VPN gerekmez — kripto ile ödeme yapın",
     "title": "Tüm yapay zeka modelleri tek bir pencerede",
-    "subtitle": "GPT-4o, Claude, Gemini, Midjourney ve 200+ model. Tek hesap, kripto ile ödeme.",
+    "subtitle": "GPT-4o, Claude, Gemini, Flux ve 120+ model. Tek hesap, kripto ile ödeme.",
     "typewriter": [
       "GPT-4o saniyeler içinde kod yazar",
       "Claude karmaşık şeyleri basitçe açıklar",
@@ -40,7 +40,7 @@
     "features": [
       {
         "title": "Tüm modeller bir arada",
-        "text": "GPT-4o, Claude, Gemini, Midjourney ve 200+ model — tek hesap ve ortak bakiye."
+        "text": "GPT-4o, Claude, Gemini, Flux ve 120+ model — tek hesap ve ortak bakiye."
       },
       {
         "title": "VPN gerekmez",
@@ -100,7 +100,7 @@
       },
       {
         "q": "Hangi AI modelleri mevcut?",
-        "a": "Mevcut modeller arasında GPT-4o, GPT-4o mini, Claude 3.5 Sonnet, Gemini 1.5 Pro, DeepSeek V3, Mistral, Llama ve 200'den fazla diğer model bulunur. Görüntüler için: Stable Diffusion, Flux, Midjourney uyumlu modeller."
+        "a": "Mevcut modeller arasında GPT-5, Claude Sonnet 5, Gemini 3 Pro, DeepSeek V4, Grok, Qwen ve 120'den fazla diğerleri bulunur. Görüntü ve video için: Flux, GPT Image, Sora, Veo, Kling ve daha fazlası."
       },
       {
         "q": "Geliştiriciler için bir API var mı?",
@@ -1955,7 +1955,9 @@
       "truncated": "Çıktı kesildi (256 KB sınırı)",
       "keysLink": "Sandboxes kapsamına sahip anahtar",
       "aboutLink": "Sandboxes hakkında"
-    }
+    },
+    "unavailableTitle": "Geçici olarak kullanılamıyor",
+    "unavailableBody": "Sandbox API şu anda altyapı sağlayıcımızla bir hesap etkinleştirilirken duraklatılmıştır — API istekleri hata döndürecektir. Aşağıdaki bölüm etkinleştirildiğinde nasıl çalışacağını gösterir; mevcut durum /status sayfasında yer almaktadır."
   },
   "docs": {
     "metaTitle": "Dokümantasyon — aineron Nasıl Kullanılır",

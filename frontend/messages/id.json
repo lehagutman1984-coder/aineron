@@ -21,7 +21,7 @@
   "home": {
     "badge": "Tidak perlu VPN — bayar dengan kripto",
     "title": "Semua model AI dalam satu jendela",
-    "subtitle": "GPT-4o, Claude, Gemini, Midjourney, dan 200+ model. Satu akun, bayar dengan kripto.",
+    "subtitle": "GPT-4o, Claude, Gemini, Flux, dan 120+ model. Satu akun, bayar dengan crypto.",
     "typewriter": [
       "GPT-4o menulis kode dalam hitungan detik",
       "Claude menjelaskan hal kompleks secara sederhana",
@@ -40,7 +40,7 @@
     "features": [
       {
         "title": "Semua model sekaligus",
-        "text": "GPT-4o, Claude, Gemini, Midjourney, dan 200+ model — satu akun dan saldo bersama."
+        "text": "GPT-4o, Claude, Gemini, Flux, dan 120+ model — satu akun dan saldo bersama."
       },
       {
         "title": "Tanpa VPN",
@@ -100,7 +100,7 @@
       },
       {
         "q": "Model AI apa saja yang tersedia?",
-        "a": "Model yang tersedia termasuk GPT-4o, GPT-4o mini, Claude 3.5 Sonnet, Gemini 1.5 Pro, DeepSeek V3, Mistral, Llama, dan lebih dari 200 lainnya. Untuk gambar: Stable Diffusion, Flux, model yang kompatibel dengan Midjourney."
+        "a": "Model yang tersedia mencakup GPT-5, Claude Sonnet 5, Gemini 3 Pro, DeepSeek V4, Grok, Qwen, dan lebih dari 120 lainnya. Untuk gambar dan video: Flux, GPT Image, Sora, Veo, Kling, dan lainnya."
       },
       {
         "q": "Apakah ada API untuk pengembang?",
@@ -1955,7 +1955,9 @@
       "truncated": "Output terpotong (batas 256 KB)",
       "keysLink": "Kunci dengan cakupan sandboxes",
       "aboutLink": "Tentang Sandboxes"
-    }
+    },
+    "unavailableTitle": "Sementara tidak tersedia",
+    "unavailableBody": "Sandbox API saat ini dihentikan sementara kami mengaktifkan akun dengan penyedia infrastruktur kami — permintaan API akan menghasilkan error. Bagian di bawah ini menunjukkan cara kerjanya setelah diaktifkan; status saat ini ada di halaman /status."
   },
   "docs": {
     "metaTitle": "Dokumentasi — Cara Menggunakan aineron",

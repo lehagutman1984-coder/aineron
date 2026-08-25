@@ -21,7 +21,7 @@
   "home": {
     "badge": "No VPN needed — pay with crypto",
     "title": "All AI models in one window",
-    "subtitle": "GPT-4o, Claude, Gemini, Midjourney, and 200+ models. One account, pay with crypto.",
+    "subtitle": "GPT-4o, Claude, Gemini, Flux, and 120+ models. One account, pay with crypto.",
     "typewriter": [
       "GPT-4o writes code in seconds",
       "Claude explains complex things simply",
@@ -40,7 +40,7 @@
     "features": [
       {
         "title": "All models at once",
-        "text": "GPT-4o, Claude, Gemini, Midjourney, and 200+ models — one account and shared balance."
+        "text": "GPT-4o, Claude, Gemini, Flux, and 120+ models — one account and shared balance."
       },
       {
         "title": "No VPN",
@@ -100,7 +100,7 @@
       },
       {
         "q": "Which AI models are available?",
-        "a": "Available models include GPT-4o, GPT-4o mini, Claude 3.5 Sonnet, Gemini 1.5 Pro, DeepSeek V3, Mistral, Llama, and over 200 others. For images: Stable Diffusion, Flux, Midjourney-compatible models."
+        "a": "Available models include GPT-5, Claude Sonnet 5, Gemini 3 Pro, DeepSeek V4, Grok, Qwen, and over 120 others. For images and video: Flux, GPT Image, Sora, Veo, Kling, and more."
       },
       {
         "q": "Is there an API for developers?",
@@ -1955,7 +1955,9 @@
       "truncated": "Output truncated (256 KB limit)",
       "keysLink": "Key with the sandboxes scope",
       "aboutLink": "About Sandboxes"
-    }
+    },
+    "unavailableTitle": "Temporarily unavailable",
+    "unavailableBody": "Sandbox API is currently paused while we activate an account with our infrastructure provider — API requests will return an error. The section below shows how it will work once enabled; current status is on the /status page."
   },
   "docs": {
     "metaTitle": "Documentation — How to Use aineron",

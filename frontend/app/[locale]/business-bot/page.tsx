@@ -17,7 +17,7 @@ import { SITE_URL, siteHost } from "@/lib/site";
 export const metadata: Metadata = {
   title: `AI-секретарь для Telegram Business — ${siteHost()}`,
   description:
-    "Бот aineron отвечает вашим клиентам в Telegram от вашего имени: черновики с подтверждением, автопилот для типовых вопросов, утренняя сводка. 990 ₽/мес, до 300 авто-ответов.",
+    "Бот aineron отвечает вашим клиентам в Telegram от вашего имени: черновики с подтверждением, автопилот для типовых вопросов, утренняя сводка. 1290 ₽/мес, до 300 авто-ответов.",
   keywords:
     "AI секретарь telegram, telegram business бот, автоответчик telegram, нейросеть для бизнеса",
   alternates: { canonical: `${SITE_URL}/business-bot/` },
@@ -58,7 +58,7 @@ const FEATURES = [
 
 const STEPS = [
   "Зарегистрируйтесь на aineron.ru и привяжите Telegram в кабинете",
-  "Оформите тариф «Бизнес» — 990 ₽/мес",
+  "Оформите тариф «Бизнес» — 1290 ₽/мес",
   "В Telegram: Настройки → Telegram Business → Чат-боты → @aineron_bot",
   "Готово: клиентам отвечает AI, вы контролируете каждый ответ",
 ];
@@ -94,7 +94,7 @@ export default function BusinessBotPage() {
             href="/account/billing/"
             className="inline-flex items-center rounded-[10px] border border-[rgba(13,13,13,0.15)] px-6 py-3 text-[16px] font-medium text-[#1A1A1A] transition-colors hover:bg-[rgba(13,13,13,0.04)]"
           >
-            Тариф «Бизнес» — 990 ₽/мес
+            Тариф «Бизнес» — 1290 ₽/мес
           </Link>
         </div>
         <p className="mt-4 text-[14px] text-[rgba(13,13,13,0.45)]">

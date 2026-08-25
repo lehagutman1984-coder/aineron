@@ -21,7 +21,7 @@
   "home": {
     "badge": "بدون نیاز به VPN — پرداخت با رمزارز",
     "title": "همه مدل‌های هوش مصنوعی در یک پنجره",
-    "subtitle": "GPT-4o، Claude، Gemini، Midjourney و بیش از ۲۰۰ مدل. یک حساب، پرداخت با رمزارز.",
+    "subtitle": "GPT-4o، Claude، Gemini، Flux و بیش از ۱۲۰ مدل. یک حساب، پرداخت با کریپتو.",
     "typewriter": [
       "GPT-4o کد را در چند ثانیه می‌نویسد",
       "Claude مسائل پیچیده را ساده توضیح می‌دهد",
@@ -40,7 +40,7 @@
     "features": [
       {
         "title": "همه مدل‌ها به‌صورت یکجا",
-        "text": "GPT-4o، Claude، Gemini، Midjourney و بیش از ۲۰۰ مدل — یک حساب و موجودی مشترک."
+        "text": "GPT-4o، Claude، Gemini، Flux و بیش از ۱۲۰ مدل — یک حساب و موجودی مشترک."
       },
       {
         "title": "بدون VPN",
@@ -100,7 +100,7 @@
       },
       {
         "q": "کدام مدل‌های هوش مصنوعی در دسترس هستند؟",
-        "a": "مدل‌های موجود شامل GPT-4o، GPT-4o mini، Claude 3.5 Sonnet، Gemini 1.5 Pro، DeepSeek V3، Mistral، Llama و بیش از ۲۰۰ مدل دیگر هستند. برای تصاویر: Stable Diffusion، Flux، مدل‌های سازگار با Midjourney."
+        "a": "مدل‌های موجود شامل GPT-5، Claude Sonnet 5، Gemini 3 Pro، DeepSeek V4، Grok، Qwen و بیش از ۱۲۰ مدل دیگر هستند. برای تصاویر و ویدیو: Flux، GPT Image، Sora، Veo، Kling و موارد دیگر."
       },
       {
         "q": "آیا API برای توسعه‌دهندگان وجود دارد؟",
@@ -1955,7 +1955,9 @@
       "truncated": "خروجی کوتاه شده (محدودیت ۲۵۶ کیلوبایت)",
       "keysLink": "کلید با دامنه sandboxes",
       "aboutLink": "درباره Sandboxes"
-    }
+    },
+    "unavailableTitle": "موقتا در دسترس نیست",
+    "unavailableBody": "Sandbox API در حال حاضر متوقف شده است تا یک حساب با ارائه‌دهنده زیرساخت ما فعال شود — درخواست‌های API با خطا مواجه خواهند شد. بخش زیر نشان می‌دهد که پس از فعال‌سازی چگونه کار خواهد کرد؛ وضعیت فعلی در صفحه /status موجود است."
   },
   "docs": {
     "metaTitle": "مستندات — نحوه استفاده از aineron",
