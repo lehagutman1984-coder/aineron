@@ -26,9 +26,9 @@
       "GPT-4o saniyeler içinde kod yazar",
       "Claude karmaşık şeyleri basitçe açıklar",
       "Gemini belgeleri analiz eder",
-      "Midjourney isteğe göre çizer",
+      "Flux isteğe bağlı çalışır",
       "DeepSeek matematik problemlerini çözer",
-      "Perplexity güncel bilgileri bulur"
+      "Grok güncel bilgileri bulur"
     ],
     "popularTitle": "Popüler modeller",
     "popularSubtitle": "En çok talep gören yapay zeka modelleri",
@@ -953,7 +953,7 @@
       "quickLinks": [
         {
           "label": "AI Model Kataloğu",
-          "sub": "Her görev için 200+ model"
+          "sub": "Her görev için 120+ model"
         },
         {
           "label": "Model Karşılaştırması",

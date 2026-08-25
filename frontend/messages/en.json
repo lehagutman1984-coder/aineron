@@ -26,9 +26,9 @@
       "GPT-4o writes code in seconds",
       "Claude explains complex things simply",
       "Gemini analyzes documents",
-      "Midjourney draws on request",
+      "Flux draws on request",
       "DeepSeek solves math problems",
-      "Perplexity finds current information"
+      "Grok finds current information"
     ],
     "popularTitle": "Popular models",
     "popularSubtitle": "Most in-demand AI models",
@@ -953,7 +953,7 @@
       "quickLinks": [
         {
           "label": "AI Model Catalog",
-          "sub": "200+ models for any task"
+          "sub": "120+ models for any task"
         },
         {
           "label": "Model Comparison",

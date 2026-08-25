@@ -26,9 +26,9 @@
       "GPT-4o menulis kode dalam hitungan detik",
       "Claude menjelaskan hal kompleks secara sederhana",
       "Gemini menganalisis dokumen",
-      "Midjourney menggambar sesuai permintaan",
+      "Flux menggambar berdasarkan permintaan",
       "DeepSeek menyelesaikan masalah matematika",
-      "Perplexity menemukan informasi terkini"
+      "Grok menemukan informasi terkini"
     ],
     "popularTitle": "Model populer",
     "popularSubtitle": "Model AI paling diminati",
@@ -953,7 +953,7 @@
       "quickLinks": [
         {
           "label": "Katalog Model AI",
-          "sub": "200+ model untuk berbagai tugas"
+          "sub": "120+ model untuk berbagai tugas"
         },
         {
           "label": "Perbandingan Model",
