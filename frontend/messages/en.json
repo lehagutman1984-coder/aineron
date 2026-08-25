@@ -2444,5 +2444,394 @@
     "chatThinking": "Thinking...",
     "chatGenError": "Generation error. Please try again.",
     "chatSendError": "Send error"
+  },
+  "landing": {
+    "nav": {
+      "models": "Models",
+      "features": "Features",
+      "compare": "Compare",
+      "save": "Savings",
+      "faq": "FAQ",
+      "login": "Log in",
+      "cta": "Start for free",
+      "menu": "Menu"
+    },
+    "hero": {
+      "tagline": "{count} models · one account · no VPN",
+      "title": "Every AI model in the world",
+      "titleDim": "in one window",
+      "subtitle": "GPT-5, Claude, Gemini, Flux, Sora, and a hundred more models. Pay with crypto, one shared balance, no separate subscriptions.",
+      "ctaPrimary": "Start for free",
+      "ctaGhost": "See examples",
+      "note": "{amount} on your balance right after signup. No card needed."
+    },
+    "metrics": {
+      "models": "models in the catalog",
+      "free": "free models",
+      "latency": "average response",
+      "latencyValue": "1.2 sec",
+      "start": "starting at"
+    },
+    "demo": {
+      "send": "Send",
+      "chips": {
+        "coffee": "Coffee shop taglines",
+        "lease": "Review a lease agreement",
+        "cover": "Album cover art"
+      },
+      "prompts": {
+        "coffee": "Write three taglines for a coffee shop by the subway",
+        "lease": "Review this lease agreement and list the risks",
+        "cover": "Make an album cover image"
+      },
+      "answers": {
+        "gptCoffee": {
+          "lines": [
+            "Coffee before the light turns green.",
+            "Two minutes from the platform.",
+            "Your morning starts here, not underground."
+          ],
+          "note": "The first option leans on speed, the third on mood. For a storefront sign, the second one reads shortest."
+        },
+        "claudeCoffee": {
+          "lines": [
+            "The subway wakes you up. Coffee forgives you.",
+            "Catch the train. Catch the flavor.",
+            "Your escalator to a better morning."
+          ],
+          "note": "Leaned into commute rhythm: people read signage on the move, so the lines are short with a pause in the middle."
+        },
+        "fluxCoffee": {
+          "note": "Flux generates images, not text. For this prompt, switch to **GPT-5** or **Claude** — or try \"Album cover art\"."
+        },
+        "gptLease": {
+          "lines": [
+            "Clause 4.2 lets the landlord raise rent unilaterally. Risk: payments increase without your sign-off.",
+            "The deposit isn't refunded on early termination. Risk: you lose the deposit outright.",
+            "You must give 3 months' notice before moving out. Risk: you keep paying after you've left."
+          ],
+          "note": "Clause 4.2 is the most contentious one. Worth capping the indexation rate before signing."
+        },
+        "claudeLease": {
+          "lines": [
+            "Unilateral rent increase (clause 4.2) — ask to tie it to inflation instead of the landlord's discretion.",
+            "No deposit refund on early exit — propose a prorated refund instead.",
+            "Three months' notice is steep — try to negotiate it down to one."
+          ],
+          "note": "Sorted by financial risk, highest first — the top two are where people actually lose money."
+        },
+        "fluxLease": {
+          "note": "Reviewing text is a job for **GPT-5** or **Claude**. Switch tabs above and leave Flux for images."
+        },
+        "fluxCover": {
+          "note": "A ready cover shot: vertical layout, bold headline, studio lighting. Download it or send it back for edits."
+        },
+        "gptCover": {
+          "note": "\"Album cover art\" means image generation — that's **Flux 2 Pro**'s job. Switch tabs above."
+        },
+        "claudeCover": {
+          "note": "Claude doesn't draw covers — **Flux 2 Pro** does. Switch tabs above to see the image."
+        }
+      },
+      "foot": {
+        "models": "models",
+        "latency": "average response",
+        "noSub": "no",
+        "noSubLabel": "subscription fee",
+        "currency": "crypto",
+        "currencyLabel": "no VPN"
+      },
+      "answerLabel": "Reply · {model}"
+    },
+    "marquee": [
+      "GPT-5",
+      "Claude Sonnet 5",
+      "Gemini 3 Pro",
+      "Seedream 5.0",
+      "Sora 2",
+      "Veo 3.1",
+      "Kling v2.6",
+      "Flux 2 Pro",
+      "GPT Image 1",
+      "Nano Banana",
+      "Grok 4",
+      "DeepSeek V3.1"
+    ],
+    "models": {
+      "eyebrow": "models and examples",
+      "title": "Every model, with its own example",
+      "subtitle": "The video and images below were generated in Aineron. Each one is captioned with the model that made it and the exact prompt used.",
+      "requestLabel": "Prompt",
+      "sora": {
+        "badge": "Video",
+        "name": "Sora 2",
+        "kind": "Video generation",
+        "desc": "OpenAI's video model. Holds up scene physics and camera motion — good for ad spots and short scenes.",
+        "factDuration": "Duration",
+        "factDurationVal": "up to 20 sec",
+        "factRes": "Resolution",
+        "factResVal": "1080p",
+        "factSound": "Audio",
+        "factSoundVal": "no",
+        "factPrice": "Price",
+        "factPriceUnit": "/ clip",
+        "try": "Try Sora 2",
+        "query": "a lone concrete house in the desert, storm on the horizon, slow camera push-in, 5 seconds"
+      },
+      "veo": {
+        "badge": "Video",
+        "name": "Veo 3.1 Fast",
+        "kind": "Video generation",
+        "desc": "Google DeepMind's video model. Fast rendering and clean motion — picked for dynamic scenes and product shots.",
+        "factDuration": "Duration",
+        "factDurationVal": "up to 8 sec",
+        "factRes": "Resolution",
+        "factResVal": "1080p",
+        "factSound": "Audio",
+        "factSoundVal": "yes",
+        "factPrice": "Price",
+        "factPriceUnit": "/ clip",
+        "try": "Try Veo 3.1 Fast",
+        "query": "a drop of milk falling into a cup of coffee, macro, slow motion"
+      },
+      "kling": {
+        "badge": "Video",
+        "name": "Kling v2.6",
+        "kind": "Video generation",
+        "desc": "Kuaishou's video model with generated audio. Handles faces and repetitive motion well.",
+        "factDuration": "Duration",
+        "factDurationVal": "up to 10 sec",
+        "factRes": "Resolution",
+        "factResVal": "1080p",
+        "factSound": "Audio",
+        "factSoundVal": "yes",
+        "factPrice": "Price",
+        "factPriceUnit": "/ clip",
+        "try": "Try Kling v2.6",
+        "query": "a barista making a latte, warm window light, close-up on hands"
+      },
+      "flux": {
+        "badge": "Image",
+        "name": "Flux 2 Pro",
+        "kind": "Image generation",
+        "desc": "Black Forest Labs' model. Photorealism, precise geometry and light — the workhorse for product and ad photography.",
+        "factSize": "Size",
+        "factSizeVal": "up to 2048 px",
+        "factStyle": "Styles",
+        "factStyleVal": "free-form prompt",
+        "factSpeed": "Speed",
+        "factSpeedVal": "~8 sec",
+        "factPrice": "Price",
+        "factPriceUnit": "/ image",
+        "try": "Try Flux 2 Pro",
+        "query1": "perfume bottle on wet stone, morning light",
+        "query2": "ceramic cup, steam, dark background",
+        "query3": "sneaker floating in mid-air, studio lighting"
+      },
+      "gptimage": {
+        "badge": "Image",
+        "name": "GPT Image 1",
+        "kind": "Image generation",
+        "desc": "OpenAI's model. Understands complex descriptions and renders in-image text cleanly — good for covers and layouts.",
+        "factSize": "Size",
+        "factSizeVal": "up to 2048 px",
+        "factText": "In-image text",
+        "factTextVal": "yes",
+        "factSpeed": "Speed",
+        "factSpeedVal": "~12 sec",
+        "factPrice": "Price",
+        "factPriceUnit": "/ image",
+        "try": "Try GPT Image 1",
+        "query1": "magazine cover with a bold headline",
+        "query2": "restaurant poster with a handwritten caption",
+        "query3": "product launch poster"
+      },
+      "nanobanana": {
+        "badge": "Image",
+        "name": "Nano Banana",
+        "kind": "Image editing",
+        "desc": "Google's Gemini 2.5 Flash Image for editing existing photos: swap the background, remove an object, change the lighting — while keeping faces and details intact.",
+        "factEdit": "Photo editing",
+        "factEditVal": "yes",
+        "factFace": "Face preservation",
+        "factFaceVal": "yes",
+        "factSpeed": "Speed",
+        "factSpeedVal": "~6 sec",
+        "factPrice": "Price",
+        "factPriceUnit": "/ image",
+        "try": "Try Nano Banana",
+        "query1": "swap the background for a night street scene",
+        "query2": "declutter the room"
+      }
+    },
+    "features": {
+      "eyebrow": "what's already inside",
+      "title": "More than just a chat with an AI",
+      "subtitle": "This already works and is included in the service — not separate subscriptions, not \"coming soon\".",
+      "items": [
+        {
+          "title": "Telegram bot",
+          "text": "The whole service right inside Telegram: chat, photo and video generation, voice messages, chat history, group support — no app install needed."
+        },
+        {
+          "title": "Web search in chat",
+          "text": "The model looks up current information on the web while answering — no need to check manually or switch tabs."
+        },
+        {
+          "title": "Memory across chats",
+          "text": "The service remembers the context of your projects and conversations — no need to re-explain who you are and what you're working on every time."
+        },
+        {
+          "title": "Projects with GitHub sync",
+          "text": "Project folders with their own system prompt and files — a connector pulls code from your repository and pushes commits back."
+        },
+        {
+          "title": "API for developers",
+          "text": "OpenAI-compatible API — plugs into Cursor, VS Code, and your own apps: just change the base URL and key, no other code changes needed."
+        },
+        {
+          "title": "Model Arena",
+          "text": "Compare 2–3 models side by side on the same prompt — instantly see which one did better, no tab switching."
+        },
+        {
+          "title": "Voice in and out",
+          "text": "Dictate your question by voice and get a spoken answer back — faster than typing, and handy when your hands are busy."
+        },
+        {
+          "title": "Scheduled AI tasks",
+          "text": "Set up a recurring task once — the service runs it on schedule and delivers the result, no reminders needed."
+        }
+      ]
+    },
+    "compare": {
+      "eyebrow": "an honest comparison",
+      "title": "Aineron vs. the big names",
+      "subtitle": "No marketing spin: where we genuinely win, and where the feature set is a tie.",
+      "colFeature": "Feature",
+      "colUs": "Aineron",
+      "colChatgpt": "ChatGPT",
+      "colGemini": "Gemini",
+      "rows": [
+        "Works worldwide without a VPN",
+        "Pay with crypto, no bank card needed",
+        "GPT, Claude, Gemini in one window",
+        "Pay per request, no subscription",
+        "Image and video generation",
+        "Side-by-side model comparison",
+        "OpenAI-compatible API",
+        "Free models, no card required"
+      ]
+    },
+    "save": {
+      "eyebrow": "savings",
+      "title": "One balance instead of five subscriptions",
+      "subtitle": "Separate subscriptions for each service — more expensive and less convenient. Here's the monthly math.",
+      "otherTitle": "Separate subscriptions",
+      "otherRows": [
+        {
+          "label": "ChatGPT Plus",
+          "value": "≈ $20"
+        },
+        {
+          "label": "Claude Pro",
+          "value": "≈ $20"
+        },
+        {
+          "label": "Midjourney",
+          "value": "≈ $10"
+        },
+        {
+          "label": "Sora / video",
+          "value": "≈ $20"
+        }
+      ],
+      "otherTotalLabel": "per month",
+      "otherTotalValue": "≈ $70",
+      "usTitle": "Aineron",
+      "usRows": [
+        {
+          "label": "All text models",
+          "value": "pay per use"
+        },
+        {
+          "label": "Images and video",
+          "value": "pay per use"
+        },
+        {
+          "label": "No {count} free models",
+          "value": "$0"
+        },
+        {
+          "label": "No region restrictions",
+          "value": "no VPN needed"
+        },
+        {
+          "label": "Subscription fee",
+          "value": "none"
+        }
+      ],
+      "usTotalLabel": "pay only for what you use",
+      "usTotalValue": "from {amount}"
+    },
+    "faq": [
+      {
+        "q": "How does the balance work?",
+        "a": "You top up your balance and spend it on any model. Each request deducts credits: text is priced per message, images and video per generated file. No subscription fee, and credits never expire."
+      },
+      {
+        "q": "Do I need a VPN?",
+        "a": "No. The service is available worldwide and opens on any device — no workarounds needed, and you pay with crypto instead of a bank card."
+      },
+      {
+        "q": "Which AI models are available?",
+        "a": "{count} models: GPT-5, Claude, Gemini, Grok, and DeepSeek for text; Flux, GPT Image, and Nano Banana for images; Sora, Veo, and Kling for video. The catalog grows as new versions ship."
+      },
+      {
+        "q": "Can I connect it to my own app?",
+        "a": "Yes. The API is OpenAI-compatible — swap the base URL and key and your existing code works. Plugs into Cursor, VS Code, and other editors."
+      },
+      {
+        "q": "Who owns the content I generate?",
+        "a": "Images, video, and text generated through the service are yours and can be used in commercial projects."
+      },
+      {
+        "q": "How do I pay?",
+        "a": "With cryptocurrency (USDT, TON, and others) via Crypto Pay / @CryptoBot. No bank card or VPN required."
+      }
+    ],
+    "final": {
+      "title": "Ready to try it?",
+      "subtitle": "{amount} on your balance right away. No VPN, no international card, no subscription.",
+      "ctaPrimary": "Open Aineron",
+      "ctaGhost": "Compare models",
+      "disclaimer": "By clicking this button, you agree to the service terms"
+    },
+    "footer": {
+      "about": "Access to the world's AI models, no region restrictions. One account, one balance, {count} models.",
+      "serviceTitle": "Product",
+      "catalog": "Model catalog",
+      "compare": "Compare",
+      "personas": "Personas",
+      "prompts": "Prompts",
+      "pricing": "Pricing",
+      "gallery": "Gallery",
+      "devTitle": "Developers",
+      "api": "API & integrations",
+      "docs": "Documentation",
+      "playground": "Playground",
+      "connectTitle": "Connect",
+      "blog": "Blog",
+      "support": "Support",
+      "telegram": "Telegram",
+      "terms": "Terms of Service",
+      "privacy": "Privacy Policy",
+      "legal": "© {year} aineron.net · support@aineron.net",
+      "tag": "No VPN, anywhere"
+    },
+    "dock": {
+      "note": "to start",
+      "cta": "Start for free"
+    },
+    "faqTitle": "Frequently asked questions"
   }
 }

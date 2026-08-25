@@ -1,307 +1,650 @@
-
 import { Link } from "@/i18n/navigation";
-import {
-  ArrowRight, Code2, ImageIcon, Check, X,
-  Wallet, ShieldCheck, Layers, Sparkles,
-} from "lucide-react";
+import Image from "next/image";
+import { Check, X, ArrowDown } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { serverListNetworks } from "@/lib/api/server";
-import type { NetworkListItem } from "@/lib/api/types";
 import { formatMoney } from "@/lib/money";
-import { HeroTypewriter } from "@/components/landing/HeroTypewriter";
-import { FaqAccordion } from "@/components/landing/FaqAccordion";
-import { HomeCta } from "@/components/landing/HomeCta";
+import { LandingHeader } from "@/components/landing/LandingHeader";
+import { LandingDemo } from "@/components/landing/LandingDemo";
+import { LandingFaq } from "@/components/landing/LandingFaq";
+import { LandingVideo } from "@/components/landing/LandingVideo";
+import "./landing.css";
 
 export const revalidate = 3600;
 
-async function getPopularNetworks(locale: string): Promise<NetworkListItem[]> {
-  return (await serverListNetworks({ is_popular: true, lang: locale }).catch(() => [])) ?? [];
-}
+// Реальные kopecks-цены живых моделей из каталога (сверено 2026-08-26,
+// одинаковы на aineron.ru и aineron.net) — formatMoney сам покажет рубли
+// на .ru и credits на .net, никаких хардкод-сумм в переводах.
+const PRICES = {
+  sora: 2500,
+  veo: 1500,
+  kling: 1000,
+  flux: 1200,
+  gptImage: 1400,
+  nanoBanana: 600,
+  signupBonus: 1000,
+  demoGptCoffee: 400,
+  demoClaudeCoffee: 1200,
+  demoGptLease: 800,
+  demoClaudeLease: 1500,
+};
 
-async function getFreeNetworks(locale: string): Promise<NetworkListItem[]> {
-  return (await serverListNetworks({ is_free: true, lang: locale }).catch(() => [])) ?? [];
-}
-
-const FEATURE_ICONS = [Layers, ShieldCheck, Code2, ImageIcon];
-
-// Матрица сравнения (галочки/крестики) — тексты строк в словаре home.comparisonRows
-const COMPARISON_MARKS: { aineron: boolean; chatgpt: boolean; gemini: boolean }[] = [
-  { aineron: true, chatgpt: false, gemini: false },
-  { aineron: true, chatgpt: false, gemini: false },
-  { aineron: true, chatgpt: false, gemini: false },
-  { aineron: true, chatgpt: false, gemini: false },
-  { aineron: true, chatgpt: true, gemini: true },
-  { aineron: true, chatgpt: true, gemini: true },
-  { aineron: true, chatgpt: true, gemini: false },
-  { aineron: true, chatgpt: false, gemini: false },
-];
+const COVER_IMAGE = "/landing-media/gptimg-1.png";
 
 export default async function HomePage({
   params,
 }: {
   params: { locale: string };
 }) {
-  const t = await getTranslations("home");
-  const [popular, freeNetworks] = await Promise.all([
-    getPopularNetworks(params.locale),
-    getFreeNetworks(params.locale),
+  const t = await getTranslations("landing");
+  const [all, free] = await Promise.all([
+    serverListNetworks({ lang: params.locale }).catch(() => []),
+    serverListNetworks({ is_free: true, lang: params.locale }).catch(() => []),
   ]);
-  const freeCount = freeNetworks.length;
+  const modelCount = all?.length ?? 0;
+  const freeCount = free?.length ?? 0;
 
-  const features = t.raw("features") as { title: string; text: string }[];
-  const comparisonRows = t.raw("comparisonRows") as string[];
-  const pricing = t.raw("pricing") as { title: string; price: string; sub: string }[];
+  const signupAmount = formatMoney(PRICES.signupBonus);
+  const marquee = t.raw("marquee") as string[];
+  const marqueeLine = [...marquee, ...marquee];
+
+  const demoAnswers = {
+    "gpt|coffee": {
+      label: `${t("demo.answerLabel", { model: "GPT-5" })}`,
+      costKopecks: PRICES.demoGptCoffee,
+      lines: t.raw("demo.answers.gptCoffee.lines") as string[],
+      note: t("demo.answers.gptCoffee.note"),
+    },
+    "claude|coffee": {
+      label: t("demo.answerLabel", { model: "Claude Sonnet 5" }),
+      costKopecks: PRICES.demoClaudeCoffee,
+      lines: t.raw("demo.answers.claudeCoffee.lines") as string[],
+      note: t("demo.answers.claudeCoffee.note"),
+    },
+    "flux|coffee": {
+      label: t("demo.answerLabel", { model: "Flux 2 Pro" }),
+      note: t("demo.answers.fluxCoffee.note"),
+    },
+    "gpt|lease": {
+      label: t("demo.answerLabel", { model: "GPT-5" }),
+      costKopecks: PRICES.demoGptLease,
+      lines: t.raw("demo.answers.gptLease.lines") as string[],
+      note: t("demo.answers.gptLease.note"),
+    },
+    "claude|lease": {
+      label: t("demo.answerLabel", { model: "Claude Sonnet 5" }),
+      costKopecks: PRICES.demoClaudeLease,
+      lines: t.raw("demo.answers.claudeLease.lines") as string[],
+      note: t("demo.answers.claudeLease.note"),
+    },
+    "flux|lease": {
+      label: t("demo.answerLabel", { model: "Flux 2 Pro" }),
+      note: t("demo.answers.fluxLease.note"),
+    },
+    "flux|cover": {
+      label: t("demo.answerLabel", { model: "Flux 2 Pro" }),
+      costKopecks: PRICES.flux,
+      note: t("demo.answers.fluxCover.note"),
+    },
+    "gpt|cover": {
+      label: t("demo.answerLabel", { model: "GPT-5" }),
+      note: t("demo.answers.gptCover.note"),
+    },
+    "claude|cover": {
+      label: t("demo.answerLabel", { model: "Claude Sonnet 5" }),
+      note: t("demo.answers.claudeCover.note"),
+    },
+  };
+
+  const compareRows = t.raw("compare.rows") as string[];
+  const COMPARE_MARKS: [boolean, boolean, boolean][] = [
+    [true, false, false],
+    [true, false, false],
+    [true, false, false],
+    [true, false, false],
+    [true, true, true],
+    [true, true, true],
+    [true, true, false],
+    [true, false, false],
+  ];
+
+  const otherRows = t.raw("save.otherRows") as { label: string; value: string }[];
+  const usRowsRaw = t.raw("save.usRows") as { label: string; value: string }[];
+  const usRows = usRowsRaw.map((r) => ({
+    ...r,
+    label: r.label.replace("{count}", String(freeCount)),
+  }));
+
+  const faqItems = (t.raw("faq") as { q: string; a: string }[]).map((f) => ({
+    q: f.q,
+    a: f.a.replace("{count}", String(modelCount)).replace("{freeCount}", String(freeCount)),
+  }));
+
+  const year = new Date().getFullYear();
 
   return (
-    <>
-      {/* ── Hero ──────────────────────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-4xl px-4 pb-16 pt-24 text-center sm:px-6">
-        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[rgba(217,119,87,0.25)] bg-[rgba(217,119,87,0.06)] px-3.5 py-1 text-[15px] text-[#D97757]">
-          <ShieldCheck size={13} />
-          {t("badge")}
+    <div className="landing-page">
+      <LandingHeader
+        labels={{
+          models: t("nav.models"),
+          features: t("nav.features"),
+          compare: t("nav.compare"),
+          save: t("nav.save"),
+          faq: t("nav.faq"),
+        }}
+        loginLabel={t("nav.login")}
+        ctaLabel={t("nav.cta")}
+        menuLabel={t("nav.menu")}
+      />
+
+      {/* ПЕРВЫЙ ЭКРАН */}
+      <section className="hero">
+        <div className="hero-glow" />
+        <div className="hero-mesh" />
+        <div className="wrap hero-inner">
+          <div>
+            <div className="tagline">
+              <i />
+              {t("hero.tagline", { count: modelCount })}
+            </div>
+            <h1>
+              {t("hero.title")}
+              <span className="dim">{t("hero.titleDim")}</span>
+            </h1>
+            <p className="hero-sub">{t("hero.subtitle")}</p>
+            <div className="hero-cta">
+              <a href="#final" className="btn btn-primary">
+                {t("hero.ctaPrimary")} →
+              </a>
+              <a href="#models" className="btn btn-ghost">
+                {t("hero.ctaGhost")}
+              </a>
+            </div>
+            <p className="hero-note">{t("hero.note", { amount: signupAmount })}</p>
+          </div>
+          <div className="metrics">
+            <div className="metric">
+              <span className="k">{t("metrics.models")}</span>
+              <span className="v">{modelCount}</span>
+            </div>
+            <div className="metric">
+              <span className="k">{t("metrics.free")}</span>
+              <span className="v">{freeCount}</span>
+            </div>
+            <div className="metric">
+              <span className="k">{t("metrics.latency")}</span>
+              <span className="v sm">{t("metrics.latencyValue")}</span>
+            </div>
+            <div className="metric hl">
+              <span className="k">{t("metrics.start")}</span>
+              <span className="v">{signupAmount}</span>
+            </div>
+          </div>
         </div>
 
-        <h1 className="mb-4 text-[40px] font-bold leading-tight tracking-tight text-[var(--text-primary)] sm:text-[54px]">
-          {t("title")}
-        </h1>
-
-        <p className="mx-auto mb-3 max-w-2xl text-[18px] leading-relaxed text-[var(--text-secondary)]">
-          <HeroTypewriter />
-        </p>
-        <p className="mx-auto mb-9 max-w-xl text-[17px] text-[var(--text-tertiary)]">
-          {t("subtitle")}
-        </p>
-
-        <HomeCta placement="hero" />
+        <LandingDemo
+          prompts={{
+            coffee: { text: t("demo.prompts.coffee"), kind: "text" },
+            lease: { text: t("demo.prompts.lease"), kind: "text" },
+            cover: { text: t("demo.prompts.cover"), kind: "image" },
+          }}
+          chipLabels={{
+            coffee: t("demo.chips.coffee"),
+            lease: t("demo.chips.lease"),
+            cover: t("demo.chips.cover"),
+          }}
+          sendLabel={t("demo.send")}
+          answers={demoAnswers}
+          coverImageUrl={COVER_IMAGE}
+        />
+        <div className="wrap">
+          <div className="demo-foot" style={{ marginTop: -1 }}>
+            <span>
+              <b>{modelCount}</b> {t("demo.foot.models")}
+            </span>
+            <span>
+              <b>{t("metrics.latencyValue")}</b> {t("demo.foot.latency")}
+            </span>
+            <span>
+              <b>{t("demo.foot.noSub")}</b> {t("demo.foot.noSubLabel")}
+            </span>
+            <span>
+              <b>{t("demo.foot.currency")}</b> {t("demo.foot.currencyLabel")}
+            </span>
+          </div>
+        </div>
       </section>
 
-      {/* ── Popular models ────────────────────────────────────────────────────── */}
-      {popular.length > 0 && (
-        <section className="mx-auto max-w-7xl px-4 pb-16 pt-4 sm:px-6">
-          <div className="mb-8 flex items-end justify-between">
-            <div>
-              <h2 className="text-[22px] font-bold text-[var(--text-primary)]">{t("popularTitle")}</h2>
-              <p className="mt-1 text-[16px] text-[var(--text-tertiary)]">
-                {t("popularSubtitle")}
-              </p>
-            </div>
-            <Link
-              href="/models/"
-              className="flex items-center gap-1 text-[15px] text-[#D97757] transition-colors hover:text-[#C4623E]"
-            >
-              {t("allModels")}
-              <ArrowRight size={14} />
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {popular.slice(0, 6).map((n) => (
-              <NetworkCard key={n.id} network={n} perMessage={t("perMessage", { price: formatMoney(n.cost_kopecks) })} />
-            ))}
-          </div>
-        </section>
-      )}
+      {/* БЕГУЩАЯ СТРОКА */}
+      <div className="marquee">
+        <div className="marquee-track">
+          {marqueeLine.map((m, i) => (
+            <span key={i} className={`mq${i % 4 === 1 ? " on" : ""}`}>
+              <i />
+              {m}
+            </span>
+          ))}
+        </div>
+      </div>
 
-      {/* ── Free text models ──────────────────────────────────────────────────── */}
-      {freeCount > 0 && (
-        <section className="mx-auto max-w-7xl px-4 pb-16 sm:px-6">
-          <div className="flex flex-col items-start gap-5 rounded-[20px] border border-[rgba(217,119,87,0.30)] bg-[rgba(217,119,87,0.06)] px-7 py-7 sm:flex-row sm:items-center sm:justify-between sm:px-9">
-            <div className="flex items-start gap-4">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[12px] bg-[rgba(217,119,87,0.12)] text-[#D97757]">
-                <Sparkles size={22} />
+      {/* МОДЕЛИ */}
+      <section className="sec" id="models">
+        <div className="wrap">
+          <div className="eyebrow">
+            <b>I</b> — {t("models.eyebrow")}
+          </div>
+          <h2 className="sec-title">{t("models.title")}</h2>
+          <p className="sec-sub">{t("models.subtitle")}</p>
+
+          <div style={{ marginTop: 52 }}>
+            {/* SORA 2 */}
+            <article className="model">
+              <div>
+                <div className="model-badge">{t("models.sora.badge")}</div>
+                <h3>{t("models.sora.name")}</h3>
+                <div className="kind">{t("models.sora.kind")}</div>
+                <p className="desc">{t("models.sora.desc")}</p>
+                <div className="model-facts">
+                  <Fact label={t("models.sora.factDuration")} value={t("models.sora.factDurationVal")} />
+                  <Fact label={t("models.sora.factRes")} value={t("models.sora.factResVal")} />
+                  <Fact label={t("models.sora.factSound")} value={t("models.sora.factSoundVal")} />
+                  <Fact
+                    label={t("models.sora.factPrice")}
+                    value={`${formatMoney(PRICES.sora)} ${t("models.sora.factPriceUnit")}`}
+                    coral
+                  />
+                </div>
+                <a href="#final" className="btn btn-ghost btn-sm">
+                  {t("models.sora.try")} →
+                </a>
               </div>
               <div>
-                <h2 className="text-[20px] font-bold text-[var(--text-primary)] sm:text-[22px]">
-                  {t("freeTitle", { count: freeCount })}
-                </h2>
-                <p className="mt-1.5 max-w-xl text-[16px] leading-relaxed text-[var(--text-secondary)]">
-                  {t("freeText")}
-                </p>
+                <LandingVideo src="/landing-media/sora-2.mp4" tag={t("models.requestLabel")} />
+                <MediaCaption label={t("models.requestLabel")} text={t("models.sora.query")} />
               </div>
-            </div>
-            <Link
-              href="/models/?category=__free__"
-              className="inline-flex shrink-0 items-center gap-2 rounded-[12px] bg-[#D97757] px-5 py-3 text-[15px] font-medium text-white transition-colors hover:bg-[#C4623E]"
-            >
-              {t("freeCta")}
-              <ArrowRight size={16} />
-            </Link>
-          </div>
-        </section>
-      )}
+            </article>
 
-      {/* ── Features grid ─────────────────────────────────────────────────────── */}
-      <section className="border-t border-[var(--border-tertiary)] bg-[var(--background-tertiary)]">
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
-          <h2 className="mb-10 text-center text-[24px] font-bold text-[var(--text-primary)]">
-            {t("whyTitle")}
-          </h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {features.map((f, i) => (
-              <FeatureCard key={f.title} icon={FEATURE_ICONS[i] ?? Layers} title={f.title} text={f.text} />
+            {/* VEO 3.1 FAST */}
+            <article className="model">
+              <div>
+                <div className="model-badge">{t("models.veo.badge")}</div>
+                <h3>{t("models.veo.name")}</h3>
+                <div className="kind">{t("models.veo.kind")}</div>
+                <p className="desc">{t("models.veo.desc")}</p>
+                <div className="model-facts">
+                  <Fact label={t("models.veo.factDuration")} value={t("models.veo.factDurationVal")} />
+                  <Fact label={t("models.veo.factRes")} value={t("models.veo.factResVal")} />
+                  <Fact label={t("models.veo.factSound")} value={t("models.veo.factSoundVal")} />
+                  <Fact
+                    label={t("models.veo.factPrice")}
+                    value={`${formatMoney(PRICES.veo)} ${t("models.veo.factPriceUnit")}`}
+                    coral
+                  />
+                </div>
+                <a href="#final" className="btn btn-ghost btn-sm">
+                  {t("models.veo.try")} →
+                </a>
+              </div>
+              <div>
+                <LandingVideo src="/landing-media/veo-3-1-fast.mp4" tag={t("models.requestLabel")} />
+                <MediaCaption label={t("models.requestLabel")} text={t("models.veo.query")} />
+              </div>
+            </article>
+
+            {/* KLING V2.6 */}
+            <article className="model">
+              <div>
+                <div className="model-badge">{t("models.kling.badge")}</div>
+                <h3>{t("models.kling.name")}</h3>
+                <div className="kind">{t("models.kling.kind")}</div>
+                <p className="desc">{t("models.kling.desc")}</p>
+                <div className="model-facts">
+                  <Fact label={t("models.kling.factDuration")} value={t("models.kling.factDurationVal")} />
+                  <Fact label={t("models.kling.factRes")} value={t("models.kling.factResVal")} />
+                  <Fact label={t("models.kling.factSound")} value={t("models.kling.factSoundVal")} />
+                  <Fact
+                    label={t("models.kling.factPrice")}
+                    value={`${formatMoney(PRICES.kling)} ${t("models.kling.factPriceUnit")}`}
+                    coral
+                  />
+                </div>
+                <a href="#final" className="btn btn-ghost btn-sm">
+                  {t("models.kling.try")} →
+                </a>
+              </div>
+              <div>
+                <LandingVideo src="/landing-media/kling-v2-6.mp4" tag={t("models.requestLabel")} />
+                <MediaCaption label={t("models.requestLabel")} text={t("models.kling.query")} />
+              </div>
+            </article>
+
+            {/* FLUX 2 PRO */}
+            <article className="model">
+              <div>
+                <div className="model-badge">{t("models.flux.badge")}</div>
+                <h3>{t("models.flux.name")}</h3>
+                <div className="kind">{t("models.flux.kind")}</div>
+                <p className="desc">{t("models.flux.desc")}</p>
+                <div className="model-facts">
+                  <Fact label={t("models.flux.factSize")} value={t("models.flux.factSizeVal")} />
+                  <Fact label={t("models.flux.factStyle")} value={t("models.flux.factStyleVal")} />
+                  <Fact label={t("models.flux.factSpeed")} value={t("models.flux.factSpeedVal")} />
+                  <Fact
+                    label={t("models.flux.factPrice")}
+                    value={`${formatMoney(PRICES.flux)} ${t("models.flux.factPriceUnit")}`}
+                    coral
+                  />
+                </div>
+                <a href="#final" className="btn btn-ghost btn-sm">
+                  {t("models.flux.try")} →
+                </a>
+              </div>
+              <div className="grid-3">
+                <Shot src="/landing-media/flux-1.png" caption={t("models.requestLabel") + " 1"} text={t("models.flux.query1")} />
+                <Shot src="/landing-media/flux-2.png" caption={t("models.requestLabel") + " 2"} text={t("models.flux.query2")} />
+                <Shot src="/landing-media/flux-3.png" caption={t("models.requestLabel") + " 3"} text={t("models.flux.query3")} />
+              </div>
+            </article>
+
+            {/* GPT IMAGE 1 */}
+            <article className="model">
+              <div>
+                <div className="model-badge">{t("models.gptimage.badge")}</div>
+                <h3>{t("models.gptimage.name")}</h3>
+                <div className="kind">{t("models.gptimage.kind")}</div>
+                <p className="desc">{t("models.gptimage.desc")}</p>
+                <div className="model-facts">
+                  <Fact label={t("models.gptimage.factSize")} value={t("models.gptimage.factSizeVal")} />
+                  <Fact label={t("models.gptimage.factText")} value={t("models.gptimage.factTextVal")} />
+                  <Fact label={t("models.gptimage.factSpeed")} value={t("models.gptimage.factSpeedVal")} />
+                  <Fact
+                    label={t("models.gptimage.factPrice")}
+                    value={`${formatMoney(PRICES.gptImage)} ${t("models.gptimage.factPriceUnit")}`}
+                    coral
+                  />
+                </div>
+                <a href="#final" className="btn btn-ghost btn-sm">
+                  {t("models.gptimage.try")} →
+                </a>
+              </div>
+              <div className="grid-3">
+                <Shot src="/landing-media/gptimg-1.png" caption={t("models.requestLabel") + " 1"} text={t("models.gptimage.query1")} />
+                <Shot src="/landing-media/gptimg-2.png" caption={t("models.requestLabel") + " 2"} text={t("models.gptimage.query2")} />
+                <Shot src="/landing-media/gptimg-3.png" caption={t("models.requestLabel") + " 3"} text={t("models.gptimage.query3")} />
+              </div>
+            </article>
+
+            {/* NANO BANANA */}
+            <article className="model">
+              <div>
+                <div className="model-badge">{t("models.nanobanana.badge")}</div>
+                <h3>{t("models.nanobanana.name")}</h3>
+                <div className="kind">{t("models.nanobanana.kind")}</div>
+                <p className="desc">{t("models.nanobanana.desc")}</p>
+                <div className="model-facts">
+                  <Fact label={t("models.nanobanana.factEdit")} value={t("models.nanobanana.factEditVal")} />
+                  <Fact label={t("models.nanobanana.factFace")} value={t("models.nanobanana.factFaceVal")} />
+                  <Fact label={t("models.nanobanana.factSpeed")} value={t("models.nanobanana.factSpeedVal")} />
+                  <Fact
+                    label={t("models.nanobanana.factPrice")}
+                    value={`${formatMoney(PRICES.nanoBanana)} ${t("models.nanobanana.factPriceUnit")}`}
+                    coral
+                  />
+                </div>
+                <a href="#final" className="btn btn-ghost btn-sm">
+                  {t("models.nanobanana.try")} →
+                </a>
+              </div>
+              <div className="grid-2">
+                <Pair
+                  before="/landing-media/nb-1-before.png"
+                  after="/landing-media/nb-1-after.png"
+                  caption={t("models.requestLabel") + " 1"}
+                  text={t("models.nanobanana.query1")}
+                />
+                <Pair
+                  before="/landing-media/nb-2-before.png"
+                  after="/landing-media/nb-2-after.png"
+                  caption={t("models.requestLabel") + " 2"}
+                  text={t("models.nanobanana.query2")}
+                />
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      {/* ВОЗМОЖНОСТИ */}
+      <section className="sec" id="features">
+        <div className="wrap">
+          <div className="eyebrow">
+            <b>II</b> — {t("features.eyebrow")}
+          </div>
+          <h2 className="sec-title">{t("features.title")}</h2>
+          <p className="sec-sub">{t("features.subtitle")}</p>
+          <div className="feat-grid">
+            {(t.raw("features.items") as { title: string; text: string }[]).map((f, i) => (
+              <div className="feat" key={i}>
+                <span className="feat-n mono">{String(i + 1).padStart(2, "0")}</span>
+                <h4>{f.title}</h4>
+                <p>{f.text}</p>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Comparison table ──────────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-4xl px-4 py-16 sm:px-6">
-        <div className="mb-10 text-center">
-          <h2 className="text-[26px] font-bold text-[var(--text-primary)]">{t("comparisonTitle")}</h2>
-          <p className="mt-2 text-[17px] text-[var(--text-secondary)]">
-            {t("comparisonSubtitle")}
-          </p>
+      {/* СРАВНЕНИЕ */}
+      <section
+        className="sec"
+        id="compare"
+        style={{ background: "var(--bg-2)", borderTop: "1px solid var(--line)", borderBottom: "1px solid var(--line)" }}
+      >
+        <div className="wrap">
+          <div className="eyebrow">
+            <b>III</b> — {t("compare.eyebrow")}
+          </div>
+          <h2 className="sec-title">{t("compare.title")}</h2>
+          <p className="sec-sub">{t("compare.subtitle")}</p>
+          <div className="table">
+            <div className="trow thead">
+              <div>{t("compare.colFeature")}</div>
+              <div className="cell us">{t("compare.colUs")}</div>
+              <div className="cell">{t("compare.colChatgpt")}</div>
+              <div className="cell">{t("compare.colGemini")}</div>
+            </div>
+            {compareRows.map((row, i) => (
+              <div className="trow" key={i}>
+                <div>{row}</div>
+                <Mark v={COMPARE_MARKS[i]?.[0]} />
+                <Mark v={COMPARE_MARKS[i]?.[1]} />
+                <Mark v={COMPARE_MARKS[i]?.[2]} />
+              </div>
+            ))}
+          </div>
         </div>
+      </section>
 
-        <div className="overflow-x-auto rounded-[16px] border border-[var(--border-primary)] bg-[var(--card-bg)]">
-          <table className="w-full min-w-[480px] text-[15px]">
-            <thead>
-              <tr className="border-b border-[var(--border-secondary)]">
-                <th className="px-5 py-3.5 text-start font-medium text-[var(--text-tertiary)]">
-                  {t("comparisonFeatureCol")}
-                </th>
-                <th className="px-4 py-3.5 text-center font-bold text-[#D97757]">aineron</th>
-                <th className="px-4 py-3.5 text-center font-medium text-[var(--text-secondary)]">ChatGPT</th>
-                <th className="px-4 py-3.5 text-center font-medium text-[var(--text-secondary)]">Gemini</th>
-              </tr>
-            </thead>
-            <tbody>
-              {comparisonRows.map((feature, i) => (
-                <tr
-                  key={feature}
-                  className={i % 2 === 0 ? "bg-[var(--background-tertiary)]" : ""}
-                >
-                  <td className="px-5 py-3 text-[var(--text-primary)]">{feature}</td>
-                  <td className="px-4 py-3 text-center"><Cell val={COMPARISON_MARKS[i]?.aineron ?? true} /></td>
-                  <td className="px-4 py-3 text-center"><Cell val={COMPARISON_MARKS[i]?.chatgpt ?? false} /></td>
-                  <td className="px-4 py-3 text-center"><Cell val={COMPARISON_MARKS[i]?.gemini ?? false} /></td>
-                </tr>
+      {/* ЭКОНОМИЯ */}
+      <section className="sec" id="save">
+        <div className="wrap">
+          <div className="eyebrow">
+            <b>IV</b> — {t("save.eyebrow")}
+          </div>
+          <h2 className="sec-title">{t("save.title")}</h2>
+          <p className="sec-sub">{t("save.subtitle")}</p>
+          <div className="save">
+            <div className="save-card">
+              <h4>{t("save.otherTitle")}</h4>
+              {otherRows.map((r, i) => (
+                <div className="srow" key={i}>
+                  <span>{r.label}</span>
+                  <b>{r.value}</b>
+                </div>
               ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {/* ── Pricing preview ───────────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-4xl px-4 py-16 sm:px-6">
-        <div className="overflow-hidden rounded-[20px] border border-[var(--border-primary)] bg-[var(--card-bg)]">
-          <div className="px-8 py-8 text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-[14px] bg-[rgba(217,119,87,0.10)]">
-              <Wallet size={22} className="text-[#D97757]" />
-            </div>
-            <h2 className="text-[24px] font-bold text-[var(--text-primary)]">{t("pricingTitle")}</h2>
-            <p className="mt-2 text-[17px] text-[var(--text-secondary)]">
-              {t("pricingSubtitle")}
-            </p>
-          </div>
-          <div className="grid grid-cols-1 divide-y divide-[var(--border-tertiary)] border-t border-[var(--border-secondary)] sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-            {pricing.map((p) => (
-              <div key={p.title} className="px-7 py-6 text-center">
-                <p className="mb-1 text-[15px] font-medium text-[var(--text-tertiary)]">{p.title}</p>
-                <p className="text-[28px] font-bold text-[var(--text-primary)]">{p.price}</p>
-                <p className="mt-1 text-[14px] text-[var(--text-tertiary)]">{p.sub}</p>
+              <div className="stotal">
+                <span>{t("save.otherTotalLabel")}</span>
+                <b>{t("save.otherTotalValue")}</b>
               </div>
-            ))}
-          </div>
-          <div className="border-t border-[var(--border-secondary)] px-8 py-5 text-center">
-            <HomeCta placement="pricing" />
-            <p className="mt-2 text-[14px] text-[var(--text-tertiary)]">
-              {t("pricingNote")}
-            </p>
+            </div>
+            <div className="save-card win">
+              <h4>{t("save.usTitle")}</h4>
+              {usRows.map((r, i) => (
+                <div className="srow" key={i}>
+                  <span>{r.label}</span>
+                  <b>{r.value}</b>
+                </div>
+              ))}
+              <div className="stotal">
+                <span>{t("save.usTotalLabel")}</span>
+                <b className="c">{t("save.usTotalValue", { amount: formatMoney(PRICES.signupBonus) })}</b>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ── FAQ ───────────────────────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
-        <h2 className="mb-8 text-center text-[24px] font-bold text-[var(--text-primary)]">
-          {t("faqTitle")}
-        </h2>
-        <FaqAccordion />
-      </section>
-
-      {/* ── Final CTA ─────────────────────────────────────────────────────────── */}
-      <section className="border-t border-[var(--border-tertiary)] bg-[#1A1A1A]">
-        <div className="mx-auto max-w-3xl px-4 py-20 text-center sm:px-6">
-          <h2 className="mb-3 text-[28px] font-bold text-white">
-            {t("finalTitle")}
-          </h2>
-          <p className="mb-8 text-[16px] text-[rgba(255,255,255,0.55)]">
-            {t("finalText")}
-          </p>
-          <HomeCta placement="final" />
+      {/* FAQ */}
+      <section className="sec" id="faq" style={{ background: "var(--bg-2)", borderTop: "1px solid var(--line)" }}>
+        <div className="wrap">
+          <div className="eyebrow">
+            <b>V</b> — {t("nav.faq")}
+          </div>
+          <h2 className="sec-title">{t("faqTitle")}</h2>
+          <LandingFaq items={faqItems} />
         </div>
       </section>
-    </>
+
+      {/* ФИНАЛ */}
+      <section className="final" id="final">
+        <div className="final-glow" />
+        <div className="wrap final-inner">
+          <h2>{t("final.title")}</h2>
+          <p>{t("final.subtitle", { amount: signupAmount })}</p>
+          <div className="final-btns">
+            <Link href="/register" className="btn btn-primary">
+              {t("final.ctaPrimary")} →
+            </Link>
+            <a href="#compare" className="btn btn-ghost">
+              {t("final.ctaGhost")}
+            </a>
+          </div>
+          <small>{t("final.disclaimer")}</small>
+        </div>
+      </section>
+
+      <footer>
+        <div className="wrap">
+          <div className="f-grid">
+            <div>
+              <Link href="/" className="logo">
+                <i />
+                Aineron
+              </Link>
+              <p className="f-about">{t("footer.about", { count: modelCount })}</p>
+            </div>
+            <div className="f-col">
+              <h5>{t("footer.serviceTitle")}</h5>
+              <Link href="/models">{t("footer.catalog")}</Link>
+              <Link href="/compare">{t("footer.compare")}</Link>
+              <Link href="/personas">{t("footer.personas")}</Link>
+              <Link href="/prompts">{t("footer.prompts")}</Link>
+              <Link href="/account/billing">{t("footer.pricing")}</Link>
+              <Link href="/gallery">{t("footer.gallery")}</Link>
+            </div>
+            <div className="f-col">
+              <h5>{t("footer.devTitle")}</h5>
+              <Link href="/api-docs">{t("footer.api")}</Link>
+              <Link href="/docs">{t("footer.docs")}</Link>
+              <Link href="/api-docs/playground">{t("footer.playground")}</Link>
+            </div>
+            <div className="f-col">
+              <h5>{t("footer.connectTitle")}</h5>
+              <Link href="/blog">{t("footer.blog")}</Link>
+              <a href="mailto:support@aineron.ru">{t("footer.support")}</a>
+              <a href="https://t.me/aineron_bot" target="_blank" rel="noopener">
+                {t("footer.telegram")}
+              </a>
+              <Link href="/terms">{t("footer.terms")}</Link>
+              <Link href="/privacy-policy">{t("footer.privacy")}</Link>
+            </div>
+          </div>
+          <div className="f-bottom">
+            <p>{t("footer.legal", { year })}</p>
+            <span className="f-tag">{t("footer.tag")}</span>
+          </div>
+        </div>
+      </footer>
+
+      <div className="dock">
+        <div className="dock-note">
+          <b>{signupAmount}</b>
+          {t("dock.note")}
+        </div>
+        <a href="#final" className="btn btn-primary">
+          {t("dock.cta")} →
+        </a>
+      </div>
+    </div>
   );
 }
 
-// ── Cell helper for comparison table ──────────────────────────────────────────
-function Cell({ val }: { val: boolean | string }) {
-  if (val === true) return <Check size={16} className="mx-auto text-[#22a85a]" />;
-  if (val === false) return <X size={15} className="mx-auto text-[var(--text-tertiary)]" />;
-  return <span className="text-[var(--text-secondary)]">{val}</span>;
-}
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
-// ── Network card ──────────────────────────────────────────────────────────────
-function NetworkCard({ network, perMessage }: { network: NetworkListItem; perMessage: string }) {
+function Fact({ label, value, coral }: { label: string; value: string; coral?: boolean }) {
   return (
-    <Link
-      href={`/models/${network.slug}/`}
-      className="group flex flex-col gap-3 rounded-[12px] border border-[var(--border-primary)] bg-[var(--card-bg)] p-5 transition-all duration-150 hover:border-[#D97757] hover:shadow-sm"
-    >
-      <div className="flex items-center gap-3">
-        {network.avatar ? (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img
-            src={network.avatar}
-            alt={network.name}
-            width={36}
-            height={36}
-            className="rounded-[8px] object-cover"
-          />
-        ) : (
-          <div className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[rgba(217,119,87,0.10)] text-[#D97757]">
-            {network.handle_photo || network.handle_video ? (
-              <ImageIcon size={18} />
-            ) : (
-              <Code2 size={18} />
-            )}
-          </div>
-        )}
-        <div>
-          <p className="text-[16px] font-semibold text-[var(--text-primary)] transition-colors group-hover:text-[#D97757]">
-            {network.name}
-          </p>
-          <p className="text-[14px] text-[var(--text-tertiary)]">{network.category.name}</p>
-        </div>
-      </div>
-      {network.description && (
-        <p className="line-clamp-2 text-[15px] leading-relaxed text-[var(--text-secondary)]">
-          {network.description}
-        </p>
-      )}
-      <div className="mt-auto flex items-center justify-between pt-1">
-        <span className="text-[14px] text-[var(--text-tertiary)]">
-          {perMessage}
-        </span>
-        <ArrowRight
-          size={14}
-          className="text-[var(--text-tertiary)] transition-colors group-hover:text-[#D97757]"
-        />
-      </div>
-    </Link>
+    <div className="fact">
+      <span>{label}</span>
+      <b className={coral ? "c" : undefined}>{value}</b>
+    </div>
   );
 }
 
-// ── Feature card ──────────────────────────────────────────────────────────────
-function FeatureCard({ icon: Icon, title, text }: { icon: React.ElementType; title: string; text: string }) {
+function MediaCaption({ label, text }: { label: string; text: string }) {
   return (
-    <div className="rounded-[12px] border border-[var(--border-primary)] bg-[var(--card-bg)] p-5">
-      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-[10px] bg-[rgba(217,119,87,0.10)] text-[#D97757]">
-        <Icon size={20} />
+    <div className="media-caption">
+      <div className="pr">
+        <b>{label}</b>
+        <span className="mono">{text}</span>
       </div>
-      <p className="mb-1.5 text-[16px] font-semibold text-[var(--text-primary)]">{title}</p>
-      <p className="text-[15px] leading-relaxed text-[var(--text-secondary)]">{text}</p>
+    </div>
+  );
+}
+
+function Shot({ src, caption, text }: { src: string; caption: string; text: string }) {
+  return (
+    <div>
+      <div className="shot">
+        <Image src={src} alt={text} width={600} height={800} sizes="(max-width: 640px) 33vw, 200px" />
+      </div>
+      <MediaCaption label={caption} text={text} />
+    </div>
+  );
+}
+
+function Pair({ before, after, caption, text }: { before: string; after: string; caption: string; text: string }) {
+  return (
+    <div>
+      <div className="pair">
+        <div className="shot wide">
+          <Image src={before} alt="" width={600} height={300} sizes="(max-width: 640px) 100vw, 300px" />
+        </div>
+        <div className="arrow">
+          <ArrowDown size={16} />
+        </div>
+        <div className="shot wide">
+          <Image src={after} alt={text} width={600} height={300} sizes="(max-width: 640px) 100vw, 300px" />
+        </div>
+      </div>
+      <MediaCaption label={caption} text={text} />
+    </div>
+  );
+}
+
+function Mark({ v }: { v?: boolean }) {
+  return (
+    <div className={`cell ${v ? "yes" : "no"}`}>
+      {v ? <Check size={15} style={{ display: "inline" }} /> : <X size={14} style={{ display: "inline" }} />}
     </div>
   );
 }

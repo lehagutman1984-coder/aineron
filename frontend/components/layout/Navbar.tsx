@@ -2,7 +2,7 @@
 
 
 import { Wallet, User, Menu, X, Sun, Moon, Monitor } from "lucide-react";
-import { Link } from "@/i18n/navigation";
+import { Link, usePathname } from "@/i18n/navigation";
 import { useState } from "react";
 import { useAuthStore } from "@/lib/stores/auth";
 import { useUIStore, type Theme } from "@/lib/stores/ui";
@@ -26,7 +26,7 @@ export function Navbar() {
   const { user, balanceKopecks, logout } = useAuthStore();
   const { theme, setTheme } = useUIStore();
   const [mobileOpen, setMobileOpen] = useState(false);
-
+  const pathname = usePathname();
   const handleLogout = async () => {
     try {
       await authLogout();
@@ -41,6 +41,10 @@ export function Navbar() {
     const idx = THEME_CYCLE.indexOf(theme);
     setTheme(THEME_CYCLE[(idx + 1) % THEME_CYCLE.length]);
   };
+
+  // Домашняя страница — одностраничный лендинг со своим хедером (см.
+  // app/[locale]/page.tsx) — общий Navbar здесь не нужен, иначе будет два подряд.
+  if (pathname === "/") return null;
 
   return (
     <header className="sticky top-0 z-50 border-b border-[rgba(13,13,13,0.10)] bg-white/90 backdrop-blur-sm dark:border-[rgba(255,255,255,0.08)] dark:bg-[#1C1917]/90">

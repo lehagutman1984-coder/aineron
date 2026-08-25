@@ -1,6 +1,7 @@
+"use client";
 
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { Link, usePathname } from "@/i18n/navigation";
 import { siteHost, supportEmail } from "@/lib/site";
 
 const COLUMNS = [
@@ -41,6 +42,10 @@ export function Footer() {
   const t = useTranslations("footer");
   const host = siteHost();
   const email = supportEmail();
+  const pathname = usePathname();
+  // Домашняя страница — одностраничный лендинг со своим хедером/футером
+  // (см. app/[locale]/page.tsx) — общий Footer здесь не нужен, иначе будет два подряд.
+  if (pathname === "/") return null;
   return (
     <footer className="border-t border-[rgba(13,13,13,0.10)] bg-white dark:border-[rgba(255,255,255,0.08)] dark:bg-[#1C1917]">
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
