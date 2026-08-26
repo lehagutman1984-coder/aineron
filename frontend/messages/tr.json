@@ -2444,5 +2444,394 @@
     "chatThinking": "Düşünüyor...",
     "chatGenError": "Oluşturma hatası. Lütfen tekrar deneyin.",
     "chatSendError": "Gönderim hatası"
+  },
+  "landing": {
+    "nav": {
+      "models": "Modeller",
+      "features": "Özellikler",
+      "compare": "Karşılaştır",
+      "save": "Tasarruf",
+      "faq": "SSS",
+      "login": "Giriş yap",
+      "cta": "Ücretsiz başla",
+      "menu": "Menü"
+    },
+    "hero": {
+      "tagline": "{count} model · tek hesap · VPN yok",
+      "title": "Dünyadaki tüm AI modelleri",
+      "titleDim": "tek bir pencerede",
+      "subtitle": "GPT-5, Claude, Gemini, Flux, Sora ve yüzlerce başka model. Kripto ile ödeme yapın, tek bir bakiye, ayrı abonelik yok.",
+      "ctaPrimary": "Ücretsiz başla",
+      "ctaGhost": "Örnekleri gör",
+      "note": "Kayıt olduktan hemen sonra {amount} bakiyenizde. Kart gerekmez."
+    },
+    "metrics": {
+      "models": "katalogdaki modeller",
+      "free": "ücretsiz modeller",
+      "latency": "ortalama yanıt süresi",
+      "latencyValue": "1.2 sn",
+      "start": "başlangıç"
+    },
+    "demo": {
+      "send": "Gönder",
+      "chips": {
+        "coffee": "Kahve dükkanı sloganları",
+        "lease": "Kira sözleşmesini incele",
+        "cover": "Albüm kapağı tasarımı"
+      },
+      "prompts": {
+        "coffee": "Metroya yakın bir kahve dükkanı için üç slogan yaz",
+        "lease": "Bu kira sözleşmesini incele ve riskleri listele",
+        "cover": "Bir albüm kapağı resmi yap"
+      },
+      "answers": {
+        "gptCoffee": {
+          "lines": [
+            "Işık yeşile dönmeden önce kahve.",
+            "Platformdan iki dakika uzaklıkta.",
+            "Sabahınız burada başlıyor, yeraltında değil."
+          ],
+          "note": "İlk seçenek hız üzerine, üçüncü seçenek ruh hali üzerine odaklanıyor. Mağaza tabelası için ikinci seçenek en kısa olanı."
+        },
+        "claudeCoffee": {
+          "lines": [
+            "Metro sizi uyandırır. Kahve sizi affeder.",
+            "Treni yakala. Lezzeti yakala.",
+            "Daha iyi bir sabaha çıkan yürüyen merdiveniniz."
+          ],
+          "note": "Yolculuk ritmine odaklanıldı: insanlar hareket halindeyken tabelaları okur, bu yüzden satırlar kısa ve ortada bir duraklama var."
+        },
+        "fluxCoffee": {
+          "note": "Flux metin değil, görsel üretir. Bu komut için **GPT-5** veya **Claude**'a geçin — ya da \"Albüm kapağı tasarımı\"nı deneyin."
+        },
+        "gptLease": {
+          "lines": [
+            "Madde 4.2, ev sahibinin kirayı tek taraflı artırmasına izin veriyor. Risk: Ödemeler sizin onayınız olmadan artabilir.",
+            "Erken fesihte depozito iade edilmiyor. Risk: Depozitoyu tamamen kaybedebilirsiniz.",
+            "Taşınmadan önce 3 ay önceden bildirimde bulunmanız gerekiyor. Risk: Taşındıktan sonra bile ödeme yapmaya devam edersiniz."
+          ],
+          "note": "Madde 4.2 en tartışmalı olanı. İmzalarken endeksleme oranını sınırlamak faydalı olabilir."
+        },
+        "claudeLease": {
+          "lines": [
+            "Tek taraflı kira artışı (madde 4.2) — ev sahibinin takdiri yerine enflasyona bağlanmasını isteyin.",
+            "Erken çıkışta depozito iadesi yok — bunun yerine orantılı bir iade önerin.",
+            "Üç aylık bildirim süresi fazla — bunu bir aya indirmeye çalışın."
+          ],
+          "note": "Finansal risk sırasına göre, en yüksekten başlayarak sıralandı — insanlar genelde ilk iki maddede para kaybediyor."
+        },
+        "fluxLease": {
+          "note": "Metin incelemesi **GPT-5** veya **Claude** için uygun bir iş. Yukarıdaki sekmeleri değiştirin ve Flux'u görseller için bırakın."
+        },
+        "fluxCover": {
+          "note": "Hazır bir kapak görseli: dikey düzen, kalın başlık, stüdyo ışıkları. İndirin veya düzenleme için geri gönderin."
+        },
+        "gptCover": {
+          "note": "\"Albüm kapağı sanatı\" görsel üretimi anlamına gelir — bu **Flux 2 Pro**'nun işi. Yukarıdaki sekmeleri değiştirin."
+        },
+        "claudeCover": {
+          "note": "Claude kapak çizmez — bunu **Flux 2 Pro** yapar. Görseli görmek için yukarıdaki sekmeleri değiştirin."
+        }
+      },
+      "foot": {
+        "models": "modeller",
+        "latency": "ortalama yanıt",
+        "noSub": "hayır",
+        "noSubLabel": "abonelik ücreti",
+        "currency": "kripto",
+        "currencyLabel": "VPN yok"
+      },
+      "answerLabel": "Yanıt · {model}"
+    },
+    "marquee": [
+      "GPT-5",
+      "Claude Sonnet 5",
+      "Gemini 3 Pro",
+      "Seedream 5.0",
+      "Sora 2",
+      "Veo 3.1",
+      "Kling v2.6",
+      "Flux 2 Pro",
+      "GPT Image 1",
+      "Nano Banana",
+      "Grok 4",
+      "DeepSeek V3.1"
+    ],
+    "models": {
+      "eyebrow": "modeller ve örnekler",
+      "title": "Her model, kendi örneğiyle",
+      "subtitle": "Aşağıdaki video ve görseller Aineron'da oluşturuldu. Her biri, hangi model tarafından yapıldığı ve kullanılan tam istemle birlikte açıklanmıştır.",
+      "requestLabel": "İstem",
+      "sora": {
+        "badge": "Video",
+        "name": "Sora 2",
+        "kind": "Video üretimi",
+        "desc": "OpenAI'nin video modeli. Sahne fiziği ve kamera hareketlerini korur — reklam spotları ve kısa sahneler için uygundur.",
+        "factDuration": "Süre",
+        "factDurationVal": "20 sn'ye kadar",
+        "factRes": "Çözünürlük",
+        "factResVal": "1080p",
+        "factSound": "Ses",
+        "factSoundVal": "hayır",
+        "factPrice": "Fiyat",
+        "factPriceUnit": "/ klip",
+        "try": "Sora 2'yi Dene",
+        "query": "çölde yalnız bir beton ev, ufukta fırtına, yavaş kamera yakınlaşması, 5 saniye"
+      },
+      "veo": {
+        "badge": "Video",
+        "name": "Veo 3.1 Hızlı",
+        "kind": "Video üretimi",
+        "desc": "Google DeepMind'in video modeli. Hızlı render ve temiz hareket — dinamik sahneler ve ürün çekimleri için ideal.",
+        "factDuration": "Süre",
+        "factDurationVal": "8 saniyeye kadar",
+        "factRes": "Çözünürlük",
+        "factResVal": "1080p",
+        "factSound": "Ses",
+        "factSoundVal": "evet",
+        "factPrice": "Fiyat",
+        "factPriceUnit": "/ klip",
+        "try": "Veo 3.1 Hızlı'yı Dene",
+        "query": "bir fincan kahveye düşen süt damlası, makro, ağır çekim"
+      },
+      "kling": {
+        "badge": "Video",
+        "name": "Kling v2.6",
+        "kind": "Video üretimi",
+        "desc": "Kuaishou'nun ses üreten video modeli. Yüzler ve tekrarlayan hareketlerde başarılı.",
+        "factDuration": "Süre",
+        "factDurationVal": "10 saniyeye kadar",
+        "factRes": "Çözünürlük",
+        "factResVal": "1080p",
+        "factSound": "Ses",
+        "factSoundVal": "evet",
+        "factPrice": "Fiyat",
+        "factPriceUnit": "/ klip",
+        "try": "Kling v2.6'yı Dene",
+        "query": "bir baristanın latte yapması, sıcak pencere ışığı, ellerin yakın çekimi"
+      },
+      "flux": {
+        "badge": "Görsel",
+        "name": "Flux 2 Pro",
+        "kind": "Görsel üretimi",
+        "desc": "Black Forest Labs'in modeli. Fotogerçekçilik, hassas geometriler ve ışık — ürün ve reklam fotoğrafçılığı için ideal.",
+        "factSize": "Boyut",
+        "factSizeVal": "2048 piksele kadar",
+        "factStyle": "Stiller",
+        "factStyleVal": "serbest biçimli komut",
+        "factSpeed": "Hız",
+        "factSpeedVal": "~8 sn",
+        "factPrice": "Fiyat",
+        "factPriceUnit": "/ görsel",
+        "try": "Flux 2 Pro'yu Dene",
+        "query1": "ıslak taş üzerinde parfüm şişesi, sabah ışığı",
+        "query2": "seramik fincan, buhar, koyu arka plan",
+        "query3": "havada asılı spor ayakkabı, stüdyo ışığı"
+      },
+      "gptimage": {
+        "badge": "Görsel",
+        "name": "GPT Görsel 1",
+        "kind": "Görsel oluşturma",
+        "desc": "OpenAI modeli. Karmaşık açıklamaları anlar ve görsel içi metni temiz bir şekilde işler — kapaklar ve düzenler için uygundur.",
+        "factSize": "Boyut",
+        "factSizeVal": "2048 px'e kadar",
+        "factText": "Görsel içi metin",
+        "factTextVal": "evet",
+        "factSpeed": "Hız",
+        "factSpeedVal": "~12 sn",
+        "factPrice": "Fiyat",
+        "factPriceUnit": "/ görsel",
+        "try": "GPT Görsel 1'i Dene",
+        "query1": "cesur bir başlıkla dergi kapağı",
+        "query2": "el yazısı bir açıklama ile restoran posteri",
+        "query3": "ürün lansman posteri"
+      },
+      "nanobanana": {
+        "badge": "Görsel",
+        "name": "Nano Banana",
+        "kind": "Görsel düzenleme",
+        "desc": "Google'ın Gemini 2.5 Flash Görsel modeli mevcut fotoğrafları düzenlemek için: arka planı değiştir, bir nesneyi kaldır, ışığı değiştir — yüzleri ve detayları koruyarak.",
+        "factEdit": "Fotoğraf düzenleme",
+        "factEditVal": "evet",
+        "factFace": "Yüz koruma",
+        "factFaceVal": "evet",
+        "factSpeed": "Hız",
+        "factSpeedVal": "~6 sn",
+        "factPrice": "Fiyat",
+        "factPriceUnit": "/ görsel",
+        "try": "Nano Banana'yı Dene",
+        "query1": "arka planı gece sokak sahnesiyle değiştir",
+        "query2": "odayı düzenle"
+      }
+    },
+    "features": {
+      "eyebrow": "içerikte olanlar",
+      "title": "Bir yapay zeka sohbetinden fazlası",
+      "subtitle": "Bu hizmette zaten çalışıyor ve dahil — ayrı abonelikler veya \"yakında\" değil.",
+      "items": [
+        {
+          "title": "Telegram botu",
+          "text": "Tüm hizmet Telegram içinde: sohbet, fotoğraf ve video oluşturma, sesli mesajlar, sohbet geçmişi, grup desteği — uygulama yüklemeye gerek yok."
+        },
+        {
+          "title": "Sohbette web araması",
+          "text": "Model, yanıt verirken webde güncel bilgileri arar — manuel kontrol veya sekme değiştirmeye gerek yok."
+        },
+        {
+          "title": "Sohbetler arasında hafıza",
+          "text": "Hizmet, projelerinizin ve konuşmalarınızın bağlamını hatırlar — her seferinde kim olduğunuzu ve ne üzerinde çalıştığınızı yeniden açıklamanıza gerek yok."
+        },
+        {
+          "title": "GitHub senkronizasyonlu projeler",
+          "text": "Proje klasörleri kendi sistem istemi ve dosyalarıyla — bir bağlayıcı kodu depodan çeker ve geri gönderir."
+        },
+        {
+          "title": "Geliştiriciler için API",
+          "text": "OpenAI uyumlu API — Cursor, VS Code ve kendi uygulamalarınıza bağlanır: sadece temel URL ve anahtarı değiştirin, başka kod değişikliği gerekmez."
+        },
+        {
+          "title": "Model Arena",
+          "text": "Aynı istemde 2–3 modeli yan yana karşılaştırın — hangi modelin daha iyi olduğunu anında görün, sekme değiştirmeye gerek yok."
+        },
+        {
+          "title": "Sesli giriş ve çıkış",
+          "text": "Sorunuzu sesle dikte edin ve sesli yanıt alın — yazmaktan daha hızlı ve elleriniz meşgulken kullanışlı."
+        },
+        {
+          "title": "Planlanmış yapay zeka görevleri",
+          "text": "Tek seferlik bir tekrar eden görev ayarlayın — hizmet bunu zamanında çalıştırır ve sonucu teslim eder, hatırlatıcıya gerek yok."
+        }
+      ]
+    },
+    "compare": {
+      "eyebrow": "dürüst bir karşılaştırma",
+      "title": "Aineron vs. büyük isimler",
+      "subtitle": "Pazarlama hilesi yok: gerçekten kazandığımız yerler ve özellik setinin eşit olduğu yerler.",
+      "colFeature": "Özellik",
+      "colUs": "Aineron",
+      "colChatgpt": "ChatGPT",
+      "colGemini": "Gemini",
+      "rows": [
+        "VPN olmadan dünya çapında çalışır",
+        "Kripto ile ödeme, banka kartı gerekmez",
+        "GPT, Claude, Gemini tek pencerede",
+        "Talep başına ödeme, abonelik yok",
+        "Görüntü ve video oluşturma",
+        "Yan yana model karşılaştırması",
+        "OpenAI uyumlu API",
+        "Ücretsiz modeller, kart gerekmez"
+      ]
+    },
+    "save": {
+      "eyebrow": "tasarruf",
+      "title": "Beş abonelik yerine tek bakiye",
+      "subtitle": "Her hizmet için ayrı abonelikler — daha pahalı ve daha az pratik. İşte aylık hesaplama.",
+      "otherTitle": "Ayrı abonelikler",
+      "otherRows": [
+        {
+          "label": "ChatGPT Plus",
+          "value": "≈ $20"
+        },
+        {
+          "label": "Claude Pro",
+          "value": "≈ $20"
+        },
+        {
+          "label": "Midjourney",
+          "value": "≈ $10"
+        },
+        {
+          "label": "Sora / video",
+          "value": "≈ $20"
+        }
+      ],
+      "otherTotalLabel": "aylık",
+      "otherTotalValue": "≈ $70",
+      "usTitle": "Aineron",
+      "usRows": [
+        {
+          "label": "Tüm metin modelleri",
+          "value": "kullandıkça öde"
+        },
+        {
+          "label": "Görseller ve video",
+          "value": "kullandıkça öde"
+        },
+        {
+          "label": "{count} ücretsiz model",
+          "value": "$0"
+        },
+        {
+          "label": "Bölge kısıtlaması yok",
+          "value": "VPN gerekmez"
+        },
+        {
+          "label": "Abonelik ücreti",
+          "value": "yok"
+        }
+      ],
+      "usTotalLabel": "sadece kullandığınız kadar ödeyin",
+      "usTotalValue": "{amount} itibarıyla"
+    },
+    "faq": [
+      {
+        "q": "Bakiye nasıl çalışır?",
+        "a": "Bakiyenizi doldurur ve herhangi bir modelde harcarsınız. Her istek kredi düşer: metin mesaj başına, görseller ve videolar oluşturulan dosya başına fiyatlandırılır. Abonelik ücreti yoktur ve kredileriniz asla sona ermez."
+      },
+      {
+        "q": "VPN gerekli mi?",
+        "a": "Hayır. Hizmet dünya çapında kullanılabilir ve herhangi bir cihazda açılır — ek çözümlere gerek yoktur ve banka kartı yerine kripto ile ödeme yaparsınız."
+      },
+      {
+        "q": "Hangi AI modelleri mevcut?",
+        "a": "{count} model: Metin için GPT-5, Claude, Gemini, Grok ve DeepSeek; görseller için Flux, GPT Image ve Nano Banana; videolar için Sora, Veo ve Kling. Yeni sürümler geldikçe katalog genişler."
+      },
+      {
+        "q": "Kendi uygulamama bağlayabilir miyim?",
+        "a": "Evet. API, OpenAI ile uyumludur — temel URL ve anahtarı değiştirin, mevcut kodunuz çalışır. Cursor, VS Code ve diğer editörlere entegre edilebilir."
+      },
+      {
+        "q": "Oluşturduğum içeriğin sahibi kim?",
+        "a": "Hizmet üzerinden oluşturulan görseller, videolar ve metinler size aittir ve ticari projelerde kullanılabilir."
+      },
+      {
+        "q": "Nasıl ödeme yaparım?",
+        "a": "Kripto para (USDT, TON ve diğerleri) ile Crypto Pay / @CryptoBot üzerinden. Banka kartı veya VPN gerekmez."
+      }
+    ],
+    "final": {
+      "title": "Denemeye hazır mısınız?",
+      "subtitle": "Hemen {amount} bakiyenizde. VPN yok, uluslararası kart yok, abonelik yok.",
+      "ctaPrimary": "Aineron'u Aç",
+      "ctaGhost": "Modelleri karşılaştır",
+      "disclaimer": "Bu düğmeye tıklayarak hizmet şartlarını kabul etmiş olursunuz"
+    },
+    "footer": {
+      "about": "Dünyanın AI modellerine erişim, bölge kısıtlaması yok. Tek hesap, tek bakiye, {count} model.",
+      "serviceTitle": "Ürün",
+      "catalog": "Model kataloğu",
+      "compare": "Karşılaştır",
+      "personas": "Personalar",
+      "prompts": "Promptlar",
+      "pricing": "Fiyatlandırma",
+      "gallery": "Galeri",
+      "devTitle": "Geliştiriciler",
+      "api": "API ve entegrasyonlar",
+      "docs": "Dokümantasyon",
+      "playground": "Playground",
+      "connectTitle": "Bağlan",
+      "blog": "Blog",
+      "support": "Destek",
+      "telegram": "Telegram",
+      "terms": "Hizmet Şartları",
+      "privacy": "Gizlilik Politikası",
+      "legal": "© {year} aineron.net · support@aineron.net",
+      "tag": "VPN'siz, her yerde"
+    },
+    "dock": {
+      "note": "başlamak için",
+      "cta": "Ücretsiz başla"
+    },
+    "faqTitle": "Sıkça Sorulan Sorular"
   }
 }

@@ -2758,7 +2758,7 @@
           "value": "pay per use"
         },
         {
-          "label": "No {count} free models",
+          "label": "{count} free models",
           "value": "$0"
         },
         {

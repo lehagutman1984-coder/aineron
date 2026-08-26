@@ -110,15 +110,19 @@ export default async function HomePage({
 
   const otherRows = t.raw("save.otherRows") as { label: string; value: string }[];
   const usRowsRaw = t.raw("save.usRows") as { label: string; value: string }[];
-  const usRows = usRowsRaw.map((r) => ({
-    ...r,
-    label: r.label.replace("{count}", String(freeCount)),
-  }));
+  const usRows = usRowsRaw
+    .filter((r) => freeCount > 0 || !r.label.includes("{count}"))
+    .map((r) => ({
+      ...r,
+      label: r.label.replace("{count}", String(freeCount)),
+    }));
 
-  const faqItems = (t.raw("faq") as { q: string; a: string }[]).map((f) => ({
-    q: f.q,
-    a: f.a.replace("{count}", String(modelCount)).replace("{freeCount}", String(freeCount)),
-  }));
+  const faqItems = (t.raw("faq") as { q: string; a: string }[])
+    .filter((f) => freeCount > 0 || !f.a.includes("{freeCount}"))
+    .map((f) => ({
+      q: f.q,
+      a: f.a.replace("{count}", String(modelCount)).replace("{freeCount}", String(freeCount)),
+    }));
 
   const year = new Date().getFullYear();
 
@@ -167,10 +171,12 @@ export default async function HomePage({
               <span className="k">{t("metrics.models")}</span>
               <span className="v">{modelCount}</span>
             </div>
-            <div className="metric">
-              <span className="k">{t("metrics.free")}</span>
-              <span className="v">{freeCount}</span>
-            </div>
+            {freeCount > 0 && (
+              <div className="metric">
+                <span className="k">{t("metrics.free")}</span>
+                <span className="v">{freeCount}</span>
+              </div>
+            )}
             <div className="metric">
               <span className="k">{t("metrics.latency")}</span>
               <span className="v sm">{t("metrics.latencyValue")}</span>

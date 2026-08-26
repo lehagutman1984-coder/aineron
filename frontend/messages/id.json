@@ -2444,5 +2444,394 @@
     "chatThinking": "Sedang berpikir...",
     "chatGenError": "Kesalahan generasi. Silakan coba lagi.",
     "chatSendError": "Kesalahan pengiriman"
+  },
+  "landing": {
+    "nav": {
+      "models": "Model",
+      "features": "Fitur",
+      "compare": "Bandingkan",
+      "save": "Penghematan",
+      "faq": "FAQ",
+      "login": "Masuk",
+      "cta": "Mulai gratis",
+      "menu": "Menu"
+    },
+    "hero": {
+      "tagline": "{count} model · satu akun · tanpa VPN",
+      "title": "Semua model AI di dunia",
+      "titleDim": "dalam satu jendela",
+      "subtitle": "GPT-5, Claude, Gemini, Flux, Sora, dan seratus model lainnya. Bayar dengan crypto, saldo bersama, tanpa langganan terpisah.",
+      "ctaPrimary": "Mulai gratis",
+      "ctaGhost": "Lihat contoh",
+      "note": "{amount} di saldo Anda setelah mendaftar. Tidak perlu kartu."
+    },
+    "metrics": {
+      "models": "model dalam katalog",
+      "free": "model gratis",
+      "latency": "rata-rata respons",
+      "latencyValue": "1,2 detik",
+      "start": "mulai dari"
+    },
+    "demo": {
+      "send": "Kirim",
+      "chips": {
+        "coffee": "Tagline kedai kopi",
+        "lease": "Tinjau perjanjian sewa",
+        "cover": "Seni sampul album"
+      },
+      "prompts": {
+        "coffee": "Tulis tiga tagline untuk kedai kopi dekat stasiun kereta bawah tanah",
+        "lease": "Tinjau perjanjian sewa ini dan daftar risikonya",
+        "cover": "Buat gambar sampul album"
+      },
+      "answers": {
+        "gptCoffee": {
+          "lines": [
+            "Kopi sebelum lampu berubah hijau.",
+            "Dua menit dari peron.",
+            "Pagi Anda dimulai di sini, bukan di bawah tanah."
+          ],
+          "note": "Opsi pertama mengutamakan kecepatan, opsi ketiga mengutamakan suasana. Untuk tanda depan toko, opsi kedua paling singkat."
+        },
+        "claudeCoffee": {
+          "lines": [
+            "Kereta bawah tanah membangunkan Anda. Kopi memaafkan Anda.",
+            "Kejar kereta. Kejar rasa.",
+            "Eskalator Anda menuju pagi yang lebih baik."
+          ],
+          "note": "Berfokus pada ritme perjalanan: orang membaca tanda saat bergerak, jadi kalimatnya pendek dengan jeda di tengah."
+        },
+        "fluxCoffee": {
+          "note": "Flux menghasilkan gambar, bukan teks. Untuk permintaan ini, beralihlah ke **GPT-5** atau **Claude** — atau coba \"Seni sampul album\"."
+        },
+        "gptLease": {
+          "lines": [
+            "Klausul 4.2 memungkinkan pemilik menaikkan sewa secara sepihak. Risiko: pembayaran meningkat tanpa persetujuan Anda.",
+            "Deposit tidak dikembalikan jika penghentian lebih awal. Risiko: Anda kehilangan deposit sepenuhnya.",
+            "Anda harus memberikan pemberitahuan 3 bulan sebelum pindah. Risiko: Anda tetap membayar setelah Anda pergi."
+          ],
+          "note": "Klausul 4.2 adalah yang paling kontroversial. Sebaiknya batasi tingkat indeksasi sebelum menandatangani."
+        },
+        "claudeLease": {
+          "lines": [
+            "Kenaikan sewa sepihak (pasal 4.2) — minta agar dikaitkan dengan inflasi daripada kebijakan pemilik.",
+            "Tidak ada pengembalian deposit saat keluar lebih awal — usulkan pengembalian prorata sebagai gantinya.",
+            "Pemberitahuan tiga bulan terlalu lama — coba negosiasikan menjadi satu bulan."
+          ],
+          "note": "Diurutkan berdasarkan risiko finansial, tertinggi terlebih dahulu — dua teratas adalah tempat orang benar-benar kehilangan uang."
+        },
+        "fluxLease": {
+          "note": "Meninjau teks adalah tugas untuk **GPT-5** atau **Claude**. Beralih tab di atas dan tinggalkan Flux untuk gambar."
+        },
+        "fluxCover": {
+          "note": "Sampul siap pakai: tata letak vertikal, judul tebal, pencahayaan studio. Unduh atau kirim kembali untuk diedit."
+        },
+        "gptCover": {
+          "note": "\"Seni sampul album\" berarti pembuatan gambar — itu tugas **Flux 2 Pro**. Beralih tab di atas."
+        },
+        "claudeCover": {
+          "note": "Claude tidak menggambar sampul — **Flux 2 Pro** melakukannya. Beralih tab di atas untuk melihat gambar."
+        }
+      },
+      "foot": {
+        "models": "model",
+        "latency": "rata-rata respons",
+        "noSub": "tidak",
+        "noSubLabel": "biaya langganan",
+        "currency": "kripto",
+        "currencyLabel": "tanpa VPN"
+      },
+      "answerLabel": "Balas · {model}"
+    },
+    "marquee": [
+      "GPT-5",
+      "Claude Sonnet 5",
+      "Gemini 3 Pro",
+      "Seedream 5.0",
+      "Sora 2",
+      "Veo 3.1",
+      "Kling v2.6",
+      "Flux 2 Pro",
+      "GPT Image 1",
+      "Nano Banana",
+      "Grok 4",
+      "DeepSeek V3.1"
+    ],
+    "models": {
+      "eyebrow": "model dan contoh",
+      "title": "Setiap model, dengan contohnya sendiri",
+      "subtitle": "Video dan gambar di bawah ini dibuat di Aineron. Masing-masing diberi keterangan dengan model yang membuatnya dan prompt yang digunakan.",
+      "requestLabel": "Prompt",
+      "sora": {
+        "badge": "Video",
+        "name": "Sora 2",
+        "kind": "Pembuatan video",
+        "desc": "Model video dari OpenAI. Mempertahankan fisika adegan dan gerakan kamera — cocok untuk iklan dan adegan pendek.",
+        "factDuration": "Durasi",
+        "factDurationVal": "hingga 20 detik",
+        "factRes": "Resolusi",
+        "factResVal": "1080p",
+        "factSound": "Audio",
+        "factSoundVal": "tidak",
+        "factPrice": "Harga",
+        "factPriceUnit": "/ klip",
+        "try": "Coba Sora 2",
+        "query": "sebuah rumah beton tunggal di gurun, badai di cakrawala, kamera bergerak perlahan, 5 detik"
+      },
+      "veo": {
+        "badge": "Video",
+        "name": "Veo 3.1 Cepat",
+        "kind": "Pembuatan video",
+        "desc": "Model video Google DeepMind. Rendering cepat dan gerakan bersih — cocok untuk adegan dinamis dan foto produk.",
+        "factDuration": "Durasi",
+        "factDurationVal": "hingga 8 detik",
+        "factRes": "Resolusi",
+        "factResVal": "1080p",
+        "factSound": "Audio",
+        "factSoundVal": "ya",
+        "factPrice": "Harga",
+        "factPriceUnit": "/ klip",
+        "try": "Coba Veo 3.1 Cepat",
+        "query": "setetes susu jatuh ke dalam secangkir kopi, makro, gerakan lambat"
+      },
+      "kling": {
+        "badge": "Video",
+        "name": "Kling v2.6",
+        "kind": "Pembuatan video",
+        "desc": "Model video Kuaishou dengan audio yang dihasilkan. Mengelola wajah dan gerakan berulang dengan baik.",
+        "factDuration": "Durasi",
+        "factDurationVal": "hingga 10 detik",
+        "factRes": "Resolusi",
+        "factResVal": "1080p",
+        "factSound": "Audio",
+        "factSoundVal": "ya",
+        "factPrice": "Harga",
+        "factPriceUnit": "/ klip",
+        "try": "Coba Kling v2.6",
+        "query": "seorang barista membuat latte, cahaya hangat dari jendela, close-up pada tangan"
+      },
+      "flux": {
+        "badge": "Gambar",
+        "name": "Flux 2 Pro",
+        "kind": "Pembuatan gambar",
+        "desc": "Model dari Black Forest Labs. Fotorealisme, geometri dan pencahayaan yang presisi — andalan untuk fotografi produk dan iklan.",
+        "factSize": "Ukuran",
+        "factSizeVal": "hingga 2048 px",
+        "factStyle": "Gaya",
+        "factStyleVal": "prompt bebas",
+        "factSpeed": "Kecepatan",
+        "factSpeedVal": "~8 detik",
+        "factPrice": "Harga",
+        "factPriceUnit": "/ gambar",
+        "try": "Coba Flux 2 Pro",
+        "query1": "botol parfum di atas batu basah, cahaya pagi",
+        "query2": "cangkir keramik, uap, latar belakang gelap",
+        "query3": "sepatu sneaker melayang di udara, pencahayaan studio"
+      },
+      "gptimage": {
+        "badge": "Gambar",
+        "name": "GPT Image 1",
+        "kind": "Pembuatan gambar",
+        "desc": "Model dari OpenAI. Memahami deskripsi kompleks dan menghasilkan teks dalam gambar dengan jelas — cocok untuk sampul dan tata letak.",
+        "factSize": "Ukuran",
+        "factSizeVal": "hingga 2048 px",
+        "factText": "Teks dalam gambar",
+        "factTextVal": "ya",
+        "factSpeed": "Kecepatan",
+        "factSpeedVal": "~12 detik",
+        "factPrice": "Harga",
+        "factPriceUnit": "/ gambar",
+        "try": "Coba GPT Image 1",
+        "query1": "sampul majalah dengan judul tebal",
+        "query2": "poster restoran dengan caption tulisan tangan",
+        "query3": "poster peluncuran produk"
+      },
+      "nanobanana": {
+        "badge": "Gambar",
+        "name": "Nano Banana",
+        "kind": "Pengeditan gambar",
+        "desc": "Gemini 2.5 Flash Image dari Google untuk mengedit foto yang ada: ganti latar belakang, hapus objek, ubah pencahayaan — sambil menjaga wajah dan detail tetap utuh.",
+        "factEdit": "Pengeditan foto",
+        "factEditVal": "ya",
+        "factFace": "Preservasi wajah",
+        "factFaceVal": "ya",
+        "factSpeed": "Kecepatan",
+        "factSpeedVal": "~6 detik",
+        "factPrice": "Harga",
+        "factPriceUnit": "/ gambar",
+        "try": "Coba Nano Banana",
+        "query1": "ganti latar belakang dengan pemandangan jalan malam",
+        "query2": "rapikan ruangan"
+      }
+    },
+    "features": {
+      "eyebrow": "apa yang sudah tersedia",
+      "title": "Lebih dari sekadar chat dengan AI",
+      "subtitle": "Ini sudah berfungsi dan termasuk dalam layanan — tanpa langganan terpisah, tanpa \"segera hadir\".",
+      "items": [
+        {
+          "title": "Bot Telegram",
+          "text": "Seluruh layanan langsung di dalam Telegram: chat, pembuatan foto dan video, pesan suara, riwayat chat, dukungan grup — tanpa perlu instal aplikasi."
+        },
+        {
+          "title": "Pencarian web di chat",
+          "text": "Model mencari informasi terkini di web saat menjawab — tidak perlu memeriksa secara manual atau berpindah tab."
+        },
+        {
+          "title": "Memori lintas chat",
+          "text": "Layanan mengingat konteks proyek dan percakapan Anda — tidak perlu menjelaskan ulang siapa Anda dan apa yang sedang Anda kerjakan setiap waktu."
+        },
+        {
+          "title": "Proyek dengan sinkronisasi GitHub",
+          "text": "Folder proyek dengan prompt sistem dan file sendiri — konektor menarik kode dari repositori Anda dan mendorong commit kembali."
+        },
+        {
+          "title": "API untuk pengembang",
+          "text": "API kompatibel dengan OpenAI — terhubung ke Cursor, VS Code, dan aplikasi Anda sendiri: cukup ubah URL dasar dan kunci, tanpa perubahan kode lainnya."
+        },
+        {
+          "title": "Model Arena",
+          "text": "Bandingkan 2–3 model secara berdampingan pada prompt yang sama — langsung lihat mana yang lebih baik, tanpa berpindah tab."
+        },
+        {
+          "title": "Suara masuk dan keluar",
+          "text": "Diktekan pertanyaan Anda dengan suara dan dapatkan jawaban yang diucapkan kembali — lebih cepat daripada mengetik, dan praktis saat tangan Anda sibuk."
+        },
+        {
+          "title": "Tugas AI terjadwal",
+          "text": "Atur tugas berulang sekali — layanan menjalankannya sesuai jadwal dan mengirimkan hasilnya, tanpa perlu pengingat."
+        }
+      ]
+    },
+    "compare": {
+      "eyebrow": "perbandingan jujur",
+      "title": "Aineron vs. nama besar lainnya",
+      "subtitle": "Tanpa trik pemasaran: di mana kami benar-benar unggul, dan di mana fitur setara.",
+      "colFeature": "Fitur",
+      "colUs": "Aineron",
+      "colChatgpt": "ChatGPT",
+      "colGemini": "Gemini",
+      "rows": [
+        "Berfungsi di seluruh dunia tanpa VPN",
+        "Bayar dengan kripto, tanpa kartu bank",
+        "GPT, Claude, Gemini dalam satu jendela",
+        "Bayar per permintaan, tanpa langganan",
+        "Pembuatan gambar dan video",
+        "Perbandingan model berdampingan",
+        "API kompatibel dengan OpenAI",
+        "Model gratis, tanpa kartu diperlukan"
+      ]
+    },
+    "save": {
+      "eyebrow": "penghematan",
+      "title": "Satu saldo, bukan lima langganan",
+      "subtitle": "Langganan terpisah untuk setiap layanan — lebih mahal dan kurang praktis. Berikut perhitungan bulanan.",
+      "otherTitle": "Langganan terpisah",
+      "otherRows": [
+        {
+          "label": "ChatGPT Plus",
+          "value": "≈ $20"
+        },
+        {
+          "label": "Claude Pro",
+          "value": "≈ $20"
+        },
+        {
+          "label": "Midjourney",
+          "value": "≈ $10"
+        },
+        {
+          "label": "Sora / video",
+          "value": "≈ $20"
+        }
+      ],
+      "otherTotalLabel": "per bulan",
+      "otherTotalValue": "≈ $70",
+      "usTitle": "Aineron",
+      "usRows": [
+        {
+          "label": "Semua model teks",
+          "value": "bayar sesuai penggunaan"
+        },
+        {
+          "label": "Gambar dan video",
+          "value": "bayar sesuai penggunaan"
+        },
+        {
+          "label": "{count} model gratis",
+          "value": "$0"
+        },
+        {
+          "label": "Tanpa batasan wilayah",
+          "value": "tidak perlu VPN"
+        },
+        {
+          "label": "Biaya langganan",
+          "value": "tidak ada"
+        }
+      ],
+      "usTotalLabel": "bayar hanya sesuai penggunaan",
+      "usTotalValue": "mulai dari {amount}"
+    },
+    "faq": [
+      {
+        "q": "Bagaimana cara kerja saldo?",
+        "a": "Anda mengisi saldo dan menggunakannya untuk model apa pun. Setiap permintaan mengurangi kredit: teks dihitung per pesan, gambar dan video per file yang dihasilkan. Tidak ada biaya langganan, dan kredit tidak pernah kedaluwarsa."
+      },
+      {
+        "q": "Apakah saya memerlukan VPN?",
+        "a": "Tidak. Layanan ini tersedia di seluruh dunia dan dapat diakses di perangkat apa pun — tanpa perlu solusi tambahan, dan Anda membayar dengan kripto, bukan kartu bank."
+      },
+      {
+        "q": "Model AI apa saja yang tersedia?",
+        "a": "{count} model: GPT-5, Claude, Gemini, Grok, dan DeepSeek untuk teks; Flux, GPT Image, dan Nano Banana untuk gambar; Sora, Veo, dan Kling untuk video. Katalog terus bertambah seiring peluncuran versi baru."
+      },
+      {
+        "q": "Bisakah saya menghubungkannya ke aplikasi saya sendiri?",
+        "a": "Ya. API kompatibel dengan OpenAI — cukup ganti URL dasar dan kunci, dan kode Anda yang ada akan berfungsi. Terintegrasi dengan Cursor, VS Code, dan editor lainnya."
+      },
+      {
+        "q": "Siapa yang memiliki konten yang saya buat?",
+        "a": "Gambar, video, dan teks yang dihasilkan melalui layanan ini adalah milik Anda dan dapat digunakan dalam proyek komersial."
+      },
+      {
+        "q": "Bagaimana cara saya membayar?",
+        "a": "Dengan cryptocurrency (USDT, TON, dan lainnya) melalui Crypto Pay / @CryptoBot. Tidak memerlukan kartu bank atau VPN."
+      }
+    ],
+    "final": {
+      "title": "Siap mencobanya?",
+      "subtitle": "{amount} langsung di saldo Anda. Tanpa VPN, tanpa kartu internasional, tanpa langganan.",
+      "ctaPrimary": "Buka Aineron",
+      "ctaGhost": "Bandingkan model",
+      "disclaimer": "Dengan mengklik tombol ini, Anda menyetujui syarat layanan"
+    },
+    "footer": {
+      "about": "Akses ke model AI dunia, tanpa batasan wilayah. Satu akun, satu saldo, {count} model.",
+      "serviceTitle": "Produk",
+      "catalog": "Katalog model",
+      "compare": "Bandingkan",
+      "personas": "Persona",
+      "prompts": "Prompt",
+      "pricing": "Harga",
+      "gallery": "Galeri",
+      "devTitle": "Pengembang",
+      "api": "API & integrasi",
+      "docs": "Dokumentasi",
+      "playground": "Playground",
+      "connectTitle": "Hubungkan",
+      "blog": "Blog",
+      "support": "Dukungan",
+      "telegram": "Telegram",
+      "terms": "Ketentuan Layanan",
+      "privacy": "Kebijakan Privasi",
+      "legal": "© {year} aineron.net · support@aineron.net",
+      "tag": "Tanpa VPN, di mana saja"
+    },
+    "dock": {
+      "note": "untuk memulai",
+      "cta": "Mulai gratis"
+    },
+    "faqTitle": "Pertanyaan yang sering diajukan"
   }
 }
