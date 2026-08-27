@@ -52,3 +52,26 @@ def clamp_max_tokens(requested, model_name: str) -> int:
     if requested:
         return min(int(requested), cap)
     return auto_max_tokens(model_name)
+
+
+# Обнаружено живым тестом 2026-08-27: apimart/Bedrock отдаёт 400
+# ValidationException на некоторых моделях Claude, если запрос вообще
+# содержит поле temperature — "temperature is deprecated for this model"
+# либо "temperature may only be set to 1" (для моделей с расширенным
+# рассуждением Bedrock фиксирует temperature сам и не даёт его переопределить).
+# Список — только модели, где ошибка реально подтверждена живым вызовом
+# API, не догадка по названию: у соседних моделей той же линейки (haiku-4-5,
+# sonnet-4-5/4-6) тот же параметр проходит нормально. Если у новой модели
+# Claude появится та же ошибка в логах (`api.views.chat` / `aitext.tasks`,
+# "temperature is deprecated"/"temperature may only be set to") — добавить
+# её exact model_name сюда, а не расширять по префиксу вслепую.
+NO_TEMPERATURE_MODELS = {
+    'claude-opus-4-7',
+    'claude-opus-4-8',
+    'claude-opus-5',
+    'claude-sonnet-5',
+}
+
+
+def supports_temperature(model_name: str) -> bool:
+    return (model_name or '') not in NO_TEMPERATURE_MODELS

@@ -417,6 +417,10 @@ class _CompletionsProxy:
 
     def create(self, **kwargs):
         kwargs.setdefault('timeout', _CHAT_TIMEOUT)
+        if 'temperature' in kwargs:
+            from core.model_limits import supports_temperature
+            if not supports_temperature(kwargs.get('model')):
+                kwargs.pop('temperature', None)
         if kwargs.get('stream'):
             return self._parent._run_stream('chat', kwargs)
         return self._parent._run('chat', lambda c: c.chat.completions.create(**kwargs))
