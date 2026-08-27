@@ -184,6 +184,14 @@ class _ReconstructedUsage:
     def __init__(self, prompt_tokens, completion_tokens):
         self.prompt_tokens = prompt_tokens
         self.completion_tokens = completion_tokens
+        # Реальный openai SDK (CompletionUsage) всегда даёт total_tokens —
+        # звонящий код (api/views/chat.py, anthropic.py, embeddings.py,
+        # api/tasks.py) читает usage_obj.total_tokens без проверки hasattr.
+        # Без этого поля восстановленный после SSE-реконструкции (см.
+        # _reconstruct_chat_completion_from_sse) ответ ронял DRF-view
+        # AttributeError'ом (500) вместо того, чтобы отдать уже готовый
+        # текст пользователю — обнаружено 2026-08-27 живым тестом claude-*.
+        self.total_tokens = prompt_tokens + completion_tokens
 
 
 class _ReconstructedChoice:
