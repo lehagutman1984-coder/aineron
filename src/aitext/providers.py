@@ -197,6 +197,13 @@ class _ReconstructedUsage:
 class _ReconstructedChoice:
     def __init__(self, content):
         self.message = _ReconstructedMessage(content)
+        # Как и total_tokens у _ReconstructedUsage: реальный openai SDK
+        # всегда даёт Choice.finish_reason, и api/views/chat.py:52,
+        # api/tasks.py:121 читают его без hasattr-проверки. SSE-реконструкция
+        # по определению собирается из чанков потока, дошедшего до конца
+        # (иначе _reconstruct_chat_completion_from_sse не нашла бы контент),
+        # так что 'stop' — корректное значение по умолчанию, а не заглушка.
+        self.finish_reason = 'stop'
 
 
 class _ReconstructedChatCompletion:
