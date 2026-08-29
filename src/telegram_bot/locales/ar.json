@@ -163,7 +163,9 @@
     "deleteFailed": "تعذر حذف الرسالة.",
     "dislikeHint": "\n\n[الرد السابق لم يكن كافياً. أجب بمزيد من التفاصيل والدقة.]",
     "newChatButton": "دردشة جديدة",
-    "copyCodeButton": "نسخ الكود"
+    "copyCodeButton": "نسخ الكود",
+    "emailNotVerifiedTitle": "أكد بريدك الإلكتروني",
+    "emailNotVerifiedBody": "أرسلنا رمز تأكيد إلى بريدك الإلكتروني عند التسجيل — أدخله على الموقع للمتابعة."
   },
   "voice": {
     "transcribing": "جارٍ نسخ الرسالة الصوتية...",

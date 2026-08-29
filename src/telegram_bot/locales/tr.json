@@ -163,7 +163,9 @@
     "deleteFailed": "Mesaj silinemedi.",
     "dislikeHint": "\n\n[Önceki yanıt yeterince iyi değildi. Daha ayrıntılı ve daha kesin yanıt verin.]",
     "newChatButton": "Yeni sohbet",
-    "copyCodeButton": "Kodu kopyala"
+    "copyCodeButton": "Kodu kopyala",
+    "emailNotVerifiedTitle": "E-postanızı doğrulayın",
+    "emailNotVerifiedBody": "Kayıt sırasında e-posta adresinize bir doğrulama kodu gönderdik — devam etmek için kodu web sitesine girin."
   },
   "voice": {
     "transcribing": "Sesli mesaj yazıya dökülüyor...",

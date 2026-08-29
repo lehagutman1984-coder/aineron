@@ -163,7 +163,9 @@
     "deleteFailed": "نمی‌توان پیام را حذف کرد.",
     "dislikeHint": "\n\n[پاسخ قبلی کافی نبود. با جزئیات بیشتر و دقیق‌تر پاسخ دهید.]",
     "newChatButton": "چت جدید",
-    "copyCodeButton": "کپی کد"
+    "copyCodeButton": "کپی کد",
+    "emailNotVerifiedTitle": "ایمیل خود را تأیید کنید",
+    "emailNotVerifiedBody": "ما هنگام ثبت‌نام یک کد تأیید به ایمیل شما ارسال کردیم — آن را در وب‌سایت وارد کنید تا ادامه دهید."
   },
   "voice": {
     "transcribing": "در حال تبدیل پیام صوتی به متن...",

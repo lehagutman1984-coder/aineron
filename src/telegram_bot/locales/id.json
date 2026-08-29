@@ -163,7 +163,9 @@
     "deleteFailed": "Tidak dapat menghapus pesan.",
     "dislikeHint": "\n\n[Balasan sebelumnya tidak cukup baik. Jawab dengan lebih rinci dan lebih tepat.]",
     "newChatButton": "Obrolan baru",
-    "copyCodeButton": "Salin kode"
+    "copyCodeButton": "Salin kode",
+    "emailNotVerifiedTitle": "Konfirmasi email Anda",
+    "emailNotVerifiedBody": "Kami telah mengirimkan kode konfirmasi ke email Anda saat pendaftaran — masukkan kode tersebut di situs web untuk melanjutkan."
   },
   "voice": {
     "transcribing": "Mentranskripsi pesan suara...",
