@@ -158,6 +158,14 @@ async def cmd_img2img(message: Message, state: FSMContext, tg_user=None):
     _, extra_rub = get_stored_image_settings(tg_user, network)
     total_kopecks = network.cost_kopecks + extra_rub * 100
 
+    from telegram_bot.utils import needs_email_verification
+    if needs_email_verification(tg_user.user):
+        await message.answer(
+            t('chat.emailNotVerifiedBody', lang) if lang != 'ru'
+            else 'Подтвердите email — мы отправили код при регистрации. Введите его на сайте.'
+        )
+        return
+
     if not tg_user.user.has_enough_kopecks(total_kopecks):
         from core.money import format_money
         if lang == 'ru':
@@ -273,6 +281,14 @@ async def check_balance_and_run_img2img(message: Message, tg_user, prompt: str, 
     from telegram_bot.handlers.images import get_stored_image_settings
     _, extra_rub = get_stored_image_settings(tg_user, network)
     total_kopecks = network.cost_kopecks + extra_rub * 100
+
+    from telegram_bot.utils import needs_email_verification
+    if needs_email_verification(tg_user.user):
+        await message.answer(
+            t('chat.emailNotVerifiedBody', lang) if lang != 'ru'
+            else 'Подтвердите email — мы отправили код при регистрации. Введите его на сайте.'
+        )
+        return
 
     if not tg_user.user.has_enough_kopecks(total_kopecks):
         from core.money import format_money

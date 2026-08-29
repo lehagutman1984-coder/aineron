@@ -85,6 +85,9 @@ def _has_enough(group_config, tg_user) -> bool:
         cost_rub = kopecks_to_rub(cost * org_rate // 100)
         return group_config.organization.balance_rub >= cost_rub
     if tg_user is not None:
+        from telegram_bot.utils import needs_email_verification
+        if needs_email_verification(tg_user.user):
+            return False
         return tg_user.user.has_enough_kopecks(cost)
     return False
 

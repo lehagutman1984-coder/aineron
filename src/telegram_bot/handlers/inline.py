@@ -34,6 +34,9 @@ def _create_inline_message(tg_user, text):
         ).order_by('order').first()
     if not network:
         return None
+    from telegram_bot.utils import needs_email_verification
+    if needs_email_verification(tg_user.user):
+        return None
     if not tg_user.user.has_enough_kopecks(network.cost_kopecks):
         return None
     chat = Chat.objects.create(

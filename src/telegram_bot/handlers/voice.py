@@ -89,6 +89,14 @@ async def handle_voice_message(message: Message, tg_user=None, bot=None):
 
     lang = resolve_language(tg_user, message.from_user)
 
+    from telegram_bot.utils import needs_email_verification
+    if needs_email_verification(tg_user.user):
+        await message.answer(
+            t('chat.emailNotVerifiedBody', lang) if lang != 'ru'
+            else 'Подтвердите email — мы отправили код при регистрации. Введите его на сайте.'
+        )
+        return
+
     if not await has_enough_kopecks(tg_user, ASR_COST_KOPECKS):
         from core.money import format_money
         price = format_money(ASR_COST_KOPECKS)
@@ -169,6 +177,15 @@ async def cb_tts(query: CallbackQuery, tg_user=None, bot=None):
         return msg.plain_text or msg.content or ''
 
     get_text = sync_to_async(_get_msg_text, thread_sensitive=True)
+
+    from telegram_bot.utils import needs_email_verification
+    if needs_email_verification(tg_user.user):
+        await query.answer(
+            t('chat.emailNotVerifiedBody', lang) if lang != 'ru'
+            else 'Подтвердите email — мы отправили код при регистрации. Введите его на сайте.',
+            show_alert=True,
+        )
+        return
 
     if not await has_enough_kopecks(tg_user, TTS_COST_KOPECKS):
         from core.money import format_money

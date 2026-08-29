@@ -192,6 +192,10 @@ def _charge_reply(conn, draft_id: int) -> tuple:
     allowance = getattr(settings, 'BUSINESS_TARIFF_ALLOWANCE', 300)
     user = conn.tg_user.user
 
+    from telegram_bot.utils import needs_email_verification
+    if needs_email_verification(user):
+        return False, False, None
+
     month = timezone.now().strftime('%Y-%m')
     if conn.replies_month != month:
         BusinessConnection.objects.filter(pk=conn.pk).update(

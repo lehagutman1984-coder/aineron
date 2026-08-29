@@ -124,6 +124,15 @@ async def _ask_confirmation(message: Message, state: FSMContext, tg_user, questi
         )
         return
 
+    from telegram_bot.utils import needs_email_verification
+    if needs_email_verification(tg_user.user):
+        await message.answer(
+            card('Подтвердите email',
+                 'Мы отправили код при регистрации — введите его на сайте, чтобы продолжить.'),
+            parse_mode='HTML',
+        )
+        return
+
     price = _price_kopecks()
     if not tg_user.user.has_enough_kopecks(price):
         await message.answer(

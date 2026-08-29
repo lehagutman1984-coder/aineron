@@ -127,6 +127,14 @@ async def cmd_sticker(message: Message, tg_user=None):
             await message.answer(t('sticker.noModels', lang))
         return
 
+    from telegram_bot.utils import needs_email_verification
+    if needs_email_verification(tg_user.user):
+        await message.answer(
+            t('chat.emailNotVerifiedBody', lang) if lang != 'ru'
+            else 'Подтвердите email — мы отправили код при регистрации. Введите его на сайте.'
+        )
+        return
+
     if not tg_user.user.has_enough_kopecks(network.cost_kopecks):
         from core.money import format_money
         if lang == 'ru':

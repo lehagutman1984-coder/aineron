@@ -8,6 +8,25 @@ _MD_SPECIAL = r'\_*[]()~`>#+-=|{}.!'
 DIVIDER = '─' * 21
 
 
+def needs_email_verification(user) -> bool:
+    """
+    Зеркало api/permissions.py::IsEmailVerified для бота: реальный email
+    без подтверждения — блокируем трату баланса. Бот-нативные аккаунты
+    (BUG-I self-serve /start, telegram_bot/handlers/start.py::
+    _create_standalone_account) получают детерминированный placeholder
+    email `tg{id}@telegram.local` и НИКОГДА не смогут его подтвердить —
+    это штатное состояние для большинства пользователей бота, не абьюз,
+    поэтому явно исключены.
+
+    Закрывает конкретный обход: аккаунт зарегистрирован/привязан с реальным
+    email на сайте, код не введён (api/permissions.py блокирует веб/API),
+    но тот же аккаунт свободно тратит баланс через бота, где до этого
+    проверки не было вообще (aiogram-хендлеры вызывают spend_kopecks
+    напрямую, минуя DRF).
+    """
+    return not user.email_verified and not user.email.endswith('@telegram.local')
+
+
 def card(title: str, body: str, footer: str = '') -> str:
     """Build a visual card: bold title + divider + body [+ divider + footer]."""
     parts = [f'<b>{title}</b>', DIVIDER, body]

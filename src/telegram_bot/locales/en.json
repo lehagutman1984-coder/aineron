@@ -226,6 +226,8 @@
   },
   "chat": {
     "noModels": "No models available. Please contact support.",
+    "emailNotVerifiedTitle": "Confirm your email",
+    "emailNotVerifiedBody": "We sent a confirmation code to your email at signup — enter it on the website to continue.",
     "insufficientTitle": "Insufficient balance",
     "need": "Need",
     "have": "You have",

@@ -256,7 +256,23 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
         )
         await async_log_event(tg_user, 'error', network=network, reason='no_balance')
 
+    async def _reply_email_not_verified():
+        await tg_message.answer(
+            f"<b>{t('chat.emailNotVerifiedTitle', lang)}</b>\n{DIVIDER}\n"
+            f"{t('chat.emailNotVerifiedBody', lang)}",
+            parse_mode='HTML',
+        )
+        await async_log_event(tg_user, 'error', network=network, reason='email_not_verified')
+
     if not skip_billing:
+        # Зеркало api/permissions.py::IsEmailVerified — тот же анти-абьюз,
+        # что и на вебе/API, для входа через бота (see telegram_bot/utils.py
+        # ::needs_email_verification). skip_billing=True (оргбиллинг) — не
+        # проверяем: платит организация, не личный баланс пользователя.
+        from telegram_bot.utils import needs_email_verification
+        if needs_email_verification(tg_user.user):
+            await _reply_email_not_verified()
+            return
         has_balance = await check_balance(tg_user.user, network.cost_kopecks)
         if not has_balance:
             await _reply_insufficient_balance()

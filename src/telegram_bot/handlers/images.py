@@ -89,6 +89,15 @@ async def cmd_image(message: Message, tg_user=None):
     stored_settings, extra_rub = get_stored_image_settings(tg_user, network)
     total_kopecks = network.cost_kopecks + extra_rub * 100
 
+    from telegram_bot.utils import needs_email_verification
+    if needs_email_verification(tg_user.user):
+        await message.answer(
+            f"<b>{t('chat.emailNotVerifiedTitle', lang)}</b>\n{DIVIDER}\n"
+            f"{t('chat.emailNotVerifiedBody', lang)}",
+            parse_mode='HTML',
+        )
+        return
+
     if not tg_user.user.has_enough_kopecks(total_kopecks):
         from core.money import format_money
         await message.answer(
