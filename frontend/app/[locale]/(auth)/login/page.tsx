@@ -21,12 +21,19 @@ function LoginForm() {
 
   const next = params.get("next") ?? "/account/";
 
-  // Уже авторизован (AuthInit подтвердил сессию через /auth/me/) — форма
-  // логина ему не нужна, сразу в кабинет. Ждём isLoading===false, чтобы не
-  // редиректить по устаревшему user из persisted localStorage раньше, чем
-  // подтвердится реальная серверная сессия.
+  // Уже авторизован и подтверждён (AuthInit подтвердил сессию через
+  // /auth/me/) — форма логина ему не нужна, сразу в кабинет. Ждём
+  // isLoading===false, чтобы не редиректить по устаревшему user из
+  // persisted localStorage раньше, чем подтвердится реальная серверная
+  // сессия.
+  //
+  // ВАЖНО: проверка именно email_verified, а не просто user — та же гонка,
+  // что уже чинили в register/page.tsx (см. коммит 1138544): setUser(user)
+  // в handleSubmit ниже вызывается и для неподтверждённого пользователя
+  // тоже, и без этой проверки эффект уводил бы в кабинет мимо
+  // /verify-email/, куда его явно отправляет router.push ниже.
   useEffect(() => {
-    if (!isLoading && user) {
+    if (!isLoading && user?.email_verified) {
       router.replace(next);
     }
   }, [isLoading, user, next, router]);
@@ -39,7 +46,10 @@ function LoginForm() {
     try {
       const user = await authLogin(email.trim().toLowerCase(), password);
       setUser(user);
-      router.push(next);
+      // Незавершённая регистрация (код из письма не введён) — не пускаем
+      // в кабинет через логин в обход подтверждения, ведём на тот же экран
+      // ввода кода, что и сразу после регистрации.
+      router.push(user.email_verified ? next : "/verify-email/");
     } catch (err) {
       setError(
         err instanceof APIError ? err.message : t("loginError")

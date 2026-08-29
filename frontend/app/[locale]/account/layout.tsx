@@ -50,8 +50,19 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
   const { user, balanceKopecks, isLoading, logout } = useAuthStore();
 
   useEffect(() => {
-    if (!isLoading && !user) {
+    if (isLoading) return;
+    if (!user) {
       router.push("/login/?next=" + encodeURIComponent(pathname));
+      return;
+    }
+    // Логин/регистрация уже не пускают неподтверждённого пользователя сюда
+    // (см. (auth)/login и (auth)/register), но это единственный барьер,
+    // который реально применяется при заходе на /account/* напрямую —
+    // по ссылке, из истории браузера, руками в адресной строке — минуя
+    // те формы. Без проверки здесь верификация была бы просьбой на одном
+    // экране, а не настоящим ограничением доступа.
+    if (!user.email_verified) {
+      router.push("/verify-email/");
     }
   }, [isLoading, user, pathname, router]);
 
