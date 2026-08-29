@@ -91,7 +91,9 @@ class _FakeClient:
 class StreamMessageSettleTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='sse', email='sse@t.ru', password='x')
-        User.objects.filter(pk=self.user.pk).update(balance_kopecks=100000)
+        # email_verified=True — с 2026-08-30 IsEmailVerified (api/permissions.py)
+        # блокирует StreamMessageView иначе.
+        User.objects.filter(pk=self.user.pk).update(balance_kopecks=100000, email_verified=True)
         self.user.refresh_from_db()
         cat, _ = Category.objects.get_or_create(name='Test', defaults={'slug': 'test'})
         self.network = NeuralNetwork.objects.create(

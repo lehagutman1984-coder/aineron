@@ -26,9 +26,10 @@ _CREATE_OK = {
 def make_user(email='api-sbx@test.ru', kopecks=100_000):
     user = User.objects.create(email=email, username=email.split('@')[0])
     # Новый пользователь получает стартовый грант сигналом — для детерминизма
-    # тестов выставляем баланс точно.
+    # тестов выставляем баланс точно. email_verified=True — с 2026-08-30
+    # IsEmailVerified (api/permissions.py) блокирует /sandboxes/ иначе.
     User.objects.filter(pk=user.pk).update(
-        balance_kopecks=kopecks, pages_count=kopecks // 100,
+        balance_kopecks=kopecks, pages_count=kopecks // 100, email_verified=True,
     )
     user.refresh_from_db()
     return user
