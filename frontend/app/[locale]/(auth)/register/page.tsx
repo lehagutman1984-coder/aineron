@@ -23,10 +23,18 @@ function RegisterForm() {
 
   const next = params.get("next") ?? "/account/";
 
-  // Уже авторизован — форма регистрации не нужна, сразу в кабинет.
-  // См. аналогичный комментарий в login/page.tsx.
+  // Уже авторизован (и подтверждён) — форма регистрации не нужна, сразу в
+  // кабинет. См. аналогичный комментарий в login/page.tsx.
+  //
+  // ВАЖНО: проверка именно email_verified, а не просто user — setUser(user)
+  // в handleSubmit ниже обновляет user/isLoading СРАЗУ после регистрации,
+  // ДО того как решится, куда роутить (next vs /verify-email/). Этот эффект
+  // реагирует на то же изменение стора и без проверки verified гонку с
+  // router.push ниже выигрывал он — пользователь улетал в кабинет мимо
+  // экрана ввода кода из письма, ни разу его не увидев (баг обнаружен
+  // 2026-08-30 живым тестом пользователя).
   useEffect(() => {
-    if (!isLoading && user) {
+    if (!isLoading && user?.email_verified) {
       router.replace(next);
     }
   }, [isLoading, user, next, router]);
