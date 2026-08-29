@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { Link, useRouter } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
 import { Check } from "lucide-react";
@@ -14,7 +14,7 @@ function RegisterForm() {
   const locale = useLocale();
   const router = useRouter();
   const params = useSearchParams();
-  const { setUser } = useAuthStore();
+  const { user, isLoading, setUser } = useAuthStore();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,6 +22,14 @@ function RegisterForm() {
   const [error, setError] = useState<string | null>(null);
 
   const next = params.get("next") ?? "/account/";
+
+  // Уже авторизован — форма регистрации не нужна, сразу в кабинет.
+  // См. аналогичный комментарий в login/page.tsx.
+  useEffect(() => {
+    if (!isLoading && user) {
+      router.replace(next);
+    }
+  }, [isLoading, user, next, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

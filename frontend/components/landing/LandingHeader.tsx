@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { Link } from "@/i18n/navigation";
+import { useAuthStore } from "@/lib/stores/auth";
+import { LandingCtaButton } from "./LandingCtaButton";
 
 const SECTIONS = ["models", "features", "compare", "save", "faq"] as const;
 
@@ -9,14 +11,17 @@ export function LandingHeader({
   labels,
   loginLabel,
   ctaLabel,
+  accountLabel,
   menuLabel,
 }: {
   labels: Record<(typeof SECTIONS)[number], string>;
   loginLabel: string;
   ctaLabel: string;
+  accountLabel: string;
   menuLabel: string;
 }) {
   const [open, setOpen] = useState(false);
+  const user = useAuthStore((s) => s.user);
 
   function toggle() {
     setOpen((v) => {
@@ -47,12 +52,17 @@ export function LandingHeader({
             ))}
           </nav>
           <div className="nav-right">
-            <Link href="/login" style={{ fontSize: 15, color: "var(--muted)" }}>
-              {loginLabel}
-            </Link>
-            <a href="#final" className="btn btn-primary btn-sm">
-              {ctaLabel}
-            </a>
+            {!user && (
+              <Link href="/login" style={{ fontSize: 15, color: "var(--muted)" }}>
+                {loginLabel}
+              </Link>
+            )}
+            <LandingCtaButton
+              scrollHref="#final"
+              authedLabel={accountLabel}
+              anonLabel={ctaLabel}
+              className="btn btn-primary btn-sm"
+            />
             <button
               className={`burger${open ? " on" : ""}`}
               aria-label={menuLabel}
@@ -73,12 +83,18 @@ export function LandingHeader({
           </a>
         ))}
         <div className="d-actions">
-          <Link href="/login" className="d-login" onClick={close}>
-            {loginLabel}
-          </Link>
-          <a href="#final" className="btn btn-primary" onClick={close}>
-            {ctaLabel} →
-          </a>
+          {!user && (
+            <Link href="/login" className="d-login" onClick={close}>
+              {loginLabel}
+            </Link>
+          )}
+          <LandingCtaButton
+            scrollHref="#final"
+            authedLabel={`${accountLabel} →`}
+            anonLabel={`${ctaLabel} →`}
+            className="btn btn-primary"
+            onClick={close}
+          />
         </div>
       </div>
     </>

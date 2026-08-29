@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { Link, useRouter } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
 import { authLogin } from "@/lib/api/client";
@@ -12,7 +12,7 @@ function LoginForm() {
   const t = useTranslations("auth");
   const router = useRouter();
   const params = useSearchParams();
-  const { setUser } = useAuthStore();
+  const { user, isLoading, setUser } = useAuthStore();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -20,6 +20,16 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null);
 
   const next = params.get("next") ?? "/account/";
+
+  // Уже авторизован (AuthInit подтвердил сессию через /auth/me/) — форма
+  // логина ему не нужна, сразу в кабинет. Ждём isLoading===false, чтобы не
+  // редиректить по устаревшему user из persisted localStorage раньше, чем
+  // подтвердится реальная серверная сессия.
+  useEffect(() => {
+    if (!isLoading && user) {
+      router.replace(next);
+    }
+  }, [isLoading, user, next, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

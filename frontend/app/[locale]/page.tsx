@@ -8,6 +8,7 @@ import { LandingHeader } from "@/components/landing/LandingHeader";
 import { LandingDemo } from "@/components/landing/LandingDemo";
 import { LandingFaq } from "@/components/landing/LandingFaq";
 import { LandingVideo } from "@/components/landing/LandingVideo";
+import { LandingCtaButton, LandingDockNote } from "@/components/landing/LandingCtaButton";
 import "./landing.css";
 
 export const revalidate = 3600;
@@ -37,6 +38,7 @@ export default async function HomePage({
   params: { locale: string };
 }) {
   const t = await getTranslations("landing");
+  const tNav = await getTranslations("nav");
   const [all, free] = await Promise.all([
     serverListNetworks({ lang: params.locale }).catch(() => []),
     serverListNetworks({ is_free: true, lang: params.locale }).catch(() => []),
@@ -138,6 +140,7 @@ export default async function HomePage({
         }}
         loginLabel={t("nav.login")}
         ctaLabel={t("nav.cta")}
+        accountLabel={tNav("accountFull")}
         menuLabel={t("nav.menu")}
       />
 
@@ -528,9 +531,11 @@ export default async function HomePage({
           <h2>{t("final.title")}</h2>
           <p>{t("final.subtitle", { amount: signupAmount })}</p>
           <div className="final-btns">
-            <Link href="/register" className="btn btn-primary">
-              {t("final.ctaPrimary")} →
-            </Link>
+            <LandingCtaButton
+              authedLabel={`${tNav("accountFull")} →`}
+              anonLabel={`${t("final.ctaPrimary")} →`}
+              className="btn btn-primary"
+            />
             <a href="#compare" className="btn btn-ghost">
               {t("final.ctaGhost")}
             </a>
@@ -583,13 +588,13 @@ export default async function HomePage({
       </footer>
 
       <div className="dock">
-        <div className="dock-note">
-          <b>{signupAmount}</b>
-          {t("dock.note")}
-        </div>
-        <a href="#final" className="btn btn-primary">
-          {t("dock.cta")} →
-        </a>
+        <LandingDockNote signupAmount={signupAmount} noteLabel={t("dock.note")} />
+        <LandingCtaButton
+          scrollHref="#final"
+          authedLabel={`${tNav("accountFull")} →`}
+          anonLabel={`${t("dock.cta")} →`}
+          className="btn btn-primary"
+        />
       </div>
     </div>
   );

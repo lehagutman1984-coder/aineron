@@ -1,7 +1,7 @@
 ﻿"use client";
 
 
-import { Wallet, User, Menu, X, Sun, Moon, Monitor } from "lucide-react";
+import { Wallet, User, Menu, X, Sun, Moon, Monitor, LayoutGrid } from "lucide-react";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useState } from "react";
 import { useAuthStore } from "@/lib/stores/auth";
@@ -118,8 +118,16 @@ export function Navbar() {
           )}
         </div>
 
-        {/* Mobile: theme toggle + hamburger */}
+        {/* Mobile: catalog + theme toggle + hamburger */}
         <div className="flex items-center gap-1 md:hidden">
+          <Link
+            href="/models/"
+            className="flex h-9 w-9 items-center justify-center rounded-[8px] text-[rgba(13,13,13,0.55)] transition-colors hover:bg-[rgba(13,13,13,0.06)] dark:text-[rgba(236,236,236,0.50)] dark:hover:bg-[rgba(255,255,255,0.07)]"
+            title={t("catalog")}
+            aria-label={t("catalog")}
+          >
+            <LayoutGrid size={18} />
+          </Link>
           <button
             onClick={cycleTheme}
             className="flex h-9 w-9 items-center justify-center rounded-[8px] text-[rgba(13,13,13,0.55)] transition-colors hover:bg-[rgba(13,13,13,0.06)] dark:text-[rgba(236,236,236,0.50)] dark:hover:bg-[rgba(255,255,255,0.07)]"
