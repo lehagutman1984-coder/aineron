@@ -5,13 +5,14 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema, OpenApiExample
 from api.models import APIKey
+from api.permissions import IsEmailVerified
 
 logger = logging.getLogger(__name__)
 
 
 class APIKeyListCreateView(APIView):
     """GET /api/v1/keys/ — список ключей; POST — создать новый."""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEmailVerified]
 
     @extend_schema(
         summary='Список API-ключей',

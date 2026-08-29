@@ -15,6 +15,7 @@ from rest_framework import status
 from drf_spectacular.utils import extend_schema
 
 from api.authentication import CsrfExemptSessionAuthentication
+from api.permissions import IsEmailVerified
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +45,7 @@ SYSTEM_PROMPT = (
 class ImagePromptEnhanceView(APIView):
     """POST /api/v1/images/enhance-prompt/"""
     authentication_classes = [CsrfExemptSessionAuthentication]
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEmailVerified]
 
     @extend_schema(
         summary='AI-улучшение промпта для генерации изображений',

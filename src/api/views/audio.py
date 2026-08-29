@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from api.permissions import IsEmailVerified
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from drf_spectacular.utils import extend_schema
 
@@ -23,7 +24,7 @@ DEFAULT_TTS_VOICE = 'alloy'
 
 class AudioTranscriptionsView(APIView):
     """POST /api/v1/audio/transcriptions"""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEmailVerified]
     parser_classes = [MultiPartParser, FormParser]
 
     @extend_schema(
@@ -89,7 +90,7 @@ class AudioTranscriptionsView(APIView):
 
 class AudioSpeechView(APIView):
     """POST /api/v1/audio/speech"""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEmailVerified]
     parser_classes = [JSONParser]
 
     @extend_schema(

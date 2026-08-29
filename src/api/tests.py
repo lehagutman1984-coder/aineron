@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 
 from aitext.models import Category, NeuralNetwork
+from api.models import APIKey
 from api.services.billing import charge_for_tokens, get_kopecks_per_1k, refund_kopecks, tokens_to_kopecks
 
 User = get_user_model()
@@ -403,3 +404,54 @@ class RegisterReferralTests(TestCase):
         self.assertEqual(resp.status_code, 201)
         new_user = User.objects.get(email='new3@t.ru')
         self.assertIsNone(new_user.referrer_id)
+
+
+class IsEmailVerifiedPermissionTests(TestCase):
+    """
+    2026-08-30: DRF раньше вообще не проверял email_verified — прямой запрос
+    к API с валидной сессией (или уже выпущенным ключом) полностью обходил
+    подтверждение почты, сделанное только на фронтенде. /keys/ — конкретно
+    та точка, которую эта проверка обязана закрыть: иначе можно один раз
+    создать API-ключ с неподтверждённым email и дальше обходить любые
+    фронтенд-редиректы этим ключом бессрочно.
+    """
+    URL = '/api/v1/keys/'
+
+    def _client_for(self, user):
+        from rest_framework.test import APIClient
+        client = APIClient()
+        client.force_authenticate(user)
+        return client
+
+    def test_unverified_user_blocked_with_machine_readable_code(self):
+        user = User.objects.create_user(username='unverified', email='unverified@t.ru', password='x')
+        self.assertFalse(user.email_verified)
+        resp = self._client_for(user).post(self.URL, {'name': 'My App'}, format='json')
+        self.assertEqual(resp.status_code, 403)
+        self.assertEqual(resp.json()['error']['code'], 'email_not_verified')
+        self.assertEqual(APIKey.objects.filter(user=user).count(), 0)
+
+    def test_verified_user_allowed(self):
+        user = User.objects.create_user(username='verified', email='verified@t.ru', password='x')
+        user.email_verified = True
+        user.save(update_fields=['email_verified'])
+        resp = self._client_for(user).post(self.URL, {'name': 'My App'}, format='json')
+        self.assertEqual(resp.status_code, 201)
+
+    def test_unverified_staff_allowed(self):
+        """createsuperuser/is_staff обходят публичную регистрацию и никогда
+        не проходят email_verified=True — без этого исключения деплой фикса
+        разлогинил бы собственных админов."""
+        user = User.objects.create_user(
+            username='staffer', email='staff@t.ru', password='x', is_staff=True,
+        )
+        self.assertFalse(user.email_verified)
+        resp = self._client_for(user).post(self.URL, {'name': 'Admin key'}, format='json')
+        self.assertEqual(resp.status_code, 201)
+
+    def test_resend_verification_not_blocked(self):
+        """Единственный способ выбраться из email_not_verified — сам не должен
+        требовать email_not_verified, иначе тупик."""
+        user = User.objects.create_user(username='resend', email='resend@t.ru', password='x')
+        resp = self._client_for(user).post('/api/v1/auth/resend-verification/')
+        self.assertNotEqual(resp.status_code, 403)

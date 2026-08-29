@@ -17,6 +17,7 @@ from drf_spectacular.utils import extend_schema
 from aitext.models import NeuralNetwork
 from aitext.tasks import get_laozhang_client
 from api.exceptions import InsufficientStarsError
+from api.permissions import IsEmailVerified
 from api.services.billing import charge_for_tokens, refund_kopecks
 
 logger = logging.getLogger(__name__)
@@ -128,7 +129,7 @@ def _stream_completion(user, network, messages, kwargs, api_key):
 
 class ChatCompletionsView(APIView):
     """POST /api/v1/chat/completions"""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEmailVerified]
 
     @extend_schema(
         summary='Chat Completions (OpenAI-совместимый)',

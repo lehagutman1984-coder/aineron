@@ -18,6 +18,7 @@ from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema
 
 from api.models import BatchJob, BatchJobItem, AuditLog
+from api.permissions import IsEmailVerified
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +52,7 @@ def _serialize_job(job: BatchJob) -> dict:
 
 class BatchListCreateView(APIView):
     """GET/POST /api/v1/batches/"""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEmailVerified]
 
     @extend_schema(summary='Список пакетных заданий', tags=['Batch'])
     def get(self, request):

@@ -14,6 +14,7 @@ from django.db.models import F
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from api.permissions import IsEmailVerified
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema
@@ -66,7 +67,7 @@ def _session_payload(session: SandboxSession) -> dict:
 
 class SandboxBaseView(APIView):
     """Общий гейт: флаг → shadow ban → скоуп ключа."""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEmailVerified]
 
     def gate(self, request) -> Response | None:
         if not getattr(settings, 'SANDBOX_API_ENABLED', False):

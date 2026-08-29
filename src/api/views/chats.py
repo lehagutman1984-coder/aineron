@@ -17,6 +17,7 @@ from aitext.tasks import generate_ai_response, get_client_for_network
 from aitext.limits import consume_free_message
 from aitext.code_formatter import CodeFormatter
 from users.models import UserSpending
+from api.permissions import IsEmailVerified
 from api.serializers.chats import (
     ChatListSerializer, ChatDetailSerializer, ChatUpdateSerializer,
     MessageSerializer, SendMessageSerializer,
@@ -200,7 +201,7 @@ class ChatDetailView(RetrieveUpdateDestroyAPIView):
 
 
 class SendMessageView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEmailVerified]
 
     def post(self, request, chat_id):
         chat = get_object_or_404(Chat, id=chat_id, user=request.user)
@@ -316,7 +317,7 @@ class MessageStatusView(APIView):
 
 class StreamMessageView(APIView):
     """SSE streaming endpoint for text models. fal-ai returns 400."""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEmailVerified]
 
     def post(self, request, chat_id):
         chat = get_object_or_404(Chat, id=chat_id, user=request.user)
@@ -916,7 +917,7 @@ class StreamMessageView(APIView):
 
 class RegenerateView(APIView):
     """Reset last assistant message and re-run AI generation."""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEmailVerified]
 
     def post(self, request, chat_id):
         chat = get_object_or_404(Chat, id=chat_id, user=request.user)

@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from api.permissions import IsEmailVerified
 from drf_spectacular.utils import extend_schema
 
 from aitext.models import NeuralNetwork, GeneratedImage
@@ -27,7 +28,7 @@ def _resolve_image_network(model_id: str):
 
 class ImageGenerationsView(APIView):
     """POST /api/v1/images/generations"""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEmailVerified]
 
     @extend_schema(
         summary='Генерация изображений (OpenAI-совместимый)',

@@ -6,6 +6,7 @@ from rest_framework.views import APIView
 
 from telegram_bot.models import AITask, ai_task_limit
 from api.error_messages import em
+from api.permissions import IsEmailVerified
 
 
 class AITaskSerializer(serializers.ModelSerializer):
@@ -51,7 +52,7 @@ class AITaskSerializer(serializers.ModelSerializer):
 
 class AITaskListCreateView(APIView):
     """GET /v1/tasks/ — список задач; POST — создать."""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEmailVerified]
 
     def get(self, request):
         tasks = AITask.objects.filter(user=request.user).order_by('-is_active', '-created_at')
@@ -120,7 +121,7 @@ class AITaskDetailView(APIView):
 
 class AITaskRunNowView(APIView):
     """POST /v1/tasks/<id>/run/ — запустить сейчас (результат придёт в Telegram)."""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEmailVerified]
 
     def post(self, request, pk):
         from django.utils import timezone

@@ -2,6 +2,7 @@ import logging
 from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
+from api.permissions import IsEmailVerified
 from rest_framework.response import Response
 
 from aitext.models import NeuralNetwork, Chat, Message, NeuralNetworkDailyUsage
@@ -12,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class CompareView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEmailVerified]
 
     def post(self, request):
         message_text = (request.data.get('message') or '').strip()

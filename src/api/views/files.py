@@ -12,6 +12,7 @@ from api.authentication import CsrfExemptSessionAuthentication
 from aitext.models import GeneratedImage, Message
 from aitext.tasks import generate_ai_response
 from api.error_messages import em
+from api.permissions import IsEmailVerified
 
 
 def _user_gens_q(user):
@@ -117,7 +118,7 @@ class GenerationRerunView(APIView):
     только проверки тарифа/баланса для понятной ошибки.
     """
     authentication_classes = [CsrfExemptSessionAuthentication]
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEmailVerified]
 
     def post(self, request, pk):
         gen = get_object_or_404(
@@ -199,7 +200,7 @@ class GenerationUpscaleView(APIView):
     Результат появится в галерее (/account/files/) по завершении.
     """
     authentication_classes = [CsrfExemptSessionAuthentication]
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEmailVerified]
 
     def post(self, request, pk):
         gen = get_object_or_404(
@@ -283,7 +284,7 @@ class GenerationVariationsView(APIView):
     Возвращает {chat_id, message_ids}.
     """
     authentication_classes = [CsrfExemptSessionAuthentication]
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEmailVerified]
 
     def post(self, request, pk):
         gen = get_object_or_404(
@@ -365,7 +366,7 @@ class GenerationDescribeView(APIView):
     Возвращает { "prompt": "..." }
     """
     authentication_classes = [CsrfExemptSessionAuthentication]
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEmailVerified]
 
     def post(self, request, pk):
         from django.conf import settings as django_settings
@@ -485,7 +486,7 @@ class RemoveBackgroundView(APIView):
     Если rembg не установлен — 503 с понятным сообщением.
     """
     authentication_classes = [CsrfExemptSessionAuthentication]
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEmailVerified]
 
     def post(self, request, pk):
         try:

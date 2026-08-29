@@ -16,6 +16,7 @@ import logging
 from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
+from api.permissions import IsEmailVerified
 from rest_framework.response import Response
 
 from api.authentication import CsrfExemptSessionAuthentication
@@ -27,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 class ImageCompareView(APIView):
     authentication_classes = [CsrfExemptSessionAuthentication]
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEmailVerified]
 
     def post(self, request):
         prompt = (request.data.get('prompt') or '').strip()

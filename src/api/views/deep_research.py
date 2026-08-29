@@ -7,11 +7,12 @@ from rest_framework import status
 
 from aitext.models import Chat, Message, DeepResearch
 from api.error_messages import em
+from api.permissions import IsEmailVerified
 
 
 class DeepResearchStartView(APIView):
     """POST /v1/chats/<chat_id>/research/ — start a deep research job."""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEmailVerified]
 
     def post(self, request, chat_id):
         chat = get_object_or_404(Chat, id=chat_id, user=request.user)

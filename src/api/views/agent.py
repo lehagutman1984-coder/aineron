@@ -11,6 +11,7 @@ from rest_framework.response import Response
 
 from telegram_bot.models import AgentRun
 from api.error_messages import em
+from api.permissions import IsEmailVerified
 
 
 def _run_payload(run: AgentRun) -> dict:
@@ -28,7 +29,7 @@ def _run_payload(run: AgentRun) -> dict:
 
 
 class AgentStartView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEmailVerified]
 
     def get(self, request):
         runs = AgentRun.objects.filter(user=request.user)[:10]

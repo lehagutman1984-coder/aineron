@@ -106,6 +106,18 @@ export async function request<T>(
       `HTTP ${res.status}`;
     const code =
       (body as { error?: { code?: string } })?.error?.code ?? null;
+    // Единая точка: любой DRF-эндпоинт может теперь ответить этим кодом
+    // (см. api/permissions.py::IsEmailVerified на бэкенде) — вместо разбора
+    // в каждом вызывающем месте отдельно, ловим здесь и уводим на экран
+    // подтверждения, откуда ушёл сам код. Иначе — "непонятное окно" (сырой
+    // 403) на любой странице, где пользователь попытался что-то потратить.
+    if (
+      code === "email_not_verified" &&
+      typeof window !== "undefined" &&
+      !window.location.pathname.includes("/verify-email")
+    ) {
+      window.location.href = "/verify-email/";
+    }
     throw new APIError(res.status, msg, code);
   }
 

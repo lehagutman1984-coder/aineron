@@ -8,6 +8,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from api.permissions import IsEmailVerified
 from drf_spectacular.utils import extend_schema
 
 from aitext.models import NeuralNetwork
@@ -34,7 +35,7 @@ def _resolve_embedding_model(model_id: str):
 
 class EmbeddingsView(APIView):
     """POST /api/v1/embeddings"""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEmailVerified]
 
     @extend_schema(
         summary='Создать эмбеддинги (OpenAI-совместимый)',
