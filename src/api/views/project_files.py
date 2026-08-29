@@ -8,6 +8,7 @@ from rest_framework import serializers
 from aitext.models import Project, ProjectFile
 from api.views._project_access import get_project_for_user
 from api.error_messages import em
+from api.permissions import IsEmailVerified
 
 
 MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB
@@ -73,7 +74,7 @@ class ProjectFileSerializer(serializers.ModelSerializer):
 
 
 class ProjectFileListCreateView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEmailVerified]
 
     def get(self, request, pk):
         project = get_project_for_user(pk, request.user, write=False)
@@ -210,7 +211,7 @@ class FileRestoreView(APIView):
     Sprint 5.4: восстанавливает файл из снапшота версии.
     Перед восстановлением создаёт снапшот текущего содержимого.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEmailVerified]
 
     def post(self, request, pk, file_id, version_id):
         from django.conf import settings

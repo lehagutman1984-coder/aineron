@@ -455,3 +455,27 @@ class IsEmailVerifiedPermissionTests(TestCase):
         user = User.objects.create_user(username='resend', email='resend@t.ru', password='x')
         resp = self._client_for(user).post('/api/v1/auth/resend-verification/')
         self.assertNotEqual(resp.status_code, 403)
+
+    def test_chat_list_create_blocked_for_unverified(self):
+        """Регрессионный тест: POST /chats/ (ChatListCreateView) — форма
+        "начать диалог" на странице модели/главной, а НЕ безобидный CRUD
+        пустого чата, как показалось при первом проходе 2026-08-30. Реально
+        списывает баланс и запускает generate_ai_response — живой тест это
+        поймал уже ПОСЛЕ первого деплоя (баланс тестового аккаунта упал
+        с 10 до 6.50 ₽ несмотря на IsEmailVerified на SendMessageView)."""
+        user = User.objects.create_user(username='chatstart', email='chatstart@t.ru', password='x')
+        User.objects.filter(pk=user.pk).update(balance_kopecks=100_000)
+        user.refresh_from_db()
+        network = _make_network(cost_kopecks=100, slug='chatstart-model')
+
+        client = self._client_for(user)
+        resp = client.post(
+            '/api/v1/chats/',
+            {'network_slug': network.slug, 'message': 'hi'},
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 403)
+        self.assertEqual(resp.json()['error']['code'], 'email_not_verified')
+
+        user.refresh_from_db(fields=['balance_kopecks'])
+        self.assertEqual(user.balance_kopecks, 100_000, 'unverified user must not be charged')

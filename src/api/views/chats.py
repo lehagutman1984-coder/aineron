@@ -27,7 +27,15 @@ logger = logging.getLogger(__name__)
 
 
 class ChatListCreateView(ListCreateAPIView):
-    permission_classes = [IsAuthenticated]
+    """GET — список чатов (безопасно для неподтверждённых); POST — создать
+    чат С ПЕРВЫМ СООБЩЕНИЕМ (см. create() ниже) — это и есть основной путь
+    списания денег в продукте (со страницы модели/главной), а не просто
+    создание пустого чата, как показалось на первый взгляд при первом
+    проходе по списку эндпоинтов 2026-08-30. Обнаружено живым тестом:
+    неподтверждённый аккаунт реально потратил баланс через эту форму,
+    пока SendMessageView/StreamMessageView (для ПОСЛЕДУЮЩИХ сообщений
+    в уже существующем чате) были уже закрыты."""
+    permission_classes = [IsAuthenticated, IsEmailVerified]
 
     def get_serializer_class(self):
         return ChatListSerializer

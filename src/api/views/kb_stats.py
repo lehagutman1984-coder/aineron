@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from aitext.models import Project, ProjectFile
+from api.permissions import IsEmailVerified
 
 
 class ProjectKBStatsView(APIView):
@@ -74,7 +75,7 @@ class ProjectFileChunksView(APIView):
 
 class ProjectFileReindexView(APIView):
     """POST /v1/projects/<pk>/files/<file_id>/reindex/ — запускает переиндексацию файла."""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEmailVerified]
 
     def post(self, request, pk, file_id):
         project = get_object_or_404(Project, id=pk, user=request.user)
