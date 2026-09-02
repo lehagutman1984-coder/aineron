@@ -1108,7 +1108,11 @@ VIDEO_MODELS = [
     dict(
         name='Seedance 1.5 Pro',
         slug='seedance-1-5-pro',
-        model_name='doubao-seedance-1-5-pro',
+        # 2026-09-02: было 'doubao-seedance-1-5-pro' — префикса doubao-
+        # у apimart нет в документации API, реальный model для запроса —
+        # 'seedance-1-5-pro' (проверено docs.apimart.ai/ru/api-reference/
+        # videos/seedance-1-5-pro/generation).
+        model_name='seedance-1-5-pro',
         cost_per_message=35,
         order=7,
         description='Генерация видео от ByteDance. Поддержка аудио, фиксированной камеры и 6 форматов кадра.',
@@ -1118,7 +1122,9 @@ VIDEO_MODELS = [
     dict(
         name='Seedance 2.0',
         slug='seedance-2-0',
-        model_name='doubao-seedance-2.0',
+        # 2026-09-02: было 'doubao-seedance-2.0' — без реального префикса
+        # doubao-, см. комментарий у seedance-1-5-pro выше.
+        model_name='seedance-2.0',
         cost_per_message=45,
         order=8,
         description='Новейшая модель ByteDance Seedance 2.0. Длительность до 15 сек, 4K, аудиодорожка, адаптивный формат.',
@@ -1158,7 +1164,12 @@ VIDEO_MODELS = [
     dict(
         name='Grok Imagine 1.5',
         slug='grok-imagine-1-5',
-        model_name='grok-imagine-1.5-video-apimart',
+        # 2026-09-02: было 'grok-imagine-1.5-video-apimart' — это косметический
+        # slug с витрины apimart.ai (в скобках у карточки), а не значение
+        # поля model для запроса. Документация API прямо требует
+        # 'grok-imagine-1.5-video-ext' (docs.apimart.ai/ru/api-reference/
+        # videos/grok-imagine/generation).
+        model_name='grok-imagine-1.5-video-ext',
         cost_per_message=30,
         order=12,
         description='Видео-модель xAI Grok — ролики до 30 секунд, необычные форматы кадра, оживление фото.',
@@ -1250,7 +1261,9 @@ VIDEO_MODELS = [
     dict(
         name='Seedance 2.0 Fast',
         slug='seedance-2-0-fast',
-        model_name='doubao-seedance-2.0-fast',
+        # 2026-09-02: было 'doubao-seedance-2.0-fast' — без реального
+        # префикса doubao-, см. комментарий у seedance-1-5-pro выше.
+        model_name='seedance-2.0-fast',
         cost_per_message=28,
         order=22,
         description='Быстрый и доступный тир Seedance 2.0 — тот же движок ByteDance, ниже цена.',

@@ -939,7 +939,7 @@ export const DETAILS: Record<string, ModelDetail> = {
       "audio",
       "camerafixed",
     ],
-    apiModelName: "doubao-seedance-1-5-pro",
+    apiModelName: "seedance-1-5-pro",
   },
   "seedance-2-0": {
     longDescription:
@@ -959,7 +959,7 @@ export const DETAILS: Record<string, ModelDetail> = {
       "camerafixed",
       { name: "image", description: "до 9 референсных изображений" },
     ],
-    apiModelName: "doubao-seedance-2.0",
+    apiModelName: "seedance-2.0",
   },
   "seedance-2-0-fast": {
     longDescription:
@@ -978,7 +978,7 @@ export const DETAILS: Record<string, ModelDetail> = {
       { name: "generate_audio", description: "генерация звуковой дорожки" },
       { name: "image", description: "до 9 референсных изображений" },
     ],
-    apiModelName: "doubao-seedance-2.0-fast",
+    apiModelName: "seedance-2.0-fast",
   },
   "seedance-2-5": {
     longDescription:
@@ -1074,7 +1074,7 @@ export const DETAILS: Record<string, ModelDetail> = {
       { name: "quality", description: "480p или 720p" },
       { name: "image", description: "до 7 референсных изображений" },
     ],
-    apiModelName: "grok-imagine-1.5-video-apimart",
+    apiModelName: "grok-imagine-1.5-video-ext",
   },
   "wan-2-7": {
     longDescription:
