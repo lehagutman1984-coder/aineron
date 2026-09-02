@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { ArrowRight, Code2, ImageIcon, Info, Search, Video, type LucideIcon } from "lucide-react";
 import { PREVIEW_MODELS, type PreviewCategory, type PreviewModel } from "@/lib/data/pricingPreviewModels";
 import { formatRub } from "@/lib/money";
@@ -200,12 +201,12 @@ function ModelRow({ model }: { model: PreviewModel }) {
           >
             {ACTION_LABEL[model.category]}
           </button>
-          <button
-            type="button"
-            className="rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-3 py-2 text-[14px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:border-[rgba(13,13,13,0.3)] hover:text-[#1A1A1A]"
+          <Link
+            href={`/models-preview/${model.id}`}
+            className="flex items-center rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-3 py-2 text-[14px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:border-[rgba(13,13,13,0.3)] hover:text-[#1A1A1A]"
           >
             Детали
-          </button>
+          </Link>
         </div>
       </div>
     </div>
