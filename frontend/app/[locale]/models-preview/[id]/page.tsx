@@ -18,9 +18,17 @@ const CATEGORY_LABELS: Record<PreviewCategory, string> = {
   video: "Видео",
 };
 
-export function generateStaticParams() {
-  return PREVIEW_MODELS.map((m) => ({ id: m.id }));
-}
+// force-dynamic (тот же паттерн, что и у реальной /models/[slug]/) —
+// generateStaticParams() статически рендерил все 59 карточек, но на сборке
+// в проде next.js молча (без ошибки в логе) не сгенерировал ОДНУ конкретную
+// страницу (seedance-2-5) — воспроизвелось 3/3 при чистых пересборках,
+// хотя локально собиралось верно. Известный класс бага next-intl app-router:
+// страница, отсутствующая в статическом выводе, при попытке фолбэка на
+// динамику падает с "Page changed from static to dynamic... reason: headers"
+// (next-intl's requestLocale() зовёт headers(), что запрещено для страницы,
+// объявленной как static). force-dynamic убирает саму возможность такого
+// рассинхрона — рендерим всегда на лету, как /models/[slug]/.
+export const dynamic = "force-dynamic";
 
 export function generateMetadata({ params }: { params: { id: string } }): Metadata {
   const model = PREVIEW_MODELS.find((m) => m.id === params.id);
