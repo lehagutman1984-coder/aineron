@@ -243,7 +243,10 @@ function PriceBlock({ model }: { model: PreviewModel }) {
   return (
     <div className="flex flex-col gap-1">
       {model.contextLabel && <PriceRow label="Параметры" value={model.contextLabel} />}
-      <PriceRow label="Секунда видео" value={formatRub((model.priceVideoRub ?? 0) * 100)} />
+      <PriceRow
+        label={model.priceUnit === "call" ? "За видео" : "Секунда видео"}
+        value={formatRub((model.priceVideoRub ?? 0) * 100)}
+      />
     </div>
   );
 }

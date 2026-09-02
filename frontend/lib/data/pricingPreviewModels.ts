@@ -497,6 +497,18 @@ export const VIDEO_MODELS: PreviewModel[] = [
     outputBadges: ["Видео"],
   },
   {
+    id: "veo-3-1-lite",
+    name: "Veo 3.1 Lite",
+    provider: "Google",
+    category: "video",
+    description: "Бюджетный вход в линейку Veo — тариф за клип, а не за секунду.",
+    contextLabel: "8 сек, 720p",
+    priceVideoRub: roundVideo(0.07),
+    priceUnit: "call",
+    inputBadges: ["Текст"],
+    outputBadges: ["Видео"],
+  },
+  {
     id: "kling-v2-6",
     name: "Kling v2.6",
     provider: "Kuaishou",

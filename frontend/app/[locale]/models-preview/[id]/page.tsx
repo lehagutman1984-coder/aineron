@@ -217,6 +217,13 @@ function PricingCard({ model }: { model: PreviewModel }) {
       </div>
     );
   }
+  if (model.priceUnit === "call") {
+    return (
+      <div className="rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white p-5">
+        <PriceStat label="За видео (тарификация за клип, не за секунду)" value={formatRub((model.priceVideoRub ?? 0) * 100)} />
+      </div>
+    );
+  }
   return (
     <div className="rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white p-5">
       <div className="grid grid-cols-2 gap-4">
