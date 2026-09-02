@@ -176,7 +176,10 @@ VIDEO_CONFIG = {
         "metadata": {
             "output_type": "video", "video_api": "apimart",
             "supports_image_to_video": True, "i2v_param": "image_urls",
-            "i2v_max_images": 3, "i2v_mode": "reference",
+            # 2026-09-02: по документации apimart Quality НЕ поддерживает
+            # generation_type=reference (было ошибочно как у veo3_fast,
+            # max_images:3) — только frame-режим (первый+последний, до 2 фото).
+            "i2v_max_images": 2, "i2v_mode": "first_last",
             "laozhang_fallback_model": "veo-3.1-generate-preview",  # B14, см. veo3_fast
         },
     },
@@ -734,11 +737,17 @@ VIDEO_CONFIG = {
         },
     },
 
-    # Kling 3.0 Turbo — новый флагман Kuaishou (турбо-тир) поверх уже
-    # интегрированного kling-v3, тот же набор полей.
+    # Kling 3.0 Turbo — новый флагман Kuaishou (турбо-тир). У этой модели
+    # ДРУГОЙ контракт API, чем у остальных Kling: качество регулируется
+    # `resolution` (не `mode`), фото передаётся `first_frame_image`
+    # (одна строка, не массив `image_urls`), audio/negative_prompt на её
+    # странице документации не встречаются — раньше был ошибочно
+    # скопирован набор полей kling_v3, из-за чего доплата за "pro"-качество
+    # (extra_cost 15) не долетала до провайдера как ожидаемый параметр.
+    # Исправлено 2026-09-02.
     'kling30turbo': {
         "name": "Kling 3.0 Turbo",
-        "api_defaults": {"mode": "std", "duration": "5", "aspect_ratio": "16:9", "audio": False},
+        "api_defaults": {"resolution": "720p", "duration": "5", "aspect_ratio": "16:9"},
         "ui_settings": {
             "sections": [{
                 "title": "Настройки видео",
@@ -746,22 +755,19 @@ VIDEO_CONFIG = {
                     _aspect_field(["16:9", "9:16", "1:1"]),
                     _duration_field([(3, 0), (5, 0), (8, 10), (10, 18)]),
                     {
-                        "name": "mode", "type": "select", "label": "Качество", "extra_cost": 0,
+                        "name": "resolution", "type": "select", "label": "Качество", "extra_cost": 0,
                         "options": [
-                            {"value": "std", "label": "720p (стандарт)", "extra_cost": 0},
-                            {"value": "pro", "label": "1080p (профессионал)", "extra_cost": 15},
+                            {"value": "720p", "label": "720p (стандарт)", "extra_cost": 0},
+                            {"value": "1080p", "label": "1080p (профессионал)", "extra_cost": 15},
                         ]
                     },
-                    {"name": "audio", "type": "checkbox", "label": "Сгенерировать звук", "extra_cost": 5},
-                    {"name": "negative_prompt", "type": "text", "label": "Negative prompt", "extra_cost": 0, "max_length": 2500},
                 ]
             }]
         },
-        "constraints": {"max_negative_prompt_length": 2500},
+        "constraints": {},
         "metadata": {
             "output_type": "video", "video_api": "apimart",
-            "supports_image_to_video": True, "i2v_param": "image_urls",
-            "i2v_max_images": 2, "i2v_mode": "first_last",
+            "supports_image_to_video": True, "i2v_param": "first_frame_image",
         },
     },
 
@@ -832,7 +838,10 @@ VIDEO_CONFIG = {
     },
 
     # MiniMax Hailuo 2.3 Fast — бюджетный/быстрый тир уже интегрированного
-    # Hailuo 2.3, тот же набор полей.
+    # Hailuo 2.3, тот же набор полей. 2026-09-02: по документации apimart
+    # Fast-тир обязательно требует first_frame_image (чистый text-to-video
+    # недоступен) — добавлен requires_input_images, иначе пользователь мог
+    # отправить только текст и получить гарантированный сбой без объяснения.
     'hailuo23fast': {
         "name": "Hailuo 2.3 Fast",
         "api_defaults": {"duration": "6", "resolution": "768p", "prompt_optimizer": True},
@@ -855,6 +864,7 @@ VIDEO_CONFIG = {
         "constraints": {},
         "metadata": {
             "output_type": "video", "video_api": "apimart",
+            "requires_input_images": True,
             "supports_image_to_video": True, "i2v_param": "first_frame_image",
         },
     },
@@ -951,6 +961,9 @@ VIDEO_CONFIG = {
     },
 
     # Veo 3.1 Lite — бюджетный тир Veo 3.1 ниже уже интегрированного Fast.
+    # 2026-09-02: по документации apimart Lite вообще не принимает
+    # image_urls/generation_type/official_fallback — img2video для неё
+    # снят (раньше стоял ошибочно скопированный с veo3_fast конфиг).
     'veo3lite': {
         "name": "Veo 3.1 Lite",
         "api_defaults": {"duration": 8, "aspect_ratio": "16:9", "resolution": "720p"},
@@ -965,8 +978,6 @@ VIDEO_CONFIG = {
         "constraints": {},
         "metadata": {
             "output_type": "video", "video_api": "apimart",
-            "supports_image_to_video": True, "i2v_param": "image_urls",
-            "i2v_max_images": 3, "i2v_mode": "reference",
         },
     },
 
@@ -982,9 +993,12 @@ VIDEO_CONFIG = {
     # Проверено вживую ТОЛЬКО text-to-video (mode=std) — img2video-контракт
     # для этой модели не проверялся, поэтому img2video-метаданные сознательно
     # не проставлены (см. комментарий про kling-v3-motion-control выше).
+    # 2026-09-02: убрана доплата за "audio" (extra_cost 5) — по документации
+    # apimart параметр audio для этой модели не встречается вообще, в отличие
+    # от kling_v2_6/kling_v3, где он явно задокументирован.
     'klingvideoo1': {
         "name": "Kling Video O1",
-        "api_defaults": {"mode": "std", "duration": "5", "aspect_ratio": "16:9", "audio": False},
+        "api_defaults": {"mode": "std", "duration": "5", "aspect_ratio": "16:9"},
         "ui_settings": {
             "sections": [{
                 "title": "Настройки видео",
@@ -998,7 +1012,6 @@ VIDEO_CONFIG = {
                             {"value": "pro", "label": "1080p (профессионал)", "extra_cost": 15},
                         ]
                     },
-                    {"name": "audio", "type": "checkbox", "label": "Сгенерировать звук", "extra_cost": 5},
                 ]
             }]
         },
