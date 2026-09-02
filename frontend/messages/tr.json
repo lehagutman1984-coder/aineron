@@ -228,6 +228,8 @@
     "sourceImageAlt": "Kaynak görsel",
     "removeSourceImage": "Kaynak görseli kaldır",
     "editImageFormHint": "Değişiklikleri tarif edin — model bu görsele uygular",
+    "editImageTitleVideo": "Video için referans fotoğraf",
+    "editImageFormHintVideo": "Model bu fotoğrafı videonun temeli olarak kullanacak",
     "uploading": "Yükleniyor...",
     "uploadImageTitle": "Fotoğraf yükle",
     "removeStyleRef": "Stil referansını kaldır",

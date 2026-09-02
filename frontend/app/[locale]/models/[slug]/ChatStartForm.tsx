@@ -32,6 +32,15 @@ export function ChatStartForm({ networkSlug, isMedia, isVideo, configJson, proje
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const hasSettings = Boolean(configJson?.ui_settings?.sections?.length);
+  // Кнопка «загрузить референсное фото» на первом сообщении: для картиночных
+  // моделей — всегда (img2img), для видео — только если модель реально
+  // поддерживает image-to-video (иначе кнопка обещает то, что не работает —
+  // Veo 3.1 Lite и LTX 2.3 её не принимают вовсе). Раньше было `!isVideo`,
+  // то есть кнопка не показывалась НИ ОДНОЙ видео-модели — из-за этого
+  // модели с обязательным референсом (например Vidu Q3, requires_input_images)
+  // невозможно было запустить с первого сообщения вообще.
+  const canAttachReference =
+    isMedia && (!isVideo || configJson?.metadata?.supports_image_to_video === true);
   const [showSettings, setShowSettings] = useState(hasSettings);
   const [mediaSettings, setMediaSettings] = useState<Record<string, unknown>>({});
   // img2img: исходное изображение, переданное из галереи "Мои файлы"
@@ -191,10 +200,10 @@ export function ChatStartForm({ networkSlug, isMedia, isVideo, configJson, proje
           <div className="min-w-0">
             <p className="flex items-center gap-1 text-[15px] font-medium text-[#1A1A1A]">
               <ImagePlus size={13} className="text-[#D97757]" />
-              {t("editImageTitle")}
+              {isVideo ? t("editImageTitleVideo") : t("editImageTitle")}
             </p>
             <p className="mt-0.5 text-[14px] text-[rgba(13,13,13,0.5)]">
-              {t("editImageFormHint")}
+              {isVideo ? t("editImageFormHintVideo") : t("editImageFormHint")}
             </p>
           </div>
         </div>
@@ -239,16 +248,16 @@ export function ChatStartForm({ networkSlug, isMedia, isVideo, configJson, proje
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={
-            editImageUrl
+            editImageUrl && !isVideo
               ? t("placeholderEdit")
               : isMedia
                 ? t("placeholderMedia")
                 : t("placeholderText")
           }
           rows={4}
-          className={`w-full resize-none rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-4 py-3 text-[16px] text-[#1A1A1A] placeholder-[rgba(13,13,13,0.38)] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all ${isMedia && !isVideo ? "pe-20" : "pe-12"}`}
+          className={`w-full resize-none rounded-[10px] border border-[rgba(13,13,13,0.15)] bg-[rgba(13,13,13,0.02)] px-4 py-3 text-[16px] text-[#1A1A1A] placeholder-[rgba(13,13,13,0.38)] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all ${canAttachReference ? "pe-20" : "pe-12"}`}
         />
-        {isMedia && !isVideo && (
+        {canAttachReference && (
           <>
             <input
               ref={sourceInputRef}

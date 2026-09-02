@@ -228,6 +228,8 @@
     "sourceImageAlt": "Исходное изображение",
     "removeSourceImage": "Убрать исходное изображение",
     "editImageFormHint": "Опишите изменения — модель применит их к этому изображению",
+    "editImageTitleVideo": "Референсное фото для видео",
+    "editImageFormHintVideo": "Модель использует это фото как основу для генерации видео",
     "uploading": "Загрузка...",
     "uploadImageTitle": "Загрузить фото",
     "removeStyleRef": "Убрать референс стиля",

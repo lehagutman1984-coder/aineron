@@ -228,6 +228,8 @@
     "sourceImageAlt": "تصویر منبع",
     "removeSourceImage": "حذف تصویر منبع",
     "editImageFormHint": "تغییرات را توصیف کنید — مدل آن‌ها را روی این تصویر اعمال می‌کند",
+    "editImageTitleVideo": "عکس مرجع برای ویدیو",
+    "editImageFormHintVideo": "مدل از این عکس به‌عنوان پایه تولید ویدیو استفاده می‌کند",
     "uploading": "در حال بارگذاری...",
     "uploadImageTitle": "بارگذاری عکس",
     "removeStyleRef": "حذف مرجع سبک",

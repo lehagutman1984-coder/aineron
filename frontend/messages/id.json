@@ -228,6 +228,8 @@
     "sourceImageAlt": "Gambar sumber",
     "removeSourceImage": "Hapus gambar sumber",
     "editImageFormHint": "Deskripsikan perubahan — model akan menerapkannya pada gambar ini",
+    "editImageTitleVideo": "Foto referensi untuk video",
+    "editImageFormHintVideo": "Model akan menggunakan foto ini sebagai dasar pembuatan video",
     "uploading": "Mengunggah...",
     "uploadImageTitle": "Unggah foto",
     "removeStyleRef": "Hapus referensi gaya",

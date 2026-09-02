@@ -228,6 +228,8 @@
     "sourceImageAlt": "الصورة المصدر",
     "removeSourceImage": "إزالة الصورة المصدر",
     "editImageFormHint": "صف التغييرات — سيقوم النموذج بتطبيقها على هذه الصورة",
+    "editImageTitleVideo": "صورة مرجعية للفيديو",
+    "editImageFormHintVideo": "سيستخدم النموذج هذه الصورة كأساس لتوليد الفيديو",
     "uploading": "جارٍ التحميل...",
     "uploadImageTitle": "تحميل صورة",
     "removeStyleRef": "إزالة مرجع النمط",

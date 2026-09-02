@@ -228,6 +228,8 @@
     "sourceImageAlt": "Source image",
     "removeSourceImage": "Remove source image",
     "editImageFormHint": "Describe the changes — the model will apply them to this image",
+    "editImageTitleVideo": "Reference photo for video",
+    "editImageFormHintVideo": "The model will use this photo as the basis for the video",
     "uploading": "Uploading...",
     "uploadImageTitle": "Upload photo",
     "removeStyleRef": "Remove style reference",
