@@ -2008,9 +2008,30 @@ def generate_with_falai(network, user_msg, message, user_settings=None):
         logger.error(f"Ошибка вызова laozhang.ai images API: {e}")
         raise
 
+    # Flux у laozhang.ai игнорирует n>1 и всегда отдаёт ровно 1 картинку за
+    # вызов, даже отвечая HTTP 200 (проверено вживую 2026-09-02: n=2 и n=4 оба
+    # вернули 1 изображение) — а num_images в UI берёт extra_cost за 2-ю/4-ю
+    # картинку (Sprint 4 Creative Controls). Без этого дозапроса пользователь
+    # платит за недоставленные изображения. Дозапрашиваем оставшиеся отдельными
+    # вызовами n=1, пока не наберём запрошенное количество или не исчерпаем лимит попыток.
+    result_images = list(response.data)
+    requested_n = image_params.get('n', 1)
+    attempts = 0
+    while len(result_images) < requested_n and attempts < requested_n * 2:
+        attempts += 1
+        try:
+            single_params = dict(image_params)
+            single_params['n'] = 1
+            extra_response = client.images.generate(**single_params)
+            result_images.extend(extra_response.data)
+        except Exception as e:
+            logger.warning(f"Доп. запрос изображения ({attempts}/{requested_n * 2}) не удался: {e}")
+            break
+    result_images = result_images[:requested_n]
+
     # Обрабатываем результат
     saved_media = []
-    for img_data in response.data:
+    for img_data in result_images:
         gen_img = None
         if img_data.url:
             gen_img = save_media_from_url(img_data.url, message, prompt)

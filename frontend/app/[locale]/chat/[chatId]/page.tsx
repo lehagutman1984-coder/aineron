@@ -1514,7 +1514,7 @@ export default function ChatPage() {
                     }}
                   />
                 )}
-                {chat.network.config_json?.ui_settings ? (
+                {chat.network.config_json?.ui_settings?.sections?.length ? (
                   <button
                     type="button"
                     onClick={() => setShowMediaSettings((v) => !v)}
@@ -1532,9 +1532,9 @@ export default function ChatPage() {
                 ) : null}
               </div>
 
-              {showMediaSettings && chat.network.config_json?.ui_settings && (
+              {showMediaSettings && Boolean(chat.network.config_json?.ui_settings?.sections?.length) && (
                 <MediaSettingsPanel
-                  sections={chat.network.config_json.ui_settings.sections as UiSection[]}
+                  sections={chat.network.config_json?.ui_settings?.sections as UiSection[]}
                   values={mediaSettings}
                   onChange={setMediaSettings}
                 />

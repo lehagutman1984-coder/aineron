@@ -476,6 +476,43 @@ IMAGE_MODELS = [
     dict(name='Z-Image Turbo', slug='z-image-turbo', model_name='z-image-turbo', cost_per_message=5, cost_kopecks=500, order=41,
          description='Быстрая и доступная модель генерации изображений.',
          config_key='apimart_async_image'),
+
+    # ── Новые топ-модели apimart (добавлено 2026-09-02) ──────────────────────
+    # Проверены вживую (POST /v1/images/generations → task_id → GET /v1/tasks/{id}
+    # → status=completed с URL готового изображения) непосредственно перед
+    # добавлением. Цены — оценка по аналогии с уже задеплоенными apimart-моделями
+    # того же типа (Qwen Image 2.0 / Z-Image Turbo), точный опт по этим конкретным
+    # моделям в биллинг-кабинете apimart не сверялся — перепроверить после первых
+    # реальных запросов.
+    #
+    # Отклонённые кандидаты (не добавлены):
+    # - Midjourney (apimart) — существует, но живёт на отдельном, несовместимом
+    #   контракте POST /v1/midjourney/generations (+ /blend, /describe, /upscale,
+    #   /variation, /reroll, /zoom, /pan, /inpaint, /video), а не на общем
+    #   /v1/images/generations — нужен отдельный обработчик, не влезает в
+    #   существующий generate_image_apimart_async(). Требует отдельной задачи.
+    # - Grok Imagine (без апимарт-суффикса, через laozhang.ai, model_name
+    #   'grok-imagine-image') — на laozhang.ai для этой модели нет ни одного
+    #   доступного канала на нашем биллинг-аккаунте (503 "no available channels"),
+    #   а автофолбэк на apimart возвращает пустой ответ (не совместим по форме
+    #   ответа с sync images.generate()). Взамен — apimart-нативные
+    #   grok-imagine-image / grok-imagine-image-quality (task-poll, ниже),
+    #   они действительно на apimart и проверены вживую.
+    dict(name='Qwen Image 3.0', slug='qwen-image-3-0', model_name='qwen-image-3.0', cost_per_message=9, cost_kopecks=900, order=42,
+         description='Флагманская модель Alibaba нового поколения — сменяет Qwen Image 2.0, точнее в плотном тексте и сложных сценах.',
+         config_key='apimart_async_image', is_popular=True),
+    dict(name='Qwen Image 3.0 Pro', slug='qwen-image-3-0-pro', model_name='qwen-image-3.0-pro', cost_per_message=13, cost_kopecks=1300, order=43,
+         description='Профессиональный тир Qwen Image 3.0 с поддержкой 2K-разрешения.',
+         config_key='apimart_async_image'),
+    dict(name='Wan 2.7 Image', slug='wan-2-7-image', model_name='wan2.7-image', cost_per_message=9, cost_kopecks=900, order=44,
+         description='Генерация изображений от Alibaba Wan — уникальные фичи вроде серийной генерации нескольких картинок одной темой.',
+         config_key='apimart_async_image'),
+    dict(name='Grok Imagine', slug='grok-imagine-image', model_name='grok-imagine-image', cost_per_message=10, cost_kopecks=1000, order=45,
+         description='Модель генерации изображений xAI — быстрая генерация с поддержкой 1K/2K.',
+         config_key='apimart_async_image', is_popular=True),
+    dict(name='Grok Imagine Quality', slug='grok-imagine-image-quality', model_name='grok-imagine-image-quality', cost_per_message=16, cost_kopecks=1600, order=46,
+         description='Качественный тир Grok Imagine от xAI — выше детализация и точность следования промту.',
+         config_key='apimart_async_image'),
 ]
 
 
