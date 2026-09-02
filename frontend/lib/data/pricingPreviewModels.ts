@@ -19,6 +19,19 @@
  * Раньше здесь были "Wan 3.0" и "MiniMax Hailuo 02", которых в проекте не
  * существует вообще — это была ошибка при первом наполнении (взяты с общей
  * витрины apimart, а не из реального каталога модели).
+ *
+ * IMAGE_MODELS (2026-09-02, ревизия после живой проверки apimart + сверки с
+ * продакшн-каталогом): 20 из 20 после правок. "Imagen 4.0" убрана — апстрим
+ * (Google) отключил Imagen 4 17 августа 2026, apimart-канал детерминированно
+ * падает upstream 404, проверено вживую. Исправлены выдуманные apiModelName у
+ * "Nano Banana 2"/"Nano Banana Pro" (в pricingPreviewDetails.ts — реальные
+ * gemini-3.1-flash-image/gemini-3-pro-image) и опечатка у Seedream 5.0 Lite.
+ * "Midjourney" оставлена с явной пометкой: у apimart живёт на отдельном,
+ * несовместимом с остальными моделями контракте API — не убрана (модель
+ * реальная и ценная), но не готова к прямой интеграции без доп. разработки.
+ * Добавлено 6 моделей, каждая проверена живым вызовом apimart перед
+ * добавлением: Qwen Image 3.0 Pro, Wan 2.7 Image, Grok Imagine (+Quality),
+ * GPT-Image-1.5, GPT-Image-1 Mini.
  */
 
 export type PreviewCategory = "text" | "image" | "video";
@@ -385,16 +398,6 @@ export const IMAGE_MODELS: PreviewModel[] = [
     outputBadges: ["Изображение"],
   },
   {
-    id: "imagen-4",
-    name: "Imagen 4.0",
-    provider: "Google",
-    category: "image",
-    description: "Флагманская модель изображений Google — фотореализм и точный текст в кадре.",
-    priceGenRub: roundImg(0.04),
-    inputBadges: ["Текст"],
-    outputBadges: ["Изображение"],
-  },
-  {
     id: "midjourney",
     name: "Midjourney",
     provider: "Midjourney",
@@ -441,6 +444,73 @@ export const IMAGE_MODELS: PreviewModel[] = [
     category: "image",
     description: "Модель изображений Qwen — качественный текст на изображении, многоязычность.",
     priceGenRub: roundImg(0.0205712),
+    inputBadges: ["Текст"],
+    outputBadges: ["Изображение"],
+  },
+
+  // ── Добавлено 2026-09-02 (проверено живым вызовом apimart —
+  // POST /v1/images/generations → task_id → completed с реальным URL) ──
+  {
+    id: "qwen-image-3-pro",
+    name: "Qwen Image 3.0 Pro",
+    provider: "Alibaba",
+    category: "image",
+    description: "Профессиональный тир Qwen Image 3.0 — поддержка 2K-разрешения.",
+    priceGenRub: roundImg(0.0285712),
+    inputBadges: ["Текст"],
+    outputBadges: ["Изображение"],
+  },
+  {
+    id: "wan-2-7-image",
+    name: "Wan 2.7 Image",
+    provider: "Alibaba",
+    category: "image",
+    // Цена у apimart расходится между документацией (¥0.20-0.50/картинку) и
+    // прайс-таблицей ($0.0216/картинку) — взят ориентир из прайс-таблицы,
+    // сверить перед подключением биллинга.
+    description: "Генерация изображений Wan — серийная генерация нескольких картинок одной темой, интерактивный editing по областям.",
+    priceGenRub: roundImg(0.0216),
+    inputBadges: ["Текст"],
+    outputBadges: ["Изображение"],
+  },
+  {
+    id: "grok-imagine-image",
+    name: "Grok Imagine",
+    provider: "xAI",
+    category: "image",
+    description: "Модель генерации изображений xAI — быстрая генерация, разрешение 1K/2K.",
+    priceGenRub: roundImg(0.02),
+    inputBadges: ["Текст"],
+    outputBadges: ["Изображение"],
+  },
+  {
+    id: "grok-imagine-image-quality",
+    name: "Grok Imagine Quality",
+    provider: "xAI",
+    category: "image",
+    description: "Качественный тир Grok Imagine — выше детализация и точность следования промту.",
+    priceGenRub: roundImg(0.045),
+    inputBadges: ["Текст"],
+    outputBadges: ["Изображение"],
+  },
+  {
+    id: "gpt-image-1-5",
+    name: "GPT-Image-1.5",
+    provider: "OpenAI",
+    category: "image",
+    // Токенный тариф — оценка по аналогии с GPT-Image-1/2 (между ними по позиционированию).
+    description: "Промежуточное поколение GPT-Image между 1 и 2 — улучшенная детализация.",
+    priceGenRub: 4.5,
+    inputBadges: ["Текст"],
+    outputBadges: ["Изображение"],
+  },
+  {
+    id: "gpt-image-1-mini",
+    name: "GPT-Image-1 Mini",
+    provider: "OpenAI",
+    category: "image",
+    description: "Компактная и быстрая версия GPT-Image-1 — ниже цена за счёт меньшей детализации.",
+    priceGenRub: 1.8,
     inputBadges: ["Текст"],
     outputBadges: ["Изображение"],
   },
