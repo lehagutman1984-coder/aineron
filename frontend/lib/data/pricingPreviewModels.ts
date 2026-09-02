@@ -11,13 +11,14 @@
  *
  * VIDEO_MODELS (2026-09-02, ревизия после сверки с продакшн-каталогом):
  * список синхронизирован с реальными активными видео-моделями из
- * src/aitext/management/commands/add_video_models.py (22 из 25 — три модели,
- * Veo 3.1 Lite / Seedance 4.5 / LTX 2.3, не найдены в текущем прайсе
- * apimart.ai/ru/pricing, добавить после уточнения цены). Раньше здесь были
- * "Wan 3.0" и "MiniMax Hailuo 02", которых в проекте не существует вообще —
- * это была ошибка при первом наполнении (взяты с общей витрины apimart, а
- * не из реального каталога модели). См. project_video_settings_audit в
- * памяти сессии.
+ * src/aitext/management/commands/add_video_models.py — 24 из 24 (не 25:
+ * "Seedance 4.5" и "LTX 2.3" не существовали у apimart вообще — проверено
+ * настойчивым поиском (прайс + документация + общий каталог моделей), не
+ * просто отсутствие цены — обе убраны и из продакшн-каталога тоже.
+ * "Seedance 4.5" заменена реальной новейшей версией линейки — Seedance 2.5.
+ * Раньше здесь были "Wan 3.0" и "MiniMax Hailuo 02", которых в проекте не
+ * существует вообще — это была ошибка при первом наполнении (взяты с общей
+ * витрины apimart, а не из реального каталога модели).
  */
 
 export type PreviewCategory = "text" | "image" | "video";
@@ -648,6 +649,18 @@ export const VIDEO_MODELS: PreviewModel[] = [
     description: "Быстрый и доступный тир Seedance 2.0 — тот же движок, ниже цена.",
     contextLabel: "до 1080p",
     priceVideoRub: roundVideo(0.03984),
+    priceUnit: "sec",
+    inputBadges: ["Текст", "Изображения"],
+    outputBadges: ["Видео"],
+  },
+  {
+    id: "seedance-2-5",
+    name: "Seedance 2.5",
+    provider: "ByteDance",
+    category: "video",
+    description: "Новейшая версия Seedance — самые длинные ролики и мультиреференс в подборке.",
+    contextLabel: "4-30 сек, 480-1080p",
+    priceVideoRub: roundVideo(0.09608),
     priceUnit: "sec",
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
