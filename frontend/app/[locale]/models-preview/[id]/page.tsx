@@ -70,13 +70,18 @@ export default function ModelDetailPreviewPage({ params }: { params: { id: strin
           <p className="text-[17px] leading-relaxed text-[rgba(13,13,13,0.65)]">
             {detail?.longDescription ?? model.description}
           </p>
+          {detail?.note && (
+            <p className="mt-2 text-[14px] leading-relaxed text-[rgba(13,13,13,0.5)]">{detail.note}</p>
+          )}
         </div>
       </div>
 
       {/* Stat chips */}
       <div className="mb-8 flex flex-wrap gap-4">
         {(detail?.contextTokens ?? model.contextLabel) && (
-          <StatChip label={`Контекст: ${detail?.contextTokens ?? model.contextLabel}`} />
+          <StatChip
+            label={`${model.category === "text" ? "Контекст" : "Параметры"}: ${detail?.contextTokens ?? model.contextLabel}`}
+          />
         )}
         {detail?.maxOutputTokens && <StatChip label={`Макс. ответ: ${detail.maxOutputTokens}`} />}
         <StatChip label={`Вход: ${model.inputBadges.join(", ")}`} />
@@ -125,20 +130,22 @@ export default function ModelDetailPreviewPage({ params }: { params: { id: strin
       {detail?.supportedParameters && detail.supportedParameters.length > 0 && (
         <Section title="Поддерживаемые параметры API">
           <div className="overflow-hidden rounded-[10px] border border-[rgba(13,13,13,0.10)] bg-white">
-            {detail.supportedParameters.map((param, i) => (
-              <div
-                key={param}
-                className={[
-                  "flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-baseline sm:gap-4",
-                  i > 0 ? "border-t border-[rgba(13,13,13,0.08)]" : "",
-                ].join(" ")}
-              >
-                <code className="w-[160px] shrink-0 text-[14px] font-medium text-[#D97757]">{param}</code>
-                <span className="text-[14px] leading-relaxed text-[rgba(13,13,13,0.6)]">
-                  {PARAMETER_INFO[param] ?? ""}
-                </span>
-              </div>
-            ))}
+            {detail.supportedParameters.map((param, i) => {
+              const name = typeof param === "string" ? param : param.name;
+              const desc = typeof param === "string" ? (PARAMETER_INFO[param] ?? "") : param.description;
+              return (
+                <div
+                  key={name}
+                  className={[
+                    "flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-baseline sm:gap-4",
+                    i > 0 ? "border-t border-[rgba(13,13,13,0.08)]" : "",
+                  ].join(" ")}
+                >
+                  <code className="w-[160px] shrink-0 text-[14px] font-medium text-[#D97757]">{name}</code>
+                  <span className="text-[14px] leading-relaxed text-[rgba(13,13,13,0.6)]">{desc}</span>
+                </div>
+              );
+            })}
           </div>
         </Section>
       )}
