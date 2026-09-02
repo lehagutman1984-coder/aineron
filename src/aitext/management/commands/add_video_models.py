@@ -648,12 +648,12 @@ VIDEO_CONFIG = {
     # ══════════════════════════════════════════════════════════════════
     # B14 (2026-07-24) — расширение каталога. Настройки для моделей,
     # которые являются старшей версией уже интегрированной модели того же
-    # вендора (wan27, seedance45, klingturbo, hailuo23fast, viduq3pro,
+    # вендора (wan27, klingturbo, hailuo23fast, viduq3pro,
     # seedance20fast, veo3lite) — скопированы с проверенного на практике
     # конфига-донора, тот же вендор почти наверняка сохраняет контракт
     # параметров между поколениями. Для моделей с уникальной, ранее не
-    # интегрированной способностью (kling-v3-motion-control, kling-v3-omni,
-    # ltx text-to-video) сознательно даём БАЗОВЫЙ набор полей (общий с
+    # интегрированной способностью (kling-v3-motion-control, kling-v3-omni)
+    # сознательно даём БАЗОВЫЙ набор полей (общий с
     # ближайшим родственником), а не гадаем экзотические имена параметров
     # под саму уникальную способность (motion trajectory / multi-reference
     # omni) — это не проверено вживую, добавить отдельным полем можно после
@@ -697,11 +697,18 @@ VIDEO_CONFIG = {
         },
     },
 
-    # Seedance 4.5 — новое поколение ByteDance после уже интегрированного 2.0,
-    # шире диапазон длительности/разрешений (флагманский тир).
-    'seedance45': {
-        "name": "Seedance 4.5",
-        "api_defaults": {"duration": "5", "size": "adaptive", "resolution": "1080p", "generate_audio": False},
+    # Seedance 2.5 — 2026-09-02: заменяет прежнюю запись "Seedance 4.5"
+    # (model_name doubao-seedance-4-5) — такой модели у apimart не
+    # существует вообще, актуальная новейшая версия линейки Seedance
+    # называется seedance-2.5 (подтверждено документацией и баннером
+    # "APIMart Officially Launches doubao seedance 2.5 API"). В отличие
+    # от 2.0: нет 4K (макс. 1080p), диапазон duration шире (4-30 сек,
+    # либо -1 — автовыбор моделью), до 30 референсных изображений
+    # (не 9), новое поле watermark. Поле camerafixed для 2.5 в
+    # документации отсутствует — не переносим из конфига 2.0.
+    'seedance25': {
+        "name": "Seedance 2.5",
+        "api_defaults": {"duration": "5", "size": "adaptive", "resolution": "480p", "generate_audio": True},
         "ui_settings": {
             "sections": [{
                 "title": "Настройки видео",
@@ -713,19 +720,22 @@ VIDEO_CONFIG = {
                             {"value": "16:9", "label": "16:9 (горизонталь)", "extra_cost": 0},
                             {"value": "9:16", "label": "9:16 (вертикаль)", "extra_cost": 0},
                             {"value": "1:1", "label": "1:1 (квадрат)", "extra_cost": 0},
+                            {"value": "4:3", "label": "4:3 (традиционный)", "extra_cost": 0},
+                            {"value": "3:4", "label": "3:4 (вертикальный)", "extra_cost": 0},
+                            {"value": "21:9", "label": "21:9 (сверхширокий)", "extra_cost": 0},
                         ]
                     },
-                    _duration_field([(4, 0), (5, 0), (8, 10), (10, 18), (12, 25), (15, 35)]),
+                    _duration_field([(4, 0), (5, 0), (8, 10), (10, 15), (15, 25), (20, 35), (25, 45), (30, 55)]),
                     {
                         "name": "resolution", "type": "select", "label": "Качество", "extra_cost": 0,
                         "options": [
-                            {"value": "720p", "label": "720p (HD)", "extra_cost": 0},
-                            {"value": "1080p", "label": "1080p (Full HD)", "extra_cost": 0},
-                            {"value": "4k", "label": "4K (Ultra HD)", "extra_cost": 25},
+                            {"value": "480p", "label": "480p (стандарт)", "extra_cost": 0},
+                            {"value": "720p", "label": "720p (HD)", "extra_cost": 10},
+                            {"value": "1080p", "label": "1080p (Full HD)", "extra_cost": 20},
                         ]
                     },
                     {"name": "generate_audio", "type": "checkbox", "label": "Сгенерировать аудиодорожку", "extra_cost": 0},
-                    {"name": "camerafixed", "type": "checkbox", "label": "Фиксированная камера", "extra_cost": 0},
+                    {"name": "watermark", "type": "checkbox", "label": "Водяной знак «AI generated»", "extra_cost": 0},
                 ]
             }]
         },
@@ -733,7 +743,7 @@ VIDEO_CONFIG = {
         "metadata": {
             "output_type": "video", "video_api": "apimart",
             "supports_image_to_video": True, "i2v_param": "image_urls",
-            "i2v_max_images": 9, "i2v_mode": "reference",
+            "i2v_max_images": 30, "i2v_mode": "reference",
         },
     },
 
@@ -895,29 +905,6 @@ VIDEO_CONFIG = {
             "output_type": "video", "video_api": "apimart",
             "supports_image_to_video": True, "i2v_param": "image_urls",
             "i2v_max_images": 2, "i2v_mode": "first_last",
-        },
-    },
-
-    # Lightricks LTX 2.3 (text-to-video) — новый вендор, бюджетный/быстрый
-    # тир. Контракт параметров не проверен вживую — только универсальные
-    # aspect_ratio/duration, без вендор-специфичных полей (см. комментарий
-    # выше блока).
-    'ltx23': {
-        "name": "LTX 2.3",
-        "api_defaults": {"duration": "5", "aspect_ratio": "16:9"},
-        "ui_settings": {
-            "sections": [{
-                "title": "Настройки видео",
-                "fields": [
-                    _aspect_field(["16:9", "9:16", "1:1"]),
-                    _duration_field([(3, 0), (5, 0), (8, 5)]),
-                ]
-            }]
-        },
-        "constraints": {},
-        "metadata": {
-            "output_type": "video", "video_api": "apimart",
-            "supports_image_to_video": False,
         },
     },
 
@@ -1201,13 +1188,13 @@ VIDEO_MODELS = [
         is_popular=False,
     ),
     dict(
-        name='Seedance 4.5',
-        slug='seedance-4-5',
-        model_name='doubao-seedance-4-5',
-        cost_per_message=70,
+        name='Seedance 2.5',
+        slug='seedance-2-5',
+        model_name='seedance-2.5',
+        cost_per_message=50,
         order=15,
-        description='Флагман ByteDance Seedance 4.5 — до 15 секунд, 4K, аудиодорожка, фиксированная камера.',
-        config_key='seedance45',
+        description='Новейшая версия ByteDance Seedance — до 30 секунд, звук, до 30 референсных изображений.',
+        config_key='seedance25',
         is_popular=True,
     ),
     dict(
@@ -1258,16 +1245,6 @@ VIDEO_MODELS = [
         order=20,
         description='Старший тир Vidu Q3 — более высокое качество, чем Turbo, до 1080p.',
         config_key='viduq3pro',
-        is_popular=False,
-    ),
-    dict(
-        name='LTX 2.3',
-        slug='ltx-2-3',
-        model_name='ltx-2.3-text-video',
-        cost_per_message=18,
-        order=21,
-        description='Lightricks LTX 2.3 — сверхбыстрая и доступная генерация видео по тексту.',
-        config_key='ltx23',
         is_popular=False,
     ),
     dict(
