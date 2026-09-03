@@ -6,7 +6,10 @@ import { Link } from "@/i18n/navigation";
 import { ArrowRight, Code2, ImageIcon, ImagePlus, Palette, X } from "lucide-react";
 import type { NetworkListItem, Category } from "@/lib/api/types";
 import { formatMoney } from "@/lib/money";
+import { formatRub } from "@/lib/money";
 import { useTranslations } from "next-intl";
+import { REFERENCE_PRICING } from "@/lib/data/catalogReferencePricing";
+import { IS_RU } from "@/lib/site";
 
 interface Props {
   networks: NetworkListItem[];
@@ -308,6 +311,10 @@ function NetworkCard({ network, projectId }: { network: NetworkListItem; project
   const href = projectId
     ? `/models/${network.slug}/?project_id=${projectId}`
     : `/models/${network.slug}/`;
+  // Витринная цена по опту×курсу — только на aineron.ru (не на .net, там
+  // нет смысла сравнения с российскими конкурентами), только для платных
+  // моделей. Реальная цена (formatMoney(cost_kopecks)) ниже не меняется.
+  const ref = IS_RU && !network.is_free ? REFERENCE_PRICING[network.slug] : undefined;
   return (
     <Link
       href={href}
@@ -345,10 +352,23 @@ function NetworkCard({ network, projectId }: { network: NetworkListItem; project
           {network.description}
         </p>
       )}
-      <div className="mt-auto flex items-center justify-between pt-1">
-        <span className="text-[14px] text-[rgba(13,13,13,0.45)]">
-          {network.is_free ? t("priceFree") : network.unlimited ? t("priceUnlimited") : formatMoney(network.cost_kopecks)}
-        </span>
+      <div className="mt-auto flex items-end justify-between pt-1">
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[14px] text-[rgba(13,13,13,0.45)]">
+            {network.is_free ? t("priceFree") : network.unlimited ? t("priceUnlimited") : formatMoney(network.cost_kopecks)}
+          </span>
+          {ref && (
+            <span className="text-[12px] text-[rgba(13,13,13,0.35)]">
+              {ref.category === "text" &&
+                t("referencePriceText", {
+                  inPrice: formatRub((ref.priceInRub ?? 0) * 100),
+                  outPrice: formatRub((ref.priceOutRub ?? 0) * 100),
+                })}
+              {ref.category === "image" && t("referencePriceImage", { price: formatRub((ref.priceGenRub ?? 0) * 100) })}
+              {ref.category === "video" && t("referencePriceVideo", { price: formatRub((ref.priceVideoRub ?? 0) * 100) })}
+            </span>
+          )}
+        </div>
         <ArrowRight
           size={14}
           className="text-[rgba(13,13,13,0.3)] group-hover:text-[#D97757] transition-colors"

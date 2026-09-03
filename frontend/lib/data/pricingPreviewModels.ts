@@ -1,63 +1,68 @@
 /**
- * Данные для превью-каталога /models-preview — витрина цен в стиле RouterAI
- * (₽/1М токенов для текста, ₽/генерацию для изображений, ₽/сек для видео).
+ * Данные для нового каталога моделей и цен — витрина цен в стиле RouterAI
+ * (₽/1М токенов для текста, ₽/генерацию для изображений, ₽/сек для видео)
+ * + реальная цена, которая спишется в чате прямо сейчас.
  *
  * Источник цен: PRICING_SIMPLIFICATION_PLAN.md §1.1/§2.1 — опт снят живьём с
- * openrouter.ai/models и apimart.ai/ru/pricing (2026-09-02), розница = опт_$ × K,
- * K = 105 ₽/$ (подтверждено пользователем 2026-09-02: цена не выше конкурента
- * и заметно дешевле, было 110). ЭТО РЕАЛЬНАЯ ЦЕНА для нового каталога — не
- * витринная оценка: пользователь явно решил считать честную цену по токенам
- * (опт × K) источником истины, а не подгонять её под сегодняшние flat-цены
- * чата (которые никогда не считались от реальной стоимости токенов —
- * выставлялись на глаз). Реальный биллинг в чате (cost_kopecks) пока НЕ
- * тронут — этот файл станет новым каталогом при замене /models (план §7
- * "Фаза 1"), сам биллинг переводится на эти цифры отдельным шагом позже.
+ * openrouter.ai/models и apimart.ai/ru/pricing (2026-09-02), розничная
+ * витринная цена = опт_$ × K, K = 105 ₽/$ (подтверждено пользователем
+ * 2026-09-02: не выше конкурента и заметно дешевле, было 110).
  *
- * TEXT_MODELS (2026-09-02, 21 из 21): "новые" версии (Grok 4.6, Qwen 3.8 Max,
- * Gemini 3.7 Flash, Claude Fable 5.1) живьём проверены через реальную
- * прод-инфру (get_laozhang_client → laozhang.ai/apimart.ai fallback) —
- * работают. "Qwen 3.8 Flash", "GLM 5.3", "GLM 5.3 Flash" — реальные модели
- * на OpenRouter, но у обоих наших провайдеров (laozhang, apimart) возвращают
- * model_not_found — убраны из каталога, добавлять рано. Старые версии
- * (Grok 4.5, Qwen 3.6 Max, Gemini 3.6 Flash, Claude Fable 5) добавлены
- * ДОПОЛНИТЕЛЬНО рядом с новыми (обе версии реально работают в проде и уже
- * активны в NeuralNetwork) — решение пользователя, не заменять старое
- * новым, а добавлять. Первые три сняты с публичного прайса OpenRouter
- * (только новая версия осталась в листинге, проверено живым запросом к
- * openrouter.ai/api/v1/models 2026-09-02) — их ₽/1М цена ориентирована на
- * тир соседней новой версии, помечено комментарием на каждой модели.
- * Gemini 3.6 Flash — исключение, ещё живьём на OpenRouter, цена подтверждена
- * напрямую ($0.75/$3.75 за 1М, совпадает с 3.7 Flash).
+ * ДВЕ ЦЕНЫ НА КАЖДОЙ КАРТОЧКЕ (решение пользователя 2026-09-02): опт×K —
+ * честная цена по токенам/генерации для сравнения с конкурентами, и
+ * priceRealKopecks — реальная цена, которая спишется в чате прямо сейчас
+ * (снята напрямую из NeuralNetwork.cost_kopecks в проде на момент публикации,
+ * не формула). Биллинг в чате эти изменения НЕ трогают — реальная цена
+ * показана как есть, честно, без подгонки под витринную.
  *
- * FREE_MODELS (2026-09-02, 14 из 14) — синхронизировано 1:1 с активными
- * бесплатными моделями в проде (NeuralNetwork, is_free=True, is_active=True).
- * Три провайдера, не только OpenRouter: openrouter_free (6), zai_free (3,
- * Z.ai/Zhipu — GLM-*-Flash), cloudflare_free (5, Cloudflare Workers AI,
- * общий дневной пул 10 000 "neurons"). См. комментарий над самим массивом.
+ * СПИСОК МОДЕЛЕЙ СИНХРОНИЗИРОВАН С ПРОДОМ (2026-09-02): каждая модель здесь —
+ * это реальная, активная запись NeuralNetwork. Всё, что не попало в этот
+ * список, деактивировано в проде тем же днём (is_active=False, не удалено).
+ * 4 модели заведены как новые записи NeuralNetwork в этом же заходе — их
+ * раньше не существовало в базе, только на бумаге/в тестах: claude-fable-5-1,
+ * grok-4-6, qwen3-8-max, gemini-3-7-flash (все живьём проверены через
+ * get_laozhang_client → laozhang.ai/apimart.ai fallback, реальная цена
+ * выставлена по тиру соседней версии).
  *
- * VIDEO_MODELS (2026-09-02, ревизия после сверки с продакшн-каталогом):
- * список синхронизирован с реальными активными видео-моделями из
- * src/aitext/management/commands/add_video_models.py — 24 из 24 (не 25:
- * "Seedance 4.5" и "LTX 2.3" не существовали у apimart вообще — проверено
- * настойчивым поиском (прайс + документация + общий каталог моделей), не
- * просто отсутствие цены — обе убраны и из продакшн-каталога тоже.
- * "Seedance 4.5" заменена реальной новейшей версией линейки — Seedance 2.5.
- * Раньше здесь были "Wan 3.0" и "MiniMax Hailuo 02", которых в проекте не
- * существует вообще — это была ошибка при первом наполнении (взяты с общей
- * витрины apimart, а не из реального каталога модели).
+ * TEXT_MODELS (21 из 21): "Qwen 3.8 Flash", "GLM 5.3", "GLM 5.3 Flash" —
+ * реальные модели на OpenRouter, но у обоих наших провайдеров (laozhang,
+ * apimart) возвращают model_not_found — не добавлены. Старые версии (Grok
+ * 4.5, Qwen 3.6 Max, Gemini 3.6 Flash, Claude Fable 5) оставлены рядом с
+ * новыми — обе версии реально работают в проде, решение пользователя не
+ * заменять старое новым, а добавлять. Первые три сняты с публичного прайса
+ * OpenRouter (только новая версия осталась в листинге) — их ₽/1М цена
+ * ориентирована на тир соседней новой версии. Gemini 3.6 Flash — исключение,
+ * ещё живьём на OpenRouter, цена подтверждена напрямую ($0.75/$3.75 за 1М).
+ * Остальные ~50 текстовых моделей (GPT-5, GPT-4o, o1/o3, Grok 4, Kimi K2,
+ * DeepSeek R1/V3, Qwen3 5.x/6.x-flash/plus и т.д.) деактивированы в проде —
+ * это осознанное сужение каталога до текущей витрины, не баг.
  *
- * IMAGE_MODELS (2026-09-02, ревизия после живой проверки apimart + сверки с
- * продакшн-каталогом): 20 из 20 после правок. "Imagen 4.0" убрана — апстрим
- * (Google) отключил Imagen 4 17 августа 2026, apimart-канал детерминированно
- * падает upstream 404, проверено вживую. Исправлены выдуманные apiModelName у
- * "Nano Banana 2"/"Nano Banana Pro" (в pricingPreviewDetails.ts — реальные
- * gemini-3.1-flash-image/gemini-3-pro-image) и опечатка у Seedream 5.0 Lite.
- * "Midjourney" оставлена с явной пометкой: у apimart живёт на отдельном,
- * несовместимом с остальными моделями контракте API — не убрана (модель
- * реальная и ценная), но не готова к прямой интеграции без доп. разработки.
- * Добавлено 6 моделей, каждая проверена живым вызовом apimart перед
- * добавлением: Qwen Image 3.0 Pro, Wan 2.7 Image, Grok Imagine (+Quality),
- * GPT-Image-1.5, GPT-Image-1 Mini.
+ * IMAGE_MODELS (20 из 20): "Midjourney" и фиктивные "Seedream 5.0 Pro/Lite"
+ * убраны — в проде НЕТ соответствующих записей NeuralNetwork вообще (не
+ * деактивированы, никогда не заводились). Реальные Seedream-модели —
+ * "Seedream 5.0" и "Seedream 4.5" (следующая по актуальности после 5.0).
+ * Добавлена "Flux Kontext Max" — реальная активная модель, была пропущена в
+ * прошлой ревизии. Деактивированы как замещённые новым поколением:
+ * gemini-2-5-flash-image (старая Nano Banana, есть 2/Pro), qwen-image-2-0
+ * (есть 3.0/3.0 Pro), seedream-4-0 (есть 4.5/5.0).
+ *
+ * VIDEO_MODELS (24 из 24): 1:1 совпадение с активными видео-моделями в
+ * проде, деактивировать нечего. id в этом файле — витринные, отличаются от
+ * реальных слагов NeuralNetwork у 6 моделей (sora-2→sora-character,
+ * sora-2-pro→sora-2-character, veo-3-1-quality→veo-3-1,
+ * kling-v2-6→kling-v26, kling-3-turbo→kling-3-0-turbo,
+ * minimax-hailuo-2-3(-fast)→hailuo-2-3(-fast)) — сверено, реальная цена
+ * проставлена по факту.
+ *
+ * FREE_MODELS (14 из 14) — синхронизировано 1:1 с активными бесплатными
+ * моделями в проде (NeuralNetwork, is_free=True, is_active=True). Три
+ * провайдера: openrouter_free (6), zai_free (3, Z.ai/Zhipu — GLM-*-Flash),
+ * cloudflare_free (5, Cloudflare Workers AI, общий дневной пул 10 000
+ * "neurons"). Ранее активны были ещё free-nemotron-nano-9b/
+ * free-nemotron-3-nano-30b/free-nemotron-nano-12b-vl — деактивированы
+ * 2026-09-02 (живой вызов вернул 404 model_not_found). free-glm-5-2 и
+ * free-gemma-4-31b проверены в тот же день — вернули 429 rate-limit (не
+ * 404), оставлены активными.
  */
 
 export type PreviewCategory = "text" | "image" | "video";
@@ -69,12 +74,12 @@ export interface PreviewModel {
   category: PreviewCategory;
   description: string;
   contextLabel?: string;
-  /** ₽ за 1М токенов (только category="text") */
+  /** ₽ за 1М токенов (только category="text") — витринная цена опт×K */
   priceInRub?: number;
   priceOutRub?: number;
-  /** ₽ за одну генерацию (только category="image") */
+  /** ₽ за одну генерацию (только category="image") — витринная цена опт×K */
   priceGenRub?: number;
-  /** ₽ за единицу тарификации видео (только category="video") */
+  /** ₽ за единицу тарификации видео (только category="video") — витринная цена опт×K */
   priceVideoRub?: number;
   priceUnit?: "sec" | "call";
   inputBadges: string[];
@@ -83,6 +88,8 @@ export interface PreviewModel {
   isFree?: boolean;
   /** Лимит сообщений в день на пользователя (только isFree=true) */
   dailyLimit?: number;
+  /** Реальная цена за сообщение/генерацию, которая спишется в чате прямо сейчас (NeuralNetwork.cost_kopecks) */
+  priceRealKopecks?: number;
 }
 
 const K = 105; // ₽ за $ опта — см. план §2.1 (подтверждено пользователем 2026-09-02: не выше конкурента, чуть дешевле)
@@ -99,6 +106,7 @@ export const TEXT_MODELS: PreviewModel[] = [
     contextLabel: "1M",
     priceInRub: round(5),
     priceOutRub: round(25),
+    priceRealKopecks: 2200,
     inputBadges: ["Текст", "Изображения", "Файл"],
     outputBadges: ["Текст"],
   },
@@ -111,6 +119,7 @@ export const TEXT_MODELS: PreviewModel[] = [
     contextLabel: "1M",
     priceInRub: round(2),
     priceOutRub: round(10),
+    priceRealKopecks: 600,
     inputBadges: ["Текст", "Изображения", "Файл"],
     outputBadges: ["Текст"],
   },
@@ -123,6 +132,7 @@ export const TEXT_MODELS: PreviewModel[] = [
     contextLabel: "1M",
     priceInRub: round(10),
     priceOutRub: round(50),
+    priceRealKopecks: 1500,
     inputBadges: ["Текст", "Изображения", "Файл"],
     outputBadges: ["Текст"],
   },
@@ -132,12 +142,13 @@ export const TEXT_MODELS: PreviewModel[] = [
     provider: "Anthropic",
     category: "text",
     // Базовая версия снята с публичного прайса OpenRouter (остался только
-    // Fable 5.1, проверено 2026-09-02) — цена ориентирована на тот же тир,
-    // что у 5.1, уточнить при появлении отдельных данных.
+    // Fable 5.1, проверено 2026-09-02) — витринная цена ориентирована на тот
+    // же тир, что у 5.1, уточнить при появлении отдельных данных.
     description: "Предыдущая версия Fable — расширенное мышление, длинные автономные сессии.",
     contextLabel: "1M",
     priceInRub: round(10),
     priceOutRub: round(50),
+    priceRealKopecks: 1500,
     inputBadges: ["Текст", "Изображения", "Файл"],
     outputBadges: ["Текст"],
   },
@@ -150,6 +161,7 @@ export const TEXT_MODELS: PreviewModel[] = [
     contextLabel: "1M",
     priceInRub: round(3),
     priceOutRub: round(15),
+    priceRealKopecks: 500,
     inputBadges: ["Текст", "Изображения", "Файл"],
     outputBadges: ["Текст"],
   },
@@ -162,6 +174,7 @@ export const TEXT_MODELS: PreviewModel[] = [
     contextLabel: "1M",
     priceInRub: round(5),
     priceOutRub: round(25),
+    priceRealKopecks: 2000,
     inputBadges: ["Текст", "Изображения", "Файл"],
     outputBadges: ["Текст"],
   },
@@ -174,6 +187,7 @@ export const TEXT_MODELS: PreviewModel[] = [
     contextLabel: "200K",
     priceInRub: round(1),
     priceOutRub: round(5),
+    priceRealKopecks: 150,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Текст"],
   },
@@ -186,6 +200,7 @@ export const TEXT_MODELS: PreviewModel[] = [
     contextLabel: "1.1M",
     priceInRub: round(2),
     priceOutRub: round(10),
+    priceRealKopecks: 1600,
     inputBadges: ["Текст", "Изображения", "Файл"],
     outputBadges: ["Текст"],
   },
@@ -198,6 +213,7 @@ export const TEXT_MODELS: PreviewModel[] = [
     contextLabel: "1.1M",
     priceInRub: round(2),
     priceOutRub: round(12),
+    priceRealKopecks: 1600,
     inputBadges: ["Текст", "Изображения", "Файл"],
     outputBadges: ["Текст"],
   },
@@ -210,6 +226,7 @@ export const TEXT_MODELS: PreviewModel[] = [
     contextLabel: "1.1M",
     priceInRub: round(0.2),
     priceOutRub: round(1.2),
+    priceRealKopecks: 1600,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Текст"],
   },
@@ -221,6 +238,7 @@ export const TEXT_MODELS: PreviewModel[] = [
     description: "Универсальная модель поколения 5.5 — код, анализ, рассуждения.",
     priceInRub: round(5),
     priceOutRub: round(30),
+    priceRealKopecks: 1500,
     inputBadges: ["Текст", "Изображения", "Файл"],
     outputBadges: ["Текст"],
   },
@@ -232,6 +250,7 @@ export const TEXT_MODELS: PreviewModel[] = [
     description: "Топовый тир 5.5 — максимальная глубина рассуждений для самых сложных задач.",
     priceInRub: round(30),
     priceOutRub: round(180),
+    priceRealKopecks: 1600,
     inputBadges: ["Текст", "Изображения", "Файл"],
     outputBadges: ["Текст"],
   },
@@ -244,6 +263,7 @@ export const TEXT_MODELS: PreviewModel[] = [
     contextLabel: "1M",
     priceInRub: round(2),
     priceOutRub: round(12),
+    priceRealKopecks: 2500,
     inputBadges: ["Текст", "Изображения", "Файл", "Видео"],
     outputBadges: ["Текст"],
   },
@@ -256,6 +276,7 @@ export const TEXT_MODELS: PreviewModel[] = [
     contextLabel: "1M",
     priceInRub: round(0.75),
     priceOutRub: round(3.75),
+    priceRealKopecks: 200,
     inputBadges: ["Текст", "Изображения", "Файл"],
     outputBadges: ["Текст"],
   },
@@ -270,6 +291,7 @@ export const TEXT_MODELS: PreviewModel[] = [
     contextLabel: "1M",
     priceInRub: round(0.75),
     priceOutRub: round(3.75),
+    priceRealKopecks: 200,
     inputBadges: ["Текст", "Изображения", "Файл"],
     outputBadges: ["Текст"],
   },
@@ -283,6 +305,7 @@ export const TEXT_MODELS: PreviewModel[] = [
     // Оценка по середине диапазона провайдеров OpenRouter ($0.66-1.32/$1.98-3.96) — уточнить, план §8.1.
     priceInRub: round(1.0),
     priceOutRub: round(3.0),
+    priceRealKopecks: 120,
     inputBadges: ["Текст"],
     outputBadges: ["Текст"],
   },
@@ -296,6 +319,7 @@ export const TEXT_MODELS: PreviewModel[] = [
     // Оценка по середине диапазона провайдеров OpenRouter — уточнить, план §8.1.
     priceInRub: round(0.1),
     priceOutRub: round(0.22),
+    priceRealKopecks: 80,
     inputBadges: ["Текст"],
     outputBadges: ["Текст"],
   },
@@ -308,6 +332,7 @@ export const TEXT_MODELS: PreviewModel[] = [
     contextLabel: "500K",
     priceInRub: round(2),
     priceOutRub: round(6),
+    priceRealKopecks: 1100,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Текст"],
   },
@@ -317,11 +342,12 @@ export const TEXT_MODELS: PreviewModel[] = [
     provider: "xAI",
     category: "text",
     // Снята с публичного прайса OpenRouter (остался только 4.6, проверено
-    // 2026-09-02) — цена ориентирована на тот же тир, что у 4.6.
+    // 2026-09-02) — витринная цена ориентирована на тот же тир, что у 4.6.
     description: "Предыдущее поколение Grok — те же рассуждения, чуть более старая база знаний.",
     contextLabel: "500K",
     priceInRub: round(2),
     priceOutRub: round(6),
+    priceRealKopecks: 1100,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Текст"],
   },
@@ -334,6 +360,7 @@ export const TEXT_MODELS: PreviewModel[] = [
     contextLabel: "1M",
     priceInRub: round(2),
     priceOutRub: round(6),
+    priceRealKopecks: 220,
     inputBadges: ["Текст"],
     outputBadges: ["Текст"],
   },
@@ -343,11 +370,12 @@ export const TEXT_MODELS: PreviewModel[] = [
     provider: "Alibaba",
     category: "text",
     // Снята с публичного прайса OpenRouter (остались только 3.7/3.8,
-    // проверено 2026-09-02) — цена ориентирована на тот же тир, что у 3.8 Max.
+    // проверено 2026-09-02) — витринная цена ориентирована на тот же тир, что у 3.8 Max.
     description: "Предыдущая топовая модель Qwen — код, рассуждения, многоязычность.",
     contextLabel: "1M",
     priceInRub: round(2),
     priceOutRub: round(6),
+    priceRealKopecks: 220,
     inputBadges: ["Текст"],
     outputBadges: ["Текст"],
   },
@@ -363,6 +391,7 @@ export const IMAGE_MODELS: PreviewModel[] = [
     category: "image",
     description: "Новейшая модель генерации изображений OpenAI — точное следование промту.",
     priceGenRub: roundImg(0.0085),
+    priceRealKopecks: 1500,
     inputBadges: ["Текст"],
     outputBadges: ["Изображение"],
   },
@@ -375,6 +404,7 @@ export const IMAGE_MODELS: PreviewModel[] = [
     // цена пересчитана на типовое изображение (~1056 токенов), это оценка.
     description: "Предыдущее поколение GPT-Image — надёжная базовая генерация.",
     priceGenRub: 3.7,
+    priceRealKopecks: 1200,
     inputBadges: ["Текст"],
     outputBadges: ["Изображение"],
   },
@@ -385,6 +415,7 @@ export const IMAGE_MODELS: PreviewModel[] = [
     category: "image",
     description: "Модель Gemini для генерации и редактирования изображений по тексту.",
     priceGenRub: roundImg(0.015),
+    priceRealKopecks: 650,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Изображение"],
   },
@@ -395,6 +426,7 @@ export const IMAGE_MODELS: PreviewModel[] = [
     category: "image",
     description: "Старшая версия Nano Banana — выше детализация и точность правок.",
     priceGenRub: roundImg(0.03),
+    priceRealKopecks: 1200,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Изображение"],
   },
@@ -405,6 +437,7 @@ export const IMAGE_MODELS: PreviewModel[] = [
     category: "image",
     description: "Классическая модель OpenAI — устойчивое качество на широком спектре промтов.",
     priceGenRub: roundImg(0.032),
+    priceRealKopecks: 800,
     inputBadges: ["Текст"],
     outputBadges: ["Изображение"],
   },
@@ -415,6 +448,7 @@ export const IMAGE_MODELS: PreviewModel[] = [
     category: "image",
     description: "Редактирование изображений по тексту с сохранением контекста сцены.",
     priceGenRub: roundImg(0.032),
+    priceRealKopecks: 1200,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Изображение"],
   },
@@ -425,6 +459,7 @@ export const IMAGE_MODELS: PreviewModel[] = [
     category: "image",
     description: "Актуальное поколение Flux — высокая детализация, до 4МП.",
     priceGenRub: roundImg(0.024),
+    priceRealKopecks: 1200,
     inputBadges: ["Текст"],
     outputBadges: ["Изображение"],
   },
@@ -435,6 +470,7 @@ export const IMAGE_MODELS: PreviewModel[] = [
     category: "image",
     description: "Топовый тир Flux 2 — максимальное качество и разрешение.",
     priceGenRub: roundImg(0.056),
+    priceRealKopecks: 1500,
     inputBadges: ["Текст"],
     outputBadges: ["Изображение"],
   },
@@ -445,36 +481,40 @@ export const IMAGE_MODELS: PreviewModel[] = [
     category: "image",
     description: "Гибкая модель Flux 2 с настраиваемыми параметрами генерации.",
     priceGenRub: roundImg(0.04),
+    priceRealKopecks: 800,
     inputBadges: ["Текст"],
     outputBadges: ["Изображение"],
   },
   {
-    id: "midjourney",
-    name: "Midjourney",
-    provider: "Midjourney",
+    id: "flux-kontext-max",
+    name: "Flux Kontext Max",
+    provider: "Black Forest Labs",
     category: "image",
-    description: "Художественный стиль и композиция — стандарт индустрии для арта.",
-    priceGenRub: roundImg(0.04504),
-    inputBadges: ["Текст"],
+    description: "Топовый тир редактирования Flux Kontext — максимальное качество правок.",
+    priceGenRub: roundImg(0.056),
+    priceRealKopecks: 1500,
+    inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Изображение"],
   },
   {
-    id: "seedream-5-pro",
-    name: "Seedream 5.0 Pro",
+    id: "seedream-5-0",
+    name: "Seedream 5.0",
     provider: "ByteDance",
     category: "image",
     description: "Топовая модель ByteDance — сильная типографика и композиция.",
     priceGenRub: roundImg(0.014625),
+    priceRealKopecks: 1100,
     inputBadges: ["Текст"],
     outputBadges: ["Изображение"],
   },
   {
-    id: "seedream-5-lite",
-    name: "Seedream 5.0 Lite",
+    id: "seedream-4-5",
+    name: "Seedream 4.5",
     provider: "ByteDance",
     category: "image",
-    description: "Облегчённая версия Seedream — быстрее и дешевле для массовой генерации.",
-    priceGenRub: roundImg(0.02275),
+    description: "Предыдущее поколение Seedream — быстрее и дешевле для массовой генерации.",
+    priceGenRub: roundImg(0.0133),
+    priceRealKopecks: 1000,
     inputBadges: ["Текст"],
     outputBadges: ["Изображение"],
   },
@@ -485,6 +525,7 @@ export const IMAGE_MODELS: PreviewModel[] = [
     category: "image",
     description: "Сверхбыстрая и самая дешёвая модель в подборке — для больших объёмов.",
     priceGenRub: roundImg(0.01),
+    priceRealKopecks: 500,
     inputBadges: ["Текст"],
     outputBadges: ["Изображение"],
   },
@@ -495,6 +536,7 @@ export const IMAGE_MODELS: PreviewModel[] = [
     category: "image",
     description: "Модель изображений Qwen — качественный текст на изображении, многоязычность.",
     priceGenRub: roundImg(0.0205712),
+    priceRealKopecks: 900,
     inputBadges: ["Текст"],
     outputBadges: ["Изображение"],
   },
@@ -508,6 +550,7 @@ export const IMAGE_MODELS: PreviewModel[] = [
     category: "image",
     description: "Профессиональный тир Qwen Image 3.0 — поддержка 2K-разрешения.",
     priceGenRub: roundImg(0.0285712),
+    priceRealKopecks: 1300,
     inputBadges: ["Текст"],
     outputBadges: ["Изображение"],
   },
@@ -521,6 +564,7 @@ export const IMAGE_MODELS: PreviewModel[] = [
     // сверить перед подключением биллинга.
     description: "Генерация изображений Wan — серийная генерация нескольких картинок одной темой, интерактивный editing по областям.",
     priceGenRub: roundImg(0.0216),
+    priceRealKopecks: 900,
     inputBadges: ["Текст"],
     outputBadges: ["Изображение"],
   },
@@ -531,6 +575,7 @@ export const IMAGE_MODELS: PreviewModel[] = [
     category: "image",
     description: "Модель генерации изображений xAI — быстрая генерация, разрешение 1K/2K.",
     priceGenRub: roundImg(0.02),
+    priceRealKopecks: 1000,
     inputBadges: ["Текст"],
     outputBadges: ["Изображение"],
   },
@@ -541,6 +586,7 @@ export const IMAGE_MODELS: PreviewModel[] = [
     category: "image",
     description: "Качественный тир Grok Imagine — выше детализация и точность следования промту.",
     priceGenRub: roundImg(0.045),
+    priceRealKopecks: 1600,
     inputBadges: ["Текст"],
     outputBadges: ["Изображение"],
   },
@@ -552,6 +598,7 @@ export const IMAGE_MODELS: PreviewModel[] = [
     // Токенный тариф — оценка по аналогии с GPT-Image-1/2 (между ними по позиционированию).
     description: "Промежуточное поколение GPT-Image между 1 и 2 — улучшенная детализация.",
     priceGenRub: 4.5,
+    priceRealKopecks: 1300,
     inputBadges: ["Текст"],
     outputBadges: ["Изображение"],
   },
@@ -562,6 +609,7 @@ export const IMAGE_MODELS: PreviewModel[] = [
     category: "image",
     description: "Компактная и быстрая версия GPT-Image-1 — ниже цена за счёт меньшей детализации.",
     priceGenRub: 1.8,
+    priceRealKopecks: 600,
     inputBadges: ["Текст"],
     outputBadges: ["Изображение"],
   },
@@ -579,6 +627,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "до 20 сек, 720p",
     priceVideoRub: roundVideo(0.08),
     priceUnit: "sec",
+    priceRealKopecks: 2500,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -591,6 +640,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "до 20 сек, 720-1080p",
     priceVideoRub: roundVideo(0.24),
     priceUnit: "sec",
+    priceRealKopecks: 3000,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -603,6 +653,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "8 сек, 720p",
     priceVideoRub: roundVideo(0.08),
     priceUnit: "sec",
+    priceRealKopecks: 1500,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -615,6 +666,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "8 сек, до 4K",
     priceVideoRub: roundVideo(0.16),
     priceUnit: "sec",
+    priceRealKopecks: 9500,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -627,6 +679,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "8 сек, 720p",
     priceVideoRub: roundVideo(0.07),
     priceUnit: "call",
+    priceRealKopecks: 800,
     inputBadges: ["Текст"],
     outputBadges: ["Видео"],
   },
@@ -639,6 +692,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "5-10 сек, 720-1080p",
     priceVideoRub: roundVideo(0.0368),
     priceUnit: "sec",
+    priceRealKopecks: 1000,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -651,6 +705,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "5-10 сек, до 4K",
     priceVideoRub: roundVideo(0.0672),
     priceUnit: "sec",
+    priceRealKopecks: 6000,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -663,6 +718,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "5-10 сек, до 4K",
     priceVideoRub: roundVideo(0.0672),
     priceUnit: "sec",
+    priceRealKopecks: 7500,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -675,6 +731,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "5-10 сек",
     priceVideoRub: roundVideo(0.0672),
     priceUnit: "sec",
+    priceRealKopecks: 7000,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -687,6 +744,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "5-10 сек, 720-1080p",
     priceVideoRub: roundVideo(0.1144),
     priceUnit: "sec",
+    priceRealKopecks: 4000,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -699,6 +757,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "до 1080p",
     priceVideoRub: roundVideo(0.0488),
     priceUnit: "sec",
+    priceRealKopecks: 4000,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -711,6 +770,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "до 1080p",
     priceVideoRub: roundVideo(0.0248),
     priceUnit: "sec",
+    priceRealKopecks: 2500,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -723,6 +783,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "360p",
     priceVideoRub: roundVideo(0.016),
     priceUnit: "sec",
+    priceRealKopecks: 2500,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -735,6 +796,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "до 1080p",
     priceVideoRub: roundVideo(0.05),
     priceUnit: "sec",
+    priceRealKopecks: 4000,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -747,6 +809,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "до 1080p",
     priceVideoRub: roundVideo(0.0204),
     priceUnit: "sec",
+    priceRealKopecks: 1000,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -759,6 +822,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "до 4K",
     priceVideoRub: roundVideo(0.066),
     priceUnit: "sec",
+    priceRealKopecks: 1500,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -771,6 +835,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "до 1080p",
     priceVideoRub: roundVideo(0.03984),
     priceUnit: "sec",
+    priceRealKopecks: 1200,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -783,6 +848,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "4-30 сек, 480-1080p",
     priceVideoRub: roundVideo(0.09608),
     priceUnit: "sec",
+    priceRealKopecks: 5000,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -795,6 +861,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "до 1080p, только по фото",
     priceVideoRub: roundVideo(0.08),
     priceUnit: "sec",
+    priceRealKopecks: 2500,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -807,6 +874,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "до 1080p",
     priceVideoRub: roundVideo(0.032),
     priceUnit: "sec",
+    priceRealKopecks: 1500,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -819,6 +887,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "до 1080p",
     priceVideoRub: roundVideo(0.056),
     priceUnit: "sec",
+    priceRealKopecks: 4500,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -831,6 +900,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "до 30 сек, 480-720p",
     priceVideoRub: roundVideo(0.0102),
     priceUnit: "sec",
+    priceRealKopecks: 3000,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -843,6 +913,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "до 1080p",
     priceVideoRub: roundVideo(0.0664),
     priceUnit: "sec",
+    priceRealKopecks: 4500,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -855,6 +926,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "5-10 сек, до 4K",
     priceVideoRub: roundVideo(0.10288),
     priceUnit: "sec",
+    priceRealKopecks: 7500,
     inputBadges: ["Текст", "Видео"],
     outputBadges: ["Видео"],
   },

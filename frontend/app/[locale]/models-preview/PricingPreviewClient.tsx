@@ -250,6 +250,9 @@ function PriceBlock({ model }: { model: PreviewModel }) {
         {model.contextLabel && <PriceRow label="Контекст" value={model.contextLabel} />}
         <PriceRow label="Входящие токены за 1М" value={formatRub((model.priceInRub ?? 0) * 100)} />
         <PriceRow label="Исходящие токены за 1М" value={formatRub((model.priceOutRub ?? 0) * 100)} />
+        {model.priceRealKopecks != null && (
+          <PriceRow label="Спишется за сообщение" value={formatRub(model.priceRealKopecks)} />
+        )}
       </div>
     );
   }
@@ -257,7 +260,10 @@ function PriceBlock({ model }: { model: PreviewModel }) {
     return (
       <div className="flex flex-col gap-1">
         {model.contextLabel && <PriceRow label="Параметры" value={model.contextLabel} />}
-        <PriceRow label="За генерацию" value={formatRub((model.priceGenRub ?? 0) * 100)} />
+        <PriceRow label="За генерацию (опт × курс)" value={formatRub((model.priceGenRub ?? 0) * 100)} />
+        {model.priceRealKopecks != null && (
+          <PriceRow label="Спишется за генерацию" value={formatRub(model.priceRealKopecks)} />
+        )}
       </div>
     );
   }
@@ -265,9 +271,12 @@ function PriceBlock({ model }: { model: PreviewModel }) {
     <div className="flex flex-col gap-1">
       {model.contextLabel && <PriceRow label="Параметры" value={model.contextLabel} />}
       <PriceRow
-        label={model.priceUnit === "call" ? "За видео" : "Секунда видео"}
+        label={model.priceUnit === "call" ? "За видео (опт × курс)" : "Секунда видео (опт × курс)"}
         value={formatRub((model.priceVideoRub ?? 0) * 100)}
       />
+      {model.priceRealKopecks != null && (
+        <PriceRow label="Спишется за ролик" value={formatRub(model.priceRealKopecks)} />
+      )}
     </div>
   );
 }

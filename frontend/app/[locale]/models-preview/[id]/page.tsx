@@ -227,29 +227,49 @@ function PricingCard({ model }: { model: PreviewModel }) {
           <PriceStat label="Выход, за 1М токенов" value={formatRub(outRub * 100)} />
           <PriceStat label="Пример: 100К вход + 20К выход" value={formatRub(exampleKopecks)} />
         </div>
+        {model.priceRealKopecks != null && (
+          <div className="mt-4 border-t border-[rgba(13,13,13,0.08)] pt-4">
+            <PriceStat label="Реально спишется за сообщение в чате" value={formatRub(model.priceRealKopecks)} />
+          </div>
+        )}
       </div>
     );
   }
   if (model.category === "image") {
     return (
       <div className="rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white p-5">
-        <PriceStat label="За одну генерацию" value={formatRub((model.priceGenRub ?? 0) * 100)} />
+        <div className="grid grid-cols-2 gap-4">
+          <PriceStat label="За генерацию (опт × курс)" value={formatRub((model.priceGenRub ?? 0) * 100)} />
+          {model.priceRealKopecks != null && (
+            <PriceStat label="Реально спишется в чате" value={formatRub(model.priceRealKopecks)} />
+          )}
+        </div>
       </div>
     );
   }
   if (model.priceUnit === "call") {
     return (
       <div className="rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white p-5">
-        <PriceStat label="За видео (тарификация за клип, не за секунду)" value={formatRub((model.priceVideoRub ?? 0) * 100)} />
+        <div className="grid grid-cols-2 gap-4">
+          <PriceStat label="За видео (опт × курс, тарификация за клип)" value={formatRub((model.priceVideoRub ?? 0) * 100)} />
+          {model.priceRealKopecks != null && (
+            <PriceStat label="Реально спишется в чате" value={formatRub(model.priceRealKopecks)} />
+          )}
+        </div>
       </div>
     );
   }
   return (
     <div className="rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white p-5">
       <div className="grid grid-cols-2 gap-4">
-        <PriceStat label="За секунду видео" value={formatRub((model.priceVideoRub ?? 0) * 100)} />
-        <PriceStat label="Пример: ролик 8 сек" value={formatRub(Math.round((model.priceVideoRub ?? 0) * 8 * 100))} />
+        <PriceStat label="За секунду видео (опт × курс)" value={formatRub((model.priceVideoRub ?? 0) * 100)} />
+        <PriceStat label="Пример: ролик 8 сек (опт × курс)" value={formatRub(Math.round((model.priceVideoRub ?? 0) * 8 * 100))} />
       </div>
+      {model.priceRealKopecks != null && (
+        <div className="mt-4 border-t border-[rgba(13,13,13,0.08)] pt-4">
+          <PriceStat label="Реально спишется в чате за ролик" value={formatRub(model.priceRealKopecks)} />
+        </div>
+      )}
     </div>
   );
 }
