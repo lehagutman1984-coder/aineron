@@ -169,8 +169,10 @@ export function CatalogClient({ networks, freeNetworks = [], categories, initial
           // Категория «Бесплатно/Бесплатные» дублирует синтетическую вкладку
           // «Бесплатные» (is_free) и обычно пуста — не показываем её. Матчим
           // по slug (стабилен), а не по name — на fa/tr/id/ar name переведён
-          // и с рус./eng. префиксом больше не совпадает.
-          .filter((c) => !/^(free|бесплат)/i.test(c.slug.trim()))
+          // и с рус./eng. префиксом больше не совпадает. Пустые категории
+          // (0 активных моделей) тоже скрыты — с добавлением счётчиков
+          // "Test 0"/"Развлечения 0" выглядели бы как баг.
+          .filter((c) => !/^(free|бесплат)/i.test(c.slug.trim()) && (categoryCounts.get(c.slug) ?? 0) > 0)
           .map((c) => (
             <CategoryTab
               key={c.id}
