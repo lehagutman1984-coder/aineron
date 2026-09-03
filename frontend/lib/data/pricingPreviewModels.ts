@@ -60,6 +60,16 @@
  * minimax-hailuo-2-3(-fast)→hailuo-2-3(-fast)) — сверено, реальная цена
  * проставлена по факту.
  *
+ * ВИДЕО: РЕАЛЬНАЯ ЦЕНА ПОДНЯТА ДО "ROUTERAI × 0,95" (2026-09-03, по прямому
+ * запросу пользователя). RouterAI ₽/сек сверены живьём на routerai.ru/ai-video
+ * для 16 из 24 моделей, где есть прямое соответствие; цена = (routerai_₽/сек
+ * × 0.95) × наша реальная длительность ролика по умолчанию (config_json).
+ * Раньше у этих 16 цена была НИЖЕ этого порога (после пересчёта 2026-09-03
+ * под K=105) — теперь подняты до уровня "на 5% дешевле конкурента", как
+ * попросил пользователь, а не оставлены заниженными. Оставшиеся 8 моделей
+ * (базовая Sora 2, Vidu, Pixverse, Kling Motion Control/3.0 Turbo и т.д.) у
+ * RouterAI не продаются вообще — цена не менялась, сравнивать не с чем.
+ *
  * FREE_MODELS (14 из 14) — синхронизировано 1:1 с активными бесплатными
  * моделями в проде (NeuralNetwork, is_free=True, is_active=True). Три
  * провайдера: openrouter_free (6), zai_free (3, Z.ai/Zhipu — GLM-*-Flash),
@@ -646,7 +656,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "до 20 сек, 720-1080p",
     priceVideoRub: roundVideo(0.24),
     priceUnit: "sec",
-    priceRealKopecks: 3000,
+    priceRealKopecks: 12540,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -659,7 +669,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "8 сек, 720p",
     priceVideoRub: roundVideo(0.08),
     priceUnit: "sec",
-    priceRealKopecks: 1500,
+    priceRealKopecks: 6840,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -672,7 +682,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "8 сек, до 4K",
     priceVideoRub: roundVideo(0.16),
     priceUnit: "sec",
-    priceRealKopecks: 9500,
+    priceRealKopecks: 16720,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -685,7 +695,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "8 сек, 720p",
     priceVideoRub: roundVideo(0.07),
     priceUnit: "call",
-    priceRealKopecks: 740,
+    priceRealKopecks: 2576,
     inputBadges: ["Текст"],
     outputBadges: ["Видео"],
   },
@@ -698,7 +708,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "5-10 сек, 720-1080p",
     priceVideoRub: roundVideo(0.0368),
     priceUnit: "sec",
-    priceRealKopecks: 1000,
+    priceRealKopecks: 4275,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -711,7 +721,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "5-10 сек, до 4K",
     priceVideoRub: roundVideo(0.0672),
     priceUnit: "sec",
-    priceRealKopecks: 3550,
+    priceRealKopecks: 4275,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -724,7 +734,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "5-10 сек, до 4K",
     priceVideoRub: roundVideo(0.0672),
     priceUnit: "sec",
-    priceRealKopecks: 3550,
+    priceRealKopecks: 5700,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -737,7 +747,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "5-10 сек",
     priceVideoRub: roundVideo(0.0672),
     priceUnit: "sec",
-    priceRealKopecks: 3550,
+    priceRealKopecks: 5700,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -763,7 +773,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "до 1080p",
     priceVideoRub: roundVideo(0.0488),
     priceUnit: "sec",
-    priceRealKopecks: 3060,
+    priceRealKopecks: 5130,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -819,7 +829,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "до 1080p",
     priceVideoRub: roundVideo(0.0204),
     priceUnit: "sec",
-    priceRealKopecks: 1000,
+    priceRealKopecks: 2784,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -832,7 +842,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "до 4K",
     priceVideoRub: roundVideo(0.066),
     priceUnit: "sec",
-    priceRealKopecks: 1500,
+    priceRealKopecks: 8075,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -845,7 +855,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "до 1080p",
     priceVideoRub: roundVideo(0.03984),
     priceUnit: "sec",
-    priceRealKopecks: 1200,
+    priceRealKopecks: 4750,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -858,7 +868,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "4-30 сек, 480-1080p",
     priceVideoRub: roundVideo(0.09608),
     priceUnit: "sec",
-    priceRealKopecks: 5000,
+    priceRealKopecks: 12350,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -910,7 +920,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "до 30 сек, 480-720p",
     priceVideoRub: roundVideo(0.0102),
     priceUnit: "sec",
-    priceRealKopecks: 660,
+    priceRealKopecks: 5130,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
@@ -923,7 +933,7 @@ export const VIDEO_MODELS: PreviewModel[] = [
     contextLabel: "до 1080p",
     priceVideoRub: roundVideo(0.0664),
     priceUnit: "sec",
-    priceRealKopecks: 3500,
+    priceRealKopecks: 5225,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
