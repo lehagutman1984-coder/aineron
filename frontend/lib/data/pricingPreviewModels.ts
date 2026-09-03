@@ -798,11 +798,15 @@ export const VIDEO_MODELS: PreviewModel[] = [
     name: "Wan 2.6",
     provider: "Alibaba",
     category: "video",
+    // Реальная цена снижена 2026-09-03: сверено с RouterAI (4,52 ₽/сек,
+    // проверено вживую на routerai.ru/ai-video) — новая цена = (RouterAI ×
+    // 0,95) × реальная длительность по умолчанию (5 сек), это единственная
+    // видео-модель, где старая цена была выше этого ориентира.
     description: "Предыдущее поколение Wan — проверенное качество по средней цене.",
     contextLabel: "до 1080p",
     priceVideoRub: roundVideo(0.05),
     priceUnit: "sec",
-    priceRealKopecks: 2650,
+    priceRealKopecks: 2147,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Видео"],
   },
