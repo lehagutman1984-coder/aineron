@@ -541,9 +541,11 @@ export const IMAGE_MODELS: PreviewModel[] = [
     name: "Seedream 4.5",
     provider: "ByteDance",
     category: "image",
+    // Реальная цена скорректирована 2026-09-03: у RouterAI нашлось более
+    // чистое число за штуку (4.52₽, не Gen-API 7.5₽) — цена = дешевле на 5%.
     description: "Предыдущее поколение Seedream — быстрее и дешевле для массовой генерации.",
     priceGenRub: roundImg(0.0133),
-    priceRealKopecks: 713,
+    priceRealKopecks: 429,
     inputBadges: ["Текст"],
     outputBadges: ["Изображение"],
   },
@@ -563,9 +565,11 @@ export const IMAGE_MODELS: PreviewModel[] = [
     name: "Qwen Image 3.0",
     provider: "Alibaba",
     category: "image",
+    // Реальная цена скорректирована 2026-09-03: у RouterAI нашлось более
+    // чистое число за штуку (3.39₽, не Gen-API 5₽/МП) — цена = дешевле на 5%.
     description: "Модель изображений Qwen — качественный текст на изображении, многоязычность.",
     priceGenRub: roundImg(0.0205712),
-    priceRealKopecks: 475,
+    priceRealKopecks: 322,
     inputBadges: ["Текст"],
     outputBadges: ["Изображение"],
   },
