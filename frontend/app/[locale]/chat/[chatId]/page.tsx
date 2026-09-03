@@ -146,6 +146,18 @@ export default function ChatPage() {
   const maxSourceImages = chat?.network.i2v?.max_images ?? 1;
   const i2vMode = chat?.network.i2v?.mode;
 
+  // num_images (батч ×2/×4) реально поддерживает только Flux (единственный
+  // config_key='flux' с этим полем в ui_settings) — у остальных image-моделей
+  // и у видео-моделей бэкенд молча отбрасывает параметр (_minimal_params
+  // отправляет только model+prompt), а UI без этой проверки обещал
+  // "будет сгенерировано N вариантов" и не выполнял обещание. Проверено
+  // вживую 2026-09-03 на Qwen Image 3.0.
+  const supportsNumImages = Boolean(
+    chat?.network.config_json?.ui_settings?.sections?.some((s) =>
+      s.fields?.some((f) => f.name === "num_images")
+    )
+  );
+
   // Polling query — статус "сообщения в работе" (текст и fal-ai).
   const { data: polledMessage } = useQuery<WebMessage>({
     queryKey: ["message-status", pendingMessageId],
@@ -835,7 +847,14 @@ export default function ChatPage() {
         falSettings.style_image_url = styleReferenceUrl;
         setStyleReferenceUrl(null);
       }
-      if (batchCount > 1) falSettings.num_images = batchCount;
+      // num_images поддерживает только Flux (config_key='flux', Sprint 4 Creative
+      // Controls) — у остальных image-моделей (minimal_params: Seedream, Gemini
+      // Image, Qwen Image, Z-Image Turbo, Wan 2.7 Image) и у видео-моделей поле
+      // молча отбрасывается на бэкенде (_minimal_params игнорирует все параметры
+      // кроме model+prompt), а UI-тумблер ×2/×4 при этом обещает "будет
+      // сгенерировано N вариантов" — пользователь получает 1 и платит базовую
+      // цену, но не то, что было показано. Проверено вживую 2026-09-03.
+      if (batchCount > 1 && supportsNumImages) falSettings.num_images = batchCount;
       sendMutation.mutate({ msg: msg || " ", attachmentIds, ws: webSearch, settings: Object.keys(falSettings).length > 0 ? falSettings : undefined });
     } else {
       handleStreamSubmit(msg || " ", attachmentIds);
@@ -1452,8 +1471,11 @@ export default function ChatPage() {
             </div>
           )}
 
-          {/* Toolbar: batch count для fal-ai (генерация изображений) */}
-          {chat.network.provider === "fal-ai" && (
+          {/* Toolbar: batch count — только для моделей, реально поддерживающих
+              num_images (см. supportsNumImages выше); раньше показывался для
+              ЛЮБОЙ fal-ai модели (все изображения + всё видео), обещая
+              "будет сгенерировано N вариантов" и тихо не выполняя обещание. */}
+          {chat.network.provider === "fal-ai" && supportsNumImages && (
             <div className="mt-1.5 flex items-center gap-1 px-1">
               <span className="me-0.5 text-[13px] font-medium text-[rgba(13,13,13,0.38)] dark:text-[rgba(236,236,236,0.33)]">
                 {t("batchCount")}
