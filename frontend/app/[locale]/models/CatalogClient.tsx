@@ -1,12 +1,11 @@
-﻿"use client";
+"use client";
 
 import { useState, useMemo, useEffect } from "react";
 import { Link } from "@/i18n/navigation";
 
-import { ArrowRight, Code2, ImageIcon, ImagePlus, Palette, X } from "lucide-react";
+import { ArrowRight, Code2, Gift, ImageIcon, ImagePlus, Palette, Video, X } from "lucide-react";
 import type { NetworkListItem, Category } from "@/lib/api/types";
-import { formatMoney } from "@/lib/money";
-import { formatRub } from "@/lib/money";
+import { formatMoney, formatRub } from "@/lib/money";
 import { useTranslations } from "next-intl";
 import { REFERENCE_PRICING } from "@/lib/data/catalogReferencePricing";
 import { IS_RU } from "@/lib/site";
@@ -45,6 +44,12 @@ function matchesCompany(slug: string, companyId: string): boolean {
   const company = COMPANIES.find((c) => c.id === companyId);
   if (!company) return false;
   return company.prefixes.some((p) => slug.startsWith(p));
+}
+
+function categoryIcon(n: NetworkListItem) {
+  if (n.output_type === "video") return Video;
+  if (n.provider === "fal-ai" || n.output_type === "image") return ImageIcon;
+  return Code2;
 }
 
 export function CatalogClient({ networks, freeNetworks = [], categories, initialCategory, projectId }: Props) {
@@ -93,6 +98,12 @@ export function CatalogClient({ networks, freeNetworks = [], categories, initial
       .filter((c) => c.count >= 2)
       .sort((a, b) => b.count - a.count)
       .slice(0, 8);
+  }, [networks]);
+
+  const categoryCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const n of networks) map.set(n.category.slug, (map.get(n.category.slug) ?? 0) + 1);
+    return map;
   }, [networks]);
 
   const filtered = useMemo(() => {
@@ -148,19 +159,12 @@ export function CatalogClient({ networks, freeNetworks = [], categories, initial
       </div>
 
       {/* Category tabs */}
-      <div className="mb-6 flex flex-wrap gap-2">
+      <div className="mb-4 flex flex-wrap gap-2">
         <CategoryTab
-          label={t("all")}
+          label={`${t("all")} ${networks.length}`}
           active={activeCategory === ""}
           onClick={() => setActiveCategory("")}
         />
-        {freeNetworks.length > 0 && (
-          <CategoryTab
-            label={t("free")}
-            active={activeCategory === FREE_TAB}
-            onClick={() => setActiveCategory(FREE_TAB)}
-          />
-        )}
         {categories
           // Категория «Бесплатно/Бесплатные» дублирует синтетическую вкладку
           // «Бесплатные» (is_free) и обычно пуста — не показываем её. Матчим
@@ -170,11 +174,19 @@ export function CatalogClient({ networks, freeNetworks = [], categories, initial
           .map((c) => (
             <CategoryTab
               key={c.id}
-              label={c.name}
+              label={`${c.name} ${categoryCounts.get(c.slug) ?? 0}`}
               active={activeCategory === c.slug}
               onClick={() => setActiveCategory(c.slug)}
             />
           ))}
+        {freeNetworks.length > 0 && (
+          <CategoryTab
+            label={`${t("free")} ${freeNetworks.length}`}
+            active={activeCategory === FREE_TAB}
+            onClick={() => setActiveCategory(FREE_TAB)}
+            variant="free"
+          />
+        )}
       </div>
 
       {/* Company tabs — фильтр по компании-разработчику, отдельная грань
@@ -195,15 +207,15 @@ export function CatalogClient({ networks, freeNetworks = [], categories, initial
         </div>
       )}
 
-      {/* Grid */}
+      {/* List */}
       {filtered.length === 0 ? (
         <div className="py-16 text-center text-[17px] text-[rgba(13,13,13,0.45)]">
           {t("empty")}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="flex flex-col gap-3">
           {filtered.map((n) => (
-            <NetworkCard key={n.id} network={n} projectId={projectId} />
+            <NetworkRow key={n.id} network={n} projectId={projectId} />
           ))}
         </div>
       )}
@@ -253,21 +265,26 @@ function CategoryTab({
   label,
   active,
   onClick,
+  variant,
 }: {
   label: string;
   active: boolean;
   onClick: () => void;
+  variant?: "free";
 }) {
   return (
     <button
       onClick={onClick}
       className={[
-        "rounded-full px-4 py-1.5 text-[15px] font-medium transition-all",
+        "flex items-center gap-1.5 rounded-full px-4 py-1.5 text-[15px] font-medium transition-all",
         active
           ? "bg-[#D97757] text-white"
-          : "border border-[rgba(13,13,13,0.15)] bg-white text-[rgba(13,13,13,0.65)] hover:border-[rgba(13,13,13,0.25)] hover:text-[#1A1A1A]",
+          : variant === "free"
+            ? "border border-[rgba(34,153,84,0.35)] bg-[rgba(34,153,84,0.06)] text-[#1F9254] hover:border-[rgba(34,153,84,0.55)]"
+            : "border border-[rgba(13,13,13,0.15)] bg-white text-[rgba(13,13,13,0.65)] hover:border-[rgba(13,13,13,0.25)] hover:text-[#1A1A1A]",
       ].join(" ")}
     >
+      {variant === "free" && <Gift size={14} />}
       {label}
     </button>
   );
@@ -306,74 +323,158 @@ function CompanyTab({
   );
 }
 
-function NetworkCard({ network, projectId }: { network: NetworkListItem; projectId?: number }) {
+function Badge({ label }: { label: string }) {
+  return (
+    <span className="rounded-[6px] border border-[rgba(13,13,13,0.10)] bg-[rgba(13,13,13,0.03)] px-2 py-0.5 text-[12px] text-[rgba(13,13,13,0.55)]">
+      {label}
+    </span>
+  );
+}
+
+function networkBadges(n: NetworkListItem): { input: string[]; output: string[] } {
+  const isVideo = n.output_type === "video";
+  const isImage = n.provider === "fal-ai" && !isVideo;
+  const input = ["Текст"];
+  if (n.handle_photo) input.push("Изображения");
+  if (n.handle_video) input.push("Видео");
+  if (n.handle_text_files || n.handle_archive) input.push("Файл");
+  const output = isVideo ? ["Видео"] : isImage ? ["Изображение"] : ["Текст"];
+  return { input, output };
+}
+
+function PriceRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between text-[13px]">
+      <span className="text-[rgba(13,13,13,0.5)]">{label}</span>
+      <span className="font-medium text-[#1A1A1A]">{value}</span>
+    </div>
+  );
+}
+
+function PriceBlock({ network }: { network: NetworkListItem }) {
+  const ref = IS_RU && !network.is_free ? REFERENCE_PRICING[network.slug] : undefined;
+  const t = useTranslations("catalog");
+
+  if (network.is_free) {
+    return (
+      <div className="flex flex-col gap-1">
+        <PriceRow label="Цена" value={t("priceFree")} />
+        {network.messages_limit > 0 && <PriceRow label="Лимит" value={`${network.messages_limit} сообщ./день`} />}
+      </div>
+    );
+  }
+  if (network.unlimited) {
+    return (
+      <div className="flex flex-col gap-1">
+        {ref?.contextLabel && <PriceRow label="Контекст" value={ref.contextLabel} />}
+        <PriceRow label="Цена" value={t("priceUnlimited")} />
+      </div>
+    );
+  }
+  if (ref?.category === "text") {
+    return (
+      <div className="flex flex-col gap-1">
+        {ref.contextLabel && <PriceRow label="Контекст" value={ref.contextLabel} />}
+        <PriceRow label="Входящие токены за 1М" value={formatRub((ref.priceInRub ?? 0) * 100)} />
+        <PriceRow label="Исходящие токены за 1М" value={formatRub((ref.priceOutRub ?? 0) * 100)} />
+        <PriceRow label="Спишется за сообщение" value={formatMoney(network.cost_kopecks)} />
+      </div>
+    );
+  }
+  if (ref?.category === "image") {
+    return (
+      <div className="flex flex-col gap-1">
+        <PriceRow label="За генерацию (опт × курс)" value={formatRub((ref.priceGenRub ?? 0) * 100)} />
+        <PriceRow label="Спишется за генерацию" value={formatMoney(network.cost_kopecks)} />
+      </div>
+    );
+  }
+  if (ref?.category === "video") {
+    return (
+      <div className="flex flex-col gap-1">
+        <PriceRow
+          label={ref.priceUnit === "call" ? "За видео (опт × курс)" : "Секунда видео (опт × курс)"}
+          value={formatRub((ref.priceVideoRub ?? 0) * 100)}
+        />
+        <PriceRow label="Спишется за ролик" value={formatMoney(network.cost_kopecks)} />
+      </div>
+    );
+  }
+  // Модель вне куратированного списка (не должно случаться для активных
+  // платных моделей, но не падаем, если появится новая без ref-записи).
+  return (
+    <div className="flex flex-col gap-1">
+      <PriceRow label="Цена" value={formatMoney(network.cost_kopecks)} />
+    </div>
+  );
+}
+
+function NetworkRow({ network, projectId }: { network: NetworkListItem; projectId?: number }) {
   const t = useTranslations("catalog");
   const href = projectId
     ? `/models/${network.slug}/?project_id=${projectId}`
     : `/models/${network.slug}/`;
-  // Витринная цена по опту×курсу — только на aineron.ru (не на .net, там
-  // нет смысла сравнения с российскими конкурентами), только для платных
-  // моделей. Реальная цена (formatMoney(cost_kopecks)) ниже не меняется.
-  const ref = IS_RU && !network.is_free ? REFERENCE_PRICING[network.slug] : undefined;
+  const Icon = categoryIcon(network);
+  const { input, output } = networkBadges(network);
+  const action =
+    network.output_type === "video" ? t("actionVideo") : network.provider === "fal-ai" ? t("actionImage") : t("actionChat");
+
   return (
-    <Link
-      href={href}
-      className="group flex flex-col gap-3 rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white p-5 hover:border-[#D97757] hover:shadow-sm transition-all duration-150"
-    >
-      <div className="flex items-start gap-3">
+    <div className="flex flex-col gap-4 rounded-[12px] border border-[rgba(13,13,13,0.10)] bg-white p-5 transition-all hover:border-[rgba(217,119,87,0.4)] sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 flex-1 items-start gap-3.5">
         {network.avatar ? (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={network.avatar}
             alt={network.name}
-            width={40}
-            height={40}
-            className="rounded-[10px] object-cover shrink-0"
+            width={44}
+            height={44}
+            className="h-11 w-11 shrink-0 rounded-[10px] object-cover"
           />
         ) : (
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-[rgba(217,119,87,0.10)] text-[#D97757]">
-            {network.provider === "fal-ai" || network.output_type ? (
-              <ImageIcon size={20} />
-            ) : (
-              <Code2 size={20} />
-            )}
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[10px] bg-[rgba(217,119,87,0.10)] text-[#D97757]">
+            <Icon size={20} />
           </div>
         )}
         <div className="min-w-0">
-          <p className="truncate text-[16px] font-semibold text-[#1A1A1A] group-hover:text-[#D97757] transition-colors">
-            {network.name}
-          </p>
-          <p className="text-[14px] text-[rgba(13,13,13,0.5)]">
-            {network.category.name}
-          </p>
-        </div>
-      </div>
-      {network.description && (
-        <p className="line-clamp-2 text-[15px] leading-relaxed text-[rgba(13,13,13,0.65)]">
-          {network.description}
-        </p>
-      )}
-      <div className="mt-auto flex items-end justify-between pt-1">
-        <div className="flex flex-col gap-0.5">
-          <span className="text-[14px] text-[rgba(13,13,13,0.45)]">
-            {network.is_free ? t("priceFree") : network.unlimited ? t("priceUnlimited") : formatMoney(network.cost_kopecks)}
-          </span>
-          {ref && (
-            <span className="text-[12px] text-[rgba(13,13,13,0.35)]">
-              {ref.category === "text" &&
-                t("referencePriceText", {
-                  inPrice: formatRub((ref.priceInRub ?? 0) * 100),
-                  outPrice: formatRub((ref.priceOutRub ?? 0) * 100),
-                })}
-              {ref.category === "image" && t("referencePriceImage", { price: formatRub((ref.priceGenRub ?? 0) * 100) })}
-              {ref.category === "video" && t("referencePriceVideo", { price: formatRub((ref.priceVideoRub ?? 0) * 100) })}
-            </span>
+          <div className="flex flex-wrap items-baseline gap-x-2">
+            <p className="text-[16px] font-semibold text-[#1A1A1A]">{network.name}</p>
+            <span className="text-[13px] text-[rgba(13,13,13,0.45)]">{network.category.name}</span>
+          </div>
+          {network.description && (
+            <p className="mt-0.5 line-clamp-2 text-[14px] leading-relaxed text-[rgba(13,13,13,0.6)]">
+              {network.description}
+            </p>
           )}
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {input.map((b) => (
+              <Badge key={`in-${b}`} label={b} />
+            ))}
+            <ArrowRight size={12} className="mt-1 text-[rgba(13,13,13,0.25)]" />
+            {output.map((b) => (
+              <Badge key={`out-${b}`} label={b} />
+            ))}
+          </div>
         </div>
-        <ArrowRight
-          size={14}
-          className="text-[rgba(13,13,13,0.3)] group-hover:text-[#D97757] transition-colors"
-        />
       </div>
-    </Link>
+
+      <div className="flex shrink-0 flex-col gap-2.5 sm:w-[240px] sm:border-l sm:border-[rgba(13,13,13,0.08)] sm:pl-5">
+        <PriceBlock network={network} />
+        <div className="flex gap-2">
+          <Link
+            href={href}
+            className="flex-1 rounded-[8px] bg-[#D97757] px-3 py-2 text-center text-[14px] font-medium text-white transition-colors hover:bg-[#C4664A]"
+          >
+            {action}
+          </Link>
+          <Link
+            href={href}
+            className="flex items-center rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-3 py-2 text-[14px] font-medium text-[rgba(13,13,13,0.65)] transition-colors hover:border-[rgba(13,13,13,0.3)] hover:text-[#1A1A1A]"
+          >
+            {t("details")}
+          </Link>
+        </div>
+      </div>
+    </div>
   );
 }
