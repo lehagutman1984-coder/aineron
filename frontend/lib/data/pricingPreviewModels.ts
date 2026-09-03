@@ -52,6 +52,19 @@
  * gemini-2-5-flash-image (старая Nano Banana, есть 2/Pro), qwen-image-2-0
  * (есть 3.0/3.0 Pro), seedream-4-0 (есть 4.5/5.0).
  *
+ * КАРТИНКИ: РЕАЛЬНАЯ ЦЕНА ПОДНЯТА ДО "КОНКУРЕНТ × 0,95" (2026-09-03, тот же
+ * запрос пользователя, что и по видео). 12 из 20 моделей — там, где нашлось
+ * ОДНО чистое число у конкурента (не широкий диапазон, не гадание по
+ * валюте/токенам): gpt-image-2, gpt-image-1-5, dall-e-3, flux-kontext-pro,
+ * flux-kontext-max, nano-banana-2, seedream-4-5, flux-2-pro/max/flex,
+ * z-image-turbo, qwen-image-3 — цена = конкурент_₽ × 0.95 (источники:
+ * gptrf.ru, gen-api.ru/pricing, routerai.ru, сверено живьём). Оставшиеся 8
+ * (gpt-image-1, gpt-image-1-mini, nano-banana-pro, seedream-5-0,
+ * qwen-image-3-pro, wan-2-7-image, grok-imagine-image(-quality)) НЕ тронуты —
+ * у конкурентов либо нет данных вообще, либо только широкий/ненадёжный
+ * диапазон (10-30x разброс, оценка по валюте курса, подписочный тариф) —
+ * недостаточно уверенности, чтобы менять реальную цену.
+ *
  * VIDEO_MODELS (24 из 24): 1:1 совпадение с активными видео-моделями в
  * проде, деактивировать нечего. id в этом файле — витринные, отличаются от
  * реальных слагов NeuralNetwork у 6 моделей (sora-2→sora-character,
@@ -407,7 +420,7 @@ export const IMAGE_MODELS: PreviewModel[] = [
     category: "image",
     description: "Новейшая модель генерации изображений OpenAI — точное следование промту.",
     priceGenRub: roundImg(0.0085),
-    priceRealKopecks: 90,
+    priceRealKopecks: 760,
     inputBadges: ["Текст"],
     outputBadges: ["Изображение"],
   },
@@ -431,7 +444,7 @@ export const IMAGE_MODELS: PreviewModel[] = [
     category: "image",
     description: "Модель Gemini для генерации и редактирования изображений по тексту.",
     priceGenRub: roundImg(0.015),
-    priceRealKopecks: 160,
+    priceRealKopecks: 950,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Изображение"],
   },
@@ -453,7 +466,7 @@ export const IMAGE_MODELS: PreviewModel[] = [
     category: "image",
     description: "Классическая модель OpenAI — устойчивое качество на широком спектре промтов.",
     priceGenRub: roundImg(0.032),
-    priceRealKopecks: 340,
+    priceRealKopecks: 665,
     inputBadges: ["Текст"],
     outputBadges: ["Изображение"],
   },
@@ -464,7 +477,7 @@ export const IMAGE_MODELS: PreviewModel[] = [
     category: "image",
     description: "Редактирование изображений по тексту с сохранением контекста сцены.",
     priceGenRub: roundImg(0.032),
-    priceRealKopecks: 340,
+    priceRealKopecks: 760,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Изображение"],
   },
@@ -475,7 +488,7 @@ export const IMAGE_MODELS: PreviewModel[] = [
     category: "image",
     description: "Актуальное поколение Flux — высокая детализация, до 4МП.",
     priceGenRub: roundImg(0.024),
-    priceRealKopecks: 250,
+    priceRealKopecks: 322,
     inputBadges: ["Текст"],
     outputBadges: ["Изображение"],
   },
@@ -486,7 +499,7 @@ export const IMAGE_MODELS: PreviewModel[] = [
     category: "image",
     description: "Топовый тир Flux 2 — максимальное качество и разрешение.",
     priceGenRub: roundImg(0.056),
-    priceRealKopecks: 590,
+    priceRealKopecks: 665,
     inputBadges: ["Текст"],
     outputBadges: ["Изображение"],
   },
@@ -497,7 +510,7 @@ export const IMAGE_MODELS: PreviewModel[] = [
     category: "image",
     description: "Гибкая модель Flux 2 с настраиваемыми параметрами генерации.",
     priceGenRub: roundImg(0.04),
-    priceRealKopecks: 420,
+    priceRealKopecks: 570,
     inputBadges: ["Текст"],
     outputBadges: ["Изображение"],
   },
@@ -508,7 +521,7 @@ export const IMAGE_MODELS: PreviewModel[] = [
     category: "image",
     description: "Топовый тир редактирования Flux Kontext — максимальное качество правок.",
     priceGenRub: roundImg(0.056),
-    priceRealKopecks: 590,
+    priceRealKopecks: 1520,
     inputBadges: ["Текст", "Изображения"],
     outputBadges: ["Изображение"],
   },
@@ -530,7 +543,7 @@ export const IMAGE_MODELS: PreviewModel[] = [
     category: "image",
     description: "Предыдущее поколение Seedream — быстрее и дешевле для массовой генерации.",
     priceGenRub: roundImg(0.0133),
-    priceRealKopecks: 140,
+    priceRealKopecks: 713,
     inputBadges: ["Текст"],
     outputBadges: ["Изображение"],
   },
@@ -541,7 +554,7 @@ export const IMAGE_MODELS: PreviewModel[] = [
     category: "image",
     description: "Сверхбыстрая и самая дешёвая модель в подборке — для больших объёмов.",
     priceGenRub: roundImg(0.01),
-    priceRealKopecks: 110,
+    priceRealKopecks: 119,
     inputBadges: ["Текст"],
     outputBadges: ["Изображение"],
   },
@@ -552,7 +565,7 @@ export const IMAGE_MODELS: PreviewModel[] = [
     category: "image",
     description: "Модель изображений Qwen — качественный текст на изображении, многоязычность.",
     priceGenRub: roundImg(0.0205712),
-    priceRealKopecks: 220,
+    priceRealKopecks: 475,
     inputBadges: ["Текст"],
     outputBadges: ["Изображение"],
   },
@@ -614,7 +627,7 @@ export const IMAGE_MODELS: PreviewModel[] = [
     // Токенный тариф — оценка по аналогии с GPT-Image-1/2 (между ними по позиционированию).
     description: "Промежуточное поколение GPT-Image между 1 и 2 — улучшенная детализация.",
     priceGenRub: 4.5,
-    priceRealKopecks: 450,
+    priceRealKopecks: 570,
     inputBadges: ["Текст"],
     outputBadges: ["Изображение"],
   },
