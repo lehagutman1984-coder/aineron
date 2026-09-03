@@ -4,8 +4,11 @@ import { Link } from "@/i18n/navigation";
 import { ArrowLeft, Coins, MessageSquare, ImageIcon, Code2, ChevronDown } from "lucide-react";
 import { getLocale, getTranslations } from "next-intl/server";
 import { serverGetNetwork, serverListNetworks } from "@/lib/api/server";
-import { CURRENCY, formatMoney, kopecksToRub } from "@/lib/money";
+import { CURRENCY, formatMoney, formatRub, kopecksToRub } from "@/lib/money";
 import { ChatStartForm } from "./ChatStartForm";
+import { REFERENCE_PRICING, REFERENCE_DETAILS } from "@/lib/data/catalogReferencePricing";
+import { PARAMETER_INFO } from "@/lib/data/pricingPreviewDetails";
+import { IS_RU } from "@/lib/site";
 
 interface Props {
   params: { slug: string; locale: string };
@@ -109,6 +112,11 @@ export default async function ModelDetailPage({ params, searchParams }: Props) {
   const isMedia = network.provider === "fal-ai" || Boolean(network.output_type);
   const isVideoModel = network.output_type === "video";
 
+  // Витринные данные (опт×K цена + развёрнутые детали) — только на aineron.ru,
+  // только если модель попала в куратированный список (см. catalogReferencePricing.ts).
+  const ref = IS_RU && !network.is_free ? REFERENCE_PRICING[network.slug] : undefined;
+  const detail = IS_RU ? REFERENCE_DETAILS[network.slug] : undefined;
+
   return (
     <>
       <script
@@ -195,6 +203,18 @@ export default async function ModelDetailPage({ params, searchParams }: Props) {
           {network.handle_video && (
             <StatChip icon={<ImageIcon size={14} />} label={t("acceptsVideo")} />
           )}
+          {ref && ref.category === "text" && (
+            <StatChip
+              icon={<Coins size={14} />}
+              label={`${formatRub((ref.priceInRub ?? 0) * 100)} / ${formatRub((ref.priceOutRub ?? 0) * 100)} за 1М (опт)`}
+            />
+          )}
+          {ref && ref.category === "image" && (
+            <StatChip icon={<Coins size={14} />} label={`${formatRub((ref.priceGenRub ?? 0) * 100)}/генерация (опт)`} />
+          )}
+          {ref && ref.category === "video" && (
+            <StatChip icon={<Coins size={14} />} label={`${formatRub((ref.priceVideoRub ?? 0) * 100)}/сек (опт)`} />
+          )}
         </div>
 
         {/* Chat start form */}
@@ -210,6 +230,73 @@ export default async function ModelDetailPage({ params, searchParams }: Props) {
             projectId={searchParams?.project_id ? parseInt(searchParams.project_id, 10) : undefined}
           />
         </div>
+
+        {/* Хорошо подходит для */}
+        {detail && detail.bestFor.length > 0 && (
+          <div className="mb-12">
+            <h2 className="mb-5 text-[20px] font-semibold text-[#1A1A1A]">Хорошо подходит для</h2>
+            <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              {detail.bestFor.map((item) => (
+                <li
+                  key={item}
+                  className="flex items-start gap-2 rounded-[10px] border border-[rgba(13,13,13,0.10)] bg-white px-3.5 py-3 text-[15px] leading-snug text-[rgba(13,13,13,0.75)]"
+                >
+                  <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-[#D97757]" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Уровни рассуждений */}
+        {detail?.reasoningLevels && detail.reasoningLevels.length > 0 && (
+          <div className="mb-12">
+            <h2 className="mb-5 text-[20px] font-semibold text-[#1A1A1A]">Уровни рассуждений</h2>
+            <div className="flex flex-wrap gap-2">
+              {detail.reasoningLevels.map((level) => (
+                <span
+                  key={level}
+                  className="rounded-[8px] border border-[rgba(13,13,13,0.12)] bg-white px-3 py-1.5 text-[14px] font-medium text-[rgba(13,13,13,0.7)]"
+                >
+                  {level}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Поддерживаемые параметры API */}
+        {detail && detail.supportedParameters.length > 0 && (
+          <div className="mb-12">
+            <h2 className="mb-5 text-[20px] font-semibold text-[#1A1A1A]">Поддерживаемые параметры API</h2>
+            <div className="overflow-hidden rounded-[10px] border border-[rgba(13,13,13,0.10)] bg-white">
+              {detail.supportedParameters.map((param, i) => {
+                const name = typeof param === "string" ? param : param.name;
+                const desc = typeof param === "string" ? (PARAMETER_INFO[param] ?? "") : param.description;
+                return (
+                  <div
+                    key={name}
+                    className={[
+                      "flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-baseline sm:gap-4",
+                      i > 0 ? "border-t border-[rgba(13,13,13,0.08)]" : "",
+                    ].join(" ")}
+                  >
+                    <code className="w-[160px] shrink-0 text-[14px] font-medium text-[#D97757]">{name}</code>
+                    <span className="text-[14px] leading-relaxed text-[rgba(13,13,13,0.6)]">{desc}</span>
+                  </div>
+                );
+              })}
+            </div>
+            {(detail.contextTokens || detail.maxOutputTokens) && (
+              <div className="mt-3 flex flex-wrap gap-4 text-[13px] text-[rgba(13,13,13,0.5)]">
+                {detail.contextTokens && <span>Контекст: {detail.contextTokens}</span>}
+                {detail.maxOutputTokens && <span>Макс. ответ: {detail.maxOutputTokens}</span>}
+              </div>
+            )}
+            {detail.note && <p className="mt-3 text-[13px] leading-relaxed text-[rgba(13,13,13,0.45)]">{detail.note}</p>}
+          </div>
+        )}
 
         {/* FAQ */}
         {network.faqs.length > 0 && (
