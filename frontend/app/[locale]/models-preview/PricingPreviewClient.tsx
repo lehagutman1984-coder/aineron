@@ -2,15 +2,18 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Code2, ImageIcon, Info, Search, Video, type LucideIcon } from "lucide-react";
+import { ArrowRight, Code2, Gift, ImageIcon, Info, Search, Video, type LucideIcon } from "lucide-react";
 import { PREVIEW_MODELS, type PreviewCategory, type PreviewModel } from "@/lib/data/pricingPreviewModels";
 import { formatRub } from "@/lib/money";
 
-const CATEGORY_LABELS: Record<PreviewCategory | "all", string> = {
+type TabKey = PreviewCategory | "all" | "free";
+
+const CATEGORY_LABELS: Record<TabKey, string> = {
   all: "Все",
   text: "Текст",
   image: "Изображения",
   video: "Видео",
+  free: "Бесплатные",
 };
 
 const CATEGORY_ICON: Record<PreviewCategory, LucideIcon> = {
@@ -25,47 +28,55 @@ const ACTION_LABEL: Record<PreviewCategory, string> = {
   video: "Создать видео",
 };
 
+// Платные модели каждой category — бесплатные (isFree) скрыты из общего
+// каталога и живут только во вкладке "free", как в проде (см. комментарий
+// над FREE_MODELS в pricingPreviewModels.ts).
+const PAID_MODELS = PREVIEW_MODELS.filter((m) => !m.isFree);
+const FREE_TAB_MODELS = PREVIEW_MODELS.filter((m) => m.isFree);
+
 export function PricingPreviewClient() {
-  const [activeCategory, setActiveCategory] = useState<PreviewCategory | "">("");
+  const [activeTab, setActiveTab] = useState<TabKey>("all");
   const [activeProvider, setActiveProvider] = useState("");
   const [query, setQuery] = useState("");
 
   const counts = useMemo(
     () => ({
-      all: PREVIEW_MODELS.length,
-      text: PREVIEW_MODELS.filter((m) => m.category === "text").length,
-      image: PREVIEW_MODELS.filter((m) => m.category === "image").length,
-      video: PREVIEW_MODELS.filter((m) => m.category === "video").length,
+      all: PAID_MODELS.length,
+      text: PAID_MODELS.filter((m) => m.category === "text").length,
+      image: PAID_MODELS.filter((m) => m.category === "image").length,
+      video: PAID_MODELS.filter((m) => m.category === "video").length,
+      free: FREE_TAB_MODELS.length,
     }),
     []
   );
 
   const providers = useMemo(() => {
-    const base = activeCategory ? PREVIEW_MODELS.filter((m) => m.category === activeCategory) : PREVIEW_MODELS;
+    const base =
+      activeTab === "free" ? FREE_TAB_MODELS : activeTab === "all" ? PAID_MODELS : PAID_MODELS.filter((m) => m.category === activeTab);
     const map = new Map<string, number>();
     base.forEach((m) => map.set(m.provider, (map.get(m.provider) ?? 0) + 1));
     return Array.from(map.entries())
       .sort((a, b) => b[1] - a[1])
       .map(([name, count]) => ({ name, count }));
-  }, [activeCategory]);
+  }, [activeTab]);
 
   const filtered = useMemo(() => {
-    let list = PREVIEW_MODELS;
-    if (activeCategory) list = list.filter((m) => m.category === activeCategory);
+    let list = activeTab === "free" ? FREE_TAB_MODELS : activeTab === "all" ? PAID_MODELS : PAID_MODELS.filter((m) => m.category === activeTab);
     if (activeProvider) list = list.filter((m) => m.provider === activeProvider);
     if (query.trim()) {
       const q = query.trim().toLowerCase();
       list = list.filter((m) => m.name.toLowerCase().includes(q) || m.description.toLowerCase().includes(q));
     }
     return list;
-  }, [activeCategory, activeProvider, query]);
+  }, [activeTab, activeProvider, query]);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
       <div className="mb-6">
         <h1 className="text-[28px] font-bold text-[#1A1A1A]">Каталог моделей и цены</h1>
         <p className="mt-2 text-[17px] text-[rgba(13,13,13,0.58)]">
-          {PREVIEW_MODELS.length} моделей — сравнение стоимости в рублях за 1М токенов, генерацию и секунду видео.
+          {PAID_MODELS.length} платных моделей — сравнение стоимости в рублях за 1М токенов, генерацию и секунду
+          видео, плюс {FREE_TAB_MODELS.length} бесплатных без каких-либо затрат.
         </p>
       </div>
 
@@ -94,26 +105,28 @@ export function PricingPreviewClient() {
 
       {/* Category tabs */}
       <div className="mb-4 flex flex-wrap gap-2">
-        {(["all", "text", "image", "video"] as const).map((cat) => {
-          const value = cat === "all" ? "" : cat;
-          const active = activeCategory === value;
-          const count = counts[cat];
+        {(["all", "text", "image", "video", "free"] as const).map((tab) => {
+          const active = activeTab === tab;
+          const count = counts[tab];
           return (
             <button
-              key={cat}
+              key={tab}
               type="button"
               onClick={() => {
-                setActiveCategory(value);
+                setActiveTab(tab);
                 setActiveProvider("");
               }}
               className={[
-                "rounded-full px-4 py-1.5 text-[15px] font-medium transition-all",
+                "flex items-center gap-1.5 rounded-full px-4 py-1.5 text-[15px] font-medium transition-all",
                 active
                   ? "bg-[#D97757] text-white"
-                  : "border border-[rgba(13,13,13,0.15)] bg-white text-[rgba(13,13,13,0.65)] hover:border-[rgba(13,13,13,0.25)] hover:text-[#1A1A1A]",
+                  : tab === "free"
+                    ? "border border-[rgba(34,153,84,0.35)] bg-[rgba(34,153,84,0.06)] text-[#1F9254] hover:border-[rgba(34,153,84,0.55)]"
+                    : "border border-[rgba(13,13,13,0.15)] bg-white text-[rgba(13,13,13,0.65)] hover:border-[rgba(13,13,13,0.25)] hover:text-[#1A1A1A]",
               ].join(" ")}
             >
-              {CATEGORY_LABELS[cat]} {count}
+              {tab === "free" && <Gift size={14} />}
+              {CATEGORY_LABELS[tab]} {count}
             </button>
           );
         })}
@@ -223,6 +236,14 @@ function PriceRow({ label, value }: { label: string; value: string }) {
 }
 
 function PriceBlock({ model }: { model: PreviewModel }) {
+  if (model.isFree) {
+    return (
+      <div className="flex flex-col gap-1">
+        <PriceRow label="Цена" value="Бесплатно" />
+        {model.dailyLimit && <PriceRow label="Лимит" value={`${model.dailyLimit} сообщ./день`} />}
+      </div>
+    );
+  }
   if (model.category === "text") {
     return (
       <div className="flex flex-col gap-1">

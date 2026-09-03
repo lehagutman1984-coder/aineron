@@ -47,7 +47,9 @@ export default function ModelDetailPreviewPage({ params }: { params: { id: strin
   const detail = DETAILS[model.id];
   const Icon = CATEGORY_ICON[model.category];
 
-  const related = PREVIEW_MODELS.filter((m) => m.category === model.category && m.id !== model.id).slice(0, 4);
+  const related = PREVIEW_MODELS.filter(
+    (m) => m.category === model.category && Boolean(m.isFree) === Boolean(model.isFree) && m.id !== model.id
+  ).slice(0, 4);
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
@@ -204,6 +206,16 @@ function StatChip({ label }: { label: string }) {
 }
 
 function PricingCard({ model }: { model: PreviewModel }) {
+  if (model.isFree) {
+    return (
+      <div className="rounded-[12px] border border-[rgba(34,153,84,0.25)] bg-[rgba(34,153,84,0.04)] p-5">
+        <div className="grid grid-cols-2 gap-4">
+          <PriceStat label="Цена" value="Бесплатно" />
+          {model.dailyLimit && <PriceStat label="Лимит" value={`${model.dailyLimit} сообщений в день`} />}
+        </div>
+      </div>
+    );
+  }
   if (model.category === "text") {
     const inRub = model.priceInRub ?? 0;
     const outRub = model.priceOutRub ?? 0;

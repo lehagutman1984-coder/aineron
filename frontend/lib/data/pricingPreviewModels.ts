@@ -4,10 +4,36 @@
  *
  * Источник цен: PRICING_SIMPLIFICATION_PLAN.md §1.1/§2.1 — опт снят живьём с
  * openrouter.ai/models и apimart.ai/ru/pricing (2026-09-02), розница = опт_$ × K,
- * K = 110 ₽/$ (в рекомендованном диапазоне 105-112, см. план §2.1 и §8.2).
- * Это ПРЕДВАРИТЕЛЬНАЯ витрина — не подключена к NeuralNetwork/биллингу,
- * см. план §7 "Фаза 1". Часть цифр помечена как оценка (см. комментарии на
- * моделях) — уточняется в открытом пункте §8.1 плана.
+ * K = 105 ₽/$ (подтверждено пользователем 2026-09-02: цена не выше конкурента
+ * и заметно дешевле, было 110). ЭТО РЕАЛЬНАЯ ЦЕНА для нового каталога — не
+ * витринная оценка: пользователь явно решил считать честную цену по токенам
+ * (опт × K) источником истины, а не подгонять её под сегодняшние flat-цены
+ * чата (которые никогда не считались от реальной стоимости токенов —
+ * выставлялись на глаз). Реальный биллинг в чате (cost_kopecks) пока НЕ
+ * тронут — этот файл станет новым каталогом при замене /models (план §7
+ * "Фаза 1"), сам биллинг переводится на эти цифры отдельным шагом позже.
+ *
+ * TEXT_MODELS (2026-09-02, 21 из 21): "новые" версии (Grok 4.6, Qwen 3.8 Max,
+ * Gemini 3.7 Flash, Claude Fable 5.1) живьём проверены через реальную
+ * прод-инфру (get_laozhang_client → laozhang.ai/apimart.ai fallback) —
+ * работают. "Qwen 3.8 Flash", "GLM 5.3", "GLM 5.3 Flash" — реальные модели
+ * на OpenRouter, но у обоих наших провайдеров (laozhang, apimart) возвращают
+ * model_not_found — убраны из каталога, добавлять рано. Старые версии
+ * (Grok 4.5, Qwen 3.6 Max, Gemini 3.6 Flash, Claude Fable 5) добавлены
+ * ДОПОЛНИТЕЛЬНО рядом с новыми (обе версии реально работают в проде и уже
+ * активны в NeuralNetwork) — решение пользователя, не заменять старое
+ * новым, а добавлять. Первые три сняты с публичного прайса OpenRouter
+ * (только новая версия осталась в листинге, проверено живым запросом к
+ * openrouter.ai/api/v1/models 2026-09-02) — их ₽/1М цена ориентирована на
+ * тир соседней новой версии, помечено комментарием на каждой модели.
+ * Gemini 3.6 Flash — исключение, ещё живьём на OpenRouter, цена подтверждена
+ * напрямую ($0.75/$3.75 за 1М, совпадает с 3.7 Flash).
+ *
+ * FREE_MODELS (2026-09-02, 14 из 14) — синхронизировано 1:1 с активными
+ * бесплатными моделями в проде (NeuralNetwork, is_free=True, is_active=True).
+ * Три провайдера, не только OpenRouter: openrouter_free (6), zai_free (3,
+ * Z.ai/Zhipu — GLM-*-Flash), cloudflare_free (5, Cloudflare Workers AI,
+ * общий дневной пул 10 000 "neurons"). См. комментарий над самим массивом.
  *
  * VIDEO_MODELS (2026-09-02, ревизия после сверки с продакшн-каталогом):
  * список синхронизирован с реальными активными видео-моделями из
@@ -53,9 +79,13 @@ export interface PreviewModel {
   priceUnit?: "sec" | "call";
   inputBadges: string[];
   outputBadges: string[];
+  /** Бесплатная модель — 0 ₽, лимит сообщений/день вместо цены. Не входит в счётчик своей category. */
+  isFree?: boolean;
+  /** Лимит сообщений в день на пользователя (только isFree=true) */
+  dailyLimit?: number;
 }
 
-const K = 110; // ₽ за $ опта — см. план §2.1
+const K = 105; // ₽ за $ опта — см. план §2.1 (подтверждено пользователем 2026-09-02: не выше конкурента, чуть дешевле)
 
 const round = (usd: number) => Math.round(usd * K);
 
@@ -90,6 +120,21 @@ export const TEXT_MODELS: PreviewModel[] = [
     provider: "Anthropic",
     category: "text",
     description: "Модель уровня выше Opus — многочасовые автономные агентные сессии, мышление всегда включено.",
+    contextLabel: "1M",
+    priceInRub: round(10),
+    priceOutRub: round(50),
+    inputBadges: ["Текст", "Изображения", "Файл"],
+    outputBadges: ["Текст"],
+  },
+  {
+    id: "claude-fable-5",
+    name: "Claude Fable 5",
+    provider: "Anthropic",
+    category: "text",
+    // Базовая версия снята с публичного прайса OpenRouter (остался только
+    // Fable 5.1, проверено 2026-09-02) — цена ориентирована на тот же тир,
+    // что у 5.1, уточнить при появлении отдельных данных.
+    description: "Предыдущая версия Fable — расширенное мышление, длинные автономные сессии.",
     contextLabel: "1M",
     priceInRub: round(10),
     priceOutRub: round(50),
@@ -215,6 +260,20 @@ export const TEXT_MODELS: PreviewModel[] = [
     outputBadges: ["Текст"],
   },
   {
+    id: "gemini-3-6-flash",
+    name: "Gemini 3.6 Flash",
+    provider: "Google",
+    category: "text",
+    // Подтверждено живьём на OpenRouter (google/gemini-3.6-flash, 2026-09-02):
+    // $0.75 / $3.75 за 1М — совпадает с 3.7 Flash.
+    description: "Предыдущая версия Flash — та же цена, чуть более старая база знаний.",
+    contextLabel: "1M",
+    priceInRub: round(0.75),
+    priceOutRub: round(3.75),
+    inputBadges: ["Текст", "Изображения", "Файл"],
+    outputBadges: ["Текст"],
+  },
+  {
     id: "deepseek-v4-pro",
     name: "DeepSeek V4 Pro",
     provider: "DeepSeek",
@@ -253,6 +312,20 @@ export const TEXT_MODELS: PreviewModel[] = [
     outputBadges: ["Текст"],
   },
   {
+    id: "grok-4-5",
+    name: "Grok 4.5",
+    provider: "xAI",
+    category: "text",
+    // Снята с публичного прайса OpenRouter (остался только 4.6, проверено
+    // 2026-09-02) — цена ориентирована на тот же тир, что у 4.6.
+    description: "Предыдущее поколение Grok — те же рассуждения, чуть более старая база знаний.",
+    contextLabel: "500K",
+    priceInRub: round(2),
+    priceOutRub: round(6),
+    inputBadges: ["Текст", "Изображения"],
+    outputBadges: ["Текст"],
+  },
+  {
     id: "qwen3-8-max",
     name: "Qwen 3.8 Max",
     provider: "Alibaba",
@@ -265,38 +338,16 @@ export const TEXT_MODELS: PreviewModel[] = [
     outputBadges: ["Текст"],
   },
   {
-    id: "qwen3-8-flash",
-    name: "Qwen 3.8 Flash",
+    id: "qwen3-6-max",
+    name: "Qwen 3.6 Max",
     provider: "Alibaba",
     category: "text",
-    description: "Быстрый и очень дешёвый Qwen для простых массовых задач.",
+    // Снята с публичного прайса OpenRouter (остались только 3.7/3.8,
+    // проверено 2026-09-02) — цена ориентирована на тот же тир, что у 3.8 Max.
+    description: "Предыдущая топовая модель Qwen — код, рассуждения, многоязычность.",
     contextLabel: "1M",
-    priceInRub: round(0.15),
-    priceOutRub: round(0.47),
-    inputBadges: ["Текст"],
-    outputBadges: ["Текст"],
-  },
-  {
-    id: "glm-5-3",
-    name: "GLM 5.3",
-    provider: "Zhipu",
-    category: "text",
-    description: "Флагман GLM — код, длинный контекст, агентные задачи.",
-    contextLabel: "1M",
-    priceInRub: round(1.17),
-    priceOutRub: round(3.96),
-    inputBadges: ["Текст", "Изображения"],
-    outputBadges: ["Текст"],
-  },
-  {
-    id: "glm-5-3-flash",
-    name: "GLM 5.3 Flash",
-    provider: "Zhipu",
-    category: "text",
-    description: "Самая дешёвая модель в подборке — для высокообъёмных простых запросов.",
-    contextLabel: "1.3M",
-    priceInRub: round(0.075),
-    priceOutRub: round(0.25),
+    priceInRub: round(2),
+    priceOutRub: round(6),
     inputBadges: ["Текст"],
     outputBadges: ["Текст"],
   },
@@ -809,4 +860,174 @@ export const VIDEO_MODELS: PreviewModel[] = [
   },
 ];
 
-export const PREVIEW_MODELS: PreviewModel[] = [...TEXT_MODELS, ...IMAGE_MODELS, ...VIDEO_MODELS];
+// FREE_MODELS (2026-09-02) — синхронизировано с реально активными бесплатными
+// моделями в проде (NeuralNetwork.objects.filter(is_free=True, is_active=True)):
+// 14 из 14. Три провайдера, не только OpenRouter: openrouter_free (6),
+// zai_free (3, Z.ai/Zhipu — GLM-*-Flash), cloudflare_free (5, Cloudflare
+// Workers AI, общий дневной пул 10 000 "neurons"). Скрыты из общего каталога
+// (category="text" не считает их) — показываются только во вкладке
+// «Бесплатные», как и в проде (см. add_openrouter_free_models.py,
+// add_zai_free_models.py, add_cloudflare_free_models.py). Ранее в проде были
+// активны ещё free-nemotron-nano-9b/free-nemotron-3-nano-30b/
+// free-nemotron-nano-12b-vl — деактивированы 2026-09-02 (живой вызов вернул
+// 404 model_not_found/снята с бесплатного тарифа). free-glm-5-2 и
+// free-gemma-4-31b проверены живьём в тот же день — вернули 429 "temporarily
+// rate-limited upstream" (не 404), оставлены активными.
+export const FREE_MODELS: PreviewModel[] = [
+  {
+    id: "free-nemotron-3-ultra",
+    name: "Nemotron 3 Ultra",
+    provider: "OpenRouter",
+    category: "text",
+    description: "Флагманская модель NVIDIA для сложных рассуждений и многошаговых задач, контекст 1M токенов.",
+    isFree: true,
+    dailyLimit: 15,
+    inputBadges: ["Текст"],
+    outputBadges: ["Текст"],
+  },
+  {
+    id: "free-nemotron-3-super",
+    name: "Nemotron 3 Super",
+    provider: "OpenRouter",
+    category: "text",
+    description: "Структурированные ответы и сложные многошаговые рассуждения, контекст 1M токенов.",
+    isFree: true,
+    dailyLimit: 15,
+    inputBadges: ["Текст"],
+    outputBadges: ["Текст"],
+  },
+  {
+    id: "free-north-mini-code",
+    name: "North Mini Code",
+    provider: "OpenRouter",
+    category: "text",
+    description: "Агентная модель Cohere для кода, terminal-задач и разработки.",
+    isFree: true,
+    dailyLimit: 15,
+    inputBadges: ["Текст"],
+    outputBadges: ["Текст"],
+  },
+  {
+    id: "free-gemma-4-31b",
+    name: "Gemma 4 31B",
+    provider: "OpenRouter",
+    category: "text",
+    description: "Модель Google DeepMind с поддержкой изображений — универсальный чат и код.",
+    isFree: true,
+    dailyLimit: 15,
+    inputBadges: ["Текст", "Изображения"],
+    outputBadges: ["Текст"],
+  },
+  {
+    id: "free-laguna-xs21",
+    name: "Laguna XS 2.1",
+    provider: "OpenRouter",
+    category: "text",
+    description: "Компактная модель Poolside для кода — быстрая и экономичная.",
+    isFree: true,
+    dailyLimit: 15,
+    inputBadges: ["Текст"],
+    outputBadges: ["Текст"],
+  },
+  {
+    id: "free-glm-5-2",
+    name: "GLM 5.2",
+    provider: "OpenRouter",
+    category: "text",
+    description: "Флагманская модель Zhipu AI — рассуждения и код.",
+    isFree: true,
+    dailyLimit: 15,
+    inputBadges: ["Текст"],
+    outputBadges: ["Текст"],
+  },
+  {
+    id: "free-glm-4-7-flash",
+    name: "GLM-4.7 Flash",
+    provider: "Z.ai",
+    category: "text",
+    description: "Быстрая модель Z.ai для кода, рассуждений и агентных задач.",
+    isFree: true,
+    dailyLimit: 15,
+    inputBadges: ["Текст"],
+    outputBadges: ["Текст"],
+  },
+  {
+    id: "free-glm-4-5-flash",
+    name: "GLM-4.5 Flash",
+    provider: "Z.ai",
+    category: "text",
+    description: "Модель Z.ai с хорошей производительностью для рассуждений и кода.",
+    isFree: true,
+    dailyLimit: 15,
+    inputBadges: ["Текст"],
+    outputBadges: ["Текст"],
+  },
+  {
+    id: "free-glm-4-6v-flash",
+    name: "GLM-4.6V Flash",
+    provider: "Z.ai",
+    category: "text",
+    description: "Модель Z.ai с пониманием изображений — низкая задержка, быстрый ответ.",
+    isFree: true,
+    dailyLimit: 15,
+    inputBadges: ["Текст", "Изображения"],
+    outputBadges: ["Текст"],
+  },
+  {
+    id: "free-cf-llama-4-scout",
+    name: "Llama 4 Scout",
+    provider: "Cloudflare",
+    category: "text",
+    description: "Мультимодальная MoE-модель Meta — понимает текст и изображения.",
+    isFree: true,
+    dailyLimit: 15,
+    inputBadges: ["Текст", "Изображения"],
+    outputBadges: ["Текст"],
+  },
+  {
+    id: "free-cf-gpt-oss-120b",
+    name: "GPT-OSS 120B (Cloudflare)",
+    provider: "Cloudflare",
+    category: "text",
+    description: "Открытая модель OpenAI для рассуждений — независимый резерв от основной модели.",
+    isFree: true,
+    dailyLimit: 15,
+    inputBadges: ["Текст"],
+    outputBadges: ["Текст"],
+  },
+  {
+    id: "free-cf-qwen3-30b",
+    name: "Qwen3 30B",
+    provider: "Cloudflare",
+    category: "text",
+    description: "MoE-модель Qwen для рассуждений и агентных задач.",
+    isFree: true,
+    dailyLimit: 15,
+    inputBadges: ["Текст"],
+    outputBadges: ["Текст"],
+  },
+  {
+    id: "free-cf-mistral-small",
+    name: "Mistral Small 3.1",
+    provider: "Cloudflare",
+    category: "text",
+    description: "Модель Mistral с пониманием изображений, контекст 128K токенов.",
+    isFree: true,
+    dailyLimit: 15,
+    inputBadges: ["Текст", "Изображения"],
+    outputBadges: ["Текст"],
+  },
+  {
+    id: "free-cf-deepseek-r1-distill",
+    name: "DeepSeek R1 Distill 32B",
+    provider: "Cloudflare",
+    category: "text",
+    description: "Дистиллированная модель рассуждений DeepSeek R1 — сильна в логике и математике.",
+    isFree: true,
+    dailyLimit: 15,
+    inputBadges: ["Текст"],
+    outputBadges: ["Текст"],
+  },
+];
+
+export const PREVIEW_MODELS: PreviewModel[] = [...TEXT_MODELS, ...IMAGE_MODELS, ...VIDEO_MODELS, ...FREE_MODELS];

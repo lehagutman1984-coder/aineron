@@ -47,29 +47,14 @@ FREE_MODELS = [
         'Модель Google DeepMind с поддержкой изображений — универсальный чат и код.',
     ),
     (
-        'free-nemotron-3-nano-30b', 'Nemotron 3 Nano 30B — бесплатно', 'nvidia/nemotron-3-nano-30b-a3b:free',
-        15, 8,
-        'Компактная эффективная модель NVIDIA для агентных задач.',
-    ),
-    (
         'free-laguna-xs21', 'Laguna XS 2.1 — бесплатно', 'poolside/laguna-xs-2.1:free',
         15, 10,
         'Компактная модель Poolside для кода — быстрая и экономичная.',
     ),
     (
-        'free-nemotron-nano-9b', 'Nemotron Nano 9B — бесплатно', 'nvidia/nemotron-nano-9b-v2:free',
-        15, 11,
-        'Универсальная модель NVIDIA с настраиваемым режимом рассуждений.',
-    ),
-    (
         'free-glm-5-2', 'GLM 5.2 — бесплатно', 'z-ai/glm-5.2:free',
         15, 12,
         'Новейшая флагманская модель Zhipu AI — рассуждения и код.',
-    ),
-    (
-        'free-nemotron-nano-12b-vl', 'Nemotron Nano 12B VL — бесплатно', 'nvidia/nemotron-nano-12b-v2-vl:free',
-        15, 13,
-        'Модель NVIDIA с поддержкой изображений — понимает фото и скриншоты.',
     ),
 ]
 
@@ -90,7 +75,16 @@ OLD_OPENROUTER_FREE_SLUGS = [
 # работали, теперь только платно или не существуют вовсе под этим слагом.
 RETIRED_FREE_TIER_SLUGS = [
     'free-gpt-oss-120b', 'free-qwen3-coder', 'free-qwen3-next-80b', 'free-laguna-m1',
+    # 2026-09-02, тем же способом (живой вызов, 404):
+    'free-nemotron-nano-9b',       # "No endpoints found for nvidia/nemotron-nano-9b-v2:free"
+    'free-nemotron-3-nano-30b',    # "This model is unavailable for free... use nemotron-3-nano-30b-a3b"
+    'free-nemotron-nano-12b-vl',   # "No endpoints found for nvidia/nemotron-nano-12b-v2-vl:free"
 ]
+
+# free-glm-5-2 и free-gemma-4-31b проверены живым вызовом 2026-09-02 — вернули
+# 429 "temporarily rate-limited upstream", а не 404/model_not_found. Это НЕ
+# признак снятия с тарифа (в отличие от RETIRED_FREE_TIER_SLUGS выше) — оставлены
+# активными, upstream-лимит может пройти сам.
 
 
 class Command(BaseCommand):
