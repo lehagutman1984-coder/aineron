@@ -168,6 +168,7 @@ export function ChatStartForm({ networkSlug, isMedia, isVideo, configJson, proje
               values={mediaSettings}
               onChange={setMediaSettings}
               costKopecks={costKopecks}
+              constraints={configJson?.constraints}
             />
           )}
         </div>

@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Dices, Lock, Unlock, ChevronDown, ChevronRight, Coins } from "lucide-react";
-import type { UiField, UiSection } from "@/lib/api/types";
+import type { IncompatibleRule, UiField, UiSection } from "@/lib/api/types";
 import { calcTotalCostKopecks } from "@/lib/utils/mediaCost";
 import { formatMoney } from "@/lib/money";
 
@@ -225,6 +225,7 @@ export function MediaSettingsPanel({
   values,
   onChange,
   costKopecks,
+  constraints,
 }: {
   sections: UiSection[];
   values: Record<string, unknown>;
@@ -232,14 +233,57 @@ export function MediaSettingsPanel({
   /** Базовая цена сообщения (network.cost_kopecks) — если передана, вверху панели
    * показывается живой итог «Спишется: X» с учётом выбранных настроек. */
   costKopecks?: number;
+  /** config_json.constraints.incompatible — пары настроек, которые нельзя выбрать
+   * одновременно (например у Kling 4K недоступен со звуком). Выставляя одну из
+   * пары, автоматически сбрасываем другую на безопасное значение. */
+  constraints?: { incompatible?: IncompatibleRule[] };
 }) {
   const t = useTranslations("chat.mediaSettingsPanel");
-  const set = (name: string, value: unknown) => onChange({ ...values, [name]: value });
+  const allFields = sections.flatMap((s) => s.fields);
+  const fieldDefault = (name: string): unknown => {
+    const f = allFields.find((f) => f.name === name);
+    if (!f) return undefined;
+    return f.type === "checkbox" ? false : f.options?.[0]?.value;
+  };
+
+  const set = (name: string, value: unknown) => {
+    const next: Record<string, unknown> = { ...values, [name]: value };
+    for (const rule of constraints?.incompatible ?? []) {
+      const whenMatches = String(next[rule.when.field]) === String(rule.when.value);
+      const forbidMatches = String(next[rule.forbid.field]) === String(rule.forbid.value);
+      if (!whenMatches || !forbidMatches) continue;
+      // Только что изменённое поле остаётся как есть — сбрасываем ДРУГУЮ половину пары.
+      if (name === rule.when.field) {
+        next[rule.forbid.field] = fieldDefault(rule.forbid.field);
+      } else if (name === rule.forbid.field) {
+        next[rule.when.field] = fieldDefault(rule.when.field);
+      }
+    }
+    onChange(next);
+  };
 
   const total = useMemo(
     () => (costKopecks !== undefined ? calcTotalCostKopecks(costKopecks, sections, values) : null),
     [costKopecks, sections, values]
   );
+
+  // Тултип-подсказка, если конкретное значение поля сейчас заблокировано
+  // выбором другой настройки (например 4K заблокирован, пока включён звук).
+  const blockedReason = (fieldName: string, value: unknown): string | null => {
+    for (const rule of constraints?.incompatible ?? []) {
+      if (rule.when.field === fieldName && String(rule.when.value) === String(value)) {
+        if (String(values[rule.forbid.field]) === String(rule.forbid.value)) {
+          return rule.message ?? null;
+        }
+      }
+      if (rule.forbid.field === fieldName && String(rule.forbid.value) === String(value)) {
+        if (String(values[rule.when.field]) === String(rule.when.value)) {
+          return rule.message ?? null;
+        }
+      }
+    }
+    return null;
+  };
 
   return (
     <div className="rounded-[12px] border border-[rgba(13,13,13,0.12)] bg-[rgba(13,13,13,0.02)] p-3 dark:border-[rgba(255,255,255,0.10)] dark:bg-[rgba(255,255,255,0.04)]">
@@ -280,12 +324,16 @@ export function MediaSettingsPanel({
                       className="rounded-[8px] border border-[rgba(13,13,13,0.15)] bg-white px-2 py-1 text-[14px] font-medium text-[#1A1A1A] focus:outline-none dark:border-[rgba(255,255,255,0.12)] dark:bg-[rgba(255,255,255,0.08)] dark:text-[#EDE8E3]"
                       style={{ minWidth: "120px" }}
                     >
-                      {(field.options ?? []).map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                          {opt.extra_cost ? ` (+${opt.extra_cost})` : ""}
-                        </option>
-                      ))}
+                      {(field.options ?? []).map((opt) => {
+                        const blocked = blockedReason(field.name, opt.value);
+                        return (
+                          <option key={opt.value} value={opt.value} disabled={Boolean(blocked)} title={blocked ?? undefined}>
+                            {opt.label}
+                            {opt.extra_cost ? ` (+${opt.extra_cost})` : ""}
+                            {blocked ? ` — ${blocked}` : ""}
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
                 );
@@ -293,15 +341,19 @@ export function MediaSettingsPanel({
 
               if (field.type === "checkbox") {
                 const checked = Boolean(val);
+                const blocked = blockedReason(field.name, true);
+                const disabled = Boolean(blocked) && !checked;
                 return (
-                  <div key={field.name} className="flex items-center gap-2">
+                  <div key={field.name} className="flex items-center gap-2" title={disabled ? blocked ?? undefined : undefined}>
                     <button
                       type="button"
                       role="switch"
                       aria-checked={checked}
-                      onClick={() => set(field.name, !checked)}
+                      disabled={disabled}
+                      onClick={() => !disabled && set(field.name, !checked)}
                       className={[
                         "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-none",
+                        disabled ? "cursor-not-allowed opacity-40" : "",
                         checked ? "bg-[#D97757]" : "bg-[rgba(13,13,13,0.15)] dark:bg-[rgba(255,255,255,0.15)]",
                       ].join(" ")}
                     >
@@ -313,8 +365,11 @@ export function MediaSettingsPanel({
                       />
                     </button>
                     <label
-                      className="cursor-pointer text-[14px] text-[rgba(13,13,13,0.65)] dark:text-[rgba(236,236,236,0.6)]"
-                      onClick={() => set(field.name, !checked)}
+                      className={[
+                        "text-[14px] text-[rgba(13,13,13,0.65)] dark:text-[rgba(236,236,236,0.6)]",
+                        disabled ? "cursor-not-allowed opacity-40" : "cursor-pointer",
+                      ].join(" ")}
+                      onClick={() => !disabled && set(field.name, !checked)}
                     >
                       {field.label}
                     </label>

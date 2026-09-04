@@ -306,6 +306,19 @@ def validate_and_merge_settings(config, user_settings):
         if not has_image_url and not has_image_urls:
             errors.append("Эта модель требует загруженное изображение (image_url или image_urls)")
 
+    # Несовместимые комбинации настроек — constraints.incompatible = [{"when": {"field": ..., "value": ...},
+    # "forbid": {"field": ..., "value": ...}}, ...]. Пример: у Kling v3/Omni/Motion Control 4K недоступен
+    # со звуком (апстрим отдаёт звук максимум на 1080p) — см. update_video_pricing.py.
+    for rule in constraints.get('incompatible', []):
+        when = rule.get('when', {})
+        forbid = rule.get('forbid', {})
+        when_field, when_value = when.get('field'), when.get('value')
+        forbid_field, forbid_value = forbid.get('field'), forbid.get('value')
+        if when_field is None or forbid_field is None:
+            continue
+        if str(final_args.get(when_field)) == str(when_value) and str(final_args.get(forbid_field)) == str(forbid_value):
+            errors.append(rule.get('message') or f"Настройки '{when_field}={when_value}' и '{forbid_field}={forbid_value}' несовместимы")
+
     return final_args, errors, extra_cost
 
 

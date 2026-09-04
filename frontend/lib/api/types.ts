@@ -319,11 +319,17 @@ export interface UiSection {
   fields: UiField[];
 }
 
+export interface IncompatibleRule {
+  when: { field: string; value: unknown };
+  forbid: { field: string; value: unknown };
+  message?: string;
+}
+
 export interface ModelConfigJson {
   name?: string;
   api_defaults?: Record<string, unknown>;
   ui_settings?: { sections: UiSection[] };
-  constraints?: Record<string, unknown>;
+  constraints?: Record<string, unknown> & { incompatible?: IncompatibleRule[] };
   metadata?: Record<string, unknown>;
 }
 

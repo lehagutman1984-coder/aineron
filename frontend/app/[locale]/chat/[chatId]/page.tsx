@@ -1560,6 +1560,7 @@ export default function ChatPage() {
                   values={mediaSettings}
                   onChange={setMediaSettings}
                   costKopecks={chat.network.cost_kopecks}
+                  constraints={chat.network.config_json?.constraints}
                 />
               )}
             </div>
