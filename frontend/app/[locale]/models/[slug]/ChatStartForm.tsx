@@ -19,9 +19,11 @@ interface Props {
   isVideo?: boolean;
   configJson?: ModelConfigJson | null;
   projectId?: number;
+  /** network.cost_kopecks — базовая цена для живого итога в MediaSettingsPanel */
+  costKopecks?: number;
 }
 
-export function ChatStartForm({ networkSlug, isMedia, isVideo, configJson, projectId }: Props) {
+export function ChatStartForm({ networkSlug, isMedia, isVideo, configJson, projectId, costKopecks }: Props) {
   const t = useTranslations("catalog");
   const router = useRouter();
   const qc = useQueryClient();
@@ -165,6 +167,7 @@ export function ChatStartForm({ networkSlug, isMedia, isVideo, configJson, proje
               sections={configJson!.ui_settings!.sections}
               values={mediaSettings}
               onChange={setMediaSettings}
+              costKopecks={costKopecks}
             />
           )}
         </div>

@@ -513,7 +513,8 @@
       "seedLocked": "Seed locked",
       "seedRandom": "Seed random",
       "randomPlaceholder": "random",
-      "randomSeedTitle": "Random seed"
+      "randomSeedTitle": "Random seed",
+      "willCharge": "Will charge: {price}"
     },
     "animateImageModal": {
       "title": "Animate Image",

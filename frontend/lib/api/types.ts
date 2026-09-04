@@ -336,6 +336,7 @@ export interface NetworkMini {
   provider: string;
   handle_photo: boolean;
   handle_video: boolean;
+  cost_kopecks: number;
   config_json?: ModelConfigJson | null;
   /** Мультиреференс image-to-video (B14). null/undefined = только 1 фото. */
   i2v?: { max_images: number; mode: "reference" | "first_last" } | null;

@@ -510,7 +510,8 @@
       "seedLocked": "بذر قفل شده",
       "seedRandom": "بذر تصادفی",
       "randomPlaceholder": "تصادفی",
-      "randomSeedTitle": "بذر تصادفی"
+      "randomSeedTitle": "بذر تصادفی",
+      "willCharge": "کسر می‌شود: {price}"
     },
     "animateImageModal": {
       "title": "تصویر را متحرک کنید",

@@ -510,7 +510,8 @@
       "seedLocked": "Seed terkunci",
       "seedRandom": "Seed acak",
       "randomPlaceholder": "acak",
-      "randomSeedTitle": "Seed acak"
+      "randomSeedTitle": "Seed acak",
+      "willCharge": "Akan dikenakan: {price}"
     },
     "animateImageModal": {
       "title": "Animasi Gambar",

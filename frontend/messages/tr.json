@@ -510,7 +510,8 @@
       "seedLocked": "Tohum kilitli",
       "seedRandom": "Rastgele tohum",
       "randomPlaceholder": "rastgele",
-      "randomSeedTitle": "Rastgele tohum"
+      "randomSeedTitle": "Rastgele tohum",
+      "willCharge": "Tahsil edilecek: {price}"
     },
     "animateImageModal": {
       "title": "Görseli Animasyonlu Yap",

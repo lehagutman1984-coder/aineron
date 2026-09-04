@@ -510,7 +510,8 @@
       "seedLocked": "البذرة مقفلة",
       "seedRandom": "بذرة عشوائية",
       "randomPlaceholder": "عشوائي",
-      "randomSeedTitle": "بذرة عشوائية"
+      "randomSeedTitle": "بذرة عشوائية",
+      "willCharge": "سيتم خصم: {price}"
     },
     "animateImageModal": {
       "title": "تحريك الصورة",

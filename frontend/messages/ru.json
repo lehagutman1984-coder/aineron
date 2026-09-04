@@ -516,7 +516,8 @@
       "seedLocked": "Seed закреплён",
       "seedRandom": "Seed случайный",
       "randomPlaceholder": "случайный",
-      "randomSeedTitle": "Случайный seed"
+      "randomSeedTitle": "Случайный seed",
+      "willCharge": "Спишется: {price}"
     },
     "animateImageModal": {
       "title": "Оживить изображение",

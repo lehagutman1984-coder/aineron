@@ -1559,6 +1559,7 @@ export default function ChatPage() {
                   sections={chat.network.config_json?.ui_settings?.sections as UiSection[]}
                   values={mediaSettings}
                   onChange={setMediaSettings}
+                  costKopecks={chat.network.cost_kopecks}
                 />
               )}
             </div>

@@ -1,9 +1,11 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Dices, Lock, Unlock, ChevronDown, ChevronRight } from "lucide-react";
+import { Dices, Lock, Unlock, ChevronDown, ChevronRight, Coins } from "lucide-react";
 import type { UiField, UiSection } from "@/lib/api/types";
+import { calcTotalCostKopecks } from "@/lib/utils/mediaCost";
+import { formatMoney } from "@/lib/money";
 
 // Aspect ratio visual presets for the "size" select field.
 const RATIO_PRESETS = [
@@ -222,15 +224,31 @@ export function MediaSettingsPanel({
   sections,
   values,
   onChange,
+  costKopecks,
 }: {
   sections: UiSection[];
   values: Record<string, unknown>;
   onChange: (v: Record<string, unknown>) => void;
+  /** Базовая цена сообщения (network.cost_kopecks) — если передана, вверху панели
+   * показывается живой итог «Спишется: X» с учётом выбранных настроек. */
+  costKopecks?: number;
 }) {
+  const t = useTranslations("chat.mediaSettingsPanel");
   const set = (name: string, value: unknown) => onChange({ ...values, [name]: value });
+
+  const total = useMemo(
+    () => (costKopecks !== undefined ? calcTotalCostKopecks(costKopecks, sections, values) : null),
+    [costKopecks, sections, values]
+  );
 
   return (
     <div className="rounded-[12px] border border-[rgba(13,13,13,0.12)] bg-[rgba(13,13,13,0.02)] p-3 dark:border-[rgba(255,255,255,0.10)] dark:bg-[rgba(255,255,255,0.04)]">
+      {total !== null && (
+        <div className="mb-3 flex items-center gap-1.5 rounded-[8px] border border-[rgba(217,119,87,0.25)] bg-[rgba(217,119,87,0.06)] px-2.5 py-1.5 text-[13px] font-medium text-[#D97757]">
+          <Coins size={13} className="shrink-0" />
+          <span>{t("willCharge", { price: formatMoney(total) })}</span>
+        </div>
+      )}
       {sections.map((section) => (
         <div key={section.title} className="mb-3 last:mb-0">
           <p className="mb-2 text-[13px] font-semibold uppercase tracking-wide text-[rgba(13,13,13,0.38)] dark:text-[rgba(236,236,236,0.35)]">

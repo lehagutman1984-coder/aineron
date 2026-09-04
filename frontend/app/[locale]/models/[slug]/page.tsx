@@ -6,6 +6,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { serverGetNetwork, serverListNetworks } from "@/lib/api/server";
 import { CURRENCY, formatMoney, formatRub, kopecksToRub } from "@/lib/money";
 import { ChatStartForm } from "./ChatStartForm";
+import { ModelPriceTiers } from "@/components/models/ModelPriceTiers";
 import { REFERENCE_PRICING, REFERENCE_DETAILS } from "@/lib/data/catalogReferencePricing";
 import { PARAMETER_INFO } from "@/lib/data/pricingPreviewDetails";
 import { IS_RU } from "@/lib/site";
@@ -228,8 +229,16 @@ export default async function ModelDetailPage({ params, searchParams }: Props) {
             isVideo={isVideoModel}
             configJson={network.config_json as import("@/lib/api/types").ModelConfigJson | null}
             projectId={searchParams?.project_id ? parseInt(searchParams.project_id, 10) : undefined}
+            costKopecks={network.cost_kopecks}
           />
         </div>
+
+        {/* Цена по настройкам (только для медиа-моделей с ui_settings) */}
+        <ModelPriceTiers
+          configJson={network.config_json as import("@/lib/api/types").ModelConfigJson | null}
+          costKopecks={network.cost_kopecks}
+          title="Цена по настройкам"
+        />
 
         {/* Хорошо подходит для */}
         {detail && detail.bestFor.length > 0 && (
