@@ -165,6 +165,22 @@ IMAGE_CONFIG = {
         "constraints": {},
         "metadata": {"requires_input_images": False, "minimal_params": True, "output_type": "image", "image_api": "apimart_async"}
     },
+    # Midjourney (2026-09-06): тот же apimart_async task-полл, но на СВОЁМ пути
+    # (apimart_endpoint='midjourney/generations', не 'images/generations') и со
+    # своим резервом на CometAPI (cometapi_contract='midjourney' роутит на
+    # generate_image_midjourney_cometapi() — отдельный Discord-relay контракт,
+    # НЕ generate_image_cometapi()). Оба проверены живьём 2026-09-06.
+    'midjourney': {
+        "name": "Midjourney",
+        "api_defaults": {},
+        "ui_settings": {"sections": []},
+        "constraints": {},
+        "metadata": {
+            "requires_input_images": False, "minimal_params": True, "output_type": "image",
+            "image_api": "apimart_async", "apimart_endpoint": "midjourney/generations",
+            "cometapi_contract": "midjourney", "cometapi_fallback_model": "midjourney",
+        }
+    },
 }
 
 # Sprint 4: поля Creative Controls для миграции уже задеплоенных строк
@@ -404,9 +420,16 @@ TEXT_MODELS = [
 ]
 
 IMAGE_MODELS = [
-    dict(name='DALL-E 3', slug='dall-e-3', model_name='dall-e-3', cost_per_message=8, cost_kopecks=800, order=1,
-         description='Генерирует высококачественные изображения по текстовому описанию. Лучший выбор для иллюстраций.',
-         config_key='dalle3', is_popular=True),
+    # DALL-E 3 убрана из каталога 2026-09-06 (replace_dalle3_with_midjourney.py,
+    # деактивирует is_active=False у уже существующей строки) — единственная
+    # из 23 моделей без рабочего пути ни через APIMart, ни через CometAPI
+    # (APIMart её не продаёт, CometAPI — 503 "no available channel", DALL-E
+    # закрытая модель OpenAI, её нет и на Replicate). НЕ возвращать в этот
+    # список — update_or_create принудительно ставит is_active=True на
+    # каждый повторный запуск add_laozhang_models и отменит деактивацию.
+    dict(name='Midjourney', slug='midjourney', model_name='midjourney', cost_per_message=7, cost_kopecks=665, order=1,
+         description='Художественная генерация изображений — 4 варианта за один запрос.',
+         config_key='midjourney', is_popular=True),
     dict(name='GPT Image 1', slug='gpt-image-1', model_name='gpt-image-1', cost_per_message=12, cost_kopecks=1200, order=2,
          description='Новейшая модель генерации изображений от OpenAI с превосходной детализацией.',
          config_key='gpt_image', is_popular=True),

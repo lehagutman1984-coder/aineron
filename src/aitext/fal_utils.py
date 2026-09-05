@@ -1,5 +1,6 @@
 ﻿import json
 import os
+import re
 import base64
 import logging
 import uuid
@@ -529,7 +530,21 @@ def _build_image_params(model_id, prompt, final_args):
     }
 
     if final_args.get('_minimal_params'):
-        # Только model + prompt, никаких стандартных параметров
+        # Только model + prompt + референс стиля (если передан) — раньше
+        # style_image_url форвардился НИЖЕ этого return и на моделях с
+        # _minimal_params (Seedream/Gemini Image/apimart_async — 13 из 23
+        # image-моделей) молча терялся: кнопка "Стиль" во фронтенде списывала
+        # деньги за запрос, который на деле игнорировал референс.
+        minimal_extra_body = {}
+        style_ref = final_args.get('style_image_url')
+        if style_ref:
+            minimal_extra_body['style_image_url'] = style_ref
+            minimal_extra_body['style_reference'] = style_ref
+        ref_images = final_args.get('image_urls') or []
+        if isinstance(ref_images, list) and len(ref_images) >= 2:
+            minimal_extra_body['image_urls'] = ref_images
+        if minimal_extra_body:
+            params['extra_body'] = minimal_extra_body
         return params
 
     # size: приоритет — прямой 'size', затем 'image_size', затем width+height
@@ -578,6 +593,18 @@ def _build_image_params(model_id, prompt, final_args):
     if style_ref:
         extra_body['style_image_url'] = style_ref
         extra_body['style_reference'] = style_ref
+    # Мультиреференс (2026-09): 2+ фото — не img2img-редактирование одного
+    # исходника, а генерация с нуля с несколькими референсами. Проверено
+    # живьём 2026-09-06: laozhang принимает image_urls в extra_body для
+    # seedream-4-0 (200, реальный url в ответе); для gemini-2-5-flash-image
+    # (Nano Banana v1) тот же запрос вернул 200, но data:[] — модель НЕ
+    # сгенерировала изображение. Поэтому metadata.image_max_reference_images
+    # проставлен пока только моделям Seedream (см. add_image_multi_reference.py) —
+    # не полагаться на этот путь для Nano Banana/Gemini Image, пока не найден
+    # рабочий формат.
+    ref_images = final_args.get('image_urls') or []
+    if isinstance(ref_images, list) and len(ref_images) >= 2:
+        extra_body['image_urls'] = ref_images
     if extra_body:
         params['extra_body'] = extra_body
 
@@ -1579,7 +1606,7 @@ def generate_video_apimart(network, user_msg, message, user_settings=None):
     for param in ['duration', 'aspect_ratio', 'resolution', 'audio', 'mode',
                   'negative_prompt', 'generation_type', 'enable_gif', 'official_fallback',
                   'size', 'generate_audio', 'camerafixed', 'quality', 'template',
-                  'shot_type', 'prompt_optimizer']:
+                  'shot_type', 'prompt_optimizer', 'watermark']:
         if param in final_args and final_args[param] is not None:
             body[param] = final_args[param]
 
@@ -1645,6 +1672,13 @@ def generate_video_apimart(network, user_msg, message, user_settings=None):
             i2v_param = 'first_frame_image' if 'hailuo' in model_lower else 'image_urls'
         if i2v_param == 'image_urls':
             body['image_urls'] = images
+            # apimart различает 2 режима работы с фото на одном и том же
+            # эндпоинте: "reference" (N произвольных референсов) и режим
+            # первый+последний кадр (ровно 2 фото, generation_type не шлём).
+            # Явно задокументировано для veo3_fast (add_video_models.py) —
+            # применяем ко всем моделям с i2v_mode="reference", раз фото 2+.
+            if len(images) >= 2 and meta.get('i2v_mode') == 'reference' and 'generation_type' not in body:
+                body['generation_type'] = 'reference'
         else:
             # Параметр принимает одну строку (напр. Hailuo first_frame_image) —
             # мультиреференс для таких моделей не поддержан, берём первое фото.
@@ -2008,6 +2042,352 @@ def generate_video_cometapi(network, user_msg, message, user_settings=None):
     return f"Модель \"{model_name}\" не вернула видео. Попробуйте изменить промт.", [], total_cost
 
 
+def generate_image_flux_cometapi(network, user_msg, message, user_settings=None, model_override=None):
+    """
+    Генерирует изображение через CометAPI для семейства FLUX.2 — ОТДЕЛЬНЫЙ от
+    generate_image_cometapi() эндпоинт и контракт (не /v1/images/generations,
+    и не под /v1/ вообще):
+
+    POST https://api.cometapi.com/flux/v1/{model} (model: flux-2-pro,
+      flux-2-flex, flux-2-max — ТОЛЬКО эти три, Kontext сюда не относится)
+      body: {prompt, width, height, output_format, seed?, input_image?, input_image_2?}
+      -> {"id": ..., "status": "Pending", "polling_url": ...}
+    GET  https://api.cometapi.com/flux/v1/get_result?id={id}
+      -> {"status": "Ready", "result": {"sample": "<url>", "seed": ...}}
+         (терминальные ошибки: Error/Failed/Failure/Task not found/
+         Request Moderated/Content Moderated — остальное значит "ждать ещё")
+
+    ВАЖНО (найдено 2026-09-06 после первой неудачной попытки — см. историю):
+    первая попытка ошибочно решила, что этот путь ненадёжен, потому что
+    статус оставался "Pending" 60-90 секунд и опрос прекращался раньше
+    времени. По официальной документации CometAPI (apidoc.cometapi.com/api/
+    image/flux/flux-generate-image.md и .../flux-query.md) это нормальное
+    поведение — задача реально завершилась за ~100 секунд при повторной
+    проверке с более длинным опросом (подтверждено живым вызовом: status
+    Ready, result.sample — рабочий URL готового изображения). Урок: сверяться
+    с официальными доками ПЕРЕД тем как делать вывод "провайдер ненадёжен".
+    """
+    config = network.config_json or {}
+    model_id = model_override or network.model_name
+    prompt = user_msg.content if user_msg else ""
+    base_cost = network.cost_per_message
+
+    if user_settings is not None:
+        final_args, errors, extra_cost = validate_and_merge_settings(config, user_settings)
+        if errors:
+            raise Exception("Ошибки в настройках: " + "; ".join(errors))
+    else:
+        final_args = config.get('api_defaults', {}).copy()
+        extra_cost = 0
+
+    total_cost = base_cost + extra_cost
+
+    api_key = getattr(settings, 'COMETAPI_API_KEY', '')
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json", "Accept": "*/*"}
+
+    width, height = 1024, 1024
+    size_val = final_args.get('size')
+    if size_val and 'x' in str(size_val):
+        try:
+            w, h = str(size_val).lower().split('x')
+            width, height = int(w), int(h)
+        except (ValueError, TypeError):
+            pass
+
+    body = {"prompt": prompt, "width": width, "height": height, "output_format": "jpeg"}
+    if final_args.get('seed') is not None:
+        try:
+            body['seed'] = int(final_args['seed'])
+        except (ValueError, TypeError):
+            pass
+
+    gen_ph = _create_video_placeholder(message, prompt, model_id, 'cometapi', media_type='image')
+
+    image_url = None
+    try:
+        logger.info(f"CometAPI Flux POST model={model_id} body={body}")
+        resp = requests.post(f"https://api.cometapi.com/flux/v1/{model_id}", headers=headers, json=body, timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+        task_id = data.get('id')
+        if not task_id:
+            raise Exception(f"Нет id в ответе CometAPI Flux: {str(data)[:200]}")
+
+        FAILURE_STATUSES = {'Error', 'Failed', 'Failure', 'Task not found', 'Request Moderated', 'Content Moderated'}
+        MAX_ATTEMPTS = 60  # ~5 минут при шаге 5с — реальное завершение наблюдалось на ~100с
+        for attempt in range(MAX_ATTEMPTS):
+            time.sleep(5)
+            poll = requests.get(
+                f"https://api.cometapi.com/flux/v1/get_result", params={'id': task_id},
+                headers=headers, timeout=30,
+            )
+            poll.raise_for_status()
+            pd = poll.json()
+            status = pd.get('status') or ''
+            logger.info(f"CometAPI Flux poll {attempt + 1}/{MAX_ATTEMPTS}: status={status}")
+            if status == 'Ready':
+                image_url = (pd.get('result') or {}).get('sample')
+                break
+            if status in FAILURE_STATUSES:
+                raise Exception(f"CometAPI Flux генерация завершилась ошибкой: {status}")
+        else:
+            raise Exception("CometAPI Flux: превышено время ожидания генерации")
+
+        if not image_url:
+            raise Exception(f"CometAPI Flux: статус Ready, но нет result.sample. response={str(pd)[:300]}")
+    except Exception:
+        _fail_video_gen(gen_ph)
+        raise
+
+    model_name = config.get('name', network.name)
+    target = gen_ph if (gen_ph is not None and not gen_ph.image) else None
+    gen = save_media_from_url(image_url, message, prompt, media_type='image', gen=target, max_retries=3)
+    saved_media = [gen] if gen else []
+
+    if _finalize_video_gen(gen_ph):
+        if gen_ph not in saved_media:
+            saved_media.append(gen_ph)
+    else:
+        _fail_video_gen(gen_ph)
+
+    if saved_media:
+        text_parts = [f"Сгенерировано {len(saved_media)} изображение(й) моделью \"{model_name}\"."]
+        for m in saved_media:
+            text_parts.append(f"<img src='{m.image.url}' style='max-width:100%; border-radius:12px;' />")
+        return "\n\n".join(text_parts), saved_media, total_cost
+    return f"Модель \"{model_name}\" не вернула изображение. Попробуйте изменить промт.", [], total_cost
+
+
+def generate_image_cometapi(network, user_msg, message, user_settings=None, model_override=None):
+    """
+    Генерирует изображение через CometAPI. Два разных контракта в зависимости
+    от metadata.cometapi_via_chat (config_json модели):
+
+    A) via_chat=False (по умолчанию) — синхронный OpenAI-совместимый
+       POST /v1/images/generations → {"data": [{"url": ...}]} ИЛИ
+       {"data": [{"b64_json": ...}]}. Подтверждено живыми вызовами 2026-09-06:
+         - grok-imagine-image, grok-imagine-image-quality: 200, url-ответ
+         - doubao-seedream-4-0-250828: 200, url-ответ
+         - gpt-image-1: 200, b64_json-ответ
+
+    B) via_chat=True — Gemini-семейство (Nano Banana) этот эндпоинт вообще не
+       принимает (500 "only imagen models are supported" на ЛЮБОЕ имя модели —
+       проверено на gemini-3.1-flash-image(-preview), не вопрос алиаса).
+       Реально работает POST /v1/chat/completions с обычным user-сообщением —
+       модель возвращает markdown-картинку прямо в content:
+       "![image](data:image/jpeg;base64,<...>)". Подтверждено живьём
+       2026-09-06 на ВСЕХ ТРЁХ моделях под их родными именами (без алиасов):
+       gemini-2.5-flash-image, gemini-3.1-flash-image, gemini-3-pro-image —
+       валидный JPEG на выходе у всех трёх.
+
+    Flux (flux-2-pro/-max/-flex) сюда НЕ относится — у него свой контракт
+    и своя функция, см. generate_image_flux_cometapi().
+
+    model_override — если задано, отправляется в CometAPI вместо
+    network.model_name (сейчас не используется — все проверенные модели
+    совпадают по имени с CometAPI).
+    """
+    config = network.config_json or {}
+    model_id = model_override or network.model_name
+    prompt = user_msg.content if user_msg else ""
+    base_cost = network.cost_per_message
+
+    if user_settings is not None:
+        final_args, errors, extra_cost = validate_and_merge_settings(config, user_settings)
+        if errors:
+            raise Exception("Ошибки в настройках: " + "; ".join(errors))
+    else:
+        final_args = config.get('api_defaults', {}).copy()
+        extra_cost = 0
+
+    total_cost = base_cost + extra_cost
+
+    api_key = getattr(settings, 'COMETAPI_API_KEY', '')
+    base_url = getattr(settings, 'COMETAPI_API_URL', 'https://api.cometapi.com/v1').rstrip('/')
+    auth_headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+
+    gen_ph = _create_video_placeholder(message, prompt, model_id, 'cometapi', media_type='image')
+    saved_media = []
+
+    if config.get('metadata', {}).get('cometapi_via_chat'):
+        try:
+            logger.info(f"CometAPI Image (chat/completions) model={model_id}")
+            resp = requests.post(
+                f"{base_url}/chat/completions", headers=auth_headers,
+                json={"model": model_id, "messages": [{"role": "user", "content": prompt}]},
+                timeout=90,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            content = data.get('choices', [{}])[0].get('message', {}).get('content', '') or ''
+            matches = re.findall(r'data:image/(\w+);base64,([A-Za-z0-9+/=]+)', content)
+            if not matches:
+                raise Exception(f"CometAPI chat/completions не вернул изображение. content[:200]={content[:200]!r}")
+            for _, b64_data in matches:
+                gen = save_image_from_b64(b64_data, message, prompt)
+                if gen:
+                    saved_media.append(gen)
+            if not saved_media:
+                raise Exception("CometAPI chat/completions: изображение найдено в ответе, но не сохранилось")
+        except Exception:
+            _fail_video_gen(gen_ph)
+            raise
+
+        model_name = config.get('name', network.name)
+        if _finalize_video_gen(gen_ph):
+            if gen_ph not in saved_media:
+                saved_media.append(gen_ph)
+        else:
+            _fail_video_gen(gen_ph)
+
+        if saved_media:
+            text_parts = [f"Сгенерировано {len(saved_media)} изображение(й) моделью \"{model_name}\"."]
+            for m in saved_media:
+                text_parts.append(f"<img src='{m.image.url}' style='max-width:100%; border-radius:12px;' />")
+            return "\n\n".join(text_parts), saved_media, total_cost
+        return f"Модель \"{model_name}\" не вернула изображение. Попробуйте изменить промт.", [], total_cost
+
+    body = {"model": model_id, "prompt": prompt, "n": 1}
+    for param in ['size', 'aspect_ratio', 'quality']:
+        if param in final_args and final_args[param] is not None:
+            body[param] = final_args[param]
+
+    try:
+        logger.info(f"CometAPI Image POST model={model_id} params={body}")
+        resp = requests.post(f"{base_url}/images/generations", headers=auth_headers, json=body, timeout=90)
+        resp.raise_for_status()
+        data = resp.json()
+        logger.info(f"CometAPI image response: {str(data)[:400]}")
+
+        items = data.get('data') or []
+        for item in items:
+            target = gen_ph if (gen_ph is not None and not gen_ph.image) else None
+            url = item.get('url')
+            if isinstance(url, list):
+                url = url[0] if url else None
+            if url and str(url).startswith('http'):
+                gen = save_media_from_url(url, message, prompt, media_type='image', gen=target, max_retries=3)
+            elif item.get('b64_json'):
+                # save_image_from_b64 всегда создаёт новую строку (не умеет
+                # переиспользовать placeholder, в отличие от save_media_from_url) —
+                # gen_ph в этом случае остаётся пустым и будет помечен error
+                # ниже через _fail_video_gen, сама картинка при этом сохранена.
+                gen = save_image_from_b64(item['b64_json'], message, prompt)
+            else:
+                gen = None
+            if gen:
+                saved_media.append(gen)
+
+        if not saved_media:
+            raise Exception(f"CometAPI не вернул ни url, ни b64_json. response={str(data)[:300]}")
+    except Exception:
+        _fail_video_gen(gen_ph)
+        raise
+
+    model_name = config.get('name', network.name)
+    if _finalize_video_gen(gen_ph):
+        if gen_ph not in saved_media:
+            saved_media.append(gen_ph)
+    else:
+        _fail_video_gen(gen_ph)
+
+    if saved_media:
+        text_parts = [f"Сгенерировано {len(saved_media)} изображение(й) моделью \"{model_name}\"."]
+        for m in saved_media:
+            text_parts.append(
+                f"<img src='{m.image.url}' style='max-width:100%; border-radius:12px;' />"
+            )
+        return "\n\n".join(text_parts), saved_media, total_cost
+
+    return f"Модель \"{model_name}\" не вернула изображение. Попробуйте изменить промт.", [], total_cost
+
+
+def generate_image_midjourney_cometapi(network, user_msg, message, user_settings=None):
+    """
+    Резерв Midjourney через CometAPI — совсем другой контракт, чем apimart
+    (собственный Discord-relay API, не OpenAI-совместимый и не тот же
+    task-poll формат, что у apimart_async):
+
+    POST https://api.cometapi.com/mj/submit/imagine {prompt} -> {"result": "<task_id>"}
+    GET  https://api.cometapi.com/mj/task/{task_id}/fetch
+      -> {"status": "SUCCESS"|"FAILURE"|..., "imageUrl": "<готовая сетка 4 изображений>"}
+
+    В отличие от apimart (который отдаёт 4 отдельные ссылки), CometAPI отдаёт
+    ОДНУ ссылку на сборную сетку 2×2 (upscale отдельных вариантов — через
+    buttons/customId, не реализовано, не критично для резерва). Проверено
+    живым вызовом 2026-09-06: SUCCESS за ~70с, imageUrl — рабочая ссылка.
+    """
+    config = network.config_json or {}
+    prompt = user_msg.content if user_msg else ""
+    base_cost = network.cost_per_message
+
+    if user_settings is not None:
+        final_args, errors, extra_cost = validate_and_merge_settings(config, user_settings)
+        if errors:
+            raise Exception("Ошибки в настройках: " + "; ".join(errors))
+    else:
+        extra_cost = 0
+    total_cost = base_cost + extra_cost
+
+    api_key = getattr(settings, 'COMETAPI_API_KEY', '')
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+
+    gen_ph = _create_video_placeholder(message, prompt, 'midjourney', 'cometapi', media_type='image')
+
+    image_url = None
+    try:
+        resp = requests.post(
+            "https://api.cometapi.com/mj/submit/imagine", headers=headers,
+            json={"prompt": prompt}, timeout=30,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        task_id = data.get('result')
+        if not task_id:
+            raise Exception(f"Нет result(task_id) в ответе CometAPI Midjourney: {str(data)[:200]}")
+
+        FAILURE_STATUSES = {'FAILURE'}
+        MAX_ATTEMPTS = 30  # шаг 10с — ~5 минут запаса, реальное завершение ~70с
+        for attempt in range(MAX_ATTEMPTS):
+            time.sleep(10)
+            poll = requests.get(f"https://api.cometapi.com/mj/task/{task_id}/fetch", headers=headers, timeout=30)
+            poll.raise_for_status()
+            pd = poll.json()
+            status = pd.get('status') or ''
+            logger.info(f"CometAPI Midjourney poll {attempt + 1}/{MAX_ATTEMPTS}: status={status} progress={pd.get('progress')}")
+            if status == 'SUCCESS':
+                image_url = pd.get('imageUrl')
+                break
+            if status in FAILURE_STATUSES:
+                raise Exception(f"CometAPI Midjourney генерация завершилась ошибкой: {pd.get('failReason', status)}")
+        else:
+            raise Exception("CometAPI Midjourney: превышено время ожидания генерации")
+
+        if not image_url:
+            raise Exception(f"CometAPI Midjourney: статус SUCCESS, но нет imageUrl. response={str(pd)[:300]}")
+    except Exception:
+        _fail_video_gen(gen_ph)
+        raise
+
+    model_name = config.get('name', network.name)
+    target = gen_ph if (gen_ph is not None and not gen_ph.image) else None
+    gen = save_media_from_url(image_url, message, prompt, media_type='image', gen=target, max_retries=3)
+    saved_media = [gen] if gen else []
+
+    if _finalize_video_gen(gen_ph):
+        if gen_ph not in saved_media:
+            saved_media.append(gen_ph)
+    else:
+        _fail_video_gen(gen_ph)
+
+    if saved_media:
+        text_parts = [f"Сгенерировано {len(saved_media)} изображение(й) моделью \"{model_name}\" (сетка 2×2)."]
+        for m in saved_media:
+            text_parts.append(f"<img src='{m.image.url}' style='max-width:100%; border-radius:12px;' />")
+        return "\n\n".join(text_parts), saved_media, total_cost
+    return f"Модель \"{model_name}\" не вернула изображение. Попробуйте изменить промт.", [], total_cost
+
+
 def generate_image_apimart_async(network, user_msg, message, user_settings=None):
     """
     Генерирует изображение через apimart.ai по task-полу контракту:
@@ -2018,9 +2398,15 @@ def generate_image_apimart_async(network, user_msg, message, user_settings=None)
     Image 2.0, Imagen 4.0, Z-Image Turbo — проверено вживую 2026-07-27) отдают
     только задачу с опросом, как видео. Роутится через metadata.image_api ==
     'apimart_async' (add_laozhang_models.py).
+
+    metadata.apimart_endpoint (опционально) переопределяет путь запроса —
+    по умолчанию 'images/generations', но у Midjourney на apimart отдельный,
+    несовместимый по URL путь 'midjourney/generations' при идентичном формате
+    ответа (result.images[].url) — проверено вживую 2026-09-06.
     """
     config = network.config_json or {}
     model_id = network.model_name
+    endpoint_path = config.get('metadata', {}).get('apimart_endpoint', 'images/generations')
     prompt = user_msg.content if user_msg else ""
     base_cost = network.cost_per_message
 
@@ -2047,13 +2433,34 @@ def generate_image_apimart_async(network, user_msg, message, user_settings=None)
     for param in ['size', 'n', 'aspect_ratio', 'quality']:
         if param in final_args and final_args[param] is not None:
             body[param] = final_args[param]
+    # num_images — тот же UI-алиас для 'n', что уже обрабатывается в
+    # _build_image_params() для sync-пути; здесь раньше не был подключён —
+    # значение из настроек Z-Image/Wan-подобных полей молча терялось.
+    if 'num_images' in final_args and final_args['num_images'] is not None:
+        try:
+            body['n'] = int(final_args['num_images'])
+        except (ValueError, TypeError):
+            pass
+    # Референс стиля — та же логика, что в _build_image_params(): без этого
+    # apimart_async-модели (7 из 23) молча игнорировали кнопку "Стиль".
+    style_ref = final_args.get('style_image_url')
+    if style_ref:
+        body['style_image_url'] = style_ref
+    # Мультиреференс (2026-09): подтверждено живыми вызовами к APIMart
+    # 2026-09-06 — qwen-image-3.0 и wan2.7-image оба приняли image_urls
+    # (массив) и завершили задачу успешно с реальным изображением на выходе.
+    # metadata.image_max_reference_images проставляется точечно (см.
+    # add_image_multi_reference.py) — не гадать формат для остальных моделей.
+    ref_images = (user_settings or {}).get('image_urls') or final_args.get('image_urls') or []
+    if isinstance(ref_images, list) and len(ref_images) >= 2:
+        body['image_urls'] = ref_images
 
     gen_ph = _create_video_placeholder(message, prompt, model_id, 'apimart', media_type='image')
 
     image_urls = []
     try:
-        logger.info(f"APIMart Image POST model={model_id} params={body}")
-        resp = requests.post(f"{base_url}/images/generations", headers=auth_headers, json=body, timeout=60)
+        logger.info(f"APIMart Image POST model={model_id} endpoint={endpoint_path} params={body}")
+        resp = requests.post(f"{base_url}/{endpoint_path}", headers=auth_headers, json=body, timeout=60)
         resp.raise_for_status()
         data = resp.json()
         logger.info(f"APIMart image creation response: {str(data)[:400]}")
@@ -2107,10 +2514,14 @@ def generate_image_apimart_async(network, user_msg, message, user_settings=None)
                 images = result.get('images', [])
                 for img in images:
                     url = img.get('url')
-                    if isinstance(url, list):
-                        url = url[0] if url else None
-                    if url and str(url).startswith('http'):
-                        image_urls.append(url)
+                    # Midjourney (2026-09): 4 картинки за задачу приходят ОДНОЙ
+                    # записью с url=[url1..url4], а не 4 отдельными записями —
+                    # раньше брали только url[0] и молча теряли 3 из 4 уже
+                    # оплаченных изображений. Сохраняем все.
+                    urls_to_add = url if isinstance(url, list) else [url]
+                    for u in urls_to_add:
+                        if u and str(u).startswith('http'):
+                            image_urls.append(u)
                 if not image_urls:
                     logger.warning(f"APIMart image completed но нет URL. result={str(result)[:400]}")
                 break
@@ -2189,9 +2600,30 @@ def generate_with_falai(network, user_msg, message, user_settings=None):
         return generate_video_laozhang(network, user_msg, message, user_settings)
 
     # Изображения с task-полом контрактом apimart (не синхронный images.generate()) —
-    # см. generate_image_apimart_async().
+    # см. generate_image_apimart_async(). При ошибке — фолбэк на CometAPI, но
+    # только для моделей с явно проверенным вживую контрактом (см.
+    # generate_image_cometapi docstring) — metadata.cometapi_fallback_model
+    # проставлен точечно только там, где имя модели и формат ответа
+    # подтверждены (2026-09-06): grok-imagine-image, grok-imagine-image-quality.
+    # Остальные модели apimart_async (Qwen Image 2.0/3.0/3.0 Pro, Wan 2.7 Image,
+    # Z-Image Turbo) сознательно БЕЗ фолбэка — ни CometAPI (нет модели в
+    # каталоге), ни laozhang.ai (тоже нет, см. all_models_laozhang.ai.txt) —
+    # см. IMAGE_PROVIDER_MIGRATION_PRICING_2026-09-05.html.
     if config.get('metadata', {}).get('image_api') == 'apimart_async':
-        return generate_image_apimart_async(network, user_msg, message, user_settings)
+        try:
+            return generate_image_apimart_async(network, user_msg, message, user_settings)
+        except Exception as e:
+            fb_model = config.get('metadata', {}).get('cometapi_fallback_model')
+            fallback_on = getattr(settings, 'AI_PROVIDER_FALLBACK', True)
+            is_settings_err = str(e).startswith('Ошибки в настройках')
+            if fallback_on and fb_model and not is_settings_err:
+                logger.warning(
+                    "APIMart изображение недоступно (%s); фолбэк → CometAPI model=%s", e, fb_model
+                )
+                if config.get('metadata', {}).get('cometapi_contract') == 'midjourney':
+                    return generate_image_midjourney_cometapi(network, user_msg, message, user_settings)
+                return generate_image_cometapi(network, user_msg, message, user_settings, model_override=fb_model)
+            raise
 
     model_id = network.model_name
     if not model_id:
@@ -2217,16 +2649,20 @@ def generate_with_falai(network, user_msg, message, user_settings=None):
 
     prompt = user_msg.content if user_msg else ""
 
-    # Img2img: если передан image_url — роутим на редактирование изображения.
-    # Если передан только style_image_url (референс стиля без исходника) — остаётся
-    # обычная генерация, style_image_url форвардится через _build_image_params.
-    if user_settings and user_settings.get('image_url'):
+    # Img2img: если передан ОДИН image_url — роутим на редактирование
+    # изображения. 2+ фото (image_urls) — это не редактирование исходника,
+    # а мультиреференсная генерация с нуля (см. metadata.image_max_reference_images,
+    # проставляется точечно — не все модели это умеют, см. _build_image_params).
+    incoming_refs = (user_settings or {}).get('image_urls') or []
+    if user_settings and user_settings.get('image_url') and len(incoming_refs) < 2:
         return generate_image_edit(network, user_msg, message, user_settings)
 
     # Sprint 6: референс стиля приходит через user_settings (нет в ui_settings.sections),
     # поэтому validate_and_merge_settings его не выдаёт — прокидываем вручную в final_args.
     if user_settings and user_settings.get('style_image_url'):
         final_args['style_image_url'] = user_settings['style_image_url']
+    if len(incoming_refs) >= 2:
+        final_args['image_urls'] = incoming_refs
 
     # Некоторые модели (Seedream, Gemini image) не принимают size/n — используем minimal_params.
     if config.get('metadata', {}).get('minimal_params'):
@@ -2241,6 +2677,19 @@ def generate_with_falai(network, user_msg, message, user_settings=None):
         response = client.images.generate(**image_params)
     except Exception as e:
         logger.error(f"Ошибка вызова laozhang.ai images API: {e}")
+        # client уже сам фолбэчит laozhang->apimart прозрachно (FallbackClient,
+        # providers.py) для images.generate — если ОБА эти провайдера упали,
+        # для моделей с явно проверенным вживую CometAPI-контрактом (Nano
+        # Banana семейство, via chat/completions, см. generate_image_cometapi)
+        # пробуем третий вариант, а не сдаёмся сразу.
+        fb_model = config.get('metadata', {}).get('cometapi_fallback_model')
+        fallback_on = getattr(settings, 'AI_PROVIDER_FALLBACK', True)
+        is_settings_err = str(e).startswith('Ошибки в настройках')
+        if fallback_on and fb_model and not is_settings_err:
+            logger.warning("laozhang/apimart изображение недоступно (%s); фолбэк → CometAPI model=%s", e, fb_model)
+            if config.get('metadata', {}).get('cometapi_contract') == 'flux':
+                return generate_image_flux_cometapi(network, user_msg, message, user_settings, model_override=fb_model)
+            return generate_image_cometapi(network, user_msg, message, user_settings, model_override=fb_model)
         raise
 
     # Flux у laozhang.ai игнорирует n>1 и всегда отдаёт ровно 1 картинку за

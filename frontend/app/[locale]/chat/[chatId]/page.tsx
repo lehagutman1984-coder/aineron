@@ -140,10 +140,12 @@ export default function ChatPage() {
     retry: 1,
   });
 
-  // B14: сколько референсных фото принимает текущая модель и в каком режиме
-  // (first_last — первый+последний кадр; reference — независимые референсы).
+  // B14 (video) + 2026-09 (image): сколько референсных фото принимает текущая
+  // модель. i2v — video-модели (first_last/reference), image_refs — модели
+  // изображений (Nano Banana/Seedream/Qwen/Wan — всегда режим "reference",
+  // первый/последний кадр для статичного изображения смысла не имеет).
   // 1 (по умолчанию) = старое поведение, одно фото.
-  const maxSourceImages = chat?.network.i2v?.max_images ?? 1;
+  const maxSourceImages = chat?.network.i2v?.max_images ?? chat?.network.image_refs?.max_images ?? 1;
   const i2vMode = chat?.network.i2v?.mode;
 
   // num_images (батч ×2/×4) реально поддерживает только Flux (единственный

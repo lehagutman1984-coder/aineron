@@ -1,0 +1,490 @@
+<title>Изображения: переход на APIMart + CometAPI</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#EEF0F3;
+  --surface:#FFFFFF;
+  --surface-2:#F4F6F9;
+  --ink:#161A20;
+  --ink-muted:#5A6472;
+  --ink-faint:#8B94A0;
+  --border:#DBE0E6;
+  --border-soft:#E7EBEF;
+  --accent:#3457D5;
+  --accent-ink:#1F3A9E;
+  --accent-soft:#E2E8FB;
+  --good:#1F8A5F;
+  --good-soft:#DEF3E8;
+  --warn:#B5762A;
+  --warn-soft:#F7EBD8;
+  --bad:#B23B2E;
+  --bad-soft:#F8DEDA;
+  --shadow: 0 1px 2px rgba(20,24,32,0.05), 0 8px 24px rgba(20,24,32,0.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#13161C; --surface:#1B1F27; --surface-2:#20252E;
+    --ink:#E8EAEE; --ink-muted:#9CA5B3; --ink-faint:#6B7482;
+    --border:#2C323C; --border-soft:#252B34;
+    --accent:#7C93EE; --accent-ink:#D6DEFB; --accent-soft:#232B44;
+    --good:#5FCC9A; --good-soft:#193226;
+    --warn:#E0AE64; --warn-soft:#3A2E17;
+    --bad:#E88E82; --bad-soft:#3A2118;
+    --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 8px 24px rgba(0,0,0,0.4);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#13161C; --surface:#1B1F27; --surface-2:#20252E;
+  --ink:#E8EAEE; --ink-muted:#9CA5B3; --ink-faint:#6B7482;
+  --border:#2C323C; --border-soft:#252B34;
+  --accent:#7C93EE; --accent-ink:#D6DEFB; --accent-soft:#232B44;
+  --good:#5FCC9A; --good-soft:#193226;
+  --warn:#E0AE64; --warn-soft:#3A2E17;
+  --bad:#E88E82; --bad-soft:#3A2118;
+  --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 8px 24px rgba(0,0,0,0.4);
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans',system-ui,-apple-system,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased;}
+.wrap{max-width:1320px;margin:0 auto;padding:3rem 1.5rem 6rem;}
+
+header.page{display:flex;flex-direction:column;gap:0.7rem;margin-bottom:2rem;padding-bottom:1.75rem;border-bottom:1px solid var(--border);}
+.eyebrow{font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:0.08em;text-transform:uppercase;color:var(--accent-ink);background:var(--accent-soft);display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:4px;width:fit-content;}
+h1{font-family:'Zilla Slab',Georgia,serif;font-size:clamp(1.7rem,3.4vw,2.35rem);font-weight:600;letter-spacing:-0.01em;margin:0.3rem 0 0;text-wrap:balance;}
+.dek{font-size:1rem;line-height:1.6;color:var(--ink-muted);max-width:78ch;margin:0;}
+.meta-row{display:flex;gap:1.1rem;flex-wrap:wrap;margin-top:0.3rem;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink-faint);}
+.meta-row b{color:var(--ink-muted);font-weight:500;}
+
+h2{font-family:'Zilla Slab',Georgia,serif;font-size:1.3rem;font-weight:600;margin:2.4rem 0 0.9rem;letter-spacing:-0.005em;}
+h2 .h2-note{font-family:'IBM Plex Sans',sans-serif;font-weight:400;font-size:0.85rem;color:var(--ink-faint);margin-left:0.5rem;}
+
+.stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:0.75rem;margin-bottom:0.5rem;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:0.9rem 1.05rem;box-shadow:var(--shadow);}
+.stat-card .label{font-family:'IBM Plex Mono',monospace;font-size:0.64rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-faint);display:block;margin-bottom:0.35rem;}
+.stat-card .value{font-size:1.45rem;font-weight:600;font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;}
+.stat-card .value.good{color:var(--good);}
+.stat-card .value.warn{color:var(--warn);}
+.stat-card .value.bad{color:var(--bad);}
+.stat-card .sub{font-size:0.75rem;color:var(--ink-faint);margin-top:0.15rem;}
+
+.callout{border-radius:10px;padding:0.95rem 1.2rem;margin:0 0 0.9rem;font-size:0.89rem;line-height:1.6;border:1px solid transparent;}
+.callout b{font-weight:600;}
+.callout.bad{background:var(--bad-soft);border-color:var(--bad);color:var(--ink);}
+.callout.bad b{color:var(--bad);}
+.callout.warn{background:var(--warn-soft);border-color:var(--warn);color:var(--ink);}
+.callout.warn b{color:var(--warn);}
+.callout.info{background:var(--surface);border-color:var(--border);color:var(--ink);}
+.callout.info b{color:var(--accent-ink);}
+
+.table-scroll{overflow-x:auto;border:1px solid var(--border);border-radius:12px;background:var(--surface);box-shadow:var(--shadow);}
+table{border-collapse:collapse;width:100%;min-width:1260px;font-size:0.83rem;}
+thead th{position:sticky;top:0;background:var(--surface-2);text-align:left;font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:0.64rem;letter-spacing:0.04em;text-transform:uppercase;color:var(--ink-muted);padding:0.65rem 0.85rem;border-bottom:1px solid var(--border);white-space:nowrap;}
+thead th.num{text-align:right;}
+tbody td{padding:0.6rem 0.85rem;border-bottom:1px solid var(--border-soft);vertical-align:top;color:var(--ink);}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:var(--surface-2);}
+td.model{font-weight:600;white-space:nowrap;}
+td.model .slug{display:block;font-family:'IBM Plex Mono',monospace;font-weight:400;font-size:0.72rem;color:var(--ink-faint);margin-top:0.1rem;}
+td.num{text-align:right;font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;white-space:nowrap;}
+td.num .basis{display:block;font-size:0.68rem;color:var(--ink-faint);font-family:'IBM Plex Sans',sans-serif;text-align:right;}
+td.ours{font-weight:700;color:var(--accent-ink);background:rgba(52,87,213,0.06);}
+td.ours .was{font-weight:400;color:var(--ink-faint);text-decoration:line-through;margin-right:0.35rem;}
+td.ours .arrow{color:var(--ink-faint);font-weight:400;margin:0 0.25rem;}
+td.ours .changed{color:var(--bad);}
+td.note{font-size:0.78rem;color:var(--ink-muted);white-space:normal;min-width:220px;max-width:280px;}
+td.gone{color:var(--ink-faint);font-style:italic;}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:0.7rem;font-weight:600;padding:0.2rem 0.55rem;border-radius:20px;white-space:nowrap;}
+.badge.good{color:var(--good);background:var(--good-soft);}
+.badge.warn{color:var(--warn);background:var(--warn-soft);}
+.badge.bad{color:var(--bad);background:var(--bad-soft);}
+tr.row-critical td{background:rgba(178,59,46,0.045);}
+tr.row-critical:hover td{background:rgba(178,59,46,0.08);}
+
+.section-note{color:var(--ink-muted);font-size:0.86rem;margin:0 0 0.9rem;max-width:80ch;}
+
+footer.page{margin-top:3rem;padding-top:1.4rem;border-top:1px solid var(--border);font-size:0.78rem;color:var(--ink-faint);line-height:1.7;}
+footer.page b{color:var(--ink-muted);}
+footer.page .src-list{margin:0.5rem 0 0;padding-left:1.1rem;}
+</style>
+
+<div class="wrap">
+
+  <header class="page">
+    <span class="eyebrow">Ценовое расследование · обновлено 06.09.2026</span>
+    <h1>Изображения: APIMart основной, CometAPI/laozhang.ai — резерв</h1>
+    <p class="dek">Все 23 модели изображений из нашего каталога (<code>add_laozhang_models.py → IMAGE_MODELS</code>) сведены в одну таблицу: опт у APIMart (кандидат в основные), опт у CometAPI/laozhang (резерв), наша розничная цена «было → стало» по правилу «на 5% дешевле конкурента, но не ниже опт×1.05» и обе цены конкурентов (RouterAI и Gen-API) отдельными столбцами.</p>
+    <div class="meta-row">
+      <span><b>23</b> модели в каталоге</span>
+      <span>·</span>
+      <span>курс для пересчёта: <b>80 ₽/$</b> (как в <code>TOKEN_OVERAGE_USD_RUB</code>)</span>
+      <span>·</span>
+      <span>источники: <b>Реестр цен APIMart изображения.html</b>, <b>Реестр цен на модели изображений.html</b> (CometAPI), <b>genapi.txt</b>, <b>routerai.ru</b></span>
+    </div>
+  </header>
+
+  <div class="stat-row">
+    <div class="stat-card"><span class="label">Есть у APIMart</span><span class="value good">21 / 23</span><span class="sub">кандидат в основные</span></div>
+    <div class="stat-card"><span class="label">Есть у CometAPI</span><span class="value">14 / 23</span><span class="sub">кандидат в резервные</span></div>
+    <div class="stat-card"><span class="label">+ резерв laozhang.ai</span><span class="value good">3</span><span class="sub">Kontext Pro/Max, Nano Banana v1 — модель реально есть в all_models_laozhang.ai.txt</span></div>
+    <div class="stat-card"><span class="label">Резерва всё ещё нет</span><span class="value bad">6</span><span class="sub">DALL-E 3 + 5 моделей, которых нет и на laozhang</span></div>
+    <div class="stat-card"><span class="label">Только CometAPI</span><span class="value warn">1</span><span class="sub">GPT Image 1 Mini</span></div>
+    <div class="stat-card"><span class="label">Цены изменены сейчас</span><span class="value bad">4</span><span class="sub">GPT Image 1, Nano Banana v1, Seedream 4.0, Qwen Image 2.0</span></div>
+    <div class="stat-card"><span class="label">Не тронута — опт недостоверен</span><span class="value warn">1</span><span class="sub">GPT Image 1 Mini</span></div>
+  </div>
+
+  <div class="callout bad">
+    <b>DALL-E 3 — миграции некуда.</b> Ни APIMart, ни CometAPI не продают DALL-E 3. Модель есть в <code>all_models_laozhang.ai.txt</code> — то есть у неё уже есть рабочий провайдер, просто это тот самый laozhang.ai, который планировалось убрать из изображений полностью. Либо снимаем модель с продажи, либо оставляем единственным явным исключением на laozhang.
+  </div>
+
+  <div class="callout warn">
+    <b>Резерв laozhang.ai добавлен только там, где модель реально есть в его каталоге — не для всех 8.</b> Проверка по <code>all_models_laozhang.ai.txt</code> (актуальный список моделей аккаунта) и по комментариям в самом <code>add_laozhang_models.py</code> показала: <b>Flux Kontext Pro/Max и Nano Banana v1 (gemini-2.5-flash-image)</b> у laozhang есть — им назначен резерв. А <b>Qwen Image 2.0, Qwen Image 3.0, Qwen Image 3.0 Pro, Wan 2.7 Image и Z-Image Turbo</b> изначально были добавлены в каталог именно потому, что их <b>нет на laozhang.ai вообще</b> (это и есть причина, по которой в коде у них отдельный <code>config_key='apimart_async_image'</code> с самого начала) — назначить им laozhang в качестве резерва технически нечем, реального провайдера для отказоустойчивости у этих пяти по-прежнему нет.
+  </div>
+
+  <div class="callout warn">
+    <b>GPT Image 1 — маржа тонкая или отрицательная на дефолтных настройках.</b> Наша розничная цена — 2,09 ₽. Опт у APIMart на medium-качестве — 2,15 ₽, у CometAPI — 2,69 ₽ (см. таблицу). У нас нет отдельной надбавки за <code>quality=auto</code> или <code>medium</code> — доплата (+10 ₽) стоит только на <code>quality=high</code>. Если апстрим резолвит <code>auto</code> дороже, чем «low», конкретно на этой модели можно продавать в минус. Похожая, но менее острая картина у GPT Image 1.5 (наша 5,70 ₽ против опта ~1,74–2,15 ₽ — здесь запас есть). Нужно либо привязать <code>auto</code> к конкретному тиру у нового поставщика, либо поднять базовую цену GPT Image 1.
+  </div>
+
+  <div class="callout info">
+    <b>GPT Image 2 у APIMart — самая дешёвая карточка во всём реестре, но сам APIMart предупреждает, что модель не подтверждена OpenAI</b> (собственный текст страницы называет её «неанонсированной, замеченной на LMArena под кодовыми именами»). Форма генерации рабочая и тариф реальный, но если основной поставщик для этого конкретного slug — репутационный/надёжностный риск выше, чем у остальных моделей APIMart.
+  </div>
+
+  <div class="callout info">
+    <b>Правило цены обновлено и пересчитано по всем 23 моделям:</b> цена = <code>max(min(RouterAI, Gen-API) × 0.95, опт × 1.05)</code> — на 5% дешевле дешёвого из двух конкурентов, но не ниже опта (APIMart/CometAPI) плюс наши минимальные 5% маржи. 19 моделей уже удовлетворяли обеим частям формулы и остались как есть. <b>4 цены изменены</b> (таблица ниже, колонка «было → стало»): Nano Banana v1 и Seedream 4.0 и Qwen Image 2.0 просто досчитаны по формуле (не входили в сентябрьский раунд), GPT Image 1 — единственная, где сработал именно пол по марже (опт оказался выше, чем «конкурент −5%»). Ещё для одной модели (<b>GPT Image 1 Mini</b>) пол формально требует поднять цену в 2.5×, но единственная опт-цифра для неё у CometAPI — вероятная ошибка каталогизации (дублирует цену GPT Image 1.5) — оставлена без изменений до проверки надёжным опт-источником.
+  </div>
+
+  <div class="callout warn">
+    <b>Код цен добавлен в проект, но НЕ выполнен на живом сервере.</b> Новая management-команда <code>src/aitext/management/commands/apply_image_price_margin_floor.py</code> закоммичена и запушена в <code>main</code> — она меняет <code>cost_kopecks</code> для 4 слагов. У этой сессии нет рабочего доступа к продакшен-БД aineron.ru, поэтому фактическое применение — на сервере: <code>bash deploy.sh</code> (подтянет код), затем <code>docker-compose exec web python manage.py apply_image_price_margin_floor</code> (сначала можно с <code>--dry-run</code>).
+  </div>
+
+  <div class="callout info">
+    <b>all_models_laozhang.ai.txt обновился — проверено на предмет новых моделей.</b> Новых image-моделей, закрывающих 5 оставшихся пробелов (Qwen Image 2.0/3.0/3.0 Pro, Wan 2.7 Image, Z-Image Turbo), в обновлённом списке нет — все пять по-прежнему отсутствуют у laozhang.ai. Что реально появилось: <b>grok-imagine-image, grok-imagine-image-2.0 и grok-imagine-image-quality</b> — раньше эти модели на laozhang.ai не открывались (503 "no available channels", см. комментарий в <code>add_laozhang_models.py</code>), теперь есть в каталоге аккаунта. Не критично для резерва — Grok Imagine и Grok Imagine Quality у нас и так покрыты и APIMart, и CometAPI — но теперь появился и третий вариант.
+  </div>
+
+  <h2>Сводная таблица <span class="h2-note">одна строка — один slug из нашего каталога, порядок как в IMAGE_MODELS</span></h2>
+  <p class="section-note">«Опт» — цена поставщика в пересчёте на 1 изображение по курсу 80 ₽/$; когда тариф зависит от разрешения/качества, показан представительный тир (обычно medium/1K — тот же, что использовался при выравнивании розничной цены в сентябре) плюс диапазон в примечании. RouterAI и Gen-API показаны отдельными столбцами (розничные цены конкурентов, не опт); «vs рынка» — отклонение нашей цены от МЕНЬШЕГО из двух, зелёным — мы дешевле («просадка»), красным — мы дороже («наценка»).</p>
+
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Модель</th>
+          <th class="num">Наша цена: было → стало, ₽</th>
+          <th class="num">APIMart (опт), ₽</th>
+          <th class="num">Резерв (опт), ₽</th>
+          <th>Резерв</th>
+          <th class="num">RouterAI, ₽</th>
+          <th class="num">Gen-API, ₽</th>
+          <th class="num">vs рынка</th>
+          <th>Наценки / примечания</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <tr class="row-critical">
+          <td class="model">DALL-E 3<span class="slug">dall-e-3</span></td>
+          <td class="num ours">6.65</td>
+          <td class="num gone">нет</td>
+          <td class="num gone">нет</td>
+          <td><span class="badge bad">нет ни у кого</span></td>
+          <td class="num">—</td>
+          <td class="num">7.00</td>
+          <td class="num"><span class="badge good">−5.0%</span></td>
+          <td class="note">Своя надбавка: HD +10₽. Ни APIMart, ни CometAPI её не продают. Модель есть в <code>all_models_laozhang.ai.txt</code> — то есть сейчас работает только на laozhang, том самом провайдере, который убираем.</td>
+        </tr>
+
+        <tr class="row-critical">
+          <td class="model">GPT Image 1<span class="slug">gpt-image-1</span></td>
+          <td class="num ours"><span class="was">2.09</span><span class="arrow">→</span><span class="changed">2.26</span></td>
+          <td class="num">2.15<span class="basis">medium, 1:1 (0.56 low → 8.55 high)</span></td>
+          <td class="num">2.69<span class="basis">CometAPI, 1050 ток/фото</span></td>
+          <td><span class="badge good">оба</span></td>
+          <td class="num">4.73</td>
+          <td class="num">2.20</td>
+          <td class="num"><span class="badge bad">+2.7%</span></td>
+          <td class="note">Своя надбавка: quality=high +10₽. Единственная модель, где сработал пол по марже: «конкурент −5%» = 2.09₽ был ниже опта × 1.05 (2.15₽ × 1.05 = 2.26₽) — цена поднята до пола, теперь чуть выше рынка вместо чуть ниже.</td>
+        </tr>
+
+        <tr>
+          <td class="model">GPT Image 2<span class="slug">gpt-image-2</span></td>
+          <td class="num ours">2.38</td>
+          <td class="num">1.68<span class="basis">4K-ext (0.68 1K → 1.68 4K)</span></td>
+          <td class="num">3.39<span class="basis">CometAPI, 1767 ток/фото</span></td>
+          <td><span class="badge good">оба</span></td>
+          <td class="num">5.96</td>
+          <td class="num">2.50</td>
+          <td class="num"><span class="badge good">−4.8%</span></td>
+          <td class="note">APIMart-карточка сама помечена как модель на неподтверждённой утечке LMArena (см. callout). APIMart здесь дешевле CometAPI почти в 2×.</td>
+        </tr>
+
+        <tr class="row-critical">
+          <td class="model">GPT Image 1 Mini<span class="slug">gpt-image-1-mini</span></td>
+          <td class="num ours">0.96<span class="basis" style="color:var(--warn)">пол не применён — см. примечание</span></td>
+          <td class="num gone">нет</td>
+          <td class="num">2.30<span class="basis">CometAPI, 1120 ток/фото — НЕ подтверждено</span></td>
+          <td><span class="badge warn">только CometAPI</span></td>
+          <td class="num">1.01</td>
+          <td class="num">—</td>
+          <td class="num"><span class="badge good">−5.0%</span></td>
+          <td class="note">Формально пол (опт 2.30₽ × 1.05 = 2.42₽) выше текущей цены — но единственная опт-цифра тут CometAPI, которая дословно совпадает с ценой GPT Image 1.5 (вероятная ошибка каталогизации CometAPI, не реальный опт mini). Поднять цену на этой основе значило бы стать в 2.4× дороже RouterAI (1.01₽) без реальных оснований — цена сознательно НЕ изменена, ждём надёжный опт.</td>
+        </tr>
+
+        <tr>
+          <td class="model">GPT Image 1.5<span class="slug">gpt-image-1-5</span></td>
+          <td class="num ours">5.70</td>
+          <td class="num">1.74<span class="basis">medium, 1:1 (0.46 low → 6.81 high)</span></td>
+          <td class="num">2.15<span class="basis">CometAPI, оценка по аналогии с GPT Image 1 — не подтверждено</span></td>
+          <td><span class="badge good">оба</span></td>
+          <td class="num">—</td>
+          <td class="num">—</td>
+          <td class="num" style="color:var(--ink-faint);">нет данных</td>
+          <td class="note">Единственная модель без розничного конкурента вообще — цена держится только на нашей марже над опт.</td>
+        </tr>
+
+        <tr>
+          <td class="model">Flux 2 Pro<span class="slug">flux-2-pro</span></td>
+          <td class="num ours">3.21</td>
+          <td class="num">0.96<span class="basis">1 МП (3.84 на 4 МП)</span></td>
+          <td class="num">0.64<span class="basis">CometAPI, прямой эндпоинт/запрос</span></td>
+          <td><span class="badge good">оба</span></td>
+          <td class="num">3.38</td>
+          <td class="num">7.50</td>
+          <td class="num"><span class="badge good">−5.0%</span></td>
+          <td class="note">Тут резервный CometAPI дешевле «основного» APIMart — стоит перепроверить, сравнимо ли разрешение по умолчанию у обоих.</td>
+        </tr>
+
+        <tr>
+          <td class="model">Flux 2 Max<span class="slug">flux-2-max</span></td>
+          <td class="num ours">6.65</td>
+          <td class="num">1.92<span class="basis">1 МП (7.68 на 4 МП)</span></td>
+          <td class="num">4.48<span class="basis">CometAPI, ~1МП прямой (6.40 Replicate-роут/2МП)</span></td>
+          <td><span class="badge good">оба</span></td>
+          <td class="num">7.00</td>
+          <td class="num">17.50</td>
+          <td class="num"><span class="badge good">−5.0%</span></td>
+          <td class="note">Здесь наоборот — APIMart ощутимо дешевле CometAPI, хороший кандидат в основные именно по этой модели.</td>
+        </tr>
+
+        <tr>
+          <td class="model">Flux 2 Flex<span class="slug">flux-2-flex</span></td>
+          <td class="num ours">5.70</td>
+          <td class="num">3.20<span class="basis">1 МП (12.80 на 4 МП)</span></td>
+          <td class="num">0.64<span class="basis">CometAPI, прямой эндпоинт (⚠ см. примечание)</span></td>
+          <td><span class="badge good">оба</span></td>
+          <td class="num">6.00</td>
+          <td class="num">15.00</td>
+          <td class="num"><span class="badge good">−5.0%</span></td>
+          <td class="note">Своя надбавка: num_images=2/4 → +20₽/+60₽. CometAPI прямой ($0.008) в 24× дешевле их же Replicate-роута той же модели ($0.192) — их собственный реестр называет это необъяснённым расхождением, не брать цифру не глядя.</td>
+        </tr>
+
+        <tr>
+          <td class="model">Flux Kontext Pro<span class="slug">flux-kontext-pro</span></td>
+          <td class="num ours">7.60</td>
+          <td class="num">2.56</td>
+          <td class="num" style="color:var(--ink-faint);">laozhang<span class="basis">в каталоге есть, опт не собирался</span></td>
+          <td><span class="badge good">APIMart + laozhang</span></td>
+          <td class="num">—</td>
+          <td class="num">8.00</td>
+          <td class="num"><span class="badge good">−5.0%</span></td>
+          <td class="note">CometAPI линейку Kontext не продаёт вовсе (только FLUX.2). Резерв теперь laozhang.ai — модель подтверждена в <code>all_models_laozhang.ai.txt</code>.</td>
+        </tr>
+
+        <tr>
+          <td class="model">Flux Kontext Max<span class="slug">flux-kontext-max</span></td>
+          <td class="num ours">15.20</td>
+          <td class="num">5.12</td>
+          <td class="num" style="color:var(--ink-faint);">laozhang<span class="basis">в каталоге есть, опт не собирался</span></td>
+          <td><span class="badge good">APIMart + laozhang</span></td>
+          <td class="num">—</td>
+          <td class="num">16.00</td>
+          <td class="num"><span class="badge good">−5.0%</span></td>
+          <td class="note">Тот же расклад, что и у Kontext Pro — резерв laozhang.ai подтверждён.</td>
+        </tr>
+
+        <tr class="row-critical">
+          <td class="model">Nano Banana (Gemini 2.5 Flash Image)<span class="slug">gemini-2-5-flash-image</span></td>
+          <td class="num ours"><span class="was">6.00</span><span class="arrow">→</span><span class="changed">9.26</span></td>
+          <td class="num">1.00<span class="basis">ext/за изображение (2.50 за токен-тир)</span></td>
+          <td class="num" style="color:var(--ink-faint);">laozhang<span class="basis">в каталоге есть, опт не собирался</span></td>
+          <td><span class="badge good">APIMart + laozhang</span></td>
+          <td class="num">—</td>
+          <td class="num">9.75</td>
+          <td class="num"><span class="badge good">−5.0%</span></td>
+          <td class="note">CometAPI держит только Nano Banana 2/Pro/Lite — оригинальной v1 нет. Резерв — laozhang.ai (подтверждён в реестре моделей). Цена досчитана по формуле (не входила в сентябрьский раунд) — было почти вдвое ниже цели.</td>
+        </tr>
+
+        <tr>
+          <td class="model">Gemini 3.1 Flash Image (Nano Banana 2)<span class="slug">gemini-3-1-flash-image</span></td>
+          <td class="num ours">8.27</td>
+          <td class="num">1.20<span class="basis">ext/0.5–1K (9.66 на токен-тире 4K)</span></td>
+          <td class="num">2.88<span class="basis">CometAPI, 0.5K прямой (9.66 на 4K)</span></td>
+          <td><span class="badge good">оба</span></td>
+          <td class="num">8.71</td>
+          <td class="num">15.00</td>
+          <td class="num"><span class="badge good">−5.1%</span></td>
+          <td class="note">У APIMart разброс между «-ext» и токенным тиром — почти ×8. Нужно знать, какой эндпоинт реально вызывается.</td>
+        </tr>
+
+        <tr>
+          <td class="model">Gemini 3 Pro Image (Nano Banana Pro)<span class="slug">gemini-3-pro-image</span></td>
+          <td class="num ours">16.55</td>
+          <td class="num">2.40<span class="basis">ext/1K-2K (15.36 на токен-тире 4K)</span></td>
+          <td class="num">8.58<span class="basis">CometAPI, 1K/2K (15.36 на 4K, 7.68 «-all»)</span></td>
+          <td><span class="badge good">оба</span></td>
+          <td class="num">17.42</td>
+          <td class="num">37.50</td>
+          <td class="num"><span class="badge good">−5.0%</span></td>
+          <td class="note">На токенном тире (не «-ext») APIMart и CometAPI дают практически одинаковые цифры — оба считают по формуле «official × 0.8».</td>
+        </tr>
+
+        <tr>
+          <td class="model">Seedream 4.5<span class="slug">seedream-4-5</span></td>
+          <td class="num ours">4.27</td>
+          <td class="num">2.08</td>
+          <td class="num">2.56<span class="basis">CometAPI, id: doubao-seedream-4-5-251128</span></td>
+          <td><span class="badge good">оба</span></td>
+          <td class="num">4.50</td>
+          <td class="num">10.00</td>
+          <td class="num"><span class="badge good">−5.1%</span></td>
+          <td class="note">Маркетинг APIMart называет $0.025, реальная таблица — $0.026 (2.08₽) — расхождение в их собственном тексте.</td>
+        </tr>
+
+        <tr class="row-critical">
+          <td class="model">Seedream 4.0<span class="slug">seedream-4-0</span></td>
+          <td class="num ours"><span class="was">8.00</span><span class="arrow">→</span><span class="changed">7.13</span></td>
+          <td class="num">1.56</td>
+          <td class="num">2.56<span class="basis">CometAPI, id: doubao-seedream-4-0-250828</span></td>
+          <td><span class="badge good">оба</span></td>
+          <td class="num">—</td>
+          <td class="num">7.50</td>
+          <td class="num"><span class="badge good">−4.9%</span></td>
+          <td class="note">Была единственной моделью в таблице ДОРОЖЕ рынка (+6.7%) — не входила в сентябрьский раунд выравнивания. Цена снижена по формуле, запас над оптом остался большим (1.56–2.56₽ опт против 7.13₽ розницы).</td>
+        </tr>
+
+        <tr>
+          <td class="model">Seedream 5.0<span class="slug">seedream-5-0</span></td>
+          <td class="num ours">3.74</td>
+          <td class="num">2.24<span class="basis">Lite-тир, id: seedream-5-0-lite</span></td>
+          <td class="num">2.24<span class="basis">CometAPI, id: doubao-seedream-5-0-260128</span></td>
+          <td><span class="badge good">оба</span></td>
+          <td class="num">3.94</td>
+          <td class="num">8.75</td>
+          <td class="num"><span class="badge good">−5.1%</span></td>
+          <td class="note">Единственная пара во всей таблице, где опт APIMart и CometAPI совпадают до копейки (0.028 Cr / $0.028 у обоих). У APIMart есть отдельная более дорогая «Seedream 5.0 Pro» — не наша модель по точному id.</td>
+        </tr>
+
+        <tr class="row-critical">
+          <td class="model">Qwen Image 2.0<span class="slug">qwen-image-2-0</span></td>
+          <td class="num ours"><span class="was">8.00</span><span class="arrow">→</span><span class="changed">8.31</span></td>
+          <td class="num">1.60</td>
+          <td class="num gone">нет (нет и на laozhang)</td>
+          <td><span class="badge bad">только APIMart</span></td>
+          <td class="num">—</td>
+          <td class="num">8.75</td>
+          <td class="num"><span class="badge good">−5.0%</span></td>
+          <td class="note">CometAPI: «Coming soon», недоступна. Проверено по обновлённому <code>all_models_laozhang.ai.txt</code> — этой модели по-прежнему нет и на laozhang (её изначально добавляли через apimart именно поэтому). Резерва нет ни у кого. Цена досчитана по формуле — была чуть глубже цели (−8.6%).</td>
+        </tr>
+
+        <tr>
+          <td class="model">Z-Image Turbo<span class="slug">z-image-turbo</span></td>
+          <td class="num ours">1.19</td>
+          <td class="num">0.80<span class="basis">default (1.60 с prompt_extend)</span></td>
+          <td class="num gone">нет (нет и на laozhang)</td>
+          <td><span class="badge bad">только APIMart</span></td>
+          <td class="num">—</td>
+          <td class="num">1.25</td>
+          <td class="num"><span class="badge good">−4.8%</span></td>
+          <td class="note">Доплата APIMart за AI-улучшение промпта (prompt_extend) удваивает цену — если включим эту опцию в UI, нужна своя наценка. На laozhang.ai модели нет — резерва по-прежнему нет.</td>
+        </tr>
+
+        <tr class="row-critical">
+          <td class="model">Qwen Image 3.0<span class="slug">qwen-image-3-0</span></td>
+          <td class="num ours">3.21</td>
+          <td class="num">1.65<span class="basis">1K/2K + 0.18₽ за каждый доп. референс</span></td>
+          <td class="num gone">нет (нет и на laozhang)</td>
+          <td><span class="badge bad">только APIMart</span></td>
+          <td class="num">3.38</td>
+          <td class="num">10.00</td>
+          <td class="num"><span class="badge good">−5.0%</span></td>
+          <td class="note">Такой же пробел, что и у Qwen Image 2.0 — «Coming soon» у CometAPI, отсутствует на laozhang.</td>
+        </tr>
+
+        <tr class="row-critical">
+          <td class="model">Qwen Image 3.0 Pro<span class="slug">qwen-image-3-0-pro</span></td>
+          <td class="num ours">4.27</td>
+          <td class="num">2.29<span class="basis">1K (4.57 на 2K)</span></td>
+          <td class="num gone">нет (нет и на laozhang)</td>
+          <td><span class="badge bad">только APIMart</span></td>
+          <td class="num">4.50</td>
+          <td class="num">—</td>
+          <td class="num"><span class="badge good">−5.1%</span></td>
+          <td class="note">Резерва по-прежнему нет ни у CometAPI, ни у laozhang.</td>
+        </tr>
+
+        <tr class="row-critical">
+          <td class="model">Wan 2.7 Image<span class="slug">wan-2-7-image</span></td>
+          <td class="num ours">7.13</td>
+          <td class="num">1.73<span class="basis">standard (4.35 -pro)</span></td>
+          <td class="num gone">нет (нет и на laozhang)</td>
+          <td><span class="badge bad">только APIMart</span></td>
+          <td class="num">—</td>
+          <td class="num">7.50</td>
+          <td class="num"><span class="badge good">−4.9%</span></td>
+          <td class="note">Самый большой разрыв опт/розница в таблице после Seedream 4.0 (розница 7.13₽ против опта 1.73₽). Резерва по-прежнему нет.</td>
+        </tr>
+
+        <tr>
+          <td class="model">Grok Imagine<span class="slug">grok-imagine-image</span></td>
+          <td class="num ours">4.75</td>
+          <td class="num">1.28</td>
+          <td class="num">1.28<span class="basis">CometAPI, точное совпадение с APIMart</span></td>
+          <td><span class="badge good">оба</span></td>
+          <td class="num">—</td>
+          <td class="num">5.00</td>
+          <td class="num"><span class="badge good">−5.0%</span></td>
+          <td class="note">Цены APIMart и CometAPI совпадают до копейки — оба явно считают от одного и того же официального прайса xAI.</td>
+        </tr>
+
+        <tr>
+          <td class="model">Grok Imagine Quality<span class="slug">grok-imagine-image-quality</span></td>
+          <td class="num ours">5.35</td>
+          <td class="num">3.20<span class="basis">1K (4.48 на 2K)</span></td>
+          <td class="num">3.20<span class="basis">CometAPI, 1K, совпадает с APIMart</span></td>
+          <td><span class="badge good">оба</span></td>
+          <td class="num">5.63</td>
+          <td class="num">12.50</td>
+          <td class="num"><span class="badge good">−5.0%</span></td>
+          <td class="note">—</td>
+        </tr>
+
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Что это значит для миграции</h2>
+  <p class="section-note">
+    13 моделей из 23 полностью готовы к схеме «APIMart основной / CometAPI резервный» уже сегодня. Из оставшихся 10: <b>3 модели</b> (Flux Kontext Pro/Max, Nano Banana v1) закрываются точечным резервом на laozhang.ai — модель реально есть в его каталоге, просто маршрут отличается от CometAPI. <b>5 моделей</b> (Qwen Image 2.0, Qwen Image 3.0, Qwen Image 3.0 Pro, Wan 2.7 Image, Z-Image Turbo) — по-прежнему без резерва вообще: их нет ни у CometAPI, ни у laozhang.ai, они и были добавлены в каталог именно потому, что раньше существовали только у apimart. <b>1 модель</b> (GPT Image 1 Mini) доступна только через CometAPI — если он «резервный», для этого slug он фактически становится единственным. И <b>1 модель</b> (DALL-E 3) не продаётся ни у APIMart, ни у CometAPI — только на laozhang.ai, который убирается.
+  </p>
+  <p class="section-note">
+    По ценам: после этого пересчёта все 22 модели с хотя бы одним конкурентом сидят в коридоре −4.8%…+2.7% от рынка (посчитано по новой цене). Единственный плюс в таблице — GPT Image 1 (+2.7%) — и это осознанный результат пола по марже, а не недосмотр. GPT Image 1.5 и DALL-E 3 остаются без ориентира — конкурентов не продают, а у DALL-E 3 к тому же нет опта ни у APIMart, ни у CometAPI для расчёта пола. GPT Image 1 Mini — единственная модель, где пол формально требует роста цены, но не применён из-за недостоверного опта (см. примечание в таблице).
+  </p>
+
+  <footer class="page">
+    <b>Методология.</b> «Опт» переведён в рубли по курсу 80 ₽/$ (тот же курс, что <code>TOKEN_OVERAGE_USD_RUB</code> и TARIFFS.md для оценки себестоимости). Токенные модели (GPT Image 1/1.5/2, Nano Banana 2/Pro) переведены в ₽/фото через число токенов на изображение, уже согласованное и зафиксированное в <code>align_image_pricing_to_competitors.py</code> и <code>PROVIDER_PRICE_COMPARISON_2026-09-03.md</code>: gpt-image-2 = 1767 ток/фото, gpt-image-1 = 1050 ток/фото (оба — реальная medium-цена OpenAI, не плоское допущение), gemini-3-pro-image/gemini-3-1-flash-image = 1290 ток/фото (официальное значение Google). gpt-image-1-5 использует 1050 ток/фото по аналогии с gpt-image-1 (не подтверждено отдельно), gpt-image-1-mini — грубое допущение 1120 ток/фото (открыто помечено неподтверждённым в обоих исходных документах). Часть моделей APIMart и CometAPI сами уже дают готовую цену за фото (не за токен) — для них конверсия не нужна, взяты цифры напрямую с их тарифных таблиц.<br><br>
+    <b>«Наша цена»</b> — актуальные значения после коммита <code>c558e6f</code> (align_image_pricing_to_competitors, применён 2026-09-05/06) для 13 моделей, участвовавших в раунде выравнивания; для остальных — либо нетронутые тем же раундом (нет конкурента ни у одного источника), либо исходный посев <code>add_laozhang_models.py</code> для трёх моделей вне раунда (gemini-2-5-flash-image, seedream-4-0, qwen-image-2-0 — помечены в таблице). Докер недоступен локально в момент подготовки этого документа — ни одно из значений не сверялось напрямую с живой БД.<br><br>
+    <b>RouterAI и Gen-API</b> показаны отдельными столбцами — RouterAI (живой снимок каталога routerai.ru, фильтр «Изображения», 49 моделей/4 страницы, снят 2026-09-05) и Gen-API (собственный прайс-лист, файл <code>genapi.txt</code>, снят 2026-09-03). «—» значит конкурент эту модель не продаёт. Там, где страница модели RouterAI показывает цену «₽/1M токенов» — это НЕ цена за фото напрямую (см. предупреждение пользователя по скриншоту страницы GPT Image 2 на routerai.ru): использованы уже пересчитанные по реальным токенам-на-фото значения из предыдущего раунда сверки, а не сырые цифры с карточки.<br><br>
+    <b>«vs рынка»</b> — отклонение нашей цены от меньшего из двух конкурентов, (наша − мин) / мин × 100%. Зелёный бейдж — мы дешевле в коридоре −3…−7% (соответствует целевой формуле «конкурент × 0.95» из сентябрьского выравнивания); жёлтый — мы дешевле, но заметно сильнее цели (аномалия, не входила в раунд выравнивания); красный — мы дороже рынка. «нет данных» — обе площадки не продают модель.<br><br>
+    <b>Резерв laozhang.ai</b> для 3 моделей (Flux Kontext Pro/Max, Nano Banana v1/gemini-2.5-flash-image) назначен на основании прямой проверки по <code>all_models_laozhang.ai.txt</code> (актуальный список моделей нашего аккаунта laozhang) — модель в списке есть, значит канал технически рабочий; сам опт по laozhang в это расследование не входил (в столбце «Резерв (опт)» стоит «laozhang» без цифры). Для 5 моделей без резерва (Qwen Image 2.0/3.0/3.0 Pro, Wan 2.7 Image, Z-Image Turbo) той же проверкой подтверждено, что их нет в списке laozhang вообще — это и стало причиной их изначального добавления через apimart в коде (<code>add_laozhang_models.py</code>, комментарий у блока «Новые модели apimart с task-полл контрактом»).<br><br>
+    <b>Источники:</b>
+    <ul class="src-list">
+      <li>«Реестр цен APIMart изображения.html» — 19 карточек APIMart, снято 05.09.2026</li>
+      <li>«Реестр цен на модели изображений.html» — 36 карточек CometAPI (features=text-to-image,image-editing + отдельно найденные Bria), снято 04.09.2026</li>
+      <li><code>genapi.txt</code> — прайс-лист Gen-API, снят 03.09.2026</li>
+      <li>routerai.ru/models?output_modalities[]=image — живой снимок, 05.09.2026</li>
+      <li><code>src/aitext/management/commands/add_laozhang_models.py</code>, <code>align_image_pricing_to_competitors.py</code> — наш каталог и текущие цены</li>
+      <li><code>PROVIDER_PRICE_COMPARISON_2026-09-03.md</code>, <code>scratch_images_vs_competitors.html</code> — предыдущие раунды сверки в этом же репозитории</li>
+    </ul>
+    <b>Правило цены (обновление 06.09.2026):</b> <code>цена = max(min(RouterAI, Gen-API) × 0.95, опт × 1.05)</code> — код в <code>src/aitext/management/commands/apply_image_price_margin_floor.py</code> (закоммичен и запушен в <code>main</code>, на сервере ещё не выполнен — см. предупреждение выше). Меняет 4 из 23 цен; 19 уже удовлетворяли формуле после сентябрьского раунда (<code>align_image_pricing_to_competitors.py</code>) и не тронуты.<br><br>
+    Изменения провайдера (роутинг на APIMart/CometAPI, отключение laozhang.ai для изображений) в этом документе НЕ сделаны — это по-прежнему отчёт для принятия решения по резервам, а не готовый код роутинга. Изменена только розничная цена (<code>cost_kopecks</code>), не источник закупки.
+  </footer>
+
+</div>
