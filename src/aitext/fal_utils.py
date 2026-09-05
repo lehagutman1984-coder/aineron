@@ -2008,6 +2008,104 @@ def generate_video_cometapi(network, user_msg, message, user_settings=None):
     return f"Модель \"{model_name}\" не вернула видео. Попробуйте изменить промт.", [], total_cost
 
 
+def generate_image_cometapi(network, user_msg, message, user_settings=None, model_override=None):
+    """
+    Генерирует изображение через CometAPI — синхронный OpenAI-совместимый
+    POST /v1/images/generations → {"data": [{"url": ...}]} ИЛИ
+    {"data": [{"b64_json": ...}]}, без опроса задачи. Контракт подтверждён
+    живыми тестовыми вызовами 2026-09-06 (только для моделей, перечисленных
+    ниже — не проверено на всём каталоге):
+      - grok-imagine-image, grok-imagine-image-quality: 200, url-ответ
+      - doubao-seedream-4-0-250828: 200, url-ответ
+      - gpt-image-1: 200, b64_json-ответ
+      - flux-2-pro: 400 — этому семейству нужен отдельный путь
+        /flux/v1/<model> (не реализовано, не вызывать generate_image_cometapi
+        для flux-моделей)
+      - gemini-3.1-flash-image: 500 "only imagen models are supported" — имя
+        модели не совпадает с тем, что принимает этот эндпоинт (не проверено,
+        какое имя сработает) — не вызывать для Nano Banana/Gemini Image
+
+    model_override — если задано, отправляется в CometAPI вместо
+    network.model_name (для случаев, когда имя модели у CometAPI отличается
+    от нашего/apimart — сейчас не используется, оба грок-имаджина совпадают).
+    """
+    config = network.config_json or {}
+    model_id = model_override or network.model_name
+    prompt = user_msg.content if user_msg else ""
+    base_cost = network.cost_per_message
+
+    if user_settings is not None:
+        final_args, errors, extra_cost = validate_and_merge_settings(config, user_settings)
+        if errors:
+            raise Exception("Ошибки в настройках: " + "; ".join(errors))
+    else:
+        final_args = config.get('api_defaults', {}).copy()
+        extra_cost = 0
+
+    total_cost = base_cost + extra_cost
+
+    api_key = getattr(settings, 'COMETAPI_API_KEY', '')
+    base_url = getattr(settings, 'COMETAPI_API_URL', 'https://api.cometapi.com/v1').rstrip('/')
+    auth_headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+
+    body = {"model": model_id, "prompt": prompt, "n": 1}
+    for param in ['size', 'aspect_ratio', 'quality']:
+        if param in final_args and final_args[param] is not None:
+            body[param] = final_args[param]
+
+    gen_ph = _create_video_placeholder(message, prompt, model_id, 'cometapi', media_type='image')
+
+    saved_media = []
+    try:
+        logger.info(f"CometAPI Image POST model={model_id} params={body}")
+        resp = requests.post(f"{base_url}/images/generations", headers=auth_headers, json=body, timeout=90)
+        resp.raise_for_status()
+        data = resp.json()
+        logger.info(f"CometAPI image response: {str(data)[:400]}")
+
+        items = data.get('data') or []
+        for item in items:
+            target = gen_ph if (gen_ph is not None and not gen_ph.image) else None
+            url = item.get('url')
+            if isinstance(url, list):
+                url = url[0] if url else None
+            if url and str(url).startswith('http'):
+                gen = save_media_from_url(url, message, prompt, media_type='image', gen=target, max_retries=3)
+            elif item.get('b64_json'):
+                # save_image_from_b64 всегда создаёт новую строку (не умеет
+                # переиспользовать placeholder, в отличие от save_media_from_url) —
+                # gen_ph в этом случае остаётся пустым и будет помечен error
+                # ниже через _fail_video_gen, сама картинка при этом сохранена.
+                gen = save_image_from_b64(item['b64_json'], message, prompt)
+            else:
+                gen = None
+            if gen:
+                saved_media.append(gen)
+
+        if not saved_media:
+            raise Exception(f"CometAPI не вернул ни url, ни b64_json. response={str(data)[:300]}")
+    except Exception:
+        _fail_video_gen(gen_ph)
+        raise
+
+    model_name = config.get('name', network.name)
+    if _finalize_video_gen(gen_ph):
+        if gen_ph not in saved_media:
+            saved_media.append(gen_ph)
+    else:
+        _fail_video_gen(gen_ph)
+
+    if saved_media:
+        text_parts = [f"Сгенерировано {len(saved_media)} изображение(й) моделью \"{model_name}\"."]
+        for m in saved_media:
+            text_parts.append(
+                f"<img src='{m.image.url}' style='max-width:100%; border-radius:12px;' />"
+            )
+        return "\n\n".join(text_parts), saved_media, total_cost
+
+    return f"Модель \"{model_name}\" не вернула изображение. Попробуйте изменить промт.", [], total_cost
+
+
 def generate_image_apimart_async(network, user_msg, message, user_settings=None):
     """
     Генерирует изображение через apimart.ai по task-полу контракту:
@@ -2189,9 +2287,28 @@ def generate_with_falai(network, user_msg, message, user_settings=None):
         return generate_video_laozhang(network, user_msg, message, user_settings)
 
     # Изображения с task-полом контрактом apimart (не синхронный images.generate()) —
-    # см. generate_image_apimart_async().
+    # см. generate_image_apimart_async(). При ошибке — фолбэк на CometAPI, но
+    # только для моделей с явно проверенным вживую контрактом (см.
+    # generate_image_cometapi docstring) — metadata.cometapi_fallback_model
+    # проставлен точечно только там, где имя модели и формат ответа
+    # подтверждены (2026-09-06): grok-imagine-image, grok-imagine-image-quality.
+    # Остальные модели apimart_async (Qwen Image 2.0/3.0/3.0 Pro, Wan 2.7 Image,
+    # Z-Image Turbo) сознательно БЕЗ фолбэка — ни CometAPI (нет модели в
+    # каталоге), ни laozhang.ai (тоже нет, см. all_models_laozhang.ai.txt) —
+    # см. IMAGE_PROVIDER_MIGRATION_PRICING_2026-09-05.html.
     if config.get('metadata', {}).get('image_api') == 'apimart_async':
-        return generate_image_apimart_async(network, user_msg, message, user_settings)
+        try:
+            return generate_image_apimart_async(network, user_msg, message, user_settings)
+        except Exception as e:
+            fb_model = config.get('metadata', {}).get('cometapi_fallback_model')
+            fallback_on = getattr(settings, 'AI_PROVIDER_FALLBACK', True)
+            is_settings_err = str(e).startswith('Ошибки в настройках')
+            if fallback_on and fb_model and not is_settings_err:
+                logger.warning(
+                    "APIMart изображение недоступно (%s); фолбэк → CometAPI model=%s", e, fb_model
+                )
+                return generate_image_cometapi(network, user_msg, message, user_settings, model_override=fb_model)
+            raise
 
     model_id = network.model_name
     if not model_id:
