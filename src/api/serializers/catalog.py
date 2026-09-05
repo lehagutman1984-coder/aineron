@@ -38,6 +38,8 @@ class NeuralNetworkListSerializer(serializers.ModelSerializer):
     seo_description = serializers.SerializerMethodField()
     i2v = serializers.SerializerMethodField()
     image_refs = serializers.SerializerMethodField()
+    duration_options = serializers.SerializerMethodField()
+    aspect_options = serializers.SerializerMethodField()
 
     class Meta:
         model = NeuralNetwork
@@ -47,7 +49,7 @@ class NeuralNetworkListSerializer(serializers.ModelSerializer):
             'is_popular', 'is_free', 'unlimited', 'messages_limit',
             'handle_photo', 'handle_video', 'handle_archive', 'handle_text_files',
             'seo_title', 'seo_description', 'model_name', 'order', 'output_type', 'i2v',
-            'image_refs',
+            'image_refs', 'duration_options', 'aspect_options',
         ]
 
     def get_category(self, obj):
@@ -112,6 +114,35 @@ class NeuralNetworkListSerializer(serializers.ModelSerializer):
             return {'max_images': max_images}
         except Exception:
             return None
+
+    def _find_field_options(self, obj, field_name):
+        """Опции конкретного поля из config_json.ui_settings по имени.
+
+        Раньше клиенты вроде AnimateImageModal.tsx хардкодили допустимые
+        значения duration/aspect_ratio по названию модели ("isSora" и т.п.),
+        что расходилось с реальными опциями конкретной модели в БД (напр.
+        Sora допускает 4/8/12/16/20 сек, а хардкод предлагал 5/10/20 — запрос
+        с невалидным значением гарантированно падал). Отдаём реальные опции,
+        чтобы фронт строил контролы по факту, а не по догадке.
+        """
+        try:
+            sections = (obj.config_json or {}).get('ui_settings', {}).get('sections', [])
+            for section in sections:
+                for field in section.get('fields', []):
+                    if field.get('name') == field_name:
+                        return [
+                            {'value': o['value'], 'extra_cost': o.get('extra_cost', 0)}
+                            for o in field.get('options', [])
+                        ] or None
+            return None
+        except Exception:
+            return None
+
+    def get_duration_options(self, obj):
+        return self._find_field_options(obj, 'duration')
+
+    def get_aspect_options(self, obj):
+        return self._find_field_options(obj, 'aspect_ratio')
 
 
 class NeuralNetworkDetailSerializer(NeuralNetworkListSerializer):

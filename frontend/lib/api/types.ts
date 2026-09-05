@@ -205,6 +205,9 @@ export interface NetworkListItem {
   i2v?: { max_images: number; mode: "reference" | "first_last" } | null;
   /** Мультиреференс text-to-image (2026-09). null/undefined = только 1 фото. */
   image_refs?: { max_images: number } | null;
+  /** Реальные опции полей duration/aspect_ratio из ui_settings этой модели. null = поле у модели фиксировано/отсутствует. */
+  duration_options?: { value: string; extra_cost: number }[] | null;
+  aspect_options?: { value: string; extra_cost: number }[] | null;
 }
 
 export interface FAQ {

@@ -9,9 +9,29 @@
 Повторный запуск обновляет config_json/название/описание/порядок
 существующих моделей (цены не трогает), создаёт недостающие и
 деактивирует видео-модели, которых нет в списке.
+
+ВНИМАНИЕ при повторном запуске: этот файл — не единственный источник правды
+для видео-каталога. update_video_pricing.py калибрует extra_cost по
+конкурентам, add_kling_4k_audio_constraint.py (теперь инлайнено ниже через
+KLING_4K_AUDIO_CONSTRAINT) и add_cometapi_video_models.py заводят veo-3/
+veo-3-fast отдельно. Реран этого файла НЕ трогает цены и не деактивирует
+veo-3/veo-3-fast (см. OTHER_COMMANDS_SLUGS ниже), но если добавляете новую
+Kling-модель с 4K+audio — не забудьте про KLING_4K_AUDIO_CONSTRAINT.
 """
 from django.core.management.base import BaseCommand
 from aitext.models import Category, NeuralNetwork
+
+# У Kling v3 / v3 Omni / v3 Motion Control 4K доступен ТОЛЬКО без звука (см.
+# update_video_pricing.py). Раньше жило отдельной командой
+# (add_kling_4k_audio_constraint.py) и стиралось при каждом повторном запуске
+# add_video_models, т.к. все конфиги ниже хардкодили "constraints": {}.
+KLING_4K_AUDIO_CONSTRAINT = {
+    "incompatible": [{
+        "when": {"field": "mode", "value": "4k"},
+        "forbid": {"field": "audio", "value": True},
+        "message": "4K доступен только без звука — выберите 720p/1080p для звуковой генерации",
+    }]
+}
 
 
 def _aspect_field(values):
@@ -271,7 +291,7 @@ VIDEO_CONFIG = {
                 ]
             }]
         },
-        "constraints": {"max_negative_prompt_length": 2500},
+        "constraints": {"max_negative_prompt_length": 2500, **KLING_4K_AUDIO_CONSTRAINT},
         "metadata": {
             "output_type": "video", "video_api": "apimart",
             "supports_image_to_video": True, "i2v_param": "image_urls",
@@ -809,7 +829,7 @@ VIDEO_CONFIG = {
                 ]
             }]
         },
-        "constraints": {},
+        "constraints": {**KLING_4K_AUDIO_CONSTRAINT},
         "metadata": {
             "output_type": "video", "video_api": "apimart",
         },
@@ -839,7 +859,7 @@ VIDEO_CONFIG = {
                 ]
             }]
         },
-        "constraints": {},
+        "constraints": {**KLING_4K_AUDIO_CONSTRAINT},
         "metadata": {
             "output_type": "video", "video_api": "apimart",
             "supports_image_to_video": True, "i2v_param": "image_urls",
@@ -1164,12 +1184,12 @@ VIDEO_MODELS = [
     dict(
         name='Grok Imagine 1.5',
         slug='grok-imagine-1-5',
-        # 2026-09-02: было 'grok-imagine-1.5-video-apimart' — это косметический
-        # slug с витрины apimart.ai (в скобках у карточки), а не значение
-        # поля model для запроса. Документация API прямо требует
-        # 'grok-imagine-1.5-video-ext' (docs.apimart.ai/ru/api-reference/
-        # videos/grok-imagine/generation).
-        model_name='grok-imagine-1.5-video-ext',
+        # 2026-09-02: было временно изменено на 'grok-imagine-1.5-video-ext' —
+        # эта правка оказалась ОШИБОЧНОЙ (такого ID нет в каталоге апстрима).
+        # update_video_pricing.py (2026-09-05) откатил это в БД и подтвердил
+        # правильное значение живым запросом GET /v1/models — используем его
+        # и здесь, чтобы повторный запуск этой команды не откатил баг обратно.
+        model_name='grok-imagine-1.5-video-apimart',
         cost_per_message=30,
         order=12,
         description='Видео-модель xAI Grok — ролики до 30 секунд, необычные форматы кадра, оживление фото.',
@@ -1360,12 +1380,17 @@ class Command(BaseCommand):
                 ])
                 self.stdout.write(f'  обновлена: {network.name} ({network.model_name})')
 
-        # Деактивируем видео-модели, которых нет в нашем списке
+        # Деактивируем видео-модели, которых нет в нашем списке.
+        # ВАЖНО: veo-3/veo-3-fast заведены отдельной командой
+        # (add_cometapi_video_models.py) и никогда не попадают в VIDEO_MODELS
+        # этого файла — раньше это приводило к тому, что каждый повторный
+        # запуск add_video_models тихо деактивировал обе модели.
         self.stdout.write('\n=== Деактивация устаревших моделей ===')
+        OTHER_COMMANDS_SLUGS = ['veo-3', 'veo-3-fast']
         old_models = NeuralNetwork.objects.filter(
             category=video_cat,
             is_active=True,
-        ).exclude(slug__in=active_slugs)
+        ).exclude(slug__in=active_slugs).exclude(slug__in=OTHER_COMMANDS_SLUGS)
 
         count = old_models.count()
         if count:

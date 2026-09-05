@@ -12,8 +12,11 @@ const RATIO_PRESETS = [
   { label: "1:1", w: 1, h: 1 },
   { label: "4:3", w: 4, h: 3 },
   { label: "3:4", w: 3, h: 4 },
+  { label: "3:2", w: 3, h: 2 },
+  { label: "2:3", w: 2, h: 3 },
   { label: "16:9", w: 16, h: 9 },
   { label: "9:16", w: 9, h: 16 },
+  { label: "21:9", w: 21, h: 9 },
 ];
 
 function parseSize(val: string): { w: number; h: number } | null {
@@ -303,8 +306,12 @@ export function MediaSettingsPanel({
               const val = values[field.name];
 
               if (field.type === "select") {
+                // Визуальные пресеты формата кадра актуальны для любого select-поля
+                // с парсящимися W:H/WxH значениями — не только "size" (image-модели),
+                // но и "aspect_ratio" (почти все видео-модели используют это имя,
+                // раньше получали голый dropdown вместо визуальных пресетов).
                 const isSizeField =
-                  field.name === "size" &&
+                  (field.name === "size" || field.name === "aspect_ratio") &&
                   (field.options ?? []).some((o) => parseSize(o.value) !== null);
                 return (
                   <div key={field.name} className="flex flex-col gap-1">

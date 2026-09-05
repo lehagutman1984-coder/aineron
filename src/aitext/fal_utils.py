@@ -1606,7 +1606,7 @@ def generate_video_apimart(network, user_msg, message, user_settings=None):
     for param in ['duration', 'aspect_ratio', 'resolution', 'audio', 'mode',
                   'negative_prompt', 'generation_type', 'enable_gif', 'official_fallback',
                   'size', 'generate_audio', 'camerafixed', 'quality', 'template',
-                  'shot_type', 'prompt_optimizer']:
+                  'shot_type', 'prompt_optimizer', 'watermark']:
         if param in final_args and final_args[param] is not None:
             body[param] = final_args[param]
 
@@ -1672,6 +1672,13 @@ def generate_video_apimart(network, user_msg, message, user_settings=None):
             i2v_param = 'first_frame_image' if 'hailuo' in model_lower else 'image_urls'
         if i2v_param == 'image_urls':
             body['image_urls'] = images
+            # apimart различает 2 режима работы с фото на одном и том же
+            # эндпоинте: "reference" (N произвольных референсов) и режим
+            # первый+последний кадр (ровно 2 фото, generation_type не шлём).
+            # Явно задокументировано для veo3_fast (add_video_models.py) —
+            # применяем ко всем моделям с i2v_mode="reference", раз фото 2+.
+            if len(images) >= 2 and meta.get('i2v_mode') == 'reference' and 'generation_type' not in body:
+                body['generation_type'] = 'reference'
         else:
             # Параметр принимает одну строку (напр. Hailuo first_frame_image) —
             # мультиреференс для таких моделей не поддержан, берём первое фото.
