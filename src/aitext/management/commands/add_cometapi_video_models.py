@@ -5,11 +5,12 @@
 GET /v1/videos/{id} для поллинга) — см. generate_video_cometapi() в
 aitext/fal_utils.py.
 
-MVP: только text-to-video (i2v не реализован — CometAPI ждёт
-input_reference как file, не URL, требует отдельной доработки).
+Поддерживает и text-to-video, и image-to-video (одно референс-фото —
+CometAPI принимает его файлом через input_reference, не ссылкой; скачивание
+и переотправка — _download_file_for_upload() в fal_utils.py).
 
-Создаётся is_active=False — активировать вручную после сквозной проверки
-через реальный Celery-пайплайн (не только сырой API-вызов).
+Повторный запуск обновляет config_json существующих записей (is_active не
+трогает) — используйте для докатки этого флага/цен без создания дублей.
 
 Запуск: docker-compose exec web python manage.py add_cometapi_video_models
 """
@@ -44,6 +45,15 @@ MODELS = [
     },
 ]
 
+# CometAPI принимает ровно 1 референс-фото файлом (input_reference), не
+# ссылкой и не несколько штук, как часть моделей apimart — отсюда max_images=1.
+I2V_METADATA = {
+    "supports_image_to_video": True,
+    "i2v_param": "input_reference",
+    "i2v_mode": "reference",
+    "i2v_max_images": 1,
+}
+
 
 class Command(BaseCommand):
     help = "Добавляет Veo 3 / Veo 3 Fast через CometAPI (is_active=False до ручной проверки)"
@@ -77,7 +87,7 @@ class Command(BaseCommand):
                 "metadata": {
                     "output_type": "video",
                     "video_api": "cometapi",
-                    "supports_image_to_video": False,
+                    **I2V_METADATA,
                 },
             }
 

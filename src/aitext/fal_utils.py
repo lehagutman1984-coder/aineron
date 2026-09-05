@@ -15,6 +15,28 @@ logger = logging.getLogger(__name__)
 _image_client = None
 
 
+def _download_file_for_upload(url, timeout=30):
+    """Скачивает файл по URL для передачи как multipart file — для провайдеров,
+    которые (в отличие от apimart, принимающего просто ссылку в JSON) требуют
+    сам файл в теле запроса (сейчас: CometAPI, image-to-video). Общая, не
+    привязанная к конкретному провайдеру функция — переиспользуема для любой
+    будущей multipart-модели.
+
+    Возвращает (filename, content_bytes, content_type) или None при ошибке.
+    """
+    try:
+        resp = requests.get(url, timeout=timeout)
+        resp.raise_for_status()
+        content_type = resp.headers.get('Content-Type', 'image/jpeg').split(';')[0].strip()
+        ext = content_type.split('/')[-1] if '/' in content_type else 'jpg'
+        if ext not in ('jpeg', 'jpg', 'png', 'webp', 'gif'):
+            ext = 'jpg'
+        return f"reference.{ext}", resp.content, content_type
+    except Exception as e:
+        logger.warning(f"Не удалось скачать файл для multipart-загрузки ({url}): {e}")
+        return None
+
+
 def _make_absolute_url(url: str) -> str:
     """Конвертирует относительный /media/... URL в абсолютный — внешние провайдеры
     (apimart, laozhang) не могут скачать файл по относительному пути."""
@@ -1800,12 +1822,11 @@ def generate_video_cometapi(network, user_msg, message, user_settings=None):
       -> {"status": "in_progress"|"completed"|"failed"|"error", "progress": int,
           "video_url": "<mp4 url>"}  (video_url появляется только при completed)
 
-    MVP: только text-to-video. image-to-video НЕ реализован — контракт
-    CometAPI принимает `input_reference` как файл multipart, а не URL
-    (в отличие от apimart, где everywhere URL) — потребует скачать
-    референс-изображение и переотправить как file, отдельная задача.
-    Метаданные каталога должны выставлять supports_image_to_video: false,
-    пока это не сделано.
+    image-to-video: CometAPI принимает `input_reference` как файл multipart,
+    а не URL (в отличие от apimart, где everywhere URL) — референс-изображение
+    скачивается через _download_file_for_upload() и переотправляется файлом.
+    Один референс на запрос (в отличие от apimart, где часть моделей
+    поддерживает несколько) — метаданные модели должны ставить i2v_max_images=1.
     """
     config = network.config_json or {}
     model_id = network.model_name
@@ -1839,6 +1860,22 @@ def generate_video_cometapi(network, user_msg, message, user_settings=None):
 
     form = {"model": model_id, "prompt": prompt, "seconds": str(duration), "size": size}
 
+    # img2video: тот же источник данных, что у apimart (final_args/user_settings
+    # image_urls или одиночный image_url), но CometAPI берёт ровно ОДНО фото
+    # файлом, не ссылкой — остальные (если пришло несколько) отбрасываются.
+    raw_images = (
+        final_args.get('image_urls')
+        or (user_settings or {}).get('image_urls')
+        or []
+    )
+    if not raw_images:
+        single = final_args.get('image_url') or (user_settings or {}).get('image_url', '')
+        raw_images = [single] if single else []
+    images = [_make_absolute_url(u) for u in raw_images if u]
+
+    if images and len(images) > 1:
+        logger.info(f"CometAPI video: получено {len(images)} референс-фото, поддерживается 1 — лишние отброшены")
+
     gen_ph = _create_video_placeholder(message, prompt, model_id, 'cometapi')
 
     # Резюме после рестарта воркера — тот же паттерн, что у apimart, свой ключ
@@ -1856,11 +1893,20 @@ def generate_video_cometapi(network, user_msg, message, user_settings=None):
     video_url = None
     try:
         if not task_id:
-            logger.info(f"CometAPI Video POST model={model_id} form={form}")
+            upload_file = None
+            if images:
+                downloaded = _download_file_for_upload(images[0])
+                if not downloaded:
+                    raise Exception("Не удалось скачать референс-изображение для image-to-video")
+                filename, content, content_type = downloaded
+                upload_file = {"input_reference": (filename, content, content_type)}
+
+            logger.info(f"CometAPI Video POST model={model_id} form={form} img2video={bool(upload_file)}")
             resp = requests.post(
                 f"{base_url}/videos",
                 headers=auth_headers,
                 data=form,
+                files=upload_file,
                 timeout=60,
             )
             resp.raise_for_status()
