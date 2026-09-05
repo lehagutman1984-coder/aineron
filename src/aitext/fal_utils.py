@@ -1684,7 +1684,7 @@ def generate_video_apimart(network, user_msg, message, user_settings=None):
             # мультиреференс для таких моделей не поддержан, берём первое фото.
             body[i2v_param] = images[0]
         # Формат кадра при оживлении фото определяется самим фото; часть
-        # моделей (wan, pixverse, sora) отклоняет size/aspect_ratio вместе с
+        # моделей (wan, pixverse) отклоняет size/aspect_ratio вместе с
         # изображением — убираем, кроме adaptive-подобных дефолтов
         body.pop('aspect_ratio', None)
         if body.get('size') and body['size'] != 'adaptive':

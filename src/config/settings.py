@@ -418,7 +418,7 @@ TAVILY_PROXY_URL = os.environ.get('TAVILY_PROXY_URL', '')  # HTTP-прокси �
 # Seedance (ByteDance video) — отдельный токен группы SeeDance2 на laozhang.ai
 SEEDANCE_API_KEY = os.environ.get('SEEDANCE_API_KEY', '')
 
-# APIMart — видео генерация (Sora, Veo, Kling и другие)
+# APIMart — видео генерация (Veo, Kling, Seedance и другие)
 APIMART_API_KEY = os.environ.get('APIMART_API_KEY', '')
 APIMART_API_URL = "https://api.apimart.ai/v1"
 

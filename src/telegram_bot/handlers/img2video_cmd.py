@@ -1,5 +1,5 @@
 """
-/img2video <prompt> — image-to-video: фото → анимация через AI-модель (Kling/Veo/Sora).
+/img2video <prompt> — image-to-video: фото → анимация через AI-модель (Kling/Veo/Seedance).
 
 Pipeline:
   1. /img2video <prompt> → FSM ожидает фото

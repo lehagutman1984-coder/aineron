@@ -21,8 +21,6 @@ export const SLUG_ALIASES: Record<string, string> = {
   "nano-banana-pro": "gemini-3-pro-image",
   "qwen-image-3": "qwen-image-3-0",
   "qwen-image-3-pro": "qwen-image-3-0-pro",
-  "sora-2": "sora-character",
-  "sora-2-pro": "sora-2-character",
   "veo-3-1-quality": "veo-3-1",
   "kling-v2-6": "kling-v26",
   "kling-3-turbo": "kling-3-0-turbo",

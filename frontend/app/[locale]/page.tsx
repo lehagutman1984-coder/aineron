@@ -17,7 +17,6 @@ export const revalidate = 3600;
 // одинаковы на aineron.ru и aineron.net) — formatMoney сам покажет рубли
 // на .ru и credits на .net, никаких хардкод-сумм в переводах.
 const PRICES = {
-  sora: 2500,
   veo: 1500,
   kling: 1000,
   flux: 1200,
@@ -246,33 +245,6 @@ export default async function HomePage({
           <p className="sec-sub">{t("models.subtitle")}</p>
 
           <div style={{ marginTop: 52 }}>
-            {/* SORA 2 */}
-            <article className="model">
-              <div>
-                <div className="model-badge">{t("models.sora.badge")}</div>
-                <h3>{t("models.sora.name")}</h3>
-                <div className="kind">{t("models.sora.kind")}</div>
-                <p className="desc">{t("models.sora.desc")}</p>
-                <div className="model-facts">
-                  <Fact label={t("models.sora.factDuration")} value={t("models.sora.factDurationVal")} />
-                  <Fact label={t("models.sora.factRes")} value={t("models.sora.factResVal")} />
-                  <Fact label={t("models.sora.factSound")} value={t("models.sora.factSoundVal")} />
-                  <Fact
-                    label={t("models.sora.factPrice")}
-                    value={`${formatMoney(PRICES.sora)} ${t("models.sora.factPriceUnit")}`}
-                    coral
-                  />
-                </div>
-                <a href="#final" className="btn btn-ghost btn-sm">
-                  {t("models.sora.try")} →
-                </a>
-              </div>
-              <div>
-                <LandingVideo src="/landing-media/sora-2.mp4" tag={t("models.requestLabel")} />
-                <MediaCaption label={t("models.requestLabel")} text={t("models.sora.query")} />
-              </div>
-            </article>
-
             {/* VEO 3.1 FAST */}
             <article className="model">
               <div>

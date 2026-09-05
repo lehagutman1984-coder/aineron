@@ -652,32 +652,6 @@ const roundVideo = (usd: number) => Math.round(usd * K * 10) / 10;
 
 export const VIDEO_MODELS: PreviewModel[] = [
   {
-    id: "sora-2",
-    name: "Sora 2",
-    provider: "OpenAI",
-    category: "video",
-    description: "Флагманская видео-модель OpenAI — реалистичное движение и физика сцены.",
-    contextLabel: "до 20 сек, 720p",
-    priceVideoRub: roundVideo(0.08),
-    priceUnit: "sec",
-    priceRealKopecks: 2500,
-    inputBadges: ["Текст", "Изображения"],
-    outputBadges: ["Видео"],
-  },
-  {
-    id: "sora-2-pro",
-    name: "Sora 2 Pro",
-    provider: "OpenAI",
-    category: "video",
-    description: "Топовый тир Sora — более высокое разрешение и качество деталей.",
-    contextLabel: "до 20 сек, 720-1080p",
-    priceVideoRub: roundVideo(0.24),
-    priceUnit: "sec",
-    priceRealKopecks: 12540,
-    inputBadges: ["Текст", "Изображения"],
-    outputBadges: ["Видео"],
-  },
-  {
     id: "veo-3-1-fast",
     name: "Veo 3.1 Fast",
     provider: "Google",

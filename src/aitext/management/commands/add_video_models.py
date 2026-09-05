@@ -73,61 +73,8 @@ def _duration_field(options):
 
 
 VIDEO_CONFIG = {
-    # ------------------------------------------------------------------
-    # Sora 2 — базовая модель OpenAI: только 720p, duration 4/8/12/16/20.
-    # i2v: image_urls (1 фото, до 10 МБ); aspect_ratio при фото игнорируется.
-    # ------------------------------------------------------------------
-    'sora2': {
-        "name": "Sora 2",
-        "api_defaults": {"duration": "4", "aspect_ratio": "16:9"},
-        "ui_settings": {
-            "sections": [{
-                "title": "Настройки видео",
-                "fields": [
-                    _aspect_field(["16:9", "9:16"]),
-                    _duration_field([(4, 0), (8, 5), (12, 15), (16, 25), (20, 35)]),
-                ]
-            }]
-        },
-        "constraints": {},
-        "metadata": {
-            "output_type": "video", "video_api": "apimart",
-            "supports_image_to_video": True, "i2v_param": "image_urls",
-        },
-    },
-
-    # ------------------------------------------------------------------
-    # Sora 2 Pro — выбор разрешения (720p / 1024p / 1080p)
-    # ------------------------------------------------------------------
-    'sora2_pro': {
-        "name": "Sora 2 Pro",
-        "api_defaults": {"duration": "4", "aspect_ratio": "16:9", "resolution": "720p"},
-        "ui_settings": {
-            "sections": [{
-                "title": "Настройки видео",
-                "fields": [
-                    _aspect_field(["16:9", "9:16"]),
-                    _duration_field([(4, 0), (8, 5), (12, 15), (16, 25), (20, 35)]),
-                    {
-                        "name": "resolution",
-                        "type": "select",
-                        "label": "Разрешение",
-                        "extra_cost": 0,
-                        "options": [
-                            {"value": "720p", "label": "720p (HD)", "extra_cost": 0},
-                            {"value": "1024p", "label": "1024p", "extra_cost": 10},
-                            {"value": "1080p", "label": "1080p (Full HD)", "extra_cost": 15},
-                        ]
-                    },
-                ]
-            }]
-        },
-        "constraints": {},
-        "metadata": {
-            "output_type": "video", "video_api": "apimart",
-            "supports_image_to_video": True, "i2v_param": "image_urls",
-        },
-    },
+    # Sora 2 / Sora 2 Pro ('sora2'/'sora2_pro') убраны 2026-09-05 — см.
+    # комментарий у VIDEO_MODELS выше.
 
     # ------------------------------------------------------------------
     # Veo 3.1 Fast — длительность фиксирована 8 сек; i2v image_urls (до 3)
@@ -1065,26 +1012,12 @@ VIDEO_CONFIG = {
 
 
 VIDEO_MODELS = [
-    dict(
-        name='Sora 2',
-        slug='sora-character',
-        model_name='sora-2',
-        cost_per_message=60,
-        order=1,
-        description='Генерация видео от OpenAI. Создаёт реалистичные короткие видеоролики по текстовому описанию.',
-        config_key='sora2',
-        is_popular=True,
-    ),
-    dict(
-        name='Sora 2 Pro',
-        slug='sora-2-character',
-        model_name='sora-2-pro',
-        cost_per_message=100,
-        order=2,
-        description='Продвинутая версия Sora 2 от OpenAI — выбор разрешения до 1080p, максимальная детализация.',
-        config_key='sora2_pro',
-        is_popular=False,
-    ),
+    # Sora 2 / Sora 2 Pro убраны из каталога 2026-09-05 по прямому запросу
+    # пользователя — OpenAI скоро отключает Sora полностью. Строки
+    # sora-character/sora-2-character деактивированы (deactivate_sora_video_models.py),
+    # НЕ удалены — сохраняют историю чатов. НЕ возвращать в этот список: любой
+    # рерайт add_video_models заново активировал бы их (network.is_active=True
+    # в update_or_create-ветке).
     dict(
         name='Veo 3.1 Fast',
         slug='veo-3-1-fast',

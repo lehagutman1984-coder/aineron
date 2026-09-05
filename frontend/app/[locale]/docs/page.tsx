@@ -232,7 +232,6 @@ function buildGroups(t: Awaited<ReturnType<typeof getTranslations>>): DocGroup[]
             <DataTable
               head={[t("chat.videoTableModel"), t("chat.videoTableFeatures")]}
               rows={[
-                [t("chat.videoRowSoraModel"), t("chat.videoRowSoraFeatures")],
                 [t("chat.videoRowVeoModel"), t("chat.videoRowVeoFeatures")],
                 [t("chat.videoRowKlingModel"), t("chat.videoRowKlingFeatures")],
               ]}

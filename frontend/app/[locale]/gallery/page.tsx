@@ -20,7 +20,7 @@ const TAB_KEYS: { key: Filter; labelKey: "tabAll" | "tabImages" | "tabVideo" }[]
 const PER_PAGE = 24;
 const PREFILL_KEY = "aineron_prefill_prompt";
 
-const MODEL_CHIPS = ["Flux 2 Pro", "GPT Image 1", "Flux Kontext Pro", "Sora 2", "Kling v2.6"];
+const MODEL_CHIPS = ["Flux 2 Pro", "GPT Image 1", "Flux Kontext Pro", "Veo 3.1", "Kling v2.6"];
 
 function formatDate(iso: string, locale: string) {
   return new Date(iso).toLocaleDateString(locale, {
