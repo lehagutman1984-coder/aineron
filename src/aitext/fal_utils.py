@@ -2295,6 +2295,92 @@ def generate_image_cometapi(network, user_msg, message, user_settings=None, mode
     return f"Модель \"{model_name}\" не вернула изображение. Попробуйте изменить промт.", [], total_cost
 
 
+def generate_image_midjourney_cometapi(network, user_msg, message, user_settings=None):
+    """
+    Резерв Midjourney через CometAPI — совсем другой контракт, чем apimart
+    (собственный Discord-relay API, не OpenAI-совместимый и не тот же
+    task-poll формат, что у apimart_async):
+
+    POST https://api.cometapi.com/mj/submit/imagine {prompt} -> {"result": "<task_id>"}
+    GET  https://api.cometapi.com/mj/task/{task_id}/fetch
+      -> {"status": "SUCCESS"|"FAILURE"|..., "imageUrl": "<готовая сетка 4 изображений>"}
+
+    В отличие от apimart (который отдаёт 4 отдельные ссылки), CometAPI отдаёт
+    ОДНУ ссылку на сборную сетку 2×2 (upscale отдельных вариантов — через
+    buttons/customId, не реализовано, не критично для резерва). Проверено
+    живым вызовом 2026-09-06: SUCCESS за ~70с, imageUrl — рабочая ссылка.
+    """
+    config = network.config_json or {}
+    prompt = user_msg.content if user_msg else ""
+    base_cost = network.cost_per_message
+
+    if user_settings is not None:
+        final_args, errors, extra_cost = validate_and_merge_settings(config, user_settings)
+        if errors:
+            raise Exception("Ошибки в настройках: " + "; ".join(errors))
+    else:
+        extra_cost = 0
+    total_cost = base_cost + extra_cost
+
+    api_key = getattr(settings, 'COMETAPI_API_KEY', '')
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+
+    gen_ph = _create_video_placeholder(message, prompt, 'midjourney', 'cometapi', media_type='image')
+
+    image_url = None
+    try:
+        resp = requests.post(
+            "https://api.cometapi.com/mj/submit/imagine", headers=headers,
+            json={"prompt": prompt}, timeout=30,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        task_id = data.get('result')
+        if not task_id:
+            raise Exception(f"Нет result(task_id) в ответе CometAPI Midjourney: {str(data)[:200]}")
+
+        FAILURE_STATUSES = {'FAILURE'}
+        MAX_ATTEMPTS = 30  # шаг 10с — ~5 минут запаса, реальное завершение ~70с
+        for attempt in range(MAX_ATTEMPTS):
+            time.sleep(10)
+            poll = requests.get(f"https://api.cometapi.com/mj/task/{task_id}/fetch", headers=headers, timeout=30)
+            poll.raise_for_status()
+            pd = poll.json()
+            status = pd.get('status') or ''
+            logger.info(f"CometAPI Midjourney poll {attempt + 1}/{MAX_ATTEMPTS}: status={status} progress={pd.get('progress')}")
+            if status == 'SUCCESS':
+                image_url = pd.get('imageUrl')
+                break
+            if status in FAILURE_STATUSES:
+                raise Exception(f"CometAPI Midjourney генерация завершилась ошибкой: {pd.get('failReason', status)}")
+        else:
+            raise Exception("CometAPI Midjourney: превышено время ожидания генерации")
+
+        if not image_url:
+            raise Exception(f"CometAPI Midjourney: статус SUCCESS, но нет imageUrl. response={str(pd)[:300]}")
+    except Exception:
+        _fail_video_gen(gen_ph)
+        raise
+
+    model_name = config.get('name', network.name)
+    target = gen_ph if (gen_ph is not None and not gen_ph.image) else None
+    gen = save_media_from_url(image_url, message, prompt, media_type='image', gen=target, max_retries=3)
+    saved_media = [gen] if gen else []
+
+    if _finalize_video_gen(gen_ph):
+        if gen_ph not in saved_media:
+            saved_media.append(gen_ph)
+    else:
+        _fail_video_gen(gen_ph)
+
+    if saved_media:
+        text_parts = [f"Сгенерировано {len(saved_media)} изображение(й) моделью \"{model_name}\" (сетка 2×2)."]
+        for m in saved_media:
+            text_parts.append(f"<img src='{m.image.url}' style='max-width:100%; border-radius:12px;' />")
+        return "\n\n".join(text_parts), saved_media, total_cost
+    return f"Модель \"{model_name}\" не вернула изображение. Попробуйте изменить промт.", [], total_cost
+
+
 def generate_image_apimart_async(network, user_msg, message, user_settings=None):
     """
     Генерирует изображение через apimart.ai по task-полу контракту:
@@ -2305,9 +2391,15 @@ def generate_image_apimart_async(network, user_msg, message, user_settings=None)
     Image 2.0, Imagen 4.0, Z-Image Turbo — проверено вживую 2026-07-27) отдают
     только задачу с опросом, как видео. Роутится через metadata.image_api ==
     'apimart_async' (add_laozhang_models.py).
+
+    metadata.apimart_endpoint (опционально) переопределяет путь запроса —
+    по умолчанию 'images/generations', но у Midjourney на apimart отдельный,
+    несовместимый по URL путь 'midjourney/generations' при идентичном формате
+    ответа (result.images[].url) — проверено вживую 2026-09-06.
     """
     config = network.config_json or {}
     model_id = network.model_name
+    endpoint_path = config.get('metadata', {}).get('apimart_endpoint', 'images/generations')
     prompt = user_msg.content if user_msg else ""
     base_cost = network.cost_per_message
 
@@ -2360,8 +2452,8 @@ def generate_image_apimart_async(network, user_msg, message, user_settings=None)
 
     image_urls = []
     try:
-        logger.info(f"APIMart Image POST model={model_id} params={body}")
-        resp = requests.post(f"{base_url}/images/generations", headers=auth_headers, json=body, timeout=60)
+        logger.info(f"APIMart Image POST model={model_id} endpoint={endpoint_path} params={body}")
+        resp = requests.post(f"{base_url}/{endpoint_path}", headers=auth_headers, json=body, timeout=60)
         resp.raise_for_status()
         data = resp.json()
         logger.info(f"APIMart image creation response: {str(data)[:400]}")
@@ -2415,10 +2507,14 @@ def generate_image_apimart_async(network, user_msg, message, user_settings=None)
                 images = result.get('images', [])
                 for img in images:
                     url = img.get('url')
-                    if isinstance(url, list):
-                        url = url[0] if url else None
-                    if url and str(url).startswith('http'):
-                        image_urls.append(url)
+                    # Midjourney (2026-09): 4 картинки за задачу приходят ОДНОЙ
+                    # записью с url=[url1..url4], а не 4 отдельными записями —
+                    # раньше брали только url[0] и молча теряли 3 из 4 уже
+                    # оплаченных изображений. Сохраняем все.
+                    urls_to_add = url if isinstance(url, list) else [url]
+                    for u in urls_to_add:
+                        if u and str(u).startswith('http'):
+                            image_urls.append(u)
                 if not image_urls:
                     logger.warning(f"APIMart image completed но нет URL. result={str(result)[:400]}")
                 break
@@ -2517,6 +2613,8 @@ def generate_with_falai(network, user_msg, message, user_settings=None):
                 logger.warning(
                     "APIMart изображение недоступно (%s); фолбэк → CometAPI model=%s", e, fb_model
                 )
+                if config.get('metadata', {}).get('cometapi_contract') == 'midjourney':
+                    return generate_image_midjourney_cometapi(network, user_msg, message, user_settings)
                 return generate_image_cometapi(network, user_msg, message, user_settings, model_override=fb_model)
             raise
 
