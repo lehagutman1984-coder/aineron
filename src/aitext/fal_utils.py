@@ -2035,6 +2035,122 @@ def generate_video_cometapi(network, user_msg, message, user_settings=None):
     return f"Модель \"{model_name}\" не вернула видео. Попробуйте изменить промт.", [], total_cost
 
 
+def generate_image_flux_cometapi(network, user_msg, message, user_settings=None, model_override=None):
+    """
+    Генерирует изображение через CометAPI для семейства FLUX.2 — ОТДЕЛЬНЫЙ от
+    generate_image_cometapi() эндпоинт и контракт (не /v1/images/generations,
+    и не под /v1/ вообще):
+
+    POST https://api.cometapi.com/flux/v1/{model} (model: flux-2-pro,
+      flux-2-flex, flux-2-max — ТОЛЬКО эти три, Kontext сюда не относится)
+      body: {prompt, width, height, output_format, seed?, input_image?, input_image_2?}
+      -> {"id": ..., "status": "Pending", "polling_url": ...}
+    GET  https://api.cometapi.com/flux/v1/get_result?id={id}
+      -> {"status": "Ready", "result": {"sample": "<url>", "seed": ...}}
+         (терминальные ошибки: Error/Failed/Failure/Task not found/
+         Request Moderated/Content Moderated — остальное значит "ждать ещё")
+
+    ВАЖНО (найдено 2026-09-06 после первой неудачной попытки — см. историю):
+    первая попытка ошибочно решила, что этот путь ненадёжен, потому что
+    статус оставался "Pending" 60-90 секунд и опрос прекращался раньше
+    времени. По официальной документации CometAPI (apidoc.cometapi.com/api/
+    image/flux/flux-generate-image.md и .../flux-query.md) это нормальное
+    поведение — задача реально завершилась за ~100 секунд при повторной
+    проверке с более длинным опросом (подтверждено живым вызовом: status
+    Ready, result.sample — рабочий URL готового изображения). Урок: сверяться
+    с официальными доками ПЕРЕД тем как делать вывод "провайдер ненадёжен".
+    """
+    config = network.config_json or {}
+    model_id = model_override or network.model_name
+    prompt = user_msg.content if user_msg else ""
+    base_cost = network.cost_per_message
+
+    if user_settings is not None:
+        final_args, errors, extra_cost = validate_and_merge_settings(config, user_settings)
+        if errors:
+            raise Exception("Ошибки в настройках: " + "; ".join(errors))
+    else:
+        final_args = config.get('api_defaults', {}).copy()
+        extra_cost = 0
+
+    total_cost = base_cost + extra_cost
+
+    api_key = getattr(settings, 'COMETAPI_API_KEY', '')
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json", "Accept": "*/*"}
+
+    width, height = 1024, 1024
+    size_val = final_args.get('size')
+    if size_val and 'x' in str(size_val):
+        try:
+            w, h = str(size_val).lower().split('x')
+            width, height = int(w), int(h)
+        except (ValueError, TypeError):
+            pass
+
+    body = {"prompt": prompt, "width": width, "height": height, "output_format": "jpeg"}
+    if final_args.get('seed') is not None:
+        try:
+            body['seed'] = int(final_args['seed'])
+        except (ValueError, TypeError):
+            pass
+
+    gen_ph = _create_video_placeholder(message, prompt, model_id, 'cometapi', media_type='image')
+
+    image_url = None
+    try:
+        logger.info(f"CometAPI Flux POST model={model_id} body={body}")
+        resp = requests.post(f"https://api.cometapi.com/flux/v1/{model_id}", headers=headers, json=body, timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+        task_id = data.get('id')
+        if not task_id:
+            raise Exception(f"Нет id в ответе CometAPI Flux: {str(data)[:200]}")
+
+        FAILURE_STATUSES = {'Error', 'Failed', 'Failure', 'Task not found', 'Request Moderated', 'Content Moderated'}
+        MAX_ATTEMPTS = 60  # ~5 минут при шаге 5с — реальное завершение наблюдалось на ~100с
+        for attempt in range(MAX_ATTEMPTS):
+            time.sleep(5)
+            poll = requests.get(
+                f"https://api.cometapi.com/flux/v1/get_result", params={'id': task_id},
+                headers=headers, timeout=30,
+            )
+            poll.raise_for_status()
+            pd = poll.json()
+            status = pd.get('status') or ''
+            logger.info(f"CometAPI Flux poll {attempt + 1}/{MAX_ATTEMPTS}: status={status}")
+            if status == 'Ready':
+                image_url = (pd.get('result') or {}).get('sample')
+                break
+            if status in FAILURE_STATUSES:
+                raise Exception(f"CometAPI Flux генерация завершилась ошибкой: {status}")
+        else:
+            raise Exception("CometAPI Flux: превышено время ожидания генерации")
+
+        if not image_url:
+            raise Exception(f"CometAPI Flux: статус Ready, но нет result.sample. response={str(pd)[:300]}")
+    except Exception:
+        _fail_video_gen(gen_ph)
+        raise
+
+    model_name = config.get('name', network.name)
+    target = gen_ph if (gen_ph is not None and not gen_ph.image) else None
+    gen = save_media_from_url(image_url, message, prompt, media_type='image', gen=target, max_retries=3)
+    saved_media = [gen] if gen else []
+
+    if _finalize_video_gen(gen_ph):
+        if gen_ph not in saved_media:
+            saved_media.append(gen_ph)
+    else:
+        _fail_video_gen(gen_ph)
+
+    if saved_media:
+        text_parts = [f"Сгенерировано {len(saved_media)} изображение(й) моделью \"{model_name}\"."]
+        for m in saved_media:
+            text_parts.append(f"<img src='{m.image.url}' style='max-width:100%; border-radius:12px;' />")
+        return "\n\n".join(text_parts), saved_media, total_cost
+    return f"Модель \"{model_name}\" не вернула изображение. Попробуйте изменить промт.", [], total_cost
+
+
 def generate_image_cometapi(network, user_msg, message, user_settings=None, model_override=None):
     """
     Генерирует изображение через CometAPI. Два разных контракта в зависимости
@@ -2057,13 +2173,8 @@ def generate_image_cometapi(network, user_msg, message, user_settings=None, mode
        gemini-2.5-flash-image, gemini-3.1-flash-image, gemini-3-pro-image —
        валидный JPEG на выходе у всех трёх.
 
-    ПРОВЕРЕНО И ОТКЛОНЕНО: Flux (flux-2-pro и т.п.) — есть отдельный путь
-    POST https://api.cometapi.com/flux/v1/<model> (НЕ под /v1/, это не опечатка),
-    он даже иногда отдаёт 200 с task_id, но за 6 попыток (2026-09-06) ни разу
-    не дошёл до статуса "Ready" в течение 2+ минут (завис на "Pending"), а
-    часть попыток вернула прямой 404 на сам submit. Ненадёжно — НЕ подключать
-    как резерв, пока CometAPI не починит эту конкретную интеграцию на своей
-    стороне (обычная генерация Flux занимает секунды, не минуты).
+    Flux (flux-2-pro/-max/-flex) сюда НЕ относится — у него свой контракт
+    и своя функция, см. generate_image_flux_cometapi().
 
     model_override — если задано, отправляется в CometAPI вместо
     network.model_name (сейчас не используется — все проверенные модели
@@ -2471,6 +2582,8 @@ def generate_with_falai(network, user_msg, message, user_settings=None):
         is_settings_err = str(e).startswith('Ошибки в настройках')
         if fallback_on and fb_model and not is_settings_err:
             logger.warning("laozhang/apimart изображение недоступно (%s); фолбэк → CometAPI model=%s", e, fb_model)
+            if config.get('metadata', {}).get('cometapi_contract') == 'flux':
+                return generate_image_flux_cometapi(network, user_msg, message, user_settings, model_override=fb_model)
             return generate_image_cometapi(network, user_msg, message, user_settings, model_override=fb_model)
         raise
 
