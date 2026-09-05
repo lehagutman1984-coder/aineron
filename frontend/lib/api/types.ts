@@ -203,6 +203,8 @@ export interface NetworkListItem {
   output_type?: "video" | "image" | null;
   /** Мультиреференс image-to-video (B14). null/undefined = только 1 фото. */
   i2v?: { max_images: number; mode: "reference" | "first_last" } | null;
+  /** Мультиреференс text-to-image (2026-09). null/undefined = только 1 фото. */
+  image_refs?: { max_images: number } | null;
 }
 
 export interface FAQ {
@@ -346,6 +348,8 @@ export interface NetworkMini {
   config_json?: ModelConfigJson | null;
   /** Мультиреференс image-to-video (B14). null/undefined = только 1 фото. */
   i2v?: { max_images: number; mode: "reference" | "first_last" } | null;
+  /** Мультиреференс text-to-image (2026-09). null/undefined = только 1 фото. */
+  image_refs?: { max_images: number } | null;
 }
 
 export interface Project {

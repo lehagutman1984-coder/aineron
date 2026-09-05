@@ -534,9 +534,16 @@ def _build_image_params(model_id, prompt, final_args):
         # _minimal_params (Seedream/Gemini Image/apimart_async — 13 из 23
         # image-моделей) молча терялся: кнопка "Стиль" во фронтенде списывала
         # деньги за запрос, который на деле игнорировал референс.
+        minimal_extra_body = {}
         style_ref = final_args.get('style_image_url')
         if style_ref:
-            params['extra_body'] = {'style_image_url': style_ref, 'style_reference': style_ref}
+            minimal_extra_body['style_image_url'] = style_ref
+            minimal_extra_body['style_reference'] = style_ref
+        ref_images = final_args.get('image_urls') or []
+        if isinstance(ref_images, list) and len(ref_images) >= 2:
+            minimal_extra_body['image_urls'] = ref_images
+        if minimal_extra_body:
+            params['extra_body'] = minimal_extra_body
         return params
 
     # size: приоритет — прямой 'size', затем 'image_size', затем width+height
@@ -585,6 +592,18 @@ def _build_image_params(model_id, prompt, final_args):
     if style_ref:
         extra_body['style_image_url'] = style_ref
         extra_body['style_reference'] = style_ref
+    # Мультиреференс (2026-09): 2+ фото — не img2img-редактирование одного
+    # исходника, а генерация с нуля с несколькими референсами. Проверено
+    # живьём 2026-09-06: laozhang принимает image_urls в extra_body для
+    # seedream-4-0 (200, реальный url в ответе); для gemini-2-5-flash-image
+    # (Nano Banana v1) тот же запрос вернул 200, но data:[] — модель НЕ
+    # сгенерировала изображение. Поэтому metadata.image_max_reference_images
+    # проставлен пока только моделям Seedream (см. add_image_multi_reference.py) —
+    # не полагаться на этот путь для Nano Banana/Gemini Image, пока не найден
+    # рабочий формат.
+    ref_images = final_args.get('image_urls') or []
+    if isinstance(ref_images, list) and len(ref_images) >= 2:
+        extra_body['image_urls'] = ref_images
     if extra_body:
         params['extra_body'] = extra_body
 
@@ -2165,6 +2184,14 @@ def generate_image_apimart_async(network, user_msg, message, user_settings=None)
     style_ref = final_args.get('style_image_url')
     if style_ref:
         body['style_image_url'] = style_ref
+    # Мультиреференс (2026-09): подтверждено живыми вызовами к APIMart
+    # 2026-09-06 — qwen-image-3.0 и wan2.7-image оба приняли image_urls
+    # (массив) и завершили задачу успешно с реальным изображением на выходе.
+    # metadata.image_max_reference_images проставляется точечно (см.
+    # add_image_multi_reference.py) — не гадать формат для остальных моделей.
+    ref_images = (user_settings or {}).get('image_urls') or final_args.get('image_urls') or []
+    if isinstance(ref_images, list) and len(ref_images) >= 2:
+        body['image_urls'] = ref_images
 
     gen_ph = _create_video_placeholder(message, prompt, model_id, 'apimart', media_type='image')
 
@@ -2354,16 +2381,20 @@ def generate_with_falai(network, user_msg, message, user_settings=None):
 
     prompt = user_msg.content if user_msg else ""
 
-    # Img2img: если передан image_url — роутим на редактирование изображения.
-    # Если передан только style_image_url (референс стиля без исходника) — остаётся
-    # обычная генерация, style_image_url форвардится через _build_image_params.
-    if user_settings and user_settings.get('image_url'):
+    # Img2img: если передан ОДИН image_url — роутим на редактирование
+    # изображения. 2+ фото (image_urls) — это не редактирование исходника,
+    # а мультиреференсная генерация с нуля (см. metadata.image_max_reference_images,
+    # проставляется точечно — не все модели это умеют, см. _build_image_params).
+    incoming_refs = (user_settings or {}).get('image_urls') or []
+    if user_settings and user_settings.get('image_url') and len(incoming_refs) < 2:
         return generate_image_edit(network, user_msg, message, user_settings)
 
     # Sprint 6: референс стиля приходит через user_settings (нет в ui_settings.sections),
     # поэтому validate_and_merge_settings его не выдаёт — прокидываем вручную в final_args.
     if user_settings and user_settings.get('style_image_url'):
         final_args['style_image_url'] = user_settings['style_image_url']
+    if len(incoming_refs) >= 2:
+        final_args['image_urls'] = incoming_refs
 
     # Некоторые модели (Seedream, Gemini image) не принимают size/n — используем minimal_params.
     if config.get('metadata', {}).get('minimal_params'):

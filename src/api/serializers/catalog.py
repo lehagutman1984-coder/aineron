@@ -37,6 +37,7 @@ class NeuralNetworkListSerializer(serializers.ModelSerializer):
     seo_title = serializers.SerializerMethodField()
     seo_description = serializers.SerializerMethodField()
     i2v = serializers.SerializerMethodField()
+    image_refs = serializers.SerializerMethodField()
 
     class Meta:
         model = NeuralNetwork
@@ -46,6 +47,7 @@ class NeuralNetworkListSerializer(serializers.ModelSerializer):
             'is_popular', 'is_free', 'unlimited', 'messages_limit',
             'handle_photo', 'handle_video', 'handle_archive', 'handle_text_files',
             'seo_title', 'seo_description', 'model_name', 'order', 'output_type', 'i2v',
+            'image_refs',
         ]
 
     def get_category(self, obj):
@@ -91,6 +93,23 @@ class NeuralNetworkListSerializer(serializers.ModelSerializer):
             if not max_images or max_images < 2:
                 return None
             return {'max_images': max_images, 'mode': meta.get('i2v_mode') or 'reference'}
+        except Exception:
+            return None
+
+    def get_image_refs(self, obj):
+        """Мультиреференс text-to-image (2026-09): {max_images} | None.
+
+        В отличие от i2v (video), у изображений нет режима 'first_last' —
+        все референсы равноправны. См. add_image_multi_reference.py — список
+        моделей, где формат подтверждён живым вызовом провайдера, не все
+        image-модели это умеют.
+        """
+        try:
+            meta = (obj.config_json or {}).get('metadata', {})
+            max_images = meta.get('image_max_reference_images')
+            if not max_images or max_images < 2:
+                return None
+            return {'max_images': max_images}
         except Exception:
             return None
 
