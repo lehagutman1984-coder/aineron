@@ -54,6 +54,28 @@ I2V_METADATA = {
     "i2v_max_images": 1,
 }
 
+# 2026-09-05: сверено с apidoc.cometapi.com/api/video/veo3/create.md — size
+# документирован только для 4 комбинаций (720p×16:9/9:16, 1080p×16:9,
+# 4k×16:9). 9:16 при 1080p/4k не задокументирован вообще — раньше aspect_ratio
+# тихо игнорировался generate_video_cometapi() (всегда отдавал 16:9-size
+# независимо от выбора), пользователь платил и не замечал; теперь функция
+# честно учитывает aspect_ratio, а недокументированную комбинацию явно
+# запрещаем, а не угадываем WxH.
+ASPECT_RESOLUTION_CONSTRAINT = {
+    "incompatible": [
+        {
+            "when": {"field": "resolution", "value": "1080p"},
+            "forbid": {"field": "aspect_ratio", "value": "9:16"},
+            "message": "9:16 доступен только в 720p — для 1080p/4K выберите 16:9",
+        },
+        {
+            "when": {"field": "resolution", "value": "4k"},
+            "forbid": {"field": "aspect_ratio", "value": "9:16"},
+            "message": "9:16 доступен только в 720p — для 1080p/4K выберите 16:9",
+        },
+    ]
+}
+
 
 class Command(BaseCommand):
     help = "Добавляет Veo 3 / Veo 3 Fast через CometAPI (is_active=False до ручной проверки)"
@@ -83,7 +105,7 @@ class Command(BaseCommand):
                         ],
                     }],
                 },
-                "constraints": {},
+                "constraints": {**ASPECT_RESOLUTION_CONSTRAINT},
                 "metadata": {
                     "output_type": "video",
                     "video_api": "cometapi",

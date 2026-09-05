@@ -1606,7 +1606,8 @@ def generate_video_apimart(network, user_msg, message, user_settings=None):
     for param in ['duration', 'aspect_ratio', 'resolution', 'audio', 'mode',
                   'negative_prompt', 'generation_type', 'enable_gif', 'official_fallback',
                   'size', 'generate_audio', 'camerafixed', 'quality', 'template',
-                  'shot_type', 'prompt_optimizer', 'watermark']:
+                  'shot_type', 'prompt_optimizer', 'watermark', 'seed',
+                  'prompt_extend', 'audio_url']:
         if param in final_args and final_args[param] is not None:
             body[param] = final_args[param]
 
@@ -1615,12 +1616,17 @@ def generate_video_apimart(network, user_msg, message, user_settings=None):
         if param in body and (not body[param] or body[param] == 'none'):
             del body[param]
 
-    # duration должен быть integer (apimart ожидает число, select возвращает строку)
+    # duration/seed должны быть integer (apimart ожидает число, UI отдаёт строку/float)
     if 'duration' in body:
         try:
             body['duration'] = int(body['duration'])
         except (ValueError, TypeError):
             pass
+    if 'seed' in body:
+        try:
+            body['seed'] = int(body['seed'])
+        except (ValueError, TypeError):
+            del body['seed']
 
     model_lower = (model_id or '').lower()
 
@@ -1887,10 +1893,21 @@ def generate_video_cometapi(network, user_msg, message, user_settings=None):
     except (ValueError, TypeError):
         duration = 8
 
-    # resolution -> size: CometAPI ждёт "WxH", не название тира.
+    # resolution+aspect_ratio -> size: CometAPI ждёт "WxH", не название тира.
+    # 2026-09-05: раньше aspect_ratio полностью игнорировался (size_map был
+    # ключом только по resolution) — пользователь выбирал 9:16, платил ту же
+    # цену и тихо получал 16:9. Таблица ниже — задокументированные
+    # apidoc.cometapi.com комбинации; 9:16 при 1080p/4k не задокументирован
+    # (запрещено constraints.incompatible в add_cometapi_video_models.py —
+    # не угадываем WxH для недокументированной комбинации).
     resolution = str(final_args.get('resolution', '720p'))
-    size_map = {'720p': '1280x720', '1080p': '1920x1080', '4k': '3840x2160'}
-    size = size_map.get(resolution, '1280x720')
+    aspect_ratio = str(final_args.get('aspect_ratio', '16:9'))
+    size_map = {
+        ('720p', '16:9'): '1280x720', ('720p', '9:16'): '720x1280',
+        ('1080p', '16:9'): '1920x1080',
+        ('4k', '16:9'): '3840x2160',
+    }
+    size = size_map.get((resolution, aspect_ratio)) or size_map.get((resolution, '16:9'), '1280x720')
 
     form = {"model": model_id, "prompt": prompt, "seconds": str(duration), "size": size}
 

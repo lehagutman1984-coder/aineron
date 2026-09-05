@@ -394,7 +394,13 @@ VIDEO_CONFIG = {
 
     # ------------------------------------------------------------------
     # Wan 2.6 — duration 5|10|15, звук, шаблоны-эффекты (template),
-    # мультикадровая съёмка (shot_type). i2v: image_urls (1 фото).
+    # мультикадровая съёмка (shot_type). i2v: image_urls (1 фото —
+    # apimart документирует image_urls как одиночный URL для этой модели,
+    # мультиреференс живёт под отдельным SKU wan2.7-r2v, не интегрирован).
+    # 2026-09-05: сверено с docs.apimart.ai/en/api-reference/videos/wan2.6/
+    # generation.md — добавлены negative_prompt и seed (были документированы,
+    # но отсутствовали в конфиге); audio/shot_type/template подтверждены
+    # соответствующими доку без изменений.
     # ------------------------------------------------------------------
     'wan26': {
         "name": "Wan 2.6",
@@ -430,6 +436,16 @@ VIDEO_CONFIG = {
                             {"value": "single", "label": "Один план", "extra_cost": 0},
                             {"value": "multi", "label": "Смена планов", "extra_cost": 0},
                         ]
+                    },
+                    {
+                        "name": "negative_prompt",
+                        "type": "text",
+                        "label": "Negative prompt",
+                        "extra_cost": 0,
+                    },
+                    {
+                        "name": "seed", "type": "number", "label": "Seed",
+                        "min": 0, "max": 9999999999, "default": None, "extra_cost": 0,
                     },
                     {
                         "name": "template",
@@ -628,16 +644,34 @@ VIDEO_CONFIG = {
     # на придуманном имени параметра.
     # ══════════════════════════════════════════════════════════════════
 
-    # Wan 2.7 — следующее поколение Wan после уже интегрированного wan2.6,
-    # тот же вендор (Alibaba), тот же набор полей.
+    # Wan 2.7 — 2026-09-05: конфиг переписан по факту сверки с
+    # docs.apimart.ai/en/api-reference/videos/wan2.7/generation.md — реальный
+    # набор полей другой, чем у wan2.6 (комментарий выше про "тот же вендор,
+    # тот же набор полей" не подтвердился документацией): нет булева audio
+    # (только audio_url — конфликтует с image_urls, отдельная функция, не
+    # добавляем), нет shot_type вообще; формат кадра называется "size", не
+    # "aspect_ratio"; duration 2-15 сек; negative_prompt (до 500 симв.) и seed
+    # документированы и раньше отсутствовали. i2v: image_urls принимает 1-2
+    # фото — "1 image: first-frame to video; 2 images: first-last frame" —
+    # доб. i2v_max_images=2/i2v_mode="first_last" (раньше сознательно не
+    # добавляли: "не проверено вживую", теперь подтверждено документацией).
     'wan27': {
         "name": "Wan 2.7",
-        "api_defaults": {"duration": "5", "resolution": "720p", "aspect_ratio": "16:9", "audio": False},
+        "api_defaults": {"duration": "5", "resolution": "720p", "size": "16:9"},
         "ui_settings": {
             "sections": [{
                 "title": "Настройки видео",
                 "fields": [
-                    _aspect_field(["16:9", "9:16", "1:1", "4:3", "3:4"]),
+                    {
+                        "name": "size", "type": "select", "label": "Формат", "extra_cost": 0,
+                        "options": [
+                            {"value": "16:9", "label": "16:9 (горизонталь)", "extra_cost": 0},
+                            {"value": "9:16", "label": "9:16 (вертикаль)", "extra_cost": 0},
+                            {"value": "1:1", "label": "1:1 (квадрат)", "extra_cost": 0},
+                            {"value": "4:3", "label": "4:3 (традиционный)", "extra_cost": 0},
+                            {"value": "3:4", "label": "3:4 (вертикальный)", "extra_cost": 0},
+                        ]
+                    },
                     _duration_field([(5, 0), (10, 8), (15, 15)]),
                     {
                         "name": "resolution", "type": "select", "label": "Качество", "extra_cost": 0,
@@ -646,13 +680,13 @@ VIDEO_CONFIG = {
                             {"value": "1080p", "label": "1080p (Full HD)", "extra_cost": 10},
                         ]
                     },
-                    {"name": "audio", "type": "checkbox", "label": "Сгенерировать звук", "extra_cost": 0},
                     {
-                        "name": "shot_type", "type": "select", "label": "Съёмка", "extra_cost": 0,
-                        "options": [
-                            {"value": "single", "label": "Один план", "extra_cost": 0},
-                            {"value": "multi", "label": "Смена планов", "extra_cost": 0},
-                        ]
+                        "name": "negative_prompt", "type": "text", "label": "Negative prompt",
+                        "extra_cost": 0, "max_length": 500,
+                    },
+                    {
+                        "name": "seed", "type": "number", "label": "Seed",
+                        "min": 0, "max": 9999999999, "default": None, "extra_cost": 0,
                     },
                 ]
             }]
@@ -661,6 +695,7 @@ VIDEO_CONFIG = {
         "metadata": {
             "output_type": "video", "video_api": "apimart",
             "supports_image_to_video": True, "i2v_param": "image_urls",
+            "i2v_max_images": 2, "i2v_mode": "first_last",
         },
     },
 
@@ -755,36 +790,17 @@ VIDEO_CONFIG = {
     # по фото. Загрузки видео в проекте нет, поэтому img2video-метаданные
     # сюда сознательно не добавляем (раньше здесь ошибочно стояли
     # image_urls/i2v_max_images — снято той же правкой).
-    'klingv3motion': {
-        "name": "Kling v3 Motion Control",
-        "api_defaults": {"mode": "std", "duration": "5", "aspect_ratio": "16:9", "audio": False},
-        "ui_settings": {
-            "sections": [{
-                "title": "Настройки видео",
-                "fields": [
-                    _aspect_field(["16:9", "9:16", "1:1"]),
-                    _duration_field([(3, 0), (5, 0), (8, 10), (10, 18), (15, 30)]),
-                    {
-                        "name": "mode", "type": "select", "label": "Качество", "extra_cost": 0,
-                        "options": [
-                            {"value": "std", "label": "720p (стандарт)", "extra_cost": 0},
-                            {"value": "pro", "label": "1080p (профессионал)", "extra_cost": 15},
-                            {"value": "4k", "label": "4K (Ultra HD)", "extra_cost": 40},
-                        ]
-                    },
-                    {"name": "audio", "type": "checkbox", "label": "Сгенерировать звук", "extra_cost": 5},
-                ]
-            }]
-        },
-        "constraints": {**KLING_4K_AUDIO_CONSTRAINT},
-        "metadata": {
-            "output_type": "video", "video_api": "apimart",
-        },
-    },
+    # 'klingv3motion' убран 2026-09-05 вместе с моделью — см. комментарий
+    # у VIDEO_MODELS выше (обязательный video_url, у проекта нет загрузки видео).
 
     # Kling v3 Omni — многореференсный режим (персонаж+сцена); базовый набор
-    # полей идентичен kling_v3, параметры мульти-референса не проверены
-    # вживую и намеренно не добавлены (см. комментарий выше блока).
+    # полей идентичен kling_v3. 2026-09-05: сверено с docs.apimart.ai/en/
+    # api-reference/videos/kling-v3-omni/generation.md — добавлен
+    # negative_prompt (документирован, до 2500 симв., ранее отсутствовал).
+    # Параметры собственно мульти-референса (image_with_roles,
+    # <<<image_N>>> синтаксис в промте) не добавлены — это отдельный
+    # механизм с нестандартным контрактом (требует code-изменений, не
+    # просто новое поле в ui_settings), не проверено вживую.
     'klingv3omni': {
         "name": "Kling v3 Omni",
         "api_defaults": {"mode": "std", "duration": "5", "aspect_ratio": "16:9", "audio": False},
@@ -803,6 +819,10 @@ VIDEO_CONFIG = {
                         ]
                     },
                     {"name": "audio", "type": "checkbox", "label": "Сгенерировать звук", "extra_cost": 5},
+                    {
+                        "name": "negative_prompt", "type": "text", "label": "Negative prompt",
+                        "extra_cost": 0, "max_length": 2500,
+                    },
                 ]
             }]
         },
@@ -918,6 +938,15 @@ VIDEO_CONFIG = {
     # 2026-09-02: по документации apimart Lite вообще не принимает
     # image_urls/generation_type/official_fallback — img2video для неё
     # снят (раньше стоял ошибочно скопированный с veo3_fast конфиг).
+    # 2026-09-05: docs.apimart.ai/en/api-reference/videos/veo3/generation.md
+    # явно помечает Warning'ом только 3 параметра как неподдерживаемые для
+    # veo3.1-lite (generation_type/image_urls/official_fallback, что и так
+    # снято выше) — resolution БЕЗ такого предупреждения. Раньше конфиг
+    # намеренно фиксировал 720p без выбора, предполагая тарифное
+    # ограничение — проверено вживую 2 реальными запросами: resolution=1080p
+    # вернул видео 1920x1080, resolution=4k вернул 3840x2160. Оба тира
+    # реально работают — добавлен тот же селектор, что у Fast/Quality;
+    # доплата пропорциональна базовой цене Lite (в разы дешевле Fast).
     'veo3lite': {
         "name": "Veo 3.1 Lite",
         "api_defaults": {"duration": 8, "aspect_ratio": "16:9", "resolution": "720p"},
@@ -926,6 +955,17 @@ VIDEO_CONFIG = {
                 "title": "Настройки видео (8 сек, фиксировано)",
                 "fields": [
                     _aspect_field(["16:9", "9:16"]),
+                    {
+                        "name": "resolution",
+                        "type": "select",
+                        "label": "Качество",
+                        "extra_cost": 0,
+                        "options": [
+                            {"value": "720p", "label": "720p (HD)", "extra_cost": 0},
+                            {"value": "1080p", "label": "1080p (Full HD)", "extra_cost": 5},
+                            {"value": "4k", "label": "4K (Ultra HD)", "extra_cost": 15},
+                        ]
+                    },
                 ]
             }]
         },
@@ -944,12 +984,21 @@ VIDEO_CONFIG = {
     # ══════════════════════════════════════════════════════════════════
 
     # Kling Video O1 — новое поколение Kling поверх уже интегрированного v3.
-    # Проверено вживую ТОЛЬКО text-to-video (mode=std) — img2video-контракт
-    # для этой модели не проверялся, поэтому img2video-метаданные сознательно
-    # не проставлены (см. комментарий про kling-v3-motion-control выше).
     # 2026-09-02: убрана доплата за "audio" (extra_cost 5) — по документации
     # apimart параметр audio для этой модели не встречается вообще, в отличие
     # от kling_v2_6/kling_v3, где он явно задокументирован.
+    # 2026-09-05: docs.apimart.ai документирует image_urls (до 2 фото,
+    # первый/последний кадр) для этой модели — НО живой тест до status=
+    # completed (не просто "submitted", см. комментарий про
+    # kling-v3-motion-control выше) провалился 3 раза подряд за ~7 секунд с
+    # generic "temporary problem" ошибкой: обычный image_urls с одинаковыми
+    # фото, с разными фото, и альтернативный формат image_with_roles —
+    # все три немедленно упали. Чистый text-to-video при этом отработал
+    # штатно (~45 сек, реальное видео). Вывод: документированный img2video-
+    # контракт для этой модели на практике не работает (для нашего аккаунта
+    # или вообще) — img2video-метаданные СОЗНАТЕЛЬНО не добавлены, несмотря
+    # на документацию. Не пытаться добавить снова без нового успешного
+    # completed-теста.
     'klingvideoo1': {
         "name": "Kling Video O1",
         "api_defaults": {"mode": "std", "duration": "5", "aspect_ratio": "16:9"},
@@ -1171,16 +1220,17 @@ VIDEO_MODELS = [
         config_key='kling30turbo',
         is_popular=True,
     ),
-    dict(
-        name='Kling v3 Motion Control',
-        slug='kling-v3-motion-control',
-        model_name='kling-v3-motion-control',
-        cost_per_message=75,
-        order=17,
-        description='Kling v3 с управлением траекторией камеры — для сложной операторской работы.',
-        config_key='klingv3motion',
-        is_popular=False,
-    ),
+    # Kling v3 Motion Control убрана из каталога 2026-09-05 — сверка с
+    # docs.apimart.ai/en/api-reference/videos/kling-v2-6/kling-v2-6-motion-control-generation.md
+    # подтвердила давнее подозрение из комментария выше (ПРОВЕРЕНО ВЖИВУЮ:
+    # 400 "video_url is required"): модель переносит траекторию движения
+    # камеры С ИСХОДНОГО ВИДЕО на фото — обязательные поля image_url И
+    # video_url. У проекта нет функции загрузки видео вообще (ни в чате, ни
+    # в Studio) — модель гарантированно не может сработать ни при каких
+    # настройках, это не пробел в опциях, а отсутствующая продуктовая
+    # возможность. Строка kling-v3-motion-control деактивирована (не
+    # удалена — сохраняет историю чатов, если у кого-то есть старые
+    # сообщения). НЕ возвращать в список без функции загрузки видео.
     dict(
         name='Kling v3 Omni',
         slug='kling-v3-omni',
