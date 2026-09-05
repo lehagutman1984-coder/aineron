@@ -422,6 +422,13 @@ SEEDANCE_API_KEY = os.environ.get('SEEDANCE_API_KEY', '')
 APIMART_API_KEY = os.environ.get('APIMART_API_KEY', '')
 APIMART_API_URL = "https://api.apimart.ai/v1"
 
+# CometAPI — второй провайдер видео, только для моделей без аналога у apimart
+# (сейчас Veo 3 / Veo 3 Fast — apimart продаёт только 3.1). Контракт
+# POST /v1/videos (multipart) + GET /v1/videos/{id}, см. generate_video_cometapi()
+# в aitext/fal_utils.py.
+COMETAPI_API_KEY = os.environ.get('COMETAPI_API_KEY', '')
+COMETAPI_API_URL = "https://api.cometapi.com/v1"
+
 # Groq — бесплатные текстовые модели (llama, qwen, groq/compound).
 # OpenAI-совместимый эндпоинт. Ключ хранится в .env (console.groq.com).
 # ВАЖНО: Groq блокирует запросы из РФ (гео-блок на уровне сети, 403 Forbidden

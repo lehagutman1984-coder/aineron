@@ -1788,6 +1788,180 @@ def generate_video_apimart(network, user_msg, message, user_settings=None):
     return f"Модель \"{model_name}\" не вернула видео. Попробуйте изменить промт.", [], total_cost
 
 
+def generate_video_cometapi(network, user_msg, message, user_settings=None):
+    """
+    Генерирует видео через CometAPI (второй провайдер, только для моделей,
+    которых нет у apimart — сейчас Veo 3 и Veo 3 Fast, см. metadata.video_api
+    == 'cometapi'). Контракт подтверждён живым тестовым вызовом 2026-09-05:
+
+    POST /v1/videos (multipart/form-data: model, prompt, seconds, size)
+      -> {"id": "<task_id>", "status": "queued", ...}
+    GET  /v1/videos/{id}
+      -> {"status": "in_progress"|"completed"|"failed"|"error", "progress": int,
+          "video_url": "<mp4 url>"}  (video_url появляется только при completed)
+
+    MVP: только text-to-video. image-to-video НЕ реализован — контракт
+    CometAPI принимает `input_reference` как файл multipart, а не URL
+    (в отличие от apimart, где everywhere URL) — потребует скачать
+    референс-изображение и переотправить как file, отдельная задача.
+    Метаданные каталога должны выставлять supports_image_to_video: false,
+    пока это не сделано.
+    """
+    config = network.config_json or {}
+    model_id = network.model_name
+    prompt = user_msg.content if user_msg else ""
+    base_cost = network.cost_per_message
+
+    if user_settings is not None:
+        final_args, errors, extra_cost = validate_and_merge_settings(config, user_settings)
+        if errors:
+            raise Exception("Ошибки в настройках: " + "; ".join(errors))
+    else:
+        final_args = config.get('api_defaults', {}).copy()
+        extra_cost = 0
+
+    total_cost = base_cost + extra_cost
+
+    api_key = getattr(settings, 'COMETAPI_API_KEY', '')
+    base_url = getattr(settings, 'COMETAPI_API_URL', 'https://api.cometapi.com/v1').rstrip('/')
+    auth_headers = {"Authorization": f"Bearer {api_key}"}
+
+    duration = final_args.get('duration', 8)
+    try:
+        duration = int(duration)
+    except (ValueError, TypeError):
+        duration = 8
+
+    # resolution -> size: CometAPI ждёт "WxH", не название тира.
+    resolution = str(final_args.get('resolution', '720p'))
+    size_map = {'720p': '1280x720', '1080p': '1920x1080', '4k': '3840x2160'}
+    size = size_map.get(resolution, '1280x720')
+
+    form = {"model": model_id, "prompt": prompt, "seconds": str(duration), "size": size}
+
+    gen_ph = _create_video_placeholder(message, prompt, model_id, 'cometapi')
+
+    # Резюме после рестарта воркера — тот же паттерн, что у apimart, свой ключ
+    # в message.content, чтобы не путать провайдера при полностью независимом
+    # task_id-неймспейсе.
+    task_id = None
+    try:
+        saved = json.loads(message.content or '{}')
+        task_id = saved.get('_cometapi_task_id')
+        if task_id:
+            logger.info(f"CometAPI resuming existing task_id={task_id} (task restarted)")
+    except Exception:
+        task_id = None
+
+    video_url = None
+    try:
+        if not task_id:
+            logger.info(f"CometAPI Video POST model={model_id} form={form}")
+            resp = requests.post(
+                f"{base_url}/videos",
+                headers=auth_headers,
+                data=form,
+                timeout=60,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            logger.info(f"CometAPI creation response: {str(data)[:400]}")
+            task_id = data.get('id') or data.get('task_id')
+            if not task_id:
+                raise Exception(f"Нет task_id в ответе CometAPI: {str(data)[:200]}")
+
+            try:
+                message.content = json.dumps({'_cometapi_task_id': task_id})
+                message.save(update_fields=['content'])
+            except Exception as e:
+                logger.warning(f"Не удалось сохранить cometapi task_id: {e}")
+
+        logger.info(f"CometAPI task_id={task_id}, polling...")
+
+        if gen_ph is not None and task_id:
+            try:
+                gen_ph.params = {'_cometapi_task_id': task_id, 'model': model_id}
+                gen_ph.save(update_fields=['params'])
+            except Exception:
+                pass
+
+        MAX_ATTEMPTS = 90
+        MAX_CONSECUTIVE_POLL_FAILURES = 5
+        consecutive_poll_failures = 0
+        for attempt in range(MAX_ATTEMPTS):
+            time.sleep(5)
+            try:
+                poll_resp = requests.get(
+                    f"{base_url}/videos/{task_id}",
+                    headers=auth_headers,
+                    timeout=30,
+                )
+                poll_resp.raise_for_status()
+                pd = poll_resp.json()
+            except Exception as poll_exc:
+                consecutive_poll_failures += 1
+                logger.warning(
+                    f"CometAPI poll {attempt + 1}/{MAX_ATTEMPTS} failed "
+                    f"({consecutive_poll_failures}/{MAX_CONSECUTIVE_POLL_FAILURES}): {poll_exc}"
+                )
+                if consecutive_poll_failures >= MAX_CONSECUTIVE_POLL_FAILURES:
+                    raise
+                continue
+            consecutive_poll_failures = 0
+
+            status = (pd.get('status') or '').lower()
+            progress = pd.get('progress', '?')
+            logger.info(f"CometAPI poll {attempt + 1}/{MAX_ATTEMPTS}: status={status} progress={progress}")
+            _bump_video_progress(gen_ph, pd.get('progress'), attempt, MAX_ATTEMPTS)
+
+            if status == 'completed':
+                video_url = pd.get('video_url')
+                if not video_url:
+                    logger.warning(f"CometAPI completed но нет video_url. response={str(pd)[:400]}")
+                break
+            elif status in ('failed', 'error', 'cancelled'):
+                raise Exception(f"CometAPI генерация завершилась ошибкой: {pd.get('message', status)}")
+    except Exception:
+        _fail_video_gen(gen_ph)
+        raise
+
+    model_name = config.get('name', network.name)
+    saved_media = []
+    if video_url:
+        target = gen_ph if (gen_ph is not None and not gen_ph.image) else None
+        gen = None
+        for dl_attempt in range(3):
+            gen = save_media_from_url(
+                video_url, message, prompt, media_type='video', gen=target, max_retries=1
+            )
+            if gen:
+                break
+            if dl_attempt < 2:
+                logger.warning(
+                    f"[cometapi] финальная загрузка видео не удалась "
+                    f"(попытка {dl_attempt + 1}/3), повтор через 5с"
+                )
+                time.sleep(5)
+        if gen:
+            saved_media.append(gen)
+
+    if _finalize_video_gen(gen_ph):
+        if gen_ph not in saved_media:
+            saved_media.append(gen_ph)
+    else:
+        _fail_video_gen(gen_ph)
+
+    if saved_media:
+        text_parts = [f"Сгенерировано {len(saved_media)} видео моделью \"{model_name}\"."]
+        for m in saved_media:
+            text_parts.append(
+                f"<video src='{m.image.url}' controls width='100%' style='max-width:100%; border-radius:12px;'></video>"
+            )
+        return "\n\n".join(text_parts), saved_media, total_cost
+
+    return f"Модель \"{model_name}\" не вернула видео. Попробуйте изменить промт.", [], total_cost
+
+
 def generate_image_apimart_async(network, user_msg, message, user_settings=None):
     """
     Генерирует изображение через apimart.ai по task-полу контракту:
@@ -1964,6 +2138,8 @@ def generate_with_falai(network, user_msg, message, user_settings=None):
                 raise
         if video_api == 'seedance':
             return generate_seedance_video(network, user_msg, message, user_settings)
+        if video_api == 'cometapi':
+            return generate_video_cometapi(network, user_msg, message, user_settings)
         return generate_video_laozhang(network, user_msg, message, user_settings)
 
     # Изображения с task-полом контрактом apimart (не синхронный images.generate()) —
