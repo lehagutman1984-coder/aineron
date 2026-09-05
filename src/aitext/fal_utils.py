@@ -529,7 +529,14 @@ def _build_image_params(model_id, prompt, final_args):
     }
 
     if final_args.get('_minimal_params'):
-        # Только model + prompt, никаких стандартных параметров
+        # Только model + prompt + референс стиля (если передан) — раньше
+        # style_image_url форвардился НИЖЕ этого return и на моделях с
+        # _minimal_params (Seedream/Gemini Image/apimart_async — 13 из 23
+        # image-моделей) молча терялся: кнопка "Стиль" во фронтенде списывала
+        # деньги за запрос, который на деле игнорировал референс.
+        style_ref = final_args.get('style_image_url')
+        if style_ref:
+            params['extra_body'] = {'style_image_url': style_ref, 'style_reference': style_ref}
         return params
 
     # size: приоритет — прямой 'size', затем 'image_size', затем width+height
@@ -2145,6 +2152,19 @@ def generate_image_apimart_async(network, user_msg, message, user_settings=None)
     for param in ['size', 'n', 'aspect_ratio', 'quality']:
         if param in final_args and final_args[param] is not None:
             body[param] = final_args[param]
+    # num_images — тот же UI-алиас для 'n', что уже обрабатывается в
+    # _build_image_params() для sync-пути; здесь раньше не был подключён —
+    # значение из настроек Z-Image/Wan-подобных полей молча терялось.
+    if 'num_images' in final_args and final_args['num_images'] is not None:
+        try:
+            body['n'] = int(final_args['num_images'])
+        except (ValueError, TypeError):
+            pass
+    # Референс стиля — та же логика, что в _build_image_params(): без этого
+    # apimart_async-модели (7 из 23) молча игнорировали кнопку "Стиль".
+    style_ref = final_args.get('style_image_url')
+    if style_ref:
+        body['style_image_url'] = style_ref
 
     gen_ph = _create_video_placeholder(message, prompt, model_id, 'apimart', media_type='image')
 
