@@ -1,5 +1,6 @@
 ﻿import json
 import os
+import re
 import base64
 import logging
 import uuid
@@ -2036,24 +2037,37 @@ def generate_video_cometapi(network, user_msg, message, user_settings=None):
 
 def generate_image_cometapi(network, user_msg, message, user_settings=None, model_override=None):
     """
-    Генерирует изображение через CometAPI — синхронный OpenAI-совместимый
-    POST /v1/images/generations → {"data": [{"url": ...}]} ИЛИ
-    {"data": [{"b64_json": ...}]}, без опроса задачи. Контракт подтверждён
-    живыми тестовыми вызовами 2026-09-06 (только для моделей, перечисленных
-    ниже — не проверено на всём каталоге):
-      - grok-imagine-image, grok-imagine-image-quality: 200, url-ответ
-      - doubao-seedream-4-0-250828: 200, url-ответ
-      - gpt-image-1: 200, b64_json-ответ
-      - flux-2-pro: 400 — этому семейству нужен отдельный путь
-        /flux/v1/<model> (не реализовано, не вызывать generate_image_cometapi
-        для flux-моделей)
-      - gemini-3.1-flash-image: 500 "only imagen models are supported" — имя
-        модели не совпадает с тем, что принимает этот эндпоинт (не проверено,
-        какое имя сработает) — не вызывать для Nano Banana/Gemini Image
+    Генерирует изображение через CometAPI. Два разных контракта в зависимости
+    от metadata.cometapi_via_chat (config_json модели):
+
+    A) via_chat=False (по умолчанию) — синхронный OpenAI-совместимый
+       POST /v1/images/generations → {"data": [{"url": ...}]} ИЛИ
+       {"data": [{"b64_json": ...}]}. Подтверждено живыми вызовами 2026-09-06:
+         - grok-imagine-image, grok-imagine-image-quality: 200, url-ответ
+         - doubao-seedream-4-0-250828: 200, url-ответ
+         - gpt-image-1: 200, b64_json-ответ
+
+    B) via_chat=True — Gemini-семейство (Nano Banana) этот эндпоинт вообще не
+       принимает (500 "only imagen models are supported" на ЛЮБОЕ имя модели —
+       проверено на gemini-3.1-flash-image(-preview), не вопрос алиаса).
+       Реально работает POST /v1/chat/completions с обычным user-сообщением —
+       модель возвращает markdown-картинку прямо в content:
+       "![image](data:image/jpeg;base64,<...>)". Подтверждено живьём
+       2026-09-06 на ВСЕХ ТРЁХ моделях под их родными именами (без алиасов):
+       gemini-2.5-flash-image, gemini-3.1-flash-image, gemini-3-pro-image —
+       валидный JPEG на выходе у всех трёх.
+
+    ПРОВЕРЕНО И ОТКЛОНЕНО: Flux (flux-2-pro и т.п.) — есть отдельный путь
+    POST https://api.cometapi.com/flux/v1/<model> (НЕ под /v1/, это не опечатка),
+    он даже иногда отдаёт 200 с task_id, но за 6 попыток (2026-09-06) ни разу
+    не дошёл до статуса "Ready" в течение 2+ минут (завис на "Pending"), а
+    часть попыток вернула прямой 404 на сам submit. Ненадёжно — НЕ подключать
+    как резерв, пока CometAPI не починит эту конкретную интеграцию на своей
+    стороне (обычная генерация Flux занимает секунды, не минуты).
 
     model_override — если задано, отправляется в CometAPI вместо
-    network.model_name (для случаев, когда имя модели у CometAPI отличается
-    от нашего/apimart — сейчас не используется, оба грок-имаджина совпадают).
+    network.model_name (сейчас не используется — все проверенные модели
+    совпадают по имени с CometAPI).
     """
     config = network.config_json or {}
     model_id = model_override or network.model_name
@@ -2074,14 +2088,52 @@ def generate_image_cometapi(network, user_msg, message, user_settings=None, mode
     base_url = getattr(settings, 'COMETAPI_API_URL', 'https://api.cometapi.com/v1').rstrip('/')
     auth_headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
 
+    gen_ph = _create_video_placeholder(message, prompt, model_id, 'cometapi', media_type='image')
+    saved_media = []
+
+    if config.get('metadata', {}).get('cometapi_via_chat'):
+        try:
+            logger.info(f"CometAPI Image (chat/completions) model={model_id}")
+            resp = requests.post(
+                f"{base_url}/chat/completions", headers=auth_headers,
+                json={"model": model_id, "messages": [{"role": "user", "content": prompt}]},
+                timeout=90,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            content = data.get('choices', [{}])[0].get('message', {}).get('content', '') or ''
+            matches = re.findall(r'data:image/(\w+);base64,([A-Za-z0-9+/=]+)', content)
+            if not matches:
+                raise Exception(f"CometAPI chat/completions не вернул изображение. content[:200]={content[:200]!r}")
+            for _, b64_data in matches:
+                gen = save_image_from_b64(b64_data, message, prompt)
+                if gen:
+                    saved_media.append(gen)
+            if not saved_media:
+                raise Exception("CometAPI chat/completions: изображение найдено в ответе, но не сохранилось")
+        except Exception:
+            _fail_video_gen(gen_ph)
+            raise
+
+        model_name = config.get('name', network.name)
+        if _finalize_video_gen(gen_ph):
+            if gen_ph not in saved_media:
+                saved_media.append(gen_ph)
+        else:
+            _fail_video_gen(gen_ph)
+
+        if saved_media:
+            text_parts = [f"Сгенерировано {len(saved_media)} изображение(й) моделью \"{model_name}\"."]
+            for m in saved_media:
+                text_parts.append(f"<img src='{m.image.url}' style='max-width:100%; border-radius:12px;' />")
+            return "\n\n".join(text_parts), saved_media, total_cost
+        return f"Модель \"{model_name}\" не вернула изображение. Попробуйте изменить промт.", [], total_cost
+
     body = {"model": model_id, "prompt": prompt, "n": 1}
     for param in ['size', 'aspect_ratio', 'quality']:
         if param in final_args and final_args[param] is not None:
             body[param] = final_args[param]
 
-    gen_ph = _create_video_placeholder(message, prompt, model_id, 'cometapi', media_type='image')
-
-    saved_media = []
     try:
         logger.info(f"CometAPI Image POST model={model_id} params={body}")
         resp = requests.post(f"{base_url}/images/generations", headers=auth_headers, json=body, timeout=90)
@@ -2409,6 +2461,17 @@ def generate_with_falai(network, user_msg, message, user_settings=None):
         response = client.images.generate(**image_params)
     except Exception as e:
         logger.error(f"Ошибка вызова laozhang.ai images API: {e}")
+        # client уже сам фолбэчит laozhang->apimart прозрachно (FallbackClient,
+        # providers.py) для images.generate — если ОБА эти провайдера упали,
+        # для моделей с явно проверенным вживую CometAPI-контрактом (Nano
+        # Banana семейство, via chat/completions, см. generate_image_cometapi)
+        # пробуем третий вариант, а не сдаёмся сразу.
+        fb_model = config.get('metadata', {}).get('cometapi_fallback_model')
+        fallback_on = getattr(settings, 'AI_PROVIDER_FALLBACK', True)
+        is_settings_err = str(e).startswith('Ошибки в настройках')
+        if fallback_on and fb_model and not is_settings_err:
+            logger.warning("laozhang/apimart изображение недоступно (%s); фолбэк → CometAPI model=%s", e, fb_model)
+            return generate_image_cometapi(network, user_msg, message, user_settings, model_override=fb_model)
         raise
 
     # Flux у laozhang.ai игнорирует n>1 и всегда отдаёт ровно 1 картинку за
