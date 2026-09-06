@@ -531,7 +531,33 @@ class StreamMessageView(APIView):
                 "content": "Дай КРАТКИЙ ответ — не более 150 слов. Только суть.",
             })
 
-        messages_for_api.append({"role": "user", "content": message_text or "Привет"})
+        # 2026-09-06: раньше вложения (фото/PDF/DOCX) линковались к user_message
+        # (см. attachment_ids выше) и на этом всё — в API реально уходил голый
+        # message_text, вложения никогда не читались. Пользователь видел
+        # превью в интерфейсе, платил за сообщение, а модель картинку/документ
+        # не получала вообще — не-стриминговый путь (generate_ai_response,
+        # tasks.py:1009-1029) всегда делал это правильно, стриминговый (этот
+        # файл, единственный путь для текстовых моделей в веб-чате) — нет.
+        # Мультимодальный content-array строим только если есть вложения —
+        # иначе (обычный случай) шлём как раньше, голой строкой.
+        attachments = list(user_message.attachments.all()) if attachment_ids else []
+        if attachments:
+            from aitext.file_utils import prepare_media_for_ai
+            content_array = []
+            if message_text:
+                content_array.append({"type": "text", "text": message_text})
+            for att in attachments:
+                if att.media_type == 'image' and not network.handle_photo:
+                    continue  # модель без поддержки изображений — не шлём, чтобы не ловить 400
+                if att.extracted_text:
+                    content_array.append({"type": "text", "text": att.extracted_text})
+                else:
+                    prepared = prepare_media_for_ai(att)
+                    if prepared:
+                        content_array.append(prepared)
+            messages_for_api.append({"role": "user", "content": content_array or (message_text or "Привет")})
+        else:
+            messages_for_api.append({"role": "user", "content": message_text or "Привет"})
 
         # ── Шаг 1: веб-поиск СИНХРОННО до генератора ─────────────────────────
         from aitext.tasks import call_web_search, build_web_search_message

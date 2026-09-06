@@ -38,6 +38,15 @@ def _resolve_network(model_id: str):
 def _build_openai_response(completion, model_id: str, request_id: str) -> dict:
     choice = completion.choices[0]
     usage = completion.usage
+    message = {
+        'role': 'assistant',
+        'content': choice.message.content,
+    }
+    # 2026-09-06: tool_calls раньше не прокидывались в ответ — клиенты,
+    # использующие tools/tool_choice (см. PASSTHROUGH_PARAMS ниже), получали
+    # 200 OK без единого вызова функции, даже если апстрим его вернул.
+    if getattr(choice.message, 'tool_calls', None):
+        message['tool_calls'] = [tc.model_dump() for tc in choice.message.tool_calls]
     return {
         'id': f'chatcmpl-{request_id}',
         'object': 'chat.completion',
@@ -46,10 +55,7 @@ def _build_openai_response(completion, model_id: str, request_id: str) -> dict:
         'choices': [
             {
                 'index': 0,
-                'message': {
-                    'role': 'assistant',
-                    'content': choice.message.content or '',
-                },
+                'message': message,
                 'finish_reason': choice.finish_reason or 'stop',
             }
         ],
@@ -78,6 +84,10 @@ def _stream_completion(user, network, messages, kwargs, api_key):
                 content = delta.content if delta else ''
                 finish_reason = chunk.choices[0].finish_reason if chunk.choices else None
 
+                delta_out = {'content': content or ''}
+                if delta is not None and getattr(delta, 'tool_calls', None):
+                    delta_out = {'tool_calls': [tc.model_dump() for tc in delta.tool_calls]}
+
                 chunk_data = {
                     'id': f'chatcmpl-{request_id}',
                     'object': 'chat.completion.chunk',
@@ -86,7 +96,7 @@ def _stream_completion(user, network, messages, kwargs, api_key):
                     'choices': [
                         {
                             'index': 0,
-                            'delta': {'content': content or ''},
+                            'delta': delta_out,
                             'finish_reason': finish_reason,
                         }
                     ],
@@ -194,6 +204,15 @@ class ChatCompletionsView(APIView):
             max_tokens or (network.max_tokens if network.max_tokens > 0 else None),
             network.model_name,
         )
+
+        # 2026-09-06: раньше эти стандартные OpenAI-параметры молча
+        # игнорировались (200 OK без единого предупреждения) — контрактный
+        # баг для эндпоинта, продающегося как OpenAI-совместимый. Прокидываем
+        # 1:1 в апстрим (apimart/cometapi), если клиент их передал.
+        for _param in ('top_p', 'seed', 'stop', 'n', 'tools', 'tool_choice',
+                       'response_format', 'presence_penalty', 'frequency_penalty'):
+            if _param in data:
+                kwargs[_param] = data[_param]
 
         if stream:
             gen = _stream_completion(user, network, messages, kwargs, api_key)

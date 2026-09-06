@@ -253,6 +253,11 @@ TEXT_MODELS = [
     dict(name='o3 Mini', slug='o3-mini', model_name='o3-mini', cost_per_message=2, cost_kopecks=200, order=13,
          description='Компактная reasoning-модель для логических и математических задач.'),
     # Claude
+    # 2026-09-06: model_name здесь — это то, что реально уходит в CometAPI/APIMart
+    # (см. providers.py, apimart_text — primary apimart/reserve cometapi). НЕ
+    # менять датированный ID claude-haiku-4-5-20251001 на недатированный алиас
+    # claude-haiku-4-5 — на CometAPI это РАЗНАЯ модель с ценой ~75x выше
+    # ($60/$300 за 1M vs $0.80/$4) — обнаружено при сверке цен 2026-09-06.
     dict(name='Claude Sonnet 4.6', slug='claude-sonnet-4-6', model_name='claude-sonnet-4-6', cost_per_message=5, cost_kopecks=500, order=20,
          description='Последний Claude Sonnet — баланс интеллекта и скорости от Anthropic.',
          handle_photo=True, is_popular=True),
