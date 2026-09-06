@@ -260,6 +260,27 @@ export const TEXT_MODELS: PreviewModel[] = [
     outputBadges: ["Текст"],
   },
   {
+    // 2026-09-06: добавлена по запросу пользователя (не было в каталоге).
+    // priceInRub/priceOutRub здесь — ИСКЛЮЧЕНИЕ из общего правила файла
+    // (обычно опт×K, "честная цена для сравнения"): у этой модели
+    // конкурент (RouterAI) реально дороже нашей опт-цены — по прямому
+    // указанию пользователя цена задана как competitor×0.95 (1125×0.95,
+    // 5628×0.95, тир ≤272K), не опт×K=105 (было бы 840/4200) — и
+    // priceInRub/priceOutRub, и priceRealKopecks выведены из ОДНОЙ и той же
+    // конкурентной цены, чтобы витрина не противоречила реальному списанию.
+    id: "gpt-6-astra",
+    name: "GPT-6 Astra",
+    provider: "OpenAI",
+    category: "text",
+    description: "Флагман нового поколения после линейки GPT-5.6 — максимальная глубина рассуждений и кода.",
+    contextLabel: "1M",
+    priceInRub: 1069,
+    priceOutRub: 5347,
+    priceRealKopecks: 3207,
+    inputBadges: ["Текст", "Изображения", "Файл"],
+    outputBadges: ["Текст"],
+  },
+  {
     id: "gpt-5-5",
     name: "GPT-5.5",
     provider: "OpenAI",

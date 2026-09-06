@@ -398,19 +398,26 @@ TEXT_MODELS = [
          description='GPT-5.5 — новое поколение перед профессиональной версией.',
          handle_photo=True),
     # 2026-09-06: живьём подтверждено на apimart (осн.) и cometapi (резерв),
-    # оба под тем же именем модели gpt-6-astra. cost_kopecks посчитан по
-    # формуле из PRICING_SIMPLIFICATION_PLAN.md §3 (профиль heavy/thinking:
-    # 10000 input + 4000 output токенов) на реальном опте apimart для тира
-    # ≤272K контекста ($8/$40 за 1M) × K=105: (10000×840 + 4000×4200)/1e6×100
-    # = 2520 копеек. Контекст 922K, макс. вывод 12800 (см.
-    # core/model_limits.py::MODEL_MAX_TOKENS_CAP) — оба по данным реестра
-    # цен APIMart, не по CometAPI (там пуст pricing.input/output — тарификация
-    # выражением tiered_expr). handle_photo=False — apimart (наш primary)
-    # сам маркирует Зрение как off для этой модели в своём каталоге; у
-    # CometAPI заявлено image-to-text, но не проверялось живым вызовом.
-    dict(name='GPT-6 Astra', slug='gpt-6-astra', model_name='gpt-6-astra', cost_per_message=25, cost_kopecks=2520, order=3,
+    # оба под тем же именем модели gpt-6-astra; зрение тоже подтверждено
+    # живым вызовом (apimart реально распознаёт изображение) — handle_photo=True,
+    # несмотря на то что сам apimart маркирует Зрение как off в своём
+    # каталоге (бейдж недостоверный, живой вызов важнее). Контекст 922K-1M,
+    # макс. вывод 12800 (см. core/model_limits.py::MODEL_MAX_TOKENS_CAP).
+    #
+    # Цена ПЕРЕСЧИТАНА по прямому запросу пользователя после сверки с
+    # конкурентом (RouterAI, routerai.ru/models/openai/gpt-6-astra):
+    # конкурент реально дороже нашего опта (1125₽/5628₽ за 1M вход/выход,
+    # тир ≤272K, против нашего 840₽/4200₽ по K=105) — по формуле
+    # PRICING_SIMPLIFICATION_PLAN.md §3 (профиль heavy/thinking: 10000
+    # input + 4000 output) на цене конкурента×0.95 (1069₽/5347₽):
+    # (10000×1069 + 4000×5347)/1e6×100 = 3207 копеек (было 2520 на чистом
+    # опте — цена сознательно поднята вслед за более дорогим конкурентом,
+    # не занижена вопреки общему правилу "цена только падает" из
+    # pricingPreviewModels.ts — то правило про старый раунд репрайсинга,
+    # эта модель новая, правило на неё не распространяли).
+    dict(name='GPT-6 Astra', slug='gpt-6-astra', model_name='gpt-6-astra', cost_per_message=32, cost_kopecks=3207, order=3,
          description='Флагман нового поколения OpenAI после линейки GPT-5.6 — для сложных рассуждений и кода.',
-         handle_photo=False, is_popular=True),
+         handle_photo=True, is_popular=True),
     dict(name='GPT-5.6 Luna', slug='gpt-5-6-luna', model_name='gpt-5.6-luna', cost_per_message=16, cost_kopecks=1600, order=4,
          description='Одна из веток нового семейства GPT-5.6.',
          handle_photo=True),
