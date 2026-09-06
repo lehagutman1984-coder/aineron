@@ -57,13 +57,11 @@ def search_knowledge(project, query: str, top_n: int = 10):
         try:
             from django.db import connection
             from .embeddings import _get_embed_model, _get_query_embedding, _get_embed_dims
-            # 2026-09-06: embeddings НЕ переезжали на apimart вместе с текстом
-            # (get_laozhang_client() делегировал бы .embeddings молча на apimart,
-            # см. aitext/providers.py) — тот же паттерн, что и в
+            # apimart(осн.)/cometapi(резерв) — тот же клиент, что и в
             # embeddings.py::vector_search_candidates.
-            from .providers import get_laozhang_raw_client
+            from .providers import get_embedding_client
 
-            client = get_laozhang_raw_client()
+            client = get_embedding_client()
             model = _get_embed_model()
             q_emb = _get_query_embedding(query, model, client)
             if q_emb:

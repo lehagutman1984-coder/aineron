@@ -64,6 +64,9 @@ logger = logging.getLogger(__name__)
 
 _CHAT_TIMEOUT = httpx.Timeout(connect=10.0, read=90.0, write=15.0, pool=10.0)
 _IMAGE_TIMEOUT = httpx.Timeout(connect=10.0, read=240.0, write=15.0, pool=10.0)
+# Эмбеддинги — маленький payload, без генерации, нет промежуточных байт как
+# у чата/картинок — короткое окно достаточно, недоступность видна быстро.
+_EMBED_TIMEOUT = httpx.Timeout(connect=10.0, read=30.0, write=15.0, pool=10.0)
 
 # (name, base_url_setting, key_setting)
 _PROVIDER_META = {
@@ -195,17 +198,32 @@ def _get_raw_client(provider):
 
 def get_laozhang_raw_client():
     """
-    2026-09-06: «сырой» клиент laozhang БЕЗ фолбэка — для трёх мест, которые
-    зовут неймспейсы (`embeddings`, `audio.*`, `moderations`), которые
-    `FallbackClient` и раньше не перехватывал (делегировал primary напрямую,
-    см. docstring модуля) — переезд `get_laozhang_client()` на
-    apimart-primary для текста их бы тоже молча переключил на apimart, хотя
-    формат embeddings/audio/moderation там не проверялся. Поведение этих
-    трёх мест не меняется этим релизом: как ходили только в laozhang, так и
-    ходят — переезд текста их не касается. См. aitext/embeddings.py,
-    api/views/audio.py, aitext/consumers.py (audio-ветки), aitext/moderation.py.
+    «Сырой» клиент laozhang БЕЗ фолбэка — для audio.*/moderations, неймспейсов,
+    которые `FallbackClient` не перехватывает вообще (нет прокси-класса) —
+    переезд текстового/embedding-primary их не касается ни при каком
+    будущем изменении. См. api/views/audio.py, aitext/consumers.py
+    (audio-ветки), aitext/moderation.py, telegram_bot/handlers/voice.py.
+
+    Эмбеддинги здесь раньше тоже жили (до 2026-09-06), но получили
+    собственный primary — см. get_embedding_client() ниже, там же вся
+    история почему это было нужно отдельно.
     """
     return _get_raw_client('laozhang')
+
+
+def get_embedding_client():
+    """
+    2026-09-06: эмбеддинги переведены на apimart(осн.)/cometapi(резерв) —
+    оба живьём подтверждены (`text-embedding-3-small`, 1536 dims, совпадает
+    с PROJECT_EMBED_DIMS). Отдельная функция/primary ('apimart_embed'), а не
+    переиспользование get_laozhang_client() — та управляет ЧАТОМ, менять её
+    primary в будущем (например, снова сменить основного поставщика текста)
+    не должно тем же движением ломать/переключать эмбеддинги, как уже
+    случилось один раз при миграции чата на apimart. laozhang не в цепочке
+    по той же причине, что и в тексте (частые перегрузки/недоступность) —
+    код не удалён, см. _order_for('apimart_embed').
+    """
+    return FallbackClient('apimart_embed')
 
 
 def _fallback_enabled():
@@ -405,6 +423,15 @@ def _order_for(primary):
         # как вернуть). Раньше здесь стоял laozhang третьим "на крайний
         # случай" — сознательно убран, а не забыт.
         chain = ['apimart', 'cometapi']  # , 'laozhang' — см. комментарий выше
+    elif primary == 'apimart_embed':
+        # 2026-09-06: эмбеддинги — apimart основной, cometapi резерв. Оба
+        # живьём подтверждены (text-embedding-3-small, 1536 dims у обоих,
+        # совпадает с PROJECT_EMBED_DIMS) — не была часть исходной текстовой
+        # миграции (FallbackClient не перехватывал embeddings вообще, см.
+        # get_laozhang_raw_client), выделена отдельным primary, чтобы смена
+        # текстового primary в будущем больше не задевала эмбеддинги молча.
+        # laozhang по той же причине, что и в тексте — не участвует.
+        chain = ['apimart', 'cometapi']
     else:
         chain = [primary]
     if not _fallback_enabled():
@@ -523,19 +550,40 @@ class _ImagesProxy:
         return getattr(self._parent._primary().images, name)
 
 
+class _EmbeddingsProxy:
+    def __init__(self, parent):
+        self._parent = parent
+
+    def create(self, **kwargs):
+        kwargs.setdefault('timeout', _EMBED_TIMEOUT)
+        return self._parent._run('embeddings', lambda c, p: c.embeddings.create(**kwargs))
+
+    def __getattr__(self, name):
+        return getattr(self._parent._primary().embeddings, name)
+
+
 class FallbackClient:
     """
     OpenAI-совместимый клиент с прозрачным фолбэком между сервисами.
 
-    Перехватывает только `chat.completions.create`, `images.generate` и
-    `images.edit`; всё остальное делегируется основному клиенту без фолбэка.
+    Перехватывает `chat.completions.create`, `images.generate`/`edit` и
+    `embeddings.create` — все три идут через `_run()` по цепочке
+    `_order_for(primary)` конкретного экземпляра. audio/moderations
+    НЕ перехватываются вообще ни для одного primary (нет прокси-класса) —
+    для них используется отдельный «сырой» клиент без FallbackClient целиком
+    (см. get_laozhang_raw_client) — не заворачивать их сюда же, иначе они
+    молча поедут вслед за primary следующего текстового/картиночного
+    переезда, как уже один раз случилось 2026-09-06 (см. историю миграции
+    text → apimart_text) до того, как embeddings получили свой explicit
+    apimart_embed primary ниже.
     """
 
     def __init__(self, primary):
-        # `primary` — имя основного сервиса ('laozhang' | 'apimart')
+        # `primary` — имя основного сервиса ('laozhang' | 'apimart' | 'apimart_text' | 'apimart_embed')
         self._primary_name = primary
         self.chat = _ChatProxy(self)
         self.images = _ImagesProxy(self)
+        self.embeddings = _EmbeddingsProxy(self)
 
     def _primary(self):
         return _get_raw_client(self._primary_name)
