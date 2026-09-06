@@ -2003,13 +2003,26 @@ def generate_video_cometapi(network, user_msg, message, user_settings=None):
         if not task_id:
             upload_file = None
             if images:
-                downloaded = _download_file_for_upload(images[0])
-                if not downloaded:
-                    raise Exception("Не удалось скачать референс-изображение для image-to-video")
-                filename, content, content_type = downloaded
-                upload_file = {"input_reference": (filename, content, content_type)}
+                # 2026-09-06: разные семейства моделей CometAPI ждут референс
+                # по-разному — часть (veo3.1*, viduq3*, wan2.7, seedance-2.0/2.5)
+                # принимает файл в input_reference, часть (wan2.6,
+                # doubao-seedance-1-5-pro) требует URL строкой в reference_urls
+                # (файл им отдаёт "please provide reference_video_urls or
+                # reference_urls" / "Field required") — оба варианта
+                # подтверждены живым вызовом на реальных задачах. Дефолт —
+                # input_reference (было раньше), reference_urls — только
+                # когда явно проставлено в metadata.
+                ref_param = (config.get('metadata') or {}).get('cometapi_ref_param', 'input_reference')
+                if ref_param == 'reference_urls':
+                    form['reference_urls'] = images[0]
+                else:
+                    downloaded = _download_file_for_upload(images[0])
+                    if not downloaded:
+                        raise Exception("Не удалось скачать референс-изображение для image-to-video")
+                    filename, content, content_type = downloaded
+                    upload_file = {"input_reference": (filename, content, content_type)}
 
-            logger.info(f"CometAPI Video POST model={model_id} form={form} img2video={bool(upload_file)}")
+            logger.info(f"CometAPI Video POST model={model_id} form={form} img2video={bool(images)}")
             resp = requests.post(
                 f"{base_url}/videos",
                 headers=auth_headers,
@@ -2655,27 +2668,45 @@ def generate_with_falai(network, user_msg, message, user_settings=None):
     if config.get('metadata', {}).get('output_type') == 'video':
         video_api = config.get('metadata', {}).get('video_api', '')
         if video_api == 'apimart':
-            # apimart — основной сервис для видео. При его недоступности пробуем
-            # laozhang, но только если админ задал laozhang-эквивалент модели в
-            # metadata.laozhang_fallback_model (имена моделей у сервисов разные).
-            try:
-                return generate_video_apimart(network, user_msg, message, user_settings)
-            except Exception as e:
-                fb_model = config.get('metadata', {}).get('laozhang_fallback_model')
-                fallback_on = getattr(settings, 'AI_PROVIDER_FALLBACK', True)
-                # Ошибки валидации настроек — не повод для фолбэка.
-                is_settings_err = str(e).startswith('Ошибки в настройках')
-                if fallback_on and fb_model and not is_settings_err:
-                    logger.warning(
-                        "APIMart видео недоступно (%s); фолбэк → laozhang model=%s", e, fb_model
-                    )
-                    orig_model = network.model_name
-                    try:
+            # apimart — основной сервис для видео. Резерв в 2 уровня, в этом
+            # порядке: cometapi (metadata.cometapi_fallback_model), затем
+            # laozhang (metadata.laozhang_fallback_model) — только на самый
+            # крайний случай, если у cometapi нет эквивалента модели ИЛИ он
+            # тоже недоступен. 2026-09-06: раньше был только apimart→laozhang
+            # (для 2 моделей из 21); живым тестом (реальная генерация видео,
+            # не просто приём задачи в очередь) подтверждён рабочий резерв
+            # cometapi ещё для 7 моделей — см. add_video_models.py на предмет
+            # актуального списка cometapi_fallback_model.
+            meta = config.get('metadata', {})
+            fallback_on = getattr(settings, 'AI_PROVIDER_FALLBACK', True)
+            orig_model = network.model_name
+            chain = [(generate_video_apimart, None)]
+            if fallback_on:
+                cometapi_fb = meta.get('cometapi_fallback_model')
+                if cometapi_fb:
+                    chain.append((generate_video_cometapi, cometapi_fb))
+                laozhang_fb = meta.get('laozhang_fallback_model')
+                if laozhang_fb:
+                    chain.append((generate_video_laozhang, laozhang_fb))
+            last_exc = None
+            for i, (fn, fb_model) in enumerate(chain):
+                try:
+                    if fb_model:
                         network.model_name = fb_model
-                        return generate_video_laozhang(network, user_msg, message, user_settings)
-                    finally:
-                        network.model_name = orig_model
-                raise
+                    if i > 0:
+                        logger.warning(
+                            "Видео: предыдущий провайдер недоступен (%s); пробуем %s model=%s",
+                            last_exc, fn.__name__, network.model_name,
+                        )
+                    return fn(network, user_msg, message, user_settings)
+                except Exception as e:
+                    last_exc = e
+                    # Ошибки валидации настроек — не повод для фолбэка ни на
+                    # каком уровне цепочки.
+                    if str(e).startswith('Ошибки в настройках') or i == len(chain) - 1:
+                        raise
+                finally:
+                    network.model_name = orig_model
         if video_api == 'seedance':
             return generate_seedance_video(network, user_msg, message, user_settings)
         if video_api == 'cometapi':
