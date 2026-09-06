@@ -60,14 +60,29 @@ class ChatListCreateView(ListCreateAPIView):
         attachment_ids = request.data.get('attachment_ids', [])
         web_search = bool(request.data.get('web_search', False))
         project_id = request.data.get('project_id')
+        reasoning_effort = request.data.get('reasoning_effort')
 
         if not network_slug:
             return Response({'error': {'message': 'Не указана нейросеть', 'type': 'invalid_request_error', 'code': None}}, status=400)
-        if not message_text and not files:
+        # 2026-09-06: img2img/img2video/upscale и т.п. (AnimateImageModal,
+        # EditImageModal) шлют весь смысл запроса через settings.image_url —
+        # текстовый промт у них помечен "необязательно" и реально бывает
+        # пустым (frontend подставляет message=" ", но .strip() всё равно
+        # обнулял его) — любая генерация с пустым motion-промтом падала 400
+        # "Нет текста или файлов", хотя settings реально содержал источник.
+        if not message_text and not files and not settings:
             return Response({'error': {'message': 'Нет текста или файлов', 'type': 'invalid_request_error', 'code': None}}, status=400)
 
         network = get_object_or_404(NeuralNetwork, slug=network_slug, is_active=True)
         cost_kopecks = network.cost_kopecks
+
+        # Доплата за reasoning_effort='high' — см. core/model_limits.py:
+        # только для моделей, где живьём подтверждено, что apimart реально
+        # регулирует глубину рассуждений этим параметром (o1/o3/o3-mini/o4-mini).
+        from core.model_limits import REASONING_EFFORT_MODELS, reasoning_effort_surcharge_kopecks
+        if reasoning_effort not in ('low', 'high') or network.model_name.lower() not in REASONING_EFFORT_MODELS:
+            reasoning_effort = None
+        cost_kopecks += reasoning_effort_surcharge_kopecks(network.model_name, reasoning_effort)
         deduct_stars = True
 
         # Медиа-генерация доступна только на платных тарифах
@@ -140,6 +155,7 @@ class ChatListCreateView(ListCreateAPIView):
 
         assistant_message = Message.objects.create(
             chat=chat, role='assistant', content='', status=Message.Status.PENDING,
+            settings={'reasoning_effort': reasoning_effort} if reasoning_effort else {},
         )
 
         if network.provider != 'fal-ai' and deduct_stars:
@@ -221,12 +237,19 @@ class SendMessageView(APIView):
         settings = serializer.validated_data['settings']
         attachment_ids = serializer.validated_data.get('attachment_ids', [])
         web_search = serializer.validated_data.get('web_search', False)
+        reasoning_effort = serializer.validated_data.get('reasoning_effort')
 
-        if not message_text and not files:
+        # см. комментарий в ChatViewSet.create — settings.image_url тоже
+        # валидный источник запроса, не только текст/files.
+        if not message_text and not files and not settings:
             return Response({'error': {'message': 'Нет текста или файлов', 'type': 'invalid_request_error', 'code': None}}, status=400)
 
         network = chat.network
         cost_kopecks = network.cost_kopecks
+        from core.model_limits import REASONING_EFFORT_MODELS, reasoning_effort_surcharge_kopecks
+        if reasoning_effort not in ('low', 'high') or network.model_name.lower() not in REASONING_EFFORT_MODELS:
+            reasoning_effort = None
+        cost_kopecks += reasoning_effort_surcharge_kopecks(network.model_name, reasoning_effort)
         deduct_stars = True
 
         # Медиа-генерация доступна только на платных тарифах
@@ -283,6 +306,7 @@ class SendMessageView(APIView):
 
         assistant_message = Message.objects.create(
             chat=chat, role='assistant', content='', status=Message.Status.PENDING,
+            settings={'reasoning_effort': reasoning_effort} if reasoning_effort else {},
         )
 
         if network.provider != 'fal-ai' and deduct_stars:
@@ -349,6 +373,7 @@ class StreamMessageView(APIView):
         files = request.data.get('files', [])
         web_search = bool(request.data.get('web_search', False))
         variants_mode = bool(request.data.get('variants_mode', False))
+        reasoning_effort = request.data.get('reasoning_effort')
 
         if not message_text and not files:
             return Response({
@@ -356,6 +381,10 @@ class StreamMessageView(APIView):
             }, status=400)
 
         cost_kopecks = network.cost_kopecks
+        from core.model_limits import REASONING_EFFORT_MODELS, reasoning_effort_surcharge_kopecks
+        if reasoning_effort not in ('low', 'high') or network.model_name.lower() not in REASONING_EFFORT_MODELS:
+            reasoning_effort = None
+        cost_kopecks += reasoning_effort_surcharge_kopecks(network.model_name, reasoning_effort)
         deduct_stars = True
 
         if (network.unlimited and
@@ -593,6 +622,9 @@ class StreamMessageView(APIView):
         auto_max = _auto_max_tokens(model_name)
         requested_max = max(network.max_tokens, auto_max) if network.max_tokens > 0 else auto_max
         max_tokens = min(requested_max, _model_max_tokens_cap(model_name))
+        if reasoning_effort == 'high':
+            from core.model_limits import REASONING_EFFORT_MAX_TOKENS
+            max_tokens = min(max_tokens, REASONING_EFFORT_MAX_TOKENS)
 
         # TOKEN_OVERAGE_BILLING_PLAN.md §3.3 (вариант C): плоское списание уже
         # прошло выше, поэтому request.user.balance_kopecks здесь — это ровно
@@ -653,6 +685,8 @@ class StreamMessageView(APIView):
                     "stream": True,
                 }
                 kwargs["max_tokens"] = max_tokens
+                if reasoning_effort:
+                    kwargs["reasoning_effort"] = reasoning_effort
                 # Метрирование (TOKEN_OVERAGE_BILLING_PLAN.md, Спринт 1): usage
                 # запрашивается ТОЛЬКО для моделей, подтверждённых
                 # probe_stream_usage (allowlist, не глобальный флаг) — laozhang

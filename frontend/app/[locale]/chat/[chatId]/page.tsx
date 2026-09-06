@@ -93,6 +93,15 @@ export default function ChatPage() {
     return localStorage.getItem("web_search_enabled") === "1";
   });
   const [variantsMode, setVariantsMode] = useState(false);
+  // 2026-09-06: reasoning_effort — живьём подтверждено рабочим ТОЛЬКО для
+  // 4 моделей o-серии OpenAI (см. core/model_limits.py::REASONING_EFFORT_MODELS
+  // на бэкенде — держать список в синхроне). "High" даёт реально более
+  // глубокое рассуждение ценой заметно большего расхода токенов апстрима —
+  // доплата REASONING_SURCHARGE_KOPECKS ниже покрывает типичный (не
+  // наихудший) случай, см. комментарий в model_limits.py.
+  const REASONING_MODELS = ["o1", "o3", "o3-mini", "o4-mini"];
+  const REASONING_SURCHARGE_KOPECKS: Record<string, number> = { "o1": 3000, "o3": 400, "o3-mini": 250, "o4-mini": 250 };
+  const [reasoningEffort, setReasoningEffort] = useState(false);
   const [researchMode, setResearchMode] = useState(false);
   const [activeResearchId, setActiveResearchId] = useState<number | null>(null);
   const [activeResearchMsgId, setActiveResearchMsgId] = useState<number | null>(null);
@@ -404,7 +413,7 @@ export default function ChatPage() {
       try {
         // Показываем "Ищу в интернете..." сразу при отправке (поиск синхронный на backend)
         if (webSearch) setSearchPhase("searching");
-        await streamMessage(id, { message: msg, attachment_ids: attachmentIds, web_search: webSearch, variants_mode: variantsMode }, {
+        await streamMessage(id, { message: msg, attachment_ids: attachmentIds, web_search: webSearch, variants_mode: variantsMode, reasoning_effort: reasoningEffort ? "high" : undefined }, {
           onInit: ({ user_message_id, assistant_message_id, new_balance_kopecks }) => {
             realAssistId = assistant_message_id;
             setBalance(new_balance_kopecks);
@@ -497,7 +506,7 @@ export default function ChatPage() {
         setStreamError(errMsg);
       }
     },
-    [id, qc, setBalance, webSearch, variantsMode, t]
+    [id, qc, setBalance, webSearch, variantsMode, reasoningEffort, t]
   );
 
   // Sprint 2 — Deep Research submit
@@ -1445,6 +1454,30 @@ export default function ChatPage() {
                   <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#D97757]" />
                 )}
               </button>
+
+              {REASONING_MODELS.includes(chat.network.slug) && (
+                <button
+                  type="button"
+                  onClick={() => setReasoningEffort((v) => !v)}
+                  title={
+                    reasoningEffort
+                      ? t("reasoningOn", { price: formatMoney(REASONING_SURCHARGE_KOPECKS[chat.network.slug] ?? 0) })
+                      : t("reasoningOff", { price: formatMoney(REASONING_SURCHARGE_KOPECKS[chat.network.slug] ?? 0) })
+                  }
+                  className={[
+                    "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[13px] font-medium transition-all",
+                    reasoningEffort
+                      ? "bg-[rgba(217,119,87,0.12)] text-[#D97757] ring-1 ring-[rgba(217,119,87,0.35)]"
+                      : "text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A] dark:text-[rgba(236,236,236,0.38)] dark:hover:text-[#EDE8E3]",
+                  ].join(" ")}
+                >
+                  <Brain size={12} />
+                  {t("reasoning")}
+                  {reasoningEffort && (
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#D97757]" />
+                  )}
+                </button>
+              )}
 
               <button
                 type="button"

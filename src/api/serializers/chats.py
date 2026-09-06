@@ -143,3 +143,4 @@ class SendMessageSerializer(serializers.Serializer):
         child=serializers.UUIDField(), required=False, default=list
     )
     web_search = serializers.BooleanField(required=False, default=False)
+    reasoning_effort = serializers.ChoiceField(choices=['low', 'high'], required=False, allow_null=True, default=None)

@@ -1077,6 +1077,17 @@ def generate_ai_response(self, message_id, web_search=False):
         requested_max = max(network.max_tokens, auto_max) if network.max_tokens > 0 else auto_max
         completion_kwargs["max_tokens"] = min(requested_max, _model_max_tokens_cap(effective_model))
 
+        # 2026-09-06: доплата за reasoning_effort='high' взята при отправке
+        # сообщения (api/views/chats.py) и записана в message.settings —
+        # здесь только прокидываем параметр в апстрим + режем потолок ответа
+        # (см. core/model_limits.py::REASONING_EFFORT_MAX_TOKENS).
+        _reasoning_effort = (message.settings or {}).get('reasoning_effort')
+        if _reasoning_effort:
+            completion_kwargs["reasoning_effort"] = _reasoning_effort
+            if _reasoning_effort == 'high':
+                from core.model_limits import REASONING_EFFORT_MAX_TOKENS
+                completion_kwargs["max_tokens"] = min(completion_kwargs["max_tokens"], REASONING_EFFORT_MAX_TOKENS)
+
         # TOKEN_OVERAGE_BILLING_PLAN.md §3.3 (вариант C): сузить ответ до
         # оплачиваемого, а не сгенерировать и не суметь списать доплату.
         # No-op при выключенном overage/dry-run. Плоское списание тут в двух

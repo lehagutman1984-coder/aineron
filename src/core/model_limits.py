@@ -75,3 +75,46 @@ NO_TEMPERATURE_MODELS = {
 
 def supports_temperature(model_name: str) -> bool:
     return (model_name or '') not in NO_TEMPERATURE_MODELS
+
+
+# 2026-09-06: reasoning_effort — живьём подтверждено (прямой вызов apimart,
+# stream=False) РЕАЛЬНО работающим ТОЛЬКО для этих 4 моделей OpenAI o-серии:
+# `reasoning_effort: "high"` меняет реальное поведение провайдера (тест на
+# тривиальном вопросе — o3-mini: "low" = 3 токена ответа/0 токенов
+# рассуждений, "high" = 854 токена ответа, из них 832 — рассуждения).
+# У Claude (Opus/Sonnet 5 и т.д.) через apimart эффект НЕ регулируется —
+# провайдер отвечает "thinking.type is managed by the model" на любую
+# попытку задать уровень; там доступен только бинарный переключатель
+# видимости рассуждений (thinking.display=summarized), не уровень усилий —
+# поэтому его сюда не включаем, реклама "5 уровней" для Claude на страницах
+# моделей не соответствует тому, что реально отдаёт apimart.
+#
+# Доплата — не жёсткая защита (у этих 4 моделей нет записи в MODEL_WHOLESALE,
+# т.е. полноценного token-overage billing нет, см. TOKEN_OVERAGE_BILLING_PLAN.md
+# и аудит от 2026-09-06), а оценка по ~6000 токенам рассуждений на "трудный"
+# запрос (реально наблюдался 832 на тривиальном; жёсткий потолок ответа для
+# этих моделей — 16384, см. _DEFAULT_CAP, они не в MODEL_MAX_TOKENS_CAP) —
+# ×105 (K) на реальную wholesale-цену выходного токена у apimart
+# (0.8×official, см. "Реестр цен APIMart текстовые модели.html"):
+# o1 $48/1M (оценка по паттерну 0.8× от official $60, живьём в реестре не
+# нашлось), o3 $6.4/1M, o3-mini/o4-mini $3.52/1M (оба живьём подтверждены).
+REASONING_EFFORT_MODELS = {'o1', 'o3', 'o3-mini', 'o4-mini'}
+
+REASONING_EFFORT_SURCHARGE_KOPECKS = {
+    'o1': 3000,       # ~30₽
+    'o3': 400,        # ~4₽
+    'o3-mini': 250,   # ~2.5₽
+    'o4-mini': 250,   # ~2.5₽
+}
+
+# При reasoning_effort='high' режем потолок ответа вдвое от общего
+# _DEFAULT_CAP (16384) — снижает абсолютный худший случай (доплата выше
+# рассчитана на ~6000 токенов рассуждений, не на весь потолок), не влияя на
+# типичный запрос (реальный расход в тесте — 832 токена, с большим запасом).
+REASONING_EFFORT_MAX_TOKENS = 8000
+
+
+def reasoning_effort_surcharge_kopecks(model_name: str, reasoning_effort: str | None) -> int:
+    if reasoning_effort != 'high':
+        return 0
+    return REASONING_EFFORT_SURCHARGE_KOPECKS.get((model_name or '').lower(), 0)

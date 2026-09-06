@@ -242,6 +242,7 @@ export const createChat = (body: {
   settings?: Record<string, unknown>;
   web_search?: boolean;
   project_id?: number;
+  reasoning_effort?: "low" | "high" | null;
 }): Promise<CreateChatResponse> =>
   request<CreateChatResponse>("/chats/", {
     method: "POST",
@@ -279,6 +280,7 @@ export const sendMessage = (
     settings?: Record<string, unknown>;
     attachment_ids?: string[];
     web_search?: boolean;
+    reasoning_effort?: "low" | "high" | null;
   }
 ): Promise<SendMessageResponse> =>
   request<SendMessageResponse>(`/chats/${chatId}/messages/`, {
@@ -373,7 +375,7 @@ export interface OverageBilling {
 
 export async function streamMessage(
   chatId: number,
-  body: { message: string; files?: unknown[]; settings?: Record<string, unknown>; attachment_ids?: string[]; web_search?: boolean; variants_mode?: boolean },
+  body: { message: string; files?: unknown[]; settings?: Record<string, unknown>; attachment_ids?: string[]; web_search?: boolean; variants_mode?: boolean; reasoning_effort?: "low" | "high" | null },
   callbacks: {
     onInit: (data: { user_message_id: number; assistant_message_id: number; new_balance: number; new_balance_kopecks: number }) => void;
     onSearchDone?: (preview: string) => void;
