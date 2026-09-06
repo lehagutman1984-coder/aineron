@@ -1387,6 +1387,15 @@ def generate_video_laozhang(network, user_msg, message, user_settings=None):
                         break
                     elif status in ('failed', 'error', 'cancelled'):
                         raise Exception(f"Видео завершилось ошибкой: {pd.get('error', status)}")
+                else:
+                    # for-else: MAX_ATTEMPTS исчерпан без break — задача застряла
+                    # в processing/pending и не дошла до completed/failed. Без
+                    # явного raise это молча возвращалось как "успех без видео",
+                    # без возврата денег и без фолбэка на другого провайдера.
+                    raise Exception(
+                        f"laozhang: превышено время ожидания генерации видео "
+                        f"({MAX_ATTEMPTS} попыток), job_id={job_id}"
+                    )
     except Exception:
         _fail_video_gen(gen_ph)
         raise
@@ -1538,6 +1547,13 @@ def generate_seedance_video(network, user_msg, message, user_settings=None):
                 break
             elif status in ('failed', 'error', 'expired'):
                 raise Exception(f"Seedance генерация завершилась ошибкой: {pd.get('error', status)}")
+        else:
+            # for-else: та же дыра, что в остальных video-путях (см. их
+            # комментарии про MAX_ATTEMPTS без break).
+            raise Exception(
+                f"Seedance: превышено время ожидания генерации видео "
+                f"({MAX_ATTEMPTS} попыток), job_id={job_id}"
+            )
     except Exception:
         _fail_video_gen(gen_ph)
         raise
@@ -1807,6 +1823,19 @@ def generate_video_apimart(network, user_msg, message, user_settings=None):
                 break
             elif status in ('failed', 'error', 'cancelled'):
                 raise Exception(f"APIMart генерация завершилась ошибкой: {status_obj.get('message', status)}")
+        else:
+            # for-else: цикл исчерпал MAX_ATTEMPTS БЕЗ break — задача осталась в
+            # processing/pending и никогда не дошла до completed/failed. Раньше
+            # это молча проваливалось сквозь функцию: video_urls оставался
+            # пустым, исключение не бросалось, вызывающий код помечал
+            # сообщение COMPLETED без возврата денег и без фолбэка на laozhang
+            # (см. try/except в generate_with_falai) — пользователь терял
+            # оплату за реально не случившуюся генерацию. Явный raise чинит
+            # оба пути разом.
+            raise Exception(
+                f"APIMart: превышено время ожидания генерации видео "
+                f"({MAX_ATTEMPTS} попыток), task_id={task_id}"
+            )
     except Exception:
         _fail_video_gen(gen_ph)
         raise
@@ -2018,6 +2047,15 @@ def generate_video_cometapi(network, user_msg, message, user_settings=None):
                 break
             elif status in ('failed', 'error', 'cancelled'):
                 raise Exception(f"CometAPI генерация завершилась ошибкой: {pd.get('message', status)}")
+        else:
+            # for-else: MAX_ATTEMPTS исчерпан без break — та же дыра, что была
+            # в apimart/laozhang video-путях (см. их комментарии) — без явного
+            # raise зависшая задача молча "успешно" возвращалась без видео,
+            # денег и фолбэка.
+            raise Exception(
+                f"CometAPI: превышено время ожидания генерации видео "
+                f"({MAX_ATTEMPTS} попыток), task_id={task_id}"
+            )
     except Exception:
         _fail_video_gen(gen_ph)
         raise

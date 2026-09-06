@@ -779,6 +779,22 @@ def generate_ai_response(self, message_id, web_search=False):
                     final_text, saved_images, _ = generate_with_falai(network, user_msg, message,
                                                                       user_settings=user_settings)
 
+                # 2026-09-06: защита от "тихого успеха без медиа". Несколько
+                # generate_video_*/generate_image_* функций могли вернуться
+                # БЕЗ исключения даже когда saved_images пуст (просроченный
+                # поллинг статуса у провайдера, который завис в processing и
+                # никогда не дошёл до completed/failed — исправлено в
+                # fal_utils.py добавлением for-else на каждый цикл поллинга;
+                # здесь — второй рубеж на случай похожих сценариев, которые
+                # ещё не найдены: например, providers.io отдал "completed",
+                # но результат так и не скачался после всех ретраев). Без
+                # этой проверки сообщение помечалось COMPLETED с текстом
+                # "не вернула видео/изображение", деньги НЕ возвращались и
+                # фолбэк на резервного провайдера не срабатывал, потому что
+                # исключение так и не долетало до except ниже.
+                if not saved_images:
+                    raise Exception(final_text or "Провайдер не вернул медиафайл")
+
                 message.content = final_text
                 message.plain_text = final_text
                 message.status = Message.Status.COMPLETED
