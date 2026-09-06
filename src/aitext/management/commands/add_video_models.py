@@ -1263,23 +1263,38 @@ VIDEO_MODELS = [
         config_key='kling30turbo',
         is_popular=True,
     ),
-    # Kling v3 Motion Control — убрана 2026-09-05 (обязательный video_url,
-    # проект не поддерживал загрузку видео), возвращена 2026-09-06 после
-    # реализации ReferenceVideoUploadView — см. комментарий у 'klingv3motion'
-    # в VIDEO_CONFIG выше. Строка уже существует в БД (is_active=False,
-    # cost_kopecks=8313 сохранён с момента до деактивации) — эта команда не
-    # трогает цену существующих строк (см. ветку else ниже), cost_per_message
-    # здесь используется только если бы модель создавалась с нуля.
-    dict(
-        name='Kling v3 Motion Control',
-        slug='kling-v3-motion-control',
-        model_name='kling-v3-motion-control',
-        cost_per_message=83,
-        order=17,
-        description='Kling v3 с переносом движения камеры и персонажа с загруженного видео на фото — для сложной операторской работы.',
-        config_key='klingv3motion',
-        is_popular=False,
-    ),
+    # Kling v3 Motion Control — 2 раунда истории:
+    # (1) убрана 2026-09-05: обязательный video_url, у проекта не было
+    #     загрузки видео вообще.
+    # (2) 2026-09-06: загрузка видео реализована (ReferenceVideoUploadView),
+    #     модель возвращена в каталог с полным конфигом (см. 'klingv3motion'
+    #     в VIDEO_CONFIG выше — актуален и ПРАВИЛЕН, оставлен нетронутым).
+    #     Живой тест до completed (5 попыток: video_url+image_url разного
+    #     содержания, разные наборы mode/character_orientation/
+    #     keep_original_sound, ОБА ID модели — kling-v3-motion-control И
+    #     kling-v2-6-motion-control) — apimart принимает запрос (200,
+    #     task создаётся), но КАЖДЫЙ РАЗ падает за ~10 сек с одинаковой
+    #     ошибкой: "Retry execution exception: runtime error: invalid
+    #     memory address or nil pointer dereference" — это паника в Go на
+    #     стороне apimart, не отклонение параметров с нашей стороны (иначе
+    #     были бы разные 4xx-сообщения). Судя по идентичной ошибке
+    #     независимо от контента и модели — эндпоинт Motion Control сейчас
+    #     сломан на стороне apimart целиком, а не у нас в интеграции.
+    #     Убрана из каталога СНОВА, но конфиг/инфраструктура (video_url,
+    #     ReferenceVideoUploadView, UI загрузки) оставлены — работоспособны
+    #     и переиспользуемы, если apimart когда-нибудь починит эндпоинт
+    #     (тогда просто вернуть этот dict в список) или для другой будущей
+    #     модели с похожим контрактом.
+    # dict(
+    #     name='Kling v3 Motion Control',
+    #     slug='kling-v3-motion-control',
+    #     model_name='kling-v3-motion-control',
+    #     cost_per_message=83,
+    #     order=17,
+    #     description='Kling v3 с переносом движения камеры и персонажа с загруженного видео на фото — для сложной операторской работы.',
+    #     config_key='klingv3motion',
+    #     is_popular=False,
+    # ),
     dict(
         name='Kling v3 Omni',
         slug='kling-v3-omni',
