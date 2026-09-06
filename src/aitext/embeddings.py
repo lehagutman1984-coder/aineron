@@ -123,7 +123,7 @@ def embed_chunks(file) -> int:
     При PROJECT_SMART_CHUNK=1 используется smart_chunk (по структуре кода).
     Возвращает количество успешно сохранённых чанков.
     """
-    from .tasks import get_laozhang_client
+    from .providers import get_laozhang_raw_client
 
     text = file.extracted_text or ''
     if not text.strip():
@@ -142,7 +142,7 @@ def embed_chunks(file) -> int:
         file.save(update_fields=['embed_status'])
         return 0
 
-    client = get_laozhang_client()
+    client = get_laozhang_raw_client()
     model = _get_embed_model()
 
     try:
@@ -223,12 +223,12 @@ def vector_search_candidates(project, query: str, top_n: int = 50,
     restrict_file_ids: list[int] | None — ограничить поиск файлами (6.5 two-level).
     Чанки с chunk_index=-1 (summary) исключаются.
     """
-    from .tasks import get_laozhang_client
+    from .providers import get_laozhang_raw_client
 
     if not query or not query.strip():
         return []
 
-    client = get_laozhang_client()
+    client = get_laozhang_raw_client()
     model = _get_embed_model()
 
     q_emb = _get_query_embedding(query, model, client)
@@ -297,14 +297,14 @@ def embed_file_summary(file) -> bool:
     Эмбеддинг summary хранится как ProjectChunk с chunk_index=-1.
     Возвращает True при успехе.
     """
-    from .tasks import get_laozhang_client
+    from .providers import get_laozhang_raw_client
     from django.db import connection as _conn
 
     text = file.extracted_text or ''
     if not text.strip():
         return False
 
-    client = get_laozhang_client()
+    client = get_laozhang_raw_client()
     model = _get_embed_model()
 
     # 1. Generate summary via cheap LLM
@@ -382,13 +382,13 @@ def file_level_search(project, query: str, top_files: int = 5) -> list:
     Возвращает список ProjectFile, отсортированных по близости к запросу.
     Использует chunk_index=-1 как маркер summary-чанка.
     """
-    from .tasks import get_laozhang_client
+    from .providers import get_laozhang_raw_client
     from .models import ProjectFile
 
     if not query or not query.strip():
         return []
 
-    client = get_laozhang_client()
+    client = get_laozhang_raw_client()
     model = _get_embed_model()
 
     q_emb = _get_query_embedding(query, model, client)
@@ -436,7 +436,7 @@ def embed_chat_summary(summary_id: int) -> bool:
         return False
 
     from .models import ChatSummary
-    from .tasks import get_laozhang_client
+    from .providers import get_laozhang_raw_client
 
     cs = ChatSummary.objects.filter(pk=summary_id).first()
     if cs is None:
@@ -446,7 +446,7 @@ def embed_chat_summary(summary_id: int) -> bool:
         return False
 
     try:
-        client = get_laozhang_client()
+        client = get_laozhang_raw_client()
         model = _get_embed_model()
         resp = client.embeddings.create(model=model, input=[text[:6000]])
         emb = resp.data[0].embedding
@@ -479,8 +479,8 @@ def recall_search(user, query: str, top_k: int = 3,
     if connection.vendor != 'postgresql' or not query or not query.strip():
         return []
 
-    from .tasks import get_laozhang_client
-    client = get_laozhang_client()
+    from .providers import get_laozhang_raw_client
+    client = get_laozhang_raw_client()
     model = _get_embed_model()
     q_emb = _get_query_embedding(query, model, client)
     if q_emb is None:

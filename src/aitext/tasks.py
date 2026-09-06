@@ -516,14 +516,22 @@ from core.model_limits import auto_max_tokens as _auto_max_tokens
 
 def get_laozhang_client():
     """
-    Клиент для текстовых запросов. Возвращает FallbackClient: основной сервис —
-    laozhang, при его недоступности прозрачно переключается на apimart (тем же
-    именем модели). Управляется флагом settings.AI_PROVIDER_FALLBACK.
+    Клиент для текстовых запросов (chat.completions). Имя функции сохранено
+    ради ~40 call sites по всему проекту (chat.py, anthropic.py, telegram_bot/*,
+    retrieval.py, prompt_enhance.py и т.д.) — единая точка интеграции, менять
+    их все не нужно, см. providers.py docstring.
+
+    2026-09-06: основной сервис — apimart, резерв — cometapi (там, где модель
+    реально есть у cometapi, иначе фолбэк просто не сработает и ошибка
+    пробросится как есть — see providers.TEXT_COMETAPI_NO_MODEL). laozhang
+    закомментирован из активной цепочки (был основным до этой даты) — код
+    провайдера не удалён, см. providers._order_for('apimart_text').
+    Управляется флагом settings.AI_PROVIDER_FALLBACK.
     """
     global _client
     if _client is None:
         from aitext.providers import FallbackClient
-        _client = FallbackClient('laozhang')
+        _client = FallbackClient('apimart_text')
     return _client
 
 

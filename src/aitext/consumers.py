@@ -160,8 +160,8 @@ class VoiceConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def _transcribe(self, audio_bytes: bytes) -> str:
         import io
-        from aitext.tasks import get_laozhang_client
-        client = get_laozhang_client()
+        from aitext.providers import get_laozhang_raw_client
+        client = get_laozhang_raw_client()
         audio_file = io.BytesIO(audio_bytes)
         audio_file.name = 'voice.webm'
         resp = client.audio.transcriptions.create(
@@ -184,8 +184,8 @@ class VoiceConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def _tts(self, text: str) -> bytes:
-        from aitext.tasks import get_laozhang_client
-        client = get_laozhang_client()
+        from aitext.providers import get_laozhang_raw_client
+        client = get_laozhang_raw_client()
         resp = client.audio.speech.create(
             model='tts-1',
             voice='alloy',

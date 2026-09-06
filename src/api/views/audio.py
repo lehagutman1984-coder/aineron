@@ -13,7 +13,7 @@ from api.permissions import IsEmailVerified
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from drf_spectacular.utils import extend_schema
 
-from aitext.tasks import get_laozhang_client
+from aitext.providers import get_laozhang_raw_client
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +55,7 @@ class AudioTranscriptionsView(APIView):
                 status=status.HTTP_402_PAYMENT_REQUIRED,
             )
 
-        client = get_laozhang_client()
+        client = get_laozhang_raw_client()
         try:
             kwargs = {
                 'model': model_id,
@@ -126,7 +126,7 @@ class AudioSpeechView(APIView):
                 status=status.HTTP_402_PAYMENT_REQUIRED,
             )
 
-        client = get_laozhang_client()
+        client = get_laozhang_raw_client()
         try:
             audio_response = client.audio.speech.create(
                 model=model_id,

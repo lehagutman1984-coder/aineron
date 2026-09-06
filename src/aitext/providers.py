@@ -1,13 +1,25 @@
 """
 Провайдер-слой с прозрачным автоматическим фолбэком между AI-сервисами.
 
-Оба сервиса — OpenAI-совместимые прокси:
-  - laozhang.ai  — основной для текста и изображений
-  - apimart.ai   — основной для видео; резерв для текста и изображений
+Три сервиса — OpenAI-совместимые прокси (для chat.completions/images):
+  - apimart.ai   — 2026-09-06: основной для ТЕКСТА (chat.completions), по
+    прямому запросу пользователя после сравнения цен/резерва (см.
+    Реестр сравнения текстовых моделей). Основной для видео — как и раньше.
+  - cometapi.com — резервный для текста (там, где модель реально у него
+    есть — не все 21 модели каталога, см. TEXT_COMETAPI_MODEL_OVERRIDES).
+  - laozhang.ai  — ЗАКОММЕНТИРОВАН как активный источник текста (был
+    основным до 2026-09-06, см. `PRICING_SIMPLIFICATION_PLAN.md` §1.1 —
+    частые перегрузки, недоступность свежих флагманов). Код НЕ удалён:
+    `_order_for('laozhang')` по-прежнему работает (используется для
+    изображений, embeddings/audio/moderation — см. get_laozhang_raw_client),
+    строка `'laozhang'` просто больше не входит в активную цепочку для
+    текста (`_order_for('apimart_text')`). Вернуть — один список в
+    `_order_for`, ничего не переписывать с нуля.
 
 Идея: если основной сервис недоступен (сеть/таймаут/5xx/429) или конкретная
 модель на нём недоступна (404 / model not found / доступ), автоматически
-пробуем резервный сервис с тем же именем модели. Ошибки, вызванные
+пробуем резервный сервис с тем же (или переведённым, см.
+TEXT_COMETAPI_MODEL_OVERRIDES) именем модели. Ошибки, вызванные
 пользовательским контентом (400 bad request, content policy), НЕ являются
 поводом для фолбэка — их пробрасываем как есть.
 
@@ -57,7 +69,41 @@ _IMAGE_TIMEOUT = httpx.Timeout(connect=10.0, read=240.0, write=15.0, pool=10.0)
 _PROVIDER_META = {
     'laozhang': ('LAOZHANG_API_URL', 'LAOZHANG_API_KEY'),
     'apimart': ('APIMART_API_URL', 'APIMART_API_KEY'),
+    'cometapi': ('COMETAPI_API_URL', 'COMETAPI_API_KEY'),
 }
+
+# 2026-09-06: имя модели у CometAPI иногда не совпадает буквально с нашим
+# `model_name` (у apimart совпадает 1:1 для всех 21 текстовых моделей —
+# проверено живым GET /v1/models). Единственное расхождение среди текущего
+# каталога: точка vs дефис у Fable 5.1. Проверять здесь перед каждым релизом
+# новой текстовой модели — не гадать по шаблону "точка → дефис" вслепую,
+# остальные 20 моделей совпадают буквально без всякого паттерна.
+TEXT_COMETAPI_MODEL_OVERRIDES = {
+    'claude-fable-5.1': 'claude-fable-5-1',
+}
+
+# 2026-09-06: модели каталога, для которых CometAPI подтверждён живым
+# каталогом (api.cometapi.com/api/models) как НЕ имеющий этой модели вообще —
+# без этого списка фолбэк всё равно сработал бы штатно (404 → is_availability_error
+# → пробуем следующего в цепочке), но список пригодится для быстрой диагностики
+# "должен ли резерв вообще быть" без похода в каталог заново.
+TEXT_COMETAPI_NO_MODEL = {'gpt-5.5'}
+# И наоборот — apimart подтверждён живым GET /v1/models как НЕ имеющий модели.
+TEXT_APIMART_NO_MODEL = {'qwen3.6-max-preview', 'gpt-5.5-pro'}
+
+
+def _translate_kwargs(kwargs, provider):
+    """Подменяет `model` в kwargs под конкретного провайдера, если для этой
+    пары (модель, провайдер) имя отличается (см. TEXT_COMETAPI_MODEL_OVERRIDES).
+    Возвращает kwargs как есть, если перевода не требуется — не копирует
+    словарь без необходимости."""
+    if provider == 'cometapi':
+        model = kwargs.get('model')
+        override = TEXT_COMETAPI_MODEL_OVERRIDES.get(model)
+        if override:
+            kwargs = dict(kwargs)
+            kwargs['model'] = override
+    return kwargs
 
 _raw_clients = {}
 _groq_client = None
@@ -145,6 +191,21 @@ def _get_raw_client(provider):
         api_key = getattr(settings, key_key, '')
         _raw_clients[provider] = OpenAI(base_url=base_url, api_key=api_key)
     return _raw_clients[provider]
+
+
+def get_laozhang_raw_client():
+    """
+    2026-09-06: «сырой» клиент laozhang БЕЗ фолбэка — для трёх мест, которые
+    зовут неймспейсы (`embeddings`, `audio.*`, `moderations`), которые
+    `FallbackClient` и раньше не перехватывал (делегировал primary напрямую,
+    см. docstring модуля) — переезд `get_laozhang_client()` на
+    apimart-primary для текста их бы тоже молча переключил на apimart, хотя
+    формат embeddings/audio/moderation там не проверялся. Поведение этих
+    трёх мест не меняется этим релизом: как ходили только в laozhang, так и
+    ходят — переезд текста их не касается. См. aitext/embeddings.py,
+    api/views/audio.py, aitext/consumers.py (audio-ветки), aitext/moderation.py.
+    """
+    return _get_raw_client('laozhang')
 
 
 def _fallback_enabled():
@@ -336,6 +397,13 @@ def _order_for(primary):
         chain = ['laozhang', 'apimart']
     elif primary == 'apimart':
         chain = ['apimart', 'laozhang']
+    elif primary == 'apimart_text':
+        # 2026-09-06: текст (chat.completions) — apimart основной, cometapi
+        # резерв. laozhang НЕ в цепочке (закомментирован по запросу
+        # пользователя, не удалён — см. docstring модуля наверху про то,
+        # как вернуть). Раньше здесь стоял laozhang третьим "на крайний
+        # случай" — сознательно убран, а не забыт.
+        chain = ['apimart', 'cometapi']  # , 'laozhang' — см. комментарий выше
     else:
         chain = [primary]
     if not _fallback_enabled():
@@ -423,7 +491,7 @@ class _CompletionsProxy:
                 kwargs.pop('temperature', None)
         if kwargs.get('stream'):
             return self._parent._run_stream('chat', kwargs)
-        return self._parent._run('chat', lambda c: c.chat.completions.create(**kwargs))
+        return self._parent._run('chat', lambda c, p: c.chat.completions.create(**_translate_kwargs(kwargs, p)))
 
     def __getattr__(self, name):
         return getattr(self._parent._primary().chat.completions, name)
@@ -444,11 +512,11 @@ class _ImagesProxy:
 
     def generate(self, **kwargs):
         kwargs.setdefault('timeout', _IMAGE_TIMEOUT)
-        return self._parent._run('images', lambda c: c.images.generate(**kwargs))
+        return self._parent._run('images', lambda c, p: c.images.generate(**kwargs))
 
     def edit(self, **kwargs):
         kwargs.setdefault('timeout', _IMAGE_TIMEOUT)
-        return self._parent._run('images', lambda c: c.images.edit(**kwargs))
+        return self._parent._run('images', lambda c, p: c.images.edit(**kwargs))
 
     def __getattr__(self, name):
         return getattr(self._parent._primary().images, name)
@@ -477,7 +545,7 @@ class FallbackClient:
         for i, provider in enumerate(chain):
             client = _get_raw_client(provider)
             try:
-                result = fn(client)
+                result = fn(client, provider)
                 if kind == 'chat' and not hasattr(result, 'choices'):
                     reconstructed = _reconstruct_chat_completion_from_sse(result)
                     if reconstructed is not None:
@@ -527,7 +595,7 @@ class FallbackClient:
         for i, provider in enumerate(chain):
             client = _get_raw_client(provider)
             try:
-                stream = client.chat.completions.create(**kwargs)
+                stream = client.chat.completions.create(**_translate_kwargs(kwargs, provider))
                 it = iter(stream)
                 first_chunk = next(it)
             except StopIteration:

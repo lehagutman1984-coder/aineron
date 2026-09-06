@@ -11,8 +11,8 @@ def check_moderation(text: str) -> dict:
     if not getattr(settings, 'MODERATION_ENABLED', False):
         return {'flagged': False, 'categories': {}, 'scores': {}}
 
-    from aitext.tasks import get_laozhang_client
-    client = get_laozhang_client()
+    from aitext.providers import get_laozhang_raw_client
+    client = get_laozhang_raw_client()
 
     try:
         resp = client.moderations.create(

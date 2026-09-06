@@ -19,8 +19,11 @@ TTS_COST_KOPECKS = 100
 
 
 def _get_laozhang_client():
-    from aitext.tasks import get_laozhang_client
-    return get_laozhang_client()
+    # Только audio.* (ASR/TTS) — не перехватывается FallbackClient и не
+    # переезжало на apimart/cometapi вместе с текстом 2026-09-06, см.
+    # aitext/providers.py::get_laozhang_raw_client.
+    from aitext.providers import get_laozhang_raw_client
+    return get_laozhang_raw_client()
 
 
 async def transcribe_audio(ogg_bytes: bytes) -> str:
