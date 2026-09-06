@@ -40,6 +40,7 @@ class NeuralNetworkListSerializer(serializers.ModelSerializer):
     image_refs = serializers.SerializerMethodField()
     duration_options = serializers.SerializerMethodField()
     aspect_options = serializers.SerializerMethodField()
+    requires_source_video = serializers.SerializerMethodField()
 
     class Meta:
         model = NeuralNetwork
@@ -49,7 +50,7 @@ class NeuralNetworkListSerializer(serializers.ModelSerializer):
             'is_popular', 'is_free', 'unlimited', 'messages_limit',
             'handle_photo', 'handle_video', 'handle_archive', 'handle_text_files',
             'seo_title', 'seo_description', 'model_name', 'order', 'output_type', 'i2v',
-            'image_refs', 'duration_options', 'aspect_options',
+            'image_refs', 'duration_options', 'aspect_options', 'requires_source_video',
         ]
 
     def get_category(self, obj):
@@ -137,6 +138,16 @@ class NeuralNetworkListSerializer(serializers.ModelSerializer):
             return None
         except Exception:
             return None
+
+    def get_requires_source_video(self, obj):
+        """True — модель требует загруженное видео-референс (Kling Motion
+        Control: video_url — источник движения, отдельный файл от обычного
+        фото-референса). Используется фронтом, чтобы НЕ предлагать такую
+        модель в "Оживить" (AnimateImageModal) — там нет загрузки видео."""
+        try:
+            return bool((obj.config_json or {}).get('metadata', {}).get('requires_source_video'))
+        except Exception:
+            return False
 
     def get_duration_options(self, obj):
         return self._find_field_options(obj, 'duration')

@@ -319,6 +319,24 @@ export const uploadReferenceImage = (file: File): Promise<AttachmentItem> => {
   });
 };
 
+// Загрузка референсного видео ДО создания чата (Kling Motion Control —
+// источник движения, отдельно от фото-референса, см. uploadReferenceImage)
+export const uploadReferenceVideo = (file: File): Promise<AttachmentItem> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  return fetch(`${BASE_URL}/uploads/reference-video/`, {
+    method: "POST",
+    body: formData,
+    credentials: "include",
+  }).then(async (res) => {
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({})) as { error?: { message?: string; code?: string } };
+      throw new APIError(res.status, body?.error?.message ?? `HTTP ${res.status}`, body?.error?.code ?? null);
+    }
+    return res.json() as Promise<AttachmentItem>;
+  });
+};
+
 export const getMessageStatus = (messageId: number): Promise<WebMessage> =>
   request<WebMessage>(`/messages/${messageId}/status/`);
 

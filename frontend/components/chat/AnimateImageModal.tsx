@@ -48,7 +48,11 @@ export function AnimateImageModal({ imageUrl, onClose }: Props) {
   });
 
   const videoModels = useMemo(
-    () => (networks ?? []).filter((n: NetworkListItem) => n.output_type === "video"),
+    // requires_source_video (Kling Motion Control) исключена: этот модал
+    // умеет прикладывать только ОДНУ картинку к уже сгенерированному
+    // изображению, а такой модели ещё нужно отдельное видео-референс —
+    // без него запрос гарантированно провалится валидацией.
+    () => (networks ?? []).filter((n: NetworkListItem) => n.output_type === "video" && !n.requires_source_video),
     [networks]
   );
 

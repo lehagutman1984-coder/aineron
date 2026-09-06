@@ -4,9 +4,9 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "@/i18n/navigation";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { Send, Settings2, ChevronDown, ImagePlus, X, Palette, Loader2 } from "lucide-react";
+import { Send, Settings2, ChevronDown, ImagePlus, X, Palette, Loader2, Film, Upload } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { createChat, uploadReferenceImage } from "@/lib/api/client";
+import { createChat, uploadReferenceImage, uploadReferenceVideo } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 import { APIError } from "@/lib/api/client";
 import { MediaSettingsPanel } from "@/components/chat/MediaSettingsPanel";
@@ -41,8 +41,12 @@ export function ChatStartForm({ networkSlug, isMedia, isVideo, configJson, proje
   // то есть кнопка не показывалась НИ ОДНОЙ видео-модели — из-за этого
   // модели с обязательным референсом (например Vidu Q3, requires_input_images)
   // невозможно было запустить с первого сообщения вообще.
+  // Kling Motion Control и подобные: нужны ОДНОВРЕМЕННО фото-референс
+  // (через тот же canAttachReference/editImageUrl механизм, что и обычный
+  // i2v) И видео-источник движения (отдельная загрузка ниже, video_url).
+  const requiresSourceVideo = configJson?.metadata?.requires_source_video === true;
   const canAttachReference =
-    isMedia && (!isVideo || configJson?.metadata?.supports_image_to_video === true);
+    isMedia && (!isVideo || configJson?.metadata?.supports_image_to_video === true || requiresSourceVideo);
   const [showSettings, setShowSettings] = useState(hasSettings);
   const [mediaSettings, setMediaSettings] = useState<Record<string, unknown>>({});
   // img2img: исходное изображение, переданное из галереи "Мои файлы"
@@ -52,6 +56,12 @@ export function ChatStartForm({ networkSlug, isMedia, isVideo, configJson, proje
   // Прямая загрузка референсного фото со стартового экрана (до создания чата)
   const [uploadingImage, setUploadingImage] = useState(false);
   const sourceInputRef = useRef<HTMLInputElement>(null);
+  // 2026-09-06: видео-источник движения для Kling Motion Control (video_url) —
+  // отдельный файл от фото-референса выше, апимарт требует оба одновременно.
+  const [sourceVideoUrl, setSourceVideoUrl] = useState<string | null>(null);
+  const [sourceVideoName, setSourceVideoName] = useState<string | null>(null);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   // Инициализируем настройки из api_defaults при загрузке
   useEffect(() => {
@@ -99,12 +109,18 @@ export function ChatStartForm({ networkSlug, isMedia, isVideo, configJson, proje
       return;
     }
 
+    if (requiresSourceVideo && (!editImageUrl || !sourceVideoUrl)) {
+      setError(t("motionControlNeedsBoth"));
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
       const settings: Record<string, unknown> = { ...(hasSettings ? mediaSettings : {}) };
       if (editImageUrl) settings.image_url = editImageUrl;
       if (styleImageUrl) settings.style_image_url = styleImageUrl;
+      if (sourceVideoUrl) settings.video_url = sourceVideoUrl;
       const res = await createChat({
         network_slug: networkSlug,
         message: text.trim(),
@@ -142,6 +158,21 @@ export function ChatStartForm({ networkSlug, isMedia, isVideo, configJson, proje
       setError(err instanceof APIError ? err.message : t("genericError"));
     } finally {
       setUploadingImage(false);
+    }
+  };
+
+  const handlePickVideo = async (file: File) => {
+    if (!user) return;
+    setUploadingVideo(true);
+    setError(null);
+    try {
+      const result = await uploadReferenceVideo(file);
+      setSourceVideoUrl(result.url);
+      setSourceVideoName(file.name);
+    } catch (err) {
+      setError(err instanceof APIError ? err.message : t("genericError"));
+    } finally {
+      setUploadingVideo(false);
     }
   };
 
@@ -244,6 +275,53 @@ export function ChatStartForm({ networkSlug, isMedia, isVideo, configJson, proje
         </div>
       )}
 
+      {/* Kling Motion Control и подобные: видео-источник движения (video_url),
+          отдельно от фото-референса выше (image_url) — апимарт требует оба. */}
+      {requiresSourceVideo && (
+        <div>
+          <input
+            ref={videoInputRef}
+            type="file"
+            accept="video/mp4,video/quicktime,.mp4,.mov"
+            className="hidden"
+            onChange={(e) => { if (e.target.files?.[0]) { handlePickVideo(e.target.files[0]); e.target.value = ""; } }}
+          />
+          {!sourceVideoUrl ? (
+            <button
+              type="button"
+              disabled={uploadingVideo || !user}
+              onClick={() => videoInputRef.current?.click()}
+              className="flex w-full items-center justify-center gap-2 rounded-[10px] border border-dashed border-[rgba(13,13,13,0.2)] p-3 text-[14px] font-medium text-[rgba(13,13,13,0.55)] transition-colors hover:bg-[rgba(13,13,13,0.03)] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {uploadingVideo ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}
+              {t("uploadSourceVideoTitle")}
+            </button>
+          ) : (
+            <div className="flex items-center gap-2.5 rounded-[10px] border border-[rgba(217,119,87,0.20)] bg-[rgba(217,119,87,0.04)] p-2.5">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[8px] border border-[rgba(13,13,13,0.10)] bg-[rgba(13,13,13,0.04)]">
+                <Film size={20} className="text-[#D97757]" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="flex items-center gap-1 text-[15px] font-medium text-[#1A1A1A]">
+                  {t("sourceVideoTitle")}
+                </p>
+                <p className="mt-0.5 truncate text-[14px] text-[rgba(13,13,13,0.5)]">
+                  {sourceVideoName}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setSourceVideoUrl(null); setSourceVideoName(null); }}
+                title={t("removeSourceVideo")}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] text-[rgba(13,13,13,0.5)] transition-colors hover:bg-[rgba(13,13,13,0.06)]"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Prompt input */}
       <div className="relative">
         <textarea
@@ -283,7 +361,10 @@ export function ChatStartForm({ networkSlug, isMedia, isVideo, configJson, proje
         )}
         <button
           type="submit"
-          disabled={!text.trim() || loading || uploadingImage}
+          disabled={
+            !text.trim() || loading || uploadingImage || uploadingVideo ||
+            (requiresSourceVideo && (!editImageUrl || !sourceVideoUrl))
+          }
           className="absolute bottom-3 right-3 flex h-8 w-8 items-center justify-center rounded-[8px] bg-[#D97757] text-white hover:bg-[#C4623E] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
         >
           <Send size={15} />

@@ -208,6 +208,8 @@ export interface NetworkListItem {
   /** Реальные опции полей duration/aspect_ratio из ui_settings этой модели. null = поле у модели фиксировано/отсутствует. */
   duration_options?: { value: string; extra_cost: number }[] | null;
   aspect_options?: { value: string; extra_cost: number }[] | null;
+  /** Kling Motion Control и подобные — требует загруженное видео (video_url), не только фото. */
+  requires_source_video?: boolean;
 }
 
 export interface FAQ {

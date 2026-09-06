@@ -329,6 +329,15 @@ def validate_and_merge_settings(config, user_settings):
         if not has_image_url and not has_image_urls:
             errors.append("Эта модель требует загруженное изображение (image_url или image_urls)")
 
+    # Kling Motion Control (2026-09-06): переносит траекторию движения с
+    # ЗАГРУЖЕННОГО видео на фото-референс — нужны оба файла одновременно,
+    # не только фото. video_url тоже не декларируется в ui_settings.sections
+    # (загружается отдельной кнопкой на форме, см. ChatStartForm.tsx), поэтому
+    # та же логика, что и для requires_input_images выше.
+    if metadata.get('requires_source_video', False):
+        if not user_settings.get('video_url'):
+            errors.append("Эта модель требует загруженное видео (video_url) — источник движения")
+
     # Несовместимые комбинации настроек — constraints.incompatible = [{"when": {"field": ..., "value": ...},
     # "forbid": {"field": ..., "value": ...}}, ...]. Пример: у Kling v3/Omni/Motion Control 4K недоступен
     # со звуком (апстрим отдаёт звук максимум на 1080p) — см. update_video_pricing.py.
@@ -1623,7 +1632,7 @@ def generate_video_apimart(network, user_msg, message, user_settings=None):
                   'negative_prompt', 'generation_type', 'enable_gif', 'official_fallback',
                   'size', 'generate_audio', 'camerafixed', 'quality', 'template',
                   'shot_type', 'prompt_optimizer', 'watermark', 'seed',
-                  'prompt_extend', 'audio_url']:
+                  'prompt_extend', 'audio_url', 'character_orientation', 'keep_original_sound']:
         if param in final_args and final_args[param] is not None:
             body[param] = final_args[param]
 
@@ -1714,6 +1723,16 @@ def generate_video_apimart(network, user_msg, message, user_settings=None):
     else:
         # template у wan — эффект оживления фото, без фото не имеет смысла
         body.pop('template', None)
+
+    # Kling Motion Control: video_url — источник движения, отдельный файл от
+    # фото-референса выше (тот уходит в body['image_url'] через i2v_param).
+    # Не входит в general-whitelist параметров (строка 1606) специально —
+    # это не настройка из ui_settings.sections, а загруженный файл, как и
+    # image_url/image_urls. requires_source_video проверяется в
+    # validate_and_merge_settings — сюда мы попадаем уже провалидированными.
+    raw_video = final_args.get('video_url') or (user_settings or {}).get('video_url')
+    if raw_video:
+        body['video_url'] = _make_absolute_url(raw_video)
 
     # Placeholder для трекинга прогресса (SSE). При рестарте воркера переиспользуется
     # (reuse по image=''). Краевой случай: если воркер умер ПОСЛЕ записи видео, но ДО

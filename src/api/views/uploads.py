@@ -91,6 +91,8 @@ class ChatFileUploadView(APIView):
 
 
 IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
+VIDEO_EXTENSIONS = {'.mp4', '.mov'}
+VIDEO_MAX_SIZE = 100 * 1024 * 1024  # 100 MB — лимит apimart для video_url (Kling Motion Control)
 
 
 class ReferenceImageUploadView(APIView):
@@ -144,3 +146,60 @@ class ReferenceImageUploadView(APIView):
             'mime_type': attachment.mime_type,
             'file_size': attachment.file_size,
         }, status=201)
+
+class ReferenceVideoUploadView(APIView):
+    """Загрузка референсного видео ДО создания чата — для моделей вроде
+    Kling Motion Control (metadata.requires_source_video), которым нужен
+    источник движения (video_url) в дополнение к обычному фото-референсу
+    (image_url). Лимит 100 МБ — по документации apimart для этого параметра
+    (nginx client_max_body_size тоже уже 100M, см. nginx.conf); Django не
+    ограничивает размер файлов в request.FILES на уровне настроек."""
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request):
+        file = request.FILES.get('file')
+        if not file:
+            return Response(
+                {'error': {'message': 'Файл не передан', 'type': 'invalid_request_error', 'code': None}},
+                status=400,
+            )
+
+        if file.size > VIDEO_MAX_SIZE:
+            return Response(
+                {'error': {'message': 'Файл слишком большой. Максимум 100 МБ', 'type': 'invalid_request_error', 'code': None}},
+                status=400,
+            )
+
+        ext = Path(file.name).suffix.lower()
+        if ext not in VIDEO_EXTENSIONS:
+            return Response(
+                {'error': {'message': f'Неподдерживаемый тип файла: {ext}. Разрешены только MP4/MOV', 'type': 'invalid_request_error', 'code': None}},
+                status=400,
+            )
+
+        mime = file.content_type or 'application/octet-stream'
+        storage_path = f"attachments/{request.user.id}/pending/{uuid.uuid4()}{ext}"
+
+        file_bytes = file.read()
+        saved_path = default_storage.save(storage_path, ContentFile(file_bytes))
+
+        attachment = FileAttachment.objects.create(
+            message=None,
+            filename=file.name,
+            file_path=saved_path,
+            file_size=len(file_bytes),
+            mime_type=mime,
+            media_type='video',
+            source='uploaded',
+        )
+
+        return Response({
+            'id': str(attachment.id),
+            'url': attachment.file_url,
+            'filename': attachment.filename,
+            'media_type': attachment.media_type,
+            'mime_type': attachment.mime_type,
+            'file_size': attachment.file_size,
+        }, status=201)
+

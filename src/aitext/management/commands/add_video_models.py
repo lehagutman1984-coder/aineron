@@ -634,14 +634,13 @@ VIDEO_CONFIG = {
     # вендора (wan27, klingturbo, hailuo23fast, viduq3pro,
     # seedance20fast, veo3lite) — скопированы с проверенного на практике
     # конфига-донора, тот же вендор почти наверняка сохраняет контракт
-    # параметров между поколениями. Для моделей с уникальной, ранее не
-    # интегрированной способностью (kling-v3-motion-control, kling-v3-omni)
-    # сознательно даём БАЗОВЫЙ набор полей (общий с
-    # ближайшим родственником), а не гадаем экзотические имена параметров
-    # под саму уникальную способность (motion trajectory / multi-reference
-    # omni) — это не проверено вживую, добавить отдельным полем можно после
-    # реальной проверки контракта, чем сейчас рисковать отклонённым запросом
-    # на придуманном имени параметра.
+    # параметров между поколениями. kling-v3-omni сознательно получил
+    # БАЗОВЫЙ набор полей (без угадывания её уникального multi-reference
+    # контракта) — актуально по сей день. kling-v3-motion-control раньше
+    # была здесь же на том же основании, но её уникальная способность
+    # (motion trajectory) оказалась в принципе несовместима с "базовым
+    # набором" (нужен video_url, которого в базовом наборе нет) — теперь
+    # у неё отдельный, реально проверенный по документации конфиг ниже.
     # ══════════════════════════════════════════════════════════════════
 
     # Wan 2.7 — 2026-09-05: конфиг переписан по факту сверки с
@@ -783,15 +782,59 @@ VIDEO_CONFIG = {
         },
     },
 
-    # Kling v3 Motion Control — базовый набор полей идентичен kling_v3.
-    # ПРОВЕРЕНО ВЖИВУЮ (2026-07-27): модель НЕ принимает фото. apimart
-    # отвечает 400 "video_url is required for kling motion-control models" —
-    # это перенос движения/траектории камеры с ИСХОДНОГО ВИДЕО, не img2video
-    # по фото. Загрузки видео в проекте нет, поэтому img2video-метаданные
-    # сюда сознательно не добавляем (раньше здесь ошибочно стояли
-    # image_urls/i2v_max_images — снято той же правкой).
-    # 'klingv3motion' убран 2026-09-05 вместе с моделью — см. комментарий
-    # у VIDEO_MODELS выше (обязательный video_url, у проекта нет загрузки видео).
+    # Kling v3 Motion Control — переносит траекторию движения с ЗАГРУЖЕННОГО
+    # ВИДЕО на фото-референс (не img2video по одному фото). Убрана 2026-09-05
+    # (400 "video_url is required", у проекта не было загрузки видео),
+    # возвращена 2026-09-06 после реализации ReferenceVideoUploadView
+    # (src/api/views/uploads.py) — по прямому запросу пользователя.
+    # Сверено с docs.apimart.ai/en/api-reference/videos/kling-v2-6/
+    # kling-v2-6-motion-control-generation.md: обязательные image_url (фото)
+    # + video_url (MP4/MOV, ≤100МБ, 3-30 сек в зависимости от
+    # character_orientation) + character_orientation (image/video) + mode
+    # (std/pro). duration НЕ параметр запроса — сервер сам определяет
+    # длительность по загруженному видео ("Server probes actual duration"),
+    # поэтому в ui_settings его нет вовсе. aspect_ratio в документации не
+    # упоминается — формат кадра определяется исходником, как у обычного i2v.
+    'klingv3motion': {
+        "name": "Kling v3 Motion Control",
+        "api_defaults": {"mode": "std", "character_orientation": "image", "keep_original_sound": "yes"},
+        "ui_settings": {
+            "sections": [{
+                "title": "Настройки видео",
+                "fields": [
+                    {
+                        "name": "mode", "type": "select", "label": "Качество", "extra_cost": 0,
+                        "options": [
+                            {"value": "std", "label": "720p (стандарт)", "extra_cost": 0},
+                            {"value": "pro", "label": "1080p (профессионал)", "extra_cost": 15},
+                        ]
+                    },
+                    {
+                        "name": "character_orientation", "type": "select",
+                        "label": "Ориентация персонажа", "extra_cost": 0,
+                        "options": [
+                            {"value": "image", "label": "По фото (видео 3-10 сек)", "extra_cost": 0},
+                            {"value": "video", "label": "По видео (видео 3-30 сек)", "extra_cost": 0},
+                        ]
+                    },
+                    {
+                        "name": "keep_original_sound", "type": "select",
+                        "label": "Звук исходного видео", "extra_cost": 0,
+                        "options": [
+                            {"value": "yes", "label": "Сохранить", "extra_cost": 0},
+                            {"value": "no", "label": "Убрать", "extra_cost": 0},
+                        ]
+                    },
+                ]
+            }]
+        },
+        "constraints": {},
+        "metadata": {
+            "output_type": "video", "video_api": "apimart",
+            "requires_input_images": True, "requires_source_video": True,
+            "i2v_param": "image_url",
+        },
+    },
 
     # Kling v3 Omni — многореференсный режим (персонаж+сцена); базовый набор
     # полей идентичен kling_v3. 2026-09-05: сверено с docs.apimart.ai/en/
@@ -1220,17 +1263,23 @@ VIDEO_MODELS = [
         config_key='kling30turbo',
         is_popular=True,
     ),
-    # Kling v3 Motion Control убрана из каталога 2026-09-05 — сверка с
-    # docs.apimart.ai/en/api-reference/videos/kling-v2-6/kling-v2-6-motion-control-generation.md
-    # подтвердила давнее подозрение из комментария выше (ПРОВЕРЕНО ВЖИВУЮ:
-    # 400 "video_url is required"): модель переносит траекторию движения
-    # камеры С ИСХОДНОГО ВИДЕО на фото — обязательные поля image_url И
-    # video_url. У проекта нет функции загрузки видео вообще (ни в чате, ни
-    # в Studio) — модель гарантированно не может сработать ни при каких
-    # настройках, это не пробел в опциях, а отсутствующая продуктовая
-    # возможность. Строка kling-v3-motion-control деактивирована (не
-    # удалена — сохраняет историю чатов, если у кого-то есть старые
-    # сообщения). НЕ возвращать в список без функции загрузки видео.
+    # Kling v3 Motion Control — убрана 2026-09-05 (обязательный video_url,
+    # проект не поддерживал загрузку видео), возвращена 2026-09-06 после
+    # реализации ReferenceVideoUploadView — см. комментарий у 'klingv3motion'
+    # в VIDEO_CONFIG выше. Строка уже существует в БД (is_active=False,
+    # cost_kopecks=8313 сохранён с момента до деактивации) — эта команда не
+    # трогает цену существующих строк (см. ветку else ниже), cost_per_message
+    # здесь используется только если бы модель создавалась с нуля.
+    dict(
+        name='Kling v3 Motion Control',
+        slug='kling-v3-motion-control',
+        model_name='kling-v3-motion-control',
+        cost_per_message=83,
+        order=17,
+        description='Kling v3 с переносом движения камеры и персонажа с загруженного видео на фото — для сложной операторской работы.',
+        config_key='klingv3motion',
+        is_popular=False,
+    ),
     dict(
         name='Kling v3 Omni',
         slug='kling-v3-omni',
