@@ -769,7 +769,16 @@ def generate_image_edit(network, user_msg, message, user_settings=None):
     Возвращает (final_text, saved_media, total_cost)."""
     config = network.config_json or {}
     model_id = network.model_name
-    prompt = user_msg.content if user_msg else ""
+    # 2026-09-06: message_text приходит через (request.data.get('message') or
+    # '').strip() в api/views/chats.py — пустой текстовый промт у img2img/
+    # img2video (реально "необязательный" в UI: AnimateImageModal/EditImageModal)
+    # долетает сюда как ЛИТЕРАЛЬНО пустая строка, не " " (фронтендовый плейсхолдер
+    # для той же цели съедает тот самый .strip()). apimart отклоняет пустой
+    # prompt 400-й ("prompt parameter is required"), пробел — принимает
+    # нормально (проверено живым вызовом) — везде ниже (все generate_*
+    # функции этого файла) используем " " как безопасный дефолт там, где
+    # реальный смысл запроса несёт settings.image_url, а не текст.
+    prompt = (user_msg.content if user_msg else "").strip() or " "
     base_cost = network.cost_per_message
 
     if user_settings is not None:
@@ -1264,7 +1273,7 @@ def generate_video_laozhang(network, user_msg, message, user_settings=None):
     """
     config = network.config_json or {}
     model_id = network.model_name
-    prompt = user_msg.content if user_msg else ""
+    prompt = (user_msg.content if user_msg else "").strip() or " "
     base_cost = network.cost_per_message
 
     if user_settings is not None:
@@ -1447,7 +1456,7 @@ def generate_seedance_video(network, user_msg, message, user_settings=None):
     """
     config = network.config_json or {}
     model_id = network.model_name
-    prompt = user_msg.content if user_msg else ""
+    prompt = (user_msg.content if user_msg else "").strip() or " "
     base_cost = network.cost_per_message
 
     if user_settings is not None:
@@ -1602,7 +1611,7 @@ def generate_video_apimart(network, user_msg, message, user_settings=None):
     """
     config = network.config_json or {}
     model_id = network.model_name
-    prompt = user_msg.content if user_msg else ""
+    prompt = (user_msg.content if user_msg else "").strip() or " "
     base_cost = network.cost_per_message
 
     if user_settings is not None:
@@ -1918,7 +1927,7 @@ def generate_video_cometapi(network, user_msg, message, user_settings=None):
     """
     config = network.config_json or {}
     model_id = network.model_name
-    prompt = user_msg.content if user_msg else ""
+    prompt = (user_msg.content if user_msg else "").strip() or " "
     base_cost = network.cost_per_message
 
     if user_settings is not None:
@@ -2143,7 +2152,7 @@ def generate_image_flux_cometapi(network, user_msg, message, user_settings=None,
     """
     config = network.config_json or {}
     model_id = model_override or network.model_name
-    prompt = user_msg.content if user_msg else ""
+    prompt = (user_msg.content if user_msg else "").strip() or " "
     base_cost = network.cost_per_message
 
     if user_settings is not None:
@@ -2263,7 +2272,7 @@ def generate_image_cometapi(network, user_msg, message, user_settings=None, mode
     """
     config = network.config_json or {}
     model_id = model_override or network.model_name
-    prompt = user_msg.content if user_msg else ""
+    prompt = (user_msg.content if user_msg else "").strip() or " "
     base_cost = network.cost_per_message
 
     if user_settings is not None:
@@ -2392,7 +2401,7 @@ def generate_image_midjourney_cometapi(network, user_msg, message, user_settings
     живым вызовом 2026-09-06: SUCCESS за ~70с, imageUrl — рабочая ссылка.
     """
     config = network.config_json or {}
-    prompt = user_msg.content if user_msg else ""
+    prompt = (user_msg.content if user_msg else "").strip() or " "
     base_cost = network.cost_per_message
 
     if user_settings is not None:
@@ -2481,7 +2490,7 @@ def generate_image_apimart_async(network, user_msg, message, user_settings=None)
     config = network.config_json or {}
     model_id = network.model_name
     endpoint_path = config.get('metadata', {}).get('apimart_endpoint', 'images/generations')
-    prompt = user_msg.content if user_msg else ""
+    prompt = (user_msg.content if user_msg else "").strip() or " "
     base_cost = network.cost_per_message
 
     if user_settings is not None:
@@ -2721,7 +2730,7 @@ def generate_with_falai(network, user_msg, message, user_settings=None):
 
     total_cost = base_cost + extra_cost
 
-    prompt = user_msg.content if user_msg else ""
+    prompt = (user_msg.content if user_msg else "").strip() or " "
 
     # Img2img: если передан ОДИН image_url — роутим на редактирование
     # изображения. 2+ фото (image_urls) — это не редактирование исходника,
