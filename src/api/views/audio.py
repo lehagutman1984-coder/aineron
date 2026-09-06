@@ -13,12 +13,15 @@ from api.permissions import IsEmailVerified
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from drf_spectacular.utils import extend_schema
 
-from aitext.providers import get_laozhang_raw_client
+from aitext.providers import get_utility_client
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_TRANSCRIPTION_MODEL = 'whisper-1'
-DEFAULT_TTS_MODEL = 'tts-1'
+# 2026-09-06: tts-1 реально сломан на apimart (400/500 в зависимости от
+# payload, воспроизведено напрямую) — gpt-4o-mini-tts работает нормально на
+# apimart и на cometapi, см. providers.py::get_utility_client.
+DEFAULT_TTS_MODEL = 'gpt-4o-mini-tts'
 DEFAULT_TTS_VOICE = 'alloy'
 
 
@@ -55,7 +58,7 @@ class AudioTranscriptionsView(APIView):
                 status=status.HTTP_402_PAYMENT_REQUIRED,
             )
 
-        client = get_laozhang_raw_client()
+        client = get_utility_client()
         try:
             kwargs = {
                 'model': model_id,
@@ -126,7 +129,7 @@ class AudioSpeechView(APIView):
                 status=status.HTTP_402_PAYMENT_REQUIRED,
             )
 
-        client = get_laozhang_raw_client()
+        client = get_utility_client()
         try:
             audio_response = client.audio.speech.create(
                 model=model_id,

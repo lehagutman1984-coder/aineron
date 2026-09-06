@@ -160,8 +160,8 @@ class VoiceConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def _transcribe(self, audio_bytes: bytes) -> str:
         import io
-        from aitext.providers import get_laozhang_raw_client
-        client = get_laozhang_raw_client()
+        from aitext.providers import get_utility_client
+        client = get_utility_client()
         audio_file = io.BytesIO(audio_bytes)
         audio_file.name = 'voice.webm'
         resp = client.audio.transcriptions.create(
@@ -184,10 +184,12 @@ class VoiceConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def _tts(self, text: str) -> bytes:
-        from aitext.providers import get_laozhang_raw_client
-        client = get_laozhang_raw_client()
+        from aitext.providers import get_utility_client
+        client = get_utility_client()
         resp = client.audio.speech.create(
-            model='tts-1',
+            # tts-1 реально сломан на apimart, gpt-4o-mini-tts работает —
+            # см. providers.py::get_utility_client.
+            model='gpt-4o-mini-tts',
             voice='alloy',
             input=text[:4096],
             response_format='mp3',

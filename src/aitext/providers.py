@@ -67,6 +67,10 @@ _IMAGE_TIMEOUT = httpx.Timeout(connect=10.0, read=240.0, write=15.0, pool=10.0)
 # Эмбеддинги — маленький payload, без генерации, нет промежуточных байт как
 # у чата/картинок — короткое окно достаточно, недоступность видна быстро.
 _EMBED_TIMEOUT = httpx.Timeout(connect=10.0, read=30.0, write=15.0, pool=10.0)
+# Audio: TTS/STT дольше эмбеддингов (реальная генерация/декодирование звука),
+# но короче видео — читаемое, не гигантское окно.
+_AUDIO_TIMEOUT = httpx.Timeout(connect=10.0, read=60.0, write=30.0, pool=10.0)
+_MODERATION_TIMEOUT = httpx.Timeout(connect=10.0, read=15.0, write=10.0, pool=10.0)
 
 # (name, base_url_setting, key_setting)
 _PROVIDER_META = {
@@ -198,15 +202,16 @@ def _get_raw_client(provider):
 
 def get_laozhang_raw_client():
     """
-    «Сырой» клиент laozhang БЕЗ фолбэка — для audio.*/moderations, неймспейсов,
-    которые `FallbackClient` не перехватывает вообще (нет прокси-класса) —
-    переезд текстового/embedding-primary их не касается ни при каком
-    будущем изменении. См. api/views/audio.py, aitext/consumers.py
-    (audio-ветки), aitext/moderation.py, telegram_bot/handlers/voice.py.
+    «Сырой» клиент laozhang БЕЗ фолбэка, в обход FallbackClient целиком.
 
-    Эмбеддинги здесь раньше тоже жили (до 2026-09-06), но получили
-    собственный primary — см. get_embedding_client() ниже, там же вся
-    история почему это было нужно отдельно.
+    2026-09-06: раньше был единственным способом звать audio.*/moderations/
+    embeddings (неймспейсы, которые FallbackClient не перехватывал) — все
+    три постепенно получили собственный primary с апимарт+кометапи резервом
+    (embeddings → get_embedding_client, audio+moderation →
+    get_utility_client) и перестали пользоваться этой функцией. Оставлена
+    не удалённой — как и весь остальной laozhang-код в этом модуле — на
+    случай, если что-то ещё понадобится вызвать напрямую в laozhang в обход
+    фолбэка.
     """
     return _get_raw_client('laozhang')
 
@@ -224,6 +229,20 @@ def get_embedding_client():
     код не удалён, см. _order_for('apimart_embed').
     """
     return FallbackClient('apimart_embed')
+
+
+def get_utility_client():
+    """
+    2026-09-06: audio (TTS/STT) + модерация переведены на
+    apimart(осн.)/cometapi(резерв) — оба живьём подтверждены: whisper-1 и
+    omni-moderation-latest работают без изменений на обоих; TTS-модель
+    сменена с tts-1 (реально сломан на apimart — 400/500 в зависимости от
+    payload, воспроизведено напрямую) на gpt-4o-mini-tts (работает на
+    обоих). Отдельный primary 'apimart_utility', не апимарт_text/embed —
+    та же причина, что и у эмбеддингов: смена primary одной области не
+    должна молча задеть другую.
+    """
+    return FallbackClient('apimart_utility')
 
 
 def _fallback_enabled():
@@ -432,6 +451,16 @@ def _order_for(primary):
         # текстового primary в будущем больше не задевала эмбеддинги молча.
         # laozhang по той же причине, что и в тексте — не участвует.
         chain = ['apimart', 'cometapi']
+    elif primary == 'apimart_utility':
+        # 2026-09-06: audio (TTS/STT) + модерация — apimart основной, cometapi
+        # резерв. Живьём подтверждено: whisper-1 и omni-moderation-latest
+        # работают на обоих без изменений; tts-1 у apimart реально сломан
+        # (400/500 в зависимости от payload — не наша ошибка, воспроизведено
+        # напрямую), но gpt-4o-mini-tts у apimart работает нормально —
+        # поэтому TTS-модель в коде переведена на gpt-4o-mini-tts (см.
+        # api/views/audio.py, aitext/consumers.py, telegram_bot/handlers/voice.py),
+        # а не оставлена на tts-1 в расчёте на автофолбэк на каждый вызов.
+        chain = ['apimart', 'cometapi']
     else:
         chain = [primary]
     if not _fallback_enabled():
@@ -562,28 +591,77 @@ class _EmbeddingsProxy:
         return getattr(self._parent._primary().embeddings, name)
 
 
+class _TranscriptionsProxy:
+    def __init__(self, parent):
+        self._parent = parent
+
+    def create(self, **kwargs):
+        kwargs.setdefault('timeout', _AUDIO_TIMEOUT)
+        return self._parent._run('audio_transcriptions', lambda c, p: c.audio.transcriptions.create(**kwargs))
+
+    def __getattr__(self, name):
+        return getattr(self._parent._primary().audio.transcriptions, name)
+
+
+class _SpeechProxy:
+    def __init__(self, parent):
+        self._parent = parent
+
+    def create(self, **kwargs):
+        kwargs.setdefault('timeout', _AUDIO_TIMEOUT)
+        return self._parent._run('audio_speech', lambda c, p: c.audio.speech.create(**kwargs))
+
+    def __getattr__(self, name):
+        return getattr(self._parent._primary().audio.speech, name)
+
+
+class _AudioProxy:
+    def __init__(self, parent):
+        self._parent = parent
+        self.transcriptions = _TranscriptionsProxy(parent)
+        self.speech = _SpeechProxy(parent)
+
+    def __getattr__(self, name):
+        return getattr(self._parent._primary().audio, name)
+
+
+class _ModerationsProxy:
+    def __init__(self, parent):
+        self._parent = parent
+
+    def create(self, **kwargs):
+        kwargs.setdefault('timeout', _MODERATION_TIMEOUT)
+        return self._parent._run('moderations', lambda c, p: c.moderations.create(**kwargs))
+
+    def __getattr__(self, name):
+        return getattr(self._parent._primary().moderations, name)
+
+
 class FallbackClient:
     """
     OpenAI-совместимый клиент с прозрачным фолбэком между сервисами.
 
-    Перехватывает `chat.completions.create`, `images.generate`/`edit` и
-    `embeddings.create` — все три идут через `_run()` по цепочке
-    `_order_for(primary)` конкретного экземпляра. audio/moderations
-    НЕ перехватываются вообще ни для одного primary (нет прокси-класса) —
-    для них используется отдельный «сырой» клиент без FallbackClient целиком
-    (см. get_laozhang_raw_client) — не заворачивать их сюда же, иначе они
-    молча поедут вслед за primary следующего текстового/картиночного
-    переезда, как уже один раз случилось 2026-09-06 (см. историю миграции
-    text → apimart_text) до того, как embeddings получили свой explicit
-    apimart_embed primary ниже.
+    Перехватывает `chat.completions.create`, `images.generate`/`edit`,
+    `embeddings.create`, `audio.speech.create`/`audio.transcriptions.create`
+    и `moderations.create` — все идут через `_run()` по цепочке
+    `_order_for(primary)` конкретного экземпляра. Каждая смысловая область
+    (текст/картинки/эмбеддинги/audio+модерация) имеет СВОЙ primary
+    ('apimart_text' / 'apimart' / 'apimart_embed' / 'apimart_utility') —
+    сознательно не переиспользуются между собой: смена primary одной
+    области (например, снова сменить поставщика для чата) не должна той же
+    правкой молча задеть другую, как уже случилось 2026-09-06 при переезде
+    чата на apimart (эмбеддинги тогда уехали незапланированно).
     """
 
     def __init__(self, primary):
-        # `primary` — имя основного сервиса ('laozhang' | 'apimart' | 'apimart_text' | 'apimart_embed')
+        # `primary` — имя основного сервиса ('laozhang' | 'apimart' | 'apimart_text' |
+        # 'apimart_embed' | 'apimart_utility')
         self._primary_name = primary
         self.chat = _ChatProxy(self)
         self.images = _ImagesProxy(self)
         self.embeddings = _EmbeddingsProxy(self)
+        self.audio = _AudioProxy(self)
+        self.moderations = _ModerationsProxy(self)
 
     def _primary(self):
         return _get_raw_client(self._primary_name)

@@ -18,17 +18,16 @@ ASR_COST_KOPECKS = 100
 TTS_COST_KOPECKS = 100
 
 
-def _get_laozhang_client():
-    # Только audio.* (ASR/TTS) — не перехватывается FallbackClient и не
-    # переезжало на apimart/cometapi вместе с текстом 2026-09-06, см.
-    # aitext/providers.py::get_laozhang_raw_client.
-    from aitext.providers import get_laozhang_raw_client
-    return get_laozhang_raw_client()
+def _get_utility_client():
+    # audio.* (ASR/TTS) — apimart(осн.)/cometapi(резерв), см.
+    # aitext/providers.py::get_utility_client.
+    from aitext.providers import get_utility_client
+    return get_utility_client()
 
 
 async def transcribe_audio(ogg_bytes: bytes) -> str:
-    """Отправить аудио в Whisper через laozhang.ai и получить текст."""
-    get_client = sync_to_async(_get_laozhang_client, thread_sensitive=True)
+    """Отправить аудио в Whisper (apimart/cometapi) и получить текст."""
+    get_client = sync_to_async(_get_utility_client, thread_sensitive=True)
     client = await get_client()
 
     def _transcribe(data):
@@ -43,13 +42,15 @@ async def transcribe_audio(ogg_bytes: bytes) -> str:
 
 
 async def synthesize_speech(text: str) -> bytes:
-    """Преобразовать текст в аудио через laozhang.ai TTS."""
-    get_client = sync_to_async(_get_laozhang_client, thread_sensitive=True)
+    """Преобразовать текст в аудио через TTS (apimart/cometapi)."""
+    get_client = sync_to_async(_get_utility_client, thread_sensitive=True)
     client = await get_client()
 
     def _tts(t):
         response = client.audio.speech.create(
-            model='tts-1',
+            # tts-1 реально сломан на apimart, gpt-4o-mini-tts работает —
+            # см. providers.py::get_utility_client.
+            model='gpt-4o-mini-tts',
             voice='alloy',
             input=t[:4096],
         )
