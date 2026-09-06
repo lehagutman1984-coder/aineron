@@ -369,8 +369,6 @@ class GenerationDescribeView(APIView):
     permission_classes = [IsAuthenticated, IsEmailVerified]
 
     def post(self, request, pk):
-        from django.conf import settings as django_settings
-        from openai import OpenAI
         import requests as _req
 
         gen = get_object_or_404(
@@ -386,10 +384,15 @@ class GenerationDescribeView(APIView):
             return Response({'error': {'message': em('files_image_not_found'), 'type': 'not_found', 'code': None}}, status=404)
 
         try:
-            client = OpenAI(
-                api_key=django_settings.LAOZHANG_API_KEY,
-                base_url=django_settings.LAOZHANG_API_URL,
-            )
+            # 2026-09-06: раньше собственный сырой OpenAI-клиент напрямую на
+            # laozhang.ai в обход FallbackClient — единственное место в
+            # проекте, которое строило текстовый (vision) запрос так, не
+            # получая ни миграции на apimart, ни автофолбэка на cometapi.
+            # get_laozhang_client() — тот же choke-point, что и весь
+            # остальной текст; проверено живым вызовом (gpt-4o vision
+            # работает на apimart нормально).
+            from aitext.tasks import get_laozhang_client
+            client = get_laozhang_client()
             describe_prompt = (
                 "Analyze this AI-generated image and write a detailed text-to-image prompt "
                 "that would recreate it. Include: main subject, art style, lighting, colors, "

@@ -574,7 +574,14 @@ def translate_to_english(text, network_name):
     try:
         client = get_laozhang_client()
         completion = client.chat.completions.create(
-            model="deepseek-v3",
+            # 2026-09-06: 'deepseek-v3' был валиден на laozhang (старый primary),
+            # apimart (текущий primary для текста) отвечает 400 "not a valid
+            # model ID" на этот же литерал — переезд провайдера сломал 4
+            # внутренних utility-вызова (перевод, память, саммари×2, сжатие
+            # истории) молча (try/except глотал ошибку). gpt-4o-mini — тот же
+            # выбор, что уже использует aitext/retrieval.py::PROJECT_EXPAND_MODEL
+            # и aitext/consumers.py для той же роли "дешёвый фоновый LLM-вызов".
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system",
                  "content": "You are a translator. Translate the user's message into English. Preserve the meaning and tone. Output only the translated text. If the text is already in English, return the text unchanged."},
@@ -1578,7 +1585,9 @@ def extract_memory_facts(self, chat_id: int):
     try:
         client = get_laozhang_client()
         resp = client.chat.completions.create(
-            model='deepseek-v3',
+            # см. комментарий у translate_to_english — 'deepseek-v3' 400-тится
+            # на apimart после переезда primary с laozhang, gpt-4o-mini рабочий.
+            model='gpt-4o-mini',
             messages=[
                 {'role': 'system', 'content': system_prompt},
                 {'role': 'user', 'content': dialogue[:3000]},
@@ -1755,7 +1764,9 @@ def generate_chat_summary(self, chat_id: int):
     try:
         client = get_laozhang_client()
         resp = client.chat.completions.create(
-            model='deepseek-v3',
+            # см. комментарий у translate_to_english — 'deepseek-v3' 400-тится
+            # на apimart после переезда primary с laozhang, gpt-4o-mini рабочий.
+            model='gpt-4o-mini',
             messages=[
                 {'role': 'system', 'content': summary_prompt},
                 {'role': 'user', 'content': user_content},
@@ -1887,7 +1898,9 @@ def compress_chat_history(self, chat_id: int):
         try:
             client = get_laozhang_client()
             resp = client.chat.completions.create(
-                model='deepseek-v3',
+                # см. комментарий у translate_to_english — 'deepseek-v3' 400-тится
+            # на apimart после переезда primary с laozhang, gpt-4o-mini рабочий.
+            model='gpt-4o-mini',
                 messages=[
                     {'role': 'system', 'content': compression_system},
                     {'role': 'user', 'content': compress_input[-6000:]},

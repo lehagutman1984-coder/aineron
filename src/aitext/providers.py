@@ -357,7 +357,8 @@ def is_availability_error(exc) -> bool:
             msg = str(exc).lower()
             markers = ('not found', 'not exist', "doesn't exist", 'does not exist',
                        'unavailable', 'not support', 'no such model', 'unknown model',
-                       'no available', 'no channel')
+                       'no available', 'no channel', 'not a valid model', 'invalid model',
+                       'access denied', 'is not configured')
             if 'model' in msg and any(m in msg for m in markers):
                 return True
             # 2026-08-07, обнаружено живой раскаткой на gpt-5-pro и

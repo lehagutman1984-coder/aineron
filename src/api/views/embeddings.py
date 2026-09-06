@@ -12,7 +12,7 @@ from api.permissions import IsEmailVerified
 from drf_spectacular.utils import extend_schema
 
 from aitext.models import NeuralNetwork
-from aitext.tasks import get_laozhang_client
+from aitext.providers import get_laozhang_raw_client
 from api.services.billing import charge_for_tokens
 
 logger = logging.getLogger(__name__)
@@ -79,7 +79,13 @@ class EmbeddingsView(APIView):
             from aitext.providers import get_openrouter_free_client
             client = get_openrouter_free_client()
         else:
-            client = get_laozhang_client()
+            # 2026-09-06: embeddings НЕ переезжали на apimart вместе с текстом
+            # (FallbackClient.embeddings делегируется без перехвата — см.
+            # aitext/providers.py — call get_laozhang_client() здесь молча
+            # уехал бы на apimart вместе с primary для текста). "Сырой"
+            # клиент — то же самое, что делают aitext/embeddings.py и
+            # api/views/audio.py для той же причины.
+            client = get_laozhang_raw_client()
         try:
             response_obj = client.embeddings.create(
                 model=model_id,
