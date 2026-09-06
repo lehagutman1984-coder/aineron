@@ -397,6 +397,20 @@ TEXT_MODELS = [
     dict(name='GPT-5.5', slug='gpt-5-5', model_name='gpt-5.5', cost_per_message=15, cost_kopecks=1500, order=4,
          description='GPT-5.5 — новое поколение перед профессиональной версией.',
          handle_photo=True),
+    # 2026-09-06: живьём подтверждено на apimart (осн.) и cometapi (резерв),
+    # оба под тем же именем модели gpt-6-astra. cost_kopecks посчитан по
+    # формуле из PRICING_SIMPLIFICATION_PLAN.md §3 (профиль heavy/thinking:
+    # 10000 input + 4000 output токенов) на реальном опте apimart для тира
+    # ≤272K контекста ($8/$40 за 1M) × K=105: (10000×840 + 4000×4200)/1e6×100
+    # = 2520 копеек. Контекст 922K, макс. вывод 12800 (см.
+    # core/model_limits.py::MODEL_MAX_TOKENS_CAP) — оба по данным реестра
+    # цен APIMart, не по CometAPI (там пуст pricing.input/output — тарификация
+    # выражением tiered_expr). handle_photo=False — apimart (наш primary)
+    # сам маркирует Зрение как off для этой модели в своём каталоге; у
+    # CometAPI заявлено image-to-text, но не проверялось живым вызовом.
+    dict(name='GPT-6 Astra', slug='gpt-6-astra', model_name='gpt-6-astra', cost_per_message=25, cost_kopecks=2520, order=3,
+         description='Флагман нового поколения OpenAI после линейки GPT-5.6 — для сложных рассуждений и кода.',
+         handle_photo=False, is_popular=True),
     dict(name='GPT-5.6 Luna', slug='gpt-5-6-luna', model_name='gpt-5.6-luna', cost_per_message=16, cost_kopecks=1600, order=4,
          description='Одна из веток нового семейства GPT-5.6.',
          handle_photo=True),
