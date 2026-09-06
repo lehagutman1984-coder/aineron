@@ -2138,6 +2138,213 @@ def generate_video_cometapi(network, user_msg, message, user_settings=None):
     return f"Модель \"{model_name}\" не вернула видео. Попробуйте изменить промт.", [], total_cost
 
 
+def generate_video_kling_cometapi(network, user_msg, message, user_settings=None):
+    """
+    Генерирует видео через Kling на CometAPI — ОТДЕЛЬНЫЙ от
+    generate_video_cometapi() эндпоинт и контракт (обнаружено 2026-09-06 по
+    прямым страницам cometapi.com/models/kling/kling-video/, не по общему
+    /api/models — тот не даёт технических деталей контракта вообще):
+
+    POST https://api.cometapi.com/kling/v1/videos/image2video (JSON, не
+    multipart!) — img2video, тело {model_name, prompt, duration,
+    aspect_ratio, image: <URL строкой, НЕ файл — "image_url" отклоняется
+    как "image is empty">}.
+    POST .../kling/v1/videos/text2video — тот же контракт без `image`, для
+    чисто текстовой генерации (не используется пока — все наши Kling-модели
+    в каталоге запускаются с референс-фото).
+    GET  .../kling/v1/videos/{image2video|text2video}/{task_id} — тот же
+    путь, что и создание (не общий /v1/videos/{id}, как у остального видео).
+
+    Ответ: {"code":0,"data":{"task_id":...,"task_status":"submitted"}}.
+    Статусы: submitted → processing → succeed|failed (НЕ completed/error, как
+    у generate_video_cometapi) — результат в data.task_result.videos[0].url.
+
+    model_name — версия Kling, отдельный параметр от нашего model_id
+    (metadata.cometapi_fallback_model), НЕ совпадает 1:1 со всеми моделями
+    каталога: живьём подтверждены только kling-v2-6 и kling-v3 (полный цикл
+    до succeed); kling-3.0-turbo/kling-v3-omni/kling-video-o1 отвечают 400
+    "invalid model name" на все опробованные варианты написания — эти 3
+    остаются без резерва, пока не появится точное имя от CometAPI.
+    """
+    config = network.config_json or {}
+    model_id = network.model_name
+    prompt = (user_msg.content if user_msg else "").strip() or " "
+    base_cost = network.cost_per_message
+
+    if user_settings is not None:
+        final_args, errors, extra_cost = validate_and_merge_settings(config, user_settings)
+        if errors:
+            raise Exception("Ошибки в настройках: " + "; ".join(errors))
+    else:
+        final_args = config.get('api_defaults', {}).copy()
+        extra_cost = 0
+
+    total_cost = base_cost + extra_cost
+
+    api_key = getattr(settings, 'COMETAPI_API_KEY', '')
+    # 2026-09-06: kling живёт под своим корнем /kling/v1/..., НЕ под общим
+    # COMETAPI_API_URL (который уже включает /v1 для generate_video_cometapi
+    # и остальных обычных эндпоинтов) — нельзя переиспользовать ту же
+    # настройку напрямую, .../v1/kling/v1/... не существует.
+    base_root = getattr(settings, 'COMETAPI_API_URL', 'https://api.cometapi.com/v1').rstrip('/')
+    if base_root.endswith('/v1'):
+        base_root = base_root[:-3]
+    auth_headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+
+    duration = final_args.get('duration', 5)
+    try:
+        duration = str(int(duration))
+    except (ValueError, TypeError):
+        duration = '5'
+    aspect_ratio = str(final_args.get('aspect_ratio', '16:9'))
+
+    kling_model_name = (config.get('metadata') or {}).get('cometapi_fallback_model', model_id)
+
+    raw_images = (
+        final_args.get('image_urls')
+        or (user_settings or {}).get('image_urls')
+        or []
+    )
+    if not raw_images:
+        single = final_args.get('image_url') or (user_settings or {}).get('image_url', '')
+        raw_images = [single] if single else []
+    images = [_make_absolute_url(u) for u in raw_images if u]
+    if images and len(images) > 1:
+        logger.info(f"Kling/CometAPI video: получено {len(images)} референс-фото, поддерживается 1 — лишние отброшены")
+
+    endpoint = 'image2video' if images else 'text2video'
+    body = {"model_name": kling_model_name, "prompt": prompt, "duration": duration, "aspect_ratio": aspect_ratio}
+    if images:
+        body["image"] = images[0]
+
+    gen_ph = _create_video_placeholder(message, prompt, model_id, 'cometapi')
+
+    task_id = None
+    saved_endpoint = endpoint
+    try:
+        saved = json.loads(message.content or '{}')
+        task_id = saved.get('_kling_cometapi_task_id')
+        saved_endpoint = saved.get('_kling_cometapi_endpoint', endpoint)
+        if task_id:
+            logger.info(f"Kling/CometAPI resuming existing task_id={task_id} (task restarted)")
+    except Exception:
+        task_id = None
+
+    video_url = None
+    try:
+        if not task_id:
+            logger.info(f"Kling/CometAPI POST model_name={kling_model_name} endpoint={endpoint} body={body}")
+            resp = requests.post(
+                f"{base_root}/kling/v1/videos/{endpoint}",
+                headers=auth_headers,
+                json=body,
+                timeout=60,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            logger.info(f"Kling/CometAPI creation response: {str(data)[:400]}")
+            task_id = (data.get('data') or {}).get('task_id')
+            if not task_id:
+                raise Exception(f"Нет task_id в ответе Kling/CometAPI: {str(data)[:200]}")
+
+            try:
+                message.content = json.dumps({'_kling_cometapi_task_id': task_id, '_kling_cometapi_endpoint': endpoint})
+                message.save(update_fields=['content'])
+            except Exception as e:
+                logger.warning(f"Не удалось сохранить kling cometapi task_id: {e}")
+            saved_endpoint = endpoint
+
+        logger.info(f"Kling/CometAPI task_id={task_id}, polling...")
+
+        if gen_ph is not None and task_id:
+            try:
+                gen_ph.params = {'_kling_cometapi_task_id': task_id, 'model': model_id}
+                gen_ph.save(update_fields=['params'])
+            except Exception:
+                pass
+
+        MAX_ATTEMPTS = 90
+        MAX_CONSECUTIVE_POLL_FAILURES = 5
+        consecutive_poll_failures = 0
+        for attempt in range(MAX_ATTEMPTS):
+            time.sleep(5)
+            try:
+                poll_resp = requests.get(
+                    f"{base_root}/kling/v1/videos/{saved_endpoint}/{task_id}",
+                    headers=auth_headers,
+                    timeout=30,
+                )
+                poll_resp.raise_for_status()
+                pd = poll_resp.json()
+            except Exception as poll_exc:
+                consecutive_poll_failures += 1
+                logger.warning(
+                    f"Kling/CometAPI poll {attempt + 1}/{MAX_ATTEMPTS} failed "
+                    f"({consecutive_poll_failures}/{MAX_CONSECUTIVE_POLL_FAILURES}): {poll_exc}"
+                )
+                if consecutive_poll_failures >= MAX_CONSECUTIVE_POLL_FAILURES:
+                    raise
+                continue
+            consecutive_poll_failures = 0
+
+            pdata = pd.get('data') or {}
+            status = (pdata.get('task_status') or '').lower()
+            logger.info(f"Kling/CometAPI poll {attempt + 1}/{MAX_ATTEMPTS}: status={status}")
+
+            if status == 'succeed':
+                videos = (pdata.get('task_result') or {}).get('videos') or []
+                video_url = videos[0].get('url') if videos else None
+                if not video_url:
+                    logger.warning(f"Kling/CometAPI succeed но нет video url. response={str(pd)[:400]}")
+                break
+            elif status == 'failed':
+                raise Exception(f"Kling/CometAPI генерация завершилась ошибкой: {pdata.get('task_status_msg', status)}")
+        else:
+            raise Exception(
+                f"Kling/CometAPI: превышено время ожидания генерации видео "
+                f"({MAX_ATTEMPTS} попыток), task_id={task_id}"
+            )
+    except Exception:
+        _fail_video_gen(gen_ph)
+        raise
+
+    model_name = config.get('name', network.name)
+    saved_media = []
+    if video_url:
+        target = gen_ph if (gen_ph is not None and not gen_ph.image) else None
+        gen = None
+        for dl_attempt in range(3):
+            gen = save_media_from_url(
+                video_url, message, prompt, media_type='video', gen=target, max_retries=1
+            )
+            if gen:
+                break
+            if dl_attempt < 2:
+                logger.warning(
+                    f"[kling/cometapi] финальная загрузка видео не удалась "
+                    f"(попытка {dl_attempt + 1}/3), повтор через 5с"
+                )
+                time.sleep(5)
+        if gen:
+            saved_media.append(gen)
+
+    if _finalize_video_gen(gen_ph):
+        if gen_ph not in saved_media:
+            saved_media.append(gen_ph)
+    else:
+        _fail_video_gen(gen_ph)
+
+    if saved_media:
+        text_parts = [f"Сгенерировано {len(saved_media)} видео моделью \"{model_name}\"."]
+        for m in saved_media:
+            text_parts.append(
+                f"<video src='{m.image.url}' controls width='100%' style='max-width:100%; border-radius:12px;'></video>"
+            )
+        return "\n\n".join(text_parts), saved_media, total_cost
+
+    return f"Модель \"{model_name}\" не вернула видео. Попробуйте изменить промт.", [], total_cost
+
+
 def generate_image_flux_cometapi(network, user_msg, message, user_settings=None, model_override=None):
     """
     Генерирует изображение через CометAPI для семейства FLUX.2 — ОТДЕЛЬНЫЙ от
@@ -2684,7 +2891,11 @@ def generate_with_falai(network, user_msg, message, user_settings=None):
             if fallback_on:
                 cometapi_fb = meta.get('cometapi_fallback_model')
                 if cometapi_fb:
-                    chain.append((generate_video_cometapi, cometapi_fb))
+                    # Kling — отдельный эндпоинт/контракт на CometAPI
+                    # (/kling/v1/videos/..., не общий /v1/videos), см.
+                    # generate_video_kling_cometapi.
+                    cometapi_fn = generate_video_kling_cometapi if meta.get('cometapi_contract') == 'kling' else generate_video_cometapi
+                    chain.append((cometapi_fn, cometapi_fb))
                 laozhang_fb = meta.get('laozhang_fallback_model')
                 if laozhang_fb:
                     chain.append((generate_video_laozhang, laozhang_fb))
