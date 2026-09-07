@@ -19,6 +19,7 @@ import {
   Star,
   Bitcoin,
   Coins,
+  Send,
   ExternalLink,
 } from "lucide-react";
 import {
@@ -343,11 +344,20 @@ function paymentTypeLabel(type: PaymentHistory["payment_type"], t: (k: string) =
 
 // ── Section header ────────────────────────────────────────────────────────────
 
-function SectionHeader({ icon: Icon, title }: { icon: React.ElementType; title: string }) {
+function SectionHeader({
+  icon: Icon,
+  title,
+  badge,
+}: {
+  icon: React.ElementType;
+  title: string;
+  badge?: React.ReactNode;
+}) {
   return (
     <div className="flex items-center gap-2 mb-4">
       <Icon size={20} className="text-[var(--color-accent)]" />
       <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">{title}</h2>
+      {badge}
     </div>
   );
 }
@@ -689,13 +699,26 @@ function CryptoSection() {
     paid: t("cryptoPaid"),
     failed: t("cryptoFailed"),
     receive: (c: number) => (isUsd ? t("cryptoReceive", { count: c.toLocaleString("en-US") }) : ""),
+    telegramBadge: t("cryptoTelegramBadge"),
   };
 
   const USD_PACKAGES = [5, 10, 25, 50];
 
   return (
     <section>
-      <SectionHeader icon={Bitcoin} title={L.title} />
+      <SectionHeader
+        icon={Bitcoin}
+        title={L.title}
+        badge={
+          <span
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
+              bg-[#229ED9]/10 text-[#229ED9]"
+          >
+            <Send size={12} />
+            {L.telegramBadge}
+          </span>
+        }
+      />
       <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 space-y-4">
         <p className="text-sm text-[var(--color-text-secondary)]">{L.intro}</p>
 
