@@ -765,7 +765,12 @@ _FLUX_EDIT_REDIRECT_NOTE = (
 
 def generate_image_edit(network, user_msg, message, user_settings=None):
     """Img2img: редактирование изображения через laozhang /images/edits (multipart)
-    с фолбэком на /images/generations + image_url в теле.
+    с фолбэком на /images/generations + image_url в теле (client — FallbackClient,
+    laozhang→apimart уже встроен). Резерв 3-го уровня (2026-09-07): если и
+    laozhang, и apimart недоступны, а у модели задан metadata.cometapi_fallback_model —
+    фолбэк на CometAPI (generate_image_flux_cometapi/generate_image_cometapi
+    с image_url), кроме Midjourney (контракт-резерв не поддерживает edit).
+    Маска/outpaint при любом фолбэке теряются (сохраняется исходное поведение).
     Возвращает (final_text, saved_media, total_cost)."""
     config = network.config_json or {}
     model_id = network.model_name
@@ -970,13 +975,35 @@ def generate_image_edit(network, user_msg, message, user_settings=None):
         logger.warning(f"[img2img] images.edit failed ({edit_err}), falling back to generate+image_url")
         # Фолбэк: image_url передаём через extra_body (прямой kwarg → TypeError в SDK).
         # ВНИМАНИЕ: фолбэк не поддерживает маску/outpaint — они здесь теряются.
+        # client = FallbackClient('laozhang') — уже прозрачно фолбэчит laozhang→apimart
+        # внутри себя (providers.py). Если ОБА эти провайдера здесь тоже упадут —
+        # третий уровень резерва (2026-09-07): CometAPI, по тому же принципу,
+        # что и у генерации с нуля (см. generate_with_falai). Маска/outpaint
+        # теряются и здесь — тот же уже существующий компромисс.
         fb_extra = dict(params.get('extra_body') or {})
         fb_extra['image_url'] = image_url
         gen_params = {k: v for k, v in params.items() if k != 'extra_body'}
         gen_params['extra_body'] = fb_extra
-        result = client.images.generate(**gen_params)
-        img_url = result.data[0].url if result.data else None
-        b64_data = result.data[0].b64_json if result.data else None
+        try:
+            result = client.images.generate(**gen_params)
+            img_url = result.data[0].url if result.data else None
+            b64_data = result.data[0].b64_json if result.data else None
+        except Exception as gen_err:
+            fb_model = config.get('metadata', {}).get('cometapi_fallback_model')
+            fallback_on = getattr(settings, 'AI_PROVIDER_FALLBACK', True)
+            is_settings_err = str(gen_err).startswith('Ошибки в настройках')
+            contract = config.get('metadata', {}).get('cometapi_contract')
+            # Midjourney: контракт-резерв (generate_image_midjourney_cometapi) не
+            # поддерживает редактирование существующего фото (Discord-relay
+            # imagine-only) — не подключаем, чтобы не потерять исходное фото молча.
+            if fallback_on and fb_model and not is_settings_err and contract != 'midjourney':
+                logger.warning(f"[img2img] laozhang/apimart недоступны ({gen_err}); фолбэк → CometAPI model={fb_model}")
+                edit_settings = dict(user_settings or {})
+                edit_settings['image_url'] = image_url  # уже абсолютный URL (см. выше)
+                if contract in ('flux', 'flux_kontext'):
+                    return generate_image_flux_cometapi(network, user_msg, message, edit_settings, model_override=fb_model)
+                return generate_image_cometapi(network, user_msg, message, edit_settings, model_override=fb_model)
+            raise
 
     # laozhang.ai может вернуть b64_json вместо url — сохраняем напрямую
     if not img_url and b64_data:
@@ -2374,6 +2401,13 @@ def generate_image_flux_cometapi(network, user_msg, message, user_settings=None,
     проверке с более длинным опросом (подтверждено живым вызовом: status
     Ready, result.sample — рабочий URL готового изображения). Урок: сверяться
     с официальными доками ПЕРЕД тем как делать вывод "провайдер ненадёжен".
+
+    Резерв редактирования (img2img, 2026-09-07): input_image добавляется в
+    тело ОБОИХ вариантов (flux-2-x и Kontext), если он есть в
+    final_args/user_settings — не только у Kontext, как было раньше.
+    Подтверждено живым вызовом на flux-2-pro (200, задача создана с
+    input_image). Эта же функция вызывается как третий уровень резерва из
+    generate_image_edit(), когда и laozhang, и apimart недоступны.
     """
     config = network.config_json or {}
     model_id = model_override or network.model_name
@@ -2412,11 +2446,13 @@ def generate_image_flux_cometapi(network, user_msg, message, user_settings=None,
             body['seed'] = int(final_args['seed'])
         except (ValueError, TypeError):
             pass
-    # Kontext — модель редактирования: без исходного фото просто игнорирует
-    # инструкцию и рисует с нуля по prompt (не ошибка, но не то, что ждёт
-    # пользователь) — передаём image_url, если он есть в настройках.
+    # Резерв редактирования (img2img, 2026-09-07): input_image принимается
+    # ОБОИМИ вариантами тела (Kontext и flux-2-x) — подтверждено живым вызовом
+    # flux-2-pro (200, задача создана). Kontext без исходного фото просто
+    # игнорирует инструкцию и рисует с нуля по prompt (не ошибка, но не то,
+    # что ждёт пользователь) — поэтому передаём image_url всегда, если он есть.
     src_image = (final_args.get('image_url') or (user_settings or {}).get('image_url'))
-    if is_kontext and src_image:
+    if src_image:
         body['input_image'] = _make_absolute_url(src_image)
 
     gen_ph = _create_video_placeholder(message, prompt, model_id, 'cometapi', media_type='image')
@@ -2501,6 +2537,20 @@ def generate_image_cometapi(network, user_msg, message, user_settings=None, mode
     Flux (flux-2-pro/-max/-flex, flux-kontext-pro/-max) сюда НЕ относится —
     у него свой контракт и своя функция, см. generate_image_flux_cometapi().
 
+    Резерв редактирования (img2img, 2026-09-07): если в final_args/user_settings
+    есть image_url — это вызов из generate_image_edit() (третий уровень, когда
+    и laozhang, и apimart недоступны), а не генерация с нуля. Контракт другой
+    для каждой ветки:
+      A) via_chat=False → POST /v1/images/edits (multipart, image=файл,
+         data={model, prompt}) вместо /v1/images/generations. Подтверждено
+         живьём 2026-09-07 (200) на gpt-image-1, doubao-seedream-4-0-250828,
+         grok-imagine-image — один и тот же универсальный edit-эндпоинт на
+         все три семейства.
+      B) via_chat=True → content сообщения становится мультимодальным массивом
+         [{"type":"text",...}, {"type":"image_url","image_url":{"url":...}}]
+         вместо простой строки. Подтверждено живьём 2026-09-07 (200,
+         отредактированный JPEG в ответе) на gemini-3.1-flash-image.
+
     model_override — если задано, отправляется в CometAPI вместо
     network.model_name (сейчас не используется — все проверенные модели
     совпадают по имени с CometAPI).
@@ -2527,12 +2577,25 @@ def generate_image_cometapi(network, user_msg, message, user_settings=None, mode
     gen_ph = _create_video_placeholder(message, prompt, model_id, 'cometapi', media_type='image')
     saved_media = []
 
+    # Резерв редактирования (img2img, 2026-09-07): если пришёл image_url — это
+    # вызов из generate_image_edit(), а не генерация с нуля.
+    src_image = final_args.get('image_url') or (user_settings or {}).get('image_url')
+
     if config.get('metadata', {}).get('cometapi_via_chat'):
         try:
-            logger.info(f"CometAPI Image (chat/completions) model={model_id}")
+            logger.info(f"CometAPI Image (chat/completions) model={model_id} edit={bool(src_image)}")
+            if src_image:
+                # Мультимодальный content — подтверждено живым вызовом 2026-09-07
+                # на gemini-3.1-flash-image (200, отредактированный JPEG в ответе).
+                message_content = [
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": _make_absolute_url(src_image)}},
+                ]
+            else:
+                message_content = prompt
             resp = requests.post(
                 f"{base_url}/chat/completions", headers=auth_headers,
-                json={"model": model_id, "messages": [{"role": "user", "content": prompt}]},
+                json={"model": model_id, "messages": [{"role": "user", "content": message_content}]},
                 timeout=90,
             )
             resp.raise_for_status()
@@ -2571,8 +2634,24 @@ def generate_image_cometapi(network, user_msg, message, user_settings=None, mode
             body[param] = final_args[param]
 
     try:
-        logger.info(f"CometAPI Image POST model={model_id} params={body}")
-        resp = requests.post(f"{base_url}/images/generations", headers=auth_headers, json=body, timeout=90)
+        if src_image:
+            # Универсальный OpenAI-совместимый /v1/images/edits (multipart) —
+            # подтверждено живым вызовом 2026-09-07 (200) на всех трёх семействах,
+            # использующих этот контракт: gpt-image-1, doubao-seedream-4-0-250828,
+            # grok-imagine-image. /v1/images/generations такого параметра не имеет.
+            logger.info(f"CometAPI Image POST /v1/images/edits (edit) model={model_id}")
+            img_resp = requests.get(_make_absolute_url(src_image), timeout=30)
+            img_resp.raise_for_status()
+            resp = requests.post(
+                f"{base_url}/images/edits",
+                headers={"Authorization": auth_headers["Authorization"]},
+                files={"image": ("source.png", img_resp.content, "image/png")},
+                data={"model": model_id, "prompt": prompt},
+                timeout=90,
+            )
+        else:
+            logger.info(f"CometAPI Image POST model={model_id} params={body}")
+            resp = requests.post(f"{base_url}/images/generations", headers=auth_headers, json=body, timeout=90)
         resp.raise_for_status()
         data = resp.json()
         logger.info(f"CometAPI image response: {str(data)[:400]}")
