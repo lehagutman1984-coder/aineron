@@ -123,6 +123,12 @@ class NeuralNetwork(models.Model):
         verbose_name='Популярная модель',
         help_text='Отображать в блоке "Популярные модели" на странице выбора'
     )
+    is_new = models.BooleanField(
+        default=False,
+        verbose_name='Новинка',
+        help_text='Отображать в блоке "Новинки" на лендинге. Проставляется вручную '
+                  '(в каталоге нет даты добавления модели) — снимайте флаг, когда модель перестаёт быть новой.'
+    )
     is_free = models.BooleanField(
         default=False,
         verbose_name='Бесплатная модель',

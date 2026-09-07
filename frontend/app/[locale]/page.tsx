@@ -44,6 +44,7 @@ export default async function HomePage({
   ]);
   const modelCount = all?.length ?? 0;
   const freeCount = free?.length ?? 0;
+  const newModels = (all ?? []).filter((n) => n.is_new);
 
   const signupAmount = formatMoney(PRICES.signupBonus);
   const marquee = t.raw("marquee") as string[];
@@ -394,6 +395,25 @@ export default async function HomePage({
           </div>
         </div>
       </section>
+
+      {/* НОВИНКИ */}
+      {newModels.length > 0 && (
+        <section className="sec" id="new-models">
+          <div className="wrap">
+            <h2 className="sec-title">{t("newModels.title")}</h2>
+            <p className="sec-sub">{t("newModels.subtitle")}</p>
+            <div className="feat-grid">
+              {newModels.map((model) => (
+                <Link href={`/models/${model.slug}`} className="feat" key={model.id}>
+                  <span className="feat-n mono">{t("newModels.badge")}</span>
+                  <h4>{model.name}</h4>
+                  <p>{formatMoney(model.cost_kopecks)}</p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ВОЗМОЖНОСТИ */}
       <section className="sec" id="features">

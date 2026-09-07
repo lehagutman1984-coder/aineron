@@ -2691,6 +2691,11 @@
         "query2": "declutter the room"
       }
     },
+    "newModels": {
+      "title": "Just added",
+      "subtitle": "The newest models in the catalog — available right now.",
+      "badge": "New"
+    },
     "features": {
       "eyebrow": "what's already inside",
       "title": "More than just a chat with an AI",
