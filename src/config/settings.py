@@ -710,6 +710,16 @@ CRYPTO_PAY_API_URL = os.environ.get('CRYPTO_PAY_API_URL', 'https://pay.crypt.bot
 CRYPTO_PAY_ASSETS = os.environ.get('CRYPTO_PAY_ASSETS', 'USDT,TON')
 
 
+# ========== TRYBIT (ex-CryptoCloud) ==========
+# Второй, независимый канал оплаты криптой — рядом с Crypto Pay, не вместо него
+# (шире охват сетей/монет). TRYBIT_ENABLED=0 полностью выключает канал.
+TRYBIT_ENABLED = os.environ.get('TRYBIT_ENABLED', '0') == '1'
+TRYBIT_SHOP_ID = os.environ.get('TRYBIT_SHOP_ID', '')
+TRYBIT_API_KEY = os.environ.get('TRYBIT_API_KEY', '')
+TRYBIT_SECRET_KEY = os.environ.get('TRYBIT_SECRET_KEY', '')
+TRYBIT_API_URL = os.environ.get('TRYBIT_API_URL', 'https://api.trybit.com')
+
+
 # ========== INTL MODE (международный инстанс, GLOBAL_EXPANSION_PLAN.md) ==========
 # INTL_MODE=1: витрина в кредитах, пополнение в USD-номинале (только крипта),
 # Robokassa-эндпоинты отключены. На aineron.ru всегда 0.

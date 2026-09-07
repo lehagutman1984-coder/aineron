@@ -316,7 +316,19 @@
     "cryptoCreating": "Fatura oluşturuluyor...",
     "cryptoPaid": "Ödeme alındı — bakiye güncellendi.",
     "cryptoFailed": "Fatura süresi doldu veya iptal edildi. Yeni bir fatura oluşturun.",
-    "cryptoReceive": "{count} kredi alacaksınız"
+    "cryptoReceive": "{count} kredi alacaksınız",
+    "trybitTitle": "Trybit ile ödeme yap",
+    "trybitIntro": "Trybit üzerinden geniş bir kripto para yelpazesiyle bakiyenizi yükleyin. Fatura USD olarak düzenlenir.",
+    "trybitWaiting": "${amount} ödemesi bekleniyor...",
+    "trybitOpen": "Faturayı aç",
+    "trybitCancel": "İptal",
+    "trybitNote": "Bakiyeniz ödeme sonrası otomatik olarak güncellenir.",
+    "trybitLabel": "Tutar, $ ({min}–{max})",
+    "trybitPay": "Fatura oluştur",
+    "trybitCreating": "Fatura oluşturuluyor...",
+    "trybitPaid": "Ödeme alındı — bakiye güncellendi.",
+    "trybitFailed": "Fatura süresi doldu veya iptal edildi. Yeni bir tane oluşturun.",
+    "trybitReceive": "{count} kredi alacaksınız"
   },
   "chat": {
     "notFound": "Sohbet bulunamadı",

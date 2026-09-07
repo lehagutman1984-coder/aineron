@@ -319,7 +319,19 @@
     "cryptoCreating": "Создание счёта...",
     "cryptoPaid": "Оплата получена, баланс пополнен.",
     "cryptoFailed": "Счёт истёк или отменён. Создайте новый.",
-    "cryptoReceive": "Вы получите {count} credits"
+    "cryptoReceive": "Вы получите {count} credits",
+    "trybitTitle": "Оплата через Trybit",
+    "trybitIntro": "Пополните баланс широким выбором криптовалют через Trybit. Счёт выставляется в USD.",
+    "trybitWaiting": "Ожидание оплаты ${amount}...",
+    "trybitOpen": "Открыть счёт",
+    "trybitCancel": "Отмена",
+    "trybitNote": "Баланс обновится автоматически после оплаты.",
+    "trybitLabel": "Сумма, $ ({min}–{max})",
+    "trybitPay": "Создать счёт",
+    "trybitCreating": "Создание счёта...",
+    "trybitPaid": "Платёж получен — баланс обновлён.",
+    "trybitFailed": "Счёт истёк или был отменён. Создайте новый.",
+    "trybitReceive": "Вы получите {count} credits"
   },
   "chat": {
     "notFound": "Чат не найден",

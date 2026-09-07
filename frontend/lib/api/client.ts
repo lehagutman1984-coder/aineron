@@ -623,6 +623,44 @@ export const createCryptoTopup = (
 export const getCryptoTopupStatus = (paymentId: number): Promise<CryptoStatusResponse> =>
   request<CryptoStatusResponse>(`/billing/crypto/status/${paymentId}/`);
 
+// ── Trybit (второй крипто-канал, ex-CryptoCloud) ────────────────────────────
+
+export interface TrybitConfig {
+  enabled: boolean;
+  min_amount: number;
+  max_amount: number;
+}
+
+export interface TrybitTopupResponse {
+  payment_id: number;
+  invoice_id: string;
+  amount: string;
+  currency: "USD";
+  credits: number;
+  pay_url: string;
+  test_mode?: boolean;
+}
+
+export interface TrybitStatusResponse {
+  payment_id: number;
+  status: "pending" | "success" | "failed" | "refunded";
+  balance_kopecks: number;
+}
+
+export const getTrybitConfig = (): Promise<TrybitConfig> =>
+  request<TrybitConfig>("/billing/trybit/");
+
+export const createTrybitTopup = (
+  body: { amount_usd: number },
+): Promise<TrybitTopupResponse> =>
+  request<TrybitTopupResponse>("/billing/trybit/topup/", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+export const getTrybitTopupStatus = (paymentId: number): Promise<TrybitStatusResponse> =>
+  request<TrybitStatusResponse>(`/billing/trybit/status/${paymentId}/`);
+
 export const getStarsUsage = (days?: number): Promise<StarsUsage> =>
   request<StarsUsage>(`/billing/stars-usage/${days ? `?days=${days}` : ""}`);
 

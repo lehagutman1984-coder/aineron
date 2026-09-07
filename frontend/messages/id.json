@@ -316,7 +316,19 @@
     "cryptoCreating": "Membuat faktur...",
     "cryptoPaid": "Pembayaran diterima — saldo diperbarui.",
     "cryptoFailed": "Faktur kedaluwarsa atau dibatalkan. Buat yang baru.",
-    "cryptoReceive": "Anda akan menerima {count} kredit"
+    "cryptoReceive": "Anda akan menerima {count} kredit",
+    "trybitTitle": "Bayar dengan Trybit",
+    "trybitIntro": "Isi ulang saldo Anda dengan berbagai mata uang kripto melalui Trybit. Faktur diterbitkan dalam USD.",
+    "trybitWaiting": "Menunggu pembayaran ${amount}...",
+    "trybitOpen": "Buka faktur",
+    "trybitCancel": "Batal",
+    "trybitNote": "Saldo Anda akan diperbarui otomatis setelah pembayaran.",
+    "trybitLabel": "Jumlah, $ ({min}–{max})",
+    "trybitPay": "Buat faktur",
+    "trybitCreating": "Membuat faktur...",
+    "trybitPaid": "Pembayaran diterima — saldo diperbarui.",
+    "trybitFailed": "Faktur telah kedaluwarsa atau dibatalkan. Buat yang baru.",
+    "trybitReceive": "Anda akan menerima {count} kredit"
   },
   "chat": {
     "notFound": "Chat tidak ditemukan",

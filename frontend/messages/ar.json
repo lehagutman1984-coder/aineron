@@ -316,7 +316,19 @@
     "cryptoCreating": "جارٍ إنشاء الفاتورة...",
     "cryptoPaid": "تم استلام الدفع — تم تحديث الرصيد.",
     "cryptoFailed": "انتهت صلاحية الفاتورة أو تم إلغاؤها. أنشئ واحدة جديدة.",
-    "cryptoReceive": "ستتلقى {count} أرصدة"
+    "cryptoReceive": "ستتلقى {count} أرصدة",
+    "trybitTitle": "الدفع عبر Trybit",
+    "trybitIntro": "اشحن رصيدك بمجموعة واسعة من العملات الرقمية عبر Trybit. تصدر الفاتورة بالدولار الأمريكي.",
+    "trybitWaiting": "في انتظار دفع ${amount}...",
+    "trybitOpen": "فتح الفاتورة",
+    "trybitCancel": "إلغاء",
+    "trybitNote": "سيتم تحديث رصيدك تلقائيًا بعد الدفع.",
+    "trybitLabel": "المبلغ، $ ({min}–{max})",
+    "trybitPay": "إنشاء فاتورة",
+    "trybitCreating": "جارٍ إنشاء الفاتورة...",
+    "trybitPaid": "تم استلام الدفعة — تم تحديث الرصيد.",
+    "trybitFailed": "انتهت صلاحية الفاتورة أو تم إلغاؤها. أنشئ فاتورة جديدة.",
+    "trybitReceive": "ستتلقى {count} أرصدة"
   },
   "chat": {
     "notFound": "الدردشة غير موجودة",

@@ -18,6 +18,7 @@ import {
   X,
   Star,
   Bitcoin,
+  Coins,
   ExternalLink,
 } from "lucide-react";
 import {
@@ -32,8 +33,11 @@ import {
   getCryptoConfig,
   createCryptoTopup,
   getCryptoTopupStatus,
+  getTrybitConfig,
+  createTrybitTopup,
+  getTrybitTopupStatus,
 } from "@/lib/api/client";
-import type { CryptoTopupResponse } from "@/lib/api/client";
+import type { CryptoTopupResponse, TrybitTopupResponse } from "@/lib/api/client";
 import type { PromoCheckResponse } from "@/lib/api/client";
 import type { Tariff, PaymentHistory, RobokassaForm, UserSubscription } from "@/lib/api/types";
 import { formatMoney, rubToKopecks, CURRENCY } from "@/lib/money";
@@ -800,6 +804,179 @@ function CryptoSection() {
   );
 }
 
+// ── Trybit payment (ex-CryptoCloud) — второй крипто-канал, рядом с Crypto Pay ──
+
+function TrybitSection() {
+  const t = useTranslations("billing");
+  const queryClient = useQueryClient();
+  const setBalance = useAuthStore((s) => s.setBalance);
+
+  const { data: config } = useQuery({
+    queryKey: ["trybit-config"],
+    queryFn: getTrybitConfig,
+  });
+
+  const [amount, setAmount] = useState<number | null>(null);
+  const [invoice, setInvoice] = useState<TrybitTopupResponse | null>(null);
+  const [paid, setPaid] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: createTrybitTopup,
+    onSuccess: (data) => {
+      setInvoice(data);
+      setPaid(false);
+      window.open(data.pay_url, "_blank", "noopener");
+    },
+    onError: (err: Error) => setError(err.message),
+  });
+
+  // Поллинг статуса, пока счёт не оплачен/не истёк
+  useQuery({
+    queryKey: ["trybit-status", invoice?.payment_id],
+    queryFn: async () => {
+      const status = await getTrybitTopupStatus(invoice!.payment_id);
+      if (status.status === "success") {
+        setPaid(true);
+        setInvoice(null);
+        setBalance(status.balance_kopecks);
+        queryClient.invalidateQueries({ queryKey: ["tariffs"] });
+        queryClient.invalidateQueries({ queryKey: ["payment-history"] });
+      } else if (status.status === "failed") {
+        setInvoice(null);
+        setError(t("trybitFailed"));
+      }
+      return status;
+    },
+    enabled: invoice !== null,
+    refetchInterval: 5000,
+  });
+
+  // Канал выключен на бэкенде (TRYBIT_ENABLED=0) — блок скрыт целиком
+  if (!config?.enabled) return null;
+
+  const value = amount ?? config.min_amount;
+  const L = {
+    title: t("trybitTitle"),
+    intro: t("trybitIntro"),
+    waiting: (a: string) => t("trybitWaiting", { amount: a }),
+    open: t("trybitOpen"),
+    cancel: t("trybitCancel"),
+    note: t("trybitNote"),
+    label: t("trybitLabel", { min: config.min_amount, max: config.max_amount }),
+    pay: t("trybitPay"),
+    creating: t("trybitCreating"),
+    paid: t("trybitPaid"),
+    failed: t("trybitFailed"),
+    receive: (c: number) => t("trybitReceive", { count: c.toLocaleString("en-US") }),
+  };
+
+  const USD_PACKAGES = [5, 10, 25, 50];
+
+  return (
+    <section>
+      <SectionHeader icon={Coins} title={L.title} />
+      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 space-y-4">
+        <p className="text-sm text-[var(--color-text-secondary)]">{L.intro}</p>
+
+        {invoice ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm text-[var(--color-text-primary)]">
+              <Clock size={16} className="text-yellow-500 shrink-0 animate-pulse" />
+              {L.waiting(invoice.amount)}
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <a
+                href={invoice.pay_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium
+                  bg-[var(--color-accent)] text-white hover:opacity-90 transition-opacity"
+              >
+                {L.open} <ExternalLink size={14} />
+              </a>
+              <button
+                onClick={() => setInvoice(null)}
+                className="px-4 py-2 rounded-lg text-sm font-medium border border-[var(--color-border)]
+                  text-[var(--color-text-primary)] hover:bg-[var(--color-bg)] transition-colors"
+              >
+                {L.cancel}
+              </button>
+            </div>
+            <p className="text-xs text-[var(--color-text-secondary)]">{L.note}</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              {USD_PACKAGES.map((usd) => (
+                <button
+                  key={usd}
+                  onClick={() => {
+                    setAmount(usd);
+                    setError(null);
+                  }}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                    value === usd
+                      ? "border-[var(--color-accent)] text-[var(--color-accent)] bg-[var(--color-accent)]/5"
+                      : "border-[var(--color-border)] text-[var(--color-text-primary)] hover:border-[var(--color-accent)]"
+                  }`}
+                >
+                  ${usd}
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="flex-1 min-w-[160px]">
+                <label className="block text-xs text-[var(--color-text-secondary)] mb-1.5">
+                  {L.label}
+                </label>
+                <input
+                  type="number"
+                  min={config.min_amount}
+                  max={config.max_amount}
+                  value={value}
+                  onChange={(e) => {
+                    setAmount(parseInt(e.target.value) || 0);
+                    setError(null);
+                  }}
+                  className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)]
+                    px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none
+                    focus:border-[var(--color-accent)]"
+                />
+              </div>
+              <button
+                onClick={() => {
+                  setError(null);
+                  setPaid(false);
+                  mutation.mutate({ amount_usd: value });
+                }}
+                disabled={
+                  mutation.isPending || value < config.min_amount || value > config.max_amount
+                }
+                className="px-4 py-2 rounded-lg text-sm font-medium bg-[var(--color-accent)] text-white
+                  hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {mutation.isPending ? L.creating : L.pay}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {paid && (
+          <p className="text-green-500 text-sm flex items-center gap-1.5">
+            <CheckCircle size={14} /> {L.paid}
+          </p>
+        )}
+        {error && (
+          <p className="text-red-500 text-sm flex items-center gap-1.5">
+            <AlertCircle size={14} /> {error}
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
 // ── Promo code form ───────────────────────────────────────────────────────────
 
 function PromoSection() {
@@ -1080,6 +1257,7 @@ export default function BillingPage() {
 
       {/* Crypto payment (скрыт при CRYPTO_PAY_ENABLED=0) */}
       <CryptoSection />
+      <TrybitSection />
 
       {/* Promo code */}
       <section>

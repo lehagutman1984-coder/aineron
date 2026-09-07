@@ -316,7 +316,19 @@
     "cryptoCreating": "Creating invoice...",
     "cryptoPaid": "Payment received — balance updated.",
     "cryptoFailed": "The invoice expired or was cancelled. Create a new one.",
-    "cryptoReceive": "You will receive {count} credits"
+    "cryptoReceive": "You will receive {count} credits",
+    "trybitTitle": "Pay with Trybit",
+    "trybitIntro": "Top up your balance with a wide range of cryptocurrencies via Trybit. Invoice is issued in USD.",
+    "trybitWaiting": "Waiting for payment of ${amount}...",
+    "trybitOpen": "Open invoice",
+    "trybitCancel": "Cancel",
+    "trybitNote": "Your balance updates automatically after payment.",
+    "trybitLabel": "Amount, $ ({min}–{max})",
+    "trybitPay": "Create invoice",
+    "trybitCreating": "Creating invoice...",
+    "trybitPaid": "Payment received — balance updated.",
+    "trybitFailed": "The invoice expired or was cancelled. Create a new one.",
+    "trybitReceive": "You will receive {count} credits"
   },
   "chat": {
     "notFound": "Chat not found",

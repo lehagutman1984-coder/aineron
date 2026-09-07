@@ -32,6 +32,7 @@ from api.views.billing import (
     StarsUsageView, SubscriptionAutoRenewView,
 )
 from api.views.crypto import CryptoConfigView, CryptoTopupView, CryptoStatusView
+from api.views.trybit import TrybitConfigView, TrybitTopupView, TrybitStatusView
 from api.views.embeddings import EmbeddingsView
 from api.views.audio import AudioTranscriptionsView, AudioSpeechView
 from api.views.batch import BatchListCreateView, BatchDetailView, BatchResultsView, BatchCancelView
@@ -167,6 +168,9 @@ urlpatterns = [
     path('v1/billing/crypto/', CryptoConfigView.as_view(), name='billing_crypto_config'),
     path('v1/billing/crypto/topup/', CryptoTopupView.as_view(), name='billing_crypto_topup'),
     path('v1/billing/crypto/status/<int:payment_id>/', CryptoStatusView.as_view(), name='billing_crypto_status'),
+    path('v1/billing/trybit/', TrybitConfigView.as_view(), name='billing_trybit_config'),
+    path('v1/billing/trybit/topup/', TrybitTopupView.as_view(), name='billing_trybit_topup'),
+    path('v1/billing/trybit/status/<int:payment_id>/', TrybitStatusView.as_view(), name='billing_trybit_status'),
 
     # ========== Phase 6: Advanced API ==========
     path('v1/embeddings', EmbeddingsView.as_view(), name='embeddings'),
