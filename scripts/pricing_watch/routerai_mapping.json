@@ -1,0 +1,341 @@
+{
+  "gpt-6-astra": {
+    "category": "text",
+    "router_url": "https://routerai.ru/models/openai/gpt-6-astra",
+    "profile_in": 6000,
+    "profile_out": 1500
+  },
+  "gpt-5-5": {
+    "category": "text",
+    "router_url": "https://routerai.ru/models/openai/gpt-5.5",
+    "profile_in": 6000,
+    "profile_out": 1500
+  },
+  "gpt-5-5-pro": {
+    "category": "text",
+    "router_url": "https://routerai.ru/models/openai/gpt-5.5-pro",
+    "profile_in": 6000,
+    "profile_out": 1500
+  },
+  "gpt-5-6-luna": {
+    "category": "text",
+    "router_url": "https://routerai.ru/models/openai/gpt-5.6-luna",
+    "profile_in": 6000,
+    "profile_out": 1500
+  },
+  "gpt-5-6-sol": {
+    "category": "text",
+    "router_url": "https://routerai.ru/models/openai/gpt-5.6-sol",
+    "profile_in": 6000,
+    "profile_out": 1500
+  },
+  "gpt-5-6-terra": {
+    "category": "text",
+    "router_url": "https://routerai.ru/models/openai/gpt-5.6-terra",
+    "profile_in": 6000,
+    "profile_out": 1500
+  },
+  "claude-opus-5": {
+    "category": "text",
+    "router_url": "https://routerai.ru/models/anthropic/claude-opus-5",
+    "profile_in": 6000,
+    "profile_out": 1500
+  },
+  "claude-fable-5": {
+    "category": "text",
+    "router_url": "https://routerai.ru/models/anthropic/claude-fable-5",
+    "profile_in": 6000,
+    "profile_out": 1500
+  },
+  "claude-fable-5-1": {
+    "category": "text",
+    "router_url": "https://routerai.ru/models/anthropic/claude-fable-5.1",
+    "profile_in": 6000,
+    "profile_out": 1500
+  },
+  "claude-sonnet-5": {
+    "category": "text",
+    "router_url": "https://routerai.ru/models/anthropic/claude-sonnet-5",
+    "profile_in": 6000,
+    "profile_out": 1500
+  },
+  "claude-sonnet-4-6": {
+    "category": "text",
+    "router_url": "https://routerai.ru/models/anthropic/claude-sonnet-4.6",
+    "profile_in": 6000,
+    "profile_out": 1500
+  },
+  "claude-opus-4-8": {
+    "category": "text",
+    "router_url": "https://routerai.ru/models/anthropic/claude-opus-4.8",
+    "profile_in": 6000,
+    "profile_out": 1500
+  },
+  "claude-haiku-4-5": {
+    "category": "text",
+    "router_url": "https://routerai.ru/models/anthropic/claude-haiku-4.5",
+    "profile_in": 6000,
+    "profile_out": 1500
+  },
+  "gemini-3-1-pro": {
+    "category": "text",
+    "router_url": "https://routerai.ru/models/google/gemini-3.1-pro-preview",
+    "profile_in": 6000,
+    "profile_out": 1500
+  },
+  "gemini-3-6-flash": {
+    "category": "text",
+    "router_url": "https://routerai.ru/models/google/gemini-3.6-flash",
+    "profile_in": 6000,
+    "profile_out": 1500
+  },
+  "gemini-3-7-flash": {
+    "category": "text",
+    "router_url": "https://routerai.ru/models/google/gemini-3.7-flash",
+    "profile_in": 6000,
+    "profile_out": 1500
+  },
+  "deepseek-v4-pro": {
+    "category": "text",
+    "router_url": "https://routerai.ru/models/deepseek/deepseek-v4-pro",
+    "profile_in": 6000,
+    "profile_out": 1500
+  },
+  "deepseek-v4-flash": {
+    "category": "text",
+    "router_url": "https://routerai.ru/models/deepseek/deepseek-v4-flash",
+    "profile_in": 6000,
+    "profile_out": 1500
+  },
+  "qwen3-6-max": {
+    "category": "text",
+    "router_url": "https://routerai.ru/models/qwen/qwen3.6-max-preview",
+    "profile_in": 6000,
+    "profile_out": 1500
+  },
+  "qwen3-8-max": {
+    "category": "text",
+    "router_url": "https://routerai.ru/models/qwen/qwen3.8-max-0902",
+    "profile_in": 6000,
+    "profile_out": 1500
+  },
+  "grok-4-5": {
+    "category": "text",
+    "router_url": "https://routerai.ru/models/x-ai/grok-4.5",
+    "profile_in": 6000,
+    "profile_out": 1500
+  },
+  "grok-4-6": {
+    "category": "text",
+    "router_url": "https://routerai.ru/models/x-ai/grok-4.6",
+    "profile_in": 6000,
+    "profile_out": 1500
+  },
+  "flux-2-flex": {
+    "category": "image",
+    "router_url": "https://routerai.ru/models/black-forest-labs/flux.2-flex"
+  },
+  "flux-2-max": {
+    "category": "image",
+    "router_url": "https://routerai.ru/models/black-forest-labs/flux.2-max"
+  },
+  "flux-2-pro": {
+    "category": "image",
+    "router_url": "https://routerai.ru/models/black-forest-labs/flux.2-pro"
+  },
+  "flux-kontext-max": {
+    "category": "image",
+    "router_url": null
+  },
+  "flux-kontext-pro": {
+    "category": "image",
+    "router_url": null
+  },
+  "gemini-3-1-flash-image": {
+    "category": "image",
+    "router_url": "https://routerai.ru/models/google/gemini-3.1-flash-image"
+  },
+  "gemini-3-pro-image": {
+    "category": "image",
+    "router_url": "https://routerai.ru/models/google/gemini-3-pro-image"
+  },
+  "gpt-image-1": {
+    "category": "image",
+    "router_url": "https://routerai.ru/models/openai/gpt-image-1"
+  },
+  "gpt-image-1-5": {
+    "category": "image",
+    "router_url": null
+  },
+  "gpt-image-1-mini": {
+    "category": "image",
+    "router_url": "https://routerai.ru/models/openai/gpt-image-1-mini"
+  },
+  "gpt-image-2": {
+    "category": "image",
+    "router_url": "https://routerai.ru/models/openai/gpt-image-2"
+  },
+  "gemini-2-5-flash-image": {
+    "category": "image",
+    "router_url": "https://routerai.ru/models/google/gemini-2.5-flash-image"
+  },
+  "grok-imagine-image": {
+    "category": "image",
+    "router_url": null
+  },
+  "grok-imagine-image-quality": {
+    "category": "image",
+    "router_url": "https://routerai.ru/models/x-ai/grok-imagine-image-quality"
+  },
+  "qwen-image-2-0": {
+    "category": "image",
+    "router_url": null
+  },
+  "qwen-image-3-0": {
+    "category": "image",
+    "router_url": "https://routerai.ru/models/qwen/qwen-image-3"
+  },
+  "qwen-image-3-0-pro": {
+    "category": "image",
+    "router_url": "https://routerai.ru/models/qwen/qwen-image-3-pro"
+  },
+  "seedream-4-0": {
+    "category": "image",
+    "router_url": null
+  },
+  "seedream-4-5": {
+    "category": "image",
+    "router_url": "https://routerai.ru/models/bytedance-seed/seedream-4.5"
+  },
+  "seedream-5-0": {
+    "category": "image",
+    "router_url": "https://routerai.ru/models/bytedance-seed/seedream-5-0-lite"
+  },
+  "wan-2-7-image": {
+    "category": "image",
+    "router_url": null
+  },
+  "z-image-turbo": {
+    "category": "image",
+    "router_url": null
+  },
+  "midjourney": {
+    "category": "image",
+    "router_url": null
+  },
+  "veo-3-1": {
+    "category": "video",
+    "router_url": "https://routerai.ru/models/google/veo-3.1",
+    "duration_sec": 8
+  },
+  "veo-3-1-fast": {
+    "category": "video",
+    "router_url": "https://routerai.ru/models/google/veo-3.1-fast",
+    "duration_sec": 8
+  },
+  "veo-3-1-lite": {
+    "category": "video",
+    "router_url": "https://routerai.ru/models/google/veo-3.1-lite",
+    "duration_sec": 8
+  },
+  "veo-3": {
+    "category": "video",
+    "router_url": null,
+    "duration_sec": 8
+  },
+  "veo-3-fast": {
+    "category": "video",
+    "router_url": null,
+    "duration_sec": 8
+  },
+  "kling-v26": {
+    "category": "video",
+    "router_url": null,
+    "duration_sec": 5
+  },
+  "kling-v3": {
+    "category": "video",
+    "router_url": "https://routerai.ru/models/kwaivgi/kling-v3.0-std",
+    "duration_sec": 5
+  },
+  "kling-v3-omni": {
+    "category": "video",
+    "router_url": null,
+    "duration_sec": 5
+  },
+  "kling-video-o1": {
+    "category": "video",
+    "router_url": "https://routerai.ru/models/kwaivgi/kling-video-o1",
+    "duration_sec": 5
+  },
+  "kling-3-0-turbo": {
+    "category": "video",
+    "router_url": null,
+    "duration_sec": 5
+  },
+  "hailuo-2-3": {
+    "category": "video",
+    "router_url": "https://routerai.ru/models/minimax/hailuo-2.3",
+    "duration_sec": 6
+  },
+  "hailuo-2-3-fast": {
+    "category": "video",
+    "router_url": null,
+    "duration_sec": 6
+  },
+  "pixverse-v6": {
+    "category": "video",
+    "router_url": null,
+    "duration_sec": 5
+  },
+  "wan-2-6": {
+    "category": "video",
+    "router_url": "https://routerai.ru/models/alibaba/wan-2.6",
+    "duration_sec": 5
+  },
+  "wan-2-7": {
+    "category": "video",
+    "router_url": "https://routerai.ru/models/alibaba/wan-2.7",
+    "duration_sec": 5
+  },
+  "seedance-1-5-pro": {
+    "category": "video",
+    "router_url": "https://routerai.ru/models/bytedance/seedance-1-5-pro",
+    "duration_sec": 5
+  },
+  "seedance-2-0": {
+    "category": "video",
+    "router_url": "https://routerai.ru/models/bytedance/seedance-2.0",
+    "duration_sec": 5
+  },
+  "seedance-2-0-fast": {
+    "category": "video",
+    "router_url": "https://routerai.ru/models/bytedance/seedance-2.0-fast",
+    "duration_sec": 5
+  },
+  "seedance-2-5": {
+    "category": "video",
+    "router_url": "https://routerai.ru/models/bytedance/seedance-2.5",
+    "duration_sec": 5
+  },
+  "vidu-q3": {
+    "category": "video",
+    "router_url": null,
+    "duration_sec": 5
+  },
+  "vidu-q3-turbo": {
+    "category": "video",
+    "router_url": null,
+    "duration_sec": 5
+  },
+  "vidu-q3-pro": {
+    "category": "video",
+    "router_url": null,
+    "duration_sec": 5
+  },
+  "grok-imagine-1-5": {
+    "category": "video",
+    "router_url": "https://routerai.ru/models/x-ai/grok-imagine-video-1.5",
+    "duration_sec": 6
+  }
+}
