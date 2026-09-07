@@ -2352,8 +2352,13 @@ def generate_image_flux_cometapi(network, user_msg, message, user_settings=None,
     и не под /v1/ вообще):
 
     POST https://api.cometapi.com/flux/v1/{model} (model: flux-2-pro,
-      flux-2-flex, flux-2-max — ТОЛЬКО эти три, Kontext сюда не относится)
-      body: {prompt, width, height, output_format, seed?, input_image?, input_image_2?}
+      flux-2-flex, flux-2-max, ИЛИ flux-kontext-pro/-max — тот же корень
+      пути, но РАЗНОЕ тело: flux-2-x ждёт width/height, Kontext их отклоняет
+      ("does not support width/height; use aspect_ratio instead", проверено
+      живым вызовом 2026-09-07) — переключатель по metadata.cometapi_contract
+      == 'flux_kontext' (см. is_kontext ниже))
+      body (flux-2-x): {prompt, width, height, output_format, seed?, input_image?, input_image_2?}
+      body (kontext):  {prompt, aspect_ratio, output_format, seed?, input_image?}
       -> {"id": ..., "status": "Pending", "polling_url": ...}
     GET  https://api.cometapi.com/flux/v1/get_result?id={id}
       -> {"status": "Ready", "result": {"sample": "<url>", "seed": ...}}
@@ -2388,21 +2393,31 @@ def generate_image_flux_cometapi(network, user_msg, message, user_settings=None,
     api_key = getattr(settings, 'COMETAPI_API_KEY', '')
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json", "Accept": "*/*"}
 
-    width, height = 1024, 1024
-    size_val = final_args.get('size')
-    if size_val and 'x' in str(size_val):
-        try:
-            w, h = str(size_val).lower().split('x')
-            width, height = int(w), int(h)
-        except (ValueError, TypeError):
-            pass
+    is_kontext = (config.get('metadata') or {}).get('cometapi_contract') == 'flux_kontext'
 
-    body = {"prompt": prompt, "width": width, "height": height, "output_format": "jpeg"}
+    if is_kontext:
+        body = {"prompt": prompt, "aspect_ratio": str(final_args.get('aspect_ratio') or '1:1'), "output_format": "jpeg"}
+    else:
+        width, height = 1024, 1024
+        size_val = final_args.get('size')
+        if size_val and 'x' in str(size_val):
+            try:
+                w, h = str(size_val).lower().split('x')
+                width, height = int(w), int(h)
+            except (ValueError, TypeError):
+                pass
+        body = {"prompt": prompt, "width": width, "height": height, "output_format": "jpeg"}
     if final_args.get('seed') is not None:
         try:
             body['seed'] = int(final_args['seed'])
         except (ValueError, TypeError):
             pass
+    # Kontext — модель редактирования: без исходного фото просто игнорирует
+    # инструкцию и рисует с нуля по prompt (не ошибка, но не то, что ждёт
+    # пользователь) — передаём image_url, если он есть в настройках.
+    src_image = (final_args.get('image_url') or (user_settings or {}).get('image_url'))
+    if is_kontext and src_image:
+        body['input_image'] = _make_absolute_url(src_image)
 
     gen_ph = _create_video_placeholder(message, prompt, model_id, 'cometapi', media_type='image')
 
@@ -2483,8 +2498,8 @@ def generate_image_cometapi(network, user_msg, message, user_settings=None, mode
        gemini-2.5-flash-image, gemini-3.1-flash-image, gemini-3-pro-image —
        валидный JPEG на выходе у всех трёх.
 
-    Flux (flux-2-pro/-max/-flex) сюда НЕ относится — у него свой контракт
-    и своя функция, см. generate_image_flux_cometapi().
+    Flux (flux-2-pro/-max/-flex, flux-kontext-pro/-max) сюда НЕ относится —
+    у него свой контракт и своя функция, см. generate_image_flux_cometapi().
 
     model_override — если задано, отправляется в CometAPI вместо
     network.model_name (сейчас не используется — все проверенные модели
@@ -3012,7 +3027,7 @@ def generate_with_falai(network, user_msg, message, user_settings=None):
         is_settings_err = str(e).startswith('Ошибки в настройках')
         if fallback_on and fb_model and not is_settings_err:
             logger.warning("laozhang/apimart изображение недоступно (%s); фолбэк → CometAPI model=%s", e, fb_model)
-            if config.get('metadata', {}).get('cometapi_contract') == 'flux':
+            if config.get('metadata', {}).get('cometapi_contract') in ('flux', 'flux_kontext'):
                 return generate_image_flux_cometapi(network, user_msg, message, user_settings, model_override=fb_model)
             return generate_image_cometapi(network, user_msg, message, user_settings, model_override=fb_model)
         raise
