@@ -196,8 +196,13 @@ def trybit_webhook(request):
     order_id = update.get('order_id')  # наш PaymentHistory.id, положенный при создании
 
     payment = None
-    if order_id:
-        payment = PaymentHistory.objects.filter(pk=order_id, payment_method='trybit').first()
+    # order_id может прийти нечисловым (ручной тестовый счёт из личного
+    # кабинета Trybit, сторонний postback-replay и т.п.) — pk=<нечисло>
+    # у Django падает ValueError/ValidationError, а не просто "не найдено".
+    # Проверено вживую 2026-09-07: тестовый постбек с order_id="test-manual-check-1"
+    # ронял вебхук 500-й вместо штатного "неизвестный инвойс".
+    if order_id and str(order_id).isdigit():
+        payment = PaymentHistory.objects.filter(pk=int(order_id), payment_method='trybit').first()
     if payment is None and invoice_id:
         payment = PaymentHistory.objects.filter(payment_id__icontains=invoice_id, payment_method='trybit').first()
     if payment is None:
