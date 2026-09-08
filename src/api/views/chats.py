@@ -89,7 +89,7 @@ class ChatListCreateView(ListCreateAPIView):
         is_media = (
             (network.config_json or {}).get('metadata', {}).get('output_type') in ('image', 'video')
         ) or network.provider == 'fal-ai'
-        if is_media and getattr(request.user.tariff, 'is_free', True):
+        if is_media and getattr(request.user.tariff, 'is_free', True) and not request.user.has_made_real_payment():
             return Response({
                 'error': {
                     'message': 'Генерация изображений и видео доступна только на платных тарифах.',
@@ -256,7 +256,7 @@ class SendMessageView(APIView):
         is_media = (
             (network.config_json or {}).get('metadata', {}).get('output_type') in ('image', 'video')
         ) or network.provider == 'fal-ai'
-        if is_media and getattr(request.user.tariff, 'is_free', True):
+        if is_media and getattr(request.user.tariff, 'is_free', True) and not request.user.has_made_real_payment():
             return Response({
                 'error': {
                     'message': 'Генерация изображений и видео доступна только на платных тарифах.',

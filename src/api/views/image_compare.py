@@ -79,7 +79,7 @@ class ImageCompareView(APIView):
                 }, status=400)
 
         # Медиа-генерация — только на платных тарифах (как в обычном чат-flow).
-        if getattr(request.user.tariff, 'is_free', True):
+        if getattr(request.user.tariff, 'is_free', True) and not request.user.has_made_real_payment():
             return Response({
                 'error': {
                     'message': 'Генерация изображений доступна только на платных тарифах.',

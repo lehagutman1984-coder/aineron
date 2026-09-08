@@ -647,6 +647,18 @@ class CustomUser(AbstractUser):
     def has_enough_kopecks(self, amount_kopecks):
         return self.balance_kopecks >= amount_kopecks
 
+    def has_made_real_payment(self) -> bool:
+        """
+        True если пользователь хотя бы раз реально платил (Robokassa/крипта/Trybit) —
+        неважно, покупал ли он тариф-подписку или просто пополнял баланс. Balance
+        top-up (payment_type='pages', включая крипто/Trybit) НЕ меняет user.tariff —
+        только activate_paid_tariff() при покупке конкретной подписки это делает.
+        Поэтому tariff.is_free сам по себе не годится как признак «платил / не платил»
+        (на .net купить подписку картой вообще нельзя — INTL_MODE блокирует
+        TariffPayView, крипта работает только как топ-ап баланса).
+        """
+        return self.payments.filter(status='success').exists()
+
     def spend_kopecks(self, amount_kopecks, *, type='spend', reference=''):
         """
         Атомарное списание через condition UPDATE (без TOCTOU-гонки).

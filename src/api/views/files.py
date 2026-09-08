@@ -140,7 +140,7 @@ class GenerationRerunView(APIView):
         is_media = (
             (network.config_json or {}).get('metadata', {}).get('output_type') in ('image', 'video')
         ) or network.provider == 'fal-ai'
-        if is_media and getattr(request.user.tariff, 'is_free', True):
+        if is_media and getattr(request.user.tariff, 'is_free', True) and not request.user.has_made_real_payment():
             return Response({
                 'error': {
                     'message': em('files_media_paid_only'),
@@ -223,7 +223,7 @@ class GenerationUpscaleView(APIView):
             factor = 2
 
         # Медиа-обработка доступна только на платных тарифах
-        if getattr(request.user.tariff, 'is_free', True):
+        if getattr(request.user.tariff, 'is_free', True) and not request.user.has_made_real_payment():
             return Response({
                 'error': {
                     'message': em('files_upscale_paid_only'),
@@ -308,7 +308,7 @@ class GenerationVariationsView(APIView):
 
         network = chat.network
 
-        if getattr(request.user.tariff, 'is_free', True):
+        if getattr(request.user.tariff, 'is_free', True) and not request.user.has_made_real_payment():
             return Response({
                 'error': {
                     'message': em('files_variations_paid_only'),
