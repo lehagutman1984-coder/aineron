@@ -16,8 +16,21 @@ function stripLocale(pathname: string): string {
   return pathname.replace(LOCALE_PREFIX_RE, "") || "/";
 }
 
+// Маршруты вне системы next-intl (нет app/[locale]/<путь>, только
+// app/<путь> со своим root layout) — next-intl не знает про них и молча
+// переписывает путь под локаль, из-за чего Next.js честно отвечает 404
+// (проверено вживую 2026-09-08: /crypto-ru падал в 404 и на .ru, и на .net,
+// хотя `next build` собирал маршрут без единой ошибки — баг чисто
+// рантаймовый, в middleware, не в самой странице). Единственный обходной
+// путь — пропускать handleIntl() для них целиком.
+const LOCALE_EXEMPT_PATHS = ["/crypto-ru"];
+
 export function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
+
+  if (LOCALE_EXEMPT_PATHS.includes(pathname)) {
+    return NextResponse.next();
+  }
 
   // Реферальный код из ?ref=CODE сохраняем в cookie: регистрация и соцвход
   // идут на тот же домен, Django прочитает её и привяжет реферера
