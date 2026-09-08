@@ -1,5 +1,4 @@
 ﻿import io
-import os
 import requests
 from django.core.management.base import BaseCommand
 from django.core.files.base import ContentFile
@@ -7,110 +6,122 @@ from django.core.files.storage import default_storage
 from PIL import Image, ImageDraw, ImageFont
 from aitext.models import NeuralNetwork
 
-# Официальные логотипы: slug -> URL
-# GitHub org avatars — стабильный источник (PNG, автоматически следит за редиректами)
+# Официальные логотипы: slug -> URL. GitHub org avatars — стабильный источник
+# (PNG, автоматически следит за редиректами).
+#
+# ВАЖНО (2026-09-08): каждый URL в этом словаре проверен ВИЗУАЛЬНО перед
+# добавлением — GitHub отдаёт 200 image/png даже для несуществующих
+# org/user, просто с generic identicon-заглушкой вместо реального лого
+# (это НЕ ошибка HTTP, легко принять заглушку за настоящий логотип, если
+# не посмотреть глазами). Отклонены как заглушки при проверке 2026-09-08:
+# github.com/{Kwaishou,kuaishou,KwaiVGI,pixverse}.png — ни один не дал
+# настоящий логотип Kling/Kuaishou или Pixverse, поэтому у моделей Kling
+# и Pixverse ниже сознательно нет записи — остаются на ui-avatars.com
+# fallback (get_avatar() в aitext/models.py), а не на угаданной картинке.
+# logo.clearbit.com не резолвится из этого окружения вообще — не используется.
+#
+# Список слагов актуализирован под текущий каталог 68 моделей (2026-09-08) —
+# старые слаги вроде gpt-4o/gpt-5/claude-sonnet-4-5/gemini-2-5-pro и т.п. из
+# предыдущей версии этого файла удалены, их давно нет в каталоге.
 SLUG_TO_LOGO_URL = {
     # OpenAI
-    'gpt-4o':            'https://github.com/openai.png?size=200',
-    'gpt-4o-mini':       'https://github.com/openai.png?size=200',
-    'gpt-4-1':           'https://github.com/openai.png?size=200',
-    'gpt-4-1-mini':      'https://github.com/openai.png?size=200',
-    'gpt-5':             'https://github.com/openai.png?size=200',
-    'chatgpt-4o-latest': 'https://github.com/openai.png?size=200',
-    'o3':                'https://github.com/openai.png?size=200',
-    'o4-mini':           'https://github.com/openai.png?size=200',
-    'o1':                'https://github.com/openai.png?size=200',
-    'o3-mini':           'https://github.com/openai.png?size=200',
-    'dall-e-3':          'https://github.com/openai.png?size=200',
+    'gpt-6-astra':       'https://github.com/openai.png?size=200',
+    'gpt-5-5':           'https://github.com/openai.png?size=200',
+    'gpt-5-5-pro':       'https://github.com/openai.png?size=200',
+    'gpt-5-6-luna':      'https://github.com/openai.png?size=200',
+    'gpt-5-6-sol':       'https://github.com/openai.png?size=200',
+    'gpt-5-6-terra':     'https://github.com/openai.png?size=200',
     'gpt-image-1':       'https://github.com/openai.png?size=200',
     'gpt-image-2':       'https://github.com/openai.png?size=200',
     'gpt-image-1-mini':  'https://github.com/openai.png?size=200',
-    'gpt-3-5-turbo':     'https://github.com/openai.png?size=200',
+    'gpt-image-1-5':     'https://github.com/openai.png?size=200',
     # Anthropic / Claude
+    'claude-opus-5':     'https://github.com/anthropics.png?size=200',
+    'claude-fable-5':    'https://github.com/anthropics.png?size=200',
+    'claude-fable-5-1':  'https://github.com/anthropics.png?size=200',
+    'claude-sonnet-5':   'https://github.com/anthropics.png?size=200',
     'claude-sonnet-4-6': 'https://github.com/anthropics.png?size=200',
     'claude-opus-4-8':   'https://github.com/anthropics.png?size=200',
     'claude-haiku-4-5':  'https://github.com/anthropics.png?size=200',
-    'claude-sonnet-4-5': 'https://github.com/anthropics.png?size=200',
-    # Google / Gemini
-    'gemini-2-5-flash':  'https://github.com/google-deepmind.png?size=200',
-    'gemini-2-5-pro':    'https://github.com/google-deepmind.png?size=200',
-    'gemini-3-flash':    'https://github.com/google-deepmind.png?size=200',
+    # Google DeepMind (Gemini + Veo — оба продукта Google DeepMind)
+    'gemini-2-5-flash-image': 'https://github.com/google-deepmind.png?size=200',
+    'gemini-3-pro-image':     'https://github.com/google-deepmind.png?size=200',
+    'gemini-3-1-flash-image': 'https://github.com/google-deepmind.png?size=200',
+    'gemini-3-1-pro':         'https://github.com/google-deepmind.png?size=200',
+    'gemini-3-6-flash':       'https://github.com/google-deepmind.png?size=200',
+    'gemini-3-7-flash':       'https://github.com/google-deepmind.png?size=200',
+    'veo-3-1':                'https://github.com/google-deepmind.png?size=200',
+    'veo-3-1-fast':           'https://github.com/google-deepmind.png?size=200',
+    'veo-3-1-lite':           'https://github.com/google-deepmind.png?size=200',
+    'veo-3':                  'https://github.com/google-deepmind.png?size=200',
+    'veo-3-fast':             'https://github.com/google-deepmind.png?size=200',
     # DeepSeek
-    'deepseek-v3':       'https://github.com/deepseek-ai.png?size=200',
-    'deepseek-r1':       'https://github.com/deepseek-ai.png?size=200',
-    'deepseek-v3-1':     'https://github.com/deepseek-ai.png?size=200',
+    'deepseek-v4-pro':   'https://github.com/deepseek-ai.png?size=200',
+    'deepseek-v4-flash': 'https://github.com/deepseek-ai.png?size=200',
     # Qwen / Alibaba
-    'qwen3-235b':        'https://github.com/QwenLM.png?size=200',
-    'qwen3-max':         'https://github.com/QwenLM.png?size=200',
-    'qwq-plus':          'https://github.com/QwenLM.png?size=200',
+    'qwen3-6-max':          'https://github.com/QwenLM.png?size=200',
+    'qwen3-8-max':          'https://github.com/QwenLM.png?size=200',
+    'qwen-image-2-0':       'https://github.com/QwenLM.png?size=200',
+    'qwen-image-3-0':       'https://github.com/QwenLM.png?size=200',
+    'qwen-image-3-0-pro':   'https://github.com/QwenLM.png?size=200',
     # Grok / xAI
-    'grok-4':            'https://github.com/xai-org.png?size=200',
-    'grok-3':            'https://github.com/xai-org.png?size=200',
-    'grok-4-fast':       'https://github.com/xai-org.png?size=200',
-    # Kimi / Moonshot AI
-    'kimi-k2':           'https://github.com/MoonshotAI.png?size=200',
-    # GLM / Zhipu AI
-    'glm-4-5':           'https://github.com/THUDM.png?size=200',
+    'grok-4-5':                   'https://github.com/xai-org.png?size=200',
+    'grok-4-6':                   'https://github.com/xai-org.png?size=200',
+    'grok-imagine-image':         'https://github.com/xai-org.png?size=200',
+    'grok-imagine-image-quality': 'https://github.com/xai-org.png?size=200',
+    'grok-imagine-1-5':           'https://github.com/xai-org.png?size=200',
     # Flux / Black Forest Labs
     'flux-2-pro':        'https://github.com/black-forest-labs.png?size=200',
     'flux-2-max':        'https://github.com/black-forest-labs.png?size=200',
     'flux-kontext-pro':  'https://github.com/black-forest-labs.png?size=200',
     'flux-kontext-max':  'https://github.com/black-forest-labs.png?size=200',
     'flux-2-flex':       'https://github.com/black-forest-labs.png?size=200',
-    # Seedream / ByteDance
+    # ByteDance (Seedream/Seedance)
     'seedream-5-0':      'https://github.com/bytedance.png?size=200',
     'seedream-4-5':      'https://github.com/bytedance.png?size=200',
     'seedream-4-0':      'https://github.com/bytedance.png?size=200',
-    # Google Gemini Image
-    'gemini-3-1-flash-image': 'https://github.com/google-deepmind.png?size=200',
-    'gemini-3-pro-image':     'https://github.com/google-deepmind.png?size=200',
-    'gemini-2-5-flash-image': 'https://github.com/google-deepmind.png?size=200',
-    'gemini-3-5-flash':       'https://github.com/google-deepmind.png?size=200',
-    'gemini-3-1-pro':         'https://github.com/google-deepmind.png?size=200',
-    # OpenAI новые
-    'gpt-image-1-5':     'https://github.com/openai.png?size=200',
-    'gpt-5-mini':        'https://github.com/openai.png?size=200',
-    'gpt-5-pro':         'https://github.com/openai.png?size=200',
-    'gpt-5-1':           'https://github.com/openai.png?size=200',
-    # DeepSeek новые
-    'deepseek-v3-2':     'https://github.com/deepseek-ai.png?size=200',
-    'deepseek-v4-flash': 'https://github.com/deepseek-ai.png?size=200',
-    'deepseek-v4-pro':   'https://github.com/deepseek-ai.png?size=200',
-    # GLM новые
-    'glm-5':             'https://github.com/THUDM.png?size=200',
-    'glm-4-6':           'https://github.com/THUDM.png?size=200',
-    # Grok новый
-    'grok-4-3':          'https://github.com/xai-org.png?size=200',
-    # Kimi новые
-    'kimi-k2-5':         'https://github.com/MoonshotAI.png?size=200',
-    'kimi-k2-6':         'https://github.com/MoonshotAI.png?size=200',
-    # Qwen новые
-    'qwen3-5-flash':     'https://github.com/QwenLM.png?size=200',
-    'qwen3-5-plus':      'https://github.com/QwenLM.png?size=200',
-    # MiniMax
-    'minimax-m2-7':      'https://github.com/MiniMaxAI.png?size=200',
-    'minimax-m2-5':      'https://github.com/MiniMaxAI.png?size=200',
+    'seedance-1-5-pro':  'https://github.com/bytedance.png?size=200',
+    'seedance-2-0':      'https://github.com/bytedance.png?size=200',
+    'seedance-2-0-fast': 'https://github.com/bytedance.png?size=200',
+    'seedance-2-5':      'https://github.com/bytedance.png?size=200',
+    # Tongyi (Alibaba) — Wan видео + Z-Image (подтверждено вживую: Z-Image
+    # Turbo сделан командой Tongyi-MAI при Alibaba, не отдельным стартапом)
+    'wan-2-6':           'https://github.com/Tongyi-MAI.png?size=200',
+    'wan-2-7':           'https://github.com/Tongyi-MAI.png?size=200',
+    'wan-2-7-image':     'https://github.com/Tongyi-MAI.png?size=200',
+    'z-image-turbo':     'https://github.com/Tongyi-MAI.png?size=200',
+    # MiniMax (Hailuo)
+    'hailuo-2-3':        'https://github.com/MiniMax-AI.png?size=200',
+    'hailuo-2-3-fast':   'https://github.com/MiniMax-AI.png?size=200',
+    # Shengshu AI (Vidu)
+    'vidu-q3':           'https://github.com/shengshu-ai.png?size=200',
+    'vidu-q3-turbo':     'https://github.com/shengshu-ai.png?size=200',
+    'vidu-q3-pro':       'https://github.com/shengshu-ai.png?size=200',
+    # Midjourney
+    'midjourney':        'https://github.com/midjourney.png?size=200',
+    # Kling/Kuaishou и Pixverse сознательно отсутствуют — см. комментарий
+    # в начале файла (ни один проверенный GitHub org не дал настоящий логотип).
 }
 
-# Цвет фона для fallback аватара (если URL не работает)
+# Цвет фона для fallback аватара (если URL не работает при скачивании)
 FALLBACK_COLORS = {
-    'gpt': '#10a37f',        # OpenAI зелёный
-    'o3': '#10a37f',
-    'o4': '#10a37f',
-    'o1': '#10a37f',
-    'chatgpt': '#10a37f',
-    'dall': '#10a37f',
-    'claude': '#d97757',     # Anthropic оранжевый
-    'gemini': '#4285f4',     # Google синий
-    'deepseek': '#1a6dff',   # DeepSeek синий
-    'qwen': '#ff6a00',       # Alibaba оранжевый
-    'qwq': '#ff6a00',
-    'grok': '#000000',       # xAI чёрный
-    'kimi': '#7c3aed',       # Moonshot фиолетовый
-    'glm': '#06b6d4',        # Zhipu голубой
-    'flux': '#8b5cf6',       # BFL фиолетовый
-    'seedream': '#ff4d00',   # ByteDance оранжевый
-    'minimax': '#0ea5e9',    # MiniMax голубой
+    'gpt': '#10a37f',
+    'claude': '#d97757',
+    'gemini': '#4285f4',
+    'veo': '#4285f4',
+    'deepseek': '#1a6dff',
+    'qwen': '#ff6a00',
+    'grok': '#000000',
+    'flux': '#8b5cf6',
+    'seedream': '#ff4d00',
+    'seedance': '#ff4d00',
+    'wan': '#ff6a00',
+    'z-image': '#ff6a00',
+    'hailuo': '#e6007a',
+    'vidu': '#1656f5',
+    'midjourney': '#1a1a1a',
+    'kling': '#a4c639',
+    'pixverse': '#d64fc0',
 }
 
 
@@ -127,7 +138,6 @@ def make_fallback_avatar(slug, size=200):
     img = Image.new('RGB', (size, size), color)
     draw = ImageDraw.Draw(img)
     letter = slug[0].upper()
-    # Рисуем букву по центру
     font_size = size // 2
     try:
         font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', font_size)
@@ -152,7 +162,6 @@ def download_image(url, size=200, timeout=15):
         if 'image' not in ct:
             return None
         img = Image.open(io.BytesIO(resp.content)).convert('RGBA')
-        # Создаём белый фон для прозрачных PNG
         bg = Image.new('RGBA', img.size, (255, 255, 255, 255))
         bg.paste(img, mask=img.split()[3])
         img = bg.convert('RGB')
@@ -176,17 +185,23 @@ def save_avatar(img, slug):
 class Command(BaseCommand):
     help = 'Скачивает официальные логотипы нейросетей и сохраняет в media/neural_avatars/'
 
+    def add_arguments(self, parser):
+        parser.add_argument('--force', action='store_true', help='Перекачать даже уже скачанные аватары')
+
     def handle(self, *args, **options):
-        # Кэш: URL -> PIL.Image чтобы не качать одно и то же несколько раз
+        force = options['force']
         url_cache = {}
 
-        networks = NeuralNetwork.objects.filter(slug__in=SLUG_TO_LOGO_URL.keys())
-        self.stdout.write(f'Найдено нейросетей: {networks.count()}')
+        networks = list(NeuralNetwork.objects.filter(slug__in=SLUG_TO_LOGO_URL.keys()))
+        if not force:
+            networks = [n for n in networks if not n.avatar]
+
+        self.stdout.write(f'Найдено нейросетей к обработке: {len(networks)}')
 
         ok = 0
         fallback = 0
 
-        for network in networks.order_by('slug'):
+        for network in sorted(networks, key=lambda n: n.slug):
             url = SLUG_TO_LOGO_URL.get(network.slug)
 
             if url not in url_cache:
@@ -206,7 +221,7 @@ class Command(BaseCommand):
             path = save_avatar(img, network.slug)
             network.avatar = path
             network.save(update_fields=['avatar'])
-            self.stdout.write(f'  {network.name} → {path}')
+            self.stdout.write(f'  {network.name} -> {path}')
 
         self.stdout.write(self.style.SUCCESS(
             f'\nГотово! Официальных: {ok}, fallback (цветные): {fallback}'
