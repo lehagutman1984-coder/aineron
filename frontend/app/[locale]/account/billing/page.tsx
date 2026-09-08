@@ -1282,6 +1282,27 @@ export default function BillingPage() {
       <CryptoSection />
       <TrybitSection />
 
+      {/* Баннер "крипта доступна на .net" — только для рублёвой витрины
+          (.ru не принимает крипту напрямую по юридическим причинам, см.
+          обсуждение 2026-09-08; .net уже сам показывает Crypto Pay/Trybit
+          выше, баннер там был бы бессмысленным). */}
+      {CURRENCY === "rub" && (
+        <section>
+          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 flex items-center justify-between gap-4 flex-wrap">
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              Хотите оплатить криптовалютой? Это доступно на международной версии сервиса.
+            </p>
+            <a
+              href="https://aineron.net/crypto-ru"
+              className="shrink-0 px-4 py-2 rounded-lg text-sm font-medium border border-[var(--color-border)]
+                text-[var(--color-text-primary)] hover:bg-[var(--color-bg)] transition-colors"
+            >
+              Узнать подробнее →
+            </a>
+          </div>
+        </section>
+      )}
+
       {/* Promo code */}
       <section>
         <SectionHeader icon={Tag} title={isCredits ? "Promo code" : "Промокод"} />
