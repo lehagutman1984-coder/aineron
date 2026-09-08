@@ -15,9 +15,14 @@ from aitext.models import NeuralNetwork
 # (это НЕ ошибка HTTP, легко принять заглушку за настоящий логотип, если
 # не посмотреть глазами). Отклонены как заглушки при проверке 2026-09-08:
 # github.com/{Kwaishou,kuaishou,KwaiVGI,pixverse}.png — ни один не дал
-# настоящий логотип Kling/Kuaishou или Pixverse, поэтому у моделей Kling
-# и Pixverse ниже сознательно нет записи — остаются на ui-avatars.com
-# fallback (get_avatar() в aitext/models.py), а не на угаданной картинке.
+# настоящий логотип Kling/Kuaishou или Pixverse.
+#
+# Kling и Pixverse найдены ДРУГИМ путём (2026-09-08, по прямому запросу
+# пользователя после первого захода) — фавиконка официального сайта через
+# Google favicon-сервис (google.com/s2/favicons?domain=...&sz=256),
+# визуально подтверждена как настоящий фирменный значок (не generic-иконка
+# браузера по умолчанию): klingai.com — бело-чёрный "глаз/K", pixverse.ai —
+# градиентная "P". GitHub org для этих двух брендов не существует вообще.
 # logo.clearbit.com не резолвится из этого окружения вообще — не используется.
 #
 # Список слагов актуализирован под текущий каталог 68 моделей (2026-09-08) —
@@ -99,8 +104,15 @@ SLUG_TO_LOGO_URL = {
     'vidu-q3-pro':       'https://github.com/shengshu-ai.png?size=200',
     # Midjourney
     'midjourney':        'https://github.com/midjourney.png?size=200',
-    # Kling/Kuaishou и Pixverse сознательно отсутствуют — см. комментарий
-    # в начале файла (ни один проверенный GitHub org не дал настоящий логотип).
+    # Kling / Kuaishou — нет GitHub org, логотип с официального сайта
+    # через favicon-сервис (см. комментарий в начале файла)
+    'kling-v26':         'https://www.google.com/s2/favicons?domain=klingai.com&sz=256',
+    'kling-v3':          'https://www.google.com/s2/favicons?domain=klingai.com&sz=256',
+    'kling-v3-omni':     'https://www.google.com/s2/favicons?domain=klingai.com&sz=256',
+    'kling-video-o1':    'https://www.google.com/s2/favicons?domain=klingai.com&sz=256',
+    'kling-3-0-turbo':   'https://www.google.com/s2/favicons?domain=klingai.com&sz=256',
+    # Pixverse — аналогично, нет GitHub org
+    'pixverse-v6':       'https://www.google.com/s2/favicons?domain=pixverse.ai&sz=256',
 }
 
 # Цвет фона для fallback аватара (если URL не работает при скачивании)
