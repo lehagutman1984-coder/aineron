@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Link, useRouter } from "@/i18n/navigation";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -47,18 +47,33 @@ import { useAuthStore } from "@/lib/stores/auth";
 
 // ── Robokassa redirect ───────────────────────────────────────────────────────
 
+// Имя окна для всех редиректов на внешний способ оплаты (Робокасса/крипта).
+// Общее имя достаточно — одновременно открыть можно только один платёж.
+const PAY_POPUP_NAME = "aineron_pay";
+
+// Открывать окно нужно СИНХРОННО в обработчике клика — до любого await/then.
+// Как только код возвращается из await, браузер больше не считает это
+// "прямым следствием клика" и молча блокирует window.open()/target=_blank
+// без единой ошибки в консоли (баг: кнопка "Оплатить" показывала "ожидаем
+// оплату", но вкладка Робокассы просто не открывалась). Открываем пустое
+// окно сразу, а после ответа сервера просто НАВИГИРУЕМ уже открытое окно —
+// это браузеры разрешают в любой момент, т.к. окно уже существует.
+function openPayPopup(): Window | null {
+  return window.open("about:blank", PAY_POPUP_NAME);
+}
+
 function submitRobokassaForm(form: RobokassaForm) {
   const f = document.createElement("form");
   f.method = form.method;
   f.action = form.action;
-  // target=_blank — открываем Робокассу в НОВОЙ вкладке, а не уводим текущую.
-  // Раньше страница биллинга полностью выгружалась, и возврат на /payment-success/
-  // зависел целиком от редиректа Робокассы — который не срабатывает при оплате
-  // по СБП (человек платит в банковском приложении на телефоне, а вкладка на
-  // компьютере ничего об этом не узнаёт) или если пользователь просто закрывает
-  // вкладку Робокассы после оплаты. Теперь вкладка биллинга остаётся жива и сама
-  // опрашивает статус платежа (см. использование ниже), как уже сделано для крипты.
-  f.target = "_blank";
+  // target=имя уже открытого окна (см. openPayPopup) — раньше страница биллинга
+  // полностью выгружалась, и возврат на /payment-success/ зависел целиком от
+  // редиректа Робокассы, который не срабатывает при оплате по СБП (человек платит
+  // в банковском приложении на телефоне, а вкладка на компьютере ничего об этом
+  // не узнаёт) или если пользователь просто закрывает вкладку Робокассы после
+  // оплаты. Теперь вкладка биллинга остаётся жива и сама опрашивает статус
+  // платежа (см. использование ниже), как уже сделано для крипты.
+  f.target = PAY_POPUP_NAME;
   Object.entries(form.fields).forEach(([name, value]) => {
     const input = document.createElement("input");
     input.type = "hidden";
@@ -540,6 +555,7 @@ function StarsSection({ onPaymentInitiated }: { onPaymentInitiated: (invoiceId: 
   const [count, setCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const popupRef = useRef<Window | null>(null);
 
   const mutation = useMutation({
     mutationFn: buyPages,
@@ -549,6 +565,7 @@ function StarsSection({ onPaymentInitiated }: { onPaymentInitiated: (invoiceId: 
       setConfirmOpen(false);
     },
     onError: (err: Error) => {
+      popupRef.current?.close();
       setError(err.message);
       setConfirmOpen(false);
     },
@@ -619,7 +636,14 @@ function StarsSection({ onPaymentInitiated }: { onPaymentInitiated: (invoiceId: 
             amount: parseFloat(total),
           }}
           loading={mutation.isPending}
-          onConfirm={() => mutation.mutate(count || settings.min_pages_for_purchase)}
+          onConfirm={() => {
+            popupRef.current = openPayPopup();
+            if (!popupRef.current) {
+              setError("Браузер заблокировал всплывающее окно. Разрешите всплывающие окна для этого сайта и попробуйте ещё раз.");
+              return;
+            }
+            mutation.mutate(count || settings.min_pages_for_purchase);
+          }}
           onClose={() => {
             if (!mutation.isPending) setConfirmOpen(false);
           }}
@@ -645,15 +669,26 @@ function CryptoSection() {
   const [invoice, setInvoice] = useState<CryptoTopupResponse | null>(null);
   const [paid, setPaid] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const popupRef = useRef<Window | null>(null);
 
   const mutation = useMutation({
     mutationFn: createCryptoTopup,
     onSuccess: (data) => {
       setInvoice(data);
       setPaid(false);
-      window.open(data.pay_url, "_blank", "noopener");
+      // Окно уже открыто синхронно по клику (см. openPayPopup) — просто
+      // переводим его на счёт, а не открываем новое (браузер бы заблокировал
+      // window.open здесь: мы уже не в контексте прямого клика).
+      if (popupRef.current && !popupRef.current.closed) {
+        popupRef.current.location.href = data.pay_url;
+      } else {
+        window.open(data.pay_url, "_blank", "noopener");
+      }
     },
-    onError: (err: Error) => setError(err.message),
+    onError: (err: Error) => {
+      popupRef.current?.close();
+      setError(err.message);
+    },
   });
 
   // Поллинг статуса, пока счёт не оплачен/не истёк
@@ -793,6 +828,11 @@ function CryptoSection() {
                 onClick={() => {
                   setError(null);
                   setPaid(false);
+                  popupRef.current = openPayPopup();
+                  if (!popupRef.current) {
+                    setError("Браузер заблокировал всплывающее окно. Разрешите всплывающие окна для этого сайта и попробуйте ещё раз.");
+                    return;
+                  }
                   mutation.mutate(isUsd ? { amount_usd: value } : { amount: value });
                 }}
                 disabled={
@@ -843,15 +883,23 @@ function TrybitSection() {
   const [invoice, setInvoice] = useState<TrybitTopupResponse | null>(null);
   const [paid, setPaid] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const popupRef = useRef<Window | null>(null);
 
   const mutation = useMutation({
     mutationFn: createTrybitTopup,
     onSuccess: (data) => {
       setInvoice(data);
       setPaid(false);
-      window.open(data.pay_url, "_blank", "noopener");
+      if (popupRef.current && !popupRef.current.closed) {
+        popupRef.current.location.href = data.pay_url;
+      } else {
+        window.open(data.pay_url, "_blank", "noopener");
+      }
     },
-    onError: (err: Error) => setError(err.message),
+    onError: (err: Error) => {
+      popupRef.current?.close();
+      setError(err.message);
+    },
   });
 
   // Поллинг статуса, пока счёт не оплачен/не истёк
@@ -971,6 +1019,11 @@ function TrybitSection() {
                 onClick={() => {
                   setError(null);
                   setPaid(false);
+                  popupRef.current = openPayPopup();
+                  if (!popupRef.current) {
+                    setError("Браузер заблокировал всплывающее окно. Разрешите всплывающие окна для этого сайта и попробуйте ещё раз.");
+                    return;
+                  }
                   mutation.mutate({ amount_usd: value });
                 }}
                 disabled={
@@ -1172,12 +1225,20 @@ export default function BillingPage() {
   async function handlePay(tariffId: number, promoCode?: string) {
     setPayLoading(tariffId);
     setPayError(null);
+    // Открываем окно СРАЗУ, синхронно по клику — см. комментарий у openPayPopup().
+    const popup = openPayPopup();
+    if (!popup) {
+      setPayError("Браузер заблокировал всплывающее окно. Разрешите всплывающие окна для этого сайта и попробуйте ещё раз.");
+      setPayLoading(null);
+      return;
+    }
     try {
       const data = await payTariff(tariffId, promoCode);
       submitRobokassaForm(data.form);
       setPollingInvoiceId(String(data.invoice_id));
       setPendingTariff(null);
     } catch (err) {
+      popup.close();
       setPayError((err as Error).message);
       setPendingTariff(null);
     } finally {

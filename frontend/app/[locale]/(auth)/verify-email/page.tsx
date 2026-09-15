@@ -5,7 +5,7 @@ import { Link, useRouter } from "@/i18n/navigation";
 
 import { Mail } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { authVerifyEmail, authResendVerification } from "@/lib/api/client";
+import { authVerifyEmail, authResendVerification, getMe } from "@/lib/api/client";
 import { APIError } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 
@@ -71,7 +71,14 @@ function VerifyEmailForm() {
     setError(null);
     try {
       await authVerifyEmail(code);
-      if (user) setUser({ ...user, email_verified: true });
+      if (user) {
+        setUser({ ...user, email_verified: true });
+      } else {
+        // user может быть null из-за гонки AuthInit/setUser при регистрации
+        // (см. AuthInit.tsx) — без этого пользователь застревал бы в
+        // неавторизованном состоянии до перезагрузки страницы.
+        getMe().then(setUser).catch(() => {});
+      }
       // New users go through onboarding; /welcome/ checks localStorage and skips if already done.
       // ?verified=1 — маркер цели «регистрация» в Яндекс.Метрике (url содержит verified=1).
       // Раньше этот, самый массовый путь подтверждения (код на той же вкладке, без перехода
