@@ -264,6 +264,43 @@ def _claim_can_reply_notice(conn) -> bool:
         return False
 
 
+def _claim_low_balance_notice(conn) -> bool:
+    """True не чаще раза в сутки — не спамить владельца на каждое сообщение
+    клиента, если секретарь остановлен из-за баланса (см. _has_enough_for_reply)."""
+    from django.core.cache import cache
+    from django.utils import timezone
+    key = f'bizlowbalnotice:{conn.pk}:{timezone.now().date().isoformat()}'
+    try:
+        return cache.add(key, 1, timeout=86400)
+    except Exception:
+        return False
+
+
+def _has_enough_for_reply(conn) -> bool:
+    """Ранняя проверка ДО вызова LLM — тот же класс бага, что уже чинили для
+    /summary и /quiz (group2.py::_has_enough): без неё on_business_message
+    вызывал generate_reply (платный запрос к apimart) на каждое сообщение
+    клиента независимо от баланса владельца, и только на шаге ОТПРАВКИ
+    черновика (_charge_reply) выяснялось, что платить нечем — черновик
+    просто оставался неотправленным, а токены провайдера были уже потрачены.
+    Зеркалит логику _charge_reply (тариф с квотой ИЛИ достаточный баланс),
+    но не списывает и не занимает слот квоты — это делает _charge_reply."""
+    from django.utils import timezone
+    from telegram_bot.utils import needs_email_verification
+    user = conn.tg_user.user
+    if needs_email_verification(user):
+        return False
+    price = getattr(settings, 'BUSINESS_REPLY_PRICE_KOPECKS', 100)
+    allowance = getattr(settings, 'BUSINESS_TARIFF_ALLOWANCE', 300)
+    month = timezone.now().strftime('%Y-%m')
+    replies_this_month = conn.replies_this_month if conn.replies_month == month else 0
+    tariff_name = (getattr(user.tariff, 'display_name', '') or '').lower()
+    has_secretary = any(k in tariff_name for k in ('бизнес', 'business', 'макс', 'max'))
+    if has_secretary and replies_this_month < allowance:
+        return True
+    return user.has_enough_kopecks(price)
+
+
 def _check_daily_cap(conn) -> tuple:
     """BUG-O: дневной cap AI-генераций секретаря на подключение — без него
     поток сообщений одного клиента (особенно при scope_all) мог выкачивать
@@ -347,6 +384,8 @@ refund_reply = sync_to_async(_refund_reply, thread_sensitive=True)
 mark_draft = sync_to_async(_mark_draft, thread_sensitive=True)
 claim_pending_draft = sync_to_async(_claim_pending_draft, thread_sensitive=True)
 claim_can_reply_notice = sync_to_async(_claim_can_reply_notice, thread_sensitive=True)
+claim_low_balance_notice = sync_to_async(_claim_low_balance_notice, thread_sensitive=True)
+has_enough_for_reply = sync_to_async(_has_enough_for_reply, thread_sensitive=True)
 check_daily_cap = sync_to_async(_check_daily_cap, thread_sensitive=True)
 autopilot_burst_exceeded = sync_to_async(_autopilot_burst_exceeded, thread_sensitive=True)
 
@@ -494,6 +533,20 @@ async def on_business_message(message: Message):
                     text='AI-секретарь: дневной лимит автоответов исчерпан. '
                          'Новые сообщения клиентов сегодня не обрабатываются '
                          'автоматически — ответьте лично или дождитесь завтра.',
+                )
+            except Exception:
+                pass
+        return
+
+    # Баланс/квота — ДО генерации, не после (см. _has_enough_for_reply)
+    if not await has_enough_for_reply(conn):
+        if await claim_low_balance_notice(conn):
+            try:
+                await message.bot.send_message(
+                    chat_id=owner_id,
+                    text='AI-секретарь: недостаточно средств для ответов клиентам. '
+                         'Пополните баланс — /balance. Пока баланс не пополнен, '
+                         'новые сообщения клиентов секретарь не обрабатывает.',
                 )
             except Exception:
                 pass
