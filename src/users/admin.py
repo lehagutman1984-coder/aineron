@@ -9,7 +9,8 @@ from django.utils import timezone
 from .models import (
     UserIPAddress, UserActivityLog, Tariff,
     PageSaleSettings, CustomUser,
-    UserSubscription, PaymentHistory, LegalDocument, SiteCounter, PromoCode, UserSpending, SiteSettings, ReferralEarning, WithdrawalRequest
+    UserSubscription, PaymentHistory, LegalDocument, SiteCounter, PromoCode, UserSpending, SiteSettings, ReferralEarning, WithdrawalRequest,
+    BalanceTransaction,
 )
 
 CustomUser = get_user_model()
@@ -666,6 +667,31 @@ class UserSpendingAdmin(admin.ModelAdmin):
         url = reverse('admin:users_customuser_change', args=[obj.user.id])
         return format_html('<a href="{}">{}</a>', url, obj.user.email)
     user_link.short_description = 'Пользователь'
+
+
+@admin.register(BalanceTransaction)
+class BalanceTransactionAdmin(admin.ModelAdmin):
+    """Единый реестр движений баланса — чат (web и бот), AI-задачи (aitask:),
+    AI-секретарь (bizreply:), персональные боты (managedbot:), sandbox,
+    пополнения и т.д. Ищите по `reference`, чтобы увидеть, кто и через
+    какую фичу тратит/пополняет баланс."""
+    list_display = ('created_at', 'user_link', 'type', 'amount_kopecks', 'balance_after', 'reference')
+    list_filter = ('type', 'created_at')
+    search_fields = ('user__email', 'user__username', 'reference')
+    readonly_fields = ('user', 'amount_kopecks', 'balance_after', 'type', 'reference', 'created_at')
+    date_hierarchy = 'created_at'
+    list_per_page = 50
+
+    def user_link(self, obj):
+        url = reverse('admin:users_customuser_change', args=[obj.user.id])
+        return format_html('<a href="{}">{}</a>', url, obj.user.email)
+    user_link.short_description = 'Пользователь'
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(SiteSettings)

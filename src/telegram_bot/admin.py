@@ -2,8 +2,25 @@ from django.contrib import admin
 from .models import (
     TelegramUser, TelegramChat, TelegramLinkToken, TelegramGroup, AITask,
     StarsSubscription, BusinessConnection, BusinessDraft, TelegramTopic,
-    ManagedBot, AgentRun,
+    ManagedBot, AgentRun, TelegramEvent,
 )
+
+
+@admin.register(TelegramEvent)
+class TelegramEventAdmin(admin.ModelAdmin):
+    """Расход бота по типам событий (чат, AI-задачи, секретарь, Deep Research
+    и т.д.) с привязкой к модели и стоимости — для вопроса «кто/что тратит
+    через бота» смотреть сюда, а не только в BalanceTransaction."""
+    list_display = ('created_at', 'event_type', 'telegram_user', 'network', 'cost_kopecks')
+    list_filter = ('event_type', 'created_at', 'network')
+    search_fields = ('telegram_user__telegram_username', 'telegram_user__user__email')
+    raw_id_fields = ('telegram_user', 'network')
+    readonly_fields = ('created_at',)
+    date_hierarchy = 'created_at'
+    list_per_page = 50
+
+    def has_add_permission(self, request):
+        return False
 
 
 @admin.register(AgentRun)
