@@ -20,6 +20,15 @@ class DeepResearchStartView(APIView):
         if not question:
             return Response({'error': 'question required'}, status=status.HTTP_400_BAD_REQUEST)
 
+        if len(question) > 4000:
+            return Response({'error': 'question too long (max 4000 chars)'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Платная операция (2 LLM-вызова на модели чата + 5 веб-поисков): раньше веб-эндпоинт
+        # был полностью бесплатным - платил только бот (/research). Предоплата, как в боте.
+        from django.conf import settings as dj_settings
+        from core.money import format_rub
+        price = int(getattr(dj_settings, 'RESEARCH_PRICE_KOPECKS', 1000))
+
         # Create user message
         user_msg = Message.objects.create(
             chat=chat, role='user', content=question, plain_text=question, status='completed',
@@ -28,6 +37,23 @@ class DeepResearchStartView(APIView):
         assistant_msg = Message.objects.create(
             chat=chat, role='assistant', content='', plain_text='', status='pending',
         )
+
+        # Атомарное списание; reference уникален по сообщению ассистента (идемпотентно).
+        if not request.user.spend_kopecks(price, type='spend', reference=f'research:{assistant_msg.id}'):
+            assistant_msg.delete()
+            user_msg.delete()
+            request.user.refresh_from_db(fields=['balance_kopecks'])
+            from api.services.billing import top_up_url
+            return Response({
+                'error': {
+                    'message': f'Недостаточно средств. Нужно {format_rub(price)}, у вас {format_rub(request.user.balance_kopecks)}. Пополните баланс: {top_up_url()}',
+                    'type': 'insufficient_quota',
+                    'code': 'insufficient_quota',
+                    'required_kopecks': price,
+                    'balance_kopecks': request.user.balance_kopecks,
+                    'top_up_url': top_up_url(),
+                }
+            }, status=status.HTTP_402_PAYMENT_REQUIRED)
 
         research = DeepResearch.objects.create(
             chat=chat, message=assistant_msg, question=question,
@@ -40,6 +66,7 @@ class DeepResearchStartView(APIView):
             research.status = 'error'
             research.error = str(e)
             research.save(update_fields=['status', 'error'])
+            request.user.add_kopecks(price, type='refund', reference=f'research:{assistant_msg.id}')
             return Response({'error': f'Could not enqueue task: {e}'}, status=502)
 
         chat.save(update_fields=['updated_at'])

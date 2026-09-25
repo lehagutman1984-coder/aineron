@@ -82,6 +82,22 @@ def send_daily_digests(self):
             logger.warning(f"send_daily_digests: failed for {tg_user.telegram_id}: {e}")
 
 
+def _charge_once(user, cost_kopecks, reference):
+    """Атомарное списание за фоновый LLM-вызов ДО обращения к апстриму.
+    True - списано сейчас; False - не хватило средств ИЛИ этот reference уже
+    списывался (повторная доставка Celery-задачи): в обоих случаях LLM звать
+    нельзя. Раньше дайджест и AI-сводка опроса вообще не списывали - платный
+    вызов модели, выбранной пользователем, был бесплатным для любого аккаунта."""
+    from users.models import BalanceTransaction
+    if BalanceTransaction.objects.filter(user=user, type='spend', reference=reference).exists():
+        return False
+    return bool(user.spend_kopecks(cost_kopecks, type='spend', reference=reference))
+
+
+def _refund_charge(user, cost_kopecks, reference):
+    user.add_kopecks(cost_kopecks, type='refund', reference=reference)
+
+
 def _send_digest_to_user(tg_user):
     from django.conf import settings
     from aitext.tasks import get_laozhang_client
@@ -111,6 +127,14 @@ def _send_digest_to_user(tg_user):
         system_prompt = "You are a helpful AI assistant for the aineron.net platform."
         user_prompt = _DIGEST_PROMPT_INTL.format(language_name=_LANGUAGE_NAMES.get(lang, 'English'))
 
+    # Платный вызов: списываем ДО обращения к модели (один дайджест в сутки).
+    from django.utils import timezone as _tz
+    digest_cost = network.cost_kopecks
+    digest_ref = f'digest:{tg_user.pk}:{_tz.now().date().isoformat()}'
+    if not _charge_once(user, digest_cost, digest_ref):
+        logger.info(f"send_daily_digests: пропуск для {tg_user.telegram_id} - нет средств или уже отправлен")
+        return
+
     try:
         client = get_laozhang_client()
         resp = client.chat.completions.create(
@@ -125,9 +149,11 @@ def _send_digest_to_user(tg_user):
         content = resp.choices[0].message.content or ""
     except Exception as e:
         logger.warning(f"send_daily_digests: AI call failed: {e}")
+        _refund_charge(user, digest_cost, digest_ref)
         return
 
     if not content.strip():
+        _refund_charge(user, digest_cost, digest_ref)
         return
 
     if lang == 'ru':
@@ -247,6 +273,15 @@ def summarize_poll(self, poll_session_id: int):
     if not network or not network.model_name:
         return
 
+    # Платный вызов: списываем ДО обращения к модели (одна сводка на опрос -
+    # reference уникален по сессии, повторная доставка задачи не спишет/не позовёт LLM дважды).
+    poll_user = session.tg_user.user
+    poll_cost = network.cost_kopecks
+    poll_ref = f'pollsum:{session.pk}'
+    if not poll_user or not _charge_once(poll_user, poll_cost, poll_ref):
+        logger.info(f'summarize_poll: пропуск для сессии {session.pk} - нет средств или уже сформирована')
+        return
+
     try:
         client = get_laozhang_client()
         resp = client.chat.completions.create(
@@ -258,6 +293,7 @@ def summarize_poll(self, poll_session_id: int):
         summary = (resp.choices[0].message.content or '').strip()
     except Exception as e:
         logger.warning(f'summarize_poll: AI call failed: {e}')
+        _refund_charge(poll_user, poll_cost, poll_ref)
         return
 
     PollSession.objects.filter(pk=poll_session_id).update(ai_summary=summary)

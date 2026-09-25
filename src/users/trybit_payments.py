@@ -204,10 +204,15 @@ def trybit_webhook(request):
     if order_id and str(order_id).isdigit():
         payment = PaymentHistory.objects.filter(pk=int(order_id), payment_method='trybit').first()
     if payment is None and invoice_id:
-        payment = PaymentHistory.objects.filter(payment_id__icontains=invoice_id, payment_method='trybit').first()
+        # Точное совпадение: icontains позволял 'INV-1' сматчить чужой 'INV-10'.
+        payment = PaymentHistory.objects.filter(payment_id=invoice_id, payment_method='trybit').first()
     if payment is None:
         logger.error("[TRYBIT] Постбек по неизвестному инвойсу %s (order_id=%s)", invoice_id, order_id)
         return JsonResponse({'ok': True})
 
-    settle_trybit_payment(payment)
+    # JWT подтверждает лишь, что постбек прислал Trybit, но тело (order_id/invoice_id/status)
+    # не привязано к подписи: перехваченный валидный токен (живёт 5 мин) можно было
+    # приложить к чужому телу и зачесть свой pending-счёт. Постбек - только триггер:
+    # оплату подтверждаем запросом к API Trybit (как в поллинге), а не по данным тела.
+    check_and_settle(payment)
     return JsonResponse({'ok': True})

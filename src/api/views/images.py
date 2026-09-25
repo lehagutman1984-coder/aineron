@@ -69,7 +69,7 @@ class ImageGenerationsView(APIView):
 
         user = request.user
         cost_kopecks = network.cost_kopecks * n
-        request_id = str(uuid.uuid4())[:8]
+        request_id = uuid.uuid4().hex[:16]
 
         if not user.has_enough_kopecks(cost_kopecks):
             from core.money import format_rub

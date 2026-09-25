@@ -57,7 +57,7 @@ class AudioTranscriptionsView(APIView):
         api_key = getattr(request, 'api_key', None)
         # Списываем ДО обращения к апстриму (раньше - после, и неудачное списание
         # лишь логировалось: апстрим уже выставил нам счёт). При ошибке - возврат.
-        asr_ref = f'api-asr:{uuid.uuid4().hex[:8]}'
+        asr_ref = f'api-asr:{uuid.uuid4().hex[:16]}'
         try:
             org = flat_charge(user, api_key, ASR_COST_KOPECKS, asr_ref)
         except InsufficientStarsError as e:
@@ -127,7 +127,7 @@ class AudioSpeechView(APIView):
         user = request.user
         TTS_COST_KOPECKS = 100  # 1 ₽ за синтез
         api_key = getattr(request, 'api_key', None)
-        tts_ref = f'api-tts:{uuid.uuid4().hex[:8]}'
+        tts_ref = f'api-tts:{uuid.uuid4().hex[:16]}'
         try:
             org = flat_charge(user, api_key, TTS_COST_KOPECKS, tts_ref)
         except InsufficientStarsError as e:

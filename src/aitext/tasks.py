@@ -2469,6 +2469,20 @@ def deep_research_task(self, research_id: int):
         research.error = str(e)
         research.finished_at = timezone.now()
         research.save(update_fields=['status', 'error', 'finished_at'])
+        # Возврат предоплаты (веб и бот списывают reference research:{message_id}).
+        # Идемпотентно по unique(type, reference); только если списание реально было -
+        # исследования, запущенные до введения оплаты, не должны порождать возврат.
+        try:
+            if research.message_id:
+                from users.models import BalanceTransaction
+                _ref = f'research:{research.message_id}'
+                _spent = BalanceTransaction.objects.filter(
+                    user=research.chat.user, type='spend', reference=_ref,
+                ).first()
+                if _spent:
+                    research.chat.user.add_kopecks(-_spent.amount_kopecks, type='refund', reference=_ref)
+        except Exception as _refund_err:
+            logger.warning(f'[deep_research] refund failed for {research_id}: {_refund_err}')
 
 
 # ═══════════════════════════════════════════════════════════════════════════

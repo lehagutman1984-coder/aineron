@@ -22,7 +22,7 @@ import secrets
 from django.conf import settings
 from django.core.cache import cache
 from django.db import IntegrityError, transaction
-from django.db.models import F
+from django.db.models import F, Q
 from django.utils import timezone
 
 from core.money import format_money
@@ -52,6 +52,10 @@ def _reserve_ip_quota(ip: str) -> bool:
     except Exception:
         return True
     return count <= cap
+
+
+class _PromoExhausted(Exception):
+    pass
 
 
 class _IpQuotaExceeded(Exception):
@@ -137,6 +141,17 @@ def redeem_promo_code(user, code_str, intl=False, ip=None, require_email_verifie
             UsedPromoCode.objects.create(user=user, promo_code=promo)
             if ip and not _reserve_ip_quota(ip):
                 raise _IpQuotaExceeded
+            # Атомарная проверка usage_limit: is_valid() выше - неатомарное чтение, N
+            # аккаунтов, погашающих код параллельно, все проходили его и превышали лимит.
+            # Условный UPDATE занимает слот; нет слота -> откат UsedPromoCode.
+            _slot = PromoCode.objects.filter(pk=promo.pk).filter(
+                Q(usage_limit__lte=0) | Q(used_count__lt=F('usage_limit'))
+            ).update(used_count=F('used_count') + 1)
+            if not _slot:
+                raise _PromoExhausted
+    except _PromoExhausted:
+        msg = 'Promo code is invalid or expired' if intl else 'Промокод недействителен или истёк'
+        return {'ok': False, 'error_code': 'promo_expired', 'message': msg}
     except IntegrityError:
         msg = 'Promo code already used' if intl else 'Промокод уже был использован'
         return {'ok': False, 'error_code': 'promo_already_used', 'message': msg}
@@ -148,7 +163,6 @@ def redeem_promo_code(user, code_str, intl=False, ip=None, require_email_verifie
         )
         return {'ok': False, 'error_code': 'ip_limit_exceeded', 'message': msg}
 
-    PromoCode.objects.filter(pk=promo.pk).update(used_count=F('used_count') + 1)
     user.add_kopecks(promo.kopecks, type='promo', reference=f'promo:{promo.pk}:{user.id}')
 
     description = (

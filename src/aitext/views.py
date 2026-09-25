@@ -1,5 +1,6 @@
 import json
 import logging
+from aitext.limits import claim_free_slot
 from django.core.paginator import Paginator
 from django.shortcuts import render, get_object_or_404
 from users.models import Tariff, LegalDocument  # если нужно
@@ -106,10 +107,8 @@ def create_chat(request):
                 date=today,
                 defaults={'count': 0}
             )
-            if usage.count < network.messages_limit:
+            if claim_free_slot(usage, network.messages_limit):
                 deduct_stars = False
-                usage.count += 1
-                usage.save()
                 logger.info(f"Бесплатное сообщение для {request.user.email} в {network.name} ({usage.count}/{network.messages_limit})")
 
         # Проверка баланса для fal.ai (списание в Celery, но проверяем сейчас)
@@ -221,10 +220,8 @@ def send_message(request, chat_id):
                 date=today,
                 defaults={'count': 0}
             )
-            if usage.count < network.messages_limit:
+            if claim_free_slot(usage, network.messages_limit):
                 deduct_stars = False
-                usage.count += 1
-                usage.save()
                 logger.info(f"Бесплатное сообщение для {request.user.email} в {network.name} ({usage.count}/{network.messages_limit})")
             else:
                 logger.info(f"Лимит бесплатных сообщений исчерпан для {request.user.email} в {network.name}")

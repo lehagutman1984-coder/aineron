@@ -232,7 +232,7 @@ class ApiReservation:
     """Резерв средств под один API-запрос. Создаётся reserve_for_request()."""
 
     def __init__(self, user, api_key, network, organization, request_id,
-                 reserved_kopecks, prompt_tokens, max_tokens, balance_before):
+                 reserved_kopecks, prompt_tokens, max_tokens, balance_before, narrowed=False):
         self.user = user
         self.api_key = api_key
         self.network = network
@@ -242,15 +242,17 @@ class ApiReservation:
         self.prompt_tokens = prompt_tokens
         self.max_tokens = max_tokens
         self.balance_before = balance_before
+        self.narrowed = narrowed
         self.closed = False
 
     @property
     def low_balance(self) -> bool:
-        return self.balance_before - self.reserved_kopecks < low_balance_threshold_kopecks()
+        # Баланс ниже порога ИЛИ ответ пришлось сузить под баланс - пора пополнить.
+        return self.narrowed or self.balance_before < low_balance_threshold_kopecks()
 
     def headers(self) -> dict:
-        """Заголовки ответа: остаток баланса и предупреждение о низком балансе."""
-        h = {'X-Aineron-Balance-Kopecks': str(max(0, self.balance_before - self.reserved_kopecks))}
+        """Заголовки ответа: баланс на момент запроса и предупреждение о низком балансе."""
+        h = {'X-Aineron-Balance-Kopecks': str(max(0, self.balance_before))}
         if self.low_balance:
             h['X-Aineron-Low-Balance'] = '1'
             h['X-Aineron-Top-Up-Url'] = top_up_url()
@@ -330,7 +332,7 @@ def reserve_for_request(user, api_key, network, prompt_tokens: int, max_tokens: 
         raise _insufficient(reserve, _available_kopecks(user, organization))
 
     return ApiReservation(user, api_key, network, organization, request_id,
-                          reserve, prompt_tokens, out, available)
+                          reserve, prompt_tokens, out, available, narrowed=out < max_tokens)
 
 
 def release_reservation(res: ApiReservation, reason: str = ''):

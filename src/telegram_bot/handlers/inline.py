@@ -48,6 +48,22 @@ def _create_inline_message(tg_user, text):
         chat=chat, role='assistant',
         status=AiMsg.Status.PENDING, content='',
     )
+    # Pre-charge ДО постановки задачи (как в handlers/chat.py::_charge_text_message).
+    # Раньше inline вообще не списывал: has_enough_kopecks - лишь ранняя проверка,
+    # а фолбэк TEXT_BILLING_ENABLED в aitext/tasks.py выключен на проде (=0), так
+    # что любой ответ в inline-режиме был бесплатным для пользователя.
+    from aitext.billing import record_message_billing
+    from users.models import UserSpending
+    cost = network.cost_kopecks
+    reference = f'chat:{assistant_msg.id}'
+    if not tg_user.user.spend_kopecks(cost, type='spend', reference=reference):
+        chat.delete()  # каскадом удаляет оба сообщения; генерация не стартует
+        return None
+    UserSpending.objects.create(
+        user=tg_user.user, amount=cost // 100, amount_kopecks=cost,
+        description=f"Сообщение в чате с {network.name}",
+    )
+    record_message_billing(assistant_msg, reference, cost)
     return assistant_msg
 
 

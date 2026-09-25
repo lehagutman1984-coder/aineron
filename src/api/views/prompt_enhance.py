@@ -80,7 +80,7 @@ class ImagePromptEnhanceView(APIView):
         from api.services.billing import flat_charge, flat_refund, insufficient_error_payload
         import uuid as _uuid
         price = int(getattr(_dj_settings, 'API_ENHANCE_PROMPT_KOPECKS', 10))
-        charge_ref = f'api-enhance:{_uuid.uuid4().hex[:8]}'
+        charge_ref = f'api-enhance:{_uuid.uuid4().hex[:16]}'
         try:
             charge_org = flat_charge(request.user, None, price, charge_ref)
         except InsufficientStarsError as e:

@@ -74,6 +74,16 @@ TASKS = [
         "cron": True,
     },
     {
+        # TOKEN_OVERAGE_BILLING_PLAN.md §3.4: досписание доплат за токены, которые не
+        # удалось списать инлайн (не хватило баланса / упал процесс). Задача была
+        # написана, но НИГДЕ не запланирована (аудит 2026-09-25) - невзысканные доплаты
+        # терялись навсегда. Без TOKEN_OVERAGE_SETTLE_FROM в env - no-op.
+        "name": "Биллинг: досписание невзысканных доплат за токены (каждые 30 минут)",
+        "task": "aitext.tasks.reconcile_unsettled_overage",
+        "schedule": {"minute": "15,45"},
+        "cron": True,
+    },
+    {
         "name": "Мониторинг: списания без результата (каждые 30 минут)",
         "task": "aitext.tasks.reconcile_stuck_spends",
         "schedule": {"minute": "*/30"},

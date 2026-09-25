@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from api.authentication import CsrfExemptSessionAuthentication
-from users.models import ReferralEarning, WithdrawalRequest
+from users.models import CustomUser, ReferralEarning, WithdrawalRequest
 
 
 class ReferralView(APIView):
@@ -105,20 +105,32 @@ class ReferralWithdrawView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if amount <= 0:
+        # NaN/Infinity: Decimal('NaN') <= 0 бросает InvalidOperation (500) - отсекаем до сравнений.
+        if not amount.is_finite() or amount <= 0:
             return Response(
                 {'error': {'message': 'Сумма должна быть больше нуля', 'code': 'invalid_amount'}},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if user.rub_balance < amount:
+        if not amount.is_finite():
             return Response(
-                {'error': {'message': 'Недостаточно средств на балансе', 'code': 'insufficient_balance'}},
+                {'error': {'message': 'Неверная сумма', 'code': 'invalid_amount'}},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        user.rub_balance -= amount
-        user.save(update_fields=['rub_balance'])
-        WithdrawalRequest.objects.create(user=user, amount=amount, payout_destination=payout_destination)
+        # Атомарное условное списание: read-modify-write давал двойной вывод при
+        # параллельных запросах (оба видели старый баланс).
+        from django.db import transaction
+        from django.db.models import F
+        with transaction.atomic():
+            updated = CustomUser.objects.filter(
+                pk=user.pk, rub_balance__gte=amount,
+            ).update(rub_balance=F('rub_balance') - amount)
+            if not updated:
+                return Response(
+                    {'error': {'message': 'Недостаточно средств на балансе', 'code': 'insufficient_balance'}},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            WithdrawalRequest.objects.create(user=user, amount=amount, payout_destination=payout_destination)
 
         return Response({'ok': True})

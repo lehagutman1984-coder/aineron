@@ -281,7 +281,10 @@ function errorBody(t: Awaited<ReturnType<typeof getTranslations>>) {
   "error": {
     "message": "${t("errorBodyMessage", { need: formatMoney(300), have: formatMoney(150) })}",
     "type": "insufficient_quota",
-    "code": "insufficient_quota"
+    "code": "insufficient_quota",
+    "required_kopecks": 30000,
+    "balance_kopecks": 15000,
+    "top_up_url": "${SITE_URL}/account/billing/"
   }
 }`;
 }
@@ -510,8 +513,19 @@ function buildGroups(t: Awaited<ReturnType<typeof getTranslations>>): DocGroup[]
               <LI>{t("intro.billingItem1")}</LI>
               <LI>{t.rich("intro.billingItem2", { a: (chunks) => <A href="/account/analytics/">{chunks}</A> })}</LI>
               <LI>{t.rich("intro.billingItem3", { b: (chunks) => <b>{chunks}</b>, ic: (chunks) => <IC>{chunks}</IC> })}</LI>
-              <LI>{t.rich("intro.billingItem4", { ic: (chunks) => <IC>{chunks}</IC> })}</LI>
+              <LI>{t.rich("intro.billingItem4", { b: (chunks) => <b>{chunks}</b>, ic: (chunks) => <IC>{chunks}</IC> })}</LI>
+              <LI>{t.rich("intro.billingItem5", { ic: (chunks) => <IC>{chunks}</IC> })}</LI>
             </UL>
+            <H3>{t("intro.billingHeadersTitle")}</H3>
+            <p className="mb-2 text-[15px]">{t("intro.billingHeadersIntro")}</p>
+            <DataTable
+              head={[t("intro.billingHeadersHeadName"), t("intro.billingHeadersHeadMeaning")]}
+              rows={[
+                [<IC>X-Aineron-Balance-Kopecks</IC>, t("intro.billingHeaderBalance")],
+                [<IC>X-Aineron-Low-Balance</IC>, t.rich("intro.billingHeaderLow", { ic: (chunks) => <IC>{chunks}</IC> })],
+                [<IC>X-Aineron-Top-Up-Url</IC>, t("intro.billingHeaderTopUp")],
+              ]}
+            />
             <Callout type="tip">
               {t.rich("intro.billingTip", { ic: (chunks) => <IC>{chunks}</IC> })}
             </Callout>
@@ -536,6 +550,9 @@ function buildGroups(t: Awaited<ReturnType<typeof getTranslations>>): DocGroup[]
                 ]}
               />
             </div>
+            <Callout type="tip">
+              {t.rich("intro.errors402Fields", { ic: (chunks) => <IC>{chunks}</IC> })}
+            </Callout>
           </DocSection>
         ),
       },
@@ -634,6 +651,9 @@ function buildGroups(t: Awaited<ReturnType<typeof getTranslations>>): DocGroup[]
               <Method>POST</Method> <Path>/api/v1/embeddings</Path>
             </p>
             <StandaloneCodeBlock code={EMBEDDINGS} />
+            <p className="pt-2 text-[15px]">
+              {t.rich("endpoints.embeddingsModels", { ic: (chunks) => <IC>{chunks}</IC> })}
+            </p>
           </DocSection>
         ),
       },

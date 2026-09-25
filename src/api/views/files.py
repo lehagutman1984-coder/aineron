@@ -108,6 +108,23 @@ class UserFileDeleteView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+def _precharge_text_generation(user, assistant_message, network):
+    """Pre-charge за НЕ-медиа (текстовую) перегенерацию/вариацию до постановки задачи.
+    Медиа (fal-ai) списывается внутри generate_ai_response. Раньше для текстовых сетей
+    здесь вообще не списывали (has_enough - лишь ранняя проверка), а пост-списание в
+    aitext/tasks.py (TEXT_BILLING_ENABLED) выключено на проде - генерация была бесплатной.
+    Reference уникален по сообщению ассистента. Возвращает True, если списано (или не требуется)."""
+    if network.provider == 'fal-ai':
+        return True
+    from aitext.billing import record_message_billing
+    cost = network.cost_kopecks
+    ref = f'chat:{assistant_message.id}'
+    if not user.spend_kopecks(cost, type='spend', reference=ref):
+        return False
+    record_message_billing(assistant_message, ref, cost)
+    return True
+
+
 class GenerationRerunView(APIView):
     """Sprint 4: повторная генерация по тем же параметрам (тот же seed/настройки).
 
@@ -179,6 +196,18 @@ class GenerationRerunView(APIView):
             chat=chat, role='assistant', content='', status=Message.Status.PENDING,
         )
 
+        if not _precharge_text_generation(request.user, assistant_message, network):
+            assistant_message.delete()
+            user_message.delete()
+            from core.money import format_rub
+            return Response({
+                'error': {
+                    'message': em('files_insufficient_funds', needed=format_rub(cost_kopecks), have=format_rub(request.user.balance_kopecks)),
+                    'type': 'insufficient_quota',
+                    'code': 'insufficient_quota',
+                }
+            }, status=402)
+
         chat.updated_at = timezone.now()
         chat.save(update_fields=['updated_at'])
 
@@ -232,9 +261,19 @@ class GenerationUpscaleView(APIView):
                 }
             }, status=402)
 
+        # Апскейл - платный апстрим-вызов. Раньше для изображений без чата
+        # (message=null - результаты /images/generations) цена была 0, и task
+        # пропускал списание (`if cost_kopecks`): один платный кадр давал
+        # неограниченный бесплатный апскейл. Плюс цена брала цену ИСХОДНОЙ
+        # модели (дешёвая исходная -> апскейл ниже себестоимости). Теперь есть
+        # нижняя граница UPSCALE_MIN_PRICE_KOPECKS.
+        from django.conf import settings as _dj_settings
         network = gen.message.chat.network if gen.message_id else None
-        cost_kopecks = network.cost_kopecks if network else 0
-        if cost_kopecks and not request.user.has_enough_kopecks(cost_kopecks):
+        cost_kopecks = max(
+            network.cost_kopecks if network else 0,
+            int(getattr(_dj_settings, 'UPSCALE_MIN_PRICE_KOPECKS', 200)),
+        )
+        if not request.user.has_enough_kopecks(cost_kopecks):
             from core.money import format_rub
             return Response({
                 'error': {
@@ -346,8 +385,22 @@ class GenerationVariationsView(APIView):
             assistant_message = Message.objects.create(
                 chat=chat, role='assistant', content='', status=Message.Status.PENDING,
             )
+            if not _precharge_text_generation(request.user, assistant_message, network):
+                assistant_message.delete()
+                user_message.delete()
+                break
             generate_ai_response.delay(assistant_message.id)
             message_ids.append(assistant_message.id)
+
+        if not message_ids:
+            from core.money import format_rub
+            return Response({
+                'error': {
+                    'message': em('files_insufficient_funds_variations', needed=format_rub(total_cost_kopecks), count=count, have=format_rub(request.user.balance_kopecks)),
+                    'type': 'insufficient_quota',
+                    'code': 'insufficient_quota',
+                }
+            }, status=402)
 
         chat.updated_at = timezone.now()
         chat.save(update_fields=['updated_at'])
@@ -390,7 +443,7 @@ class GenerationDescribeView(APIView):
         from api.services.billing import flat_charge, flat_refund, insufficient_error_payload
         import uuid as _uuid
         describe_price = int(getattr(_dj_settings, 'API_DESCRIBE_IMAGE_KOPECKS', 50))
-        describe_ref = f'api-describe:{_uuid.uuid4().hex[:8]}'
+        describe_ref = f'api-describe:{_uuid.uuid4().hex[:16]}'
         try:
             describe_org = flat_charge(request.user, None, describe_price, describe_ref)
         except InsufficientStarsError as e:

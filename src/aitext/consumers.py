@@ -95,6 +95,9 @@ class YjsConsumer(AsyncWebsocketConsumer):
 
 # ─────────────────────────── Voice Consumer (half-duplex) ─────────────────────
 
+VOICE_MAX_BLOB_BYTES = 5 * 1024 * 1024  # 5 МБ на один голосовой ход
+
+
 class VoiceConsumer(AsyncWebsocketConsumer):
     """
     Half-duplex voice: client sends audio blob → ASR → LLM → TTS → audio back.
@@ -123,12 +126,20 @@ class VoiceConsumer(AsyncWebsocketConsumer):
         if bytes_data is None:
             return
 
-        # Check balance before processing
-        has_balance = await self._check_balance()
-        if not has_balance:
+        # Ограничение размера аудиоблоба (ASR оплачивается апстриму за минуту записи).
+        if len(bytes_data) > VOICE_MAX_BLOB_BYTES:
+            await self.send(text_data=json.dumps({'error': 'Audio message is too large'}))
+            return
+
+        # Предоплата хода (ASR + LLM + TTS) ДО обращения к апстриму. Раньше проверялось
+        # лишь `pages_count > 0`, а списания не было вовсе - платный конвейер был
+        # бесплатным при остатке от 1 руб. Возврат - если ход не дал результата.
+        charge_ref = await self._charge_turn()
+        if not charge_ref:
             await self.send(text_data=json.dumps({'error': em('insufficient_balance_voice')}))
             return
 
+        delivered = False
         try:
             transcript = await self._transcribe(bytes_data)
             if not transcript:
@@ -143,9 +154,13 @@ class VoiceConsumer(AsyncWebsocketConsumer):
             audio_bytes = await self._tts(llm_reply)
             if audio_bytes:
                 await self.send(bytes_data=audio_bytes)
+            delivered = True
         except Exception as e:
             logger.error('VoiceConsumer error: %s', e)
             await self.send(text_data=json.dumps({'error': em('voice_processing_error')}))
+        finally:
+            if not delivered:
+                await self._refund_turn(charge_ref)
 
     @database_sync_to_async
     def _check_access(self):
@@ -153,9 +168,21 @@ class VoiceConsumer(AsyncWebsocketConsumer):
         return Chat.objects.filter(pk=int(self.chat_id), user=self.user).exists()
 
     @database_sync_to_async
-    def _check_balance(self):
-        self.user.refresh_from_db(fields=['pages_count'])
-        return self.user.pages_count > 0
+    def _charge_turn(self):
+        """Атомарно списывает цену хода. Возвращает reference или None при нехватке средств."""
+        import uuid
+        from django.conf import settings
+        ref = f'voice-ws:{uuid.uuid4().hex[:16]}'
+        price = int(getattr(settings, 'VOICE_TURN_PRICE_KOPECKS', 250))
+        if not self.user.spend_kopecks(price, type='spend', reference=ref):
+            return None
+        return ref
+
+    @database_sync_to_async
+    def _refund_turn(self, ref):
+        from django.conf import settings
+        price = int(getattr(settings, 'VOICE_TURN_PRICE_KOPECKS', 250))
+        self.user.add_kopecks(price, type='refund', reference=ref)
 
     @database_sync_to_async
     def _transcribe(self, audio_bytes: bytes) -> str:

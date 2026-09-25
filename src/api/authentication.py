@@ -30,6 +30,21 @@ class APIKeyAuthentication(BaseAuthentication):
                 }
             })
 
+        # Ключ не должен обходить блокировки аккаунта: ShadowBanMiddleware и is_active
+        # работают только на веб-сессиях, Bearer-пользователь их не видел вовсе - забаненные
+        # (фарм триала с одного IP) и деактивированные аккаунты продолжали тратить баланс по API.
+        key_user = api_key.user
+        if not key_user.is_active or (
+            getattr(key_user, 'shadow_banned', False) and not key_user.has_made_real_payment()
+        ):
+            raise AuthenticationFailed({
+                'error': {
+                    'message': 'Account is blocked.',
+                    'type': 'invalid_request_error',
+                    'code': 'account_blocked',
+                }
+            })
+
         api_key.last_used_at = timezone.now()
         api_key.save(update_fields=['last_used_at'])
 

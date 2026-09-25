@@ -14,7 +14,7 @@ from aitext.models import (
     NeuralNetwork, Chat, Message, NeuralNetworkDailyUsage, FileAttachment,
 )
 from aitext.tasks import generate_ai_response, get_client_for_network
-from aitext.limits import consume_free_message
+from aitext.limits import claim_free_slot, consume_free_message
 from aitext.code_formatter import CodeFormatter
 from users.models import UserSpending
 from api.permissions import IsEmailVerified
@@ -118,10 +118,8 @@ class ChatListCreateView(ListCreateAPIView):
             usage, _ = NeuralNetworkDailyUsage.objects.get_or_create(
                 user=request.user, network=network, date=today, defaults={'count': 0}
             )
-            if usage.count < network.messages_limit:
+            if claim_free_slot(usage, network.messages_limit):
                 deduct_stars = False
-                usage.count += 1
-                usage.save()
 
         # Бесплатные модели (Groq): без списания, но с дневным лимитом на пользователя
         if network.is_free:
@@ -289,10 +287,8 @@ class SendMessageView(APIView):
             usage, _ = NeuralNetworkDailyUsage.objects.get_or_create(
                 user=request.user, network=network, date=today, defaults={'count': 0}
             )
-            if usage.count < network.messages_limit:
+            if claim_free_slot(usage, network.messages_limit):
                 deduct_stars = False
-                usage.count += 1
-                usage.save()
 
         # Бесплатные модели (Groq): без списания, но с дневным лимитом на пользователя
         if network.is_free:
@@ -416,10 +412,8 @@ class StreamMessageView(APIView):
             usage, _ = NeuralNetworkDailyUsage.objects.get_or_create(
                 user=request.user, network=network, date=today, defaults={'count': 0}
             )
-            if usage.count < network.messages_limit:
+            if claim_free_slot(usage, network.messages_limit):
                 deduct_stars = False
-                usage.count += 1
-                usage.save()
 
         # Бесплатные модели (Groq): без списания, но с дневным лимитом на пользователя
         if network.is_free:
@@ -741,9 +735,24 @@ class StreamMessageView(APIView):
                 # ── Sprint 3: генерация доп. вариантов ответа ─────────────────
                 # main bubble = Краткий; variants array holds the two alternatives only
                 all_variants = []
-                if variants_mode and full_text and not (
-                    deduct_stars and not user.has_enough_kopecks(max(1, -(-cost_kopecks // 2)))
-                ):
+                # Варианты = 2 дополнительных платных вызова модели. Раньше они шли и
+                # без оплаты (unlimited-тариф / бесплатные модели: deduct_stars=False), а
+                # результат spend_kopecks после генерации игнорировался (except: pass) -
+                # гонка давала бесплатные варианты. Теперь: только при deduct_stars и
+                # только после успешного атомарного списания надбавки (×0.5) ДО вызовов.
+                _variants_paid = False
+                _extra_kopecks = 0
+                if variants_mode and full_text and deduct_stars:
+                    import math as _math
+                    _extra_kopecks = max(1, _math.ceil(cost_kopecks * 0.5))
+                    _variants_paid = bool(user.spend_kopecks(
+                        _extra_kopecks, type='spend', reference=f'chat-variants:{assist_msg_id}'))
+                    if _variants_paid:
+                        UserSpending.objects.create(
+                            user=user, amount=_extra_kopecks // 100, amount_kopecks=_extra_kopecks,
+                            description=f"Генерация вариантов ответа (×1.5) в чате с {network.name}",
+                        )
+                if _variants_paid:
                     _base_msgs = [m for m in messages_for_api if not (
                         m.get("role") == "system" and "КРАТКИЙ ответ" in m.get("content", "")
                     )][:-1]  # all except brief suffix + last user msg
@@ -789,17 +798,9 @@ class StreamMessageView(APIView):
                     # вариантов (_gen_variant, отдельные не-стриминговые вызовы)
                     # не включает. Стоимость вариантов покрывает именно эта
                     # надбавка ×0.5, а не overage; складывать их нельзя.
-                    if all_variants and deduct_stars:
-                        import math as _math
-                        _extra_kopecks = max(1, _math.ceil(cost_kopecks * 0.5))
-                        try:
-                            user.spend_kopecks(_extra_kopecks, type='spend', reference=f'chat-variants:{assist_msg_id}')
-                            UserSpending.objects.create(
-                                user=user, amount=_extra_kopecks // 100, amount_kopecks=_extra_kopecks,
-                                description=f"Генерация вариантов ответа (×1.5) в чате с {network.name}",
-                            )
-                        except Exception:
-                            pass
+                    # Ни одного варианта не получилось - возвращаем надбавку.
+                    if not all_variants:
+                        user.add_kopecks(_extra_kopecks, type='refund', reference=f'chat-variants:{assist_msg_id}')
 
                 assistant_message.save()
 

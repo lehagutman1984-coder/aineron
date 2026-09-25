@@ -1,4 +1,5 @@
 import logging
+from aitext.limits import claim_free_slot
 from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
@@ -63,10 +64,8 @@ class CompareView(APIView):
                 usage, _ = NeuralNetworkDailyUsage.objects.get_or_create(
                     user=request.user, network=network, date=today, defaults={'count': 0}
                 )
-                if usage.count < network.messages_limit:
+                if claim_free_slot(usage, network.messages_limit):
                     deduct = False
-                    usage.count += 1
-                    usage.save()
 
             if network.provider != 'fal-ai' and deduct:
                 total_cost_kopecks += cost_kopecks

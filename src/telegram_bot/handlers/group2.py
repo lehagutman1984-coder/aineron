@@ -61,10 +61,31 @@ def _charge(group_config, tg_user) -> bool:
     cost = network.cost_kopecks if network else 100
     if group_config:
         from telegram_bot.handlers.group import _charge_org
-        return _charge_org(group_config.organization, cost)
+        # _charge_org возвращает кортеж (ok, cost_rub): раньше он возвращался
+        # как есть, кортеж всегда truthy -> `if not await charge(...)` никогда
+        # не срабатывал для org-групп, и неоплаченная генерация отдавалась.
+        ok, _cost_rub = _charge_org(group_config.organization, cost)
+        return bool(ok)
     if tg_user is not None:
-        return tg_user.user.spend_kopecks(cost, type='spend')
+        return bool(tg_user.user.spend_kopecks(cost, type='spend'))
     return False
+
+
+def _refund(group_config, tg_user):
+    """Возврат предоплаты за групповую AI-операцию при сбое генерации."""
+    network = _cheap_network()
+    cost = network.cost_kopecks if network else 100
+    if group_config:
+        from django.conf import settings
+        from django.db.models import F
+        from core.money import kopecks_to_rub
+        from teams.models import Organization
+        org_rate = int(getattr(settings, 'ORG_KOPECKS_PER_STAR', 100))
+        Organization.objects.filter(id=group_config.organization_id).update(
+            balance_rub=F('balance_rub') + kopecks_to_rub(cost * org_rate // 100)
+        )
+    elif tg_user is not None:
+        tg_user.user.add_kopecks(cost, type='refund')
 
 
 def _has_enough(group_config, tg_user) -> bool:
@@ -134,6 +155,7 @@ def _usage_stat(group_config, days: int = 30):
 get_group_config = sync_to_async(_get_group_config, thread_sensitive=True)
 llm = sync_to_async(_llm, thread_sensitive=True)
 charge = sync_to_async(_charge, thread_sensitive=True)
+refund = sync_to_async(_refund, thread_sensitive=True)
 has_enough = sync_to_async(_has_enough, thread_sensitive=True)
 fetch_log = sync_to_async(_fetch_log, thread_sensitive=True)
 usage_stat = sync_to_async(_usage_stat, thread_sensitive=True)
@@ -170,6 +192,11 @@ async def cmd_summary(message: Message, tg_user=None):
         return
 
     dialogue = '\n'.join(f'{l.from_name}: {l.text}' for l in logs)
+    # Предоплата ДО генерации (раньше - после: has_enough не атомарен, и
+    # параллельные /summary проходили проверку разом, а платили лишь некоторые).
+    if not await charge(group_config, tg_user):
+        await message.reply('Баланс организации исчерпан — пополните на сайте.')
+        return
     status = await message.reply(f'Готовлю сводку за {hours} ч ({len(logs)} сообщений)...')
     summary = await llm(
         'Сделай структурированную сводку группового обсуждения: главные темы, '
@@ -178,11 +205,8 @@ async def cmd_summary(message: Message, tg_user=None):
         f'Диалог:\n{dialogue[:12000]}',
     )
     if not summary:
+        await refund(group_config, tg_user)  # нет платы за ошибку LLM
         await status.edit_text('Не удалось подготовить сводку, попробуйте позже.')
-        return
-    # Списание только после успешной генерации — нет платы за ошибку LLM
-    if not await charge(group_config, tg_user):
-        await status.edit_text('Баланс организации исчерпан — пополните на сайте.')
         return
     from telegram_bot.utils import telegram_format, split_message
     parts_out = split_message(telegram_format(summary))
@@ -218,6 +242,10 @@ async def cmd_quiz(message: Message, tg_user=None):
         await message.reply('Недостаточно средств для генерации квиза.')
         return
 
+    # Предоплата ДО генерации; при сбое - возврат (см. /summary).
+    if not await charge(group_config, tg_user):
+        await message.reply('Недостаточно средств для генерации квиза.')
+        return
     status = await message.reply(f'Готовлю квиз по теме «{topic[:60]}»...')
     raw = await llm(
         f'Составь квиз из 3 вопросов по теме «{topic}». Верни ТОЛЬКО JSON-массив:\n'
@@ -234,11 +262,8 @@ async def cmd_quiz(message: Message, tg_user=None):
     except Exception:
         pass
     if not questions:
+        await refund(group_config, tg_user)  # нет платы за ошибку LLM
         await status.edit_text('Не удалось сгенерировать квиз, попробуйте другую тему.')
-        return
-    # Списание только после успешной генерации вопросов
-    if not await charge(group_config, tg_user):
-        await status.edit_text('Недостаточно средств для генерации квиза.')
         return
 
     try:

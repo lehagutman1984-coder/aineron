@@ -776,12 +776,10 @@ def payment_fail(request):
     logger.info(f"[ERR] Платеж отменен: InvId={inv_id}")
 
     if inv_id:
-        try:
-            payment = PaymentHistory.objects.get(invoice_id=inv_id)
-            payment.status = 'failed'
-            payment.save()
-        except PaymentHistory.DoesNotExist:
-            pass
+        # Только pending -> failed. Эндпоинт без аутентификации: раньше любой GET с чужим
+        # InvId перезаписывал статус УЖЕ УСПЕШНОГО платежа на 'failed' (ломал
+        # has_made_real_payment и открывал повторную обработку Result URL).
+        PaymentHistory.objects.filter(invoice_id=inv_id, status='pending').update(status='failed')
 
     return redirect('/users/pages/pricing/?payment=failed')
 
@@ -797,8 +795,8 @@ def payment_fail_page(request):
     if inv_id:
         try:
             payment = PaymentHistory.objects.get(invoice_id=inv_id)
-            payment.status = 'failed'
-            payment.save()
+            # Только pending -> failed (эндпоинт без аутентификации, см. payment_fail).
+            PaymentHistory.objects.filter(pk=payment.pk, status='pending').update(status='failed')
 
             if payment.payment_type == 'subscription':
                 messages.error(request, f'Оплата тарифа {payment.tariff.display_name} не прошла. Попробуйте снова.')
@@ -1240,63 +1238,29 @@ def update_auto_renewal(request):
 @login_required
 @require_POST
 def apply_promo_code(request):
-    """Применение промокода"""
+    """Применение промокода (legacy-эндпоинт).
+
+    Раньше дублировал логику и обходил защиту от фарма: не было дневного лимита
+    погашений с IP (PROMO_REDEEM_IP_DAILY_CAP), проверки подтверждённого email и
+    атомарного usage_limit. Теперь - тонкая обёртка над users.promo.redeem_promo_code
+    (единственная точка погашения, как в API и в боте)."""
     try:
+        from ipware import get_client_ip
+        from users.promo import redeem_promo_code
+
         data = json.loads(request.body)
-        code = data.get('code', '').strip()
-        if not code:
-            return JsonResponse({'success': False, 'message': 'Введите промокод'})
-
-        # Поиск без учёта регистра
-        try:
-            promo = PromoCode.objects.get(code__iexact=code)
-        except PromoCode.DoesNotExist:
-            return JsonResponse({'success': False, 'message': 'Неверный промокод'})
-
-        if not promo.is_valid():
-            return JsonResponse({'success': False, 'message': 'Промокод недействителен'})
-
-        if promo.discount_percent > 0:
-            return JsonResponse({'success': False, 'message': f'Это скидочный промокод (−{promo.discount_percent}% на тариф) — введите его при покупке тарифа'})
-
-        # Проверяем, не использовал ли пользователь этот промокод ранее
-        if UsedPromoCode.objects.filter(user=request.user, promo_code=promo).exists():
-            return JsonResponse({'success': False, 'message': 'Вы уже использовали этот промокод'})
-
-        # Фиксируем использование ДО начисления: unique-констрейнт (user, promo_code)
-        # гасит гонку двойного применения — параллельный запрос упадёт здесь,
-        # а не после того, как деньги уже начислены.
-        from django.db import IntegrityError, transaction
-        from django.db.models import F
-        try:
-            # savepoint — без него IntegrityError оставляет внешнюю транзакцию
-            # "отравленной" в любом контексте с внешним atomic-блоком (тесты,
-            # ATOMIC_REQUESTS). См. тот же фикс в api/views/billing.py (B12).
-            with transaction.atomic():
-                UsedPromoCode.objects.create(user=request.user, promo_code=promo)
-        except IntegrityError:
-            return JsonResponse({'success': False, 'message': 'Вы уже использовали этот промокод'})
-        request.user.add_kopecks(
-            promo.kopecks, type='promo',
-            reference=f'promo:{promo.id}:{request.user.id}',
+        client_ip, _ = get_client_ip(request)
+        result = redeem_promo_code(
+            request.user, data.get('code', ''), intl=settings.INTL_MODE,
+            ip=client_ip, require_email_verified=True,
         )
-        PromoCode.objects.filter(pk=promo.pk).update(used_count=F('used_count') + 1)
-
-        # Создаём запись в истории платежей
-        PaymentHistory.objects.create(
-            user=request.user,
-            payment_type='promo',
-            amount=0,
-            pages_count=promo.stars,
-            status='success',
-            paid_at=timezone.now(),
-            description=f"Активация промокода {promo.code}"
-        )
-
+        if not result['ok']:
+            return JsonResponse({'success': False, 'message': result['message']})
+        request.user.refresh_from_db(fields=['pages_count'])
         return JsonResponse({
             'success': True,
-            'message': f'Промокод активирован! +{promo.stars} ₽',
-            'new_balance': request.user.pages_count
+            'message': result['message'],
+            'new_balance': request.user.pages_count,
         })
     except Exception as e:
         logger.error(f"Ошибка активации промокода: {e}")
@@ -1394,11 +1358,20 @@ def request_withdrawal(request):
         user = request.user
         if not user.can_convert_to_rub:
             return JsonResponse({'success': False, 'message': 'Вывод недоступен'})
-        if user.rub_balance < amount:
-            return JsonResponse({'success': False, 'message': 'Недостаточно средств'})
-        user.rub_balance -= amount
-        user.save()
-        WithdrawalRequest.objects.create(user=user, amount=amount, payout_destination=payout_destination)
+        # Раньше: amount не проверялся на > 0 (отрицательная сумма ПОВЫШАЛА rub_balance),
+        # чтение-вычитание-save() без блокировки давало двойной вывод при параллельных
+        # запросах, а полный user.save() затирал balance_kopecks/pages_count устаревшей копией.
+        if not amount.is_finite() or amount <= 0:
+            return JsonResponse({'success': False, 'message': 'Неверная сумма'})
+        from django.db import transaction
+        from django.db.models import F
+        with transaction.atomic():
+            updated = CustomUser.objects.filter(
+                pk=user.pk, can_convert_to_rub=True, rub_balance__gte=amount,
+            ).update(rub_balance=F('rub_balance') - amount)
+            if not updated:
+                return JsonResponse({'success': False, 'message': 'Недостаточно средств'})
+            WithdrawalRequest.objects.create(user=user, amount=amount, payout_destination=payout_destination)
         return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
