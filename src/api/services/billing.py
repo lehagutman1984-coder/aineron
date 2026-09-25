@@ -272,10 +272,15 @@ def insufficient_error_payload(exc) -> dict:
 def _insufficient(required: int, available: int):
     from api.exceptions import InsufficientStarsError
     from core.money import format_rub
-    exc = InsufficientStarsError(
-        f'Недостаточно средств: для запроса нужно минимум {format_rub(required)}, '
-        f'на балансе {format_rub(available)}. Пополните баланс: {top_up_url()}'
-    )
+    from django.conf import settings
+    if getattr(settings, 'INTL_MODE', False):
+        # aineron.net: сообщения API - на английском (внешние клиенты/SDK).
+        msg = (f'Insufficient balance: this request needs at least {format_rub(required)}, '
+               f'your balance is {format_rub(available)}. Top up your balance: {top_up_url()}')
+    else:
+        msg = (f'Недостаточно средств: для запроса нужно минимум {format_rub(required)}, '
+               f'на балансе {format_rub(available)}. Пополните баланс: {top_up_url()}')
+    exc = InsufficientStarsError(msg)
     exc.required_kopecks = required
     exc.balance_kopecks = available
     return exc
