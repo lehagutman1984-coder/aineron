@@ -73,6 +73,22 @@ class ImagePromptEnhanceView(APIView):
         elif style:
             user_content = f"{prompt}\n\nDesired style: {style}."
 
+        # Списание ДО вызова модели (раньше эндпоинт был бесплатным для любого
+        # пользователя, в т.ч. с нулевым балансом). При ошибке модели - возврат.
+        from django.conf import settings as _dj_settings
+        from api.exceptions import InsufficientStarsError
+        from api.services.billing import flat_charge, flat_refund, insufficient_error_payload
+        import uuid as _uuid
+        price = int(getattr(_dj_settings, 'API_ENHANCE_PROMPT_KOPECKS', 10))
+        charge_ref = f'api-enhance:{_uuid.uuid4().hex[:8]}'
+        try:
+            charge_org = flat_charge(request.user, None, price, charge_ref)
+        except InsufficientStarsError as e:
+            return Response(
+                {'error': insufficient_error_payload(e)},
+                status=status.HTTP_402_PAYMENT_REQUIRED,
+            )
+
         try:
             # Импорт здесь, чтобы избежать тяжёлой загрузки Celery-зависимостей на старте.
             from aitext.tasks import get_laozhang_client
@@ -91,6 +107,7 @@ class ImagePromptEnhanceView(APIView):
             if not enhanced:
                 raise ValueError('Пустой ответ от модели')
         except Exception as e:  # noqa: BLE001
+            flat_refund(request.user, charge_org, price, charge_ref)
             logger.error(f'[enhance-prompt] Ошибка улучшения промпта для {request.user.email}: {e}')
             return Response(
                 {'error': {'message': 'Не удалось улучшить промпт. Попробуйте ещё раз.', 'type': 'api_error', 'code': 'enhance_failed'}},

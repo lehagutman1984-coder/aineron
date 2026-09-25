@@ -16,7 +16,14 @@ from drf_spectacular.utils import extend_schema
 from aitext.models import NeuralNetwork
 from aitext.tasks import get_laozhang_client
 from api.exceptions import InsufficientStarsError
-from api.services.billing import charge_for_tokens
+from api.services.billing import (
+    estimate_messages_tokens,
+    estimate_text_tokens,
+    insufficient_error_payload,
+    release_reservation,
+    reserve_for_request,
+    settle_reservation,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -85,26 +92,32 @@ class AnthropicMessagesView(APIView):
         user = request.user
         api_key = getattr(request, 'api_key', None)
 
-        if user.balance_kopecks <= 0:
-            from core.money import format_rub
-            return Response(
-                {'type': 'error', 'error': {'type': 'overloaded_error', 'message': f'Insufficient balance: {format_rub(user.balance_kopecks)}'}},
-                status=status.HTTP_402_PAYMENT_REQUIRED,
-            )
-
         openai_messages = _anthropic_to_openai_messages(messages, system)
         client = get_laozhang_client()
 
         from core.model_limits import clamp_max_tokens
         max_tokens = clamp_max_tokens(max_tokens, network.model_name)
 
+        # Резерв средств ДО обращения к апстриму (см. api/services/billing.py):
+        # раньше проверялся только `balance <= 0`, а списание шло после ответа.
+        try:
+            res = reserve_for_request(
+                user, api_key, network, estimate_messages_tokens(openai_messages), max_tokens,
+            )
+        except InsufficientStarsError as e:
+            return Response(
+                {'type': 'error', 'error': insufficient_error_payload(e)},
+                status=status.HTTP_402_PAYMENT_REQUIRED,
+            )
+
         try:
             completion = client.chat.completions.create(
                 model=network.model_name,
                 messages=openai_messages,
-                max_tokens=max_tokens,
+                max_tokens=res.max_tokens,
             )
         except Exception as e:
+            release_reservation(res, 'upstream error')
             logger.error(f'[API] Ошибка anthropic endpoint для {user.email}: {e}')
             return Response(
                 {'type': 'error', 'error': {'type': 'api_error', 'message': str(e)}},
@@ -118,15 +131,8 @@ class AnthropicMessagesView(APIView):
             'total_tokens': usage_obj.total_tokens if usage_obj else 0,
         }
 
-        try:
-            charge_for_tokens(user, network, usage, api_key=api_key)
-        except InsufficientStarsError as e:
-            return Response(
-                {'type': 'error', 'error': {'type': 'overloaded_error', 'message': str(e)}},
-                status=status.HTTP_402_PAYMENT_REQUIRED,
-            )
-
         content_text = completion.choices[0].message.content or ''
+        settle_reservation(res, usage, estimate_text_tokens(content_text))
         request_id = uuid.uuid4().hex[:12]
 
         # Anthropic-формат ответа
@@ -143,4 +149,7 @@ class AnthropicMessagesView(APIView):
                 'output_tokens': usage['completion_tokens'],
             },
         }
-        return Response(result)
+        response = Response(result)
+        for _h, _v in res.headers().items():
+            response[_h] = _v
+        return response

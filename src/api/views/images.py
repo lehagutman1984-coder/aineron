@@ -38,7 +38,16 @@ class ImageGenerationsView(APIView):
         data = request.data
         model_id = data.get('model', '')
         prompt = data.get('prompt', '').strip()
-        n = int(data.get('n', 1))
+        try:
+            n = int(data.get('n', 1))
+        except (TypeError, ValueError):
+            n = 0
+        if not 1 <= n <= 10:
+            # n <= 0 давал нулевую/отрицательную цену (spend_kopecks(<=0) - no-op).
+            return Response(
+                {'error': {'message': "'n' must be an integer between 1 and 10", 'type': 'invalid_request_error', 'code': 'invalid_n'}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         size = data.get('size', '1024x1024')
         response_format = data.get('response_format', 'url')
 
@@ -75,8 +84,21 @@ class ImageGenerationsView(APIView):
                 status=status.HTTP_402_PAYMENT_REQUIRED,
             )
 
-        # Списываем заранее (как в web-чате)
-        user.spend_kopecks(cost_kopecks, type='spend', reference=f'api-image:{request_id}')
+        # Списываем заранее (как в web-чате). Результат обязателен: has_enough_kopecks
+        # выше - лишь ранняя проверка, параллельные запросы проходят её все разом.
+        if not user.spend_kopecks(cost_kopecks, type='spend', reference=f'api-image:{request_id}'):
+            from core.money import format_rub
+            user.refresh_from_db(fields=['balance_kopecks'])
+            return Response(
+                {
+                    'error': {
+                        'message': f'Insufficient balance. Need {format_rub(cost_kopecks)}, have {format_rub(user.balance_kopecks)}.',
+                        'type': 'insufficient_quota',
+                        'code': 'insufficient_quota',
+                    }
+                },
+                status=status.HTTP_402_PAYMENT_REQUIRED,
+            )
         stars_returned = False
 
         try:

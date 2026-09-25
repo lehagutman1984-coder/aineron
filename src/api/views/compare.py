@@ -104,7 +104,10 @@ class CompareView(APIView):
 
             if network.provider != 'fal-ai' and deduct:
                 from aitext.billing import record_message_billing
-                request.user.spend_kopecks(cost_kopecks, type='spend', reference=f'compare:{assistant_message.id}')
+                if not request.user.spend_kopecks(cost_kopecks, type='spend', reference=f'compare:{assistant_message.id}'):
+                    # Гонка с параллельным запросом: средств уже нет - без оплаты не генерируем.
+                    chat.delete()
+                    continue
                 UserSpending.objects.create(
                     user=request.user, amount=cost_kopecks // 100, amount_kopecks=cost_kopecks,
                     description=f"Сравнение моделей: {network.name}",
@@ -126,6 +129,16 @@ class CompareView(APIView):
                 'cost': cost_kopecks // 100,
                 'cost_kopecks': cost_kopecks,
             })
+
+        if not items:
+            from core.money import format_rub
+            return Response({
+                'error': {
+                    'message': f'Недостаточно средств. Нужно {format_rub(total_cost_kopecks)}, у вас {format_rub(request.user.balance_kopecks)}.',
+                    'type': 'insufficient_quota',
+                    'code': 'insufficient_quota',
+                }
+            }, status=402)
 
         return Response({
             'items': items,

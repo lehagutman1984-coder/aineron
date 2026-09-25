@@ -166,7 +166,9 @@ def create_chat(request):
         # Для моделей изображений/видео списание происходит в задаче Celery
         if network.provider != 'fal-ai' and deduct_stars:
             from aitext.billing import record_message_billing
-            request.user.spend_kopecks(cost_kopecks, type='spend', reference=f'chat:{assistant_message.id}')
+            if not request.user.spend_kopecks(cost_kopecks, type='spend', reference=f'chat:{assistant_message.id}'):
+                chat.delete()
+                return JsonResponse({'success': False, 'message': 'Недостаточно средств на балансе. Пополните баланс.'})
             UserSpending.objects.create(
                 user=request.user,
                 amount=cost_kopecks // 100,
@@ -278,7 +280,12 @@ def send_message(request, chat_id):
         # Для моделей изображений/видео списание происходит в задаче Celery
         if network.provider != 'fal-ai' and deduct_stars:
             from aitext.billing import record_message_billing
-            request.user.spend_kopecks(cost_kopecks, type='spend', reference=f'chat:{assistant_message.id}')
+            if not request.user.spend_kopecks(cost_kopecks, type='spend', reference=f'chat:{assistant_message.id}'):
+                from aitext.models import FileAttachment
+                FileAttachment.objects.filter(message=user_message).update(message=None)
+                assistant_message.delete()
+                user_message.delete()
+                return JsonResponse({'success': False, 'message': 'Недостаточно средств на балансе. Пополните баланс.'})
             UserSpending.objects.create(
                 user=request.user,
                 amount=cost_kopecks // 100,

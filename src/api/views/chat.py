@@ -1,6 +1,9 @@
 """
 POST /api/v1/chat/completions — OpenAI-совместимый эндпоинт.
 Поддерживает stream=true (SSE) и обычный режим.
+
+Биллинг: резерв -> генерация -> расчёт (см. api/services/billing.py).
+Средства резервируются ДО обращения к апстриму; без баланса генерации нет.
 """
 import json
 import logging
@@ -18,7 +21,14 @@ from aitext.models import NeuralNetwork
 from aitext.tasks import get_laozhang_client
 from api.exceptions import InsufficientStarsError
 from api.permissions import IsEmailVerified
-from api.services.billing import charge_for_tokens, refund_kopecks
+from api.services.billing import (
+    estimate_messages_tokens,
+    estimate_text_tokens,
+    insufficient_error_payload,
+    release_reservation,
+    reserve_for_request,
+    settle_reservation,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -67,15 +77,20 @@ def _build_openai_response(completion, model_id: str, request_id: str) -> dict:
     }
 
 
-def _stream_completion(user, network, messages, kwargs, api_key):
-    """Генератор SSE-чанков. Списывает звёзды после завершения стрима."""
+def _stream_completion(res, kwargs):
+    """
+    Генератор SSE-чанков. Средства уже зарезервированы (res) до старта стрима;
+    после завершения возвращаем неиспользованную часть, а при обрыве/ошибке
+    считаем по фактически отданному тексту (fail-closed) либо возвращаем резерв
+    целиком, если клиент не получил ни одного символа.
+    """
+    user = res.user
     client = get_laozhang_client()
-    request_id = uuid.uuid4().hex[:12]
-    model_id = network.model_name
+    request_id = res.request_id
+    model_id = res.network.model_name
 
-    prompt_tokens = 0
-    completion_tokens = 0
-    kopecks_charged = 0
+    usage = {}
+    streamed_text = []
 
     try:
         with client.chat.completions.create(stream=True, **kwargs) as stream:
@@ -83,10 +98,13 @@ def _stream_completion(user, network, messages, kwargs, api_key):
                 delta = chunk.choices[0].delta if chunk.choices else None
                 content = delta.content if delta else ''
                 finish_reason = chunk.choices[0].finish_reason if chunk.choices else None
+                if content:
+                    streamed_text.append(content)
 
                 delta_out = {'content': content or ''}
                 if delta is not None and getattr(delta, 'tool_calls', None):
                     delta_out = {'tool_calls': [tc.model_dump() for tc in delta.tool_calls]}
+                    streamed_text.append(str(delta_out['tool_calls']))
 
                 chunk_data = {
                     'id': f'chatcmpl-{request_id}',
@@ -105,27 +123,23 @@ def _stream_completion(user, network, messages, kwargs, api_key):
 
                 # Токены приходят в последнем чанке (usage)
                 if hasattr(chunk, 'usage') and chunk.usage:
-                    prompt_tokens = chunk.usage.prompt_tokens or 0
-                    completion_tokens = chunk.usage.completion_tokens or 0
+                    usage = {
+                        'prompt_tokens': chunk.usage.prompt_tokens or 0,
+                        'completion_tokens': chunk.usage.completion_tokens or 0,
+                        'total_tokens': chunk.usage.total_tokens or 0,
+                    }
 
-        # Биллинг после завершения стрима
-        total_tokens = prompt_tokens + completion_tokens
-        usage = {
-            'prompt_tokens': prompt_tokens,
-            'completion_tokens': completion_tokens,
-            'total_tokens': total_tokens,
-        }
-        try:
-            kopecks_charged = charge_for_tokens(user, network, usage, api_key=api_key)
-        except InsufficientStarsError as e:
-            logger.warning(f'[API] Нехватка баланса после стрима для {user.email}: {e}')
-
+        # Расчёт после завершения стрима (возврат разницы / доплата перерасхода)
+        settle_reservation(res, usage, estimate_text_tokens(''.join(streamed_text)))
         yield 'data: [DONE]\n\n'
 
     except Exception as e:
         logger.error(f'[API] Ошибка стриминга для {user.email}: {e}')
-        if kopecks_charged:
-            refund_kopecks(user, kopecks_charged, reason='stream error')
+        # Клиенту ничего не отдали - возвращаем резерв; иначе считаем по отданному.
+        if streamed_text:
+            settle_reservation(res, usage, estimate_text_tokens(''.join(streamed_text)))
+        else:
+            release_reservation(res, 'stream error')
         error_event = {
             'error': {
                 'message': str(e),
@@ -135,10 +149,18 @@ def _stream_completion(user, network, messages, kwargs, api_key):
         }
         yield f'data: {json.dumps(error_event)}\n\n'
         yield 'data: [DONE]\n\n'
+    finally:
+        # Клиент оборвал соединение (GeneratorExit) либо иной BaseException:
+        # резерв не должен «зависнуть» и не должен вернуться целиком за уже
+        # сгенерированный (и оплаченный нами) текст.
+        if not res.closed:
+            if streamed_text:
+                settle_reservation(res, usage, estimate_text_tokens(''.join(streamed_text)))
+            else:
+                release_reservation(res, 'client disconnected')
 
 
 class ChatCompletionsView(APIView):
-    """POST /api/v1/chat/completions"""
     permission_classes = [IsAuthenticated, IsEmailVerified]
 
     @extend_schema(
@@ -175,20 +197,6 @@ class ChatCompletionsView(APIView):
         user = request.user
         api_key = getattr(request, 'api_key', None)
 
-        # Предварительная проверка баланса (примерная, точное списание после ответа)
-        if user.balance_kopecks <= 0:
-            from core.money import format_rub
-            return Response(
-                {
-                    'error': {
-                        'message': f'Insufficient balance. Current balance: {format_rub(user.balance_kopecks)}.',
-                        'type': 'insufficient_quota',
-                        'code': 'insufficient_quota',
-                    }
-                },
-                status=status.HTTP_402_PAYMENT_REQUIRED,
-            )
-
         client = get_laozhang_client()
         kwargs = {
             'model': network.model_name,
@@ -200,10 +208,36 @@ class ChatCompletionsView(APIView):
         # всегда клампится к потолку модели — иначе на моделях с дорогим
         # выходом (Claude и т.п.) при плоской ошибке пересчёта можно запросить
         # произвольно длинный ответ дешевле реальной себестоимости.
-        kwargs['max_tokens'] = clamp_max_tokens(
+        requested_max = clamp_max_tokens(
             max_tokens or (network.max_tokens if network.max_tokens > 0 else None),
             network.model_name,
         )
+
+        # Резерв средств ДО обращения к апстриму (инцидент 2026-09-25: проверка
+        # `balance <= 0` + списание после ответа давали бесплатные ответы Opus
+        # при балансе в несколько рублей). max_tokens сужается под баланс; если
+        # не хватает даже на минимальный ответ - 402 без вызова апстрима.
+        # `n` (несколько вариантов ответа) умножает выходные токены - резервируем
+        # под все варианты, иначе перерасход над резервом остался бы неоплаченным.
+        try:
+            n_choices = int(data.get('n', 1))
+        except (TypeError, ValueError):
+            n_choices = 0
+        if not 1 <= n_choices <= 4:
+            return Response(
+                {'error': {'message': "'n' must be an integer between 1 and 4", 'type': 'invalid_request_error', 'code': 'invalid_n'}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            res = reserve_for_request(
+                user, api_key, network, estimate_messages_tokens(messages), requested_max * n_choices,
+            )
+        except InsufficientStarsError as e:
+            return Response(
+                {'error': insufficient_error_payload(e)},
+                status=status.HTTP_402_PAYMENT_REQUIRED,
+            )
+        kwargs['max_tokens'] = max(1, res.max_tokens // n_choices)
 
         # 2026-09-06: раньше эти стандартные OpenAI-параметры молча
         # игнорировались (200 OK без единого предупреждения) — контрактный
@@ -215,7 +249,10 @@ class ChatCompletionsView(APIView):
                 kwargs[_param] = data[_param]
 
         if stream:
-            gen = _stream_completion(user, network, messages, kwargs, api_key)
+            # usage в последнем чанке нужен для точного расчёта (без него
+            # settle_reservation считает по оценке, а не по факту апстрима).
+            kwargs['stream_options'] = {'include_usage': True}
+            gen = _stream_completion(res, kwargs)
             response = StreamingHttpResponse(
                 gen,
                 content_type='text/event-stream',
@@ -223,13 +260,15 @@ class ChatCompletionsView(APIView):
             )
             response['Cache-Control'] = 'no-cache'
             response['X-Accel-Buffering'] = 'no'
+            for _h, _v in res.headers().items():
+                response[_h] = _v
             return response
 
         # Non-streaming
-        kopecks_charged = 0
         try:
             completion = client.chat.completions.create(**kwargs)
         except Exception as e:
+            release_reservation(res, 'upstream error')
             logger.error(f'[API] Ошибка laozhang для {user.email}: {e}')
             return Response(
                 {'error': {'message': str(e), 'type': 'api_error', 'code': 'upstream_error'}},
@@ -242,15 +281,13 @@ class ChatCompletionsView(APIView):
             'completion_tokens': usage_obj.completion_tokens if usage_obj else 0,
             'total_tokens': usage_obj.total_tokens if usage_obj else 0,
         }
-
         try:
-            kopecks_charged = charge_for_tokens(user, network, usage, api_key=api_key)
-        except InsufficientStarsError as e:
-            return Response(
-                {'error': {'message': str(e), 'type': 'insufficient_quota', 'code': 'insufficient_quota'}},
-                status=status.HTTP_402_PAYMENT_REQUIRED,
-            )
+            _text = completion.choices[0].message.content or ''
+        except Exception:
+            _text = ''
+        settle_reservation(res, usage, estimate_text_tokens(_text))
 
-        request_id = uuid.uuid4().hex[:12]
-        result = _build_openai_response(completion, model_id, request_id)
-        return Response(result)
+        response = Response(_build_openai_response(completion, model_id, res.request_id))
+        for _h, _v in res.headers().items():
+            response[_h] = _v
+        return response

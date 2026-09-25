@@ -383,6 +383,22 @@ class GenerationDescribeView(APIView):
         else:
             return Response({'error': {'message': em('files_image_not_found'), 'type': 'not_found', 'code': None}}, status=404)
 
+        # Списание ДО вызова модели (раньше vision-описание было бесплатным для
+        # любого пользователя, в т.ч. с нулевым балансом). При ошибке - возврат.
+        from django.conf import settings as _dj_settings
+        from api.exceptions import InsufficientStarsError
+        from api.services.billing import flat_charge, flat_refund, insufficient_error_payload
+        import uuid as _uuid
+        describe_price = int(getattr(_dj_settings, 'API_DESCRIBE_IMAGE_KOPECKS', 50))
+        describe_ref = f'api-describe:{_uuid.uuid4().hex[:8]}'
+        try:
+            describe_org = flat_charge(request.user, None, describe_price, describe_ref)
+        except InsufficientStarsError as e:
+            return Response(
+                {'error': insufficient_error_payload(e)},
+                status=402,
+            )
+
         try:
             # 2026-09-06: раньше собственный сырой OpenAI-клиент напрямую на
             # laozhang.ai в обход FallbackClient — единственное место в
@@ -415,9 +431,11 @@ class GenerationDescribeView(APIView):
             )
             prompt_text = resp.choices[0].message.content.strip() if resp.choices else ""
             if not prompt_text:
+                flat_refund(request.user, describe_org, describe_price, describe_ref)
                 return Response({'error': {'message': em('files_describe_failed'), 'type': 'api_error', 'code': None}}, status=500)
             return Response({'prompt': prompt_text})
         except Exception as e:
+            flat_refund(request.user, describe_org, describe_price, describe_ref)
             return Response({'error': {'message': str(e), 'type': 'api_error', 'code': None}}, status=500)
 
 

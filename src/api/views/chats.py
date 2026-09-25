@@ -26,6 +26,19 @@ from api.serializers.chats import (
 logger = logging.getLogger(__name__)
 
 
+def _insufficient_funds_response(user, cost_kopecks):
+    """402 при нехватке средств (единый ответ для проверки и для атомарного списания)."""
+    from core.money import format_rub
+    user.refresh_from_db(fields=['balance_kopecks'])
+    return Response({
+        'error': {
+            'message': f'Недостаточно средств. Нужно {format_rub(cost_kopecks)}, у вас {format_rub(user.balance_kopecks)}.',
+            'type': 'insufficient_quota',
+            'code': 'insufficient_quota',
+        }
+    }, status=402)
+
+
 class ChatListCreateView(ListCreateAPIView):
     """GET — список чатов (безопасно для неподтверждённых); POST — создать
     чат С ПЕРВЫМ СООБЩЕНИЕМ (см. create() ниже) — это и есть основной путь
@@ -160,7 +173,11 @@ class ChatListCreateView(ListCreateAPIView):
 
         if network.provider != 'fal-ai' and deduct_stars:
             from aitext.billing import record_message_billing
-            request.user.spend_kopecks(cost_kopecks, type='spend', reference=f'chat:{assistant_message.id}')
+            # Атомарное списание: результат обязателен (has_enough_kopecks выше -
+            # лишь ранняя проверка, параллельные запросы её проходят все разом).
+            if not request.user.spend_kopecks(cost_kopecks, type='spend', reference=f'chat:{assistant_message.id}'):
+                chat.delete()
+                return _insufficient_funds_response(request.user, cost_kopecks)
             UserSpending.objects.create(
                 user=request.user, amount=cost_kopecks // 100, amount_kopecks=cost_kopecks,
                 description=f"Сообщение в чате с {network.name}",
@@ -311,7 +328,12 @@ class SendMessageView(APIView):
 
         if network.provider != 'fal-ai' and deduct_stars:
             from aitext.billing import record_message_billing
-            request.user.spend_kopecks(cost_kopecks, type='spend', reference=f'chat:{assistant_message.id}')
+            # Атомарное списание: результат обязателен (has_enough_kopecks выше -
+            # лишь ранняя проверка, параллельные запросы её проходят все разом).
+            if not request.user.spend_kopecks(cost_kopecks, type='spend', reference=f'chat:{assistant_message.id}'):
+                assistant_message.delete()
+                user_message.delete()
+                return _insufficient_funds_response(request.user, cost_kopecks)
             UserSpending.objects.create(
                 user=request.user, amount=cost_kopecks // 100, amount_kopecks=cost_kopecks,
                 description=f"Сообщение в чате с {network.name}",
@@ -438,7 +460,11 @@ class StreamMessageView(APIView):
             ).update(message=user_message)
 
         if deduct_stars:
-            request.user.spend_kopecks(cost_kopecks, type='spend', reference=f'chat:{assistant_message.id}')
+            if not request.user.spend_kopecks(cost_kopecks, type='spend', reference=f'chat:{assistant_message.id}'):
+                FileAttachment.objects.filter(message=user_message).update(message=None)
+                assistant_message.delete()
+                user_message.delete()
+                return _insufficient_funds_response(request.user, cost_kopecks)
             UserSpending.objects.create(
                 user=request.user, amount=cost_kopecks // 100, amount_kopecks=cost_kopecks,
                 description=f"Сообщение в чате с {network.name}",
@@ -715,7 +741,9 @@ class StreamMessageView(APIView):
                 # ── Sprint 3: генерация доп. вариантов ответа ─────────────────
                 # main bubble = Краткий; variants array holds the two alternatives only
                 all_variants = []
-                if variants_mode and full_text:
+                if variants_mode and full_text and not (
+                    deduct_stars and not user.has_enough_kopecks(max(1, -(-cost_kopecks // 2)))
+                ):
                     _base_msgs = [m for m in messages_for_api if not (
                         m.get("role") == "system" and "КРАТКИЙ ответ" in m.get("content", "")
                     )][:-1]  # all except brief suffix + last user msg
@@ -1022,7 +1050,8 @@ class RegenerateView(APIView):
             # быть уникальным на попытку, иначе повторные списания схлопываются
             # в no-op по unique(type, reference) и регенерация становится бесплатной.
             billing_ref = f'chat-regen:{last_assistant.id}:{_uuid.uuid4().hex[:12]}'
-            request.user.spend_kopecks(cost_kopecks, type='spend', reference=billing_ref)
+            if not request.user.spend_kopecks(cost_kopecks, type='spend', reference=billing_ref):
+                return _insufficient_funds_response(request.user, cost_kopecks)
             UserSpending.objects.create(
                 user=request.user, amount=cost_kopecks // 100, amount_kopecks=cost_kopecks,
                 description=f"Повторная генерация в чате с {network.name}",

@@ -50,9 +50,14 @@ def deliver_webhook(self, webhook_id: int, event_type: str, payload: dict):
 def process_batch_job(self, job_id: int):
     """Обрабатывает все элементы пакетного задания последовательно."""
     from api.models import BatchJob, BatchJobItem
-    from api.services.billing import charge_for_tokens
+    from api.exceptions import InsufficientStarsError
+    from api.services.billing import (
+        estimate_messages_tokens, estimate_text_tokens, release_reservation,
+        reserve_for_request, settle_reservation,
+    )
     from aitext.models import NeuralNetwork
     from aitext.tasks import get_laozhang_client
+    from core.model_limits import clamp_max_tokens
 
     try:
         job = BatchJob.objects.get(pk=job_id)
@@ -85,27 +90,52 @@ def process_batch_job(self, job_id: int):
             temperature = body.get('temperature', 0.7)
             max_tokens = body.get('max_tokens')
 
-            # Резолвим сеть
+            # Резолвим сеть. Раньше при неизвестной модели запрос всё равно уходил
+            # апстриму (подставлялась 'gpt-4o-mini') и НЕ биллился, а сбой
+            # списания только логировался - бесплатная генерация. Теперь модель
+            # обязана быть в каталоге (как в /chat/completions), иначе item падает
+            # без вызова апстрима.
             network = None
             if model_id:
-                try:
-                    network = NeuralNetwork.objects.get(model_name=model_id, is_active=True)
-                except NeuralNetwork.DoesNotExist:
-                    pass
+                network = NeuralNetwork.objects.filter(
+                    model_name=model_id, is_active=True, provider='openrouter',
+                ).first()
+            if network is None:
+                raise ValueError(f"model_not_found: model '{model_id}' is not available")
 
-            kwargs = {'model': model_id or 'gpt-4o-mini', 'messages': messages, 'temperature': temperature}
-            if max_tokens:
-                kwargs['max_tokens'] = max_tokens
-            elif network and network.max_tokens > 0:
-                kwargs['max_tokens'] = network.max_tokens
+            requested_max = clamp_max_tokens(
+                max_tokens or (network.max_tokens if network.max_tokens > 0 else None),
+                network.model_name,
+            )
+            # Резерв ДО вызова апстрима; при нехватке средств item падает как
+            # insufficient_quota (апстрим не вызывается).
+            try:
+                res = reserve_for_request(
+                    job.user, job.api_key, network, estimate_messages_tokens(messages), requested_max,
+                )
+            except InsufficientStarsError as billing_err:
+                raise ValueError(f'insufficient_quota: {billing_err}')
 
-            completion = client.chat.completions.create(**kwargs)
+            kwargs = {
+                'model': model_id,
+                'messages': messages,
+                'temperature': temperature,
+                'max_tokens': res.max_tokens,
+            }
+
+            try:
+                completion = client.chat.completions.create(**kwargs)
+            except Exception:
+                release_reservation(res, 'batch upstream error')
+                raise
             usage_obj = completion.usage
             usage = {
                 'prompt_tokens': usage_obj.prompt_tokens if usage_obj else 0,
                 'completion_tokens': usage_obj.completion_tokens if usage_obj else 0,
                 'total_tokens': usage_obj.total_tokens if usage_obj else 0,
             }
+            _text = completion.choices[0].message.content or ''
+            settle_reservation(res, usage, estimate_text_tokens(_text))
 
             response_body = {
                 'id': f'chatcmpl-batch-{item.pk}',
@@ -116,19 +146,13 @@ def process_batch_job(self, job_id: int):
                         'index': 0,
                         'message': {
                             'role': 'assistant',
-                            'content': completion.choices[0].message.content or '',
+                            'content': _text,
                         },
                         'finish_reason': completion.choices[0].finish_reason or 'stop',
                     }
                 ],
                 'usage': usage,
             }
-
-            if network:
-                try:
-                    charge_for_tokens(job.user, network, usage, api_key=job.api_key)
-                except Exception as billing_err:
-                    logger.warning(f'[Batch] Billing failed for item {item.pk}: {billing_err}')
 
             item.response_body = response_body
             item.status = BatchJobItem.Status.COMPLETED

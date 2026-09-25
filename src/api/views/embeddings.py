@@ -13,7 +13,16 @@ from drf_spectacular.utils import extend_schema
 
 from aitext.models import NeuralNetwork
 from aitext.providers import get_embedding_client
-from api.services.billing import charge_for_tokens
+from decimal import Decimal
+
+from api.exceptions import InsufficientStarsError
+from api.services.billing import (
+    estimate_text_tokens,
+    insufficient_error_payload,
+    release_reservation,
+    reserve_for_request,
+    settle_reservation,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -25,12 +34,34 @@ DEFAULT_EMBEDDING_MODEL = 'text-embedding-3-small'
 FREE_EMBEDDING_MODEL = 'nvidia/llama-nemotron-embed-vl-1b-v2:free'
 
 
+class _EmbeddingPricing:
+    """Прайс модели эмбеддингов. В каталоге NeuralNetwork эмбеддингов нет (на
+    проде проверено 2026-09-25), поэтому раньше `network is None` -> списание
+    молча пропускалось и эндпоинт был бесплатным для любой платной модели.
+    Ставки - копейки за 1000 токенов, с запасом над себестоимостью апстрима
+    (text-embedding-3-small ~0,16 коп/1k, -large ~1 коп/1k)."""
+
+    def __init__(self, model_name: str, kopecks_per_1k: str):
+        self.model_name = model_name
+        self.kopecks_per_1k_tokens = Decimal(kopecks_per_1k)
+        self.cost_kopecks = 0
+        self.cost_per_message = 1
+        self.pk = None
+
+
+EMBEDDING_PRICES = {
+    'text-embedding-3-small': '1',
+    'text-embedding-3-large': '4',
+    'text-embedding-ada-002': '1',
+}
+
+
 def _resolve_embedding_model(model_id: str):
-    """Поиск модели эмбеддингов в БД или возврат дефолтной."""
-    try:
-        return NeuralNetwork.objects.get(model_name=model_id, is_active=True)
-    except NeuralNetwork.DoesNotExist:
+    """Модель эмбеддингов с ценой или None, если модель платно не продаётся."""
+    price = EMBEDDING_PRICES.get(model_id)
+    if price is None:
         return None
+    return _EmbeddingPricing(model_id, price)
 
 
 class EmbeddingsView(APIView):
@@ -68,12 +99,28 @@ class EmbeddingsView(APIView):
         api_key = getattr(request, 'api_key', None)
         is_free_model = model_id == FREE_EMBEDDING_MODEL
 
-        if not is_free_model and user.balance_kopecks <= 0:
-            from core.money import format_rub
-            return Response(
-                {'error': {'message': f'Insufficient balance: {format_rub(user.balance_kopecks)}.', 'type': 'insufficient_quota', 'code': 'insufficient_quota'}},
-                status=status.HTTP_402_PAYMENT_REQUIRED,
-            )
+        network = None
+        if not is_free_model:
+            network = _resolve_embedding_model(model_id)
+            if network is None:
+                return Response(
+                    {'error': {'message': f"Embedding model '{model_id}' not found. Available: "
+                                          f"{', '.join(sorted(EMBEDDING_PRICES))}",
+                               'type': 'invalid_request_error', 'code': 'model_not_found'}},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        # Резерв ДО обращения к апстриму (без баланса запрос не уходит).
+        res = None
+        if not is_free_model:
+            prompt_est = sum(estimate_text_tokens(x if isinstance(x, str) else str(x)) for x in inputs)
+            try:
+                res = reserve_for_request(user, api_key, network, prompt_est, 1)
+            except InsufficientStarsError as e:
+                return Response(
+                    {'error': insufficient_error_payload(e)},
+                    status=status.HTTP_402_PAYMENT_REQUIRED,
+                )
 
         if is_free_model:
             from aitext.providers import get_openrouter_free_client
@@ -89,6 +136,8 @@ class EmbeddingsView(APIView):
                 encoding_format=encoding_format,
             )
         except Exception as e:
+            if res is not None:
+                release_reservation(res, 'upstream error')
             logger.error(f'[API] Ошибка эмбеддингов для {user.email}: {e}')
             return Response(
                 {'error': {'message': str(e), 'type': 'api_error', 'code': 'upstream_error'}},
@@ -100,15 +149,9 @@ class EmbeddingsView(APIView):
         total_tokens = usage_obj.total_tokens if usage_obj else len(' '.join(inputs)) // 4
         usage = {'prompt_tokens': total_tokens, 'completion_tokens': 0, 'total_tokens': total_tokens}
 
-        # Для эмбеддингов ищем сеть или биллим по минимуму. Бесплатная модель —
-        # без списаний.
-        if not is_free_model:
-            network = _resolve_embedding_model(model_id)
-            if network:
-                try:
-                    charge_for_tokens(user, network, usage, api_key=api_key)
-                except Exception:
-                    pass  # Не блокируем ответ из-за ошибки биллинга
+        # Расчёт: возврат неиспользованной части резерва (бесплатная модель - без списаний).
+        if res is not None:
+            settle_reservation(res, usage, total_tokens)
 
         result = {
             'object': 'list',
@@ -126,4 +169,8 @@ class EmbeddingsView(APIView):
                 'total_tokens': total_tokens,
             },
         }
-        return Response(result)
+        response = Response(result)
+        if res is not None:
+            for _h, _v in res.headers().items():
+                response[_h] = _v
+        return response

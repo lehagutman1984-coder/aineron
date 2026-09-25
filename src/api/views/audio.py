@@ -3,6 +3,7 @@ POST /api/v1/audio/transcriptions — Whisper-совместимая транс�
 POST /api/v1/audio/speech — TTS (text-to-speech).
 """
 import logging
+import uuid
 
 from django.http import HttpResponse
 from rest_framework.views import APIView
@@ -14,6 +15,8 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from drf_spectacular.utils import extend_schema
 
 from aitext.providers import get_utility_client
+from api.exceptions import InsufficientStarsError
+from api.services.billing import flat_charge, flat_refund, insufficient_error_payload
 
 logger = logging.getLogger(__name__)
 
@@ -51,10 +54,15 @@ class AudioTranscriptionsView(APIView):
 
         user = request.user
         ASR_COST_KOPECKS = 100  # 1 ₽ за транскрипцию
-        if not user.has_enough_kopecks(ASR_COST_KOPECKS):
-            from core.money import format_rub
+        api_key = getattr(request, 'api_key', None)
+        # Списываем ДО обращения к апстриму (раньше - после, и неудачное списание
+        # лишь логировалось: апстрим уже выставил нам счёт). При ошибке - возврат.
+        asr_ref = f'api-asr:{uuid.uuid4().hex[:8]}'
+        try:
+            org = flat_charge(user, api_key, ASR_COST_KOPECKS, asr_ref)
+        except InsufficientStarsError as e:
             return Response(
-                {'error': {'message': f'Insufficient balance: {format_rub(user.balance_kopecks)}.', 'type': 'insufficient_quota', 'code': 'insufficient_quota'}},
+                {'error': insufficient_error_payload(e)},
                 status=status.HTTP_402_PAYMENT_REQUIRED,
             )
 
@@ -73,16 +81,12 @@ class AudioTranscriptionsView(APIView):
 
             transcription = client.audio.transcriptions.create(**kwargs)
         except Exception as e:
+            flat_refund(user, org, ASR_COST_KOPECKS, asr_ref)
             logger.error(f'[API] Ошибка транскрипции для {user.email}: {e}')
             return Response(
                 {'error': {'message': str(e), 'type': 'api_error', 'code': 'upstream_error'}},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
-
-        # Списываем фиксированную ставку (1 ₽) за транскрипцию
-        import uuid as _uuid
-        if not user.spend_kopecks(ASR_COST_KOPECKS, type='spend', reference=f'api-asr:{_uuid.uuid4().hex[:8]}'):
-            logger.warning(f'[API] ASR: не удалось списать средства у {user.email} (баланс исчерпан гонкой)')
 
         if response_format == 'json':
             return Response({'text': getattr(transcription, 'text', str(transcription))})
@@ -122,10 +126,13 @@ class AudioSpeechView(APIView):
 
         user = request.user
         TTS_COST_KOPECKS = 100  # 1 ₽ за синтез
-        if not user.has_enough_kopecks(TTS_COST_KOPECKS):
-            from core.money import format_rub
+        api_key = getattr(request, 'api_key', None)
+        tts_ref = f'api-tts:{uuid.uuid4().hex[:8]}'
+        try:
+            org = flat_charge(user, api_key, TTS_COST_KOPECKS, tts_ref)
+        except InsufficientStarsError as e:
             return Response(
-                {'error': {'message': f'Insufficient balance: {format_rub(user.balance_kopecks)}.', 'type': 'insufficient_quota', 'code': 'insufficient_quota'}},
+                {'error': insufficient_error_payload(e)},
                 status=status.HTTP_402_PAYMENT_REQUIRED,
             )
 
@@ -139,16 +146,12 @@ class AudioSpeechView(APIView):
                 speed=speed,
             )
         except Exception as e:
+            flat_refund(user, org, TTS_COST_KOPECKS, tts_ref)
             logger.error(f'[API] Ошибка TTS для {user.email}: {e}')
             return Response(
                 {'error': {'message': str(e), 'type': 'api_error', 'code': 'upstream_error'}},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
-
-        # Списываем фиксированную ставку (1 ₽) за TTS
-        import uuid as _uuid
-        if not user.spend_kopecks(TTS_COST_KOPECKS, type='spend', reference=f'api-tts:{_uuid.uuid4().hex[:8]}'):
-            logger.warning(f'[API] TTS: не удалось списать средства у {user.email} (баланс исчерпан гонкой)')
 
         content_types = {
             'mp3': 'audio/mpeg', 'opus': 'audio/opus',
