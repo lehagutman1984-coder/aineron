@@ -829,7 +829,11 @@ class CustomUser(AbstractUser):
         self.tariff = free_tariff
         self.active_subscription = free_subscription
         self.save(update_fields=['tariff', 'active_subscription'])
-        self.set_kopecks(free_tariff.balance_grant_kopecks)
+        # Баланс НЕ трогаем. Раньше здесь был set_kopecks(грант free-тарифа) - абсолютная
+        # перезапись: при окончании подписки (или неудачном автопродлении) пользователь терял
+        # всё, что лежало на рублёвом балансе, включая реальные пополнения, и получал обратно
+        # только стартовые 10 руб. Баланс - деньги клиента (подписка и пополнения зачисляются
+        # на один кошелёк и неразличимы), возврат на бесплатный тариф меняет только тариф.
         return free_subscription
 
     def verify_email(self):

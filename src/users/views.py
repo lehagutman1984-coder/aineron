@@ -637,6 +637,9 @@ def create_robokassa_payment(request):
         logger.error(f"[ERR] Ошибка создания платежа: {e}")
         return JsonResponse({'success': False, 'message': str(e)}, status=500)
 
+from django.db import transaction  # noqa: E402  (обработка Result URL атомарна)
+
+
 @csrf_exempt
 def payment_success(request):
     """Обработка успешного платежа (Result URL)"""
@@ -656,79 +659,92 @@ def payment_success(request):
             try:
                 payment = PaymentHistory.objects.get(invoice_id=inv_id)
 
-                # Атомарный гейт: два одновременных POST Result URL не пройдут оба —
-                # выигрывает один UPDATE, второй получает rowcount=0 и выходит.
-                claimed = PaymentHistory.objects.filter(
-                    pk=payment.pk,
-                ).exclude(status='success').update(status='success', paid_at=timezone.now())
-                if not claimed:
-                    logger.info(f"[WARN] Платеж {inv_id} уже был обработан")
-                    return HttpResponse(f"OK{inv_id}")
-                payment.refresh_from_db(fields=['status', 'paid_at'])
-
-                user = payment.user
-
-                if payment.payment_type == 'subscription':
-                    tariff = payment.tariff
-                    if not tariff:
-                        logger.error(f"[ERR] Для платежа {inv_id} не указан тариф")
+                # Вся обработка оплаты - ОДНА транзакция: раньше гейт status='success' коммитился
+                # сразу, а зачисление/активация тарифа шли после; сбой между ними (падение процесса,
+                # исключение) оставлял платёж 'success' без денег у клиента, а повтор Result URL от
+                # Robokassa видел «уже обработан» и ничего не начислял. Теперь при сбое всё откатывается,
+                # ответ 500, Robokassa повторит запрос. Параллельный дубль по-прежнему отсекается гейтом.
+                with transaction.atomic():
+                    # Атомарный гейт: два одновременных POST Result URL не пройдут оба —
+                    # выигрывает один UPDATE, второй получает rowcount=0 и выходит.
+                    claimed = PaymentHistory.objects.filter(
+                        pk=payment.pk,
+                    ).exclude(status='success').update(status='success', paid_at=timezone.now())
+                    if not claimed:
+                        logger.info(f"[WARN] Платеж {inv_id} уже был обработан")
                         return HttpResponse(f"OK{inv_id}")
+                    payment.refresh_from_db(fields=['status', 'paid_at'])
 
-                    if user.active_subscription:
-                        subscription = user.active_subscription
-                        subscription.expires_at = timezone.now() + timedelta(days=tariff.duration_days)
-                        subscription.tariff = tariff
-                        subscription.robokassa_invoice_id = inv_id
-                        subscription.status = 'active'
-                        subscription.is_active = True
-                        subscription.save()
-                        logger.info(f"[RENEW] Продление подписки для {user.email} +{tariff.pages_count} страниц")
-                    else:
-                        subscription = UserSubscription.objects.create(
-                            user=user,
-                            tariff=tariff,
-                            expires_at=timezone.now() + timedelta(days=tariff.duration_days),
-                            auto_renew=True,
-                            robokassa_invoice_id=inv_id,
-                            status='active',
-                            is_active=True
-                        )
-                        user.active_subscription = subscription
+                    user = payment.user
 
-                    user.tariff = tariff
-                    user.save()
+                    if payment.payment_type == 'subscription':
+                        tariff = payment.tariff
+                        if not tariff:
+                            logger.error(f"[ERR] Для платежа {inv_id} не указан тариф")
+                            return HttpResponse(f"OK{inv_id}")
 
-                    # Начисляем баланс атомарно, идемпотентно по invoice_id (защита от повтора вебхука)
-                    user.add_kopecks(tariff.balance_grant_kopecks, type='subscription', reference=inv_id)
-                    user.refresh_from_db(fields=['balance_kopecks', 'pages_count'])
-                    logger.info(f"[PAY] У пользователя {user.email} теперь {user.pages_count} страниц")
-
-                    # Скидочный промокод: фиксируем использование после успешной оплаты
-                    # (get_or_create идемпотентен, счётчик растёт только при первой фиксации)
-                    if payment.promo_code_id:
-                        from django.db.models import F as _Fp
-                        from users.models import PromoCode, UsedPromoCode
-                        _, promo_first_use = UsedPromoCode.objects.get_or_create(
-                            user=user, promo_code_id=payment.promo_code_id,
-                        )
-                        if promo_first_use:
-                            PromoCode.objects.filter(pk=payment.promo_code_id).update(
-                                used_count=_Fp('used_count') + 1,
+                        if user.active_subscription:
+                            subscription = user.active_subscription
+                            subscription.expires_at = timezone.now() + timedelta(days=tariff.duration_days)
+                            subscription.tariff = tariff
+                            subscription.robokassa_invoice_id = inv_id
+                            subscription.status = 'active'
+                            subscription.is_active = True
+                            subscription.save()
+                            logger.info(f"[RENEW] Продление подписки для {user.email} +{tariff.pages_count} страниц")
+                        else:
+                            subscription = UserSubscription.objects.create(
+                                user=user,
+                                tariff=tariff,
+                                expires_at=timezone.now() + timedelta(days=tariff.duration_days),
+                                auto_renew=True,
+                                robokassa_invoice_id=inv_id,
+                                status='active',
+                                is_active=True
                             )
-                            logger.info(f"[PAY] Промокод #{payment.promo_code_id} использован ({user.email}, счёт {inv_id})")
+                            user.active_subscription = subscription
 
-                    # ========== РЕФЕРАЛЬНЫЙ БОНУС ==========
-                    from users.referral import grant_referral_bonus
-                    grant_referral_bonus(user, tariff, reference=f'{inv_id}:referral', context='Робокасса')
+                        user.tariff = tariff
+                        # update_fields: полный save() писал устаревшую копию balance_kopecks/pages_count
+                        # (загружены в начале обработки) и мог затереть параллельное списание.
+                        user.save(update_fields=['tariff', 'active_subscription'])
 
-                elif payment.payment_type == 'pages':
-                    # Кредитуем ровно уплаченную сумму. pages_count*100 совпадал бы с ней
-                    # только при price_per_page=1.00; amount_kopecks корректен при любой цене.
-                    topup_kopecks = payment.amount_kopecks or (payment.pages_count * 100)
-                    user.add_kopecks(topup_kopecks, type='topup', reference=inv_id)
-                    user.refresh_from_db(fields=['balance_kopecks', 'pages_count'])
-                    logger.info(f"[OK] Пользователь {user.email} купил {payment.pages_count} страниц, теперь всего: {user.pages_count}")
+                        # Начисляем баланс атомарно, идемпотентно по invoice_id (защита от повтора вебхука)
+                        user.add_kopecks(tariff.balance_grant_kopecks, type='subscription', reference=inv_id)
+                        user.refresh_from_db(fields=['balance_kopecks', 'pages_count'])
+                        logger.info(f"[PAY] У пользователя {user.email} теперь {user.pages_count} страниц")
 
+                        # Скидочный промокод: фиксируем использование после успешной оплаты
+                        # (get_or_create идемпотентен, счётчик растёт только при первой фиксации)
+                        if payment.promo_code_id:
+                            from django.db.models import F as _Fp
+                            from users.models import PromoCode, UsedPromoCode
+                            _, promo_first_use = UsedPromoCode.objects.get_or_create(
+                                user=user, promo_code_id=payment.promo_code_id,
+                            )
+                            if promo_first_use:
+                                PromoCode.objects.filter(pk=payment.promo_code_id).update(
+                                    used_count=_Fp('used_count') + 1,
+                                )
+                                logger.info(f"[PAY] Промокод #{payment.promo_code_id} использован ({user.email}, счёт {inv_id})")
+
+                        # ========== РЕФЕРАЛЬНЫЙ БОНУС ==========
+                        # Бонус - в собственном savepoint и с перехватом ошибки: его сбой не должен
+                        # откатывать зачисление оплаты клиента (внешняя транзакция).
+                        from users.referral import grant_referral_bonus
+                        try:
+                            with transaction.atomic():
+                                grant_referral_bonus(user, tariff, reference=f'{inv_id}:referral', context='Робокасса')
+                        except Exception as ref_err:
+                            logger.error(f"[ERR] Реферальный бонус для счёта {inv_id} не начислен: {ref_err}")
+
+                    elif payment.payment_type == 'pages':
+                        # Кредитуем ровно уплаченную сумму. pages_count*100 совпадал бы с ней
+                        # только при price_per_page=1.00; amount_kopecks корректен при любой цене.
+                        topup_kopecks = payment.amount_kopecks or (payment.pages_count * 100)
+                        user.add_kopecks(topup_kopecks, type='topup', reference=inv_id)
+                        user.refresh_from_db(fields=['balance_kopecks', 'pages_count'])
+                        logger.info(f"[OK] Пользователь {user.email} купил {payment.pages_count} страниц, теперь всего: {user.pages_count}")
                 # ── Telegram-уведомление об успешной оплате ──
                 try:
                     from telegram_bot.notify import notify_user

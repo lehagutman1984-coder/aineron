@@ -77,6 +77,37 @@ def _apply_referral(user, referral_code):
         pass
 
 
+def _claim_signup_grant_slot() -> bool:
+    """Скоростной лимит выдачи стартового баланса Telegram-аккаунтам без веб-регистрации.
+
+    Веб-регистрация защищена (подтверждение email, shadow-ban по IP), а самостоятельный
+    /start в боте не имеет ни IP, ни email: скрипт мог массово создавать аккаунты и
+    получать стартовые 10 руб. на каждый (бесплатные вызовы платных моделей). Глобальный
+    лимит в час/сутки (settings.TG_SIGNUP_GRANTS_PER_HOUR / _PER_DAY) обрезает массовый
+    фарм: сверх лимита аккаунт создаётся с нулевым балансом (доступно пополнение или
+    привязка веб-аккаунта со своим стартовым балансом). Сбой кэша - fail-open, чтобы
+    не ломать воронку из-за инфраструктуры."""
+    from django.conf import settings
+    from django.core.cache import cache
+    from django.utils import timezone
+
+    per_hour = int(getattr(settings, 'TG_SIGNUP_GRANTS_PER_HOUR', 30))
+    per_day = int(getattr(settings, 'TG_SIGNUP_GRANTS_PER_DAY', 200))
+    now = timezone.now()
+    try:
+        for key, limit, ttl in (
+            (f'tg_signup_grant:h:{now:%Y%m%d%H}', per_hour, 3700),
+            (f'tg_signup_grant:d:{now:%Y%m%d}', per_day, 86500),
+        ):
+            cache.add(key, 0, ttl)
+            if cache.incr(key) > limit:
+                return False
+        return True
+    except Exception as e:
+        logger.warning(f'signup grant limiter unavailable, fail-open: {e}')
+        return True
+
+
 def _create_standalone_account(from_user, lang='', referral_code=None):
     """
     BUG-I: self-serve регистрация прямо в боте, без предварительного
@@ -105,6 +136,12 @@ def _create_standalone_account(from_user, lang='', referral_code=None):
         except IntegrityError:
             # Гонка: параллельный /start (повтор вебхука) уже создал аккаунт.
             user = CustomUser.objects.filter(email=email).first()
+
+    if created and not _claim_signup_grant_slot():
+        # Лимит выдачи стартового баланса исчерпан (возможный массовый фарм) - без гранта.
+        CustomUser.objects.filter(pk=user.pk).update(balance_kopecks=0, pages_count=0)
+        user.refresh_from_db(fields=['balance_kopecks', 'pages_count'])
+        logger.warning(f'Telegram standalone signup grant withheld (rate limit): tg_id={from_user.id}')
 
     referral_applied = False
     if created:

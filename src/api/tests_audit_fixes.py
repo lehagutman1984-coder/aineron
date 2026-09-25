@@ -280,3 +280,109 @@ class TelegramBackgroundChargeTests(TestCase):
         with mock.patch('telegram_bot.handlers.group._charge_org', return_value=(True, Decimal('1.00'))), \
                 mock.patch.object(group2, '_cheap_network', return_value=SimpleNamespace(cost_kopecks=100)):
             self.assertTrue(group2._charge(cfg, None))
+
+
+class ReturnToFreeTariffTests(TestCase):
+    """Возврат на бесплатный тариф раньше перезаписывал баланс на грант (стирал пополнения)."""
+
+    def test_balance_is_preserved(self):
+        from users.models import Tariff
+        paid = Tariff.objects.create(display_name='Paid', price=Decimal('100'), pages_count=100,
+                                     duration_days=30, is_free=False)
+        u = _user(0, 'ft@t.ru')
+        u.activate_paid_tariff(paid, payment_data={'invoice_id': 'ft-1'})
+        u.set_kopecks(123456)
+        u.return_to_free_tariff()
+        u.refresh_from_db()
+        self.assertTrue(u.tariff.is_free)
+        self.assertEqual(u.balance_kopecks, 123456)
+
+
+@override_settings(CACHES=LOCMEM, ROBOKASSA_PASS2='p2')
+class RobokassaAtomicityTests(TestCase):
+    """Сбой между отметкой «оплачено» и зачислением раньше оставлял платёж success без денег."""
+
+    def _sign(self, out_sum, inv_id):
+        import hashlib
+        return hashlib.md5(f'{out_sum}:{inv_id}:p2'.encode()).hexdigest().upper()
+
+    def _post(self, inv_id='9001', out_sum='100.00'):
+        return self.client.post('/users/api/payment-success/', {
+            'OutSum': out_sum, 'InvId': inv_id, 'SignatureValue': self._sign(out_sum, inv_id),
+        })
+
+    def test_failure_rolls_back_claim_and_retry_credits(self):
+        u = _user(0, 'rk@t.ru')
+        before = u.balance_kopecks
+        p = PaymentHistory.objects.create(user=u, payment_type='pages', amount=100, amount_kopecks=10000,
+                                          pages_count=100, status='pending', invoice_id='9001')
+        with mock.patch('users.models.CustomUser.add_kopecks', side_effect=RuntimeError('boom')):
+            r = self._post()
+        self.assertEqual(r.status_code, 500)
+        p.refresh_from_db()
+        self.assertEqual(p.status, 'pending')  # гейт откатился - повтор Robokassa не увидит «уже обработан»
+        r = self._post()
+        self.assertEqual(r.status_code, 200)
+        p.refresh_from_db()
+        u.refresh_from_db()
+        self.assertEqual(p.status, 'success')
+        self.assertEqual(u.balance_kopecks, before + 10000)
+
+    def test_duplicate_delivery_credits_once(self):
+        u = _user(0, 'rk2@t.ru')
+        before = u.balance_kopecks
+        PaymentHistory.objects.create(user=u, payment_type='pages', amount=100, amount_kopecks=10000,
+                                      pages_count=100, status='pending', invoice_id='9002')
+        self._post('9002')
+        self._post('9002')
+        u.refresh_from_db()
+        self.assertEqual(u.balance_kopecks, before + 10000)
+
+    def test_payment_credit_does_not_clobber_concurrent_spend(self):
+        """Полный user.save() писал устаревший баланс поверх параллельного списания."""
+        from users.models import Tariff
+        tariff = Tariff.objects.create(display_name='Sub', price=Decimal('100'), pages_count=100,
+                                       duration_days=30, is_free=False)
+        u = _user(50000, 'rk3@t.ru')
+        PaymentHistory.objects.create(user=u, payment_type='subscription', tariff=tariff, amount=100,
+                                      amount_kopecks=10000, status='pending', invoice_id='9003')
+        real_get = PaymentHistory.objects.get
+
+        def get_then_spend(*a, **kw):
+            obj = real_get(*a, **kw)
+            # параллельное списание после того, как обработчик загрузил пользователя
+            User.objects.get(pk=obj.user_id).spend_kopecks(20000, type='spend', reference='race-1')
+            return obj
+
+        with mock.patch.object(PaymentHistory.objects, 'get', side_effect=get_then_spend):
+            self._post('9003')
+        u.refresh_from_db()
+        # 50000 - 20000 (гонка) + грант тарифа (10000) = 40000; затирание дало бы 60000
+        self.assertEqual(u.balance_kopecks, 50000 - 20000 + tariff.balance_grant_kopecks)
+
+
+@override_settings(CACHES=LOCMEM, TG_SIGNUP_GRANTS_PER_HOUR=2, TG_SIGNUP_GRANTS_PER_DAY=100)
+class TelegramSignupGrantLimitTests(TestCase):
+    def _create(self, tg_id):
+        from telegram_bot.handlers.start import _create_standalone_account
+        fu = SimpleNamespace(id=tg_id, username=f'u{tg_id}', first_name='N')
+        tg_user, created, _ = _create_standalone_account(fu, lang='ru')
+        tg_user.user.refresh_from_db()
+        return tg_user.user
+
+    def test_grant_withheld_over_hourly_cap(self):
+        from django.core.cache import cache
+        cache.clear()
+        a, b, c = self._create(9101), self._create(9102), self._create(9103)
+        self.assertGreater(a.balance_kopecks, 0)  # стартовый грант free-тарифа
+        self.assertGreater(b.balance_kopecks, 0)
+        self.assertEqual(c.balance_kopecks, 0)  # сверх лимита - аккаунт без гранта
+        self.assertEqual(c.pages_count, 0)
+
+    def test_existing_account_not_counted_again(self):
+        from django.core.cache import cache
+        cache.clear()
+        first = self._create(9201)
+        again = self._create(9201)  # повторный /start того же аккаунта
+        self.assertEqual(first.pk, again.pk)
+        self.assertGreater(again.balance_kopecks, 0)
