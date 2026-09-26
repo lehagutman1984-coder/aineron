@@ -82,13 +82,14 @@ from api.views.branch import BranchChatView
 from api.views.kb_stats import ProjectKBStatsView, ProjectFileReindexView, ProjectFileChunksView
 from api.views.deep_research import (
     DeepResearchStartView, DeepResearchStatusView, DeepResearchSaveView,
+    DeepResearchQuoteView,
 )
 from api.views.personas import PersonaListCreateView, PersonaDetailView
 from api.views.arena import ArenaVoteView, ArenaLeaderboardView
 from api.views.knowledge_graph import KnowledgeGraphView
 from api.views.branding import BrandingView
 from api.views.tasks import AITaskListCreateView, AITaskDetailView, AITaskRunNowView
-from api.views.agent import AgentStartView, AgentStatusView
+from api.views.agent import AgentStartView, AgentStatusView, AgentQuoteView
 
 app_name = 'api'
 
@@ -120,6 +121,7 @@ urlpatterns = [
     path('v1/chats/<int:chat_id>/regenerate/', RegenerateView.as_view(), name='chat_regenerate'),
     path('v1/chats/<int:chat_id>/branch/', BranchChatView.as_view(), name='chat_branch'),
     path('v1/chats/<int:chat_id>/research/', DeepResearchStartView.as_view(), name='deep_research_start'),
+    path('v1/chats/<int:chat_id>/research/quote/', DeepResearchQuoteView.as_view(), name='deep_research_quote'),
     path('v1/research/<int:research_id>/', DeepResearchStatusView.as_view(), name='deep_research_status'),
     path('v1/research/<int:research_id>/save/', DeepResearchSaveView.as_view(), name='deep_research_save'),
     path('v1/chats/<int:chat_id>/upload/', ChatFileUploadView.as_view(), name='chat_file_upload'),
@@ -293,6 +295,7 @@ urlpatterns = [
     path('v1/personas/<int:persona_id>/', PersonaDetailView.as_view(), name='persona_detail'),
 
     # ========== Agent Mode на вебе (U4) ==========
+    path('v1/agent/quote/', AgentQuoteView.as_view(), name='agent_quote'),
     path('v1/agent/', AgentStartView.as_view(), name='agent_start'),
     path('v1/agent/<int:run_id>/', AgentStatusView.as_view(), name='agent_status'),
 

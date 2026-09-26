@@ -357,6 +357,7 @@
     "variants": "Variants",
     "researchOn": "Research mode is on. Click to turn off",
     "researchOff": "Deep research — multi-step autonomous analysis with citations",
+    "researchPriceToast": "Research cost on this model: {price}",
     "research": "Research",
     "reasoningOn": "Deep reasoning is on (+{price}). Click to turn off",
     "reasoningOff": "Deep reasoning — the model thinks longer and deeper (+{price})",

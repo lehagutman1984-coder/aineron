@@ -1183,5 +1183,19 @@ export const startDeepResearch = (
 ): Promise<import("./types").DeepResearchStartResponse> =>
   request(`/chats/${chatId}/research/`, { method: "POST", body: JSON.stringify({ question }) });
 
+export interface FeatureQuote {
+  price_kopecks: number;
+  price_display: string;
+  model: string | null;
+  model_dependent: boolean;
+  base_price_kopecks: number;
+  balance_kopecks: number;
+  enough: boolean;
+}
+
+/** Цена исследования на модели чата - показывается ДО запуска (ITEM 1: цена зависит от модели). */
+export const getResearchQuote = (chatId: number): Promise<FeatureQuote> =>
+  request(`/chats/${chatId}/research/quote/`);
+
 export const getResearchStatus = (researchId: number): Promise<import("./types").DeepResearchPollResponse> =>
   request(`/research/${researchId}/`);

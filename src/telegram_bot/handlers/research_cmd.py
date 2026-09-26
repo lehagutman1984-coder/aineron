@@ -40,22 +40,28 @@ def _price_kopecks() -> int:
     return getattr(settings, 'RESEARCH_PRICE_KOPECKS', 1000)
 
 
-def _start_research(tg_user, question: str):
+def _start_research(tg_user, question: str, network_id: int = None, price: int = None):
     """Списание + создание Chat/Message/DeepResearch + постановка задачи.
 
-    Возвращает (research_id, message_id) или (None, причина).
+    network_id / price - выбор, показанный пользователю на экране подтверждения
+    (единый источник цены: core.feature_pricing.resolve_feature). Если не переданы -
+    определяются здесь тем же хелпером. Возвращает (research_id, message_id) или
+    (None, причина).
     """
     from aitext.models import Chat, Message as AiMsg, NeuralNetwork, DeepResearch
     from aitext.tasks import deep_research_task
+    from core.feature_pricing import feature_price_kopecks, resolve_feature
 
     user = tg_user.user
     project = tg_user.active_project  # U3: research в контексте активного проекта
-    network = tg_user.default_network
-    if network is None or not network.is_active:
-        network = (
-            NeuralNetwork.objects.filter(is_active=True, provider='openrouter')
-            .order_by('cost_kopecks').first()
-        )
+
+    network = None
+    if network_id:
+        network = NeuralNetwork.objects.filter(pk=network_id, is_active=True).first()
+    if network is None:
+        network, price = resolve_feature('research', tg_user)
+    elif price is None:
+        price = feature_price_kopecks('research', network)
     if network is None:
         return None, 'no_network'
 
@@ -72,8 +78,8 @@ def _start_research(tg_user, question: str):
         chat=chat, message=assistant_msg, question=question,
     )
 
-    # Идемпотентное списание фиксированной цены (reference research:{message_id})
-    if not user.spend_kopecks(_price_kopecks(), type='spend',
+    # Идемпотентное списание цены запуска (reference research:{message_id})
+    if not user.spend_kopecks(price, type='spend',
                               reference=f'research:{assistant_msg.id}'):
         research.delete()
         chat.delete()
@@ -89,12 +95,21 @@ def _get_research(research_id: int):
 
 
 def _refund(user, message_id: int):
-    user.add_kopecks(_price_kopecks(), type='refund', reference=f'research:{message_id}')
+    # Возврат ровно списанной суммы по леджеру: цена зависит от модели, а deep_research_task
+    # при ошибке возвращает ту же сумму с тем же reference - кто первый, тот и вернул.
+    from core.feature_pricing import refund_spend_by_reference
+    refund_spend_by_reference(user, f'research:{message_id}')
+
+
+def _spent(user, message_id: int) -> int:
+    from core.feature_pricing import spent_kopecks
+    return spent_kopecks(user, f'research:{message_id}')
 
 
 start_research = sync_to_async(_start_research, thread_sensitive=True)
 get_research = sync_to_async(_get_research, thread_sensitive=True)
 refund = sync_to_async(_refund, thread_sensitive=True)
+get_spent = sync_to_async(_spent, thread_sensitive=True)
 
 
 # F.chat.type == 'private' — см. images.py:cmd_image, тот же класс: без
@@ -111,15 +126,19 @@ async def cmd_research(message: Message, state: FSMContext, tg_user=None):
 
 async def _ask_confirmation(message: Message, state: FSMContext, tg_user, question: str):
     from core.money import format_rub
+    from core import feature_pricing as fp
 
     if not question:
+        flat = _price_kopecks()
+        price_note = (f'от {format_rub(flat)} (зависит от выбранной модели)'
+                      if fp.enabled() else f'{format_rub(flat)} за исследование')
         await message.answer(
             card('Deep Research',
                  'Глубокое исследование с источниками: декомпозиция вопроса, '
                  'поиск по 5+ запросам, синтез отчёта с цитатами [1][2].\n\n'
                  'Задайте вопрос:\n'
                  '<code>/research как изменился рынок LLM в 2026 году</code>',
-                 f'Цена: {format_rub(_price_kopecks())} за исследование'),
+                 f'Цена: {price_note}'),
             parse_mode='HTML',
         )
         return
@@ -133,31 +152,44 @@ async def _ask_confirmation(message: Message, state: FSMContext, tg_user, questi
         )
         return
 
-    price = _price_kopecks()
+    network, price = await sync_to_async(fp.resolve_feature, thread_sensitive=True)('research', tg_user)
+    if network is None:
+        await message.answer('Нет доступных моделей. Обратитесь в поддержку.')
+        return
     if not tg_user.user.has_enough_kopecks(price):
         await message.answer(
             card('Недостаточно средств',
-                 f'Deep Research стоит {format_rub(price)}. '
+                 f'Deep Research на модели {html.escape(network.name)} стоит {format_rub(price)}. '
                  f'У вас: {format_rub(tg_user.user.balance_kopecks)}.\n\n'
                  'Пополните баланс: /balance'),
             parse_mode='HTML',
         )
         return
 
+    # «На базовой модели» - если выбранная модель делает исследование дороже минимума
+    base_network, base_price = await sync_to_async(fp.base_network_and_price, thread_sensitive=True)('research')
+    offer_base = (base_network is not None and base_network.pk != network.pk and base_price < price)
+
     await state.set_state(ResearchFSM.confirming)
-    await state.update_data(question=question)
+    await state.update_data(question=question, network_id=network.pk, price=price,
+                            base_network_id=base_network.pk if offer_base else None,
+                            base_price=base_price if offer_base else None)
+    rows = [[
+        InlineKeyboardButton(text=f'Запустить · {format_rub(price)}', callback_data='research_go'),
+        InlineKeyboardButton(text='Отмена', callback_data='research_cancel'),
+    ]]
+    if offer_base:
+        rows.insert(1, [InlineKeyboardButton(
+            text=f'На базовой модели · {format_rub(base_price)}', callback_data='research_go_base')])
     await message.answer(
         card('Deep Research',
              f'<b>Вопрос:</b> {html.escape(question)}\n\n'
              f'Запущу многошаговое исследование с поиском источников '
-             f'и отчётом с цитатами. Займёт 2–5 минут.',
+             f'и отчётом с цитатами. Займёт 2–5 минут.\n'
+             f'Модель: {html.escape(network.name)}',
              f'Цена: {format_rub(price)}'),
         parse_mode='HTML',
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
-            InlineKeyboardButton(text=f'Запустить · {format_rub(price)}',
-                                 callback_data='research_go'),
-            InlineKeyboardButton(text='Отмена', callback_data='research_cancel'),
-        ]]),
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=rows),
     )
 
 
@@ -168,13 +200,18 @@ async def cb_research_cancel(query: CallbackQuery, state: FSMContext):
     await query.answer()
 
 
-@router.callback_query(F.data == 'research_go', ResearchFSM.confirming)
+@router.callback_query(F.data.in_({'research_go', 'research_go_base'}), ResearchFSM.confirming)
 async def cb_research_go(query: CallbackQuery, state: FSMContext, tg_user=None):
     if tg_user is None:
         await query.answer()
         return
     data = await state.get_data()
     question = data.get('question')
+    # Модель и цена - ровно те, что были показаны на экране подтверждения.
+    if query.data == 'research_go_base':
+        network_id, price = data.get('base_network_id'), data.get('base_price')
+    else:
+        network_id, price = data.get('network_id'), data.get('price')
     await state.clear()
     if not question:
         await query.answer('Вопрос потерян — начните заново: /research')
@@ -185,7 +222,7 @@ async def cb_research_go(query: CallbackQuery, state: FSMContext, tg_user=None):
     except Exception:
         pass
 
-    research_id, msg_id_or_reason = await start_research(tg_user, question)
+    research_id, msg_id_or_reason = await start_research(tg_user, question, network_id, price)
     if research_id is None:
         reason = msg_id_or_reason
         text = ('Недостаточно средств. Пополните баланс: /balance'
@@ -244,6 +281,7 @@ async def _watch_research(tg_message: Message, tg_user, research_id: int,
                     InlineKeyboardButton(text='Сохранить в базу знаний проекта',
                                          callback_data=f'research_save:{research_id}'),
                 ]])
+            spent = await get_spent(tg_user.user, message_id)
             try:
                 doc = BufferedInputFile(
                     report_md.encode('utf-8'),
@@ -251,14 +289,14 @@ async def _watch_research(tg_message: Message, tg_user, research_id: int,
                 )
                 await tg_message.answer_document(
                     doc,
-                    caption=f'Deep Research · {format_rub(_price_kopecks())}',
+                    caption=f'Deep Research · {format_rub(spent or _price_kopecks())}',
                     reply_markup=save_kb,
                 )
             except Exception as e:
                 logger.warning(f'research export failed: {e}')
 
             await async_log_event(tg_user, 'research',
-                                  cost_kopecks=_price_kopecks(),
+                                  cost_kopecks=spent or _price_kopecks(),
                                   research_id=research_id)
             return
 

@@ -2244,7 +2244,12 @@ def _plan_research_queries(question: str, model_name: str, n: int = 6) -> list[s
         end = raw.rfind(']') + 1
         if start != -1 and end > start:
             import json as _json
-            return _json.loads(raw[start:end])
+            parsed = _json.loads(raw[start:end])
+            # Срез до n: раньше возвращался весь массив модели - при 10 запросах было
+            # 10 поисков Tavily (и 10 KB-поисков) вместо заявленных n.
+            queries = [str(q).strip() for q in parsed if str(q).strip()][:n]
+            if queries:
+                return queries
     except Exception as e:
         logger.warning(f"[deep_research] plan_queries failed: {e}")
     return [question]
@@ -2314,10 +2319,16 @@ def _synthesize_report(question: str, chunks: list[dict], model_name: str) -> st
             max_tokens=3000,
             stream=False,
         )
-        return r.choices[0].message.content or ""
+        text = r.choices[0].message.content or ""
     except Exception as e:
         logger.error(f"[deep_research] synthesize failed: {e}")
-        return f"Ошибка синтеза: {e}"
+        # Раньше возвращалась строка «Ошибка синтеза: ...», и исследование считалось
+        # успешным - пользователь платил за текст ошибки. Теперь исключение: задача
+        # ставит статус error и возвращает деньги.
+        raise RuntimeError(f"Ошибка синтеза отчёта: {e}") from e
+    if not text.strip():
+        raise RuntimeError("Ошибка синтеза отчёта: пустой ответ модели")
+    return text
 
 
 def save_research_to_kb(research_id: int):
@@ -2474,13 +2485,8 @@ def deep_research_task(self, research_id: int):
         # исследования, запущенные до введения оплаты, не должны порождать возврат.
         try:
             if research.message_id:
-                from users.models import BalanceTransaction
-                _ref = f'research:{research.message_id}'
-                _spent = BalanceTransaction.objects.filter(
-                    user=research.chat.user, type='spend', reference=_ref,
-                ).first()
-                if _spent:
-                    research.chat.user.add_kopecks(-_spent.amount_kopecks, type='refund', reference=_ref)
+                from core.feature_pricing import refund_spend_by_reference
+                refund_spend_by_reference(research.chat.user, f'research:{research.message_id}')
         except Exception as _refund_err:
             logger.warning(f'[deep_research] refund failed for {research_id}: {_refund_err}')
 

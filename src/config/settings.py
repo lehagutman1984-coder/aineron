@@ -611,9 +611,29 @@ BUSINESS_AUTOPILOT_BURST_LIMIT = int(os.getenv('BUSINESS_AUTOPILOT_BURST_LIMIT',
 BUSINESS_AUTOPILOT_BURST_WINDOW_SECONDS = int(os.getenv('BUSINESS_AUTOPILOT_BURST_WINDOW_SECONDS', '60'))
 # Managed Bots (S8): дневной cap сообщений гостей на одного бота (антиспам)
 MANAGEDBOT_DAILY_CAP = int(os.getenv('MANAGEDBOT_DAILY_CAP', '300'))
-# Agent Mode (S9): фиксированная цена запуска, копейки (5 ₽; себестоимость —
-# до 7 LLM-вызовов дешёвой модели + до 5 Tavily-запросов ≈ 1–2 ₽)
+# Agent Mode (S9): базовая (минимальная) цена запуска, копейки (5 ₽). Рассчитана на дешёвую
+# модель (до 7 LLM-вызовов + до 6 Tavily-запросов ≈ 1–2 ₽); на дорогих моделях цена
+# растёт: max(база, k × cost_kopecks) - см. FEATURE_MODEL_PRICING_ENABLED ниже.
 AGENT_PRICE_KOPECKS = int(os.getenv('AGENT_PRICE_KOPECKS', '500'))
+
+# Цена Agent / Deep Research / модель секретаря зависят от выбранной пользователем
+# модели (STATUS_AND_BACKLOG_PLAN_2026-09-25.md, ITEM 1). Раньше цена была плоской
+# (5 / 10 руб.) при любой модели: на GPT-5.5 Pro один прогон агента стоил нам до ~390 руб.
+# 0 = прежнее поведение (плоские цены, шаги агента 1800 токенов, секретарь на любой
+# модели) - флаг выключен по умолчанию, включается явно через env на каждом инстансе.
+FEATURE_MODEL_PRICING_ENABLED = os.getenv('FEATURE_MODEL_PRICING_ENABLED', '0') == '1'
+# Цена = max(фикс, ceil(k * NeuralNetwork.cost_kopecks)); k откалиброван по потолку
+# токенов запуска (Agent ~5,4 сообщения при урезанных шагах, Research ~1,8 сообщения).
+AGENT_MODEL_MULTIPLIER = float(os.getenv('AGENT_MODEL_MULTIPLIER', '5'))
+RESEARCH_MODEL_MULTIPLIER = float(os.getenv('RESEARCH_MODEL_MULTIPLIER', '2'))
+# Урезание шагов агента (действует только при FEATURE_MODEL_PRICING_ENABLED=1).
+AGENT_STEP_MAX_TOKENS = int(os.getenv('AGENT_STEP_MAX_TOKENS', '700'))
+AGENT_OBSERVATION_CHARS = int(os.getenv('AGENT_OBSERVATION_CHARS', '3000'))
+# Секретарь: модель владельца используется, только если cost_kopecks не выше порога
+# (только при FEATURE_MODEL_PRICING_ENABLED=1); иначе - BUSINESS_FALLBACK_MODEL_SLUG
+# (пусто = самая дешёвая текстовая модель).
+BUSINESS_MAX_MODEL_KOPECKS = int(os.getenv('BUSINESS_MAX_MODEL_KOPECKS', '300'))
+BUSINESS_FALLBACK_MODEL_SLUG = os.getenv('BUSINESS_FALLBACK_MODEL_SLUG', '')
 
 # ========== UNIFIED_SUPREMACY (U1-U6) — сшивка память × Spaces × агенты ==========
 # U1: скоуп памяти на проект/организацию

@@ -1,6 +1,7 @@
 """U4 (UNIFIED_SUPREMACY) — Agent Mode на вебе.
 
-POST /v1/agent/            {goal, project_id?} — запуск (цена AGENT_PRICE_KOPECKS)
+POST /v1/agent/            {goal, project_id?} — запуск (цена по модели, см. core.feature_pricing)
+GET  /v1/agent/quote/      — цена и модель ДО запуска
 GET  /v1/agent/<id>/       — статус/шаги/отчёт (поллинг фронтендом)
 GET  /v1/agent/            — последние запуски пользователя
 """
@@ -42,10 +43,23 @@ class AgentStartView(APIView):
         if not goal:
             return Response({'error': em('agent_goal_required')}, status=400)
 
-        price = getattr(settings, 'AGENT_PRICE_KOPECKS', 500)
+        # Модель и цена определяются один раз и передаются в задачу как есть
+        # (core.feature_pricing; цена зависит от модели при FEATURE_MODEL_PRICING_ENABLED).
+        from core.feature_pricing import resolve_feature
+        from api.services.billing import top_up_url
+        network, price = resolve_feature('agent', getattr(request.user, 'telegram', None))
+        if network is None:
+            return Response({'error': 'no models available'}, status=503)
         if not request.user.has_enough_kopecks(price):
             return Response(
-                {'error': em('agent_insufficient_funds', price=format_rub(price))},
+                {'error': {
+                    'message': em('agent_insufficient_funds', price=format_rub(price)),
+                    'type': 'insufficient_quota',
+                    'code': 'insufficient_quota',
+                    'required_kopecks': price,
+                    'balance_kopecks': request.user.balance_kopecks,
+                    'top_up_url': top_up_url(),
+                }},
                 status=402,
             )
 
@@ -65,8 +79,31 @@ class AgentStartView(APIView):
         run = AgentRun.objects.create(user=request.user, goal=goal[:2000],
                                       project=project)
         from telegram_bot.tasks import run_agent
-        run_agent.delay(run.pk)
-        return Response(_run_payload(run), status=201)
+        run_agent.delay(run.pk, price, network.pk)
+        payload = _run_payload(run)
+        payload['price_kopecks'] = price
+        payload['model'] = network.name
+        return Response(payload, status=201)
+
+
+class AgentQuoteView(APIView):
+    """GET /v1/agent/quote/ - цена и модель запуска агента ДО старта."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from core.feature_pricing import enabled, flat_price_kopecks, resolve_feature
+        from core.money import format_rub
+
+        network, price = resolve_feature('agent', getattr(request.user, 'telegram', None))
+        return Response({
+            'price_kopecks': price,
+            'price_display': format_rub(price),
+            'model': network.name if network else None,
+            'model_dependent': enabled(),
+            'base_price_kopecks': flat_price_kopecks('agent'),
+            'balance_kopecks': request.user.balance_kopecks,
+            'enough': request.user.has_enough_kopecks(price),
+        })
 
 
 class AgentStatusView(APIView):

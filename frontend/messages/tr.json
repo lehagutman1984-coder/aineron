@@ -357,6 +357,7 @@
     "variants": "Varyantlar",
     "researchOn": "Araştırma modu açık. Kapatmak için tıklayın",
     "researchOff": "Derin araştırma — alıntılarla çok adımlı otonom analiz",
+    "researchPriceToast": "Bu modelde araştırma maliyeti: {price}",
     "research": "Araştırma",
     "reasoningOn": "Derin akıl yürütme açık (+{price}). Kapatmak için tıklayın",
     "reasoningOff": "Derin akıl yürütme — model daha uzun ve derin düşünür (+{price})",

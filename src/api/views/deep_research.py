@@ -24,10 +24,11 @@ class DeepResearchStartView(APIView):
             return Response({'error': 'question too long (max 4000 chars)'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Платная операция (2 LLM-вызова на модели чата + 5 веб-поисков): раньше веб-эндпоинт
-        # был полностью бесплатным - платил только бот (/research). Предоплата, как в боте.
-        from django.conf import settings as dj_settings
+        # был полностью бесплатным - платил только бот (/research). Предоплата, как в боте;
+        # цена зависит от модели чата (core.feature_pricing, флаг FEATURE_MODEL_PRICING_ENABLED).
+        from core.feature_pricing import feature_price_kopecks
         from core.money import format_rub
-        price = int(getattr(dj_settings, 'RESEARCH_PRICE_KOPECKS', 1000))
+        price = feature_price_kopecks('research', chat.network)
 
         # Create user message
         user_msg = Message.objects.create(
@@ -77,6 +78,28 @@ class DeepResearchStartView(APIView):
             'user_message_id': user_msg.id,
             'status': research.status,
         }, status=status.HTTP_201_CREATED)
+
+
+class DeepResearchQuoteView(APIView):
+    """GET /v1/chats/<chat_id>/research/quote/ - цена исследования на модели чата
+    (показывается пользователю ДО запуска)."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, chat_id):
+        from core.feature_pricing import enabled, feature_price_kopecks, flat_price_kopecks
+        from core.money import format_rub
+
+        chat = get_object_or_404(Chat, id=chat_id, user=request.user)
+        price = feature_price_kopecks('research', chat.network)
+        return Response({
+            'price_kopecks': price,
+            'price_display': format_rub(price),
+            'model': chat.network.name if chat.network else None,
+            'model_dependent': enabled(),
+            'base_price_kopecks': flat_price_kopecks('research'),
+            'balance_kopecks': request.user.balance_kopecks,
+            'enough': request.user.has_enough_kopecks(price),
+        })
 
 
 class DeepResearchSaveView(APIView):

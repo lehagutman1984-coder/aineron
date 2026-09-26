@@ -357,6 +357,7 @@
     "variants": "Varian",
     "researchOn": "Mode riset aktif. Klik untuk mematikan",
     "researchOff": "Riset mendalam — analisis otonom multi-langkah dengan kutipan",
+    "researchPriceToast": "Biaya riset pada model ini: {price}",
     "research": "Riset",
     "reasoningOn": "Penalaran mendalam aktif (+{price}). Klik untuk mematikan",
     "reasoningOff": "Penalaran mendalam — model berpikir lebih lama dan lebih dalam (+{price})",

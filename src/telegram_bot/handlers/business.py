@@ -101,15 +101,13 @@ def _project_kb_context(conn, client_text: str) -> str:
 
 def _generate_reply(conn, client_text: str, client_name: str) -> dict | None:
     """AI-ответ клиенту. Возвращает {'reply': str, 'confident': bool} или None."""
-    from aitext.models import NeuralNetwork
     from aitext.tasks import get_laozhang_client
+    from core.feature_pricing import resolve_business_network
 
-    network = conn.tg_user.default_network
-    if network is None or not network.is_active:
-        network = (
-            NeuralNetwork.objects.filter(is_active=True, provider='openrouter')
-            .order_by('cost_kopecks').first()
-        )
+    # Модель владельца, но не дороже BUSINESS_MAX_MODEL_KOPECKS (при включённом
+    # FEATURE_MODEL_PRICING_ENABLED): цена ответа секретаря плоская (1 руб.), дорогая
+    # модель делала бы каждый ответ убыточным.
+    network = resolve_business_network(conn.tg_user)
     if network is None or not network.model_name:
         return None
 
@@ -912,10 +910,15 @@ async def cmd_secretary(message: Message, tg_user=None):
     allowance = getattr(settings, 'BUSINESS_TARIFF_ALLOWANCE', 300)
     mode_h = 'Черновики (безопасный)' if conn.mode == 'drafts' else 'Автопилот'
     status = 'включён' if conn.secretary_on else 'выключен'
+
+    from core.feature_pricing import resolve_business_network
+    biz_network = await sync_to_async(resolve_business_network, thread_sensitive=True)(tg_user)
+    model_line = f'Модель ответов: <b>{biz_network.name}</b>\n' if biz_network else ''
     await message.answer(
         card('AI-секретарь',
              f'Статус: <b>{status}</b>\n'
              f'Режим: <b>{mode_h}</b>\n'
+             f'{model_line}'
              f'Ответов в этом месяце: {replies} (в тарифах «Бизнес» и «Макс» {allowance} включено)\n'
              f'Стоп-слово клиента: «{conn.stop_word}»'),
         parse_mode='HTML',

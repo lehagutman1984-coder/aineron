@@ -779,13 +779,17 @@ def _agent_kb_tool(action: dict, project, user) -> str:
 
 @shared_task(bind=True, max_retries=0, ignore_result=True, soft_time_limit=240,
              name='telegram_bot.tasks.run_agent')
-def run_agent(self, agent_run_id: int):
+def run_agent(self, agent_run_id: int, price: int = None, network_id: int = None):
     """Цикл агента: LLM планирует шаг → инструмент → наблюдение → ... → finish.
 
     U4: при подключённом проекте — инструменты базы знаний (kb_search,
     read_file, propose_edit через ProjectCommit). Запуск из бота (доставка
     в Telegram) или с веба (chat_id нет — результат читают из AgentRun).
-    Списание фиксированное (AGENT_PRICE_KOPECKS), идемпотентно agent:{run_id}.
+    Цена и модель приходят от вызывающего (handler/view вычисляет их ОДИН раз через
+    core.feature_pricing.resolve_feature и показывает пользователю до запуска): задача
+    их не пересчитывает. Без параметров (задачи, уже стоявшие в очереди при выкладке) -
+    прежнее поведение. Списание идемпотентно agent:{run_id}; возврат - ровно списанная
+    сумма из леджера.
     """
     from django.conf import settings as dj
     from django.utils import timezone as tz
@@ -796,7 +800,12 @@ def run_agent(self, agent_run_id: int):
     )
     from aitext.models import NeuralNetwork
     from aitext.tasks import get_laozhang_client
+    from core.feature_pricing import (
+        agent_observation_chars, agent_step_max_tokens, feature_price_kopecks,
+        refund_spend_by_reference,
+    )
     from core.money import format_rub
+    from users.models import BalanceTransaction
 
     try:
         run = AgentRun.objects.select_related('user', 'project').get(pk=agent_run_id)
@@ -806,32 +815,46 @@ def run_agent(self, agent_run_id: int):
     user = run.user
     tg = getattr(user, 'telegram', None)
     chat_id = tg.telegram_id if tg else None  # None → веб-запуск, без доставки в TG
-    price = getattr(dj, 'AGENT_PRICE_KOPECKS', 500)
     reference = f'agent:{agent_run_id}'
 
     def _fail(msg: str, refund: bool = True):
         if refund:
-            user.add_kopecks(price, type='refund', reference=reference)
+            refund_spend_by_reference(user, reference)
         AgentRun.objects.filter(pk=agent_run_id).update(
             status='error', error=msg[:500], finished_at=tz.now(),
         )
         if chat_id:
             notify_user(chat_id, f'{msg} Средства возвращены.' if refund else msg)
 
+    # Повторная доставка задачи: тот же reference сделал бы spend_kopecks no-op'ом
+    # (True без списания) и дал бы второй бесплатный прогон.
+    if BalanceTransaction.objects.filter(user=user, type='spend', reference=reference).exists():
+        logger.warning(f'run_agent {agent_run_id}: уже списано - повторный запуск пропущен')
+        return
+
+    # Модель: выбранная пользователем на экране подтверждения (network_id), иначе прежний
+    # выбор (модель по умолчанию в боте / самая дешёвая). Определяется ДО списания.
+    network = None
+    if network_id:
+        network = NeuralNetwork.objects.filter(pk=network_id, is_active=True).first()
+    if network is None:
+        network = (
+            tg.default_network
+            if tg and tg.default_network and tg.default_network.is_active
+            else NeuralNetwork.objects.filter(is_active=True, provider='openrouter')
+            .order_by('cost_kopecks').first()
+        )
+        price = None  # модель изменилась/не задана - цена пересчитывается ниже
+    if network is None or not network.model_name:
+        _fail('Нет доступных моделей.', refund=False)
+        return
+    if price is None:
+        price = feature_price_kopecks('agent', network)
+
     if not user.spend_kopecks(price, type='spend', reference=reference):
         AgentRun.objects.filter(pk=agent_run_id).update(status='error', error='no_balance')
         if chat_id:
             notify_user(chat_id, 'Недостаточно средств для Agent Mode. Пополните баланс: /balance')
-        return
-
-    network = (
-        tg.default_network
-        if tg and tg.default_network and tg.default_network.is_active
-        else NeuralNetwork.objects.filter(is_active=True, provider='openrouter')
-        .order_by('cost_kopecks').first()
-    )
-    if network is None or not network.model_name:
-        _fail('Нет доступных моделей.')
         return
 
     # U4: контекст проекта — из запуска или активного проекта бота
@@ -853,13 +876,24 @@ def run_agent(self, agent_run_id: int):
     report = ''
 
     try:
+        step_cap = agent_step_max_tokens()
+        obs_chars = agent_observation_chars()
         for step_no in range(1, MAX_STEPS + 1):
             resp = client.chat.completions.create(
                 model=network.model_name,
                 messages=messages,
-                max_tokens=1800,
+                max_tokens=step_cap,
                 temperature=0.3,
             )
+            # Урезанный cap шага мог оборвать `finish` с полным отчётом посреди JSON -
+            # тогда обрезок стал бы «отчётом». Повторяем ЭТОТ шаг с полным лимитом (редко).
+            if step_cap < 1800 and getattr(resp.choices[0], 'finish_reason', None) == 'length':
+                resp = client.chat.completions.create(
+                    model=network.model_name,
+                    messages=messages,
+                    max_tokens=1800,
+                    temperature=0.3,
+                )
             raw = (resp.choices[0].message.content or '').strip()
             action = parse_action(raw)
             if action is None:
@@ -889,7 +923,7 @@ def run_agent(self, agent_run_id: int):
 
             messages.append({
                 'role': 'user',
-                'content': f'Наблюдение (шаг {step_no}): {observation[:4000]}',
+                'content': f'Наблюдение (шаг {step_no}): {observation[:obs_chars]}',
             })
         else:
             # Лимит шагов исчерпан — просим финализировать
@@ -922,7 +956,7 @@ def run_agent(self, agent_run_id: int):
             f'{report}\n\n_Agent Mode · {format_rub(price)} · {network.name}_',
         )
         if not delivered:
-            user.add_kopecks(price, type='refund', reference=reference)
+            refund_spend_by_reference(user, reference)
             return
     # Веб-запуск: результат читают из AgentRun (status=done, result_md)
 
@@ -1178,8 +1212,17 @@ def _execute_research_task(task, run_iso: str):
     if chat_id is None:
         return
 
-    price = getattr(dj, 'RESEARCH_PRICE_KOPECKS', 1000)
     reference = f'aitask:{task.pk}:{run_iso}'
+
+    # Модель и цена определяются ДО списания (цена зависит от модели задачи).
+    from core.feature_pricing import feature_price_kopecks
+    network = task.network if (task.network and task.network.is_active) else (
+        NeuralNetwork.objects.filter(is_active=True, provider='openrouter')
+        .order_by('cost_kopecks').first()
+    )
+    if network is None:
+        return
+    price = feature_price_kopecks('research', network)
 
     if not user.has_enough_kopecks(price):
         AITask.objects.filter(pk=task.pk).update(is_active=False, paused_reason='balance')
@@ -1189,14 +1232,6 @@ def _execute_research_task(task, run_iso: str):
         return
     if not user.spend_kopecks(price, type='spend', reference=reference):
         AITask.objects.filter(pk=task.pk).update(is_active=False, paused_reason='balance')
-        return
-
-    network = task.network if (task.network and task.network.is_active) else (
-        NeuralNetwork.objects.filter(is_active=True, provider='openrouter')
-        .order_by('cost_kopecks').first()
-    )
-    if network is None:
-        user.add_kopecks(price, type='refund', reference=reference)
         return
 
     # Research-чат в проекте задачи (компаундинг: KB проекта участвует в поиске)

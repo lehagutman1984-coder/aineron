@@ -53,6 +53,7 @@ get_run = sync_to_async(_get_run, thread_sensitive=True)
 @router.message(Command('agent'), F.chat.type == 'private')
 async def cmd_agent(message: Message, state: FSMContext, tg_user=None):
     from core.money import format_rub
+    from core import feature_pricing as fp
 
     if tg_user is None:
         await message.answer('Привяжите аккаунт через /start')
@@ -66,7 +67,8 @@ async def cmd_agent(message: Message, state: FSMContext, tg_user=None):
                  'Опишите задачу:\n'
                  '<code>/agent сравни цены топ-5 видеокарт и посчитай стоимость '
                  'фермы из 8 штук</code>',
-                 f'Цена: {format_rub(_price_kopecks())} за запуск'),
+                 (f'Цена: от {format_rub(_price_kopecks())} за запуск (зависит от выбранной модели)'
+                  if fp.enabled() else f'Цена: {format_rub(_price_kopecks())} за запуск')),
             parse_mode='HTML',
         )
         return
@@ -80,31 +82,44 @@ async def cmd_agent(message: Message, state: FSMContext, tg_user=None):
         )
         return
 
-    price = _price_kopecks()
+    # Модель и цена определяются ОДИН раз здесь и передаются в задачу как есть.
+    network, price = await sync_to_async(fp.resolve_feature, thread_sensitive=True)('agent', tg_user)
+    if network is None:
+        await message.answer('Нет доступных моделей. Обратитесь в поддержку.')
+        return
     if not tg_user.user.has_enough_kopecks(price):
         await message.answer(
             card('Недостаточно средств',
-                 f'Agent Mode стоит {format_rub(price)}. '
+                 f'Agent Mode на модели {html.escape(network.name)} стоит {format_rub(price)}. '
                  f'У вас: {format_rub(tg_user.user.balance_kopecks)}.\n\n'
                  'Пополните баланс: /balance'),
             parse_mode='HTML',
         )
         return
 
+    base_network, base_price = await sync_to_async(fp.base_network_and_price, thread_sensitive=True)('agent')
+    offer_base = (base_network is not None and base_network.pk != network.pk and base_price < price)
+
     await state.set_state(AgentFSM.confirming)
-    await state.update_data(goal=goal)
+    await state.update_data(goal=goal, network_id=network.pk, price=price,
+                            base_network_id=base_network.pk if offer_base else None,
+                            base_price=base_price if offer_base else None)
+    rows = [[
+        InlineKeyboardButton(text=f'Запустить · {format_rub(price)}', callback_data='agent_go'),
+        InlineKeyboardButton(text='Отмена', callback_data='agent_cancel'),
+    ]]
+    if offer_base:
+        rows.insert(1, [InlineKeyboardButton(
+            text=f'На базовой модели · {format_rub(base_price)}', callback_data='agent_go_base')])
     await message.answer(
         card('Agent Mode',
              f'<b>Задача:</b> {html.escape(goal)}\n\n'
              f'Агент выполнит до 6 шагов (поиск, вычисления) и пришлёт отчёт. '
-             f'Займёт 1–3 минуты.',
+             f'Займёт 1–3 минуты.\n'
+             f'Модель: {html.escape(network.name)}',
              f'Цена: {format_rub(price)}'),
         parse_mode='HTML',
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
-            InlineKeyboardButton(text=f'Запустить · {format_rub(price)}',
-                                 callback_data='agent_go'),
-            InlineKeyboardButton(text='Отмена', callback_data='agent_cancel'),
-        ]]),
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=rows),
     )
 
 
@@ -115,13 +130,18 @@ async def cb_agent_cancel(query: CallbackQuery, state: FSMContext):
     await query.answer()
 
 
-@router.callback_query(F.data == 'agent_go', AgentFSM.confirming)
+@router.callback_query(F.data.in_({'agent_go', 'agent_go_base'}), AgentFSM.confirming)
 async def cb_agent_go(query: CallbackQuery, state: FSMContext, tg_user=None):
     if tg_user is None:
         await query.answer()
         return
     data = await state.get_data()
     goal = data.get('goal')
+    # Модель и цена - ровно те, что были показаны на экране подтверждения.
+    if query.data == 'agent_go_base':
+        network_id, price = data.get('base_network_id'), data.get('base_price')
+    else:
+        network_id, price = data.get('network_id'), data.get('price')
     await state.clear()
     if not goal:
         await query.answer('Задача потеряна — начните заново: /agent')
@@ -135,7 +155,7 @@ async def cb_agent_go(query: CallbackQuery, state: FSMContext, tg_user=None):
     # U4: активный проект открывает агенту инструменты базы знаний
     run = await create_run(tg_user.user, goal, tg_user.active_project)
     from telegram_bot.tasks import run_agent
-    run_agent.delay(run.pk)
+    run_agent.delay(run.pk, price, network_id)
 
     await set_status_reaction(query.bot, query.message.chat.id,
                               query.message.message_id, '👀')

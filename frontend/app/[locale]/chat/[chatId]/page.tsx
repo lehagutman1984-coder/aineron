@@ -22,7 +22,7 @@ import { GenerationProgress } from "@/components/chat/GenerationProgress";
 import { PromptEnhancer } from "@/components/chat/PromptEnhancer";
 import { BeforeAfterSlider } from "@/components/chat/BeforeAfterSlider";
 import { ZoomableImage } from "@/components/chat/ZoomableImage";
-import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, uploadFile, synthesizeSpeech, confirmCommit, exportChat, quickSaveFact, branchChat, startDeepResearch, getResearchStatus, getMemoryToast, upscaleGeneration, createVariations, describeGeneration, downloadImageUrl, favoriteGeneration, removeBackground, APIError, BASE_URL, type CommitProposed } from "@/lib/api/client";
+import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, uploadFile, synthesizeSpeech, confirmCommit, exportChat, quickSaveFact, branchChat, startDeepResearch, getResearchStatus, getResearchQuote, getMemoryToast, upscaleGeneration, createVariations, describeGeneration, downloadImageUrl, favoriteGeneration, removeBackground, APIError, BASE_URL, type CommitProposed } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 import { useUIStore } from "@/lib/stores/ui";
 import { formatMoney } from "@/lib/money";
@@ -549,9 +549,12 @@ export default function ChatPage() {
         qc.setQueryData<ChatDetail>(["chat", id], (prev) =>
           prev ? { ...prev, messages: prev.messages.filter((m) => m.id !== tempUserId && m.id !== tempAssistId) } : prev
         );
+        // Исследование платное (402 при нехватке средств и т.п.): раньше сообщения молча
+        // исчезали, пользователь не видел причины.
+        addToast({ type: "error", message: e instanceof APIError ? e.message : t("connectionError") });
       }
     },
-    [id, qc]
+    [id, qc, addToast, t]
   );
 
   // File attachment upload
@@ -1481,7 +1484,16 @@ export default function ChatPage() {
 
               <button
                 type="button"
-                onClick={() => setResearchMode((v) => !v)}
+                onClick={() => {
+                  const next = !researchMode;
+                  setResearchMode(next);
+                  // Цена зависит от модели чата - показываем её при включении режима, до отправки.
+                  if (next) {
+                    getResearchQuote(id)
+                      .then((q) => addToast({ type: "info", message: t("researchPriceToast", { price: formatMoney(q.price_kopecks) }) }))
+                      .catch(() => {});
+                  }
+                }}
                 title={researchMode ? t("researchOn") : t("researchOff")}
                 className={[
                   "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[13px] font-medium transition-all",
