@@ -2331,6 +2331,41 @@ def _synthesize_report(question: str, chunks: list[dict], model_name: str) -> st
     return text
 
 
+@shared_task(name='aitext.tasks.reap_stuck_researches', ignore_result=True)
+def reap_stuck_researches():
+    """Закрывает Deep Research, зависшие в pending/running дольше 15 минут (воркер упал, задача
+    потеряна, ORM-исключение в обработчике ошибки), и возвращает предоплату по леджеру.
+
+    Исследование платное (предоплата research:{message_id}); без этой задачи сбой воркера
+    оставлял бы пользователя без денег и без результата навсегда. Идемпотентно."""
+    from datetime import timedelta
+    from django.utils import timezone
+    from aitext.models import DeepResearch, Message
+    from core.feature_pricing import refund_spend_by_reference
+
+    cutoff = timezone.now() - timedelta(minutes=15)
+    reaped = 0
+    for r in DeepResearch.objects.filter(
+        status__in=['pending', 'running'], created_at__lt=cutoff,
+    ).select_related('chat__user'):
+        DeepResearch.objects.filter(pk=r.pk, status__in=['pending', 'running']).update(
+            status='error', error='timeout: исследование не завершилось за 15 минут',
+            finished_at=timezone.now(),
+        )
+        if r.message_id:
+            Message.objects.filter(pk=r.message_id, status='pending').update(
+                status='failed', error_message='Исследование не завершилось, средства возвращены.',
+            )
+            try:
+                refund_spend_by_reference(r.chat.user, f'research:{r.message_id}')
+            except Exception as e:
+                logger.warning(f'[deep_research] reap refund failed for {r.pk}: {e}')
+        reaped += 1
+    if reaped:
+        logger.warning(f'[deep_research] закрыто зависших исследований: {reaped}')
+    return reaped
+
+
 def save_research_to_kb(research_id: int):
     """U3 (UNIFIED_SUPREMACY) — сохраняет отчёт Deep Research в базу знаний
     проекта как ProjectFile(source='research'): отчёт индексируется в RAG,

@@ -8,6 +8,7 @@ from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from aitext.models import Category, Chat, DeepResearch, Message, NeuralNetwork
@@ -344,3 +345,45 @@ class SecretaryModelTests(TestCase):
     @override_settings(**OFF)
     def test_flag_off_keeps_owner_model(self):
         self.assertEqual(fp.resolve_business_network(self.tg).pk, self.opus.pk)
+
+
+@override_settings(**ON)
+class ReapStuckResearchTests(TestCase):
+    def _make(self, age_minutes, spend=True):
+        from datetime import timedelta
+        from django.utils import timezone
+        u = _user(50000)
+        net = _net('opus', 709)
+        chat = Chat.objects.create(user=u, network=net, title='r')
+        msg = Message.objects.create(chat=chat, role='assistant', content='', status='pending')
+        research = DeepResearch.objects.create(chat=chat, message=msg, question='q', status='running')
+        DeepResearch.objects.filter(pk=research.pk).update(created_at=timezone.now() - timedelta(minutes=age_minutes))
+        if spend:
+            u.spend_kopecks(1418, type='spend', reference=f'research:{msg.id}')
+        return u, research, msg
+
+    def test_old_stuck_research_is_closed_and_refunded_exactly(self):
+        from aitext.tasks import reap_stuck_researches
+        u, research, msg = self._make(30)
+        self.assertEqual(reap_stuck_researches(), 1)
+        research.refresh_from_db()
+        msg.refresh_from_db()
+        u.refresh_from_db()
+        self.assertEqual(research.status, 'error')
+        self.assertEqual(msg.status, 'failed')
+        self.assertEqual(u.balance_kopecks, 50000)
+        self.assertEqual(reap_stuck_researches(), 0)  # повтор - ничего лишнего
+
+    def test_fresh_research_untouched(self):
+        from aitext.tasks import reap_stuck_researches
+        u, research, _ = self._make(5)
+        self.assertEqual(reap_stuck_researches(), 0)
+        research.refresh_from_db()
+        self.assertEqual(research.status, 'running')
+
+    def test_old_unpaid_research_is_closed_without_refund(self):
+        from aitext.tasks import reap_stuck_researches
+        u, research, _ = self._make(30, spend=False)  # запущено до введения оплаты
+        reap_stuck_researches()
+        u.refresh_from_db()
+        self.assertEqual(u.balance_kopecks, 50000)
