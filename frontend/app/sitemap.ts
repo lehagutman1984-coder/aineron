@@ -1,15 +1,17 @@
 import type { MetadataRoute } from "next";
 import { serverListNetworks, serverListBlogPosts } from "@/lib/api/server";
 import { routing } from "@/i18n/routing";
+import { localizedUrl } from "@/lib/seo";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://aineron.ru").replace(/\/$/, "");
 
 export const revalidate = 3600;
 
-// "as-needed": дефолтная локаль инстанса без префикса, остальные — с /{locale}
+// "as-needed": дефолтная локаль инстанса без префикса, остальные — с /{locale}.
+// Адреса БЕЗ завершающего слеша (с ним Next.js отвечает 308 - раньше каждый URL карты
+// сайта был редиректом); единая логика в lib/seo.ts, как и у canonical на страницах.
 function urlFor(locale: string, path: string): string {
-  const prefix = locale === routing.defaultLocale ? "" : `/${locale}`;
-  return `${SITE_URL}${prefix}${path}`;
+  return localizedUrl(locale, path);
 }
 
 function alternates(path: string) {

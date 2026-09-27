@@ -18,7 +18,7 @@ const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://aineron.ru").repl
 // URL под собственным языком статьи, чтобы Google не индексировал дубли под другими локалями.
 function canonicalUrl(postLanguage: string, slug: string): string {
   const prefix = postLanguage === routing.defaultLocale ? "" : `/${postLanguage}`;
-  return `${SITE_URL}${prefix}/blog/${slug}/`;
+  return `${SITE_URL}${prefix}/blog/${slug}`;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

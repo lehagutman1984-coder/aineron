@@ -5,12 +5,15 @@ import { Link } from "@/i18n/navigation";
 import { CalendarDays, Eye } from "lucide-react";
 import { serverListBlogPosts, serverListBlogCategories } from "@/lib/api/server";
 import { brandName } from "@/lib/site";
+import { localizedUrl, pageAlternates } from "@/lib/seo";
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: { locale: string } | Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
   const t = await getTranslations("blog");
   return {
     title: t("metaTitle"),
     description: t("metaDescription"),
+    alternates: pageAlternates(locale, "/blog"),
   };
 }
 
@@ -37,7 +40,7 @@ export default async function BlogListPage({
     "@type": "Blog",
     name: t("jsonLdName", { brand: brandName() }),
     description: t("jsonLdDescription"),
-    url: `${SITE_URL}/blog/`,
+    url: localizedUrl(locale, "/blog"),
     inLanguage: locale,
   };
 

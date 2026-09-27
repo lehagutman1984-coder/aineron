@@ -1,4 +1,6 @@
+import type { Metadata } from "next";
 import { Link } from "@/i18n/navigation";
+import { pageAlternates } from "@/lib/seo";
 import Image from "next/image";
 import { Check, X, ArrowDown } from "lucide-react";
 import { getTranslations } from "next-intl/server";
@@ -12,6 +14,11 @@ import { LandingCtaButton, LandingDockNote } from "@/components/landing/LandingC
 import "./landing.css";
 
 export const revalidate = 3600;
+
+export async function generateMetadata({ params }: { params: { locale: string } | Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  return { alternates: pageAlternates(locale, "/") };
+}
 
 // Реальные kopecks-цены живых моделей из каталога (сверено 2026-08-26,
 // одинаковы на aineron.ru и aineron.net) — formatMoney сам покажет рубли

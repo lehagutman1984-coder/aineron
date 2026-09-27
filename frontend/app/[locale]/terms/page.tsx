@@ -4,6 +4,7 @@ import { getTranslations, getLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { serverGetLegalDoc } from "@/lib/api/server";
 import { supportEmail } from "@/lib/site";
+import { pageAlternates } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,7 @@ export async function generateMetadata() {
   const t = await getTranslations("legalChrome");
   return {
     title: doc?.title ?? t("termsFallbackTitle"),
+    alternates: pageAlternates(locale, "/terms"),
   };
 }
 

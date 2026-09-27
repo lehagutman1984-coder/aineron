@@ -12,6 +12,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import { getTranslations } from "next-intl/server";
+import { pageAlternates } from "@/lib/seo";
 import { formatMoney } from "@/lib/money";
 import { Callout } from "@/components/docs/DocKit";
 
@@ -22,14 +23,15 @@ function brandName(): string {
   return host.charAt(0).toUpperCase() + host.slice(1);
 }
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: { locale: string } | Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
   const t = await getTranslations("sandbox");
   const brand = brandName();
   return {
     title: t("metaTitle", { brand }),
     description: t("metaDescription", { price: formatMoney(50) }),
     keywords: t("metaKeywords"),
-    alternates: { canonical: `${SITE_URL}/sandbox/` },
+    alternates: pageAlternates(locale, "/sandbox"),
   };
 }
 

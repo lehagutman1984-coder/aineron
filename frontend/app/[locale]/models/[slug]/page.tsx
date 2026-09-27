@@ -10,6 +10,7 @@ import { ModelPriceTiers } from "@/components/models/ModelPriceTiers";
 import { REFERENCE_PRICING, REFERENCE_DETAILS } from "@/lib/data/catalogReferencePricing";
 import { PARAMETER_INFO } from "@/lib/data/pricingPreviewDetails";
 import { IS_RU } from "@/lib/site";
+import { pageAlternates } from "@/lib/seo";
 
 interface Props {
   params: { slug: string; locale: string };
@@ -28,6 +29,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     keywords: network.seo_keywords,
+    alternates: pageAlternates(params.locale, `/models/${params.slug}`),
     openGraph: {
       title,
       description,

@@ -5,12 +5,14 @@ import { Link } from "@/i18n/navigation";
 import { serverListNetworks, serverListCategories } from "@/lib/api/server";
 import { CatalogClient } from "./CatalogClient";
 import { getTranslations } from "next-intl/server";
+import { pageAlternates } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: { locale: string } | Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
   const t = await getTranslations("catalog");
-  return { title: t("pageTitle"), description: t("pageDescription") };
+  return { title: t("pageTitle"), description: t("pageDescription"), alternates: pageAlternates(locale, "/models") };
 }
 
 export default async function ModelsPage({

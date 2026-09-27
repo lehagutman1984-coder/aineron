@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     "Бот aineron отвечает вашим клиентам в Telegram от вашего имени: черновики с подтверждением, автопилот для типовых вопросов, утренняя сводка. 1290 ₽/мес, до 300 авто-ответов.",
   keywords:
     "AI секретарь telegram, telegram business бот, автоответчик telegram, нейросеть для бизнеса",
-  alternates: { canonical: `${SITE_URL}/business-bot/` },
+  alternates: { canonical: `${SITE_URL.replace(/\/+$/, "")}/business-bot` },
 };
 
 const FEATURES = [

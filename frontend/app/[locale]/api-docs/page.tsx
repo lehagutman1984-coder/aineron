@@ -11,16 +11,19 @@ import {
 import { CodeTabs, StandaloneCodeBlock } from "@/components/docs/CodeTabs";
 import type { CodeTabItem } from "@/components/docs/CodeTabs";
 import { formatMoney } from "@/lib/money";
+import { pageAlternates } from "@/lib/seo";
 import { IS_RU } from "@/lib/site";
 import { getTranslations } from "next-intl/server";
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: { locale: string } | Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
   const t = await getTranslations("apiDocs");
   return {
     title: t("metaTitle"),
     description: t("metaDescription"),
+    alternates: pageAlternates(locale, "/api-docs"),
   };
 }
 
