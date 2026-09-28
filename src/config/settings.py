@@ -319,6 +319,11 @@ SERVER_EMAIL = DEFAULT_FROM_EMAIL
 # прикладывает его к каждому запросу) и должен совпадать.
 MAIL_RELAY_URL = os.environ.get('MAIL_RELAY_URL', '')
 MAIL_RELAY_SECRET = os.environ.get('MAIL_RELAY_SECRET', '')
+# Второй независимый барьер (помимо секрета) на принимающей стороне (.ru):
+# запросы к /api/v1/internal/mail-relay/ принимаются только с этих IP.
+# Пусто = проверка выключена. .net (единственный легитимный отправитель)
+# задавать не должен — это только для .ru.
+MAIL_RELAY_ALLOWED_IPS = os.environ.get('MAIL_RELAY_ALLOWED_IPS', '')
 if MAIL_RELAY_URL:
     EMAIL_BACKEND = 'core.mail_relay_backend.RelayHTTPBackend'
 

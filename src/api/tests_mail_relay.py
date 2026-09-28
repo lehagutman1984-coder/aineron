@@ -95,6 +95,34 @@ class MailRelayViewTests(TestCase):
         resp = self._post({'to': ['a@b.com'], 'subject': 'x', 'text': 'y'})
         self.assertEqual(resp.status_code, 502)
 
+    @override_settings(MAIL_RELAY_ALLOWED_IPS='66.151.32.164')
+    def test_ip_allowlist_rejects_other_ips(self):
+        client = APIClient()
+        resp = client.post(
+            URL, {'to': ['a@b.com'], 'subject': 'x'}, format='json',
+            HTTP_X_RELAY_SECRET='test-secret-123', REMOTE_ADDR='1.2.3.4',
+        )
+        self.assertEqual(resp.status_code, 403)
+        self.assertEqual(len(mail.outbox), 0)
+
+    @override_settings(MAIL_RELAY_ALLOWED_IPS='66.151.32.164')
+    def test_ip_allowlist_accepts_x_real_ip_header(self):
+        client = APIClient()
+        resp = client.post(
+            URL, {'to': ['a@b.com'], 'subject': 'x', 'text': 'y'}, format='json',
+            HTTP_X_RELAY_SECRET='test-secret-123', HTTP_X_REAL_IP='66.151.32.164',
+            REMOTE_ADDR='172.18.0.5',  # адрес nginx в докер-сети - не должен использоваться
+        )
+        self.assertEqual(resp.status_code, 200)
+
+    def test_ip_allowlist_disabled_by_default(self):
+        client = APIClient()
+        resp = client.post(
+            URL, {'to': ['a@b.com'], 'subject': 'x', 'text': 'y'}, format='json',
+            HTTP_X_RELAY_SECRET='test-secret-123', REMOTE_ADDR='1.2.3.4',
+        )
+        self.assertEqual(resp.status_code, 200)
+
 
 @override_settings(MAIL_RELAY_URL='https://aineron.ru/api/v1/internal/mail-relay/',
                     MAIL_RELAY_SECRET='shared-secret')

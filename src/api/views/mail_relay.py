@@ -35,12 +35,31 @@ class MailRelayThrottle(SimpleRateThrottle):
         return 'mail_relay_throttle'
 
 
+def _client_ip(request) -> str:
+    """nginx.conf ставит X-Real-IP = $remote_addr (реальный клиент) на всех
+    проксируемых location — REMOTE_ADDR с точки зрения Django был бы адресом
+    самого nginx/докер-сети, не настоящего клиента."""
+    return request.META.get('HTTP_X_REAL_IP') or request.META.get('REMOTE_ADDR', '')
+
+
 class MailRelayView(APIView):
     authentication_classes = []
     permission_classes = []
     throttle_classes = [MailRelayThrottle]
 
     def post(self, request):
+        # 2026-09-28 (доп. защита): второй независимый барьер поверх секрета —
+        # список разрешённых IP (MAIL_RELAY_ALLOWED_IPS, через запятую). Пусто
+        # по умолчанию = проверка выключена (fail-open на ЭТОЙ конкретной
+        # проверке, чтобы опечатка в конфиге не заблокировала легитимный
+        # трафик) — секрет остаётся обязательным барьером в любом случае.
+        allowed_ips = [ip.strip() for ip in getattr(settings, 'MAIL_RELAY_ALLOWED_IPS', '').split(',') if ip.strip()]
+        if allowed_ips:
+            client_ip = _client_ip(request)
+            if client_ip not in allowed_ips:
+                logger.warning(f'[mail_relay] отклонён запрос с недопустимого IP={client_ip}')
+                return Response({'error': 'forbidden'}, status=403)
+
         secret = getattr(settings, 'MAIL_RELAY_SECRET', '')
         provided = request.headers.get('X-Relay-Secret', '')
         # Пустой секрет с обеих сторон не должен считаться совпадением —
