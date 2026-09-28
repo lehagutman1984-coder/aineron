@@ -39,29 +39,41 @@ def refund_org_billing(message) -> bool:
     флагом org_refunded в settings сообщения — вызывающая сторона (generate_ai_response)
     сама гарантирует не более одного вызова на сообщение (только на is_final_attempt),
     флаг — вторая линия защиты на случай повторной обработки того же message_id.
-    """
-    s = message.settings or {}
-    org_billing = s.get('org_billing') or {}
-    org_id = org_billing.get('organization_id')
-    cost_rub = org_billing.get('cost_rub')
-    if not org_id or not cost_rub or s.get('org_refunded'):
-        return False
 
+    2026-09-28 (ревью, раунд 3): раньше проверка флага (`s.get('org_refunded')`)
+    и его запись были отдельными шагами БЕЗ блокировки строки — два конкурентных
+    вызова для одного message_id (повторная доставка того же Celery-таска) могли
+    оба пройти проверку до того, как один из них выставит флаг, и организация
+    получила бы двойной возврат. select_for_update() внутри atomic() сериализует
+    конкурентные вызовы: второй, после коммита первого, увидит org_refunded=True
+    уже выставленным и вернёт False.
+    """
     from decimal import Decimal, InvalidOperation
+    from django.db import transaction
     from django.db.models import F
     from teams.models import Organization
 
-    try:
-        amount = Decimal(str(cost_rub))
-    except InvalidOperation:
-        return False
+    with transaction.atomic():
+        locked = type(message).objects.select_for_update().get(pk=message.pk)
+        s = locked.settings or {}
+        org_billing = s.get('org_billing') or {}
+        org_id = org_billing.get('organization_id')
+        cost_rub = org_billing.get('cost_rub')
+        if not org_id or not cost_rub or s.get('org_refunded'):
+            return False
 
-    updated = Organization.objects.filter(id=org_id).update(
-        balance_rub=F('balance_rub') + amount
-    )
-    if updated:
-        new_settings = dict(s)
-        new_settings['org_refunded'] = True
-        message.settings = new_settings
-        message.save(update_fields=['settings'])
+        try:
+            amount = Decimal(str(cost_rub))
+        except InvalidOperation:
+            return False
+
+        updated = Organization.objects.filter(id=org_id).update(
+            balance_rub=F('balance_rub') + amount
+        )
+        if updated:
+            new_settings = dict(s)
+            new_settings['org_refunded'] = True
+            locked.settings = new_settings
+            locked.save(update_fields=['settings'])
+            message.settings = new_settings  # держим объект вызывающей стороны в консистентном виде
     return bool(updated)

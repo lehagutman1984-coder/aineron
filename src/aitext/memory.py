@@ -84,17 +84,37 @@ def scoped_content_key(text: str, project_id: int | None = None, organization_id
     return (prefix + base)[:255]
 
 
+def _is_cjk(c: str) -> bool:
+    """CJK-диапазоны Unicode (китайский/японский/корейский) — см. estimate_tokens."""
+    cp = ord(c)
+    return (
+        0x4E00 <= cp <= 0x9FFF    # CJK Unified Ideographs
+        or 0x3040 <= cp <= 0x30FF  # хирагана + катакана
+        or 0xAC00 <= cp <= 0xD7A3  # хангыль (корейские слоги)
+        or 0x3400 <= cp <= 0x4DBF  # CJK Extension A
+    )
+
+
 def estimate_tokens(text: str) -> int:
     """
     Быстрая оценка токенов без tiktoken.
-    Language-aware: кириллица ~2.5 симв/токен, латиница ~4.0 симв/токен.
+    Language-aware: кириллица ~2.5 симв/токен, CJK (кит./яп./кор.) ~1.5 симв/токен
+    (2026-09-28: раньше CJK попадал в общую категорию «остальное» = 4.0 симв/токен,
+    как латиница — у большинства провайдеров CJK токенизируется намного плотнее,
+    оценка занижалась примерно в 2.5 раза; используется в т.ч. билинговым guard'ом
+    token_metering.estimate_prompt_tokens, заниженная оценка = недосчитанный overage),
+    латиница ~4.0 симв/токен.
     """
     if not text:
         return 0
+    length = len(text)
     cyr = sum(1 for c in text if 'а' <= c.lower() <= 'я' or c.lower() == 'ё')
-    cyr_frac = cyr / max(1, len(text))
-    chars_per_token = 2.5 * cyr_frac + 4.0 * (1 - cyr_frac)
-    return max(1, int(len(text) / chars_per_token))
+    cjk = sum(1 for c in text if _is_cjk(c))
+    cyr_frac = cyr / max(1, length)
+    cjk_frac = cjk / max(1, length)
+    latin_frac = max(0.0, 1 - cyr_frac - cjk_frac)
+    chars_per_token = 2.5 * cyr_frac + 1.5 * cjk_frac + 4.0 * latin_frac
+    return max(1, int(length / chars_per_token))
 
 
 def _get_context_window(model_name: str | None) -> int:

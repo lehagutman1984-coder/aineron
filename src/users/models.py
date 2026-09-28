@@ -604,14 +604,36 @@ class CustomUser(AbstractUser):
         if not self.username and self.email:
             self.username = self.email.split('@')[0]
 
+        # 2026-09-28 (ревью, раунд 3): захватывается ДО super().save() — после
+        # него Django уже считает объект существующим (_state.adding=False)
+        # независимо от того, был ли это реально первый save(). Используется
+        # ниже, чтобы отличить genuinely новую регистрацию от save() уже
+        # существующего пользователя.
+        is_new = self._state.adding
+
         super().save(*args, **kwargs)
 
-        # Если пользователь без тарифа - назначаем бесплатный
+        # Если пользователь без тарифа - назначаем бесплатный.
+        # 2026-09-28 (ревью, раунд 3): это срабатывало на КАЖДОМ save() с
+        # tariff=None — не только при регистрации. Tariff.tariff — SET_NULL,
+        # поэтому удаление админом Tariff, на который ссылались активные
+        # пользователи, делает bulk UPDATE ... tariff_id=NULL в обход этого
+        # save() (баланс не трогается в момент удаления) — но СЛЕДУЮЩИЙ save()
+        # такого пользователя (например обычный логин через update_last_login)
+        # безусловно ПЕРЕЗАПИСЫВАЛ balance_kopecks/pages_count грантом
+        # бесплатного тарифа, без BalanceTransaction — реальный баланс молча
+        # исчезал. Грант начисляется ТОЛЬКО при первом создании пользователя;
+        # для уже существующего с опустевшим тарифом — назначаем тариф, но
+        # баланс не трогаем (тот же принцип, что в return_to_free_tariff()).
         if not self.tariff:
             free_tariff = Tariff.get_default_tariff()
             self.tariff = free_tariff
-            self.pages_count = free_tariff.pages_count
-            self.balance_kopecks = free_tariff.balance_grant_kopecks
+            update_fields = ['tariff']
+
+            if is_new:
+                self.pages_count = free_tariff.pages_count
+                self.balance_kopecks = free_tariff.balance_grant_kopecks
+                update_fields += ['pages_count', 'balance_kopecks']
 
             if not self.active_subscription:
                 free_subscription = UserSubscription.objects.create(
@@ -622,8 +644,9 @@ class CustomUser(AbstractUser):
                     expires_at=timezone.now() + timedelta(days=365 * 100)
                 )
                 self.active_subscription = free_subscription
+                update_fields.append('active_subscription')
 
-            self.save(update_fields=['tariff', 'pages_count', 'balance_kopecks', 'active_subscription'])
+            self.save(update_fields=update_fields)
 
     def get_language(self) -> str:
         """Язык пользователя с фолбэком — для локализации сообщений вне
@@ -666,8 +689,15 @@ class CustomUser(AbstractUser):
         от того же предиката зависит и допуск к дорогим моделям (ITEM 1) — без
         починки конкретно на .net (где Stars — штатный способ оплаты) это стало
         бы новой регрессией, а не только унаследованным багом.
+        2026-09-28 (ревью, раунд 3): promo-погашение (redeem_promo_code) создаёт
+        PaymentHistory(status='success', payment_type='promo') даже для чисто
+        маркетинговых раздач с amount=0 (реальных денег не было) — без этого
+        исключения любой пробный пользователь мог погасить промокод и получить
+        доступ к платной медиа-генерации (can_generate_media) без единого
+        реального рубля. amount_kopecks в истории при этом не трогаем — запись
+        легитимно используется для UI истории платежей.
         """
-        if self.payments.filter(status='success').exists():
+        if self.payments.filter(status='success').exclude(payment_type='promo').exists():
             return True
         return self.transactions.filter(type=BalanceTransaction.Type.XTR).exists()
 
@@ -750,21 +780,40 @@ class CustomUser(AbstractUser):
         return True
 
     def set_kopecks(self, amount_kopecks, *, reference=''):
-        """Прямая установка баланса (админ-действие). Пишет ledger-дельту."""
-        old_balance = CustomUser.objects.filter(pk=self.pk).values_list(
-            'balance_kopecks', flat=True
-        ).first() or 0
-        delta = amount_kopecks - old_balance
-        CustomUser.objects.filter(pk=self.pk).update(
-            balance_kopecks=amount_kopecks,
-            pages_count=max(0, amount_kopecks // 100),
-        )
-        self.refresh_from_db(fields=['balance_kopecks', 'pages_count'])
-        if delta != 0:
-            BalanceTransaction.objects.create(
-                user=self, amount_kopecks=delta, balance_after=self.balance_kopecks,
-                type='admin', reference=reference,
-            )
+        """Прямая установка баланса (админ-действие). Пишет ledger-дельту.
+
+        2026-09-28 (ревью, раунд 3): раньше `old_balance` читался БЕЗ блокировки
+        и вне transaction.atomic() — конкурентный spend_kopecks/add_kopecks того
+        же пользователя между чтением и .update() давал корректный итоговый
+        баланс (это абсолютный SET, отражает намерение админа), но ledger-запись
+        `amount_kopecks=delta` получалась враньём (не совпадала с фактическим
+        движением средств между старым и новым состоянием). select_for_update()
+        внутри atomic() закрывает и это, и сценарий "баланс изменён, ledger не
+        записан" при коллизии (type, reference) — вся операция теперь либо
+        коммитится целиком, либо откатывается целиком, как в spend_kopecks/add_kopecks.
+        """
+        from django.db import IntegrityError, transaction
+
+        try:
+            with transaction.atomic():
+                old_balance = CustomUser.objects.select_for_update().filter(
+                    pk=self.pk
+                ).values_list('balance_kopecks', flat=True).first() or 0
+                delta = amount_kopecks - old_balance
+                CustomUser.objects.filter(pk=self.pk).update(
+                    balance_kopecks=amount_kopecks,
+                    pages_count=max(0, amount_kopecks // 100),
+                )
+                self.refresh_from_db(fields=['balance_kopecks', 'pages_count'])
+                if delta != 0:
+                    BalanceTransaction.objects.create(
+                        user=self, amount_kopecks=delta, balance_after=self.balance_kopecks,
+                        type='admin', reference=reference,
+                    )
+        except IntegrityError:
+            # Дубликат (type, reference): весь блок атомарно откатился, баланс не тронут.
+            self.refresh_from_db(fields=['balance_kopecks', 'pages_count'])
+            return True
         return True
 
     # ========== Legacy-обёртки (звёзды, ×100) — сохранены для необновлённых call sites ==========

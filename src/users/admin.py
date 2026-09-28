@@ -479,7 +479,16 @@ class CustomUserAdmin(UserAdmin):
                 for user in queryset:
                     user.tariff = tariff
                     user.save(update_fields=['tariff'])
-                    user.set_kopecks(tariff.balance_grant_kopecks)
+                    # 2026-09-28 (ревью, раунд 3): было set_kopecks(...) — абсолютная
+                    # перезапись баланса грантом нового тарифа, стирающая реальные
+                    # деньги пользователя (тот же класс, что и activate_paid_tariff
+                    # чинит через add_kopecks — грант ДОБАВЛЯЕТСЯ, не заменяет).
+                    # reference на (user, tariff) — повторный клик по этому же
+                    # действию для того же пользователя/тарифа не начислит дважды.
+                    user.add_kopecks(
+                        tariff.balance_grant_kopecks, type='subscription',
+                        reference=f'admin-tariff-change:{user.id}:{tariff.id}',
+                    )
                 self.message_user(request, f'Тариф изменен на "{tariff.display_name}" для {queryset.count()} пользователей')
             except Tariff.DoesNotExist:
                 self.message_user(request, 'Указанный тариф не существует', level='ERROR')

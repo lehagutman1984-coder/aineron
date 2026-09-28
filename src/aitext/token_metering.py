@@ -233,7 +233,15 @@ def overage_settle_active():
 def estimate_prompt_tokens(messages_for_api):
     """Грубая оценка длины промта для preflight-клэмпа (§3.3). Это защитная
     граница, а не счёт — точность не критична, поэтому локальная эвристика
-    aitext.memory.estimate_tokens, без tiktoken."""
+    aitext.memory.estimate_tokens, без tiktoken.
+
+    2026-09-28 (ревью, раунд 3): части content без ключа 'text' (вложения —
+    image_url/image/input_image) раньше вносили 0 в оценку — пробный
+    пользователь мог приложить картинку с минимумом текста, guard считал
+    промт «дешёвым», а реальный usage от провайдера оказывался в разы больше
+    (тот же класс инцидента, что и исходный 50887-токенный случай, новым
+    вектором обхода). Фиксированная оценка за картинку — тот же приём, что
+    уже есть в api/services/billing.py::estimate_messages_tokens (dev-API)."""
     from aitext.memory import estimate_tokens
     total = 0
     for m in messages_for_api or []:
@@ -242,8 +250,12 @@ def estimate_prompt_tokens(messages_for_api):
             total += estimate_tokens(content)
         elif isinstance(content, list):
             for part in content:
-                if isinstance(part, dict) and isinstance(part.get('text'), str):
+                if not isinstance(part, dict):
+                    continue
+                if isinstance(part.get('text'), str):
                     total += estimate_tokens(part['text'])
+                elif part.get('type') in ('image_url', 'image', 'input_image'):
+                    total += 2000  # картинка: фиксированная оценка (как в dev-API)
     return total
 
 
