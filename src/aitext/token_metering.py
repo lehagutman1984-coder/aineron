@@ -79,7 +79,7 @@ def compute_overage(usage_row):
     if usage_row.source != MessageTokenUsage.Source.PROVIDER:
         return cost, 0
     allowlist = getattr(dj_settings, 'TOKEN_OVERAGE_MODELS', [])
-    if allowlist and usage_row.model_name not in allowlist:
+    if not model_pricing.overage_eligible(usage_row.model_name, allowlist):
         return cost, 0
 
     flat = int(usage_row.flat_kopecks or 0)
@@ -265,7 +265,7 @@ def preflight_max_tokens(model_name, max_tokens, prompt_tokens, flat_kopecks, he
         if flat <= 0:
             return max_tokens  # flat_was_charged=False ⇒ overage всегда 0 (§2.3.1)
         allowlist = getattr(dj_settings, 'TOKEN_OVERAGE_MODELS', [])
-        if allowlist and model_name not in allowlist:
+        if not model_pricing.overage_eligible(model_name, allowlist):
             return max_tokens
         rates = model_pricing.wholesale_rates(model_name)
         if rates is None:
@@ -300,6 +300,114 @@ def preflight_max_tokens(model_name, max_tokens, prompt_tokens, flat_kopecks, he
     except Exception as e:
         logger.warning(f"[overage][preflight] клэмп не применён для {model_name}: {e}")
         return max_tokens
+
+
+def free_tier_guard(user, network, prompt_tokens, max_tokens, flat_kopecks, balance_before_flat):
+    """
+    STATUS_AND_BACKLOG_PLAN_2026-09-25.md / инцидент 2026-09-27 (claude-opus-5,
+    50887 prompt-токенов на пробном балансе 10 руб.): overage сам по себе не
+    защищает от ОГРОМНОГО ВХОДНОГО промта — доплата считается только с выхода,
+    входные токены уже «съедены» к моменту расчёта. preflight_max_tokens выше
+    не помогает бесплатным пользователям: он сужает max_tokens, но минимальный
+    пол PREFLIGHT_MIN_MAX_TOKENS(1024) всё равно генерируется и биллится, даже
+    если это исчерпывает и обнуляет весь пробный баланс за один ответ (settle
+    после этого просто не может списать доплату и уходит в реконсилер).
+
+    Отдельный, более строгий guard ТОЛЬКО для пробных пользователей (никогда не
+    плативших реально, см. CustomUser.is_unpaid_free_user): либо отвечать
+    полностью в рамках баланса (клэмп, видимый пользователю — вызывающая
+    сторона обязана показать уведомление), либо отказать ДО обращения к
+    апстриму, если СРАЗУ ЖЕ, включая пол в 1024 токена, не хватает денег на
+    весь запрос (не только на довесок после плоского списания, как в
+    preflight_max_tokens, — pull запроса за счёт входного промта уже посчитан).
+
+    Возвращает (action, adjusted_max_tokens, estimated_kopecks):
+    - 'ok'    — обычная логика (в т.ч. preflight_max_tokens) не менять;
+    - 'clamp' — сузить max_tokens, вызывающая сторона обязана уведомить
+      пользователя (settings['balance_clamp'] / отдельное сообщение в боте);
+    - 'block' — отказать ДО вызова апстрима, ничего не списывать/вернуть
+      уже списанное, показать понятную причину с предложением пополнить баланс.
+
+    balance_before_flat — баланс пользователя ДО плоского списания за это
+    сообщение (для пробного пользователя бюджет на весь запрос — это весь его
+    остаток, а не «остаток после списания», как для платящих в preflight_max_tokens:
+    именно плоское списание с пробного баланса и есть то, что мы защищаем).
+    Работает и для аудированных моделей, и (через estimated_cost_kopecks) для
+    любой модели без ставок — в отличие от preflight_max_tokens, allowlist не
+    нужен: розничная cost_kopecks известна всегда.
+    """
+    from django.conf import settings as dj_settings
+    from core import model_pricing
+
+    try:
+        if not getattr(dj_settings, 'FREE_TIER_GUARD_ENABLED', False):
+            return 'ok', int(max_tokens or 0), 0
+        if user is None or not getattr(user, 'is_unpaid_free_user', lambda: False)():
+            return 'ok', int(max_tokens or 0), 0
+
+        max_tokens = int(max_tokens or 0)
+        if max_tokens <= 0:
+            return 'ok', max_tokens, 0
+        prompt_tokens = max(0, int(prompt_tokens or 0))
+        flat = int(flat_kopecks or 0)
+        balance = max(0, int(balance_before_flat or 0))
+        markup = float(getattr(dj_settings, 'TOKEN_OVERAGE_MARKUP', 1.6))
+        floor_tokens = min(max_tokens, PREFLIGHT_MIN_MAX_TOKENS)
+
+        def total_cost(out_tokens):
+            est = model_pricing.estimated_cost_kopecks(network, prompt_tokens, out_tokens)
+            return max(flat, round(est * markup))
+
+        floor_total = total_cost(floor_tokens)
+        if floor_total > balance:
+            return 'block', 0, floor_total
+
+        if total_cost(max_tokens) <= balance:
+            return 'ok', max_tokens, 0
+
+        # Бинарный поиск наибольшего o с total_cost(o) <= balance: estimated_cost_kopecks
+        # не всегда линейна по токенам (у неаудированных моделей — retail-прокси через
+        # max(p/6000, o/1500)), но монотонна по o — обратная формула не нужна.
+        lo, hi = floor_tokens, max_tokens
+        while lo < hi:
+            mid = (lo + hi + 1) // 2
+            if total_cost(mid) <= balance:
+                lo = mid
+            else:
+                hi = mid - 1
+        clamped_cost = total_cost(lo)
+        logger.info(f"[free_tier_guard] {getattr(network, 'model_name', '?')}: max_tokens "
+                    f"{max_tokens} -> {lo} (пробный баланс {balance} коп.)")
+        return 'clamp', lo, clamped_cost
+    except Exception as e:
+        logger.warning(f"[free_tier_guard] guard не применён: {e}")
+        return 'ok', int(max_tokens or 0), 0
+
+
+def trial_block_message(network, lang='ru') -> str:
+    """Rule S: текст 402, когда модель вообще не предлагается пробному пользователю
+    (её флоат-цена уже не оставляет запаса на несколько сообщений, см.
+    core.model_pricing.is_model_blocked_for_trial)."""
+    from core.errors_i18n import t_error
+    name = getattr(network, 'name', None) or getattr(network, 'model_name', '') or '?'
+    return t_error('trial_model_locked', lang).format(model=name)
+
+
+def trial_too_large_message(network, required_kopecks, balance_kopecks, lang='ru') -> str:
+    """Rule D (block): текст 402, когда даже минимальный ответ не влезает в остаток
+    пробного баланса — запрос отклонён ДО обращения к апстриму."""
+    from core.errors_i18n import t_error
+    from core.money import format_rub
+    name = getattr(network, 'name', None) or getattr(network, 'model_name', '') or '?'
+    return t_error('trial_request_too_large', lang).format(
+        model=name, amount=format_rub(required_kopecks), have=format_rub(balance_kopecks),
+    )
+
+
+def trial_truncated_message(lang='ru') -> str:
+    """Rule D (clamp): текст уведомления, когда ответ сужен под пробный баланс."""
+    from core.errors_i18n import t_error
+    return t_error('trial_reply_truncated', lang)
 
 
 def channel_for_chat(chat):

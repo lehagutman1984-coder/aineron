@@ -635,6 +635,25 @@ AGENT_OBSERVATION_CHARS = int(os.getenv('AGENT_OBSERVATION_CHARS', '3000'))
 BUSINESS_MAX_MODEL_KOPECKS = int(os.getenv('BUSINESS_MAX_MODEL_KOPECKS', '300'))
 BUSINESS_FALLBACK_MODEL_SLUG = os.getenv('BUSINESS_FALLBACK_MODEL_SLUG', '')
 
+# Защита пробного баланса (STATUS_AND_BACKLOG_PLAN_2026-09-25.md, ITEM 1, часть B;
+# инцидент 2026-09-27: claude-opus-5, 50887 prompt-токенов на балансе 10 руб. -
+# overage сам по себе не помогает: доплата считается уже ПОСЛЕ того, как входные
+# токены "съедены"). Единый механизм для пользователей, ни разу реально не
+# плативших (CustomUser.is_unpaid_free_user): либо дорогая модель им вообще
+# недоступна (Rule S — core.model_pricing.is_model_blocked_for_trial), либо ответ
+# честно урезается под их остаток баланса с явным уведомлением, либо запрос
+# отклоняется ДО обращения к апстриму, если баланса не хватит даже на минимальный
+# ответ (Rule D — aitext.token_metering.free_tier_guard). 0 = прежнее поведение
+# (полностью выключено), включается явно через env на каждом инстансе.
+FREE_TIER_GUARD_ENABLED = os.getenv('FREE_TIER_GUARD_ENABLED', '0') == '1'
+# Стартовый грант должен покрывать хотя бы столько сообщений на модели, иначе
+# модель вообще не показывается пробному пользователю как платная (Rule S).
+# 0 — отключает статическую блокировку моделей (остаётся только Rule D).
+FREE_TIER_MIN_MESSAGES = int(os.getenv('FREE_TIER_MIN_MESSAGES', '3'))
+# Ретейл-константа ₽/$ (см. core/model_pricing.py::estimated_cost_kopecks) — историческая,
+# НЕ путать с TOKEN_OVERAGE_USD_RUB (операционный курс расчёта доплаты, другая величина).
+PRICING_K_RETAIL = int(os.getenv('PRICING_K_RETAIL', '105'))
+
 # ========== UNIFIED_SUPREMACY (U1-U6) — сшивка память × Spaces × агенты ==========
 # U1: скоуп памяти на проект/организацию
 MEMORY_PROJECT_SCOPE = os.getenv('MEMORY_PROJECT_SCOPE', '1') == '1'

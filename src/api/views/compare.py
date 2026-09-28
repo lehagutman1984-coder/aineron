@@ -49,6 +49,19 @@ class CompareView(APIView):
                 'error': {'message': 'Одна или несколько моделей не найдены', 'type': 'invalid_request_error', 'code': None}
             }, status=400)
 
+        # 2026-09-28: Model Arena принимала fal-ai (медиа) модели без гейта has_made_real_payment
+        # — единственное место рядом с обычным чатом/файлами, где его не было (там он есть
+        # везде: chats.py/files.py/image_compare.py). Отклоняем весь запрос сразу, если среди
+        # выбранных моделей есть хоть одна медиа и пользователь ни разу не платил.
+        if any(n.provider == 'fal-ai' for n in networks_map.values()) and not request.user.can_generate_media():
+            return Response({
+                'error': {
+                    'message': 'Генерация изображений и видео доступна только на платных тарифах.',
+                    'type': 'insufficient_permissions',
+                    'code': 'requires_paid_plan',
+                }
+            }, status=402)
+
         today = timezone.now().date()
         network_costs: dict = {}
         total_cost_kopecks = 0
@@ -71,6 +84,25 @@ class CompareView(APIView):
                 total_cost_kopecks += cost_kopecks
 
             network_costs[slug] = (cost_kopecks, deduct)
+
+        # Rule S (free_tier_guard, ITEM 1 часть B): дорогая модель вообще не предлагается
+        # пробному (никогда не плативше­му) пользователю.
+        if request.user.is_unpaid_free_user():
+            from core.model_pricing import is_model_blocked_for_trial
+            blocked = [
+                networks_map[slug] for slug in unique_slugs
+                if networks_map[slug].provider != 'fal-ai' and network_costs[slug][1]
+                and is_model_blocked_for_trial(networks_map[slug])
+            ]
+            if blocked:
+                from aitext.token_metering import trial_block_message
+                return Response({
+                    'error': {
+                        'message': trial_block_message(blocked[0], request.user.get_language()),
+                        'type': 'insufficient_permissions',
+                        'code': 'requires_paid_plan',
+                    }
+                }, status=402)
 
         if not request.user.has_enough_kopecks(total_cost_kopecks):
             from core.money import format_rub

@@ -98,6 +98,15 @@ def create_chat(request):
         cost_kopecks = network.cost_kopecks
         deduct_stars = True
 
+        # 2026-09-28: legacy-путь вообще не проверял has_made_real_payment (ни email
+        # verification, как отмечено в аудите) - единственный оставшийся вход в
+        # медиа-генерацию без гейта, который есть на всех современных путях.
+        if network.provider == 'fal-ai' and not request.user.can_generate_media():
+            return JsonResponse({
+                'success': False,
+                'message': 'Генерация изображений и видео доступна только на платных тарифах.',
+            })
+
         # ========== ЛОГИКА БЕСПЛАТНЫХ СООБЩЕНИЙ ==========
         if network.unlimited and network.tariffs.filter(id=request.user.tariff.id).exists() and network.messages_limit > 0:
             today = timezone.now().date()
@@ -110,6 +119,17 @@ def create_chat(request):
             if claim_free_slot(usage, network.messages_limit):
                 deduct_stars = False
                 logger.info(f"Бесплатное сообщение для {request.user.email} в {network.name} ({usage.count}/{network.messages_limit})")
+
+        # Rule S (free_tier_guard, ITEM 1 часть B): дорогая модель вообще не предлагается
+        # пробному (никогда не плативше­му) пользователю.
+        if network.provider != 'fal-ai' and deduct_stars and request.user.is_unpaid_free_user():
+            from core.model_pricing import is_model_blocked_for_trial
+            if is_model_blocked_for_trial(network):
+                from aitext.token_metering import trial_block_message
+                return JsonResponse({
+                    'success': False,
+                    'message': trial_block_message(network, request.user.get_language()),
+                })
 
         # Проверка баланса для fal.ai (списание в Celery, но проверяем сейчас)
         if deduct_stars and not request.user.has_enough_kopecks(cost_kopecks):
@@ -211,6 +231,12 @@ def send_message(request, chat_id):
         cost_kopecks = network.cost_kopecks
         deduct_stars = True
 
+        if network.provider == 'fal-ai' and not request.user.can_generate_media():
+            return JsonResponse({
+                'success': False,
+                'message': 'Генерация изображений и видео доступна только на платных тарифах.',
+            })
+
         # ========== ЛОГИКА БЕСПЛАТНЫХ СООБЩЕНИЙ ==========
         today = timezone.now().date()
         if network.unlimited and network.tariffs.filter(id=request.user.tariff.id).exists() and network.messages_limit > 0:
@@ -225,6 +251,17 @@ def send_message(request, chat_id):
                 logger.info(f"Бесплатное сообщение для {request.user.email} в {network.name} ({usage.count}/{network.messages_limit})")
             else:
                 logger.info(f"Лимит бесплатных сообщений исчерпан для {request.user.email} в {network.name}")
+
+        # Rule S (free_tier_guard, ITEM 1 часть B): дорогая модель вообще не предлагается
+        # пробному (никогда не плативше­му) пользователю.
+        if network.provider != 'fal-ai' and deduct_stars and request.user.is_unpaid_free_user():
+            from core.model_pricing import is_model_blocked_for_trial
+            if is_model_blocked_for_trial(network):
+                from aitext.token_metering import trial_block_message
+                return JsonResponse({
+                    'success': False,
+                    'message': trial_block_message(network, request.user.get_language()),
+                })
 
         # Проверка баланса для fal.ai (списание в Celery, но проверяем сейчас)
         if deduct_stars and not request.user.has_enough_kopecks(cost_kopecks):

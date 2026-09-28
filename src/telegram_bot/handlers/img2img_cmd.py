@@ -166,6 +166,15 @@ async def cmd_img2img(message: Message, state: FSMContext, tg_user=None):
         )
         return
 
+    # 2026-09-28: бот не проверял has_made_real_payment для медиа (веб её
+    # блокирует полностью) - пробный пользователь мог сгенерировать 1-2
+    # изображения/видео на стартовом балансе до того, как баланс кончится.
+    if not tg_user.user.can_generate_media():
+        title = t('media.paidOnlyTitle', lang)
+        body = t('media.paidOnlyBody', lang)
+        await message.answer(f"<b>{title}</b>\n\n{body}", parse_mode='HTML')
+        return
+
     if not tg_user.user.has_enough_kopecks(total_kopecks):
         from core.money import format_money
         if lang == 'ru':
@@ -288,6 +297,15 @@ async def check_balance_and_run_img2img(message: Message, tg_user, prompt: str, 
             t('chat.emailNotVerifiedBody', lang) if lang != 'ru'
             else 'Подтвердите email — мы отправили код при регистрации. Введите его на сайте.'
         )
+        return
+
+    # 2026-09-28: бот не проверял has_made_real_payment для медиа (веб её
+    # блокирует полностью) - пробный пользователь мог сгенерировать 1-2
+    # изображения/видео на стартовом балансе до того, как баланс кончится.
+    if not tg_user.user.can_generate_media():
+        title = t('media.paidOnlyTitle', lang)
+        body = t('media.paidOnlyBody', lang)
+        await message.answer(f"<b>{title}</b>\n\n{body}", parse_mode='HTML')
         return
 
     if not tg_user.user.has_enough_kopecks(total_kopecks):

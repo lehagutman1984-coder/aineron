@@ -538,5 +538,9 @@
     "onCommands": "دستورات:\n• /digest off — غیرفعال‌سازی\n• /digest HH:MM — تغییر زمان",
     "offStatus": "خلاصه روزانه غیرفعال شد",
     "offCommands": "فعال‌سازی: /digest on یا /digest 09:00"
+  },
+  "media": {
+    "paidOnlyTitle": "در طرح‌های پولی در دسترس است",
+    "paidOnlyBody": "تولید تصویر و ویدیو فقط در طرح‌های پولی در دسترس است. موجودی را شارژ کنید یا طرحی بخرید: /balance"
   }
 }

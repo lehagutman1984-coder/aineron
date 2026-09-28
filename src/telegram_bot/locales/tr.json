@@ -538,5 +538,9 @@
     "onCommands": "Komutlar:\n• /digest off — devre dışı bırak\n• /digest HH:MM — saati değiştir",
     "offStatus": "Günlük özet devre dışı",
     "offCommands": "Etkinleştir: /digest on veya /digest 09:00"
+  },
+  "media": {
+    "paidOnlyTitle": "Ücretli planlarda kullanılabilir",
+    "paidOnlyBody": "Görsel ve video üretimi yalnızca ücretli planlarda kullanılabilir. Bakiyenizi yükleyin veya bir plan satın alın: /balance"
   }
 }

@@ -757,6 +757,17 @@ def generate_ai_response(self, message_id, web_search=False):
                 # skip_star_billing: True means org billing was already charged in group handler
                 skip_billing = (message.settings or {}).get('skip_star_billing', False)
                 if not skip_billing:
+                    # Бэкстоп 2026-09-28: если какой-то вызывающий путь (веб/бот/будущий) не
+                    # проверил can_generate_media() до постановки задачи, здесь — последняя
+                    # точка ДО обращения к апстриму и ДО единственного реального списания
+                    # (org-биллинг это не личный баланс пользователя, поэтому пропускается
+                    # при skip_billing выше).
+                    if not user.can_generate_media():
+                        from core.errors_i18n import t_error
+                        message.status = Message.Status.FAILED
+                        message.error_message = t_error('media_requires_paid_plan', user.get_language())
+                        message.save()
+                        return
                     if not user.has_enough_kopecks(total_cost_kopecks):
                         from core.money import format_rub
                         raise Exception(f"Недостаточно средств. Нужно {format_rub(total_cost_kopecks)}, у вас {format_rub(user.balance_kopecks)}.")
@@ -1103,19 +1114,54 @@ def generate_ai_response(self, message_id, web_search=False):
         # (спишется после генерации — вычитаем из головы вручную).
         try:
             from aitext.token_metering import (
-                estimate_prompt_tokens, overage_settle_active, preflight_max_tokens,
+                estimate_prompt_tokens, free_tier_guard, overage_settle_active,
+                preflight_max_tokens, trial_too_large_message,
             )
-            if overage_settle_active():
-                _pre_settings = message.settings or {}
-                if _pre_settings.get('billing_reference'):
-                    _flat_preflight = int(_pre_settings.get('billing_kopecks') or 0)
-                    _head_preflight = user.balance_kopecks
-                else:
-                    _flat_preflight = network.cost_kopecks
-                    _head_preflight = user.balance_kopecks - _flat_preflight
+            _pre_settings = message.settings or {}
+            _billing_ref_set = bool(_pre_settings.get('billing_reference'))
+            _prompt_tokens_est = estimate_prompt_tokens(messages_for_api)
+            if _billing_ref_set:
+                _flat_preflight = int(_pre_settings.get('billing_kopecks') or 0)
+                _head_preflight = user.balance_kopecks
+            else:
+                _flat_preflight = network.cost_kopecks
+                _head_preflight = user.balance_kopecks - _flat_preflight
+
+            # Rule D (free_tier_guard, ITEM 1 часть B; инцидент 2026-09-27 — claude-opus-5,
+            # 50887 prompt-токенов на пробном балансе 10 руб.): overage сам по себе не
+            # спасает от гигантского ВХОДНОГО промта (доплата считается только по выходу),
+            # а обычный preflight_max_tokens ниже сужает max_tokens лишь до пола в 1024
+            # токена — этого может не хватить даже на пол, и settle потом просто не может
+            # списать доплату (реконсилер). Отдельная, более строгая защита — ТОЛЬКО когда
+            # billing_reference реально стоит (личное списание за ЭТО сообщение уже
+            # произошло: свободные/безлимитные/оргбиллинг-сообщения ничем не рискуют) и
+            # ТОЛЬКО для пользователей, ни разу реально не плативших.
+            if _billing_ref_set and user.is_unpaid_free_user():
+                _balance_before_flat = _head_preflight + _flat_preflight
+                _action, _guarded_tokens, _est = free_tier_guard(
+                    user, network, _prompt_tokens_est, completion_kwargs["max_tokens"],
+                    _flat_preflight, _balance_before_flat,
+                )
+                if _action == 'block':
+                    from aitext.billing import refund_message_billing
+                    refund_message_billing(message)
+                    user.refresh_from_db(fields=['balance_kopecks'])
+                    message.status = Message.Status.FAILED
+                    message.error_message = trial_too_large_message(
+                        network, _est, user.balance_kopecks, user.get_language(),
+                    )
+                    message.save(update_fields=['status', 'error_message'])
+                    return
+                if _action == 'clamp':
+                    completion_kwargs["max_tokens"] = _guarded_tokens
+                    _settings_update = dict(message.settings or {})
+                    _settings_update['balance_clamp'] = _guarded_tokens
+                    message.settings = _settings_update
+                    message.save(update_fields=['settings'])
+            elif overage_settle_active():
                 completion_kwargs["max_tokens"] = preflight_max_tokens(
                     effective_model, completion_kwargs["max_tokens"],
-                    prompt_tokens=estimate_prompt_tokens(messages_for_api),
+                    prompt_tokens=_prompt_tokens_est,
                     flat_kopecks=_flat_preflight, head_kopecks=_head_preflight,
                 )
         except Exception as _preflight_err:

@@ -538,5 +538,9 @@
       "weekly_mon": "Weekly, Mon 10:00",
       "weekly_fri": "Weekly, Fri 17:00"
     }
+  },
+  "media": {
+    "paidOnlyTitle": "Available on paid plans",
+    "paidOnlyBody": "Image and video generation is available on paid plans only. Top up your balance or buy a plan: /balance"
   }
 }

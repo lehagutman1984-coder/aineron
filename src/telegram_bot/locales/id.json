@@ -538,5 +538,9 @@
     "onCommands": "Perintah:\n• /digest off — nonaktifkan\n• /digest HH:MM — ubah waktu",
     "offStatus": "Digest harian dinonaktifkan",
     "offCommands": "Aktifkan: /digest on atau /digest 09:00"
+  },
+  "media": {
+    "paidOnlyTitle": "Tersedia di paket berbayar",
+    "paidOnlyBody": "Pembuatan gambar dan video hanya tersedia pada paket berbayar. Isi ulang saldo atau beli paket: /balance"
   }
 }

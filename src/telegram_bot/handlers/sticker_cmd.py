@@ -135,6 +135,15 @@ async def cmd_sticker(message: Message, tg_user=None):
         )
         return
 
+    # 2026-09-28: бот не проверял has_made_real_payment для медиа (веб её
+    # блокирует полностью) - пробный пользователь мог сгенерировать 1-2
+    # изображения/видео на стартовом балансе до того, как баланс кончится.
+    if not tg_user.user.can_generate_media():
+        title = t('media.paidOnlyTitle', lang)
+        body = t('media.paidOnlyBody', lang)
+        await message.answer(f"<b>{title}</b>\n\n{body}", parse_mode='HTML')
+        return
+
     if not tg_user.user.has_enough_kopecks(network.cost_kopecks):
         from core.money import format_money
         if lang == 'ru':

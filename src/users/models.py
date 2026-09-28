@@ -656,8 +656,34 @@ class CustomUser(AbstractUser):
         Поэтому tariff.is_free сам по себе не годится как признак «платил / не платил»
         (на .net купить подписку картой вообще нельзя — INTL_MODE блокирует
         TariffPayView, крипта работает только как топ-ап баланса).
+
+        2026-09-28: раньше метод не видел Telegram Stars — пополнения через XTR
+        (`handlers/payment.py`) зачисляются через add_kopecks(type='xtr') и НЕ
+        создают PaymentHistory (только Stars-ПОДПИСКА на тариф на .ru идёт через
+        activate_paid_tariff и пишет строку 'success' — обычный топ-ап звёздами
+        нет). Из-за этого реальный плательщик через Stars засчитывался как
+        «бесплатный»: это уже блокирует ему медиа-генерацию на вебе, а теперь
+        от того же предиката зависит и допуск к дорогим моделям (ITEM 1) — без
+        починки конкретно на .net (где Stars — штатный способ оплаты) это стало
+        бы новой регрессией, а не только унаследованным багом.
         """
-        return self.payments.filter(status='success').exists()
+        if self.payments.filter(status='success').exists():
+            return True
+        return self.transactions.filter(type=BalanceTransaction.Type.XTR).exists()
+
+    def is_unpaid_free_user(self) -> bool:
+        """Пробный пользователь: бесплатный тариф И ни разу реально не платил
+        (см. has_made_real_payment). Единый предикат для медиа-гейта (уже был на
+        вебе как `tariff.is_free and not has_made_real_payment()`, продублирован
+        по местам) и для защиты пробного баланса на дорогих текстовых моделях
+        (ITEM 1, aitext.token_metering.free_tier_guard)."""
+        return bool(getattr(self.tariff, 'is_free', True)) and not self.has_made_real_payment()
+
+    def can_generate_media(self) -> bool:
+        """Разрешена ли генерация изображений/видео. Отдельное имя (не просто
+        `not is_unpaid_free_user()`) — чтобы место вызова читалось как решение о
+        медиа, а не дублировало формулировку тарифа."""
+        return not self.is_unpaid_free_user()
 
     def spend_kopecks(self, amount_kopecks, *, type='spend', reference=''):
         """

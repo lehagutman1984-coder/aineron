@@ -538,5 +538,9 @@
     "onCommands": "الأوامر:\n• /digest off — تعطيل\n• /digest HH:MM — تغيير الوقت",
     "offStatus": "تم تعطيل الملخص اليومي",
     "offCommands": "تمكين: /digest on أو /digest 09:00"
+  },
+  "media": {
+    "paidOnlyTitle": "متاح في الخطط المدفوعة",
+    "paidOnlyBody": "توليد الصور والفيديو متاح فقط في الخطط المدفوعة. اشحن رصيدك أو اشترِ خطة: /balance"
   }
 }

@@ -7,6 +7,7 @@ class MessageSerializer(serializers.ModelSerializer):
     is_research = serializers.SerializerMethodField()
     research_id = serializers.SerializerMethodField()
     used_memory = serializers.SerializerMethodField()
+    balance_truncated = serializers.SerializerMethodField()
     generation_id = serializers.SerializerMethodField()
     image_generation_id = serializers.SerializerMethodField()
     image_is_favorite = serializers.SerializerMethodField()
@@ -17,7 +18,7 @@ class MessageSerializer(serializers.ModelSerializer):
             'id', 'role', 'content', 'plain_text', 'files', 'status',
             'error_message', 'search_context', 'kb_sources', 'variants', 'created_at',
             'is_research', 'research_id', 'used_memory', 'generation_id',
-            'image_generation_id', 'image_is_favorite',
+            'image_generation_id', 'image_is_favorite', 'balance_truncated',
         ]
 
     def get_generation_id(self, obj):
@@ -67,6 +68,13 @@ class MessageSerializer(serializers.ModelSerializer):
 
     def get_used_memory(self, obj):
         return bool((obj.settings or {}).get('used_memory', False))
+
+    def get_balance_truncated(self, obj):
+        """ITEM 1 часть B: ответ сузен под пробный (никогда не плативший) баланс -
+        см. aitext.token_metering.free_tier_guard. Переживает перезагрузку страницы,
+        в отличие от одноразового SSE-события 'trial_truncated' (нужно для того же
+        сообщения после F5)."""
+        return bool((obj.settings or {}).get('balance_clamp'))
 
 
 class NeuralNetworkChatSerializer(NeuralNetworkListSerializer):

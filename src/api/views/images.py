@@ -68,6 +68,21 @@ class ImageGenerationsView(APIView):
             )
 
         user = request.user
+
+        # 2026-09-28: единственный вход в медиа-генерацию без гейта has_made_real_payment —
+        # веб-чат/файлы/сравнение его уже требуют, dev-API пропускал (только has_enough_kopecks,
+        # т.е. пробный баланс 10 руб. позволял бесплатно впервые платящему сгенерировать 1-2
+        # изображения через API в обход того же правила в UI).
+        if not user.can_generate_media():
+            return Response(
+                {'error': {
+                    'message': 'Image generation requires a paid plan or a top-up. Free trial balance covers text models only.',
+                    'type': 'insufficient_permissions',
+                    'code': 'requires_paid_plan',
+                }},
+                status=status.HTTP_402_PAYMENT_REQUIRED,
+            )
+
         cost_kopecks = network.cost_kopecks * n
         request_id = uuid.uuid4().hex[:16]
 

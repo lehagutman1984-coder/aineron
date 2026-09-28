@@ -15,6 +15,7 @@ from aitext.models import (
 )
 from aitext.tasks import generate_ai_response, get_client_for_network
 from aitext.limits import claim_free_slot, consume_free_message
+from core import model_pricing
 from aitext.code_formatter import CodeFormatter
 from users.models import UserSpending
 from api.permissions import IsEmailVerified
@@ -102,7 +103,7 @@ class ChatListCreateView(ListCreateAPIView):
         is_media = (
             (network.config_json or {}).get('metadata', {}).get('output_type') in ('image', 'video')
         ) or network.provider == 'fal-ai'
-        if is_media and getattr(request.user.tariff, 'is_free', True) and not request.user.has_made_real_payment():
+        if is_media and not request.user.can_generate_media():
             return Response({
                 'error': {
                     'message': 'Генерация изображений и видео доступна только на платных тарифах.',
@@ -132,6 +133,20 @@ class ChatListCreateView(ListCreateAPIView):
                         'code': 'free_limit_reached',
                     }
                 }, status=429)
+
+        # Rule S (free_tier_guard, ITEM 1 часть B): дорогая модель вообще не предлагается
+        # пробному (никогда не плативше­му) пользователю — не только чтобы защитить нашу
+        # маржу, но и чтобы одно сообщение не съело весь его стартовый грант.
+        if (network.provider != 'fal-ai' and deduct_stars and request.user.is_unpaid_free_user()
+                and model_pricing.is_model_blocked_for_trial(network)):
+            from aitext.token_metering import trial_block_message
+            return Response({
+                'error': {
+                    'message': trial_block_message(network, request.user.get_language()),
+                    'type': 'insufficient_permissions',
+                    'code': 'requires_paid_plan',
+                }
+            }, status=402)
 
         if deduct_stars and not request.user.has_enough_kopecks(cost_kopecks):
             from core.money import format_rub
@@ -271,7 +286,7 @@ class SendMessageView(APIView):
         is_media = (
             (network.config_json or {}).get('metadata', {}).get('output_type') in ('image', 'video')
         ) or network.provider == 'fal-ai'
-        if is_media and getattr(request.user.tariff, 'is_free', True) and not request.user.has_made_real_payment():
+        if is_media and not request.user.can_generate_media():
             return Response({
                 'error': {
                     'message': 'Генерация изображений и видео доступна только на платных тарифах.',
@@ -301,6 +316,20 @@ class SendMessageView(APIView):
                         'code': 'free_limit_reached',
                     }
                 }, status=429)
+
+        # Rule S (free_tier_guard, ITEM 1 часть B): дорогая модель вообще не предлагается
+        # пробному (никогда не плативше­му) пользователю — не только чтобы защитить нашу
+        # маржу, но и чтобы одно сообщение не съело весь его стартовый грант.
+        if (network.provider != 'fal-ai' and deduct_stars and request.user.is_unpaid_free_user()
+                and model_pricing.is_model_blocked_for_trial(network)):
+            from aitext.token_metering import trial_block_message
+            return Response({
+                'error': {
+                    'message': trial_block_message(network, request.user.get_language()),
+                    'type': 'insufficient_permissions',
+                    'code': 'requires_paid_plan',
+                }
+            }, status=402)
 
         if deduct_stars and not request.user.has_enough_kopecks(cost_kopecks):
             from core.money import format_rub
@@ -426,6 +455,20 @@ class StreamMessageView(APIView):
                         'code': 'free_limit_reached',
                     }
                 }, status=429)
+
+        # Rule S (free_tier_guard, ITEM 1 часть B): дорогая модель вообще не предлагается
+        # пробному (никогда не плативше­му) пользователю — не только чтобы защитить нашу
+        # маржу, но и чтобы одно сообщение не съело весь его стартовый грант.
+        if (network.provider != 'fal-ai' and deduct_stars and request.user.is_unpaid_free_user()
+                and model_pricing.is_model_blocked_for_trial(network)):
+            from aitext.token_metering import trial_block_message
+            return Response({
+                'error': {
+                    'message': trial_block_message(network, request.user.get_language()),
+                    'type': 'insufficient_permissions',
+                    'code': 'requires_paid_plan',
+                }
+            }, status=402)
 
         if deduct_stars and not request.user.has_enough_kopecks(cost_kopecks):
             from core.money import format_rub
@@ -653,13 +696,49 @@ class StreamMessageView(APIView):
         # overage/dry-run — клэмп виден пользователю (короче ответ), включать
         # его раньше самой доплаты нельзя.
         from aitext.token_metering import (
-            estimate_prompt_tokens, overage_settle_active, preflight_max_tokens,
+            estimate_prompt_tokens, free_tier_guard, overage_settle_active,
+            preflight_max_tokens, trial_too_large_message,
         )
-        if overage_settle_active():
+        _prompt_tokens_est = estimate_prompt_tokens(messages_for_api)
+        _flat_for_preflight = cost_kopecks if deduct_stars else 0
+        _trial_truncated = False  # видно generate() ниже (замыкание) - для события "done"
+
+        # Rule D (free_tier_guard, ITEM 1 часть B): та же защита, что в Celery-пути
+        # (aitext.tasks.generate_ai_response) — здесь ДО StreamingHttpResponse, поэтому
+        # при блокировке можно просто вернуть обычный 402 и вернуть деньги, ни одного
+        # байта апстриму не уходит. deduct_stars=False (свободная/безлимитная модель)
+        # ничем не рискует — guard не запускается.
+        if deduct_stars and request.user.is_unpaid_free_user():
+            _balance_before_flat = request.user.balance_kopecks + _flat_for_preflight
+            _action, _guarded_tokens, _est = free_tier_guard(
+                request.user, network, _prompt_tokens_est, max_tokens,
+                _flat_for_preflight, _balance_before_flat,
+            )
+            if _action == 'block':
+                request.user.add_kopecks(_flat_for_preflight, type='refund', reference=f'chat:{assist_msg_id}')
+                request.user.refresh_from_db(fields=['balance_kopecks'])
+                FileAttachment.objects.filter(message=user_message).update(message=None)
+                assistant_message.delete()
+                user_message.delete()
+                return Response({
+                    'error': {
+                        'message': trial_too_large_message(
+                            network, _est, request.user.balance_kopecks, request.user.get_language(),
+                        ),
+                        'type': 'insufficient_permissions',
+                        'code': 'trial_request_too_large',
+                    }
+                }, status=402)
+            if _action == 'clamp':
+                max_tokens = _guarded_tokens
+                _trial_truncated = True
+                assistant_message.settings = {**(assistant_message.settings or {}), 'balance_clamp': _guarded_tokens}
+                assistant_message.save(update_fields=['settings'])
+        elif overage_settle_active():
             max_tokens = preflight_max_tokens(
                 model_name, max_tokens,
-                prompt_tokens=estimate_prompt_tokens(messages_for_api),
-                flat_kopecks=cost_kopecks if deduct_stars else 0,
+                prompt_tokens=_prompt_tokens_est,
+                flat_kopecks=_flat_for_preflight,
                 head_kopecks=request.user.balance_kopecks,
             )
 
@@ -914,6 +993,7 @@ class StreamMessageView(APIView):
                     **({"variants": all_variants} if all_variants else {}),
                     **({"commit_proposed": commit_event} if commit_event else {}),
                     **({"billing": _billing} if _billing else {}),
+                    **({"trial_truncated": True} if _trial_truncated else {}),
                 })
 
             except Exception as e:
@@ -1033,6 +1113,29 @@ class RegenerateView(APIView):
             }, status=400)
 
         cost_kopecks = network.cost_kopecks
+
+        # 2026-09-28: регенерация медиа-сообщения не проверяла has_made_real_payment вовсе
+        # (только has_enough_kopecks для НЕ-медиа-веток) — пробный пользователь мог
+        # регенерировать изображение/видео сколько угодно раз, пока хватало баланса.
+        if network.provider == 'fal-ai' and not request.user.can_generate_media():
+            return Response({
+                'error': {
+                    'message': 'Генерация изображений и видео доступна только на платных тарифах.',
+                    'type': 'insufficient_permissions',
+                    'code': 'requires_paid_plan',
+                }
+            }, status=402)
+
+        if (network.provider != 'fal-ai' and request.user.is_unpaid_free_user()
+                and model_pricing.is_model_blocked_for_trial(network)):
+            from aitext.token_metering import trial_block_message
+            return Response({
+                'error': {
+                    'message': trial_block_message(network, request.user.get_language()),
+                    'type': 'insufficient_permissions',
+                    'code': 'requires_paid_plan',
+                }
+            }, status=402)
 
         if network.provider != 'fal-ai' and not request.user.has_enough_kopecks(cost_kopecks):
             from core.money import format_rub

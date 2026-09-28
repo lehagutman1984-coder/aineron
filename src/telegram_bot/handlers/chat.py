@@ -147,6 +147,16 @@ def _check_balance(user, cost_kopecks):
     return user.has_enough_kopecks(cost_kopecks)
 
 
+def _is_model_blocked_for_trial_user(user, network):
+    """Rule S (free_tier_guard, ITEM 1 часть B): дорогая модель вообще не предлагается
+    пробному (никогда не плативше­му) пользователю — тот же гейт, что на вебе
+    (api/views/chats.py)."""
+    if not user.is_unpaid_free_user():
+        return False
+    from core.model_pricing import is_model_blocked_for_trial
+    return is_model_blocked_for_trial(network)
+
+
 def _get_overage_receipt(msg_id):
     """TOKEN_OVERAGE_BILLING_PLAN.md, Спринт 4 — данные для чека по доплате.
 
@@ -208,6 +218,7 @@ ensure_chat = sync_to_async(_ensure_chat, thread_sensitive=True)
 create_messages = sync_to_async(_create_messages, thread_sensitive=True)
 get_message_state = sync_to_async(_get_message_state, thread_sensitive=True)
 check_balance = sync_to_async(_check_balance, thread_sensitive=True)
+is_model_blocked_for_trial_user = sync_to_async(_is_model_blocked_for_trial_user, thread_sensitive=True)
 get_overage_receipt = sync_to_async(_get_overage_receipt, thread_sensitive=True)
 charge_text_message = sync_to_async(_charge_text_message, thread_sensitive=True)
 
@@ -264,6 +275,11 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
         )
         await async_log_event(tg_user, 'error', network=network, reason='email_not_verified')
 
+    async def _reply_trial_model_locked():
+        from aitext.token_metering import trial_block_message
+        await tg_message.answer(trial_block_message(network, lang))
+        await async_log_event(tg_user, 'error', network=network, reason='trial_model_locked')
+
     if not skip_billing:
         # Зеркало api/permissions.py::IsEmailVerified — тот же анти-абьюз,
         # что и на вебе/API, для входа через бота (see telegram_bot/utils.py
@@ -272,6 +288,9 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
         from telegram_bot.utils import needs_email_verification
         if needs_email_verification(tg_user.user):
             await _reply_email_not_verified()
+            return
+        if await is_model_blocked_for_trial_user(tg_user.user, network):
+            await _reply_trial_model_locked()
             return
         has_balance = await check_balance(tg_user.user, network.cost_kopecks)
         if not has_balance:
@@ -370,6 +389,14 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
                 # Чек — информационная строка; её отсутствие не должно мешать
                 # доставке уже сгенерированного (и оплаченного) ответа.
                 logger.warning(f'overage receipt skipped for {msg.id}: {_receipt_err}')
+            # ITEM 1 часть B: ответ сузен под пробный баланс (aitext.token_metering.free_tier_guard) -
+            # тот же приём, что у чека выше: дописываем строку к уже доставляемому тексту.
+            try:
+                if (msg.settings or {}).get('balance_clamp'):
+                    from aitext.token_metering import trial_truncated_message
+                    full_text += '\n\n' + DIVIDER + '\n' + trial_truncated_message(lang)
+            except Exception as _trunc_err:
+                logger.warning(f'trial truncation notice skipped for {msg.id}: {_trunc_err}')
             markup = after_answer_kb(msg.id, copy_code=extract_first_code(full_text), lang=lang)
             delivered = False
             # S1: Rich Messages — таблицы, код, thinking-блоки (за флагом)
@@ -425,7 +452,11 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
             return
 
         elif msg.status == 'failed':
-            await streamer.fail(t('chat.error', lang))
+            # 2026-09-28: msg.error_message (уже локализован там, где записан — content_policy_violation,
+            # trial_request_too_large и т.д.) раньше полностью игнорировался в пользу общей фразы -
+            # конкретная причина отказа (в т.ч. новый блок по пробному балансу, ITEM 1 часть B) до
+            # пользователя не доходила вообще, даже когда message.error_message её честно содержал.
+            await streamer.fail(msg.error_message or t('chat.error', lang))
             await set_status_reaction(tg_message.bot, tg_message.chat.id, tg_message.message_id, None)
             await async_log_event(tg_user, 'error', network=network, reason='generation_failed')
             return
