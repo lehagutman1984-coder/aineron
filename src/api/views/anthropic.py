@@ -91,6 +91,23 @@ class AnthropicMessagesView(APIView):
 
         user = request.user
         api_key = getattr(request, 'api_key', None)
+        organization = getattr(api_key, 'organization', None) if api_key else None
+
+        # Rule S — см. api/views/chat.py для полного обоснования (тот же
+        # dev-API-путь, тот же пробел: политика "не предлагать дорогую модель
+        # пробному" отсутствовала здесь, хотя реальные деньги уже защищены
+        # атомарным reserve_for_request ниже).
+        if organization is None and user.is_unpaid_free_user():
+            from core import model_pricing
+            if model_pricing.is_model_blocked_for_trial(network):
+                from aitext.token_metering import trial_block_message
+                return Response(
+                    {'type': 'error', 'error': {
+                        'type': 'insufficient_permissions',
+                        'message': trial_block_message(network, user.get_language()),
+                    }},
+                    status=status.HTTP_402_PAYMENT_REQUIRED,
+                )
 
         openai_messages = _anthropic_to_openai_messages(messages, system)
         client = get_laozhang_client()

@@ -196,6 +196,29 @@ class ChatCompletionsView(APIView):
 
         user = request.user
         api_key = getattr(request, 'api_key', None)
+        organization = getattr(api_key, 'organization', None) if api_key else None
+
+        # Rule S (free_tier_guard, ITEM 1 часть B; ревью раунд 3): на вебе/боте
+        # дорогая модель вообще не предлагается пробному (ни разу не плативше­му)
+        # пользователю — на dev-API этой защиты не было вовсе, хотя реальный
+        # расход уже защищён атомарным reserve_for_request ниже (в минус баланс
+        # не уйдёт). Это про политику "не предлагать", не про деньги: trial
+        # мог завести свой API-ключ и получить те же дорогие модели в обход
+        # веб-гейта. Org-биллинг (organization задан на ключе) исключён — платит
+        # организация, не личный баланс пользователя (тот же принцип, что у
+        # skip_star_billing в боте).
+        if organization is None and user.is_unpaid_free_user():
+            from core import model_pricing
+            if model_pricing.is_model_blocked_for_trial(network):
+                from aitext.token_metering import trial_block_message
+                return Response(
+                    {'error': {
+                        'message': trial_block_message(network, user.get_language()),
+                        'type': 'insufficient_permissions',
+                        'code': 'requires_paid_plan',
+                    }},
+                    status=status.HTTP_402_PAYMENT_REQUIRED,
+                )
 
         client = get_laozhang_client()
         kwargs = {

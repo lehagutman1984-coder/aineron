@@ -103,6 +103,16 @@ def process_batch_job(self, job_id: int):
             if network is None:
                 raise ValueError(f"model_not_found: model '{model_id}' is not available")
 
+            # Rule S — см. api/views/chat.py для полного обоснования. По item,
+            # не по всей джобе: один заблокированный item не должен ронять
+            # остальные, тот же паттерн, что model_not_found/insufficient_quota
+            # выше — ValueError ловится общим except ниже и метит только этот item.
+            _batch_org = getattr(job.api_key, 'organization', None) if job.api_key else None
+            if _batch_org is None and job.user.is_unpaid_free_user():
+                from core import model_pricing
+                if model_pricing.is_model_blocked_for_trial(network):
+                    raise ValueError(f"requires_paid_plan: model '{model_id}' is not available on the trial plan")
+
             requested_max = clamp_max_tokens(
                 max_tokens or (network.max_tokens if network.max_tokens > 0 else None),
                 network.model_name,
