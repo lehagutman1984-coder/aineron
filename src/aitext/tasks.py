@@ -1112,21 +1112,18 @@ def generate_ai_response(self, message_id, web_search=False):
         # вариантах: pre-charge (веб-поллинг/бот — billing_reference уже стоит,
         # баланс уже уменьшен) или post-charge фолбэк TEXT_BILLING_ENABLED ниже
         # (спишется после генерации — вычитаем из головы вручную).
-        # 2026-09-28 (ревью): раньше побочные эффекты решения 'block' (refund,
-        # message.save, return) лежали ВНУТРИ этого же try — если refund/save
-        # падали на транзиентной ошибке БД, исключение ловилось общим except
-        # ниже как warning, `return` не выполнялся, и код проваливался дальше
-        # к вызову апстриму с ПОЛНЫМ неурезанным max_tokens — ровно инцидент
-        # 2026-09-27 (claude-opus-5, 50887 токенов), от которого guard защищает.
-        # Теперь: try считает только _action/_guarded_tokens/_est (fail-open →
-        # 'ok' при любой ошибке расчёта), а применение 'block'/'clamp' — СНАРУЖИ,
-        # так что `return` при block гарантирован независимо от успеха refund.
-        _action, _guarded_tokens, _est = 'ok', completion_kwargs["max_tokens"], 0
+        # 2026-09-28 (ревью, раунд 3): free_tier_guard + preflight_max_tokens
+        # вызывались раздельно, дублируя ту же структуру, что в api/views/chats.py
+        # (источник 2 из 3 багов раунда 2 — расхождение elif/if между копиями).
+        # Единая точка входа resolve_overage_guard — та же логика + опциональный
+        # атомарный резерв (TOKEN_OVERAGE_RESERVE_ENABLED) под гонку параллельных
+        # сообщений. try считает только _guard (fail-open внутри самой функции
+        # при любой ошибке расчёта — она не бросает наружу), применение
+        # 'block'/'clamp' — СНАРУЖИ, так что `return` при block гарантирован
+        # независимо от успеха refund (инцидент 2026-09-27, claude-opus-5).
+        _guard = None
         try:
-            from aitext.token_metering import (
-                estimate_prompt_tokens, free_tier_guard, overage_settle_active,
-                preflight_max_tokens,
-            )
+            from aitext.token_metering import estimate_prompt_tokens, resolve_overage_guard
             _pre_settings = message.settings or {}
             _billing_ref_set = bool(_pre_settings.get('billing_reference'))
             _prompt_tokens_est = estimate_prompt_tokens(messages_for_api)
@@ -1136,51 +1133,18 @@ def generate_ai_response(self, message_id, web_search=False):
             else:
                 _flat_preflight = network.cost_kopecks
                 _head_preflight = user.balance_kopecks - _flat_preflight
+            _is_trial_for_guard = bool(_billing_ref_set and user.is_unpaid_free_user())
 
-            # Rule D (free_tier_guard, ITEM 1 часть B; инцидент 2026-09-27 — claude-opus-5,
-            # 50887 prompt-токенов на пробном балансе 10 руб.): overage сам по себе не
-            # спасает от гигантского ВХОДНОГО промта (доплата считается только по выходу),
-            # а обычный preflight_max_tokens ниже сужает max_tokens лишь до пола в 1024
-            # токена — этого может не хватить даже на пол, и settle потом просто не может
-            # списать доплату (реконсилер). Отдельная, более строгая защита — ТОЛЬКО когда
-            # billing_reference реально стоит (личное списание за ЭТО сообщение уже
-            # произошло: свободные/безлимитные/оргбиллинг-сообщения ничем не рискуют) и
-            # ТОЛЬКО для пользователей, ни разу реально не плативших.
-            if _billing_ref_set and user.is_unpaid_free_user():
-                _balance_before_flat = _head_preflight + _flat_preflight
-                _action, _guarded_tokens, _est = free_tier_guard(
-                    user, network, _prompt_tokens_est, completion_kwargs["max_tokens"],
-                    _flat_preflight, _balance_before_flat,
-                )
-
-            # 2026-09-28 (ревью): было `elif overage_settle_active()` — то есть
-            # если пользователь ни разу не платил, но free_tier_guard вернул 'ok'
-            # (флаг FREE_TIER_GUARD_ENABLED выключен или внутренний fail-open),
-            # обычный preflight_max_tokens вообще не выполнялся — пробный
-            # пользователь оставался БЕЗ какой-либо защиты, тогда как платящие
-            # её сохраняли. Условие on `_action == 'ok'` восстанавливает базовую
-            # защиту для всех, для кого free_tier_guard не вмешался.
-            if _action == 'ok' and overage_settle_active():
-                _requested_before_preflight = completion_kwargs["max_tokens"]
-                completion_kwargs["max_tokens"] = preflight_max_tokens(
-                    effective_model, completion_kwargs["max_tokens"],
-                    prompt_tokens=_prompt_tokens_est,
-                    flat_kopecks=_flat_preflight, head_kopecks=_head_preflight,
-                )
-                # 2026-09-28: клэмп для ПЛАТЯЩИХ пользователей был полностью тихим — короткий
-                # ответ без единого слова о причине. Тот же UI-канал, что у пробных
-                # пользователей (settings['balance_clamp'] + уведомление в чате/боте),
-                # текст другой (balance_truncated_message с is_trial=False).
-                if completion_kwargs["max_tokens"] < _requested_before_preflight:
-                    _settings_update = dict(message.settings or {})
-                    _settings_update['balance_clamp'] = completion_kwargs["max_tokens"]
-                    message.settings = _settings_update
-                    message.save(update_fields=['settings'])
+            _guard = resolve_overage_guard(
+                user, network, _prompt_tokens_est, completion_kwargs["max_tokens"], _flat_preflight,
+                head_kopecks=_head_preflight, balance_before_flat=_head_preflight + _flat_preflight,
+                message_id=message_id, is_trial=_is_trial_for_guard,
+            )
         except Exception as _preflight_err:
             logger.warning(f"[overage][preflight] Celery-путь, сообщение {message_id}: {_preflight_err}")
-            _action = 'ok'
+            _guard = None
 
-        if _action == 'block':
+        if _guard is not None and _guard.action == 'block':
             try:
                 from aitext.billing import refund_message_billing
                 refund_message_billing(message)
@@ -1193,14 +1157,20 @@ def generate_ai_response(self, message_id, web_search=False):
             from aitext.token_metering import trial_too_large_message
             message.status = Message.Status.FAILED
             message.error_message = trial_too_large_message(
-                network, _est, user.balance_kopecks, user.get_language(),
+                network, _guard.estimated_kopecks, user.balance_kopecks, user.get_language(),
             )
             message.save(update_fields=['status', 'error_message'])
             return
-        if _action == 'clamp':
-            completion_kwargs["max_tokens"] = _guarded_tokens
+        if _guard is not None and (_guard.action == 'clamp' or _guard.reserve_reference):
+            completion_kwargs["max_tokens"] = _guard.max_tokens
             _settings_update = dict(message.settings or {})
-            _settings_update['balance_clamp'] = _guarded_tokens
+            if _guard.action == 'clamp':
+                _settings_update['balance_clamp'] = _guard.max_tokens
+            if _guard.reserve_reference:
+                # settle_overage() найдёт резерв по этому ключу после генерации
+                # (нетто-зачёт факта против резерва); refund_message_billing()
+                # освободит его при финальном провале.
+                _settings_update['overage_reserve_reference'] = _guard.reserve_reference
             message.settings = _settings_update
             message.save(update_fields=['settings'])
 
@@ -2781,9 +2751,13 @@ def reconcile_unsettled_overage(self):
     if not failures:
         return
 
+    from aitext.token_metering import outstanding_overage_kopecks
+
     lines = [f'Доплата рассчитана, но не списана (20мин–6ч): {len(failures)}']
     for row in failures[:20]:
-        lines.append(f'· overage:{row.message_id} — {format_rub(row.overage_kopecks)}, {row.model_name}')
+        # 2026-09-28 (ревью, раунд 3): при резерве бОльшая часть уже реально
+        # собрана ДО генерации — показываем реально недостающее, не полный overage.
+        lines.append(f'· overage:{row.message_id} — {format_rub(outstanding_overage_kopecks(row))}, {row.model_name}')
     if len(failures) > 20:
         lines.append(f'...и ещё {len(failures) - 20}')
     notify_admins('<b>Мониторинг: несписанная доплата за токены</b>\n' + '\n'.join(lines))

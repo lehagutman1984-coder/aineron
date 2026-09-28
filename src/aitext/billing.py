@@ -22,8 +22,22 @@ def refund_message_billing(message) -> bool:
     Вернуть средства, списанные на вебе за это сообщение. Идемпотентно:
     reference совпадает со spend-записью, но type='refund' — повторный вызов
     (ретрай Celery) станет no-op по unique(type, reference).
+
+    2026-09-28 (ревью, раунд 3): единая точка провала генерации (вызывается на
+    каждом failure-пути Celery-задачи) — заодно освобождает атомарный резерв
+    доплаты (TOKEN_OVERAGE_RESERVE_ENABLED, message.settings
+    ['overage_reserve_reference']), если он был сделан. Без этого резерв
+    остался бы списанным без возврата на сообщении, которое так и не
+    сгенерировалось (та же дыра, что чинилась для flat-списания раньше —
+    просто для нового вида резерва).
     """
+    from aitext.token_metering import release_overage_reservation
+
     s = message.settings or {}
+    reserve_ref = s.get('overage_reserve_reference')
+    if reserve_ref:
+        release_overage_reservation(message.chat.user, reserve_ref)
+
     ref = s.get('billing_reference')
     kop = int(s.get('billing_kopecks') or 0)
     if not ref or kop <= 0:

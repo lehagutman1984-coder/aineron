@@ -701,79 +701,65 @@ class StreamMessageView(APIView):
         # оплачиваемого вместо отказа в запросе. Полный no-op при выключенном
         # overage/dry-run — клэмп виден пользователю (короче ответ), включать
         # его раньше самой доплаты нельзя.
+        # 2026-09-28 (ревью, раунд 3): free_tier_guard + preflight_max_tokens
+        # вызывались раздельно, дублируя ту же структуру, что в aitext/tasks.py
+        # (источник 2 из 3 багов раунда 2). Единая точка входа
+        # resolve_overage_guard — та же логика + опциональный атомарный резерв
+        # (TOKEN_OVERAGE_RESERVE_ENABLED) под гонку параллельных сообщений.
         from aitext.token_metering import (
-            estimate_prompt_tokens, free_tier_guard, overage_settle_active,
-            preflight_max_tokens, trial_too_large_message,
+            estimate_prompt_tokens, resolve_overage_guard, trial_too_large_message,
         )
         _prompt_tokens_est = estimate_prompt_tokens(messages_for_api)
         _flat_for_preflight = cost_kopecks if deduct_stars else 0
         _balance_truncated = False  # видно generate() ниже (замыкание) - для события "done"
+        _is_trial_for_guard = bool(deduct_stars and request.user.is_unpaid_free_user())
 
-        # Rule D (free_tier_guard, ITEM 1 часть B): та же защита, что в Celery-пути
-        # (aitext.tasks.generate_ai_response) — здесь ДО StreamingHttpResponse, поэтому
-        # при блокировке можно просто вернуть обычный 402 и вернуть деньги, ни одного
-        # байта апстриму не уходит. deduct_stars=False (свободная/безлимитная модель)
-        # ничем не рискует — guard не запускается.
-        _action = 'ok'
-        if deduct_stars and request.user.is_unpaid_free_user():
-            _balance_before_flat = request.user.balance_kopecks + _flat_for_preflight
-            _action, _guarded_tokens, _est = free_tier_guard(
-                request.user, network, _prompt_tokens_est, max_tokens,
-                _flat_for_preflight, _balance_before_flat,
-            )
-            if _action == 'block':
-                request.user.add_kopecks(_flat_for_preflight, type='refund', reference=f'chat:{assist_msg_id}')
-                request.user.refresh_from_db(fields=['balance_kopecks'])
-                # 2026-09-28 (ревью): UserSpending для этого сообщения уже создан
-                # выше (_spending_row) — если его не убрать, у пользователя в
-                # аналитике/истории трат остаётся запись о списании за
-                # сообщение, которого физически больше нет (деньги при этом
-                # уже возвращены add_kopecks выше — это чисто "фантомная"
-                # запись в отчётах, не потеря денег). Удаляем по прямой ссылке
-                # на объект (не по user+amount+description) — эвристика могла
-                # бы в редкой гонке подхватить и стереть валидную запись
-                # параллельного сообщения той же модели.
-                _spending_row.delete()
-                FileAttachment.objects.filter(message=user_message).update(message=None)
-                assistant_message.delete()
-                user_message.delete()
-                return Response({
-                    'error': {
-                        'message': trial_too_large_message(
-                            network, _est, request.user.balance_kopecks, request.user.get_language(),
-                        ),
-                        'type': 'insufficient_permissions',
-                        'code': 'trial_request_too_large',
-                    }
-                }, status=402)
-            if _action == 'clamp':
-                max_tokens = _guarded_tokens
-                _balance_truncated = True
-                assistant_message.settings = {**(assistant_message.settings or {}), 'balance_clamp': _guarded_tokens}
-                assistant_message.save(update_fields=['settings'])
-        # 2026-09-28 (ревью): было `elif overage_settle_active()` — если
-        # is_unpaid_free_user()==True, но free_tier_guard вернул 'ok' (флаг
-        # FREE_TIER_GUARD_ENABLED выключен или внутренний fail-open), обычный
-        # preflight_max_tokens вообще не выполнялся: пробный пользователь
-        # оставался БЕЗ какой-либо защиты от overage, тогда как платящие её
-        # сохраняли. `_action == 'ok'` восстанавливает базовую защиту для всех,
-        # для кого free_tier_guard не вмешался (см. тот же фикс в tasks.py).
-        if _action == 'ok' and overage_settle_active():
-            _requested_before_preflight = max_tokens
-            max_tokens = preflight_max_tokens(
-                model_name, max_tokens,
-                prompt_tokens=_prompt_tokens_est,
-                flat_kopecks=_flat_for_preflight,
-                head_kopecks=request.user.balance_kopecks,
-            )
-            # 2026-09-28: клэмп для ПЛАТЯЩИХ пользователей был полностью тихим на
-            # веб-SSE-пути (в отличие от бота/Celery-пути — там та же дыра, уже
-            # закрыта в aitext/tasks.py). Тот же ключ настроек, что у пробных
-            # пользователей выше — фронт/бот отличают текст по is_unpaid_free_user().
-            if max_tokens < _requested_before_preflight:
-                _balance_truncated = True
-                assistant_message.settings = {**(assistant_message.settings or {}), 'balance_clamp': max_tokens}
-                assistant_message.save(update_fields=['settings'])
+        _guard = resolve_overage_guard(
+            request.user, network, _prompt_tokens_est, max_tokens, _flat_for_preflight,
+            head_kopecks=request.user.balance_kopecks,
+            balance_before_flat=request.user.balance_kopecks + _flat_for_preflight,
+            message_id=assist_msg_id, is_trial=_is_trial_for_guard,
+        )
+        if _guard.action == 'block':
+            request.user.add_kopecks(_flat_for_preflight, type='refund', reference=f'chat:{assist_msg_id}')
+            request.user.refresh_from_db(fields=['balance_kopecks'])
+            # 2026-09-28 (ревью): UserSpending для этого сообщения уже создан
+            # выше (_spending_row) — если его не убрать, у пользователя в
+            # аналитике/истории трат остаётся запись о списании за
+            # сообщение, которого физически больше нет (деньги при этом
+            # уже возвращены add_kopecks выше — это чисто "фантомная"
+            # запись в отчётах, не потеря денег). Удаляем по прямой ссылке
+            # на объект (не по user+amount+description) — эвристика могла
+            # бы в редкой гонке подхватить и стереть валидную запись
+            # параллельного сообщения той же модели.
+            _spending_row.delete()
+            FileAttachment.objects.filter(message=user_message).update(message=None)
+            assistant_message.delete()
+            user_message.delete()
+            return Response({
+                'error': {
+                    'message': trial_too_large_message(
+                        network, _guard.estimated_kopecks, request.user.balance_kopecks, request.user.get_language(),
+                    ),
+                    'type': 'insufficient_permissions',
+                    'code': 'trial_request_too_large',
+                }
+            }, status=402)
+
+        max_tokens = _guard.max_tokens
+        if _guard.reserve_reference:
+            # Атомарный резерв — settle_overage() найдёт его по этому ключу
+            # после генерации (нетто-зачёт факта против резерва), а
+            # refund_message_billing() освободит его при финальном провале.
+            assistant_message.settings = {
+                **(assistant_message.settings or {}),
+                'overage_reserve_reference': _guard.reserve_reference,
+            }
+            assistant_message.save(update_fields=['settings'])
+        if _guard.action == 'clamp':
+            _balance_truncated = True
+            assistant_message.settings = {**(assistant_message.settings or {}), 'balance_clamp': max_tokens}
+            assistant_message.save(update_fields=['settings'])
 
         def _sse(data):
             return f"data: {json.dumps(data, ensure_ascii=False)}\n\n".encode('utf-8')
@@ -1053,6 +1039,15 @@ class StreamMessageView(APIView):
                     user.add_kopecks(cost_kopecks, type='refund', reference=f'chat:{assist_msg_id}')
                     from core.money import format_rub
                     logger.info(f"Refunded {format_rub(cost_kopecks)} to {user.email} after streaming error")
+                # 2026-09-28 (ревью, раунд 3): освобождаем атомарный резерв доплаты
+                # (TOKEN_OVERAGE_RESERVE_ENABLED), если он был сделан для этого
+                # сообщения — иначе он остался бы списанным без возврата на
+                # сообщении, которое так и не досчиталось (тот же принцип, что
+                # у flat-refund выше, для резерва overage).
+                _reserve_ref_on_fail = (assistant_message.settings or {}).get('overage_reserve_reference')
+                if _reserve_ref_on_fail:
+                    from aitext.token_metering import release_overage_reservation
+                    release_overage_reservation(user, _reserve_ref_on_fail)
                 from aitext.tasks import _is_rate_limit_error
                 from core.errors_i18n import t_error
                 user_lang = user.get_language()
@@ -1104,7 +1099,7 @@ class StreamMessageView(APIView):
                         from django.db import connection
                         connection.close_if_unusable_or_obsolete()
                         from aitext.models import MessageTokenUsage
-                        from aitext.token_metering import record_usage
+                        from aitext.token_metering import record_usage, release_overage_reservation
                         if not MessageTokenUsage.objects.filter(message_id=assist_msg_id).exists():
                             record_usage(
                                 assistant_message, network, MessageTokenUsage.Channel.WEB,
@@ -1115,6 +1110,15 @@ class StreamMessageView(APIView):
                         Message.objects.filter(
                             id=assist_msg_id, status=Message.Status.PENDING,
                         ).update(status=Message.Status.FAILED)
+                        # 2026-09-28 (ревью, раунд 3): в отличие от плоского
+                        # списания (не возвращается здесь намеренно —
+                        # reconcile_stuck_spends покажет админам), у резерва
+                        # доплаты пока нет своего реконсилера на этот сценарий —
+                        # не освободить его значит заморозить деньги без
+                        # какого-либо пути возврата вообще.
+                        _reserve_ref_disc = (assistant_message.settings or {}).get('overage_reserve_reference')
+                        if _reserve_ref_disc:
+                            release_overage_reservation(user, _reserve_ref_disc)
                         logger.warning(f"SSE-поток для сообщения {assist_msg_id} прерван клиентом до завершения")
                     except Exception as _fin_err:
                         logger.warning(f"[token_metering] SSE-путь (finally): {assist_msg_id}: {_fin_err}")
