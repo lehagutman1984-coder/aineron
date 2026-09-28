@@ -112,7 +112,14 @@ def apply_overage(usage_row):
         usage_row.overage_kopecks = overage
         usage_row.save(update_fields=['cost_kopecks', 'overage_kopecks'])
     except Exception as e:
-        logger.warning(f"[token_metering] apply_overage failed for usage_row {getattr(usage_row, 'id', None)}: {e}")
+        # 2026-09-28 (ревью): при сбое здесь usage_row.overage_kopecks остаётся
+        # на дефолте 0 — в отличие от settle_overage (где недосчитанное явно
+        # видно через overage_kopecks>0 + settled_at пусто, и подхватывается
+        # reconcile_unsettled_overage), эту строку реконсилер НЕ подберёт: он
+        # ищет overage_kopecks>0, а тут 0 — формально "нечего досчитывать".
+        # Недосчитанная доплата по такой строке теряется без следа, кроме
+        # лога — поднято до error (деньги), как и у settle_overage.
+        logger.error(f"[token_metering] apply_overage failed for usage_row {getattr(usage_row, 'id', None)}: {e}", exc_info=True)
 
 
 def settle_overage(usage_row):
@@ -354,9 +361,28 @@ def free_tier_guard(user, network, prompt_tokens, max_tokens, flat_kopecks, bala
         markup = float(getattr(dj_settings, 'TOKEN_OVERAGE_MARKUP', 1.6))
         floor_tokens = min(max_tokens, PREFLIGHT_MIN_MAX_TOKENS)
 
+        # 2026-09-28 (ревью): эта функция раньше считала target = cost*markup
+        # напрямую как "сколько реально спишется", игнорируя cap/threshold из
+        # compute_overage/preflight_max_tokens. Из-за этого реально списываемая
+        # сумма (flat + overage, где overage ограничен TOKEN_OVERAGE_CAP_MULTIPLE/
+        # TOKEN_OVERAGE_ABS_CAP_KOPECKS) МЕНЬШЕ, чем здесь считалось — честного
+        # пробного пользователя, чей реальный overage упёрся бы в потолок, могли
+        # пережать (ложный clamp/block), хотя денег хватало. Формула ниже
+        # зеркалит compute_overage() 1:1.
+        min_fraction = float(getattr(dj_settings, 'TOKEN_OVERAGE_MIN_FRACTION', 0.25))
+        min_kopecks = int(getattr(dj_settings, 'TOKEN_OVERAGE_MIN_KOPECKS', 100))
+        cap_multiple = float(getattr(dj_settings, 'TOKEN_OVERAGE_CAP_MULTIPLE', 2.0))
+        abs_cap = int(getattr(dj_settings, 'TOKEN_OVERAGE_ABS_CAP_KOPECKS', 4000))
+        cap = max(flat * cap_multiple, abs_cap)
+        threshold = max(min_kopecks, flat * min_fraction)
+
         def total_cost(out_tokens):
             est = model_pricing.estimated_cost_kopecks(network, prompt_tokens, out_tokens)
-            return max(flat, round(est * markup))
+            target = round(est * markup)
+            overage_raw = target - flat
+            overage = overage_raw if overage_raw >= threshold else 0
+            overage = min(overage, cap) if overage > 0 else 0
+            return flat + overage
 
         floor_total = total_cost(floor_tokens)
         if floor_total > balance:

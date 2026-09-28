@@ -36,7 +36,11 @@ STICKER_SUFFIX = (
 
 def _get_image_network():
     from aitext.models import NeuralNetwork
-    nets = NeuralNetwork.objects.filter(is_active=True).order_by('order')
+    # 2026-09-28 (ревью): без provider='fal-ai' этот выбор мог бы обойти
+    # единственный серверный бэкстоп can_generate_media()/has_enough_kopecks()
+    # в aitext/tasks.py (спрятан за `if network.provider == 'fal-ai':`), как
+    # и в images.py/video_cmd.py/img2video_cmd.py, которые уже фильтруют.
+    nets = NeuralNetwork.objects.filter(provider='fal-ai', is_active=True).order_by('order')
     for net in nets:
         cfg = net.config_json or {}
         meta = cfg.get('metadata', {})
@@ -77,6 +81,10 @@ def _get_message_state(msg_id):
 get_image_network = sync_to_async(_get_image_network, thread_sensitive=True)
 create_image_request = sync_to_async(_create_image_request, thread_sensitive=True)
 get_message_state = sync_to_async(_get_message_state, thread_sensitive=True)
+# 2026-09-28 (ревью): can_generate_media() делает реальные ORM-запросы
+# (has_made_real_payment → .filter(...).exists()) — без sync_to_async вызов
+# внутри async-хендлера кидает SynchronousOnlyOperation на КАЖДОМ вызове.
+can_generate_media = sync_to_async(lambda u: u.can_generate_media(), thread_sensitive=True)
 
 
 def _convert_to_sticker_png(image_bytes: bytes) -> bytes:
@@ -138,7 +146,7 @@ async def cmd_sticker(message: Message, tg_user=None):
     # 2026-09-28: бот не проверял has_made_real_payment для медиа (веб её
     # блокирует полностью) - пробный пользователь мог сгенерировать 1-2
     # изображения/видео на стартовом балансе до того, как баланс кончится.
-    if not tg_user.user.can_generate_media():
+    if not await can_generate_media(tg_user.user):
         title = t('media.paidOnlyTitle', lang)
         body = t('media.paidOnlyBody', lang)
         await message.answer(f"<b>{title}</b>\n\n{body}", parse_mode='HTML')

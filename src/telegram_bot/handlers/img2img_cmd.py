@@ -64,7 +64,14 @@ def _get_img2img_network(tg_user=None):
         except NeuralNetwork.DoesNotExist:
             pass
 
-    nets = NeuralNetwork.objects.filter(is_active=True).order_by('order')
+    # 2026-09-28 (ревью): без provider='fal-ai' этот выбор мог бы обойти
+    # единственный серверный бэкстоп can_generate_media()/has_enough_kopecks()
+    # в aitext/tasks.py, который целиком спрятан за `if network.provider ==
+    # 'fal-ai':` — как и images.py/video_cmd.py/img2video_cmd.py, которые уже
+    # фильтруют по provider. Сегодня все активные image-сети создаются с
+    # provider='fal-ai' (проверено по add_laozhang_models), но фильтр здесь
+    # был единственным расхождением с остальными media-хендлерами.
+    nets = NeuralNetwork.objects.filter(provider='fal-ai', is_active=True).order_by('order')
     for net in nets:
         if _supports_img2img(net):
             return net
@@ -116,6 +123,10 @@ def _save_photo_to_storage(file_bytes: bytes, user) -> str:
 get_img2img_network = sync_to_async(_get_img2img_network, thread_sensitive=True)
 create_img2img_request = sync_to_async(_create_img2img_request, thread_sensitive=True)
 save_photo = sync_to_async(_save_photo_to_storage, thread_sensitive=True)
+# 2026-09-28 (ревью): can_generate_media() делает реальные ORM-запросы
+# (has_made_real_payment → .filter(...).exists()) — без sync_to_async вызов
+# внутри async-хендлера кидает SynchronousOnlyOperation на КАЖДОМ вызове.
+can_generate_media = sync_to_async(lambda u: u.can_generate_media(), thread_sensitive=True)
 
 
 # F.chat.type == 'private' — см. images.py:cmd_image, тот же класс.
@@ -169,7 +180,7 @@ async def cmd_img2img(message: Message, state: FSMContext, tg_user=None):
     # 2026-09-28: бот не проверял has_made_real_payment для медиа (веб её
     # блокирует полностью) - пробный пользователь мог сгенерировать 1-2
     # изображения/видео на стартовом балансе до того, как баланс кончится.
-    if not tg_user.user.can_generate_media():
+    if not await can_generate_media(tg_user.user):
         title = t('media.paidOnlyTitle', lang)
         body = t('media.paidOnlyBody', lang)
         await message.answer(f"<b>{title}</b>\n\n{body}", parse_mode='HTML')
@@ -302,7 +313,7 @@ async def check_balance_and_run_img2img(message: Message, tg_user, prompt: str, 
     # 2026-09-28: бот не проверял has_made_real_payment для медиа (веб её
     # блокирует полностью) - пробный пользователь мог сгенерировать 1-2
     # изображения/видео на стартовом балансе до того, как баланс кончится.
-    if not tg_user.user.can_generate_media():
+    if not await can_generate_media(tg_user.user):
         title = t('media.paidOnlyTitle', lang)
         body = t('media.paidOnlyBody', lang)
         await message.answer(f"<b>{title}</b>\n\n{body}", parse_mode='HTML')

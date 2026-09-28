@@ -1112,10 +1112,20 @@ def generate_ai_response(self, message_id, web_search=False):
         # вариантах: pre-charge (веб-поллинг/бот — billing_reference уже стоит,
         # баланс уже уменьшен) или post-charge фолбэк TEXT_BILLING_ENABLED ниже
         # (спишется после генерации — вычитаем из головы вручную).
+        # 2026-09-28 (ревью): раньше побочные эффекты решения 'block' (refund,
+        # message.save, return) лежали ВНУТРИ этого же try — если refund/save
+        # падали на транзиентной ошибке БД, исключение ловилось общим except
+        # ниже как warning, `return` не выполнялся, и код проваливался дальше
+        # к вызову апстриму с ПОЛНЫМ неурезанным max_tokens — ровно инцидент
+        # 2026-09-27 (claude-opus-5, 50887 токенов), от которого guard защищает.
+        # Теперь: try считает только _action/_guarded_tokens/_est (fail-open →
+        # 'ok' при любой ошибке расчёта), а применение 'block'/'clamp' — СНАРУЖИ,
+        # так что `return` при block гарантирован независимо от успеха refund.
+        _action, _guarded_tokens, _est = 'ok', completion_kwargs["max_tokens"], 0
         try:
             from aitext.token_metering import (
                 estimate_prompt_tokens, free_tier_guard, overage_settle_active,
-                preflight_max_tokens, trial_too_large_message,
+                preflight_max_tokens,
             )
             _pre_settings = message.settings or {}
             _billing_ref_set = bool(_pre_settings.get('billing_reference'))
@@ -1142,23 +1152,15 @@ def generate_ai_response(self, message_id, web_search=False):
                     user, network, _prompt_tokens_est, completion_kwargs["max_tokens"],
                     _flat_preflight, _balance_before_flat,
                 )
-                if _action == 'block':
-                    from aitext.billing import refund_message_billing
-                    refund_message_billing(message)
-                    user.refresh_from_db(fields=['balance_kopecks'])
-                    message.status = Message.Status.FAILED
-                    message.error_message = trial_too_large_message(
-                        network, _est, user.balance_kopecks, user.get_language(),
-                    )
-                    message.save(update_fields=['status', 'error_message'])
-                    return
-                if _action == 'clamp':
-                    completion_kwargs["max_tokens"] = _guarded_tokens
-                    _settings_update = dict(message.settings or {})
-                    _settings_update['balance_clamp'] = _guarded_tokens
-                    message.settings = _settings_update
-                    message.save(update_fields=['settings'])
-            elif overage_settle_active():
+
+            # 2026-09-28 (ревью): было `elif overage_settle_active()` — то есть
+            # если пользователь ни разу не платил, но free_tier_guard вернул 'ok'
+            # (флаг FREE_TIER_GUARD_ENABLED выключен или внутренний fail-open),
+            # обычный preflight_max_tokens вообще не выполнялся — пробный
+            # пользователь оставался БЕЗ какой-либо защиты, тогда как платящие
+            # её сохраняли. Условие on `_action == 'ok'` восстанавливает базовую
+            # защиту для всех, для кого free_tier_guard не вмешался.
+            if _action == 'ok' and overage_settle_active():
                 _requested_before_preflight = completion_kwargs["max_tokens"]
                 completion_kwargs["max_tokens"] = preflight_max_tokens(
                     effective_model, completion_kwargs["max_tokens"],
@@ -1176,6 +1178,31 @@ def generate_ai_response(self, message_id, web_search=False):
                     message.save(update_fields=['settings'])
         except Exception as _preflight_err:
             logger.warning(f"[overage][preflight] Celery-путь, сообщение {message_id}: {_preflight_err}")
+            _action = 'ok'
+
+        if _action == 'block':
+            try:
+                from aitext.billing import refund_message_billing
+                refund_message_billing(message)
+                user.refresh_from_db(fields=['balance_kopecks'])
+            except Exception as _refund_err:
+                logger.error(
+                    f"[free_tier_guard] возврат средств не удался для сообщения {message_id}: {_refund_err}",
+                    exc_info=True,
+                )
+            from aitext.token_metering import trial_too_large_message
+            message.status = Message.Status.FAILED
+            message.error_message = trial_too_large_message(
+                network, _est, user.balance_kopecks, user.get_language(),
+            )
+            message.save(update_fields=['status', 'error_message'])
+            return
+        if _action == 'clamp':
+            completion_kwargs["max_tokens"] = _guarded_tokens
+            _settings_update = dict(message.settings or {})
+            _settings_update['balance_clamp'] = _guarded_tokens
+            message.settings = _settings_update
+            message.save(update_fields=['settings'])
 
         # Обёртка для обработки ошибки deprecated модели
         try:

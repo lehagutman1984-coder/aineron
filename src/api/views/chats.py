@@ -708,6 +708,7 @@ class StreamMessageView(APIView):
         # при блокировке можно просто вернуть обычный 402 и вернуть деньги, ни одного
         # байта апстриму не уходит. deduct_stars=False (свободная/безлимитная модель)
         # ничем не рискует — guard не запускается.
+        _action = 'ok'
         if deduct_stars and request.user.is_unpaid_free_user():
             _balance_before_flat = request.user.balance_kopecks + _flat_for_preflight
             _action, _guarded_tokens, _est = free_tier_guard(
@@ -717,6 +718,18 @@ class StreamMessageView(APIView):
             if _action == 'block':
                 request.user.add_kopecks(_flat_for_preflight, type='refund', reference=f'chat:{assist_msg_id}')
                 request.user.refresh_from_db(fields=['balance_kopecks'])
+                # 2026-09-28 (ревью): UserSpending для этого сообщения уже создан
+                # выше (строка ~505) — если его не убрать, у пользователя в
+                # аналитике/истории трат остаётся запись о списании за
+                # сообщение, которого физически больше нет (деньги при этом
+                # уже возвращены add_kopecks выше — это чисто "фантомная"
+                # запись в отчётах, не потеря денег).
+                _phantom_spending = UserSpending.objects.filter(
+                    user=request.user, amount_kopecks=_flat_for_preflight,
+                    description=f"Сообщение в чате с {network.name}",
+                ).order_by('-id').first()
+                if _phantom_spending:
+                    _phantom_spending.delete()
                 FileAttachment.objects.filter(message=user_message).update(message=None)
                 assistant_message.delete()
                 user_message.delete()
@@ -734,7 +747,14 @@ class StreamMessageView(APIView):
                 _balance_truncated = True
                 assistant_message.settings = {**(assistant_message.settings or {}), 'balance_clamp': _guarded_tokens}
                 assistant_message.save(update_fields=['settings'])
-        elif overage_settle_active():
+        # 2026-09-28 (ревью): было `elif overage_settle_active()` — если
+        # is_unpaid_free_user()==True, но free_tier_guard вернул 'ok' (флаг
+        # FREE_TIER_GUARD_ENABLED выключен или внутренний fail-open), обычный
+        # preflight_max_tokens вообще не выполнялся: пробный пользователь
+        # оставался БЕЗ какой-либо защиты от overage, тогда как платящие её
+        # сохраняли. `_action == 'ok'` восстанавливает базовую защиту для всех,
+        # для кого free_tier_guard не вмешался (см. тот же фикс в tasks.py).
+        if _action == 'ok' and overage_settle_active():
             _requested_before_preflight = max_tokens
             max_tokens = preflight_max_tokens(
                 model_name, max_tokens,
@@ -1172,6 +1192,12 @@ class RegenerateView(APIView):
             record_message_billing(last_assistant, billing_ref, cost_kopecks)
 
         regen_settings = dict(last_assistant.settings or {})
+        # 2026-09-28 (ревью): balance_clamp с ПРЕДЫДУЩЕЙ попытки генерации
+        # иначе переживает регенерацию — если новая попытка НЕ требует клэмпа
+        # (баланс/overage позволяют полный ответ), MessageSerializer.balance_truncated
+        # всё равно вернёт True по старому значению ключа. Клэмп (если нужен)
+        # будет проставлен заново ниже по актуальному пути (generate_ai_response).
+        regen_settings.pop('balance_clamp', None)
         if network.provider == 'fal-ai':
             import uuid as _uuid
             # BUG-A (TELEGRAM_SUPREMACY_PLAN_V2.md): списание медиа-генерации

@@ -60,6 +60,11 @@ def _create_image_request(tg_user, network, prompt, telegram_chat_id, user_setti
 
 get_image_network = sync_to_async(_get_image_network, thread_sensitive=True)
 create_image_request = sync_to_async(_create_image_request, thread_sensitive=True)
+# 2026-09-28 (ревью): can_generate_media() делает реальные ORM-запросы
+# (has_made_real_payment → .filter(...).exists()) — без sync_to_async вызов
+# внутри async-хендлера кидает SynchronousOnlyOperation на КАЖДОМ вызове (тот
+# же паттерн защиты в chat.py уже был обёрнут правильно, здесь — забыли).
+can_generate_media = sync_to_async(lambda u: u.can_generate_media(), thread_sensitive=True)
 
 
 # F.chat.type == 'private' — команда списывает с ЛИЧНОГО баланса безусловно;
@@ -101,7 +106,7 @@ async def cmd_image(message: Message, tg_user=None):
     # 2026-09-28: бот не проверял has_made_real_payment для медиа (веб её
     # блокирует полностью) - пробный пользователь мог сгенерировать 1-2
     # изображения/видео на стартовом балансе до того, как баланс кончится.
-    if not tg_user.user.can_generate_media():
+    if not await can_generate_media(tg_user.user):
         title = t('media.paidOnlyTitle', lang)
         body = t('media.paidOnlyBody', lang)
         await message.answer(f"<b>{title}</b>\n\n{body}", parse_mode='HTML')

@@ -160,20 +160,34 @@ def is_model_blocked_for_trial(network) -> bool:
     уже оплаченного диалога по мере того, как баланс тает.
 
     Место вызова само решает, кого проверять (обычно — user.is_unpaid_free_user());
-    эта функция ничего не знает о конкретном пользователе, только о модели."""
-    from django.conf import settings
+    эта функция ничего не знает о конкретном пользователе, только о модели.
 
-    if not getattr(settings, 'FREE_TIER_GUARD_ENABLED', False):
+    2026-09-28 (ревью): единственная функция в этом защитном семействе (см.
+    free_tier_guard/preflight_max_tokens в aitext/token_metering.py, которые
+    специально спроектированы fail-open) БЕЗ try/except. Tariff.get_default_tariff()
+    делает get_or_create — реальный DB-запрос/запись; любой транзиентный сбой
+    БД здесь раньше давал 500 на КАЖДОЙ попытке пробного пользователя отправить
+    сообщение (Rule S срабатывает до создания чата/списания денег — деньги не
+    страдали, но запрос падал). Приведено к тому же fail-open стилю."""
+    from django.conf import settings
+    import logging
+    logger = logging.getLogger(__name__)
+
+    try:
+        if not getattr(settings, 'FREE_TIER_GUARD_ENABLED', False):
+            return False
+        min_messages = int(getattr(settings, 'FREE_TIER_MIN_MESSAGES', 3) or 0)
+        if min_messages <= 0:
+            return False
+        from users.models import Tariff
+        grant = int(Tariff.get_default_tariff().balance_grant_kopecks or 0)
+        if grant <= 0:
+            return False
+        threshold = grant // min_messages
+        return int(getattr(network, 'cost_kopecks', 0) or 0) > threshold
+    except Exception as e:
+        logger.warning(f"[free_tier_guard] is_model_blocked_for_trial не применён: {e}")
         return False
-    min_messages = int(getattr(settings, 'FREE_TIER_MIN_MESSAGES', 3) or 0)
-    if min_messages <= 0:
-        return False
-    from users.models import Tariff
-    grant = int(Tariff.get_default_tariff().balance_grant_kopecks or 0)
-    if grant <= 0:
-        return False
-    threshold = grant // min_messages
-    return int(getattr(network, 'cost_kopecks', 0) or 0) > threshold
 
 
 def estimated_cost_kopecks(network, prompt_tokens, completion_tokens):

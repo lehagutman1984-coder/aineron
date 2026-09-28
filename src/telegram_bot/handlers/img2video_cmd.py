@@ -110,6 +110,10 @@ get_img2video_network = sync_to_async(_get_img2video_network, thread_sensitive=T
 create_video_request = sync_to_async(_create_video_request, thread_sensitive=True)
 get_message_state = sync_to_async(_get_message_state, thread_sensitive=True)
 save_photo = sync_to_async(_save_photo_to_storage, thread_sensitive=True)
+# 2026-09-28 (ревью): can_generate_media() делает реальные ORM-запросы
+# (has_made_real_payment → .filter(...).exists()) — без sync_to_async вызов
+# внутри async-хендлера кидает SynchronousOnlyOperation на КАЖДОМ вызове.
+can_generate_media = sync_to_async(lambda u: u.can_generate_media(), thread_sensitive=True)
 
 
 # F.chat.type == 'private' — см. images.py:cmd_image, тот же класс.
@@ -165,7 +169,7 @@ async def cmd_img2video(message: Message, state: FSMContext, tg_user=None):
     # 2026-09-28: бот не проверял has_made_real_payment для медиа (веб её
     # блокирует полностью) - пробный пользователь мог сгенерировать 1-2
     # изображения/видео на стартовом балансе до того, как баланс кончится.
-    if not tg_user.user.can_generate_media():
+    if not await can_generate_media(tg_user.user):
         title = t('media.paidOnlyTitle', lang)
         body = t('media.paidOnlyBody', lang)
         await message.answer(f"<b>{title}</b>\n\n{body}", parse_mode='HTML')
