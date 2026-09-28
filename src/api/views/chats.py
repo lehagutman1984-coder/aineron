@@ -701,7 +701,7 @@ class StreamMessageView(APIView):
         )
         _prompt_tokens_est = estimate_prompt_tokens(messages_for_api)
         _flat_for_preflight = cost_kopecks if deduct_stars else 0
-        _trial_truncated = False  # видно generate() ниже (замыкание) - для события "done"
+        _balance_truncated = False  # видно generate() ниже (замыкание) - для события "done"
 
         # Rule D (free_tier_guard, ITEM 1 часть B): та же защита, что в Celery-пути
         # (aitext.tasks.generate_ai_response) — здесь ДО StreamingHttpResponse, поэтому
@@ -731,16 +731,25 @@ class StreamMessageView(APIView):
                 }, status=402)
             if _action == 'clamp':
                 max_tokens = _guarded_tokens
-                _trial_truncated = True
+                _balance_truncated = True
                 assistant_message.settings = {**(assistant_message.settings or {}), 'balance_clamp': _guarded_tokens}
                 assistant_message.save(update_fields=['settings'])
         elif overage_settle_active():
+            _requested_before_preflight = max_tokens
             max_tokens = preflight_max_tokens(
                 model_name, max_tokens,
                 prompt_tokens=_prompt_tokens_est,
                 flat_kopecks=_flat_for_preflight,
                 head_kopecks=request.user.balance_kopecks,
             )
+            # 2026-09-28: клэмп для ПЛАТЯЩИХ пользователей был полностью тихим на
+            # веб-SSE-пути (в отличие от бота/Celery-пути — там та же дыра, уже
+            # закрыта в aitext/tasks.py). Тот же ключ настроек, что у пробных
+            # пользователей выше — фронт/бот отличают текст по is_unpaid_free_user().
+            if max_tokens < _requested_before_preflight:
+                _balance_truncated = True
+                assistant_message.settings = {**(assistant_message.settings or {}), 'balance_clamp': max_tokens}
+                assistant_message.save(update_fields=['settings'])
 
         def _sse(data):
             return f"data: {json.dumps(data, ensure_ascii=False)}\n\n".encode('utf-8')
@@ -993,7 +1002,7 @@ class StreamMessageView(APIView):
                     **({"variants": all_variants} if all_variants else {}),
                     **({"commit_proposed": commit_event} if commit_event else {}),
                     **({"billing": _billing} if _billing else {}),
-                    **({"trial_truncated": True} if _trial_truncated else {}),
+                    **({"balance_truncated": True} if _balance_truncated else {}),
                 })
 
             except Exception as e:

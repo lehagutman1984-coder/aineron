@@ -175,3 +175,32 @@ class StreamMessageViewFreeTierTests(TestCase):
         from core.model_pricing import estimated_cost_kopecks
         est = estimated_cost_kopecks(net, 1, clamp)
         self.assertLessEqual(round(est * 1.6), 1000)
+
+
+@override_settings(**dict(ON, TOKEN_OVERAGE_ENABLED=True, TOKEN_OVERAGE_DRY_RUN=False, TOKEN_METERING_ENABLED=True))
+class StreamMessageViewPayingUserClampNoticeTests(TestCase):
+    """2026-09-28: preflight_max_tokens для ПЛАТЯЩИХ на веб-SSE молчал так же тихо,
+    как в Celery-пути (уже исправлено там). Проверяем ту же починку здесь."""
+
+    def test_paying_user_clamp_is_recorded_and_surfaced_in_done_event(self):
+        from types import SimpleNamespace
+
+        net = _network(709, model_name='claude-opus-5')
+        u = _paying(750)  # хватает на flat (709), остаток головы 41 коп.
+        chat = Chat.objects.create(user=u, network=net, title='c')
+
+        chunk = SimpleNamespace(
+            choices=[SimpleNamespace(delta=SimpleNamespace(content='hi', tool_calls=None), finish_reason='stop')],
+            usage=None,
+        )
+        fake_client = mock.MagicMock()
+        fake_client.chat.completions.create.return_value = iter([chunk])
+        with mock.patch('api.views.chats.get_client_for_network', return_value=fake_client):
+            r = _client(u).post(f'/api/v1/chats/{chat.id}/messages/stream/',
+                                {'message': 'hi'}, format='json')
+            self.assertEqual(r.status_code, 200)
+            body = b''.join(r.streaming_content).decode()
+
+        assistant = Message.objects.filter(chat=chat, role='assistant').first()
+        self.assertTrue(assistant.settings.get('balance_clamp'))
+        self.assertIn('"balance_truncated": true', body)

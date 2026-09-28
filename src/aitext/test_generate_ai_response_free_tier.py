@@ -148,3 +148,50 @@ class GenerateAiResponseFreeTierGuardTests(TestCase):
         fake_client.chat.completions.create.assert_called_once()
         assistant.refresh_from_db()
         self.assertIn(assistant.status, (Message.Status.COMPLETED,))
+
+
+@override_settings(**dict(ON, TOKEN_OVERAGE_ENABLED=True, TOKEN_OVERAGE_DRY_RUN=False, TOKEN_METERING_ENABLED=True))
+class PayingUserSilentClampFixTests(TestCase):
+    """2026-09-28: клэмп preflight_max_tokens для ПЛАТЯЩИХ пользователей был полностью
+    тихим - короткий ответ без единого слова о причине. Проверяем, что теперь клэмп
+    для платящих тоже помечается (settings['balance_clamp']), с текстом для платящих
+    (balance_reply_truncated), а не с текстом для пробных."""
+
+    def test_paying_user_clamp_is_recorded_with_paying_variant_message(self):
+        from aitext.tasks import generate_ai_response
+        from aitext.token_metering import balance_truncated_message
+
+        net = _network('claude-opus-5', 709)
+        u = _paying_user(750)  # хватает на flat (709), остаток головы 41 коп. - почти ничего на доплату
+        huge_text = 'lorem ipsum dolor sit amet ' * 8000
+        chat, assistant = _pre_charged_chat(u, net, huge_text, 709)
+
+        fake_client = mock.MagicMock()
+        fake_client.chat.completions.create.return_value = _fake_completion('ok')
+        with mock.patch('aitext.tasks.get_client_for_network', return_value=fake_client):
+            generate_ai_response(assistant.id)
+
+        fake_client.chat.completions.create.assert_called_once()  # платящий не блокируется
+        sent_kwargs = fake_client.chat.completions.create.call_args.kwargs
+        assistant.refresh_from_db()
+        self.assertEqual(assistant.status, Message.Status.COMPLETED)
+        clamp = assistant.settings.get('balance_clamp')
+        self.assertTrue(clamp)
+        self.assertEqual(sent_kwargs['max_tokens'], clamp)
+        # Текст для платящего отличается от текста для пробного пользователя
+        self.assertNotEqual(balance_truncated_message(True, 'ru'), balance_truncated_message(False, 'ru'))
+        self.assertIn('доплата', balance_truncated_message(False, 'ru'))
+
+    def test_healthy_balance_paying_user_not_clamped(self):
+        from aitext.tasks import generate_ai_response
+        net = _network('claude-opus-5', 709)
+        u = _paying_user(1_000_000)  # с запасом
+        chat, assistant = _pre_charged_chat(u, net, 'hi', 709)
+
+        fake_client = mock.MagicMock()
+        fake_client.chat.completions.create.return_value = _fake_completion('ok')
+        with mock.patch('aitext.tasks.get_client_for_network', return_value=fake_client):
+            generate_ai_response(assistant.id)
+
+        assistant.refresh_from_db()
+        self.assertNotIn('balance_clamp', assistant.settings or {})

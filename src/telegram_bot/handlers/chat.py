@@ -147,6 +147,10 @@ def _check_balance(user, cost_kopecks):
     return user.has_enough_kopecks(cost_kopecks)
 
 
+def _is_unpaid_free_user(user):
+    return user.is_unpaid_free_user()
+
+
 def _is_model_blocked_for_trial_user(user, network):
     """Rule S (free_tier_guard, ITEM 1 часть B): дорогая модель вообще не предлагается
     пробному (никогда не плативше­му) пользователю — тот же гейт, что на вебе
@@ -219,6 +223,7 @@ create_messages = sync_to_async(_create_messages, thread_sensitive=True)
 get_message_state = sync_to_async(_get_message_state, thread_sensitive=True)
 check_balance = sync_to_async(_check_balance, thread_sensitive=True)
 is_model_blocked_for_trial_user = sync_to_async(_is_model_blocked_for_trial_user, thread_sensitive=True)
+is_unpaid_free_user = sync_to_async(_is_unpaid_free_user, thread_sensitive=True)
 get_overage_receipt = sync_to_async(_get_overage_receipt, thread_sensitive=True)
 charge_text_message = sync_to_async(_charge_text_message, thread_sensitive=True)
 
@@ -389,14 +394,17 @@ async def process_text(tg_message: Message, tg_user, text: str, attachment=None,
                 # Чек — информационная строка; её отсутствие не должно мешать
                 # доставке уже сгенерированного (и оплаченного) ответа.
                 logger.warning(f'overage receipt skipped for {msg.id}: {_receipt_err}')
-            # ITEM 1 часть B: ответ сузен под пробный баланс (aitext.token_metering.free_tier_guard) -
-            # тот же приём, что у чека выше: дописываем строку к уже доставляемому тексту.
+            # ITEM 1 часть B: ответ сужен под баланс — либо free_tier_guard (пробный
+            # пользователь), либо обычный preflight_max_tokens (платящий, доплата за
+            # длинный ответ превысила бы остаток) — раньше клэмп для платящих был
+            # полностью тихим. Тот же приём, что у чека выше: строка к доставляемому тексту.
             try:
                 if (msg.settings or {}).get('balance_clamp'):
-                    from aitext.token_metering import trial_truncated_message
-                    full_text += '\n\n' + DIVIDER + '\n' + trial_truncated_message(lang)
+                    from aitext.token_metering import balance_truncated_message
+                    _is_trial = await is_unpaid_free_user(tg_user.user)
+                    full_text += '\n\n' + DIVIDER + '\n' + balance_truncated_message(_is_trial, lang)
             except Exception as _trunc_err:
-                logger.warning(f'trial truncation notice skipped for {msg.id}: {_trunc_err}')
+                logger.warning(f'balance truncation notice skipped for {msg.id}: {_trunc_err}')
             markup = after_answer_kb(msg.id, copy_code=extract_first_code(full_text), lang=lang)
             delivered = False
             # S1: Rich Messages — таблицы, код, thinking-блоки (за флагом)

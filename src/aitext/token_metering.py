@@ -410,6 +410,16 @@ def trial_truncated_message(lang='ru') -> str:
     return t_error('trial_reply_truncated', lang)
 
 
+def balance_truncated_message(is_trial: bool, lang='ru') -> str:
+    """Единая точка текста уведомления об урезанном ответе — для пробных
+    пользователей (Rule D, free_tier_guard) и для ПЛАТЯЩИХ (обычный
+    preflight_max_tokens: доплата за длинный ответ превысила бы остаток
+    баланса). Раньше клэмп для платящих был полностью тихим — пользователь
+    получал короткий ответ без единого слова о причине."""
+    from core.errors_i18n import t_error
+    return t_error('trial_reply_truncated' if is_trial else 'balance_reply_truncated', lang)
+
+
 def channel_for_chat(chat):
     """web | telegram — по наличию TelegramChat на chat."""
     try:

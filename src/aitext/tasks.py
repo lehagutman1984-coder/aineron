@@ -1159,11 +1159,21 @@ def generate_ai_response(self, message_id, web_search=False):
                     message.settings = _settings_update
                     message.save(update_fields=['settings'])
             elif overage_settle_active():
+                _requested_before_preflight = completion_kwargs["max_tokens"]
                 completion_kwargs["max_tokens"] = preflight_max_tokens(
                     effective_model, completion_kwargs["max_tokens"],
                     prompt_tokens=_prompt_tokens_est,
                     flat_kopecks=_flat_preflight, head_kopecks=_head_preflight,
                 )
+                # 2026-09-28: клэмп для ПЛАТЯЩИХ пользователей был полностью тихим — короткий
+                # ответ без единого слова о причине. Тот же UI-канал, что у пробных
+                # пользователей (settings['balance_clamp'] + уведомление в чате/боте),
+                # текст другой (balance_truncated_message с is_trial=False).
+                if completion_kwargs["max_tokens"] < _requested_before_preflight:
+                    _settings_update = dict(message.settings or {})
+                    _settings_update['balance_clamp'] = completion_kwargs["max_tokens"]
+                    message.settings = _settings_update
+                    message.save(update_fields=['settings'])
         except Exception as _preflight_err:
             logger.warning(f"[overage][preflight] Celery-путь, сообщение {message_id}: {_preflight_err}")
 
