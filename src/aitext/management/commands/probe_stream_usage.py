@@ -17,8 +17,18 @@ from aitext.models import NeuralNetwork
 from aitext.tasks import get_client_for_network
 
 AUDITED_MODELS = [
+    # Исходные 3 (уже в TOKEN_METERING_STREAM_USAGE_MODELS, реаудит не помешает).
     'claude-fable-5', 'claude-opus-4-8', 'claude-opus-5',
-    'gpt-5-pro', 'gpt-5.4-pro', 'gpt-5.3', 'gpt-5.6-terra',
+    'gpt-5.6-terra',
+    # gpt-5-pro/gpt-5.4-pro/gpt-5.3 — не в текущем активном каталоге, убраны из
+    # проверки (probe их всё равно пометит "НЕ НАЙДЕНА"), ставки в
+    # core/model_pricing.py оставлены безвредно на случай возврата под этим именем.
+    # 2026-09-28 (ITEM 1, часть A): расширение MODEL_WHOLESALE/TOKEN_OVERAGE_MODELS -
+    # эти модели ещё не проверены на потоковый usage перед включением
+    # TOKEN_METERING_STREAM_USAGE_MODELS для веб-SSE.
+    'claude-fable-5.1', 'gpt-5.5-pro', 'gpt-6-astra', 'gpt-5.5',
+    'claude-sonnet-4-6', 'gemini-3.1-pro-preview', 'claude-sonnet-5',
+    'gpt-5.6-sol', 'grok-4.6', 'grok-4.5', 'qwen3.8-max',
 ]
 
 
