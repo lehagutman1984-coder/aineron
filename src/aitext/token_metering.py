@@ -382,7 +382,15 @@ def free_tier_guard(user, network, prompt_tokens, max_tokens, flat_kopecks, bala
             overage_raw = target - flat
             overage = overage_raw if overage_raw >= threshold else 0
             overage = min(overage, cap) if overage > 0 else 0
-            return flat + overage
+            # 2026-09-28 (ревью, раунд 2): compute_overage() всегда возвращает
+            # max(0, int(overage)) — здесь этого не было. При нецелом
+            # TOKEN_OVERAGE_CAP_MULTIPLE (например 2.2) `flat * cap_multiple`
+            # даёт float с погрешностью (3000*2.2 == 6600.000000000001), и если
+            # overage упирается в потолок, total_cost() возвращал на долю
+            # копейки больше реальной списываемой суммы — на границе баланса
+            # это могло дать ложный 'block'/более жёсткий 'clamp', чем реально
+            # нужно. int()/max(0, ...) зеркалит compute_overage() до конца.
+            return flat + max(0, int(overage))
 
         floor_total = total_cost(floor_tokens)
         if floor_total > balance:

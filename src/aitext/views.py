@@ -101,7 +101,15 @@ def create_chat(request):
         # 2026-09-28: legacy-путь вообще не проверял has_made_real_payment (ни email
         # verification, как отмечено в аудите) - единственный оставшийся вход в
         # медиа-генерацию без гейта, который есть на всех современных путях.
-        if network.provider == 'fal-ai' and not request.user.can_generate_media():
+        # 2026-09-28 (ревью, раунд 2): широкий predicate (как в files.py/chats.py),
+        # а не только provider=='fal-ai' — не полагается на конвенцию сеятельных
+        # команд (сегодня 0 расхождений на обеих БД, но ручное редактирование в
+        # админке могло бы создать медиа-модель с другим provider).
+        _is_media_network = (
+            network.provider == 'fal-ai'
+            or (network.config_json or {}).get('metadata', {}).get('output_type') in ('image', 'video')
+        )
+        if _is_media_network and not request.user.can_generate_media():
             return JsonResponse({
                 'success': False,
                 'message': 'Генерация изображений и видео доступна только на платных тарифах.',
@@ -231,7 +239,12 @@ def send_message(request, chat_id):
         cost_kopecks = network.cost_kopecks
         deduct_stars = True
 
-        if network.provider == 'fal-ai' and not request.user.can_generate_media():
+        # 2026-09-28 (ревью, раунд 2): широкий predicate — см. create_chat выше.
+        _is_media_network = (
+            network.provider == 'fal-ai'
+            or (network.config_json or {}).get('metadata', {}).get('output_type') in ('image', 'video')
+        )
+        if _is_media_network and not request.user.can_generate_media():
             return JsonResponse({
                 'success': False,
                 'message': 'Генерация изображений и видео доступна только на платных тарифах.',

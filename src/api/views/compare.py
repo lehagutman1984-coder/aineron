@@ -53,7 +53,14 @@ class CompareView(APIView):
         # — единственное место рядом с обычным чатом/файлами, где его не было (там он есть
         # везде: chats.py/files.py/image_compare.py). Отклоняем весь запрос сразу, если среди
         # выбранных моделей есть хоть одна медиа и пользователь ни разу не платил.
-        if any(n.provider == 'fal-ai' for n in networks_map.values()) and not request.user.can_generate_media():
+        # 2026-09-28 (ревью, раунд 2): узкий predicate provider=='fal-ai' полагался на
+        # конвенцию сеятельных команд (все медиа-модели сегодня заведены с этим provider,
+        # проверено на обеих БД: 0 расхождений) — но ручное редактирование в админке могло
+        # бы создать медиа-модель с другим provider, полностью обходящую гейт здесь и в
+        # legacy create_chat/send_message. Широкий predicate — тот же, что уже в
+        # files.py/chats.py — не зависит от этой конвенции.
+        _is_media_network = lambda n: n.provider == 'fal-ai' or (n.config_json or {}).get('metadata', {}).get('output_type') in ('image', 'video')
+        if any(_is_media_network(n) for n in networks_map.values()) and not request.user.can_generate_media():
             return Response({
                 'error': {
                     'message': 'Генерация изображений и видео доступна только на платных тарифах.',

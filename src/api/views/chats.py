@@ -502,7 +502,13 @@ class StreamMessageView(APIView):
                 assistant_message.delete()
                 user_message.delete()
                 return _insufficient_funds_response(request.user, cost_kopecks)
-            UserSpending.objects.create(
+            # 2026-09-28 (ревью, раунд 2): ссылка на сам объект сохраняется — ниже,
+            # при Rule D block, удаляется ИМЕННО он, а не "самая свежая подходящая
+            # запись по user+amount+description" (та эвристика могла в редкой гонке
+            # подхватить и стереть валидную запись ПАРАЛЛЕЛЬНОГО сообщения того же
+            # пользователя к той же модели, если оно успевало создать свою запись
+            # раньше, чем текущий запрос доходит до block).
+            _spending_row = UserSpending.objects.create(
                 user=request.user, amount=cost_kopecks // 100, amount_kopecks=cost_kopecks,
                 description=f"Сообщение в чате с {network.name}",
             )
@@ -719,17 +725,15 @@ class StreamMessageView(APIView):
                 request.user.add_kopecks(_flat_for_preflight, type='refund', reference=f'chat:{assist_msg_id}')
                 request.user.refresh_from_db(fields=['balance_kopecks'])
                 # 2026-09-28 (ревью): UserSpending для этого сообщения уже создан
-                # выше (строка ~505) — если его не убрать, у пользователя в
+                # выше (_spending_row) — если его не убрать, у пользователя в
                 # аналитике/истории трат остаётся запись о списании за
                 # сообщение, которого физически больше нет (деньги при этом
                 # уже возвращены add_kopecks выше — это чисто "фантомная"
-                # запись в отчётах, не потеря денег).
-                _phantom_spending = UserSpending.objects.filter(
-                    user=request.user, amount_kopecks=_flat_for_preflight,
-                    description=f"Сообщение в чате с {network.name}",
-                ).order_by('-id').first()
-                if _phantom_spending:
-                    _phantom_spending.delete()
+                # запись в отчётах, не потеря денег). Удаляем по прямой ссылке
+                # на объект (не по user+amount+description) — эвристика могла
+                # бы в редкой гонке подхватить и стереть валидную запись
+                # параллельного сообщения той же модели.
+                _spending_row.delete()
                 FileAttachment.objects.filter(message=user_message).update(message=None)
                 assistant_message.delete()
                 user_message.delete()
@@ -1155,7 +1159,31 @@ class RegenerateView(APIView):
                 }
             }, status=402)
 
-        if (network.provider != 'fal-ai' and request.user.is_unpaid_free_user()
+        # 2026-09-28 (ревью, раунд 2): RegenerateView раньше всегда списывал
+        # cost_kopecks на текстовых моделях, даже если ОРИГИНАЛЬНОЕ сообщение
+        # было бесплатным — в отличие от Create/Send/StreamMessageView, где
+        # deduct_stars корректно становится False для network.unlimited (в
+        # рамках дневного лимита по тарифу) и network.is_free. Честного
+        # пользователя переплачивали при регенерации на модели, которая
+        # должна была остаться бесплатной (тот же слот дневного лимита).
+        # Вычисляем ДО Rule S — тот же паттерн `deduct_stars`-guard, что уже
+        # есть в остальных 3 view, иначе Rule S мог бы заблокировать
+        # регенерацию модели, которая для этого пользователя фактически
+        # бесплатна (не эксплуатируется сегодня, но структурно расходилось).
+        deduct_stars = True
+        if (network.provider != 'fal-ai' and network.unlimited and
+                network.tariffs.filter(id=request.user.tariff.id).exists() and
+                network.messages_limit > 0):
+            today = timezone.now().date()
+            usage, _ = NeuralNetworkDailyUsage.objects.get_or_create(
+                user=request.user, network=network, date=today, defaults={'count': 0}
+            )
+            if claim_free_slot(usage, network.messages_limit):
+                deduct_stars = False
+        if network.is_free:
+            deduct_stars = False
+
+        if (network.provider != 'fal-ai' and deduct_stars and request.user.is_unpaid_free_user()
                 and model_pricing.is_model_blocked_for_trial(network)):
             from aitext.token_metering import trial_block_message
             return Response({
@@ -1166,7 +1194,7 @@ class RegenerateView(APIView):
                 }
             }, status=402)
 
-        if network.provider != 'fal-ai' and not request.user.has_enough_kopecks(cost_kopecks):
+        if network.provider != 'fal-ai' and deduct_stars and not request.user.has_enough_kopecks(cost_kopecks):
             from core.money import format_rub
             return Response({
                 'error': {
@@ -1176,7 +1204,7 @@ class RegenerateView(APIView):
                 }
             }, status=402)
 
-        if network.provider != 'fal-ai':
+        if network.provider != 'fal-ai' and deduct_stars:
             import uuid as _uuid
             from aitext.billing import record_message_billing
             # Регенерации одного ответа легитимно повторяются — reference обязан
