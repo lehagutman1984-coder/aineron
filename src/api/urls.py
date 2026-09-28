@@ -2,6 +2,7 @@ from django.urls import path, include
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 
 from api.views.keys import APIKeyListCreateView, APIKeyDeleteView
+from api.views.mail_relay import MailRelayView
 from api.views.chat import ChatCompletionsView
 from api.views.anthropic import AnthropicMessagesView
 from api.views.images import ImageGenerationsView
@@ -187,6 +188,10 @@ urlpatterns = [
     path('v1/webhooks/<int:pk>/test/', WebhookTestView.as_view(), name='webhook_test'),
     path('v1/audit/', AuditLogListView.as_view(), name='audit_log'),
     path('v1/status/', APIStatusView.as_view(), name='api_status'),
+
+    # 2026-09-28: internal instance-to-instance HTTP mail relay (.net -> .ru,
+    # обход блокировки SMTP-портов у Hostkey), см. api/views/mail_relay.py.
+    path('v1/internal/mail-relay/', MailRelayView.as_view(), name='mail_relay'),
 
     # ========== Sandbox API (SANDBOX_API_PLAN.md) ==========
     path('v1/sandboxes/', SandboxListCreateView.as_view(), name='sandbox_list_create'),

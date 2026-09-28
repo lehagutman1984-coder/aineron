@@ -307,6 +307,21 @@ EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
+# 2026-09-28: aineron.net (Hostkey, VPS 66.151.32.164) блокирует ВСЕ исходящие
+# SMTP-порты (25/465/587), даже к внешним хостам (Beget, Gmail) — политика
+# провайдера, не чинится на уровне приложения. MAIL_RELAY_URL, если задан,
+# переключает EMAIL_BACKEND на HTTP-ретранслятор (core/mail_relay_backend.py):
+# письмо HTTPS-запросом (443 не блокируется) уходит на aineron.ru, где
+# api/views/mail_relay.py реально отправляет его через рабочий Beget SMTP.
+# .ru оставляет MAIL_RELAY_URL пустым — работает штатным SMTP-бэкендом Django
+# без изменений. MAIL_RELAY_SECRET нужен ОБОИМ инстансам (.ru — принимающая
+# сторона проверяет его на входящих запросах, .net — отправляющая сторона
+# прикладывает его к каждому запросу) и должен совпадать.
+MAIL_RELAY_URL = os.environ.get('MAIL_RELAY_URL', '')
+MAIL_RELAY_SECRET = os.environ.get('MAIL_RELAY_SECRET', '')
+if MAIL_RELAY_URL:
+    EMAIL_BACKEND = 'core.mail_relay_backend.RelayHTTPBackend'
+
 
 # ========== CELERY ==========
 REDIS_HOST = os.environ.get('REDIS_HOST', 'redis')
@@ -826,6 +841,7 @@ REST_FRAMEWORK = {
         'public_space': '60/min',
         'sandbox_create': '10/min',
         'sandbox_exec': '30/min',
+        'mail_relay': '60/min',
     },
     'EXCEPTION_HANDLER': 'api.exceptions.openai_exception_handler',
 }
