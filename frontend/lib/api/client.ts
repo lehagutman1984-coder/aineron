@@ -207,6 +207,27 @@ export const authVerifyEmail = (code: string): Promise<{ ok: boolean }> =>
 export const authResendVerification = (): Promise<{ ok: boolean }> =>
   request<{ ok: boolean }>("/auth/resend-verification/", { method: "POST" });
 
+export const authChangePassword = (currentPassword: string, newPassword: string): Promise<{ ok: boolean }> =>
+  request<{ ok: boolean }>("/auth/change-password/", {
+    method: "POST",
+    body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+  });
+
+// Legacy AJAX-эндпоинт Django (не DRF /api/v1/), относительный путь — Next.js
+// rewrites (next.config.mjs) проксирует /users/:path* на Django same-origin.
+// Ответ всегда 200 с {success, message} — success:false не значит сетевую
+// ошибку. Возвращаем тело как есть; вызывающая сторона (forgot-password/page.tsx)
+// намеренно не показывает message из соображений приватности (см. комментарий там).
+export async function ajaxPasswordReset(email: string): Promise<{ success: boolean; message: string }> {
+  const res = await fetch("/users/api/ajax/password-reset/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ email }),
+  });
+  return res.json();
+}
+
 // ============ Catalog ============
 
 export const listCategories = (): Promise<Category[]> =>

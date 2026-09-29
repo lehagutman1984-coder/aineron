@@ -40,10 +40,11 @@ app.conf.beat_schedule = {
         'task': 'users.tasks.process_pending_renewals',
         'schedule': crontab(minute='*'),  # Каждую минуту!
     },
-    # Уведомления об окончании подписки - КАЖДУЮ МИНУТУ для теста
+    # Уведомления об окончании подписки - раз в день (текст/сумма в письме привязаны
+    # к дате, не ко времени; защита от повтора - last_expiry_notification_sent)
     'notify-upcoming-expiration': {
         'task': 'users.tasks.notify_upcoming_expiration',
-        'schedule': crontab(minute='*'),  # Каждую минуту!
+        'schedule': crontab(minute=0, hour=10),
     },
     # Studio watchdog: detect stalled/timed-out pipelines every 2 minutes
     'studio-watchdog': {

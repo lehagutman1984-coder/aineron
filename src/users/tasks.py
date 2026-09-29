@@ -200,6 +200,17 @@ def attempt_auto_renewal(subscription):
                 subscription.save()
 
                 logger.info(f"[OK] Пользователь {user.email} переведён с {tariff.display_name} на {new_tariff.display_name}")
+
+                try:
+                    from users.email_service import send_payment_confirmation_email
+                    send_payment_confirmation_email(
+                        user, kind='subscription', amount_kopecks=new_tariff.balance_grant_kopecks,
+                        method='Автопродление', tariff_name=new_tariff.display_name,
+                        balance_kopecks=user.balance_kopecks,
+                    )
+                except Exception as email_err:
+                    logger.warning(f"[WARN] Payment confirmation email failed: {email_err}")
+
                 return True
             else:
                 logger.error(f"[ERR] Ошибка recurring-запроса для перехода: {response.text}")
@@ -281,6 +292,17 @@ def attempt_auto_renewal(subscription):
             subscription.save()
 
             logger.info(f"[OK] Подписка {subscription.id} продлена, добавлено {tariff.pages_count} звезд, всего у пользователя: {user.pages_count}")
+
+            try:
+                from users.email_service import send_payment_confirmation_email
+                send_payment_confirmation_email(
+                    user, kind='subscription', amount_kopecks=tariff.balance_grant_kopecks,
+                    method='Автопродление', tariff_name=tariff.display_name,
+                    balance_kopecks=user.balance_kopecks,
+                )
+            except Exception as email_err:
+                logger.warning(f"[WARN] Payment confirmation email failed: {email_err}")
+
             return True
 
         return False
@@ -310,19 +332,21 @@ def send_expiry_email(subscription):
             else:
                 return "дней"
 
+        days_left = (subscription.expires_at.date() - timezone.now().date()).days
+
         context = {
             'username': user.username or user.email.split('@')[0],
             'tariff_name': tariff.display_name if tariff else 'Ваш тариф',
             'expires_at': subscription.expires_at.strftime('%d.%m.%Y'),
-            'days_left': 3,
-            'days_word': plural_days(3),
+            'days_left': days_left,
+            'days_word': plural_days(days_left),
             'auto_renew': subscription.auto_renew,
             'price': tariff.price if tariff else 0,
             'site_name': site_name,
             'site_url': site_url,
         }
 
-        subject = f'Подписка {tariff.display_name} истекает через 3 дня'
+        subject = f'Подписка {tariff.display_name} истекает через {days_left} {plural_days(days_left)}'
         html_content = render_to_string('neuro/emails/subscription_expiring_soon.html', context)
         text_content = strip_tags(html_content)
 

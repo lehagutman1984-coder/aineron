@@ -17,7 +17,7 @@ from api.views.chats import (
 from api.views.chat_search import ChatSearchView
 from api.views.chat_export import ChatExportView
 from api.views.uploads import ChatFileUploadView, ReferenceImageUploadView, ReferenceVideoUploadView
-from api.views.auth import MeView, LoginView, LogoutView, RegisterView, VerifyEmailView, ResendVerificationView
+from api.views.auth import MeView, LoginView, LogoutView, RegisterView, VerifyEmailView, ResendVerificationView, PasswordChangeView
 from api.views.teams import (
     OrgListCreateView, OrgDetailView,
     OrgMemberListView, OrgMemberDeleteView,
@@ -137,6 +137,7 @@ urlpatterns = [
     path('v1/auth/register/', RegisterView.as_view(), name='auth_register'),
     path('v1/auth/verify-email/', VerifyEmailView.as_view(), name='auth_verify_email'),
     path('v1/auth/resend-verification/', ResendVerificationView.as_view(), name='auth_resend_verification'),
+    path('v1/auth/change-password/', PasswordChangeView.as_view(), name='auth_change_password'),
 
     # ========== Организации и B2B ==========
     path('v1/orgs/', OrgListCreateView.as_view(), name='org_list_create'),

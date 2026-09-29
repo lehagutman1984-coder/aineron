@@ -768,6 +768,27 @@ def payment_success(request):
                 except Exception as tg_err:
                     logger.warning(f"[WARN] Telegram notify failed: {tg_err}")
 
+                # ── Email-подтверждение оплаты ──
+                try:
+                    from users.email_service import send_payment_confirmation_email
+                    if payment.payment_type == 'pages':
+                        send_payment_confirmation_email(
+                            user, kind='topup',
+                            amount_kopecks=payment.amount_kopecks or payment.pages_count * 100,
+                            method='Robokassa',
+                            balance_kopecks=user.balance_kopecks,
+                        )
+                    else:
+                        send_payment_confirmation_email(
+                            user, kind='subscription',
+                            amount_kopecks=tariff.balance_grant_kopecks,
+                            method='Robokassa',
+                            tariff_name=tariff.display_name if tariff else None,
+                            balance_kopecks=user.balance_kopecks,
+                        )
+                except Exception as email_err:
+                    logger.warning(f"[WARN] Payment confirmation email failed: {email_err}")
+
                 return HttpResponse(f"OK{inv_id}")
 
             except PaymentHistory.DoesNotExist:

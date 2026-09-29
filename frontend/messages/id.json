@@ -163,7 +163,14 @@
     "verifyResendIn": "Kirim ulang dalam {seconds} detik.",
     "verifySending": "Mengirim...",
     "verifyResend": "Kirim ulang kode",
-    "backHome": "Kembali ke beranda"
+    "backHome": "Kembali ke beranda",
+    "forgotPasswordTitle": "Atur ulang kata sandi",
+    "forgotPasswordDescription": "Masukkan email yang Anda gunakan saat mendaftar — kami akan mengirimkan kata sandi baru ke email tersebut.",
+    "forgotPasswordButton": "Kirim kata sandi baru",
+    "forgotPasswordSending": "Mengirim...",
+    "forgotPasswordSuccess": "Jika email tersebut terdaftar, kami telah mengirimkan kata sandi baru. Periksa kotak masuk Anda dalam beberapa menit.",
+    "forgotPasswordError": "Gagal mengirim permintaan. Silakan coba lagi nanti.",
+    "backToLogin": "Kembali ke halaman masuk"
   },
   "footer": {
     "description": "Model AI tanpa VPN. GPT-4o, Claude, Gemini, dan lainnya — semua dalam satu tempat.",
@@ -265,6 +272,7 @@
       "favorites": "Favorit",
       "telegram": "Telegram",
       "oauth": "Aplikasi OAuth",
+      "security": "Keamanan",
       "logout": "Keluar"
     },
     "overview": {
@@ -1269,6 +1277,21 @@
     "confirmDelete": "Hapus?",
     "yes": "Ya",
     "no": "Tidak"
+  },
+  "accountSecurity": {
+    "title": "Keamanan",
+    "changePassword": "Ganti kata sandi",
+    "changePasswordDescription": "Ganti kata sandi secara berkala dan jangan gunakan kembali di situs lain",
+    "currentPasswordLabel": "Kata sandi saat ini",
+    "newPasswordLabel": "Kata sandi baru",
+    "newPasswordPlaceholder": "Minimal 8 karakter",
+    "confirmPasswordLabel": "Konfirmasi kata sandi baru",
+    "passwordTooShort": "Kata sandi harus minimal 8 karakter",
+    "passwordMismatch": "Kata sandi tidak cocok",
+    "genericError": "Gagal mengganti kata sandi. Silakan coba lagi.",
+    "success": "Kata sandi berhasil diganti",
+    "saving": "Menyimpan...",
+    "save": "Simpan"
   },
   "accountOauthApps": {
     "title": "Aplikasi OAuth",

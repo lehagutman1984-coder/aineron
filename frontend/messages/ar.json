@@ -163,7 +163,14 @@
     "verifyResendIn": "إعادة الإرسال خلال {seconds} ثانية.",
     "verifySending": "جارٍ الإرسال...",
     "verifyResend": "إعادة إرسال الرمز",
-    "backHome": "العودة إلى الصفحة الرئيسية"
+    "backHome": "العودة إلى الصفحة الرئيسية",
+    "forgotPasswordTitle": "استعادة كلمة المرور",
+    "forgotPasswordDescription": "أدخل البريد الإلكتروني الذي سجّلت به — سنرسل كلمة مرور جديدة إليه.",
+    "forgotPasswordButton": "إرسال كلمة مرور جديدة",
+    "forgotPasswordSending": "جارٍ الإرسال...",
+    "forgotPasswordSuccess": "إذا كان هذا البريد الإلكتروني مسجلاً، فقد أرسلنا كلمة مرور جديدة إليه. تحقق من بريدك الوارد خلال دقائق قليلة.",
+    "forgotPasswordError": "تعذّر إرسال الطلب. يرجى المحاولة مرة أخرى لاحقًا.",
+    "backToLogin": "العودة إلى تسجيل الدخول"
   },
   "footer": {
     "description": "نماذج الذكاء الاصطناعي بدون VPN. GPT-4o، Claude، Gemini والمزيد — كلها في مكان واحد.",
@@ -265,6 +272,7 @@
       "favorites": "المفضلة",
       "telegram": "Telegram",
       "oauth": "تطبيقات OAuth",
+      "security": "الأمان",
       "logout": "تسجيل الخروج"
     },
     "overview": {
@@ -1269,6 +1277,21 @@
     "confirmDelete": "حذف؟",
     "yes": "نعم",
     "no": "لا"
+  },
+  "accountSecurity": {
+    "title": "الأمان",
+    "changePassword": "تغيير كلمة المرور",
+    "changePasswordDescription": "غيّر كلمة المرور بانتظام ولا تعيد استخدامها في مواقع أخرى",
+    "currentPasswordLabel": "كلمة المرور الحالية",
+    "newPasswordLabel": "كلمة المرور الجديدة",
+    "newPasswordPlaceholder": "8 أحرف على الأقل",
+    "confirmPasswordLabel": "تأكيد كلمة المرور الجديدة",
+    "passwordTooShort": "يجب أن تكون كلمة المرور 8 أحرف على الأقل",
+    "passwordMismatch": "كلمتا المرور غير متطابقتين",
+    "genericError": "تعذّر تغيير كلمة المرور. يرجى المحاولة مرة أخرى.",
+    "success": "تم تغيير كلمة المرور",
+    "saving": "جارٍ الحفظ...",
+    "save": "حفظ"
   },
   "accountOauthApps": {
     "title": "تطبيقات OAuth",

@@ -163,7 +163,14 @@
     "verifyResendIn": "ارسال مجدد در {seconds} ثانیه.",
     "verifySending": "در حال ارسال...",
     "verifyResend": "ارسال مجدد کد",
-    "backHome": "بازگشت به خانه"
+    "backHome": "بازگشت به خانه",
+    "forgotPasswordTitle": "بازیابی رمز عبور",
+    "forgotPasswordDescription": "ایمیلی که با آن ثبت‌نام کرده‌اید را وارد کنید — رمز عبور جدید به آن ارسال می‌شود.",
+    "forgotPasswordButton": "ارسال رمز عبور جدید",
+    "forgotPasswordSending": "در حال ارسال...",
+    "forgotPasswordSuccess": "اگر این ایمیل ثبت شده باشد، رمز عبور جدید به آن ارسال شد. صندوق ورودی خود را در چند دقیقه آینده بررسی کنید.",
+    "forgotPasswordError": "ارسال درخواست ناموفق بود. لطفاً بعداً دوباره تلاش کنید.",
+    "backToLogin": "بازگشت به صفحه ورود"
   },
   "footer": {
     "description": "مدل‌های هوش مصنوعی بدون VPN. GPT-4o، Claude، Gemini و بیشتر — همه در یک مکان.",
@@ -265,6 +272,7 @@
       "favorites": "موارد دلخواه",
       "telegram": "تلگرام",
       "oauth": "برنامه‌های OAuth",
+      "security": "امنیت",
       "logout": "خروج"
     },
     "overview": {
@@ -1269,6 +1277,21 @@
     "confirmDelete": "حذف؟",
     "yes": "بله",
     "no": "خیر"
+  },
+  "accountSecurity": {
+    "title": "امنیت",
+    "changePassword": "تغییر رمز عبور",
+    "changePasswordDescription": "رمز عبور خود را به‌طور منظم تغییر دهید و از آن در سایت‌های دیگر استفاده نکنید",
+    "currentPasswordLabel": "رمز عبور فعلی",
+    "newPasswordLabel": "رمز عبور جدید",
+    "newPasswordPlaceholder": "حداقل ۸ کاراکتر",
+    "confirmPasswordLabel": "تکرار رمز عبور جدید",
+    "passwordTooShort": "رمز عبور باید حداقل ۸ کاراکتر باشد",
+    "passwordMismatch": "رمزهای عبور مطابقت ندارند",
+    "genericError": "تغییر رمز عبور ناموفق بود. لطفاً دوباره تلاش کنید.",
+    "success": "رمز عبور تغییر کرد",
+    "saving": "در حال ذخیره...",
+    "save": "ذخیره"
   },
   "accountOauthApps": {
     "title": "برنامه‌های OAuth",

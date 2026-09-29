@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if kind == 'subscription' %}Подписка активирована{% else %}Баланс пополнен{% endif %} | {{ site_name }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: #f5f7fa;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.5;
+            color: #1f2937;
+        }
+
+        .email-container {
+            max-width: 560px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.1);
+            border: 1px solid #eef2f6;
+        }
+
+        .email-header {
+            padding: 32px 28px 24px;
+            text-align: center;
+            border-bottom: 1px solid #eef2f6;
+            background: white;
+        }
+
+        .logo-link {
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .logo {
+            font-size: 28px;
+            font-weight: 700;
+            color: #f0a38a;
+            letter-spacing: -0.5px;
+            margin-bottom: 16px;
+        }
+
+        .header-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+            color: #22c55e;
+        }
+
+        .header-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #0d0d0d;
+            margin-bottom: 8px;
+        }
+
+        .header-sub {
+            color: #6c757d;
+            font-size: 15px;
+        }
+
+        .email-content {
+            padding: 32px 28px;
+        }
+
+        .greeting {
+            margin-bottom: 24px;
+        }
+
+        .greeting h2 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #0d0d0d;
+            margin-bottom: 6px;
+        }
+
+        .greeting p {
+            color: #6c757d;
+            font-size: 15px;
+        }
+
+        .amount-card {
+            background: #f0fdf4;
+            border-radius: 20px;
+            padding: 28px 24px;
+            margin: 24px 0;
+            text-align: center;
+            border: 1px solid #dcfce7;
+        }
+
+        .amount-label {
+            font-size: 13px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #16a34a;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .amount-number {
+            font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
+            font-size: 40px;
+            font-weight: 800;
+            color: #15803d;
+            background: white;
+            padding: 8px 24px;
+            border-radius: 16px;
+            display: inline-block;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+            border: 1px solid #dcfce7;
+        }
+
+        .info-card {
+            background: #f8f9fc;
+            border-radius: 20px;
+            padding: 20px;
+            margin: 24px 0;
+            border: 1px solid #eef2f6;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+        }
+
+        .info-row:not(:last-child) {
+            border-bottom: 1px solid #eef2f6;
+        }
+
+        .info-label {
+            color: #6c757d;
+            font-size: 14px;
+        }
+
+        .info-value {
+            color: #0d0d0d;
+            font-weight: 600;
+            font-size: 15px;
+            background: white;
+            padding: 4px 12px;
+            border-radius: 30px;
+            border: 1px solid #eef2f6;
+        }
+
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin: 28px 0 16px;
+        }
+
+        .btn {
+            display: inline-block;
+            background: #f0a38a;
+            color: white !important;
+            text-decoration: none;
+            padding: 14px 24px;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 15px;
+            text-align: center;
+        }
+
+        .email-footer {
+            padding: 24px 28px;
+            text-align: center;
+            border-top: 1px solid #eef2f6;
+            background: #fafcfc;
+        }
+
+        .footer-links {
+            margin-bottom: 12px;
+        }
+
+        .footer-links a {
+            color: #f0a38a;
+            text-decoration: none;
+            font-size: 14px;
+            margin: 0 8px;
+        }
+
+        .footer-links a:hover {
+            text-decoration: underline;
+        }
+
+        .copyright {
+            color: #9ca3af;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+
+        .auto-message {
+            color: #9ca3af;
+            font-size: 12px;
+            font-style: italic;
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 12px;
+            }
+            .email-content {
+                padding: 24px 20px;
+            }
+            .amount-card {
+                padding: 20px 16px;
+            }
+            .amount-number {
+                font-size: 30px;
+                padding: 6px 18px;
+            }
+            .header-title {
+                font-size: 22px;
+            }
+            .info-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            .info-value {
+                align-self: flex-start;
+            }
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="email-header">
+            <a href="{{ site_url }}" class="logo-link">
+                <div class="logo">{{ site_name }}</div>
+            </a>
+            <div class="header-icon">+</div>
+            {% if kind == 'subscription' %}
+                <div class="header-title">Подписка активирована</div>
+                <div class="header-sub">Оплата прошла успешно</div>
+            {% else %}
+                <div class="header-title">Баланс пополнен</div>
+                <div class="header-sub">Оплата прошла успешно</div>
+            {% endif %}
+        </div>
+
+        <div class="email-content">
+            <div class="greeting">
+                <h2>Здравствуйте, {{ username }}!</h2>
+                <p>Подтверждаем успешную оплату</p>
+            </div>
+
+            <div class="amount-card">
+                <span class="amount-label">{% if kind == 'subscription' %}Списано{% else %}Зачислено{% endif %}</span>
+                <div class="amount-number">{{ amount }}</div>
+            </div>
+
+            <div class="info-card">
+                {% if kind == 'subscription' %}
+                <div class="info-row">
+                    <span class="info-label">Тариф</span>
+                    <span class="info-value">{{ tariff_name }}</span>
+                </div>
+                {% endif %}
+                <div class="info-row">
+                    <span class="info-label">Способ оплаты</span>
+                    <span class="info-value">{{ method }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Текущий баланс</span>
+                    <span class="info-value">{{ balance }}</span>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <a href="{{ site_url }}/account/billing/" class="btn" style="color: #ffffff !important;">
+                    Перейти в кабинет
+                </a>
+            </div>
+        </div>
+
+        <div class="email-footer">
+            <div class="footer-links">
+                <a href="{{ site_url }}/privacy-policy/">Политика конфиденциальности</a>
+                <a href="{{ site_url }}/terms/">Пользовательское соглашение</a>
+            </div>
+            <div class="copyright">
+                © {{ site_name }}, 2026. Все права защищены.
+            </div>
+            <div class="auto-message">
+                Это автоматическое письмо, не отвечайте на него. Если вы не совершали эту оплату — свяжитесь с поддержкой.
+            </div>
+        </div>
+    </div>
+</body>
+</html>

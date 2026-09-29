@@ -19,6 +19,7 @@ import {
   Folder,
   Images,
   Drama,
+  ShieldCheck,
 } from "lucide-react";
 import { useAuthStore } from "@/lib/stores/auth";
 import { authLogout } from "@/lib/api/client";
@@ -41,6 +42,7 @@ const NAV = [
   { href: "/account/favorites/", label: "favorites", icon: Heart },
   { href: "/account/telegram/", label: "telegram", icon: MessageCircle },
   { href: "/account/oauth-apps/", label: "oauth", icon: AppWindow },
+  { href: "/account/security/", label: "security", icon: ShieldCheck },
 ];
 
 export default function AccountLayout({ children }: { children: React.ReactNode }) {

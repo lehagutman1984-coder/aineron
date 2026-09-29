@@ -1,6 +1,8 @@
 from django.conf import settings
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from api.authentication import CsrfExemptSessionAuthentication
@@ -8,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from api.serializers.auth import UserSerializer
-from users.email_service import send_verification_email
+from users.email_service import send_verification_email, send_password_changed_notification
 
 User = get_user_model()
 
@@ -154,6 +156,50 @@ class VerifyEmailView(APIView):
 
         user.verify_email()
         login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+        return Response({'ok': True})
+
+
+class PasswordChangeView(APIView):
+    """Смена пароля из личного кабинета (пользователь уже залогинен).
+
+    Требует текущий пароль (не «забыли пароль» — тот сбрасывает пароль на
+    случайный без проверки старого). После смены — update_session_auth_hash,
+    иначе Django сразу инвалидирует текущую сессию (сменился password hash)
+    и этот же запрос разлогинил бы пользователя, которого мы только что
+    аутентифицировали по старому паролю."""
+    authentication_classes = [CsrfExemptSessionAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        current_password = request.data.get('current_password') or ''
+        new_password = request.data.get('new_password') or ''
+
+        if not current_password or not new_password:
+            return Response({
+                'error': {'message': 'Введите текущий и новый пароль', 'type': 'invalid_request_error', 'code': None}
+            }, status=400)
+
+        if not request.user.check_password(current_password):
+            return Response({
+                'error': {'message': 'Неверный текущий пароль', 'type': 'invalid_request_error', 'code': 'invalid_current_password'}
+            }, status=400)
+
+        try:
+            validate_password(new_password, user=request.user)
+        except DjangoValidationError as e:
+            return Response({
+                'error': {'message': ' '.join(e.messages), 'type': 'invalid_request_error', 'code': 'weak_password'}
+            }, status=400)
+
+        request.user.set_password(new_password)
+        request.user.save(update_fields=['password'])
+        update_session_auth_hash(request, request.user)
+
+        try:
+            send_password_changed_notification(request.user, request)
+        except Exception:
+            pass
+
         return Response({'ok': True})
 
 

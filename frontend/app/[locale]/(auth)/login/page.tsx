@@ -114,12 +114,12 @@ function LoginForm() {
       </form>
 
       <div className="mt-5 border-t border-[rgba(13,13,13,0.08)] pt-5">
-        <a
-          href="/users/pages/auth/?tab=reset"
+        <Link
+          href="/forgot-password/"
           className="block text-center text-[15px] text-[rgba(13,13,13,0.5)] hover:text-[#D97757] transition-colors"
         >
           {t("forgotPassword")}
-        </a>
+        </Link>
       </div>
     </div>
   );

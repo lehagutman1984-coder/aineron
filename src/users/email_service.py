@@ -1,6 +1,7 @@
 ﻿from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
+from django.utils import timezone
 from django.contrib.sites.models import Site
 from django.conf import settings
 import uuid
@@ -164,6 +165,130 @@ def send_password_reset_email(user, new_password, request):
 
     except Exception as e:
         logger.error(f"[ERR] Ошибка при подготовке письма с паролем: {e}")
+        return False
+
+
+def send_password_changed_notification(user, request):
+    """
+    Уведомляет о смене пароля из личного кабинета (security-уведомление,
+    асинхронно). В отличие от send_password_reset_email — не содержит пароль,
+    только предупреждение "это были не вы — свяжитесь с поддержкой".
+    """
+    try:
+        subject = _('Пароль изменён')
+
+        current_site = Site.objects.get_current()
+        site_name = current_site.name
+        protocol = 'https' if request.is_secure() else 'http'
+        domain = request.get_host()
+        site_url = f"{protocol}://{domain}"
+
+        context = {
+            'username': user.username or user.email.split('@')[0],
+            'site_url': site_url,
+            'site_name': site_name,
+            'email': user.email,
+            'changed_at': timezone.now().strftime('%d.%m.%Y %H:%M'),
+        }
+
+        html_content = render_to_string('neuro/emails/password_changed_email.html', context)
+        text_content = strip_tags(html_content)
+
+        def send_email_thread():
+            try:
+                email = EmailMultiAlternatives(
+                    subject=subject,
+                    body=text_content,
+                    from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@example.com'),
+                    to=[user.email],
+                )
+                email.attach_alternative(html_content, "text/html")
+                email.send(fail_silently=False)
+                logger.info(f"[OK] Уведомление о смене пароля отправлено на {user.email}")
+            except Exception as e:
+                logger.error(f"[ERR] Ошибка отправки уведомления о смене пароля: {e}")
+
+        thread = threading.Thread(target=send_email_thread)
+        thread.daemon = True
+        thread.start()
+
+        logger.info(f"[EMAIL] Уведомление о смене пароля поставлено в очередь для {user.email}")
+        return True
+
+    except Exception as e:
+        logger.error(f"[ERR] Ошибка при подготовке уведомления о смене пароля: {e}")
+        return False
+
+
+def send_payment_confirmation_email(user, kind, amount_kopecks, method, tariff_name=None, balance_kopecks=None):
+    """
+    Подтверждение успешной оплаты/пополнения (асинхронно). Вызывается ПОСЛЕ
+    фиксации зачисления (add_kopecks) — сама функция не бросает исключений
+    наружу (см. try/except ниже и в потоке), поэтому безопасна для вызова
+    из платёжных webhook'ов и Celery-задач без риска сломать сам платёж.
+
+    kind: 'topup' (пополнение баланса) | 'subscription' (покупка/продление тарифа)
+    amount_kopecks: сумма операции в копейках
+    method: способ оплаты для отображения в письме, например 'Robokassa',
+            'Crypto Pay', 'Автопродление'
+    tariff_name: имя тарифа, только для kind='subscription'
+    balance_kopecks: баланс пользователя после операции; если не передан — берём текущий
+    """
+    try:
+        # format_money, не format_rub: на aineron.net (INTL_MODE=1) суммы в кредитах,
+        # не в рублях — та же точка форматирования, что уже использует сам платёжный
+        # код (crypto_payments.py/trybit_payments.py в Telegram-уведомлениях).
+        from core.money import format_money
+
+        current_site = Site.objects.get_current()
+        site_name = current_site.name
+        site_url = settings.SITE_URL.rstrip('/')
+
+        if balance_kopecks is None:
+            balance_kopecks = user.balance_kopecks
+
+        if kind == 'subscription':
+            subject = f'Подписка «{tariff_name}» активирована' if tariff_name else 'Подписка активирована'
+        else:
+            subject = f'Баланс пополнен на {format_money(amount_kopecks)}'
+
+        context = {
+            'username': user.username or user.email.split('@')[0],
+            'kind': kind,
+            'amount': format_money(amount_kopecks),
+            'balance': format_money(balance_kopecks),
+            'method': method,
+            'tariff_name': tariff_name,
+            'site_name': site_name,
+            'site_url': site_url,
+        }
+
+        html_content = render_to_string('neuro/emails/payment_confirmation.html', context)
+        text_content = strip_tags(html_content)
+
+        def send_email_thread():
+            try:
+                email = EmailMultiAlternatives(
+                    subject=subject,
+                    body=text_content,
+                    from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@example.com'),
+                    to=[user.email],
+                )
+                email.attach_alternative(html_content, "text/html")
+                email.send(fail_silently=False)
+                logger.info(f"[OK] Письмо об оплате отправлено на {user.email}")
+            except Exception as e:
+                logger.error(f"[ERR] Ошибка отправки письма об оплате: {e}")
+
+        thread = threading.Thread(target=send_email_thread)
+        thread.daemon = True
+        thread.start()
+
+        logger.info(f"[EMAIL] Письмо об оплате поставлено в очередь для {user.email}")
+        return True
+
+    except Exception as e:
+        logger.error(f"[ERR] Ошибка при подготовке письма об оплате: {e}")
         return False
 
 

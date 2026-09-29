@@ -163,7 +163,14 @@
     "verifyResendIn": "Resend in {seconds} sec.",
     "verifySending": "Sending...",
     "verifyResend": "Resend code",
-    "backHome": "Back to home"
+    "backHome": "Back to home",
+    "forgotPasswordTitle": "Reset password",
+    "forgotPasswordDescription": "Enter the email you registered with — we'll send a new password to it.",
+    "forgotPasswordButton": "Send new password",
+    "forgotPasswordSending": "Sending...",
+    "forgotPasswordSuccess": "If that email is registered, we've sent a new password to it. Check your inbox in a few minutes.",
+    "forgotPasswordError": "Couldn't send the request. Please try again later.",
+    "backToLogin": "Back to login"
   },
   "footer": {
     "description": "AI models without VPN. GPT-4o, Claude, Gemini, and more — all in one place.",
@@ -265,6 +272,7 @@
       "favorites": "Favorites",
       "telegram": "Telegram",
       "oauth": "OAuth Apps",
+      "security": "Security",
       "logout": "Log Out"
     },
     "overview": {
@@ -1269,6 +1277,21 @@
     "confirmDelete": "Delete?",
     "yes": "Yes",
     "no": "No"
+  },
+  "accountSecurity": {
+    "title": "Security",
+    "changePassword": "Change password",
+    "changePasswordDescription": "Change your password regularly and don't reuse it on other sites",
+    "currentPasswordLabel": "Current password",
+    "newPasswordLabel": "New password",
+    "newPasswordPlaceholder": "At least 8 characters",
+    "confirmPasswordLabel": "Confirm new password",
+    "passwordTooShort": "Password must be at least 8 characters",
+    "passwordMismatch": "Passwords don't match",
+    "genericError": "Couldn't change the password. Please try again.",
+    "success": "Password changed",
+    "saving": "Saving...",
+    "save": "Save"
   },
   "accountOauthApps": {
     "title": "OAuth Applications",

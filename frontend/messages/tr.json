@@ -163,7 +163,14 @@
     "verifyResendIn": "{seconds} sn içinde tekrar gönder.",
     "verifySending": "Gönderiliyor...",
     "verifyResend": "Kodu yeniden gönder",
-    "backHome": "Ana sayfaya dön"
+    "backHome": "Ana sayfaya dön",
+    "forgotPasswordTitle": "Şifremi sıfırla",
+    "forgotPasswordDescription": "Kayıt olduğunuz e-posta adresini girin — yeni bir şifreyi bu adrese göndereceğiz.",
+    "forgotPasswordButton": "Yeni şifre gönder",
+    "forgotPasswordSending": "Gönderiliyor...",
+    "forgotPasswordSuccess": "Bu e-posta kayıtlıysa, yeni şifrenizi gönderdik. Birkaç dakika içinde gelen kutunuzu kontrol edin.",
+    "forgotPasswordError": "İstek gönderilemedi. Lütfen daha sonra tekrar deneyin.",
+    "backToLogin": "Girişe dön"
   },
   "footer": {
     "description": "VPN olmadan AI modelleri. GPT-4o, Claude, Gemini ve daha fazlası — hepsi bir arada.",
@@ -265,6 +272,7 @@
       "favorites": "Favoriler",
       "telegram": "Telegram",
       "oauth": "OAuth Uygulamaları",
+      "security": "Güvenlik",
       "logout": "Çıkış Yap"
     },
     "overview": {
@@ -1269,6 +1277,21 @@
     "confirmDelete": "Silinsin mi?",
     "yes": "Evet",
     "no": "Hayır"
+  },
+  "accountSecurity": {
+    "title": "Güvenlik",
+    "changePassword": "Şifre değiştir",
+    "changePasswordDescription": "Şifrenizi düzenli olarak değiştirin ve başka sitelerde yeniden kullanmayın",
+    "currentPasswordLabel": "Mevcut şifre",
+    "newPasswordLabel": "Yeni şifre",
+    "newPasswordPlaceholder": "En az 8 karakter",
+    "confirmPasswordLabel": "Yeni şifreyi tekrar girin",
+    "passwordTooShort": "Şifre en az 8 karakter olmalı",
+    "passwordMismatch": "Şifreler eşleşmiyor",
+    "genericError": "Şifre değiştirilemedi. Lütfen tekrar deneyin.",
+    "success": "Şifre değiştirildi",
+    "saving": "Kaydediliyor...",
+    "save": "Kaydet"
   },
   "accountOauthApps": {
     "title": "OAuth Uygulamaları",

@@ -123,6 +123,16 @@ def settle_crypto_payment(payment) -> bool:
             notify_user(tg.telegram_id, text)
     except Exception as tg_err:
         logger.warning("[CRYPTO] Telegram notify failed: %s", tg_err)
+
+    try:
+        from users.email_service import send_payment_confirmation_email
+        send_payment_confirmation_email(
+            user, kind='topup', amount_kopecks=topup_kopecks,
+            method='Crypto Pay', balance_kopecks=user.balance_kopecks,
+        )
+    except Exception as email_err:
+        logger.warning("[CRYPTO] Payment confirmation email failed: %s", email_err)
+
     return True
 
 

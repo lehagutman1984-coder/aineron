@@ -163,7 +163,14 @@
     "verifyResendIn": "Отправить повторно через {seconds} сек.",
     "verifySending": "Отправляем...",
     "verifyResend": "Отправить код повторно",
-    "backHome": "На главную"
+    "backHome": "На главную",
+    "forgotPasswordTitle": "Восстановление пароля",
+    "forgotPasswordDescription": "Введите email, указанный при регистрации, — мы вышлем новый пароль на почту.",
+    "forgotPasswordButton": "Отправить новый пароль",
+    "forgotPasswordSending": "Отправляем...",
+    "forgotPasswordSuccess": "Если такой адрес зарегистрирован, мы отправили новый пароль на почту. Проверьте входящие в течение нескольких минут.",
+    "forgotPasswordError": "Не удалось отправить запрос. Попробуйте позже.",
+    "backToLogin": "Вернуться к входу"
   },
   "footer": {
     "description": "AI-нейросети без VPN. GPT-4o, Claude, Gemini и другие — в одном месте.",
@@ -268,6 +275,7 @@
       "favorites": "Избранное",
       "telegram": "Telegram",
       "oauth": "OAuth-приложения",
+      "security": "Безопасность",
       "logout": "Выйти"
     },
     "overview": {
@@ -1272,6 +1280,21 @@
     "confirmDelete": "Удалить?",
     "yes": "Да",
     "no": "Нет"
+  },
+  "accountSecurity": {
+    "title": "Безопасность",
+    "changePassword": "Смена пароля",
+    "changePasswordDescription": "Регулярно меняйте пароль и не используйте его на других сайтах",
+    "currentPasswordLabel": "Текущий пароль",
+    "newPasswordLabel": "Новый пароль",
+    "newPasswordPlaceholder": "Минимум 8 символов",
+    "confirmPasswordLabel": "Повторите новый пароль",
+    "passwordTooShort": "Пароль должен содержать минимум 8 символов",
+    "passwordMismatch": "Пароли не совпадают",
+    "genericError": "Не удалось сменить пароль. Попробуйте снова.",
+    "success": "Пароль изменён",
+    "saving": "Сохранение...",
+    "save": "Сохранить"
   },
   "accountOauthApps": {
     "title": "OAuth-приложения",
