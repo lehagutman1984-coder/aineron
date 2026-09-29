@@ -94,3 +94,6 @@ beautifulsoup4
 aiogram>=3.29,<4.0
 django-oauth-toolkit>=2.4.0
 django-modeltranslation==0.18.13
+# 2026-09-29: DKIM-подпись на уровне приложения (core/dkim_smtp_backend.py) —
+# у Beget нет self-service DKIM для этого аккаунта.
+dkimpy==1.1.8

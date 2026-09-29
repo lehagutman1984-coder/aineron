@@ -296,7 +296,13 @@ DOMAIN = 'aineron.ru'
 
 
 # ========== EMAIL ==========
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# 2026-09-29: DKIMSMTPBackend — обычный SMTP-бэкенд Django + DKIM-Signature
+# (core/dkim_smtp_backend.py). У Beget нет self-service DKIM для этого
+# аккаунта (проверено в панели, стандартные селекторы не резолвятся) —
+# подписываем на уровне приложения. Безопасный no-op, если DKIM_* ниже не
+# заданы (ещё нет опубликованного публичного ключа) — письма продолжают
+# уходить как раньше, просто без подписи.
+EMAIL_BACKEND = 'core.dkim_smtp_backend.DKIMSMTPBackend'
 EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
 EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL', 'False') == 'True'
@@ -326,6 +332,13 @@ MAIL_RELAY_SECRET = os.environ.get('MAIL_RELAY_SECRET', '')
 MAIL_RELAY_ALLOWED_IPS = os.environ.get('MAIL_RELAY_ALLOWED_IPS', '')
 if MAIL_RELAY_URL:
     EMAIL_BACKEND = 'core.mail_relay_backend.RelayHTTPBackend'
+
+# DKIM (core/dkim_smtp_backend.py) — селектор/домен/приватный ключ (PEM,
+# однострочный: \n внутри заменены на буквальные \n при подстановке в .env).
+# Пусто с любой стороны = подпись отключена (fail-open).
+DKIM_SELECTOR = os.environ.get('DKIM_SELECTOR', '')
+DKIM_DOMAIN = os.environ.get('DKIM_DOMAIN', '')
+DKIM_PRIVATE_KEY = os.environ.get('DKIM_PRIVATE_KEY', '').replace('\\n', '\n')
 
 
 # ========== CELERY ==========
