@@ -10,7 +10,7 @@ import string
 import random
 import threading  # ДОБАВЛЕНО для асинхронности
 from .models import CustomUser
-from django.utils.translation import gettext_lazy as _
+from .email_i18n import get_email_context, is_rtl
 import logging
 
 logger = logging.getLogger(__name__)
@@ -58,18 +58,24 @@ def send_verification_email(user, request):
 
         verification_url = f"{site_url}/users/api/verify-email/{token}/"
 
-        # Тема письма
-        subject = _('Подтверждение email адреса')
+        t, lang_code = get_email_context('verification', user.get_language())
+        subject = t['subject']
+        username = user.username or user.email.split('@')[0]
 
         # Контекст для шаблона
         context = {
-            'username': user.username or user.email.split('@')[0],
+            'username': username,
             'verification_code': verification_code,
             'verification_url': verification_url,
             'email': user.email,
             'domain': domain,
             'site_name': site_name,
             'site_url': site_url,
+            't': t,
+            'lang_code': lang_code,
+            'is_rtl': is_rtl(lang_code),
+            'greeting_title': t['greeting_title'].format(username=username),
+            'footer_copyright': t['footer_copyright'].format(site_name=site_name),
         }
 
         # Рендерим HTML шаблон
@@ -108,9 +114,6 @@ def send_password_reset_email(user, new_password, request):
     Отправляет email с новым паролем (асинхронно)
     """
     try:
-        # Тема письма
-        subject = _('Восстановление пароля')
-
         # Получаем текущий сайт
         current_site = Site.objects.get_current()
         site_name = current_site.name
@@ -121,15 +124,25 @@ def send_password_reset_email(user, new_password, request):
         site_url = f"{protocol}://{domain}"
         login_url = f"{site_url}/users/pages/auth/"
 
+        t, lang_code = get_email_context('password_reset', user.get_language())
+        subject = t['subject']
+        username = user.username or user.email.split('@')[0]
+
         # Контекст для шаблона
         context = {
-            'username': user.username or user.email.split('@')[0],
+            'username': username,
             'new_password': new_password,
             'login_url': login_url,
             'site_url': site_url,
             'site_name': site_name,
             'email': user.email,
             'domain': domain,
+            't': t,
+            'lang_code': lang_code,
+            'is_rtl': is_rtl(lang_code),
+            'greeting_title': t['greeting_title'].format(username=username),
+            'greeting_text': t['greeting_text'].format(site_name=site_name),
+            'footer_copyright': t['footer_copyright'].format(site_name=site_name),
         }
 
         # Рендерим HTML шаблон
@@ -175,20 +188,27 @@ def send_password_changed_notification(user, request):
     только предупреждение "это были не вы — свяжитесь с поддержкой".
     """
     try:
-        subject = _('Пароль изменён')
-
         current_site = Site.objects.get_current()
         site_name = current_site.name
         protocol = 'https' if request.is_secure() else 'http'
         domain = request.get_host()
         site_url = f"{protocol}://{domain}"
 
+        t, lang_code = get_email_context('password_changed', user.get_language())
+        subject = t['subject']
+        username = user.username or user.email.split('@')[0]
+
         context = {
-            'username': user.username or user.email.split('@')[0],
+            'username': username,
             'site_url': site_url,
             'site_name': site_name,
             'email': user.email,
             'changed_at': timezone.now().strftime('%d.%m.%Y %H:%M'),
+            't': t,
+            'lang_code': lang_code,
+            'is_rtl': is_rtl(lang_code),
+            'greeting_title': t['greeting_title'].format(username=username),
+            'footer_copyright': t['footer_copyright'].format(site_name=site_name),
         }
 
         html_content = render_to_string('neuro/emails/password_changed_email.html', context)
@@ -247,13 +267,16 @@ def send_payment_confirmation_email(user, kind, amount_kopecks, method, tariff_n
         if balance_kopecks is None:
             balance_kopecks = user.balance_kopecks
 
+        t, lang_code = get_email_context('payment_confirmation', user.get_language())
+        username = user.username or user.email.split('@')[0]
+
         if kind == 'subscription':
-            subject = f'Подписка «{tariff_name}» активирована' if tariff_name else 'Подписка активирована'
+            subject = t['subject_subscription'].format(tariff_name=tariff_name) if tariff_name else t['subject_subscription_generic']
         else:
-            subject = f'Баланс пополнен на {format_money(amount_kopecks)}'
+            subject = t['subject_topup'].format(amount=format_money(amount_kopecks))
 
         context = {
-            'username': user.username or user.email.split('@')[0],
+            'username': username,
             'kind': kind,
             'amount': format_money(amount_kopecks),
             'balance': format_money(balance_kopecks),
@@ -261,6 +284,11 @@ def send_payment_confirmation_email(user, kind, amount_kopecks, method, tariff_n
             'tariff_name': tariff_name,
             'site_name': site_name,
             'site_url': site_url,
+            't': t,
+            'lang_code': lang_code,
+            'is_rtl': is_rtl(lang_code),
+            'greeting_title': t['greeting_title'].format(username=username),
+            'footer_copyright': t['footer_copyright'].format(site_name=site_name),
         }
 
         html_content = render_to_string('neuro/emails/payment_confirmation.html', context)
@@ -365,7 +393,10 @@ def send_welcome_email(user, request):
     Отправляет приветственное письмо после подтверждения email (асинхронно)
     """
     try:
-        subject = _('Добро пожаловать!')
+        subject = 'Добро пожаловать!'  # неиспользуемая функция (нигде не вызывается,
+        # шаблон 'emails/welcome_email.html' тоже не существует) - не в скоупе
+        # локализации 6 реальных писем; строка вместо gettext_lazy только чтобы
+        # не тянуть больше неиспользуемый импорт _()
 
         protocol = 'https' if request.is_secure() else 'http'
         domain = request.get_host()

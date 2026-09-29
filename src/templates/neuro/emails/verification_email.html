@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="{{ lang_code }}"{% if is_rtl %} dir="rtl"{% endif %}>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Подтверждение email | {{ site_name }}</title>
+    <title>{{ t.header_title }} | {{ site_name }}</title>
     <style>
         * {
             margin: 0;
@@ -280,51 +280,51 @@
                 <div class="logo">{{ site_name }}</div>
             </a>
             <div class="header-icon">@</div>
-            <div class="header-title">Подтверждение email</div>
-            <div class="header-sub">Завершите регистрацию</div>
+            <div class="header-title">{{ t.header_title }}</div>
+            <div class="header-sub">{{ t.header_sub }}</div>
         </div>
 
         <div class="email-content">
             <div class="greeting">
-                <h2>Здравствуйте, {{ username }}!</h2>
-                <p>Для завершения регистрации подтвердите ваш email адрес.</p>
+                <h2>{{ greeting_title }}</h2>
+                <p>{{ t.greeting_text }}</p>
             </div>
 
             <div class="code-card">
-                <span class="code-label">Код подтверждения</span>
+                <span class="code-label">{{ t.code_label }}</span>
                 <div class="code-value">{{ verification_code }}</div>
-                <div class="code-hint">Код действителен 24 часа</div>
+                <div class="code-hint">{{ t.code_hint }}</div>
             </div>
 
             <div style="text-align: center;">
-                <a href="{{ verification_url }}" class="btn" style="color: #ffffff !important;">Подтвердить email</a>
+                <a href="{{ verification_url }}" class="btn" style="color: #ffffff !important;">{{ t.btn_confirm }}</a>
             </div>
 
             <div class="link-card">
                 <div class="link-label">
-                    Или перейдите по ссылке
+                    {{ t.link_label }}
                 </div>
                 <a href="{{ verification_url }}" class="verification-link">{{ verification_url }}</a>
             </div>
 
             <div class="warning-box">
-                <div class="warning-title">Если вы не регистрировались</div>
+                <div class="warning-title">{{ t.warning_title }}</div>
                 <div class="warning-text">
-                    Просто проигнорируйте это письмо. Ваш адрес не будет использован без подтверждения.
+                    {{ t.warning_text }}
                 </div>
             </div>
         </div>
 
         <div class="email-footer">
             <div class="footer-links">
-                <a href="{{ site_url }}/privacy-policy/">Политика конфиденциальности</a>
-                <a href="{{ site_url }}/terms/">Пользовательское соглашение</a>
+                <a href="{{ site_url }}/privacy-policy/">{{ t.footer_privacy }}</a>
+                <a href="{{ site_url }}/terms/">{{ t.footer_terms }}</a>
             </div>
             <div class="copyright">
-                © {{ site_name }}, 2026. Все права защищены.
+                {{ footer_copyright }}
             </div>
             <div class="auto-message">
-                Это автоматическое письмо, не отвечайте на него.
+                {{ t.footer_auto }}
             </div>
         </div>
     </div>

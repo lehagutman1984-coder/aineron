@@ -1043,15 +1043,25 @@ def send_renewal_confirmation_code(request):
         current_site = Site.objects.get_current()
         site_name = current_site.name
 
-        # Отправляем код на почту
-        subject = 'Код подтверждения для изменения автопродления'
+        from users.email_i18n import get_email_context, is_rtl
+        t, lang_code = get_email_context('renewal_code', user.get_language())
+        username = user.username or user.email.split('@')[0]
+        action_word = t['action_enable'] if action == 'enable' else t['action_disable']
+
+        subject = t['subject']
 
         context = {
-            'username': user.username or user.email.split('@')[0],
+            'username': username,
             'code': code,
-            'action': 'включения' if action == 'enable' else 'отключения',
             'site_name': site_name,
             'site_url': settings.SITE_URL,
+            't': t,
+            'lang_code': lang_code,
+            'is_rtl': is_rtl(lang_code),
+            'greeting_title': t['greeting_title'].format(username=username),
+            'footer_copyright': t['footer_copyright'].format(site_name=site_name),
+            'action_word': action_word,
+            'btn_goto': t['btn_goto'].format(site_name=site_name),
         }
 
         html_content = render_to_string('neuro/emails/renewal_code.html', context)
@@ -1193,16 +1203,38 @@ def resend_renewal_code(request):
 
         # Отправляем новый код
         user = request.user
-        subject = 'Новый код подтверждения для изменения автопродления'
+
+        # Баг (2026-09-29): путь без 'neuro/' -> TemplateDoesNotExist, попадал в
+        # except ниже и тихо возвращал "Ошибка при отправке кода" при каждом
+        # запросе повторной отправки кода. Заодно не было site_url в контексте
+        # (кнопка/footer-ссылки были бы пустыми) и site_name брался из
+        # несуществующего getattr-фолбэка 'StudyLuck' вместо Site.objects.
+        current_site = Site.objects.get_current()
+        site_name = current_site.name
+        site_url = settings.SITE_URL
+
+        from users.email_i18n import get_email_context, is_rtl
+        t, lang_code = get_email_context('renewal_code', user.get_language())
+        username = user.username or user.email.split('@')[0]
+        action_word = t['action_enable'] if action == 'enable' else t['action_disable']
+
+        subject = t['subject_resend']
 
         context = {
-            'username': user.username or user.email.split('@')[0],
+            'username': username,
             'code': code,
-            'action': 'включения' if action == 'enable' else 'отключения',
-            'site_name': getattr(settings, 'SITE_NAME', 'StudyLuck'),
+            'site_name': site_name,
+            'site_url': site_url,
+            't': t,
+            'lang_code': lang_code,
+            'is_rtl': is_rtl(lang_code),
+            'greeting_title': t['greeting_title'].format(username=username),
+            'footer_copyright': t['footer_copyright'].format(site_name=site_name),
+            'action_word': action_word,
+            'btn_goto': t['btn_goto'].format(site_name=site_name),
         }
 
-        html_content = render_to_string('emails/renewal_code.html', context)
+        html_content = render_to_string('neuro/emails/renewal_code.html', context)
         text_content = strip_tags(html_content)
 
         send_mail(

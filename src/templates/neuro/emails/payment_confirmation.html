@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="{{ lang_code }}"{% if is_rtl %} dir="rtl"{% endif %}>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% if kind == 'subscription' %}Подписка активирована{% else %}Баланс пополнен{% endif %} | {{ site_name }}</title>
+    <title>{% if kind == 'subscription' %}{{ t.header_title_subscription }}{% else %}{{ t.header_title_topup }}{% endif %} | {{ site_name }}</title>
     <style>
         * {
             margin: 0;
@@ -246,59 +246,59 @@
             </a>
             <div class="header-icon">+</div>
             {% if kind == 'subscription' %}
-                <div class="header-title">Подписка активирована</div>
-                <div class="header-sub">Оплата прошла успешно</div>
+                <div class="header-title">{{ t.header_title_subscription }}</div>
+                <div class="header-sub">{{ t.header_sub }}</div>
             {% else %}
-                <div class="header-title">Баланс пополнен</div>
-                <div class="header-sub">Оплата прошла успешно</div>
+                <div class="header-title">{{ t.header_title_topup }}</div>
+                <div class="header-sub">{{ t.header_sub }}</div>
             {% endif %}
         </div>
 
         <div class="email-content">
             <div class="greeting">
-                <h2>Здравствуйте, {{ username }}!</h2>
-                <p>Подтверждаем успешную оплату</p>
+                <h2>{{ greeting_title }}</h2>
+                <p>{{ t.greeting_text }}</p>
             </div>
 
             <div class="amount-card">
-                <span class="amount-label">{% if kind == 'subscription' %}Списано{% else %}Зачислено{% endif %}</span>
+                <span class="amount-label">{% if kind == 'subscription' %}{{ t.amount_label_subscription }}{% else %}{{ t.amount_label_topup }}{% endif %}</span>
                 <div class="amount-number">{{ amount }}</div>
             </div>
 
             <div class="info-card">
                 {% if kind == 'subscription' %}
                 <div class="info-row">
-                    <span class="info-label">Тариф</span>
+                    <span class="info-label">{{ t.info_tariff_label }}</span>
                     <span class="info-value">{{ tariff_name }}</span>
                 </div>
                 {% endif %}
                 <div class="info-row">
-                    <span class="info-label">Способ оплаты</span>
+                    <span class="info-label">{{ t.info_method_label }}</span>
                     <span class="info-value">{{ method }}</span>
                 </div>
                 <div class="info-row">
-                    <span class="info-label">Текущий баланс</span>
+                    <span class="info-label">{{ t.info_balance_label }}</span>
                     <span class="info-value">{{ balance }}</span>
                 </div>
             </div>
 
             <div class="btn-group">
                 <a href="{{ site_url }}/account/billing/" class="btn" style="color: #ffffff !important;">
-                    Перейти в кабинет
+                    {{ t.btn_account }}
                 </a>
             </div>
         </div>
 
         <div class="email-footer">
             <div class="footer-links">
-                <a href="{{ site_url }}/privacy-policy/">Политика конфиденциальности</a>
-                <a href="{{ site_url }}/terms/">Пользовательское соглашение</a>
+                <a href="{{ site_url }}/privacy-policy/">{{ t.footer_privacy }}</a>
+                <a href="{{ site_url }}/terms/">{{ t.footer_terms }}</a>
             </div>
             <div class="copyright">
-                © {{ site_name }}, 2026. Все права защищены.
+                {{ footer_copyright }}
             </div>
             <div class="auto-message">
-                Это автоматическое письмо, не отвечайте на него. Если вы не совершали эту оплату — свяжитесь с поддержкой.
+                {{ t.footer_auto }} {{ t.footer_warning }}
             </div>
         </div>
     </div>

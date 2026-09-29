@@ -320,35 +320,45 @@ from django.contrib.sites.models import Site
 
 def send_expiry_email(subscription):
     try:
+        from users.email_i18n import get_email_context, is_rtl, plural_days
+        from core.money import format_money, rub_to_kopecks
+
         user = subscription.user
         tariff = subscription.tariff
         current_site = Site.objects.get_current()
         site_name = current_site.name
         site_url = settings.SITE_URL.rstrip('/')
 
-        def plural_days(days):
-            if days % 10 == 1 and days % 100 != 11:
-                return "день"
-            elif 2 <= days % 10 <= 4 and (days % 100 < 10 or days % 100 >= 20):
-                return "дня"
-            else:
-                return "дней"
-
         days_left = (subscription.expires_at.date() - timezone.now().date()).days
 
+        t, lang_code = get_email_context('subscription_expiring', user.get_language())
+        username = user.username or user.email.split('@')[0]
+        tariff_name = tariff.display_name if tariff else '-'
+        days_word = plural_days(days_left, lang_code)
+        # format_money, не хардкод "₽": на aineron.net (INTL_MODE=1) - кредиты.
+        price = format_money(rub_to_kopecks(tariff.price)) if tariff else format_money(0)
+
         context = {
-            'username': user.username or user.email.split('@')[0],
-            'tariff_name': tariff.display_name if tariff else 'Ваш тариф',
+            'username': username,
+            'tariff_name': tariff_name,
             'expires_at': subscription.expires_at.strftime('%d.%m.%Y'),
             'days_left': days_left,
-            'days_word': plural_days(days_left),
+            'days_word': days_word,
             'auto_renew': subscription.auto_renew,
-            'price': tariff.price if tariff else 0,
+            'price': price,
             'site_name': site_name,
             'site_url': site_url,
+            't': t,
+            'lang_code': lang_code,
+            'is_rtl': is_rtl(lang_code),
+            'greeting_title': t['greeting_title'].format(username=username),
+            'footer_copyright': t['footer_copyright'].format(site_name=site_name),
+            'timer_suffix': t['timer_suffix'].format(days_word=days_word),
+            'auto_renew_text': t['auto_renew_text'].format(days_left=days_left, days_word=days_word, price=price),
+            'no_renew_text': t['no_renew_text'].format(days_left=days_left, days_word=days_word, tariff_name=tariff_name),
         }
 
-        subject = f'Подписка {tariff.display_name} истекает через {days_left} {plural_days(days_left)}'
+        subject = t['subject'].format(tariff_name=tariff_name, days_left=days_left, days_word=days_word)
         html_content = render_to_string('neuro/emails/subscription_expiring_soon.html', context)
         text_content = strip_tags(html_content)
 

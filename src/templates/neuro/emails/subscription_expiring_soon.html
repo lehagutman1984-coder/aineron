@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="{{ lang_code }}"{% if is_rtl %} dir="rtl"{% endif %}>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Подписка скоро истечет | {{ site_name }}</title>
+    <title>{{ t.header_title }} | {{ site_name }}</title>
     <style>
         * {
             margin: 0;
@@ -291,29 +291,29 @@
                 <div class="logo">{{ site_name }}</div>
             </a>
             <div class="header-icon">!</div>
-            <div class="header-title">Подписка скоро истечет</div>
-            <div class="header-sub">Осталось всего несколько дней</div>
+            <div class="header-title">{{ t.header_title }}</div>
+            <div class="header-sub">{{ t.header_sub }}</div>
         </div>
 
         <div class="email-content">
             <div class="greeting">
-                <h2>Здравствуйте, {{ username }}!</h2>
-                <p>Уведомление о скором окончании подписки</p>
+                <h2>{{ greeting_title }}</h2>
+                <p>{{ t.greeting_text }}</p>
             </div>
 
             <div class="timer-card">
-                <span class="timer-label">Осталось</span>
+                <span class="timer-label">{{ t.timer_label }}</span>
                 <div class="timer-number">{{ days_left }}</div>
-                <div class="timer-text">{{ days_word }} до окончания</div>
+                <div class="timer-text">{{ timer_suffix }}</div>
             </div>
 
             <div class="info-card">
                 <div class="info-row">
-                    <span class="info-label">Тариф</span>
+                    <span class="info-label">{{ t.info_tariff_label }}</span>
                     <span class="info-value">{{ tariff_name }}</span>
                 </div>
                 <div class="info-row">
-                    <span class="info-label">Дата окончания</span>
+                    <span class="info-label">{{ t.info_expires_label }}</span>
                     <span class="info-value">{{ expires_at }}</span>
                 </div>
             </div>
@@ -321,28 +321,28 @@
             <div class="message-box">
                 {% if auto_renew %}
                     <p>
-                        <strong>Автопродление включено.</strong> Через {{ days_left }} {{ days_word }} мы автоматически продлим вашу подписку на месяц и спишем {{ price }} ₽.
+                        <strong>{{ t.auto_renew_title }}</strong> {{ auto_renew_text }}
                     </p>
                     <p style="margin-top: 12px;">
-                        Если вы хотите отменить автопродление, вы можете сделать это в личном кабинете.
+                        {{ t.auto_renew_cancel }}
                     </p>
                 {% else %}
                     <p>
-                        <strong>Автопродление отключено.</strong> Через {{ days_left }} {{ days_word }} доступ к тарифу {{ tariff_name }} будет прекращен.
+                        <strong>{{ t.no_renew_title }}</strong> {{ no_renew_text }}
                     </p>
                     <p style="margin-top: 12px;">
-                        Чтобы не потерять доступ, вы можете продлить подписку вручную.
+                        {{ t.no_renew_extend }}
                     </p>
                 {% endif %}
             </div>
 
             <div class="btn-group">
                 <a href="{{ site_url }}" class="btn" style="color: #ffffff !important;">
-                    Управление подпиской
+                    {{ t.btn_manage }}
                 </a>
                 {% if not auto_renew %}
                 <a href="{{ site_url }}" class="btn btn-outline">
-                    Продлить сейчас
+                    {{ t.btn_extend }}
                 </a>
                 {% endif %}
             </div>
@@ -350,14 +350,14 @@
 
         <div class="email-footer">
             <div class="footer-links">
-                <a href="{{ site_url }}/privacy-policy/">Политика конфиденциальности</a>
-                <a href="{{ site_url }}/terms/">Пользовательское соглашение</a>
+                <a href="{{ site_url }}/privacy-policy/">{{ t.footer_privacy }}</a>
+                <a href="{{ site_url }}/terms/">{{ t.footer_terms }}</a>
             </div>
             <div class="copyright">
-                © {{ site_name }}, 2026. Все права защищены.
+                {{ footer_copyright }}
             </div>
             <div class="auto-message">
-                Это автоматическое письмо, не отвечайте на него.
+                {{ t.footer_auto }}
             </div>
         </div>
     </div>
