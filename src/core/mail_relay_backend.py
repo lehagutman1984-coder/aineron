@@ -49,11 +49,19 @@ class RelayHTTPBackend(BaseEmailBackend):
                         html_body = content
                         break
 
+                # str(...) обязателен: subject/body часто строятся через
+                # django.utils.translation.gettext_lazy (см. email_service.py) —
+                # это ленивый прокси-объект, не str, и requests.post(json=...)
+                # падает на нём в json.dumps() ("Object of type __proxy__ is
+                # not JSON serializable"). Прямой SMTP-бэкенд (aineron.ru) эту
+                # проблему не показывал — email.message сам приводит к str при
+                # сборке письма, поэтому баг был скрыт до первого реального
+                # прогона через HTTP-релей (aineron.net, 2026-09-29).
                 payload = {
                     'to': list(message.to),
-                    'subject': message.subject,
-                    'text': message.body,
-                    'html': html_body,
+                    'subject': str(message.subject),
+                    'text': str(message.body),
+                    'html': str(html_body),
                 }
                 resp = requests.post(
                     url, json=payload, timeout=15,
