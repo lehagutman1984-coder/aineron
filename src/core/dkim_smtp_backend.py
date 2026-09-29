@@ -51,15 +51,26 @@ class DKIMSMTPBackend(SMTPEmailBackend):
     вставка: подпись сырых байт сообщения между message.as_bytes() и sendmail()."""
 
     def _send(self, email_message):
-        import email as email_module
         import smtplib
+
+        from django.core.mail.message import sanitize_address
 
         if not email_message.recipients():
             return False
-        from_email = self.prep_address(email_message.from_email)
-        recipients = [self.prep_address(addr) for addr in email_message.recipients()]
-        message = email_message.message(policy=email_module.policy.SMTP)
-        raw = _dkim_sign(message.as_bytes())
+        encoding = email_message.encoding or settings.DEFAULT_CHARSET
+        from_email = sanitize_address(email_message.from_email, encoding)
+        recipients = [
+            sanitize_address(addr, encoding) for addr in email_message.recipients()
+        ]
+        message = email_message.message()
+        try:
+            # Django 4.2 (production): as_bytes() поддерживает linesep, шлём CRLF как в
+            # оригинальном SMTP-бэкенде. На новых Django (локальный тест-venv может быть
+            # другой версии) сигнатура as_bytes() иная — используем дефолт как фолбэк.
+            raw_bytes = message.as_bytes(linesep='\r\n')
+        except TypeError:
+            raw_bytes = message.as_bytes()
+        raw = _dkim_sign(raw_bytes)
         try:
             self.connection.sendmail(from_email, recipients, raw)
         except smtplib.SMTPException:
