@@ -554,13 +554,20 @@ def create_robokassa_payment(request):
         description = f"Оплата тарифа {tariff.display_name}"
 
         # Формируем чек (без пробелов и лишних символов)
+        # payment_method/payment_object формально опциональны у Robokassa
+        # "если заданы значения по умолчанию в личном кабинете" - но для
+        # фискализации самозанятого (Робочеки СМЗ) полагаться на дефолты
+        # кабинета менее надёжно, чем задать явно в каждом чеке. Наш случай
+        # всегда один и тот же: полная оплата цифровой услуги сразу.
         receipt_data = {
             "items": [
                 {
                     "name": tariff.display_name[:128],
                     "quantity": 1,
                     "sum": float(tariff.price),
-                    "tax": "none"
+                    "tax": "none",
+                    "payment_method": "full_payment",
+                    "payment_object": "service",
                 }
             ]
         }
@@ -924,7 +931,9 @@ def buy_pages(request):
                     "name": f"Пополнение баланса ({pages_to_buy} ₽)"[:128],
                     "quantity": pages_to_buy,
                     "sum": float(total_price),
-                    "tax": "none"
+                    "tax": "none",
+                    "payment_method": "full_payment",
+                    "payment_object": "service",
                 }
             ]
         }

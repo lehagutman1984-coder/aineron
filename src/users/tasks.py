@@ -23,14 +23,20 @@ def check_expired_subscriptions():
 
 
 def build_receipt_for_renewal(tariff, amount, description):
-    """Формирует чек для recurring-платежа (тариф или переход)"""
+    """Формирует чек для recurring-платежа (тариф или переход).
+    Не вызывается нигде (dead code, оба реальных recurring-пути ниже строят
+    receipt_data инлайн) - оставлена в актуальном виде на случай ревайвла,
+    payment_method/payment_object добавлены той же правкой, что и в
+    инлайн-версиях (см. 2026-09-29, фискализация СМЗ)."""
     receipt_data = {
         "items": [
             {
                 "name": description[:128],
                 "quantity": 1,
                 "sum": float(amount),
-                "tax": "none"
+                "tax": "none",
+                "payment_method": "full_payment",
+                "payment_object": "service",
             }
         ]
     }
@@ -147,7 +153,9 @@ def attempt_auto_renewal(subscription):
                         "name": description[:128],
                         "quantity": 1,
                         "sum": amount,
-                        "tax": "none"
+                        "tax": "none",
+                        "payment_method": "full_payment",
+                        "payment_object": "service",
                     }
                 ]
             }
@@ -238,7 +246,9 @@ def attempt_auto_renewal(subscription):
                     "name": description[:128],
                     "quantity": 1,
                     "sum": amount,
-                    "tax": "none"
+                    "tax": "none",
+                    "payment_method": "full_payment",
+                    "payment_object": "service",
                 }
             ]
         }
