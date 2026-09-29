@@ -170,6 +170,7 @@ def attempt_auto_renewal(subscription):
                 'Description': description,
                 'Culture': 'ru',
                 'Encoding': 'utf-8',
+                'Email': user.email,
                 'Receipt': receipt_json
             }
 
@@ -260,6 +261,7 @@ def attempt_auto_renewal(subscription):
             'Description': description,
             'Culture': 'ru',
             'Encoding': 'utf-8',
+            'Email': user.email,
             'Receipt': receipt_json
         }
 

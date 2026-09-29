@@ -20,7 +20,7 @@ from datetime import datetime, timedelta
 import random
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
-from django.utils.html import strip_tags
+from django.utils.html import strip_tags, escape
 from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.contrib.auth import login, authenticate, logout, get_user_model  # Добавлен get_user_model
@@ -616,6 +616,7 @@ def create_robokassa_payment(request):
                 <input type="hidden" name="Encoding" value="utf-8">
                 <input type="hidden" name="SuccessURL" value="{success_url}">
                 <input type="hidden" name="FailURL" value="{fail_url}">
+                <input type="hidden" name="Email" value="{escape(request.user.email)}">
                 {recurring_input}
                 <input type="hidden" name="Receipt" value='{receipt_json}'>
             </form>
@@ -981,6 +982,7 @@ def buy_pages(request):
                 <input type="hidden" name="Encoding" value="utf-8">
                 <input type="hidden" name="SuccessURL" value="{success_url}">
                 <input type="hidden" name="FailURL" value="{fail_url}">
+                <input type="hidden" name="Email" value="{escape(request.user.email)}">
                 <input type="hidden" name="Receipt" value='{receipt_json}'>
             </form>
             <script>
