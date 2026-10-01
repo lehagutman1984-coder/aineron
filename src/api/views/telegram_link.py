@@ -3,9 +3,18 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
+from api.authentication import CsrfExemptSessionAuthentication
 
 
 class TelegramLinkTokenView(APIView):
+    # 2026-10-01 (аудит безопасности, MEDIUM): дефолтный стек включает
+    # APIKeyAuthentication — утёкший Bearer-ключ мог создать link-token и
+    # привязать СВОЙ Telegram к аккаунту жертвы (угон Stars-платежей/истории
+    # бота), а также отвязать уже привязанный Telegram. Это действие
+    # управления аккаунтом — только сессия/JWT, не сторонний API-ключ.
+    authentication_classes = [JWTAuthentication, CsrfExemptSessionAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request):

@@ -10,7 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema
 
 from api.models import Webhook, AuditLog
-from api.services.webhooks import dispatch_event
+from studio.security import is_safe_url
 
 
 def _ip(request):
@@ -33,6 +33,18 @@ class WebhookListCreateView(APIView):
         events = request.data.get('events', [])
         if not url:
             return Response({'error': {'message': "'url' is required", 'type': 'invalid_request_error', 'code': 'missing_url'}}, status=status.HTTP_400_BAD_REQUEST)
+        # 2026-10-01 (аудит безопасности, SSRF): url раньше не проверялся вообще
+        # ни на создании (URLField.validators не запускаются на .create(), это
+        # Django-валидация формы/full_clean, не схема БД), ни на доставке
+        # (api/tasks.py deliver_webhook). http://web:8000, http://169.254.169.254/...
+        # и внутренние docker-хосты принимались как есть. is_safe_url резолвит
+        # hostname и блокирует private/loopback/link-local/reserved диапазоны —
+        # тот же guard, что уже используется в studio (website/RSS-коннектор).
+        if not url.lower().startswith('https://') or not is_safe_url(url):
+            return Response({'error': {
+                'message': 'url must be a public https:// address (no localhost/private/internal hosts)',
+                'type': 'invalid_request_error', 'code': 'unsafe_url',
+            }}, status=status.HTTP_400_BAD_REQUEST)
         if not isinstance(events, list) or not events:
             return Response({'error': {'message': "'events' must be a non-empty list", 'type': 'invalid_request_error', 'code': 'invalid_events'}}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -77,8 +89,13 @@ class WebhookTestView(APIView):
         except Webhook.DoesNotExist:
             return Response({'error': {'message': 'Webhook not found', 'type': 'not_found', 'code': 'not_found'}}, status=status.HTTP_404_NOT_FOUND)
 
+        # 2026-10-01 (аудит безопасности, LOW): раньше шло через dispatch_event,
+        # который рассылает ВСЕМ вебхукам пользователя, подписанным на event —
+        # "тест этого вебхука" реально дёргал все остальные тоже. Теперь —
+        # напрямую в deliver_webhook с конкретным pk.
+        from api.tasks import deliver_webhook
         event = (webhook.events or ['batch.completed'])[0]
-        dispatch_event(event, {'test': True, 'webhook_id': webhook.pk}, user=request.user)
+        deliver_webhook.apply_async(args=[webhook.pk, event, {'test': True, 'webhook_id': webhook.pk}])
         return Response({'ok': True, 'event': event})
 
 

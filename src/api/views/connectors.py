@@ -17,6 +17,22 @@ from api.views._project_access import get_project_for_user
 from api.error_messages import em
 
 
+def _is_safe_repo_path(path: str) -> bool:
+    """2026-10-01 (аудит безопасности, HIGH, path traversal): path раньше
+    уходил в GitHub/Gitea API URL как есть (f'.../contents/{path}') — живым
+    тестом подтверждено, что requests/urllib3 сами схлопывают '../' сегменты,
+    так что '../../other-repo/contents/.env' превращался в запрос к ДРУГОМУ
+    репозиторию тем же (чужим для viewer) токеном владельца проекта. Django
+    уже декодирует query-параметр до того, как мы его видим здесь, так что
+    процентно закодированные '%2e%2e%2f' приходят как обычные '..' — отдельно
+    декодировать не нужно, проверка ниже видит их как есть."""
+    if not path or path.startswith('/') or '\x00' in path:
+        return False
+    if '..' in path or '?' in path or '#' in path:
+        return False
+    return True
+
+
 def _gitea_base_url(connector: 'ProjectConnector') -> str | None:
     """Base URL Gitea из repo_url (с сохранением подпути, напр. /git/)."""
     from aitext.sync import gitea_base_from_repo_url
@@ -238,6 +254,8 @@ class ConnectorFileContentView(APIView):
         path = request.query_params.get('path', '')
         if not path:
             return Response({'error': em('path_required')}, status=400)
+        if not _is_safe_repo_path(path):
+            return Response({'error': em('invalid_path')}, status=400)
 
         try:
             token = decrypt_token(connector.access_token_enc)

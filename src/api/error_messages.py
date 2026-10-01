@@ -32,6 +32,7 @@ MESSAGES: dict[str, dict[str, str]] = {
     "token_error": {"ru": "Ошибка токена: {e}", "en": "Token error: {e}"},
     "repo_access_error": {"ru": "Ошибка доступа к репозиторию: {e}", "en": "Repository access error: {e}"},
     "path_required": {"ru": "Укажите path", "en": "path is required"},
+    "invalid_path": {"ru": "Недопустимый path", "en": "Invalid path"},
     "file_read_error": {"ru": "Ошибка чтения файла: {e}", "en": "Error reading file: {e}"},
     "commit_message_required": {"ru": "Укажите сообщение коммита", "en": "Commit message is required"},
     "files_required": {"ru": "Добавьте хотя бы один файл", "en": "At least one file is required"},

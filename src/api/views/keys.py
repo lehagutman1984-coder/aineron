@@ -3,15 +3,27 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from drf_spectacular.utils import extend_schema, OpenApiExample
+from api.authentication import CsrfExemptSessionAuthentication
 from api.models import APIKey
 from api.permissions import IsEmailVerified
 
 logger = logging.getLogger(__name__)
 
+# 2026-10-01 (аудит безопасности, HIGH): управление API-ключами раньше
+# принимало дефолтный стек аутентификации, в который входит сам
+# APIKeyAuthentication — то есть УТЁКШИЙ ключ мог сам себе выпускать новые
+# ключи (в т.ч. эскалируя в скоуп 'sandboxes', которого у него не было),
+# листать и отзывать остальные ключи владельца. Управлять ключами должна
+# только сессия (кабинет) или JWT (Telegram Mini App) — Bearer ak_ сюда
+# намеренно не допускается.
+_SESSION_OR_JWT_AUTH = [JWTAuthentication, CsrfExemptSessionAuthentication]
+
 
 class APIKeyListCreateView(APIView):
     """GET /api/v1/keys/ — список ключей; POST — создать новый."""
+    authentication_classes = _SESSION_OR_JWT_AUTH
     permission_classes = [IsAuthenticated, IsEmailVerified]
 
     @extend_schema(
@@ -86,6 +98,7 @@ class APIKeyListCreateView(APIView):
 
 class APIKeyDeleteView(APIView):
     """DELETE /api/v1/keys/{pk}/ — отозвать ключ."""
+    authentication_classes = _SESSION_OR_JWT_AUTH
     permission_classes = [IsAuthenticated]
 
     @extend_schema(summary='Отозвать API-ключ', tags=['Keys'])

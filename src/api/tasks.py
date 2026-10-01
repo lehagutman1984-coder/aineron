@@ -19,10 +19,21 @@ _RETRY_DELAYS = [10, 60, 300]
 def deliver_webhook(self, webhook_id: int, event_type: str, payload: dict):
     """Доставляет одно webhook-событие с HMAC-подписью. Повтор через Celery retry."""
     from api.models import Webhook
+    from studio.security import is_safe_url
 
     try:
         webhook = Webhook.objects.get(pk=webhook_id, is_active=True)
     except Webhook.DoesNotExist:
+        return
+
+    # 2026-10-01 (аудит безопасности, SSRF): url уже проверен is_safe_url при
+    # создании (api/views/webhooks.py), но ПЕРЕПРОВЕРЯЕМ здесь тоже — защита
+    # от DNS rebinding (hostname мог резолвиться в публичный IP на момент
+    # создания и смениться на приватный к моменту доставки, которая может
+    # случиться через retry спустя минуты). is_safe_url сам делает свежий
+    # getaddrinfo при каждом вызове.
+    if not is_safe_url(webhook.url):
+        logger.error(f'[Webhook] {webhook.url} не прошёл is_safe_url на доставке (webhook_id={webhook_id}) — пропуск, retry не делаем')
         return
 
     body = json.dumps({'event': event_type, 'data': payload}, ensure_ascii=False).encode()
@@ -35,7 +46,9 @@ def deliver_webhook(self, webhook_id: int, event_type: str, payload: dict):
     }
 
     try:
-        resp = requests.post(webhook.url, data=body, headers=headers, timeout=10)
+        # allow_redirects=False: редирект на внутренний адрес обходил бы
+        # is_safe_url выше (он проверяет только исходный url).
+        resp = requests.post(webhook.url, data=body, headers=headers, timeout=10, allow_redirects=False)
         resp.raise_for_status()
         Webhook.objects.filter(pk=webhook_id).update(last_triggered_at=timezone.now())
         logger.info(f'[Webhook] Delivered {event_type} to {webhook.url} status={resp.status_code}')
