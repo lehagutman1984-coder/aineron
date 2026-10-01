@@ -35,24 +35,69 @@ def _resolve_network(model_id: str):
         return None
 
 
-def _anthropic_to_openai_messages(messages: list, system: str = None) -> list:
-    """Конвертирует Anthropic messages → OpenAI messages."""
+def _anthropic_system_to_text(system) -> str:
+    """system может быть строкой ИЛИ списком content-блоков (Anthropic
+    поддерживает список блоков с cache_control и т.п.) — раньше список
+    уходил в OpenAI messages как есть (сырой list вместо строки), что ломает
+    провайдера. Берём только текстовые блоки, как и для обычных сообщений."""
+    if isinstance(system, str):
+        return system
+    if isinstance(system, list):
+        return '\n'.join(
+            block.get('text', '') for block in system
+            if isinstance(block, dict) and block.get('type') == 'text'
+        )
+    return ''
+
+
+def _anthropic_to_openai_messages(messages: list, system=None) -> list:
+    """Конвертирует Anthropic messages → OpenAI messages.
+
+    2026-10-01 (аудит, HIGH): раньше (а) блок, который не был dict'ом, падал
+    на block.get(...) с AttributeError → 500; (б) image-блоки молча
+    выбрасывались — модель отвечала без картинки, а запрос всё равно
+    списывался по полной цене, как будто картинка была учтена. image теперь
+    конвертируется в OpenAI image_url (апстрим — тот же мультимодальный
+    OpenAI-совместимый контракт, что и у /v1/chat/completions). tool_use/
+    tool_result блоки по-прежнему пропускаются — tools отклоняется отдельной
+    проверкой выше (честная ошибка вместо тихой потери)."""
     result = []
-    if system:
-        result.append({'role': 'system', 'content': system})
+    system_text = _anthropic_system_to_text(system)
+    if system_text:
+        result.append({'role': 'system', 'content': system_text})
     for msg in messages:
         role = msg.get('role', 'user')
         content = msg.get('content', '')
         if isinstance(content, list):
-            # Anthropic content blocks → строка
-            text_parts = [
-                block.get('text', '')
-                for block in content
-                if block.get('type') == 'text'
-            ]
-            content = '\n'.join(text_parts)
+            parts = []
+            for block in content:
+                if not isinstance(block, dict):
+                    continue
+                btype = block.get('type')
+                if btype == 'text':
+                    parts.append({'type': 'text', 'text': block.get('text', '')})
+                elif btype == 'image':
+                    source = block.get('source') or {}
+                    media_type = source.get('media_type', 'image/jpeg')
+                    data_b64 = source.get('data', '')
+                    if source.get('type') == 'base64' and data_b64:
+                        parts.append({'type': 'image_url', 'image_url': {
+                            'url': f'data:{media_type};base64,{data_b64}',
+                        }})
+                    elif source.get('type') == 'url' and source.get('url'):
+                        parts.append({'type': 'image_url', 'image_url': {'url': source['url']}})
+                # tool_use/tool_result — пропускаются (tools отклоняется выше).
+            content = parts if parts else ''
         result.append({'role': role, 'content': content})
     return result
+
+
+_FINISH_REASON_TO_STOP_REASON = {
+    'stop': 'end_turn',
+    'length': 'max_tokens',
+    'tool_calls': 'tool_use',
+    'content_filter': 'end_turn',
+}
 
 
 class AnthropicMessagesView(APIView):
@@ -79,6 +124,25 @@ class AnthropicMessagesView(APIView):
         if not messages:
             return Response(
                 {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': "'messages' is required"}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        # 2026-10-01 (аудит, HIGH): stream/tools раньше молча игнорировались
+        # (200 OK без единого предупреждения) — контрактный баг для эндпоинта,
+        # продающегося как совместимый с Anthropic SDK: клиент решал, что
+        # стриминг/вызов функций сработал, получал обычный синхронный текстовый
+        # ответ без каких-либо вызовов инструментов и был ЗА НЕГО списан по
+        # полной цене. Честная ошибка лучше тихого несоответствия контракту —
+        # до реализации настоящей поддержки (translate Anthropic tools↔OpenAI
+        # tool_calls, Anthropic SSE event-формат для стрима, оба требуют
+        # отдельной задачи, не точечного фикса).
+        if data.get('stream'):
+            return Response(
+                {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': "'stream' is not yet supported on this endpoint"}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if data.get('tools') or data.get('tool_choice'):
+            return Response(
+                {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': "'tools' is not yet supported on this endpoint"}},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -151,6 +215,11 @@ class AnthropicMessagesView(APIView):
         content_text = completion.choices[0].message.content or ''
         settle_reservation(res, usage, estimate_text_tokens(content_text))
         request_id = uuid.uuid4().hex[:12]
+        # 2026-10-01 (аудит): раньше stop_reason был всегда 'end_turn' —
+        # ответ, обрезанный по max_tokens, выглядел для SDK как естественно
+        # завершённый, а не как усечённый.
+        finish_reason = getattr(completion.choices[0], 'finish_reason', None)
+        stop_reason = _FINISH_REASON_TO_STOP_REASON.get(finish_reason, 'end_turn')
 
         # Anthropic-формат ответа
         result = {
@@ -159,7 +228,7 @@ class AnthropicMessagesView(APIView):
             'role': 'assistant',
             'content': [{'type': 'text', 'text': content_text}],
             'model': model_id,
-            'stop_reason': 'end_turn',
+            'stop_reason': stop_reason,
             'stop_sequence': None,
             'usage': {
                 'input_tokens': usage['prompt_tokens'],

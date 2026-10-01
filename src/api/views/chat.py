@@ -251,9 +251,31 @@ class ChatCompletionsView(APIView):
                 {'error': {'message': "'n' must be an integer between 1 and 4", 'type': 'invalid_request_error', 'code': 'invalid_n'}},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        # 2026-10-01 (аудит безопасности, HIGH): резерв считался ТОЛЬКО по
+        # messages — tools/response_format уходили апстриму как есть (см.
+        # прокидывание ниже), но в оценку резерва не попадали. На маленьком
+        # резерве (баланс в пару рублей, max_tokens сужен) можно было
+        # приложить tools[].function.description/response_format.json_schema
+        # на 100k+ токенов — апстрим выставляет счёт за реальный prompt,
+        # settle_reservation пытается доспросить разницу (_debit(extra)), а
+        # при неудаче (баланса и так не хватало) просто прощает недостачу
+        # (warning, не блокировка) — повторяемая утечка, пока баланс выше
+        # порога min_cost. Добавляем оценку размера tools/response_format в
+        # prompt_tokens ДО резерва — тот же эффект, что и для обычного
+        # большого сообщения: не хватает денег → 402 до вызова апстрима,
+        # а не недоплата после.
+        _extra_prompt_tokens = 0
+        for _field in ('tools', 'response_format'):
+            if data.get(_field):
+                try:
+                    _extra_prompt_tokens += estimate_text_tokens(json.dumps(data[_field]))
+                except (TypeError, ValueError):
+                    pass
         try:
             res = reserve_for_request(
-                user, api_key, network, estimate_messages_tokens(messages), requested_max * n_choices,
+                user, api_key, network,
+                estimate_messages_tokens(messages) + _extra_prompt_tokens,
+                requested_max * n_choices,
             )
         except InsufficientStarsError as e:
             return Response(

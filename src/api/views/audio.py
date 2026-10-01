@@ -27,6 +27,23 @@ DEFAULT_TRANSCRIPTION_MODEL = 'whisper-1'
 DEFAULT_TTS_MODEL = 'gpt-4o-mini-tts'
 DEFAULT_TTS_VOICE = 'alloy'
 
+# 2026-09-06 (аудит безопасности, HIGH): цена ASR/TTS — плоские 100 коп. за
+# вызов независимо от длины/модели (себестоимость переменная — апимарт
+# биллит по минутам/символам). Два ограничения ниже НЕ решают вопрос цены
+# по существу (это требует реального аудита тарифов апимарт на аудио,
+# отдельная задача по методологии проекта — опт×маржа), но исключают худший
+# сценарий: nginx пропускает файлы до 100 МБ (client_max_body_size), реальный
+# Whisper принимает максимум ~25 МБ — без собственного ограничения разница
+# уходила в апстрим и могла вернуть осмысленную ошибку ПОСЛЕ того, как мы
+# уже приняли (и, если апстрим всё же проглотит файл, оплатим) низкобитрейтный
+# файл на часы аудио за 1 ₽. Модель — белый список: raw model_id от клиента
+# уходит прямо в provider.audio.*.create() без какой-либо проверки против
+# своего каталога (в отличие от chat/images, тут нет NeuralNetwork вообще) —
+# клиент мог выбрать более дорогую модель апимарт по той же плоской цене.
+MAX_ASR_FILE_BYTES = 25 * 1024 * 1024  # реальный лимит Whisper, не наша прихоть
+ALLOWED_ASR_MODELS = {'whisper-1'}
+ALLOWED_TTS_MODELS = {'gpt-4o-mini-tts', 'tts-1-hd'}  # tts-1 сломан, см. выше
+
 
 class AudioTranscriptionsView(APIView):
     """POST /api/v1/audio/transcriptions"""
@@ -49,6 +66,16 @@ class AudioTranscriptionsView(APIView):
         if not audio_file:
             return Response(
                 {'error': {'message': "'file' is required", 'type': 'invalid_request_error', 'code': 'missing_file'}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if audio_file.size > MAX_ASR_FILE_BYTES:
+            return Response(
+                {'error': {'message': f'File exceeds {MAX_ASR_FILE_BYTES // (1024*1024)} MB limit', 'type': 'invalid_request_error', 'code': 'file_too_large'}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if model_id not in ALLOWED_ASR_MODELS:
+            return Response(
+                {'error': {'message': f"Unsupported model '{model_id}'", 'type': 'invalid_request_error', 'code': 'model_not_found'}},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -121,6 +148,11 @@ class AudioSpeechView(APIView):
         if len(text_input) > 4096:
             return Response(
                 {'error': {'message': 'Input text exceeds 4096 characters', 'type': 'invalid_request_error', 'code': 'text_too_long'}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if model_id not in ALLOWED_TTS_MODELS:
+            return Response(
+                {'error': {'message': f"Unsupported model '{model_id}'", 'type': 'invalid_request_error', 'code': 'model_not_found'}},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

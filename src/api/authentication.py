@@ -13,11 +13,18 @@ class APIKeyAuthentication(BaseAuthentication):
     """Bearer ak_... аутентификация для /api/v1/ эндпоинтов."""
 
     def authenticate(self, request):
-        auth_header = request.META.get('HTTP_AUTHORIZATION', '')
-        if not auth_header.startswith('Bearer ak_'):
-            return None  # передаём другим бэкендам (SessionAuthentication)
-
-        raw_key = auth_header[len('Bearer '):]
+        # 2026-10-01 (аудит, docs-parity + dev-API): официальный Anthropic SDK
+        # шлёт ключ в заголовке x-api-key, не Authorization: Bearer — без этого
+        # /v1/messages был недостижим для реального SDK, только для curl с
+        # явным Bearer-заголовком (независимо подтверждено двумя агентами ревью).
+        api_key_header = request.META.get('HTTP_X_API_KEY', '')
+        if api_key_header.startswith('ak_'):
+            raw_key = api_key_header
+        else:
+            auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+            if not auth_header.startswith('Bearer ak_'):
+                return None  # передаём другим бэкендам (SessionAuthentication)
+            raw_key = auth_header[len('Bearer '):]
 
         from api.models import APIKey
         api_key = APIKey.authenticate(raw_key)

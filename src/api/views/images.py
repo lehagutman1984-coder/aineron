@@ -57,15 +57,29 @@ class ImageGenerationsView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        network = _resolve_image_network(model_id) if model_id else None
-        if network is None:
-            # Попытка найти любую активную модель изображений
+        # 2026-10-01 (аудит безопасности, HIGH): раньше при НЕИЗВЕСТНОМ model_id
+        # (опечатка, устаревший пример из документации, модель деактивирована)
+        # код молча подставлял ПЕРВУЮ попавшуюся активную fal-ai-модель вместо
+        # ошибки model_not_found — под provider='fal-ai' лежат и видео-модели,
+        # клиента списывали по чужой цене за результат другой модели, которую
+        # он не выбирал. Независимо подтверждено двумя агентами ревью.
+        # Фоллбэк на "любую активную" оставлен ТОЛЬКО для случая, когда model
+        # вообще не передан (разумное поведение по умолчанию) — если клиент
+        # ЯВНО указал модель, несуществующая модель обязана быть ошибкой.
+        if model_id:
+            network = _resolve_image_network(model_id)
+            if network is None:
+                return Response(
+                    {'error': {'message': f"Image model '{model_id}' not found", 'type': 'invalid_request_error', 'code': 'model_not_found'}},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
             network = NeuralNetwork.objects.filter(is_active=True, provider='fal-ai').first()
-        if network is None:
-            return Response(
-                {'error': {'message': f"Image model '{model_id}' not found", 'type': 'invalid_request_error', 'code': 'model_not_found'}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            if network is None:
+                return Response(
+                    {'error': {'message': 'No image models available', 'type': 'invalid_request_error', 'code': 'model_not_found'}},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
         user = request.user
 

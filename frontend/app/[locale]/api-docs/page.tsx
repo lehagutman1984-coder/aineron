@@ -30,6 +30,16 @@ export async function generateMetadata({ params }: { params: { locale: string } 
 // Код-сэмплы ниже используют реальный base_url текущего инстанса (aineron.ru / aineron.net),
 // а не хардкод — иначе intl-пользователь скопировал бы неверный URL для своего API-ключа.
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "https://aineron.ru/api/v1";
+// 2026-10-01 (аудит безопасности, docs-parity): официальные SDK ведут себя
+// по-разному — openai-python сам НЕ дописывает версию в путь (base_url уже
+// должен включать /v1, он добавляет только /chat/completions и т.п.), а
+// anthropic-python/-node ДОПИСЫВАЕТ /v1/messages сам поверх base_url. Если
+// в пример для Anthropic SDK подставить тот же API_BASE (уже с /v1), запрос
+// уйдёт на .../api/v1/v1/messages — 404 (подтверждено двумя агентами ревью,
+// метод — прямое чтение исходников обоих SDK). Для Anthropic SDK base_url
+// должен быть БЕЗ /v1 — тогда /v1/messages, который SDK допишет сам,
+// совпадает с реально зарегистрированным путём.
+const ANTHROPIC_API_BASE = API_BASE.replace(/\/v1$/, "");
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://aineron.ru";
 const BRAND = new URL(SITE_URL).host;
 
@@ -194,7 +204,7 @@ const ANTHROPIC: CodeTabItem[] = [
     code: `import anthropic
 
 client = anthropic.Anthropic(
-    base_url="${API_BASE}",
+    base_url="${ANTHROPIC_API_BASE}",
     api_key="${S.key}",
 )
 
@@ -213,7 +223,7 @@ print(message.content[0].text)`,
     code: `import Anthropic from "@anthropic-ai/sdk";
 
 const client = new Anthropic({
-  baseURL: "${API_BASE}",
+  baseURL: "${ANTHROPIC_API_BASE}",
   apiKey: "${S.key}",
 });
 
@@ -271,7 +281,7 @@ const EMBEDDINGS = `curl ${API_BASE}/embeddings \\
 const AUDIO_TTS = `curl ${API_BASE}/audio/speech \\
   -H "Authorization: Bearer ${S.key}" \\
   -H "Content-Type: application/json" \\
-  -d '{"model": "tts-1", "voice": "alloy", "input": "${S.ttsInput}"}' \\
+  -d '{"model": "gpt-4o-mini-tts", "voice": "alloy", "input": "${S.ttsInput}"}' \\
   --output speech.mp3`;
 
 const AUDIO_ASR = `curl ${API_BASE}/audio/transcriptions \\
