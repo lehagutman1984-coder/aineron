@@ -127,6 +127,37 @@ const round = (usd: number) => Math.round(usd * K);
 
 export const TEXT_MODELS: PreviewModel[] = [
   {
+    // 2026-10-01: добавлена по запросу пользователя (add_sonnet55_opus55_grok47.py).
+    // priceInRub/priceOutRub — опт apimart.ai ($1.6/$8 за 1М), RouterAI/Gen-API
+    // по этой модели цену пока не публикуют (слишком новая) — тот же источник,
+    // что для priceRealKopecks (опт×1.05, профиль 6000/1500 токенов).
+    id: "claude-sonnet-5-5",
+    name: "Claude Sonnet 5.5",
+    provider: "Anthropic",
+    category: "text",
+    description: "Обновлённая версия Claude Sonnet — баланс скорости и интеллекта от Anthropic.",
+    contextLabel: "1M",
+    priceInRub: round(1.6),
+    priceOutRub: round(8),
+    priceRealKopecks: 181,
+    inputBadges: ["Текст", "Изображения", "Файл"],
+    outputBadges: ["Текст"],
+  },
+  {
+    // 2026-10-01: см. комментарий у claude-sonnet-5-5 — тот же заход, тот же источник цены.
+    id: "claude-opus-5-5",
+    name: "Claude Opus 5.5",
+    provider: "Anthropic",
+    category: "text",
+    description: "Обновлённая версия флагманского Claude Opus — максимальное качество рассуждений.",
+    contextLabel: "1M",
+    priceInRub: round(3.2),
+    priceOutRub: round(16),
+    priceRealKopecks: 363,
+    inputBadges: ["Текст", "Изображения", "Файл"],
+    outputBadges: ["Текст"],
+  },
+  {
     id: "claude-opus-5",
     name: "Claude Opus 5",
     provider: "Anthropic",
@@ -260,6 +291,54 @@ export const TEXT_MODELS: PreviewModel[] = [
     outputBadges: ["Текст"],
   },
   {
+    // 2026-10-01: добавлена по запросу пользователя (add_gpt6_sol_luna_models.py).
+    // Источник цены — см. комментарий у gpt-6-sol (тот же заход, та же цена).
+    id: "gpt-6-1-sol",
+    name: "GPT-6.1 Sol",
+    provider: "OpenAI",
+    category: "text",
+    description: "Следующая версия линейки GPT-6 Sol.",
+    contextLabel: "1M",
+    priceInRub: round(1.6),
+    priceOutRub: round(8),
+    priceRealKopecks: 181,
+    inputBadges: ["Текст", "Изображения", "Файл"],
+    outputBadges: ["Текст"],
+  },
+  {
+    // 2026-10-01: добавлена по запросу пользователя (add_gpt6_sol_luna_models.py).
+    // priceInRub/priceOutRub — опт apimart.ai ($1.6/$8 за 1М, после скидки
+    // 20%), RouterAI/Gen-API по этой модели цену пока не публикуют — тот же
+    // источник, что для priceRealKopecks (опт×1.05, профиль 6000/1500 токенов).
+    id: "gpt-6-sol",
+    name: "GPT-6 Sol",
+    provider: "OpenAI",
+    category: "text",
+    description: "Одна из веток нового семейства GPT-6.",
+    contextLabel: "1M",
+    priceInRub: round(1.6),
+    priceOutRub: round(8),
+    priceRealKopecks: 181,
+    inputBadges: ["Текст", "Изображения", "Файл"],
+    outputBadges: ["Текст"],
+  },
+  {
+    // 2026-10-01: см. комментарий у gpt-6-sol. $0.08/$0.4 за 1М (после скидки
+    // 20%) — младший тир линейки, реальная цена 10 коп. упёрлась в
+    // MIN_CHARGE_KOPECKS (расчётная ~0.09₽ округлена вверх).
+    id: "gpt-6-luna",
+    name: "GPT-6 Luna",
+    provider: "OpenAI",
+    category: "text",
+    description: "Одна из веток нового семейства GPT-6 — лёгкая и быстрая.",
+    contextLabel: "1M",
+    priceInRub: round(0.08),
+    priceOutRub: round(0.4),
+    priceRealKopecks: 10,
+    inputBadges: ["Текст", "Изображения", "Файл"],
+    outputBadges: ["Текст"],
+  },
+  {
     // 2026-09-06: добавлена по запросу пользователя (не было в каталоге).
     // priceInRub/priceOutRub здесь — ИСКЛЮЧЕНИЕ из общего правила файла
     // (обычно опт×K, "честная цена для сравнения"): у этой модели
@@ -371,6 +450,23 @@ export const TEXT_MODELS: PreviewModel[] = [
     priceOutRub: round(0.22),
     priceRealKopecks: 10,
     inputBadges: ["Текст"],
+    outputBadges: ["Текст"],
+  },
+  {
+    // 2026-10-01: добавлена по запросу пользователя (add_sonnet55_opus55_grok47.py).
+    // priceInRub/priceOutRub — опт apimart.ai ($1.6/$4.8 за 1М), тот же
+    // источник, что для priceRealKopecks (опт×1.05, профиль 6000/1500 токенов).
+    // handle_photo=False в БД (в отличие от grok-4-6) — inputBadges без "Изображения".
+    id: "grok-4-7",
+    name: "Grok 4.7",
+    provider: "xAI",
+    category: "text",
+    description: "Следующая версия флагмана xAI после Grok 4.6 — расширенные рассуждения и актуальные знания.",
+    contextLabel: "500K",
+    priceInRub: round(1.6),
+    priceOutRub: round(4.8),
+    priceRealKopecks: 141,
+    inputBadges: ["Текст", "Файл"],
     outputBadges: ["Текст"],
   },
   {
