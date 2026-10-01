@@ -78,7 +78,19 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         dry_run = options['dry_run']
-        category, _ = Category.objects.get_or_create(name='Текст')
+        # 2026-10-01 (живой баг на aineron.net, 2 захода): get_or_create(name=
+        # 'Текст') под django-modeltranslation зависит от активного языка —
+        # на .net активный язык 'en' по умолчанию, 'name' резолвится в
+        # 'name_en' ('Текст' != 'Text'), не находит существующую категорию и
+        # падает в create(), который бьётся об UNIQUE на физической колонке
+        # name (она всегда хранит ru-значение, языконезависимо от активного
+        # locale). ПЕРВАЯ попытка фикса — поиск по slug — тоже оказалась
+        # instance-specific: slug на .ru 'tekst'/'izobrazheniya' (транслит),
+        # на .net 'text'/'images' (англ.) — разные значения на разных базах
+        # той же "общей" схемы. name_ru — единственное поле, физически
+        # совпадающее на обоих инстансах (проверено прямым SQL-дампом).
+        category = Category.objects.filter(name_ru='Текст').first() \
+            or Category.objects.get_or_create(name='Текст')[0]
 
         for spec in MODELS:
             existing = NeuralNetwork.objects.filter(slug=spec['slug']).first()

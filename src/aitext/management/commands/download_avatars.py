@@ -40,6 +40,13 @@ SLUG_TO_LOGO_URL = {
     'gpt-image-2':       'https://github.com/openai.png?size=200',
     'gpt-image-1-mini':  'https://github.com/openai.png?size=200',
     'gpt-image-1-5':     'https://github.com/openai.png?size=200',
+    # 2026-10-01: добавлены вместе с остальными новыми моделями этого захода —
+    # раньше не было записи вообще (avatar пуст в БД), а не битый файл.
+    'gpt-image-2-5-sunburst': 'https://github.com/openai.png?size=200',
+    'gpt-image-2-5-flare':    'https://github.com/openai.png?size=200',
+    'gpt-6-1-sol':            'https://github.com/openai.png?size=200',
+    'gpt-6-sol':              'https://github.com/openai.png?size=200',
+    'gpt-6-luna':             'https://github.com/openai.png?size=200',
     # Anthropic / Claude
     'claude-opus-5':     'https://github.com/anthropics.png?size=200',
     'claude-fable-5':    'https://github.com/anthropics.png?size=200',
@@ -48,6 +55,8 @@ SLUG_TO_LOGO_URL = {
     'claude-sonnet-4-6': 'https://github.com/anthropics.png?size=200',
     'claude-opus-4-8':   'https://github.com/anthropics.png?size=200',
     'claude-haiku-4-5':  'https://github.com/anthropics.png?size=200',
+    'claude-sonnet-5-5': 'https://github.com/anthropics.png?size=200',  # 2026-10-01
+    'claude-opus-5-5':   'https://github.com/anthropics.png?size=200',  # 2026-10-01
     # Google DeepMind (Gemini + Veo — оба продукта Google DeepMind)
     'gemini-2-5-flash-image': 'https://github.com/google-deepmind.png?size=200',
     'gemini-3-pro-image':     'https://github.com/google-deepmind.png?size=200',
@@ -72,6 +81,7 @@ SLUG_TO_LOGO_URL = {
     # Grok / xAI
     'grok-4-5':                   'https://github.com/xai-org.png?size=200',
     'grok-4-6':                   'https://github.com/xai-org.png?size=200',
+    'grok-4-7':                   'https://github.com/xai-org.png?size=200',  # 2026-10-01
     'grok-imagine-image':         'https://github.com/xai-org.png?size=200',
     'grok-imagine-image-quality': 'https://github.com/xai-org.png?size=200',
     'grok-imagine-1-5':           'https://github.com/xai-org.png?size=200',

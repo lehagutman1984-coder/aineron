@@ -118,7 +118,12 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         dry_run = options['dry_run']
-        category, _ = Category.objects.get_or_create(name='Изображения')
+        # 2026-10-01 (живой баг на aineron.net) — см. подробный комментарий в
+        # add_gpt6_sol_luna_models.py: get_or_create(name=...) зависит от
+        # активного языка под modeltranslation; slug тоже НЕ годится — разный
+        # на .ru/.net. name_ru — единственное совпадающее поле на обоих.
+        category = Category.objects.filter(name_ru='Изображения').first() \
+            or Category.objects.get_or_create(name='Изображения')[0]
 
         for spec in MODELS:
             import copy
