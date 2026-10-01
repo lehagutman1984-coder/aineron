@@ -28,6 +28,17 @@ MODEL_WHOLESALE = {
     'claude-fable-5':     (10.0,  50.0),   # OpenRouter, PRICING_SIMPLIFICATION_PLAN.md §1.1
     'claude-opus-4-8':    (5.0,   25.0),   # OpenRouter §1.1
     'claude-opus-5':      (5.0,   25.0),   # OpenRouter §1.1 (тот же тир, что 4.8)
+    # 2026-10-01 (живой баг, messages 3719/3721): без ЭТИХ двух строк
+    # claude-sonnet-5-5/claude-opus-5-5 молча матчились по substring на
+    # claude-sonnet-5/claude-opus-5 (longest-prefix-wins не спасал — это был
+    # ЕДИНСТВЕННЫЙ матч) и считались по ЧУЖОЙ, более дорогой ставке — ровно
+    # тот класс бага, что описан в докстринге canonical_key() (claude-opus-5-
+    # thinking/gpt-5.3). Подтверждено пересчётом задним числом: реальная
+    # cost_kopecks у msg 3719/3721 (3/12 коп.) точно сходится с ЧУЖОЙ ставкой
+    # (2.0/10.0 и 5.0/25.0 ниже), а не с настоящей апимарт-ставкой модели
+    # (1.6/8.0 и 3.2/16.0, см. add_sonnet55_opus55_grok47.py).
+    'claude-sonnet-5-5':  (1.6,   8.0),    # apimart, add_sonnet55_opus55_grok47.py
+    'claude-opus-5-5':    (3.2,   16.0),   # apimart, add_sonnet55_opus55_grok47.py
     'claude-sonnet-5':    (2.0,   10.0),   # OpenRouter §1.1, pricingPreviewModels.ts
     'claude-sonnet-4-6':  (3.0,   15.0),   # pricingPreviewModels.ts (предыдущее поколение Sonnet)
     'claude-haiku-4-5':   (1.0,   5.0),    # pricingPreviewModels.ts
