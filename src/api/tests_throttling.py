@@ -82,3 +82,40 @@ class PublicSpaceThrottleInstantiationTests(SimpleTestCase):
         req = _req('172.18.0.7')
         req.user = type('Anon', (), {'is_authenticated': False, 'pk': None})()
         self.assertTrue(all(PublicSpaceThrottle().allow_request(req, None) for _ in range(200)))
+
+
+@override_settings(CACHES=LOCMEM)
+class NumProxiesSpoofingTests(SimpleTestCase):
+    """2026-10-01 (аудит безопасности, HIGH, п.8): без NUM_PROXIES анонимный
+    клиент мог слать произвольный X-Forwarded-For и открывать новую корзину
+    троттлинга на каждый запрос. nginx ВСЕГДА дописывает реальный IP в конец
+    существующего XFF ($proxy_add_x_forwarded_for) — NUM_PROXIES=1 (уже
+    выставлен в config/settings.py REST_FRAMEWORK, не переопределяется тут)
+    берёт именно последний элемент, не то, что прислал клиент."""
+
+    def _ident(self, xff, remote_addr='172.18.0.2'):
+        return APIKeyRateThrottle().get_ident(_req(remote_addr, xff=xff))
+
+    def test_trusted_last_hop_used_regardless_of_spoofed_prefix(self):
+        # nginx видел REMOTE_ADDR=198.51.100.7 и дописал его в конец - это
+        # единственная часть заголовка, которой можно доверять.
+        real_client_ip = '198.51.100.7'
+        ident_attempt_1 = self._ident(f'1.2.3.4, {real_client_ip}')
+        ident_attempt_2 = self._ident(f'9.9.9.9, {real_client_ip}')
+        self.assertEqual(ident_attempt_1, real_client_ip)
+        self.assertEqual(ident_attempt_1, ident_attempt_2)  # одна и та же корзина
+
+    def test_spoofed_prefix_cannot_create_new_bucket_each_request(self):
+        cache.clear()
+        real_client_ip = '198.51.100.9'
+        allowed = 0
+        for i in range(10):
+            req = _req('172.18.0.2', xff=f'{i}.{i}.{i}.{i}, {real_client_ip}')
+            if APIKeyRateThrottle().allow_request(req, None):
+                allowed += 1
+        # Лимит api_key = 120/мин, но суть проверки - что ВСЕ 10 запросов
+        # делят ОДНУ корзину (один и тот же итоговый ident), а не 10 разных -
+        # до фикса каждый случайный префикс XFF давал новую корзину.
+        self.assertEqual(allowed, 10)  # внутри лимита 120/мин, это ожидаемо
+        ident = self._ident(f'0.0.0.0, {real_client_ip}')
+        self.assertEqual(ident, real_client_ip)

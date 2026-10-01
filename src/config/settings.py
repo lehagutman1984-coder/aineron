@@ -851,6 +851,17 @@ REST_FRAMEWORK = {
     'DEFAULT_VERSIONING_CLASS': 'rest_framework.versioning.URLPathVersioning',
     'DEFAULT_VERSION': 'v1',
     'ALLOWED_VERSIONS': ['v1'],
+    # 2026-10-01 (аудит безопасности, HIGH, п.8): без NUM_PROXIES DRF
+    # BaseThrottle.get_ident() берёт X-Forwarded-For ЦЕЛИКОМ как есть —
+    # nginx (единственный прокси перед gunicorn, см. docker-compose.yml)
+    # ДОПИСЫВАЕТ реальный IP в конец существующего заголовка
+    # ($proxy_add_x_forwarded_for), но не трогает то, что прислал клиент
+    # перед ним. Анонимный клиент мог слать новый случайный X-Forwarded-For
+    # на каждый запрос — это открывало новую корзину троттлинга 120/мин
+    # каждый раз, снимая лимит с login/register/verify-email (последний уже
+    # защищён отдельно, п.2) и с генерации /v1/schema/. NUM_PROXIES=1 берёт
+    # ПОСЛЕДНИЙ IP в цепочке — тот, который дописал сам nginx, не клиент.
+    'NUM_PROXIES': 1,
     'DEFAULT_THROTTLE_CLASSES': [
         'api.throttling.APIKeyRateThrottle',
     ],
