@@ -249,24 +249,56 @@ def ajax_register(request):
 @csrf_exempt
 @require_POST
 def ajax_password_reset(request):
-    """AJAX восстановление пароля"""
+    """AJAX восстановление пароля.
+
+    2026-10-01 (аудит безопасности, MEDIUM): раньше пароль менялся СРАЗУ по
+    одному email, без подтверждения по ссылке, без rate-limit нигде в стеке
+    (ни тут, ни в nginx, ни в middleware) и с разным ответом для
+    существующего/несуществующего email — анонимный скрипт мог (а) до
+    бесконечности "взрывать" пароль любого аккаунта по известному email
+    (DoS — пользователь разлогинен и не может зайти, пока атака идёт), и
+    (б) перебором email выяснять, кто зарегистрирован. Фронт
+    (forgot-password/page.tsx) уже тогда игнорировал различие в ответе на
+    своей стороне — теперь это же сделано и на бэкенде, плюс добавлен
+    rate-limit по email и по IP через кэш (используется тот же Redis, что и
+    для остального троттлинга). Токен-по-ссылке flow (отдельная форма ввода
+    нового пароля) — более глубокое архитектурное изменение, не входит в
+    этот точечный фикс; пока сохранена текущая модель "новый пароль в
+    письме", но теперь с ограничением частоты и без утечки факта регистрации.
+    """
+    from django.core.cache import cache
+
     try:
         data = json.loads(request.body)
-        email = data.get('email')
+        email = (data.get('email') or '').strip().lower()
+
+        generic_response = JsonResponse({
+            'success': True,
+            'message': 'Если такой email зарегистрирован, на него отправлен новый пароль.'
+        })
 
         if not email:
-            return JsonResponse({
-                'success': False,
-                'message': 'Введите email'
-            })
+            return JsonResponse({'success': False, 'message': 'Введите email'})
+
+        # Rate-limit: не чаще 1 запроса на email за 10 минут и не больше
+        # 5 запросов с одного IP за час — не позволяет ни DoS'ить конкретный
+        # аккаунт бесконечной сменой пароля, ни перебирать email массово.
+        ip = request.META.get('REMOTE_ADDR', 'unknown')
+        email_key = f'pwreset:email:{hashlib.sha256(email.encode()).hexdigest()}'
+        ip_key = f'pwreset:ip:{ip}'
+        if cache.get(email_key):
+            return generic_response
+        ip_count = cache.get(ip_key, 0)
+        if ip_count >= 5:
+            return generic_response
+        cache.set(email_key, 1, timeout=600)
+        cache.set(ip_key, ip_count + 1, timeout=3600)
 
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
-            return JsonResponse({
-                'success': False,
-                'message': 'Пользователь с таким email не найден'
-            })
+            # Тот же ответ, что и при успехе — не палим, зарегистрирован ли email.
+            return generic_response
 
         new_password = generate_random_password()
         user.set_password(new_password)
@@ -274,16 +306,12 @@ def ajax_password_reset(request):
 
         try:
             send_password_reset_email(user, new_password, request)
-            return JsonResponse({
-                'success': True,
-                'message': 'Новый пароль отправлен на вашу почту'
-            })
         except Exception as e:
             logger.error(f"Ошибка отправки письма: {e}")
-            return JsonResponse({
-                'success': False,
-                'message': 'Ошибка при отправке письма'
-            })
+            # Пароль уже сменён — не говорим об этом в ответе (чтобы не
+            # отличаться от generic_response), но логируем для админов:
+            # пользователь останется с новым паролем, которого не получил.
+        return generic_response
 
     except json.JSONDecodeError:
         return JsonResponse({
@@ -294,7 +322,7 @@ def ajax_password_reset(request):
         logger.error(f"Ошибка в ajax_password_reset: {e}")
         return JsonResponse({
             'success': False,
-            'message': f'Ошибка сервера: {str(e)}'
+            'message': 'Ошибка сервера'
         })
 
 
@@ -346,7 +374,21 @@ def verify_email(request, token):
 @require_POST
 @login_required
 def ajax_verify_email_code(request):
-    """AJAX проверка кода подтверждения"""
+    """AJAX проверка кода подтверждения.
+
+    2026-10-01 (аудит безопасности, CRITICAL): раньше код искался
+    `CustomUser.objects.get(email_verification_code=code)` — ПО ВСЕЙ таблице,
+    а не у текущего пользователя, и при совпадении логинил под найденным.
+    Без rate-limit (ни тут, ни в nginx, ни в middleware — проверено, лимитов
+    нет нигде) это был практический захват чужого аккаунта: при 6-значном
+    коде и ~100 неподтверждённых аккаунтах один хит — это порядка 10^4
+    запросов. Теперь код матчится СТРОГО на уже залогиненного request.user —
+    подобрать код, чтобы залогиниться под чужим аккаунтом, больше нельзя (под
+    чужим ты и так уже не находишься, а свой собственный код просто вводишь
+    правильно). Повторный login() оставлен (сохраняет исходное поведение —
+    обновляет сессию после верификации), но теперь это login того же user,
+    кем уже был request.user, а не произвольного найденного.
+    """
     try:
         data = json.loads(request.body)
         code = data.get('token')
@@ -358,7 +400,7 @@ def ajax_verify_email_code(request):
             })
 
         try:
-            user = CustomUser.objects.get(email_verification_code=code)
+            user = CustomUser.objects.get(pk=request.user.pk, email_verification_code=code)
         except CustomUser.DoesNotExist:
             return JsonResponse({
                 'success': False,

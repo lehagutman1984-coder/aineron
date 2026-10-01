@@ -7,7 +7,6 @@ from django.conf import settings
 import uuid
 import secrets
 import string
-import random
 import threading  # ДОБАВЛЕНО для асинхронности
 from .models import CustomUser
 from .email_i18n import get_email_context, is_rtl
@@ -22,8 +21,15 @@ def generate_verification_token():
 
 
 def generate_verification_code():
-    """Генерирует 6-значный код подтверждения"""
-    return ''.join(random.choice('0123456789') for _ in range(6))
+    """Генерирует 6-значный код подтверждения.
+
+    2026-10-01 (аудит безопасности): secrets.choice вместо random.choice —
+    random — не криптографический PRNG, не предназначен для кода, от
+    которого зависит доступ к аккаунту. Само по себе это не закрывало
+    уязвимость (см. verify_email_token выше) — защита от перебора даётся
+    привязкой проверки кода к request.user в ajax_verify_email_code, это —
+    отдельное, независимое усиление (defense in depth)."""
+    return ''.join(secrets.choice('0123456789') for _ in range(6))
 
 
 def generate_random_password(length=12):
@@ -322,33 +328,37 @@ def send_payment_confirmation_email(user, kind, amount_kopecks, method, tariff_n
 
 def verify_email_token(token):
     """
-    Проверяет токен ИЛИ код подтверждения email
-    Возвращает пользователя или None
+    Проверяет токен подтверждения email (длинная ссылка из письма).
+    Возвращает пользователя или None.
+
+    2026-10-01 (аудит безопасности, CRITICAL): раньше при промахе по длинному
+    токену эта функция ПАДАЛА на поиск по короткому 6-значному коду —
+    GET /users/api/verify-email/<code>/ анонимный (без login_required), без
+    rate-limit где-либо в стеке (ни DRF throttle — это legacy Django view, ни
+    nginx limit_req — зон лимитов нет вовсе, ни django-ratelimit). Пространство
+    кода 10^6, при ~100 неподтверждённых аккаунтах один хит — это ~10^4
+    анонимных GET-запросов без каких-либо ограничений, а находка сразу логинит
+    (verify_email() в users/views.py вызывает login() на возвращённом user) —
+    практический захват чужого аккаунта перебором. Код теперь проверяется
+    ТОЛЬКО через ajax_verify_email_code (users/views.py), который матчит код
+    строго на уже залогиненного request.user — там подобрать код для доступа
+    к ЧУЖОМУ аккаунту бессмысленно (нужно уже быть залогиненным жертвой).
+    Ссылка в письме всегда строится с длинным token, не с кодом (см.
+    send_verification_email ниже) — легитимный флоу не затронут.
     """
+    # Короткий/пустой token не может быть настоящей ссылкой (UUID4 — 36 симв.)
+    # — явно отсекаем, чтобы не словить случайный матч на blank='' у старых
+    # записей и не тратить время на заведомо невалидный ввод.
+    if not token or len(token) < 32:
+        return None
     try:
-        # Пробуем найти по токену (ссылка)
         user = CustomUser.objects.get(email_verification_token=token)
-
-        # Подтверждаем email
         user.verify_email()
-
         logger.info(f"[OK] Email подтвержден по ссылке для {user.email}")
         return user
-
     except CustomUser.DoesNotExist:
-        try:
-            # Пробуем найти по коду (6 цифр)
-            user = CustomUser.objects.get(email_verification_code=token)
-
-            # Подтверждаем email
-            user.verify_email()
-
-            logger.info(f"[OK] Email подтвержден по коду для {user.email}")
-            return user
-
-        except CustomUser.DoesNotExist:
-            logger.warning(f"[ERR] Недействительный токен/код подтверждения: {token}")
-            return None
+        logger.warning("[ERR] Недействительный токен подтверждения (ссылка)")
+        return None
 
 
 def send_test_email(to_email):
