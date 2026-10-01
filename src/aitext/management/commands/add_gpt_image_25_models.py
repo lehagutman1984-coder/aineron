@@ -61,6 +61,15 @@ CONFIG_JSON_TEMPLATE = {
     'metadata': {
         'output_type': 'image',
         'requires_input_images': False,
+        # laozhang отдаёт 503 "no available channels" для обеих моделей
+        # (проверено живым вызовом 2026-10-01 - модель формально есть в
+        # прайс-листе, но канал под наш биллинг-режим не включён) - laozhang
+        # как primary не подключаем. apimart реально поддерживает и успешно
+        # генерирует (подтверждено живым polling'ом task_id до completed с
+        # готовым изображением), но только по task-пол контракту, не
+        # синхронным images.generate() - поэтому image_api=apimart_async,
+        # а не дефолтный путь через generate_with_falai/FallbackClient.
+        'image_api': 'apimart_async',
         # заполняется per-модель ниже
         'cometapi_fallback_model': None,
     },

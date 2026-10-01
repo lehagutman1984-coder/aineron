@@ -3167,6 +3167,27 @@ def generate_with_falai(network, user_msg, message, user_settings=None):
             gen_img.save(update_fields=['params', 'seed', 'model_name', 'provider', 'source'])
             saved_media.append(gen_img)
 
+    # laozhang/apimart ответили 200 OK (исключения не было - иначе сработал бы
+    # except выше), но без единой картинки в data - типичный симптом, когда
+    # провайдер формально принял запрос, но не распознал конкретный model_name
+    # (например, модель слишком новая и ещё не добавлена в его каталог).
+    # Раньше в этом случае мы сразу сдавались, хотя metadata.cometapi_fallback_model
+    # мог быть настроен и реально сработать - третий уровень фолбэка срабатывал
+    # только на явное исключение (см. except выше), не на "пустой успех".
+    # Обнаружено 2026-10-01 живым тестом: gpt-image-2.5-sunburst/flare - apimart
+    # вернул 200 без изображений, CometAPI (куда дошли бы) не пробовался вообще.
+    if not saved_media:
+        fb_model = config.get('metadata', {}).get('cometapi_fallback_model')
+        fallback_on = getattr(settings, 'AI_PROVIDER_FALLBACK', True)
+        if fallback_on and fb_model:
+            logger.warning(
+                "laozhang/apimart вернули пустой ответ без изображений; фолбэк → CometAPI model=%s",
+                fb_model,
+            )
+            if config.get('metadata', {}).get('cometapi_contract') in ('flux', 'flux_kontext'):
+                return generate_image_flux_cometapi(network, user_msg, message, user_settings, model_override=fb_model)
+            return generate_image_cometapi(network, user_msg, message, user_settings, model_override=fb_model)
+
     # Формируем текст ответа
     model_name = config.get('name', network.name)
     media_count = len(saved_media)
