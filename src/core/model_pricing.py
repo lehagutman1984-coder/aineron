@@ -45,6 +45,15 @@ MODEL_WHOLESALE = {
     'gpt-5.6-terra':      (2.0,   12.0),   # OpenRouter §1.1
     'gpt-5.6-sol':        (3.2,   16.0),   # apimart §1.1 — ВЫШЕ листа OpenRouter (2/10), берём апимарт
     'gpt-5.6-luna':       (0.2,   1.2),    # pricingPreviewModels.ts
+    # 2026-10-01: GPT-6 Sol/6.1 Sol — та же реальная апимарт-ставка, что
+    # задокументирована в add_gpt6_sol_luna_models.py при заведении моделей.
+    # Разные ключи (не substring друг друга и не gpt-6-astra) — обе нужны
+    # явно, иначе canonical_key() вернёт None и overage будет тихо 0.
+    'gpt-6-sol':          (1.6,   8.0),    # apimart, add_gpt6_sol_luna_models.py
+    'gpt-6.1-sol':        (1.6,   8.0),    # apimart, add_gpt6_sol_luna_models.py
+    # gpt-6-luna сознательно НЕ добавлена — тот же случай, что gpt-5.6-luna
+    # ниже: слишком дёшево, overage не имеет смысла при текущих порогах
+    # (TOKEN_OVERAGE_MIN_FRACTION/MIN_KOPECKS).
     'gpt-5.5-pro':        (30.0,  180.0),  # pricingPreviewModels.ts (round(30)/round(180))
     'gpt-5.5':            (5.0,   30.0),   # pricingPreviewModels.ts
     # gpt-6-astra: розница переставлена на конкурент×0.95 07.09 (не опт×K) —
@@ -53,6 +62,7 @@ MODEL_WHOLESALE = {
     'gemini-3.1-pro':     (2.0,   12.0),   # pricingPreviewModels.ts, §1.1
     'gemini-3.6-flash':   (0.75,  3.75),   # pricingPreviewModels.ts, подтверждено живьём на OpenRouter
     'gemini-3.7-flash':   (0.75,  3.75),   # pricingPreviewModels.ts (тот же тир, что 3.6, нет отдельных данных)
+    'grok-4.7':            (1.6,  4.8),    # apimart, add_sonnet55_opus55_grok47.py (2026-10-01)
     'grok-4.6':            (2.0,  6.0),    # OpenRouter §1.1
     'grok-4.5':            (2.0,  6.0),    # снята с публичного прайса — тир 4.6, своих данных нет
     'qwen3.8-max':         (2.0,  6.0),    # OpenRouter §1.1

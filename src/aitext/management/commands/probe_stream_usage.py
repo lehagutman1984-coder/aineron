@@ -29,6 +29,12 @@ AUDITED_MODELS = [
     'claude-fable-5.1', 'gpt-5.5-pro', 'gpt-6-astra', 'gpt-5.5',
     'claude-sonnet-4-6', 'gemini-3.1-pro-preview', 'claude-sonnet-5',
     'gpt-5.6-sol', 'grok-4.6', 'grok-4.5', 'qwen3.8-max',
+    # 2026-10-01: кандидаты на overage-защиту из сегодняшнего захода — тир
+    # сопоставим с уже защищёнными соседями (claude-sonnet-5/opus-5,
+    # grok-4.5/4.6, gpt-5.6-sol/gpt-6-astra). gpt-6-luna сознательно НЕ
+    # включён — та же причина, по которой gpt-5.6-luna нет в списке (слишком
+    # дёшево, overage не имеет смысла при текущих порогах).
+    'claude-sonnet-5-5', 'claude-opus-5-5', 'grok-4.7', 'gpt-6-sol', 'gpt-6.1-sol',
 ]
 
 
