@@ -2652,7 +2652,16 @@ def generate_image_cometapi(network, user_msg, message, user_settings=None, mode
         else:
             logger.info(f"CometAPI Image POST model={model_id} params={body}")
             resp = requests.post(f"{base_url}/images/generations", headers=auth_headers, json=body, timeout=90)
-        resp.raise_for_status()
+        try:
+            resp.raise_for_status()
+        except requests.exceptions.HTTPError:
+            # raise_for_status() сам по себе не включает тело ответа в
+            # сообщение исключения - без этого лога в celery-логах виден
+            # только generic "400 Client Error: Bad Request", а реальная
+            # причина (moderation_blocked, invalid param и т.п.) терялась
+            # и требовала ручного диагностического запроса (2026-10-01).
+            logger.error(f"CometAPI image error {resp.status_code}: {resp.text[:500]}")
+            raise
         data = resp.json()
         logger.info(f"CometAPI image response: {str(data)[:400]}")
 
