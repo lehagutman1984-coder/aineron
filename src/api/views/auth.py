@@ -113,6 +113,30 @@ class RegisterView(APIView):
         user = User.objects.create_user(
             username=username, email=email, password=password
         )
+
+        # 2026-10-01 (аудит безопасности, MEDIUM): эта защита (shadow-ban при
+        # регистрации с IP уже использованного пользователя) была только в
+        # legacy-регистрации (users/views.py) — реальный фронт зовёт ИМЕННО
+        # этот DRF-эндпоинт (frontend/lib/api/client.ts), так что фарм
+        # бесплатного стартового гранта через /auth/register/ был ничем не
+        # ограничен. Портировано 1:1 с users/views.py (та же модель
+        # UserIPAddress, та же логика "IP уже использовал кто-то другой").
+        from ipware import get_client_ip
+        from users.models import UserIPAddress
+        client_ip, _is_routable = get_client_ip(request)
+        if client_ip:
+            existing_users_count = UserIPAddress.objects.filter(
+                ip_address=client_ip,
+            ).exclude(user=user).values('user').distinct().count()
+            if existing_users_count > 0:
+                user.shadow_banned = True
+                user.save(update_fields=['shadow_banned'])
+                import logging
+                logging.getLogger(__name__).warning(
+                    f"[WARN] Теневой бан для {user.email} - множественные аккаунты с IP {client_ip}"
+                )
+            UserIPAddress.objects.create(user=user, ip_address=client_ip)
+
         lang = (request.data.get('lang') or '').strip().lower()
         if lang in dict(User.LANGUAGE_CHOICES):
             user.language = lang
