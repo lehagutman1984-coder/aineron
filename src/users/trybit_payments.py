@@ -22,6 +22,7 @@ import logging
 import jwt
 import requests
 from django.conf import settings
+from django.db import transaction
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
@@ -102,17 +103,22 @@ def settle_trybit_payment(payment) -> bool:
     """
     from users.models import PaymentHistory
 
-    claimed = PaymentHistory.objects.filter(pk=payment.pk).exclude(status='success').update(
-        status='success', paid_at=timezone.now(),
-    )
-    if not claimed:
-        return False
-    payment.refresh_from_db(fields=['status', 'paid_at'])
+    # 2026-10-01 (аудит безопасности, MEDIUM) — см. тот же комментарий в
+    # crypto_payments.py::settle_crypto_payment: гейт статуса и начисление
+    # теперь в одной transaction.atomic(), иначе сбой между ними оставлял бы
+    # платёж 'success' без денег навсегда (ни вебхук, ни поллинг не повторят).
+    with transaction.atomic():
+        claimed = PaymentHistory.objects.filter(pk=payment.pk).exclude(status='success').update(
+            status='success', paid_at=timezone.now(),
+        )
+        if not claimed:
+            return False
+        payment.refresh_from_db(fields=['status', 'paid_at'])
 
-    user = payment.user
-    topup_kopecks = payment.amount_kopecks or (payment.pages_count * 100)
-    user.add_kopecks(topup_kopecks, type='topup', reference=f'trybit:{payment.payment_id}')
-    user.refresh_from_db(fields=['balance_kopecks', 'pages_count'])
+        user = payment.user
+        topup_kopecks = payment.amount_kopecks or (payment.pages_count * 100)
+        user.add_kopecks(topup_kopecks, type='topup', reference=f'trybit:{payment.payment_id}')
+        user.refresh_from_db(fields=['balance_kopecks', 'pages_count'])
     logger.info(
         "[TRYBIT] Пользователь %s пополнил баланс на %s коп. (инвойс %s)",
         user.email, topup_kopecks, payment.payment_id,

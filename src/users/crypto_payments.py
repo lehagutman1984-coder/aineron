@@ -20,6 +20,7 @@ import logging
 
 import requests
 from django.conf import settings
+from django.db import transaction
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
@@ -82,20 +83,32 @@ def settle_crypto_payment(payment) -> bool:
     Проводит оплаченный крипто-платёж: статус success + начисление баланса.
     Идемпотентна: атомарный гейт по статусу (как в Robokassa payment_success)
     + add_kopecks с reference. Вызывается и вебхуком, и поллингом статуса.
+
+    2026-10-01 (аудит безопасности, MEDIUM): гейт статуса и начисление раньше
+    были двумя отдельными операциями (гейт коммитился сразу сам по себе) —
+    тот же класс бага, что чинили в Robokassa payment_success (см. комментарий
+    там): падение процесса/БД между ними оставляло платёж 'success' без
+    зачисленных денег НАВСЕГДА — повтор вебхука упирался в гейт (claimed=0),
+    поллинг видел status != 'pending' и тоже не трогал платёж. Оборачиваем в
+    одну transaction.atomic() — при сбое всё откатывается, платёж остаётся
+    'pending', следующий вебхук/поллинг повторит попытку. Notify/email ниже
+    намеренно ВНЕ транзакции (внешний I/O не должен держать блокировку БД и
+    не должен откатывать уже начисленные деньги, если упадёт уведомление).
     """
     from users.models import PaymentHistory
 
-    claimed = PaymentHistory.objects.filter(pk=payment.pk).exclude(status='success').update(
-        status='success', paid_at=timezone.now(),
-    )
-    if not claimed:
-        return False
-    payment.refresh_from_db(fields=['status', 'paid_at'])
+    with transaction.atomic():
+        claimed = PaymentHistory.objects.filter(pk=payment.pk).exclude(status='success').update(
+            status='success', paid_at=timezone.now(),
+        )
+        if not claimed:
+            return False
+        payment.refresh_from_db(fields=['status', 'paid_at'])
 
-    user = payment.user
-    topup_kopecks = payment.amount_kopecks or (payment.pages_count * 100)
-    user.add_kopecks(topup_kopecks, type='topup', reference=f'crypto:{payment.payment_id}')
-    user.refresh_from_db(fields=['balance_kopecks', 'pages_count'])
+        user = payment.user
+        topup_kopecks = payment.amount_kopecks or (payment.pages_count * 100)
+        user.add_kopecks(topup_kopecks, type='topup', reference=f'crypto:{payment.payment_id}')
+        user.refresh_from_db(fields=['balance_kopecks', 'pages_count'])
     logger.info(
         "[CRYPTO] Пользователь %s пополнил баланс на %s коп. (инвойс %s)",
         user.email, topup_kopecks, payment.payment_id,
