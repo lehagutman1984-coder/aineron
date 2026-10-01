@@ -2696,6 +2696,7 @@ def reconcile_unsettled_overage(self):
     """
     from datetime import timedelta
     from django.core.cache import cache
+    from django.db.models import Q
     from django.utils import timezone as tz
     from django.utils.dateparse import parse_datetime, parse_date
     from telegram_bot.notify import notify_admins
@@ -2726,8 +2727,20 @@ def reconcile_unsettled_overage(self):
     window_start = max(now - timedelta(hours=6), settle_from)
     window_end = now - timedelta(minutes=20)
 
+    # 2026-10-01 (живой баг, messages 3719/3721): overage_kopecks__gt=0 один
+    # не ловит типичный случай — короткий ответ с атомарным резервом, где
+    # факт (settle_overage) посчитал overage=0 (себестоимость с запасом
+    # покрыта уже списанным flat), а резерв под worst-case max_tokens
+    # (2205-4000 коп.) остался бы списанным навсегда: settle_overage раньше
+    # выходил до проверки резерва при overage<=0 (исправлено в
+    # token_metering.py), но если инлайн-вызов вообще не отработал (крэш
+    # процесса между генерацией и settle) — такая строка с overage_kopecks=0
+    # этим фильтром не находилась бы НИКОГДА, в отличие от overage>0, которую
+    # подбирало окно 20мин-6ч. Добавлена OR-ветка по наличию резерва в
+    # message.settings — она ловит резерв независимо от того, каким
+    # оказался факт (0, меньше или больше резерва).
     rows = MessageTokenUsage.objects.filter(
-        overage_kopecks__gt=0,
+        Q(overage_kopecks__gt=0) | Q(message__settings__has_key='overage_reserve_reference'),
         settled_at__isnull=True,
         created_at__gte=window_start,
         created_at__lt=window_end,

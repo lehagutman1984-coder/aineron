@@ -155,6 +155,20 @@ def settle_overage(usage_row):
     TOKEN_OVERAGE_RESERVE_ENABLED безопасным откатом: уже созданные резервы
     доселятся корректно и после выключения флага, дубль-списания не будет
     (обе ветки читают/пишут непересекающиеся reference'ы в ledger).
+
+    2026-10-01 (живой баг, messages 3719/3721 — claude-sonnet-5-5/opus-5-5):
+    раньше `overage <= 0` был САМЫМ ПЕРВЫМ guard'ом и выходил из функции ДО
+    проверки резерва. Короткий ответ — типичный случай, не редкий: реальная
+    себестоимость (3-12 коп.) с запасом покрывается уже списанным flat
+    (181-363 коп.), overage_kopecks считается 0 — и при этом весь
+    worst-case резерв (2205-4000 коп., под max_tokens) оставался списанным
+    НАВСЕГДА: ни settle (ранний return 0 до того, как дошёл бы до reserve_ref),
+    ни reconcile_unsettled_overage (фильтрует overage_kopecks__gt=0, эту
+    строку тоже не видит) его не возвращали. Резерв теперь проверяется ДО
+    short-circuit'а по overage<=0 — overage=0 при реальном резерве уходит в
+    _settle_against_reservation, где diff=0-reserved<0 означает полный возврат
+    неиспользованного резерва (уже умела обрабатывать, просто была
+    недостижима для overage=0).
     """
     from django.conf import settings as dj_settings
     from django.db import transaction
@@ -164,17 +178,24 @@ def settle_overage(usage_row):
 
     if usage_row is None or not getattr(usage_row, 'pk', None):
         return 0
-    overage = int(usage_row.overage_kopecks or 0)
-    if overage <= 0 or usage_row.settled_at is not None:
+    if usage_row.settled_at is not None:
         return 0
     if not getattr(dj_settings, 'TOKEN_OVERAGE_ENABLED', False):
         return 0
-
-    reference = f'overage:{usage_row.message_id}'
     if getattr(dj_settings, 'TOKEN_OVERAGE_DRY_RUN', True):
-        logger.info(f"[overage][dry-run] {reference}: {overage} коп. рассчитано, не списано "
-                    f"({usage_row.model_name}, {usage_row.prompt_tokens}/{usage_row.completion_tokens})")
+        # В dry-run реальных резервов не бывает (reserve_overage_tokens сам
+        # вызывается только при overage_settle_active(), т.е. ENABLED и не
+        # DRY_RUN — см. resolve_overage_guard) — безопасно выйти тут же, не
+        # проверяя резерв.
+        overage_for_log = int(usage_row.overage_kopecks or 0)
+        if overage_for_log > 0:
+            logger.info(f"[overage][dry-run] overage:{usage_row.message_id}: {overage_for_log} коп. "
+                        f"рассчитано, не списано ({usage_row.model_name}, "
+                        f"{usage_row.prompt_tokens}/{usage_row.completion_tokens})")
         return 0
+
+    overage = int(usage_row.overage_kopecks or 0)
+    reference = f'overage:{usage_row.message_id}'
 
     try:
         user = usage_row.message.chat.user
@@ -190,6 +211,9 @@ def settle_overage(usage_row):
             # reserve_ref в settings есть, но ledger-записи нет (например, резерв
             # был 0 — overage при клэмпнутом max_tokens не достигал порога) —
             # падаем в обычный путь ниже, там ничего не зарезервировано.
+
+        if overage <= 0:
+            return 0
 
         already = BalanceTransaction.objects.filter(
             user=user, type=BalanceTransaction.Type.OVERAGE, reference=reference,

@@ -173,6 +173,37 @@ class SettleAgainstReservationTests(TestCase):
         # Итоговый баланс = starting - overage (ровно факт, не резерв)
         self.assertEqual(self.user.balance_kopecks, 10000 - row.overage_kopecks)
 
+    def test_zero_overage_still_releases_full_reservation(self):
+        # 2026-10-01: живой баг (messages 3719/3721, claude-sonnet-5-5/opus-5-5).
+        # Резервируем под worst-case (10428 токенов), но реальный ответ —
+        # короткая реплика (26 токенов, как в живом инциденте): себестоимость
+        # настолько мала, что overage_kopecks получается 0 (ниже порога/уже
+        # покрыто flat) — это ДОЛЖНО означать полный возврат всего резерва,
+        # а не "нечего зачитывать". До фикса settle_overage выходил по
+        # overage<=0 ДО того, как вообще смотрел на резерв, и реальный
+        # резерв оставался списанным навсегда.
+        self._set_balance(10000)
+        message, row, reserved = self._reserved_message(1850, 26, reserve_tokens=10428)
+        self.assertGreater(reserved, 0)  # резерв реально был взят
+        self.assertEqual(row.overage_kopecks, 0)  # факт не превышает порог/flat
+        balance_after_reserve = User.objects.get(pk=self.user.pk).balance_kopecks
+        self.assertLess(balance_after_reserve, 10000)  # резерв реально списан
+
+        charged = settle_overage(row)
+        self.assertEqual(charged, 0)  # ничего ДОПОЛНИТЕЛЬНО не списано
+
+        row.refresh_from_db()
+        self.assertIsNotNone(row.settled_at, "резерв с overage=0 обязан быть разрешён (release), не оставлен висеть")
+        self.assertEqual(row.settled_kopecks, 0)
+        self.user.refresh_from_db()
+        # Весь неиспользованный резерв вернулся на баланс целиком.
+        self.assertEqual(self.user.balance_kopecks, 10000)
+        self.assertTrue(
+            BalanceTransaction.objects.filter(
+                user=self.user, type='refund', reference=f'overage-reserve:{message.pk}:refund',
+            ).exists()
+        )
+
     def test_actual_above_reserved_charges_extra(self):
         self._set_balance(10000)
         # Резервируем под меньший ответ (9000, overage 798 коп.), но факт
