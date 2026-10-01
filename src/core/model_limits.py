@@ -74,6 +74,14 @@ NO_TEMPERATURE_MODELS = {
     'claude-opus-4-8',
     'claude-opus-5',
     'claude-sonnet-5',
+    # Подтверждено живым вызовом 2026-10-01 (add_sonnet55_opus55_grok47):
+    # "`temperature` may only be set to 1 when thinking is enabled or in
+    # adaptive mode" на каждой из 4 попыток (задача ушла в исчерпание
+    # max_retries с реальным overage-резервом, впустую сожжённым на
+    # идентично проваливающихся ретраях) - тот же класс бага, что у
+    # предшественников.
+    'claude-opus-5-5',
+    'claude-sonnet-5-5',
 }
 
 
