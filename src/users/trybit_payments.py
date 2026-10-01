@@ -169,6 +169,26 @@ def check_and_settle(payment) -> str:
         return payment.status
     if invoice is None:
         return payment.status
+
+    # 2026-10-01 (аудит безопасности, API_SECURITY_AUDIT_2026-10-01.md, п.12):
+    # test_mode — свойство ВСЕГО проекта в Trybit (а не отдельного счёта),
+    # выставляется, пока мерчант не прошёл проверку/не попросил поддержку
+    # перевести проект в боевой режим. Раньше этот флаг нигде не проверялся —
+    # инвойс с test_mode=true зачислялся точно так же, как настоящий.
+    # Сейчас (проверено живым вызовом create_invoice на .net) test_mode=false,
+    # то есть проект уже боевой и это НЕ активная дыра — но защита нужна на
+    # случай, если проект когда-нибудь снова окажется в test_mode (повторная
+    # верификация, новый shop_id и т.п.): без неё это станет бесплатным
+    # пополнением баланса до $1000/инвойс для любого пользователя .net.
+    if invoice.get('test_mode') and not getattr(settings, 'TRYBIT_ALLOW_TEST_PAYMENTS', False):
+        logger.error(
+            "[TRYBIT] Инвойс %s помечен test_mode=true у провайдера — зачисление "
+            "ПРОПУЩЕНО (проект Trybit сейчас в тестовом режиме, см. "
+            "TRYBIT_ALLOW_TEST_PAYMENTS, если это осознанно). Платёж остаётся pending.",
+            payment.payment_id,
+        )
+        return payment.status
+
     inv_status = invoice.get('status')
     if inv_status in ('paid', 'overpaid'):
         settle_trybit_payment(payment)
