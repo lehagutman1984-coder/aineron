@@ -3,8 +3,13 @@ services:
     image: redis:7-alpine
     container_name: neiro_redis
     restart: unless-stopped
+    # 2026-10-01 (аудит безопасности): раньше "6379:6379" публиковал Redis без
+    # пароля на ВСЕ интерфейсы — подтверждено живым внешним TCP-коннектом,
+    # порт был открыт в интернет. nginx/web обращаются к redis по имени
+    # сервиса во внутренней docker-сети — host-порт им не нужен вообще,
+    # 127.0.0.1 оставлен только для ручной отладки с самого сервера.
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes
@@ -26,8 +31,11 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    # 2026-10-01 (аудит безопасности): было "5432:5432" на всех интерфейсах —
+    # подтверждено живым внешним TCP-коннектом, открыт в интернет, пароль в
+    # .env слабый. web обращается по имени сервиса db во внутренней сети.
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     command: postgres -c shared_buffers=512MB -c effective_cache_size=1536MB
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
@@ -49,8 +57,11 @@ services:
     volumes:
       - ./src:/app
       - static_volume:/app/staticfiles
+    # 2026-10-01 (аудит безопасности): было "8000:8000" на всех интерфейсах —
+    # прямой обход nginx (Host-инъекция, обход лимитов) + подтверждено живым
+    # внешним TCP-коннектом. nginx ходит на web:8000 по внутренней сети.
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     dns:
       - 8.8.8.8
       - 1.1.1.1
@@ -135,8 +146,11 @@ services:
       # false = /studio редиректит на главную (читается в app/studio/layout.tsx
       # на каждый запрос — работает без пересборки образа)
       - STUDIO_ENABLED=${STUDIO_ENABLED:-true}
+    # 2026-10-01 (аудит безопасности): было "3000:3000" на всех интерфейсах —
+    # подтверждено живым внешним TCP-коннектом. nginx ходит на frontend:3000
+    # по внутренней сети, host-порт не нужен.
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     depends_on:
       - web
 
@@ -159,8 +173,14 @@ services:
       - REDIS_URL=redis://redis:6379/3
       - PREVIEW_MAX_CONCURRENT=10
       - PREVIEW_DEFAULT_TTL=900
+    # 2026-10-01 (аудит безопасности, S0): PREVIEW_INTERNAL_TOKEN по умолчанию
+    # "changeme-in-production" (preview-service/settings.py) — публичный порт
+    # + дефолтный токен = любой в интернете создаёт E2B-машины за счёт
+    # платформы без биллинга. Сервис сейчас не поднят (profile studio), но
+    # порт ограничен на будущее — nginx проксирует sandbox-превью по
+    # контейнерному имени, host-порт не нужен.
     ports:
-      - "8001:8001"
+      - "127.0.0.1:8001:8001"
     depends_on:
       redis:
         condition: service_healthy
