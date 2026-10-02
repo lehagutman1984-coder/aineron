@@ -35,9 +35,26 @@ def _get_link_token(token_str):
         return None
 
 
+class TelegramAlreadyLinkedElsewhere(Exception):
+    """Этот telegram_id уже привязан к ДРУГОМУ аккаунту aineron."""
+
+
 def _create_tg_user(user, from_user, lang=''):
+    """
+    2026-10-01 (аудит безопасности, MEDIUM, №22): раньше при существующей
+    записи TelegramUser на этот telegram_id (жертва уже привязала СВОЙ
+    Telegram к своему аккаунту) код молча ПЕРЕПРИВЯЗЫВАЛ её к user'у из
+    link_token — если жертва переходила по ссылке t.me/bot?start=<токен
+    атакующего> (например, атакующий прислал её под видом промо-ссылки),
+    её Telegram (и вся история чатов/Stars-платежей в боте) тихо уводился
+    на аккаунт атакующего без единого подтверждения. Теперь перепривязка
+    на ДРУГОЙ аккаунт требует, чтобы пользователь сначала явно отвязал
+    текущую привязку (кнопка в кабинете, DELETE /telegram/link-token/) —
+    без этого шага бросаем TelegramAlreadyLinkedElsewhere, вызывающая
+    сторона показывает объяснение вместо тихой подмены.
+    """
     from telegram_bot.models import TelegramUser
-    tg_user, _ = TelegramUser.objects.get_or_create(
+    tg_user, created = TelegramUser.objects.get_or_create(
         telegram_id=from_user.id,
         defaults={
             'user': user,
@@ -46,6 +63,8 @@ def _create_tg_user(user, from_user, lang=''):
             'language': lang,
         },
     )
+    if not created and tg_user.user_id and tg_user.user_id != user.id:
+        raise TelegramAlreadyLinkedElsewhere()
     if not tg_user.user_id or tg_user.user_id != user.id:
         tg_user.user = user
         tg_user.telegram_username = from_user.username or ''
@@ -275,7 +294,14 @@ async def cmd_start(message: Message, state: FSMContext, tg_user=None):
     if args and not args.startswith('ref_'):
         link_token = await get_link_token(args)
         if link_token and link_token.is_valid:
-            tg_user = await create_tg_user(link_token.user, message.from_user, lang)
+            try:
+                tg_user = await create_tg_user(link_token.user, message.from_user, lang)
+            except TelegramAlreadyLinkedElsewhere:
+                await message.answer(
+                    f"<b>{t('start.linkConflictTitle', lang)}</b>\n{DIVIDER}\n{t('start.linkConflictBody', lang)}",
+                    parse_mode='HTML',
+                )
+                return
             await mark_token_used(link_token)
             get_cached_ref = sync_to_async(
                 lambda: __import__('django.core.cache', fromlist=['cache']).cache.get(f'tg_ref:{message.from_user.id}'),

@@ -96,6 +96,16 @@ TASKS = [
         "cron": True,
     },
     {
+        # 2026-10-01 (аудит безопасности, №17): api:-резервы dev-API
+        # (/v1/chat/completions, /v1/messages) не покрыты задачей выше —
+        # своего aitext.Message у них нет, см. api/tasks.py::
+        # reconcile_stuck_api_reservations.
+        "name": "Мониторинг: api-резервы без результата (каждые 30 минут)",
+        "task": "api.tasks.reconcile_stuck_api_reservations",
+        "schedule": {"minute": "5,35"},
+        "cron": True,
+    },
+    {
         # CELERY_TIMEZONE=Europe/Moscow (config/settings.py) — час крона это
         # уже МСК напрямую, БЕЗ пересчёта из UTC (в отличие от комментариев
         # "UTC X = MSK Y" у остальных задач выше — те при этой настройке

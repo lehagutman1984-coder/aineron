@@ -15,7 +15,16 @@ LOCMEM = {'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'
 URL = '/api/v1/internal/mail-relay/'
 
 
-@override_settings(MAIL_RELAY_SECRET='test-secret-123', CACHES=LOCMEM)
+@override_settings(
+    MAIL_RELAY_SECRET='test-secret-123', CACHES=LOCMEM,
+    # 2026-10-01: без явного override тест молча зависел от того, что в
+    # окружении запуска MAIL_RELAY_ALLOWED_IPS пуст — на .ru в реальном .env
+    # он НЕ пуст (там настоящий allowlist под IP .net-сервера), и запуск
+    # этого файла внутри живого .ru-контейнера (а не изолированного CI)
+    # заваливал все 8 тестов класса на постороннем IP-чеке, никак не
+    # связанном с тем, что тесты реально проверяют.
+    MAIL_RELAY_ALLOWED_IPS='',
+)
 class MailRelayViewTests(TestCase):
     def _post(self, payload, secret='test-secret-123'):
         client = APIClient()

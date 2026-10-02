@@ -42,6 +42,8 @@
     "hasAccountButton": "Saya sudah punya akun",
     "linkInvalidTitle": "Tautan tidak valid",
     "linkInvalidBody": "Tautan ini telah kedaluwarsa atau sudah digunakan.\n\nKunjungi <b>aineron.net</b> → Akun → Telegram untuk mendapatkan tautan baru.",
+    "linkConflictTitle": "Telegram ini sudah terhubung ke akun lain",
+    "linkConflictBody": "Telegram ini sudah terhubung ke akun aineron yang berbeda. Jika ini kesalahan, buka <b>aineron.net</b> → Akun → Telegram di akun TERSEBUT dan putuskan tautannya dulu, lalu gunakan tautan ini lagi.",
     "introBody": "Platform AI: GPT-5, Claude, Gemini, dan model lainnya.\n\nApakah Anda sudah memiliki akun di aineron.net?"
   },
   "onboarding": {

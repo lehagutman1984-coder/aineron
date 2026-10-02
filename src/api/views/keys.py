@@ -3,9 +3,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from rest_framework_simplejwt.authentication import JWTAuthentication
 from drf_spectacular.utils import extend_schema, OpenApiExample
-from api.authentication import CsrfExemptSessionAuthentication
+from api.authentication import CsrfExemptSessionAuthentication, ShadowBanAwareJWTAuthentication
 from api.models import APIKey
 from api.permissions import IsEmailVerified
 
@@ -18,7 +17,7 @@ logger = logging.getLogger(__name__)
 # листать и отзывать остальные ключи владельца. Управлять ключами должна
 # только сессия (кабинет) или JWT (Telegram Mini App) — Bearer ak_ сюда
 # намеренно не допускается.
-_SESSION_OR_JWT_AUTH = [JWTAuthentication, CsrfExemptSessionAuthentication]
+_SESSION_OR_JWT_AUTH = [ShadowBanAwareJWTAuthentication, CsrfExemptSessionAuthentication]
 
 
 class APIKeyListCreateView(APIView):

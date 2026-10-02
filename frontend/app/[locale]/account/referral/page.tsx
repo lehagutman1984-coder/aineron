@@ -39,6 +39,7 @@ export default function ReferralPage() {
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawDestination, setWithdrawDestination] = useState("");
+  const [withdrawPassword, setWithdrawPassword] = useState("");
   const [withdrawError, setWithdrawError] = useState<string | null>(null);
 
   const { data, isLoading, error } = useQuery<ReferralData>({
@@ -51,12 +52,14 @@ export default function ReferralPage() {
       requestReferralWithdrawal({
         amount: parseFloat(withdrawAmount),
         payout_destination: withdrawDestination,
+        password: withdrawPassword,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["referral"] });
       setShowWithdrawModal(false);
       setWithdrawAmount("");
       setWithdrawDestination("");
+      setWithdrawPassword("");
       setWithdrawError(null);
     },
     onError: (err: Error) => {
@@ -255,6 +258,20 @@ export default function ReferralPage() {
               />
             </div>
 
+            <div className="mb-4">
+              <label className="mb-1.5 block text-[14px] font-medium text-[rgba(13,13,13,0.65)]">
+                {t("passwordLabel")}
+              </label>
+              <input
+                type="password"
+                autoComplete="current-password"
+                value={withdrawPassword}
+                onChange={(e) => setWithdrawPassword(e.target.value)}
+                className="h-10 w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3 text-[16px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
+              />
+              <p className="mt-1 text-[13px] text-[rgba(13,13,13,0.45)]">{t("passwordHint")}</p>
+            </div>
+
             {withdrawError && (
               <div className="mb-3 rounded-[8px] bg-[rgba(231,76,60,0.08)] px-3 py-2.5 text-[15px] text-[#e74c3c]">
                 {withdrawError}
@@ -274,6 +291,7 @@ export default function ReferralPage() {
                   withdrawMutation.isPending ||
                   !withdrawAmount ||
                   !withdrawDestination ||
+                  !withdrawPassword ||
                   parseFloat(withdrawAmount) <= 0
                 }
                 className="flex-1 h-10 rounded-[8px] bg-[#D97757] text-[16px] font-medium text-white hover:bg-[#C4623E] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"

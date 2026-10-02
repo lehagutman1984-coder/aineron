@@ -133,10 +133,12 @@ class WithdrawalTests(TestCase):
         self.assertEqual(WithdrawalRequest.objects.count(), 0)
 
     def test_api_cannot_withdraw_more_than_balance_twice(self):
+        # 2026-10-01 (аудит безопасности, №18): вывод теперь требует пароль
+        # (_user() всегда создаёт пользователя с password='x').
         u = self._partner('100.00')
         c = _client(u)
-        r1 = c.post('/api/v1/referral/withdraw/', {'amount': '80', 'payout_destination': 'w'}, format='json')
-        r2 = c.post('/api/v1/referral/withdraw/', {'amount': '80', 'payout_destination': 'w'}, format='json')
+        r1 = c.post('/api/v1/referral/withdraw/', {'amount': '80', 'payout_destination': 'w', 'password': 'x'}, format='json')
+        r2 = c.post('/api/v1/referral/withdraw/', {'amount': '80', 'payout_destination': 'w', 'password': 'x'}, format='json')
         self.assertEqual(r1.status_code, 200)
         self.assertEqual(r2.status_code, 400)
         u.refresh_from_db()

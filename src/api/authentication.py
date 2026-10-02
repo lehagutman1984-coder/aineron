@@ -1,12 +1,42 @@
 from django.utils import timezone
 from rest_framework.authentication import BaseAuthentication, SessionAuthentication
 from rest_framework.exceptions import AuthenticationFailed
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 
 class CsrfExemptSessionAuthentication(SessionAuthentication):
     """SessionAuthentication без проверки CSRF — для DRF API с CORS-защитой."""
     def enforce_csrf(self, request):
         pass
+
+
+def _blocked_account_response():
+    return {
+        'error': {
+            'message': 'Account is blocked.',
+            'type': 'invalid_request_error',
+            'code': 'account_blocked',
+        }
+    }
+
+
+class ShadowBanAwareJWTAuthentication(JWTAuthentication):
+    """
+    2026-10-01 (аудит безопасности, MEDIUM, №21): стоковый simplejwt
+    JWTAuthentication проверяет только is_active. ShadowBanMiddleware видит
+    только сессионных пользователей (request.user там заполняется ДО
+    JWT-аутентификации DRF, для JWT-запроса это всегда Anonymous). Телеграм
+    Mini App (webapp_auth) выдаёт JWT, и это был единственный путь, где
+    забаненный фармер (farm триала с одного IP) продолжал тратить баланс
+    после блокировки — тот же класс защиты, что уже есть в
+    APIKeyAuthentication, просто не был продублирован сюда.
+    """
+
+    def get_user(self, validated_token):
+        user = super().get_user(validated_token)
+        if getattr(user, 'shadow_banned', False) and not user.has_made_real_payment():
+            raise AuthenticationFailed(_blocked_account_response())
+        return user
 
 
 class APIKeyAuthentication(BaseAuthentication):

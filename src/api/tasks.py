@@ -223,3 +223,81 @@ def reset_monthly_seats():
         organization__seat_monthly_stars__gt=0
     ).update(monthly_used=0, monthly_reset_at=today)
     logger.info(f'[Seats] Monthly quota reset for {updated} members')
+
+
+@shared_task(bind=True, max_retries=0, ignore_result=True,
+             name='api.tasks.reconcile_stuck_api_reservations')
+def reconcile_stuck_api_reservations(self):
+    """
+    2026-10-01 (аудит безопасности, API_SECURITY_AUDIT_2026-10-01.md, №17):
+    api:{request_id} резервы (reserve_for_request в api/services/billing.py,
+    /v1/chat/completions и /v1/messages dev-API) не покрыты
+    aitext.tasks.reconcile_stuck_spends — та ищет aitext.Message.status, а у
+    api:-резервов своего Message вообще нет, они привязаны к TokenUsage.
+    Падение воркера/процесса между reserve_for_request и
+    settle_reservation/release_reservation замораживает worst-case резерв
+    (prompt+max_tokens) у пользователя НАВСЕГДА — в отличие от платежей
+    (Crypto Pay/Trybit), тут нет второго независимого пути проверки
+    (ни вебхука, ни поллинга статуса).
+
+    Детекция: BalanceTransaction(type='spend', reference начинается с 'api:')
+    без (а) парной refund-транзакции с ТЕМ ЖЕ reference И (б) TokenUsage с
+    совпадающим request_id (TokenUsage.request_id хранит ПЕРВЫЕ 8 символов
+    12-символьного request_id — см. settle_reservation). По отдельности
+    любой из двух признаков недостаточен: settle_reservation не создаёт
+    refund-транзакцию, если факт совпал с резервом ровно (diff=0) — тогда
+    есть TokenUsage, но нет refund, и это НЕ аномалия.
+
+    Мониторинг-only, как reconcile_stuck_spends/reconcile_unsettled_overage
+    рядом — алерт админам, не авто-возврат: решение по непроверенным данным
+    остаётся за человеком.
+    """
+    from datetime import timedelta
+    from django.core.cache import cache
+    from django.utils import timezone as tz
+    from users.models import BalanceTransaction
+    from api.models import TokenUsage
+    from telegram_bot.notify import notify_admins
+    from core.money import format_rub
+
+    now = tz.now()
+    # Те же границы, что у aitext.tasks.reconcile_stuck_spends: младше 20 минут
+    # — запрос ещё может быть в процессе (ретраи апстрима), старше 6 часов —
+    # вне окна, чтобы не пересканировать всю историю на каждый прогон.
+    window_start = now - timedelta(hours=6)
+    window_end = now - timedelta(minutes=20)
+
+    candidates = BalanceTransaction.objects.filter(
+        type=BalanceTransaction.Type.SPEND,
+        reference__startswith='api:',
+        created_at__gte=window_start,
+        created_at__lt=window_end,
+    )
+
+    anomalies = []
+    for tx in candidates.iterator():
+        _, _, request_id = tx.reference.partition(':')
+        if not request_id:
+            continue
+        has_refund = BalanceTransaction.objects.filter(
+            type=BalanceTransaction.Type.REFUND, reference=tx.reference,
+        ).exists()
+        if has_refund:
+            continue
+        has_usage = TokenUsage.objects.filter(request_id=request_id[:8]).exists()
+        if has_usage:
+            continue
+        # Не алертить один и тот же reference чаще раза в 6 часов.
+        if not cache.add(f'monitor_stuck_api_reserve:{tx.reference}', 1, timeout=6 * 3600):
+            continue
+        anomalies.append(tx)
+
+    if not anomalies:
+        return
+
+    lines = [f'api:-резервы без результата за 20мин–6ч: {len(anomalies)}']
+    for tx in anomalies[:20]:
+        lines.append(f'· {tx.reference} — {format_rub(abs(tx.amount_kopecks))}, user_id={tx.user_id}')
+    if len(anomalies) > 20:
+        lines.append(f'...и ещё {len(anomalies) - 20}')
+    notify_admins('<b>Мониторинг: api-резервы без результата</b>\n' + '\n'.join(lines))

@@ -1117,6 +1117,8 @@
     "modalTitle": "Запросить вывод",
     "amountLabel": "Сумма (₽)",
     "cardNumberLabel": "Номер карты",
+    "passwordLabel": "Пароль от аккаунта",
+    "passwordHint": "Подтвердите вывод текущим паролем — для вашей же защиты",
     "errorWithdraw": "Ошибка при запросе вывода",
     "cancelButton": "Отмена",
     "submitSending": "Отправка..."

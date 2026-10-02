@@ -872,6 +872,7 @@ export const getReferral = (): Promise<ReferralData> =>
 export const requestReferralWithdrawal = (body: {
   amount: number;
   payout_destination: string;
+  password: string;
 }): Promise<{ ok: boolean }> =>
   request<{ ok: boolean }>("/referral/withdraw/", {
     method: "POST",

@@ -1114,6 +1114,8 @@
     "modalTitle": "Request Withdrawal",
     "amountLabel": "Amount (credits)",
     "cardNumberLabel": "Crypto Wallet Address (USDT TRC-20 or TON)",
+    "passwordLabel": "Account password",
+    "passwordHint": "Confirm the withdrawal with your current password — for your own protection",
     "errorWithdraw": "Error requesting withdrawal",
     "cancelButton": "Cancel",
     "submitSending": "Sending..."

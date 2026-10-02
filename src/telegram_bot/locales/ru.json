@@ -37,6 +37,8 @@
     "hasAccountButton": "У меня есть аккаунт на сайте",
     "linkInvalidTitle": "Ссылка недействительна",
     "linkInvalidBody": "Ссылка устарела или уже была использована.\n\nПерейдите на <b>aineron.ru</b> → Кабинет → Telegram и получите новую ссылку.",
+    "linkConflictTitle": "Telegram уже привязан к другому аккаунту",
+    "linkConflictBody": "Этот Telegram уже используется другим аккаунтом aineron. Если это ваша ошибка — перейдите в <b>aineron.ru</b> → Кабинет → Telegram в ТОМ аккаунте и отвяжите его, затем переходите по этой ссылке снова.",
     "introBody": "Платформа AI-сервисов: GPT-5, Claude, Gemini и другие модели.\n\nУ вас уже есть аккаунт на aineron.ru?"
   },
   "onboarding": {

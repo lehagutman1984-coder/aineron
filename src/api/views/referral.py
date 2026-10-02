@@ -90,11 +90,30 @@ class ReferralWithdrawView(APIView):
 
         amount_raw = request.data.get('amount')
         payout_destination = (request.data.get('payout_destination') or '').strip()
+        password = request.data.get('password') or ''
 
-        if not amount_raw or not payout_destination:
+        if not amount_raw or not payout_destination or not password:
             return Response(
-                {'error': {'message': 'Укажите сумму и реквизиты для вывода', 'code': 'missing_fields'}},
+                {'error': {'message': 'Укажите сумму, реквизиты и пароль для вывода', 'code': 'missing_fields'}},
                 status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # 2026-10-01 (аудит безопасности, MEDIUM, №18): этот вью сознательно на
+        # CsrfExemptSessionAuthentication, как и весь остальной DRF API в
+        # проекте (см. authentication.py) — переводить ТОЛЬКО этот эндпоинт на
+        # настоящий CSRF-токен сломал бы его без парной правки фронта (нигде
+        # в проекте CSRF-токен сейчас не читается/не отправляется). У этого
+        # конкретного вью риск выше обычного — реквизиты выплаты (куда уйдут
+        # деньги) полностью задаёт тело запроса, а не фиксированная платёжная
+        # система, т.е. same-site-контент с курсом жертвы мог бы увести весь
+        # rub_balance на свой кошелёк одним POST. Требуем текущий пароль — тот
+        # же паттерн, что уже есть у PasswordChangeView, и он защищает даже от
+        # того, что CSRF-токен сам по себе не закрыл бы (same-origin JS может
+        # прочитать non-HttpOnly csrf-куку, но не знает пароль пользователя).
+        if not user.check_password(password):
+            return Response(
+                {'error': {'message': 'Неверный пароль', 'code': 'invalid_password'}},
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         try:

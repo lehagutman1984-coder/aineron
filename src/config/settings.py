@@ -835,7 +835,9 @@ _DRF_AUTH_CLASSES = [
 ]
 try:
     import rest_framework_simplejwt  # noqa: F401
-    _DRF_AUTH_CLASSES.insert(1, 'rest_framework_simplejwt.authentication.JWTAuthentication')
+    # 2026-10-01 (аудит безопасности, №21): ShadowBanAwareJWTAuthentication,
+    # не стоковый JWTAuthentication — см. api/authentication.py.
+    _DRF_AUTH_CLASSES.insert(1, 'api.authentication.ShadowBanAwareJWTAuthentication')
 except ImportError:
     pass
 

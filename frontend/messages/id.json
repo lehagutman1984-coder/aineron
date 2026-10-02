@@ -1114,6 +1114,8 @@
     "modalTitle": "Ajukan Penarikan",
     "amountLabel": "Jumlah (kredits)",
     "cardNumberLabel": "Alamat Dompet Kripto (USDT TRC-20 atau TON)",
+    "passwordLabel": "Kata sandi akun",
+    "passwordHint": "Konfirmasi penarikan dengan kata sandi Anda saat ini — demi keamanan Anda",
     "errorWithdraw": "Kesalahan saat mengajukan penarikan",
     "cancelButton": "Batal",
     "submitSending": "Mengirim..."

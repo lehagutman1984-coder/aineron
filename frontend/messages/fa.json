@@ -1114,6 +1114,8 @@
     "modalTitle": "درخواست برداشت",
     "amountLabel": "مبلغ (اعتبار)",
     "cardNumberLabel": "آدرس کیف پول کریپتو (USDT TRC-20 یا TON)",
+    "passwordLabel": "رمز عبور حساب",
+    "passwordHint": "برای حفاظت از حساب خود، برداشت را با رمز عبور فعلی تأیید کنید",
     "errorWithdraw": "خطا در درخواست برداشت",
     "cancelButton": "لغو",
     "submitSending": "در حال ارسال..."

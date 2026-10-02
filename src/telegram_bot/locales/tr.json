@@ -42,6 +42,8 @@
     "hasAccountButton": "Zaten bir hesabım var",
     "linkInvalidTitle": "Geçersiz bağlantı",
     "linkInvalidBody": "Bu bağlantı süresi dolmuş veya zaten kullanılmış.\n\nYeni bir bağlantı almak için <b>aineron.net</b> → Hesap → Telegram'a gidin.",
+    "linkConflictTitle": "Bu Telegram zaten başka bir hesaba bağlı",
+    "linkConflictBody": "Bu Telegram zaten başka bir aineron hesabına bağlı. Bu bir hataysa, önce O hesapta <b>aineron.net</b> → Hesap → Telegram'a gidip bağlantıyı kaldırın, ardından bu bağlantıyı tekrar kullanın.",
     "introBody": "Bir AI platformu: GPT-5, Claude, Gemini ve diğer modeller.\n\naineron.net üzerinde zaten bir hesabınız var mı?"
   },
   "onboarding": {

@@ -1114,6 +1114,8 @@
     "modalTitle": "طلب سحب",
     "amountLabel": "المبلغ (كريدت)",
     "cardNumberLabel": "عنوان المحفظة الرقمية (USDT TRC-20 أو TON)",
+    "passwordLabel": "كلمة مرور الحساب",
+    "passwordHint": "أكّد السحب بكلمة المرور الحالية — لحمايتك الخاصة",
     "errorWithdraw": "خطأ في طلب السحب",
     "cancelButton": "إلغاء",
     "submitSending": "جارٍ الإرسال..."

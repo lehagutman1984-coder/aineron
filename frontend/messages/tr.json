@@ -1114,6 +1114,8 @@
     "modalTitle": "Çekim Talebi",
     "amountLabel": "Tutar (kredi)",
     "cardNumberLabel": "Kripto Cüzdan Adresi (USDT TRC-20 veya TON)",
+    "passwordLabel": "Hesap şifresi",
+    "passwordHint": "Kendi güvenliğiniz için para çekme işlemini mevcut şifrenizle onaylayın",
     "errorWithdraw": "Çekim talebi sırasında hata oluştu",
     "cancelButton": "İptal",
     "submitSending": "Gönderiliyor..."

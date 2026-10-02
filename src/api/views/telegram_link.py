@@ -3,9 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
-from rest_framework_simplejwt.authentication import JWTAuthentication
-
-from api.authentication import CsrfExemptSessionAuthentication
+from api.authentication import CsrfExemptSessionAuthentication, ShadowBanAwareJWTAuthentication
 
 
 class TelegramLinkTokenView(APIView):
@@ -14,7 +12,7 @@ class TelegramLinkTokenView(APIView):
     # привязать СВОЙ Telegram к аккаунту жертвы (угон Stars-платежей/истории
     # бота), а также отвязать уже привязанный Telegram. Это действие
     # управления аккаунтом — только сессия/JWT, не сторонний API-ключ.
-    authentication_classes = [JWTAuthentication, CsrfExemptSessionAuthentication]
+    authentication_classes = [ShadowBanAwareJWTAuthentication, CsrfExemptSessionAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
