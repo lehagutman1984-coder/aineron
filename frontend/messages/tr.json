@@ -100,7 +100,7 @@
       },
       {
         "q": "Hangi AI modelleri mevcut?",
-        "a": "Mevcut modeller arasında GPT-5, Claude Sonnet 5, Gemini 3 Pro, DeepSeek V4, Grok, Qwen ve 120'den fazla diğerleri bulunur. Görüntü ve video için: Flux, GPT Image, Sora, Veo, Kling ve daha fazlası."
+        "a": "Mevcut modeller arasında GPT-5, Claude Sonnet 5, Gemini 3 Pro, DeepSeek V4, Grok, Qwen ve 120'den fazla diğerleri bulunur. Görüntü ve video için: Flux, GPT Image, Veo, Kling ve daha fazlası."
       },
       {
         "q": "Geliştiriciler için bir API var mı?",
@@ -2532,7 +2532,7 @@
       "tagline": "{count} model · tek hesap · VPN yok",
       "title": "Dünyadaki tüm AI modelleri",
       "titleDim": "tek bir pencerede",
-      "subtitle": "GPT-5, Claude, Gemini, Flux, Sora ve yüzlerce başka model. Kripto ile ödeme yapın, tek bir bakiye, ayrı abonelik yok.",
+      "subtitle": "GPT-5, Claude, Gemini, Flux, Veo ve yüzlerce başka model. Kripto ile ödeme yapın, tek bir bakiye, ayrı abonelik yok.",
       "ctaPrimary": "Ücretsiz başla",
       "ctaGhost": "Örnekleri gör",
       "note": "Kayıt olduktan hemen sonra {amount} bakiyenizde. Kart gerekmez."
@@ -2620,7 +2620,6 @@
       "Claude Sonnet 5",
       "Gemini 3 Pro",
       "Seedream 5.0",
-      "Sora 2",
       "Veo 3.1",
       "Kling v2.6",
       "Flux 2 Pro",
@@ -2634,22 +2633,6 @@
       "title": "Her model, kendi örneğiyle",
       "subtitle": "Aşağıdaki video ve görseller Aineron'da oluşturuldu. Her biri, hangi model tarafından yapıldığı ve kullanılan tam istemle birlikte açıklanmıştır.",
       "requestLabel": "İstem",
-      "sora": {
-        "badge": "Video",
-        "name": "Sora 2",
-        "kind": "Video üretimi",
-        "desc": "OpenAI'nin video modeli. Sahne fiziği ve kamera hareketlerini korur — reklam spotları ve kısa sahneler için uygundur.",
-        "factDuration": "Süre",
-        "factDurationVal": "20 sn'ye kadar",
-        "factRes": "Çözünürlük",
-        "factResVal": "1080p",
-        "factSound": "Ses",
-        "factSoundVal": "hayır",
-        "factPrice": "Fiyat",
-        "factPriceUnit": "/ klip",
-        "try": "Sora 2'yi Dene",
-        "query": "çölde yalnız bir beton ev, ufukta fırtına, yavaş kamera yakınlaşması, 5 saniye"
-      },
       "veo": {
         "badge": "Video",
         "name": "Veo 3.1 Hızlı",
@@ -2818,7 +2801,7 @@
           "value": "≈ $10"
         },
         {
-          "label": "Sora / video",
+          "label": "Runway / video",
           "value": "≈ $20"
         }
       ],
@@ -2861,7 +2844,7 @@
       },
       {
         "q": "Hangi AI modelleri mevcut?",
-        "a": "{count} model: Metin için GPT-5, Claude, Gemini, Grok ve DeepSeek; görseller için Flux, GPT Image ve Nano Banana; videolar için Sora, Veo ve Kling. Yeni sürümler geldikçe katalog genişler."
+        "a": "{count} model: Metin için GPT-5, Claude, Gemini, Grok ve DeepSeek; görseller için Flux, GPT Image ve Nano Banana; videolar için Veo, Kling ve Seedance. Yeni sürümler geldikçe katalog genişler."
       },
       {
         "q": "Kendi uygulamama bağlayabilir miyim?",

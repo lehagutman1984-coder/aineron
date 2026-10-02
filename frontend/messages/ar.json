@@ -100,7 +100,7 @@
       },
       {
         "q": "ما هي نماذج الذكاء الاصطناعي المتاحة؟",
-        "a": "النماذج المتاحة تشمل GPT-5، Claude Sonnet 5، Gemini 3 Pro، DeepSeek V4، Grok، Qwen، وأكثر من 120 نموذجًا آخر. للصور والفيديو: Flux، GPT Image، Sora، Veo، Kling، والمزيد."
+        "a": "النماذج المتاحة تشمل GPT-5، Claude Sonnet 5، Gemini 3 Pro، DeepSeek V4، Grok، Qwen، وأكثر من 120 نموذجًا آخر. للصور والفيديو: Flux، GPT Image، Veo، Kling، والمزيد."
       },
       {
         "q": "هل هناك API للمطورين؟",
@@ -2532,7 +2532,7 @@
       "tagline": "{count} نماذج · حساب واحد · بدون VPN",
       "title": "كل نموذج ذكاء اصطناعي في العالم",
       "titleDim": "في نافذة واحدة",
-      "subtitle": "GPT-5، Claude، Gemini، Flux، Sora، وأكثر من مئة نموذج آخر. الدفع بالعملات الرقمية، رصيد مشترك، بدون اشتراكات منفصلة.",
+      "subtitle": "GPT-5، Claude، Gemini، Flux، Veo، وأكثر من مئة نموذج آخر. الدفع بالعملات الرقمية، رصيد مشترك، بدون اشتراكات منفصلة.",
       "ctaPrimary": "ابدأ مجانًا",
       "ctaGhost": "عرض الأمثلة",
       "note": "{amount} في رصيدك مباشرة بعد التسجيل. لا حاجة لبطاقة."
@@ -2620,7 +2620,6 @@
       "Claude Sonnet 5",
       "Gemini 3 Pro",
       "Seedream 5.0",
-      "Sora 2",
       "Veo 3.1",
       "Kling v2.6",
       "Flux 2 Pro",
@@ -2634,22 +2633,6 @@
       "title": "كل نموذج، مع مثال خاص به",
       "subtitle": "الفيديو والصور أدناه تم إنشاؤها باستخدام Aineron. كل واحدة مرفقة باسم النموذج الذي أنشأها والنص المستخدم بالضبط.",
       "requestLabel": "النص",
-      "sora": {
-        "badge": "فيديو",
-        "name": "Sora 2",
-        "kind": "إنشاء الفيديو",
-        "desc": "نموذج الفيديو من OpenAI. يحافظ على فيزياء المشهد وحركة الكاميرا — جيد للإعلانات والمشاهد القصيرة.",
-        "factDuration": "المدة",
-        "factDurationVal": "حتى 20 ثانية",
-        "factRes": "الدقة",
-        "factResVal": "1080p",
-        "factSound": "الصوت",
-        "factSoundVal": "لا",
-        "factPrice": "السعر",
-        "factPriceUnit": "/ مقطع",
-        "try": "جرب Sora 2",
-        "query": "منزل خرساني وحيد في الصحراء، عاصفة في الأفق، حركة كاميرا بطيئة، 5 ثوانٍ"
-      },
       "veo": {
         "badge": "فيديو",
         "name": "Veo 3.1 Fast",
@@ -2818,7 +2801,7 @@
           "value": "≈ $10"
         },
         {
-          "label": "Sora / فيديو",
+          "label": "Runway / فيديو",
           "value": "≈ $20"
         }
       ],
@@ -2861,7 +2844,7 @@
       },
       {
         "q": "ما هي نماذج الذكاء الاصطناعي المتوفرة؟",
-        "a": "{count} نموذج: GPT-5، Claude، Gemini، Grok، وDeepSeek للنصوص؛ Flux، GPT Image، وNano Banana للصور؛ Sora، Veo، وKling للفيديو. يزداد الكتالوج مع إصدار نسخ جديدة."
+        "a": "{count} نموذج: GPT-5، Claude، Gemini، Grok، وDeepSeek للنصوص؛ Flux، GPT Image، وNano Banana للصور؛ Veo، Kling، وSeedance للفيديو. يزداد الكتالوج مع إصدار نسخ جديدة."
       },
       {
         "q": "هل يمكنني ربطه بتطبيقي الخاص؟",

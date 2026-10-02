@@ -100,7 +100,7 @@
       },
       {
         "q": "کدام مدل‌های هوش مصنوعی در دسترس هستند؟",
-        "a": "مدل‌های موجود شامل GPT-5، Claude Sonnet 5، Gemini 3 Pro، DeepSeek V4، Grok، Qwen و بیش از ۱۲۰ مدل دیگر هستند. برای تصاویر و ویدیو: Flux، GPT Image، Sora، Veo، Kling و موارد دیگر."
+        "a": "مدل‌های موجود شامل GPT-5، Claude Sonnet 5، Gemini 3 Pro، DeepSeek V4، Grok، Qwen و بیش از ۱۲۰ مدل دیگر هستند. برای تصاویر و ویدیو: Flux، GPT Image، Veo، Kling و موارد دیگر."
       },
       {
         "q": "آیا API برای توسعه‌دهندگان وجود دارد؟",
@@ -2532,7 +2532,7 @@
       "tagline": "{count} مدل · یک حساب · بدون VPN",
       "title": "تمام مدل‌های هوش مصنوعی دنیا",
       "titleDim": "در یک پنجره",
-      "subtitle": "GPT-5، Claude، Gemini، Flux، Sora و صدها مدل دیگر. پرداخت با رمزارز، یک موجودی مشترک، بدون اشتراک جداگانه.",
+      "subtitle": "GPT-5، Claude، Gemini، Flux، Veo و صدها مدل دیگر. پرداخت با رمزارز، یک موجودی مشترک، بدون اشتراک جداگانه.",
       "ctaPrimary": "شروع رایگان",
       "ctaGhost": "مشاهده نمونه‌ها",
       "note": "{amount} موجودی پس از ثبت‌نام. بدون نیاز به کارت."
@@ -2620,7 +2620,6 @@
       "Claude Sonnet 5",
       "Gemini 3 Pro",
       "Seedream 5.0",
-      "Sora 2",
       "Veo 3.1",
       "Kling v2.6",
       "Flux 2 Pro",
@@ -2634,22 +2633,6 @@
       "title": "هر مدل، با نمونه اختصاصی",
       "subtitle": "ویدیوها و تصاویر زیر در Aineron تولید شده‌اند. هرکدام با مدل سازنده و دقیقاً دستوری که استفاده شده، توضیح داده شده‌اند.",
       "requestLabel": "دستور",
-      "sora": {
-        "badge": "ویدیو",
-        "name": "Sora 2",
-        "kind": "تولید ویدیو",
-        "desc": "مدل ویدیویی OpenAI. فیزیک صحنه و حرکت دوربین را حفظ می‌کند — مناسب برای تبلیغات و صحنه‌های کوتاه.",
-        "factDuration": "مدت زمان",
-        "factDurationVal": "تا ۲۰ ثانیه",
-        "factRes": "وضوح",
-        "factResVal": "۱۰۸۰p",
-        "factSound": "صدا",
-        "factSoundVal": "خیر",
-        "factPrice": "قیمت",
-        "factPriceUnit": "به ازای هر کلیپ",
-        "try": "سورا ۲ را امتحان کنید",
-        "query": "خانه‌ای بتنی تنها در بیابان، طوفان در افق، حرکت آهسته دوربین به جلو، ۵ ثانیه"
-      },
       "veo": {
         "badge": "ویدئو",
         "name": "Veo 3.1 Fast",
@@ -2818,7 +2801,7 @@
           "value": "≈ ۱۰ دلار"
         },
         {
-          "label": "Sora / ویدیو",
+          "label": "Runway / ویدیو",
           "value": "≈ ۲۰ دلار"
         }
       ],
@@ -2861,7 +2844,7 @@
       },
       {
         "q": "کدام مدل‌های هوش مصنوعی در دسترس هستند؟",
-        "a": "{count} مدل: GPT-5، Claude، Gemini، Grok و DeepSeek برای متن؛ Flux، GPT Image و Nano Banana برای تصاویر؛ Sora، Veo و Kling برای ویدیو. کاتالوگ با عرضه نسخه‌های جدید گسترش می‌یابد."
+        "a": "{count} مدل: GPT-5، Claude، Gemini، Grok و DeepSeek برای متن؛ Flux، GPT Image و Nano Banana برای تصاویر؛ Veo، Kling و Seedance برای ویدیو. کاتالوگ با عرضه نسخه‌های جدید گسترش می‌یابد."
       },
       {
         "q": "آیا می‌توانم آن را به برنامه خود متصل کنم؟",

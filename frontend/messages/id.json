@@ -100,7 +100,7 @@
       },
       {
         "q": "Model AI apa saja yang tersedia?",
-        "a": "Model yang tersedia mencakup GPT-5, Claude Sonnet 5, Gemini 3 Pro, DeepSeek V4, Grok, Qwen, dan lebih dari 120 lainnya. Untuk gambar dan video: Flux, GPT Image, Sora, Veo, Kling, dan lainnya."
+        "a": "Model yang tersedia mencakup GPT-5, Claude Sonnet 5, Gemini 3 Pro, DeepSeek V4, Grok, Qwen, dan lebih dari 120 lainnya. Untuk gambar dan video: Flux, GPT Image, Veo, Kling, dan lainnya."
       },
       {
         "q": "Apakah ada API untuk pengembang?",
@@ -2532,7 +2532,7 @@
       "tagline": "{count} model · satu akun · tanpa VPN",
       "title": "Semua model AI di dunia",
       "titleDim": "dalam satu jendela",
-      "subtitle": "GPT-5, Claude, Gemini, Flux, Sora, dan seratus model lainnya. Bayar dengan crypto, saldo bersama, tanpa langganan terpisah.",
+      "subtitle": "GPT-5, Claude, Gemini, Flux, Veo, dan seratus model lainnya. Bayar dengan crypto, saldo bersama, tanpa langganan terpisah.",
       "ctaPrimary": "Mulai gratis",
       "ctaGhost": "Lihat contoh",
       "note": "{amount} di saldo Anda setelah mendaftar. Tidak perlu kartu."
@@ -2620,7 +2620,6 @@
       "Claude Sonnet 5",
       "Gemini 3 Pro",
       "Seedream 5.0",
-      "Sora 2",
       "Veo 3.1",
       "Kling v2.6",
       "Flux 2 Pro",
@@ -2634,22 +2633,6 @@
       "title": "Setiap model, dengan contohnya sendiri",
       "subtitle": "Video dan gambar di bawah ini dibuat di Aineron. Masing-masing diberi keterangan dengan model yang membuatnya dan prompt yang digunakan.",
       "requestLabel": "Prompt",
-      "sora": {
-        "badge": "Video",
-        "name": "Sora 2",
-        "kind": "Pembuatan video",
-        "desc": "Model video dari OpenAI. Mempertahankan fisika adegan dan gerakan kamera — cocok untuk iklan dan adegan pendek.",
-        "factDuration": "Durasi",
-        "factDurationVal": "hingga 20 detik",
-        "factRes": "Resolusi",
-        "factResVal": "1080p",
-        "factSound": "Audio",
-        "factSoundVal": "tidak",
-        "factPrice": "Harga",
-        "factPriceUnit": "/ klip",
-        "try": "Coba Sora 2",
-        "query": "sebuah rumah beton tunggal di gurun, badai di cakrawala, kamera bergerak perlahan, 5 detik"
-      },
       "veo": {
         "badge": "Video",
         "name": "Veo 3.1 Cepat",
@@ -2818,7 +2801,7 @@
           "value": "≈ $10"
         },
         {
-          "label": "Sora / video",
+          "label": "Runway / video",
           "value": "≈ $20"
         }
       ],
@@ -2861,7 +2844,7 @@
       },
       {
         "q": "Model AI apa saja yang tersedia?",
-        "a": "{count} model: GPT-5, Claude, Gemini, Grok, dan DeepSeek untuk teks; Flux, GPT Image, dan Nano Banana untuk gambar; Sora, Veo, dan Kling untuk video. Katalog terus bertambah seiring peluncuran versi baru."
+        "a": "{count} model: GPT-5, Claude, Gemini, Grok, dan DeepSeek untuk teks; Flux, GPT Image, dan Nano Banana untuk gambar; Veo, Kling, dan Seedance untuk video. Katalog terus bertambah seiring peluncuran versi baru."
       },
       {
         "q": "Bisakah saya menghubungkannya ke aplikasi saya sendiri?",

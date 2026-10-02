@@ -100,7 +100,7 @@
       },
       {
         "q": "Which AI models are available?",
-        "a": "Available models include GPT-5, Claude Sonnet 5, Gemini 3 Pro, DeepSeek V4, Grok, Qwen, and over 120 others. For images and video: Flux, GPT Image, Sora, Veo, Kling, and more."
+        "a": "Available models include GPT-5, Claude Sonnet 5, Gemini 3 Pro, DeepSeek V4, Grok, Qwen, and over 120 others. For images and video: Flux, GPT Image, Veo, Kling, and more."
       },
       {
         "q": "Is there an API for developers?",
@@ -2532,7 +2532,7 @@
       "tagline": "{count} models · one account · no VPN",
       "title": "Every AI model in the world",
       "titleDim": "in one window",
-      "subtitle": "GPT-5, Claude, Gemini, Flux, Sora, and a hundred more models. Pay with crypto, one shared balance, no separate subscriptions.",
+      "subtitle": "GPT-5, Claude, Gemini, Flux, Veo, and a hundred more models. Pay with crypto, one shared balance, no separate subscriptions.",
       "ctaPrimary": "Start for free",
       "ctaGhost": "See examples",
       "note": "{amount} on your balance right after signup. No card needed."
@@ -2620,7 +2620,6 @@
       "Claude Sonnet 5",
       "Gemini 3 Pro",
       "Seedream 5.0",
-      "Sora 2",
       "Veo 3.1",
       "Kling v2.6",
       "Flux 2 Pro",
@@ -2634,22 +2633,6 @@
       "title": "Every model, with its own example",
       "subtitle": "The video and images below were generated in Aineron. Each one is captioned with the model that made it and the exact prompt used.",
       "requestLabel": "Prompt",
-      "sora": {
-        "badge": "Video",
-        "name": "Sora 2",
-        "kind": "Video generation",
-        "desc": "OpenAI's video model. Holds up scene physics and camera motion — good for ad spots and short scenes.",
-        "factDuration": "Duration",
-        "factDurationVal": "up to 20 sec",
-        "factRes": "Resolution",
-        "factResVal": "1080p",
-        "factSound": "Audio",
-        "factSoundVal": "no",
-        "factPrice": "Price",
-        "factPriceUnit": "/ clip",
-        "try": "Try Sora 2",
-        "query": "a lone concrete house in the desert, storm on the horizon, slow camera push-in, 5 seconds"
-      },
       "veo": {
         "badge": "Video",
         "name": "Veo 3.1 Fast",
@@ -2818,7 +2801,7 @@
           "value": "≈ $10"
         },
         {
-          "label": "Sora / video",
+          "label": "Runway / video",
           "value": "≈ $20"
         }
       ],
@@ -2861,7 +2844,7 @@
       },
       {
         "q": "Which AI models are available?",
-        "a": "{count} models: GPT-5, Claude, Gemini, Grok, and DeepSeek for text; Flux, GPT Image, and Nano Banana for images; Sora, Veo, and Kling for video. The catalog grows as new versions ship."
+        "a": "{count} models: GPT-5, Claude, Gemini, Grok, and DeepSeek for text; Flux, GPT Image, and Nano Banana for images; Veo, Kling, and Seedance for video. The catalog grows as new versions ship."
       },
       {
         "q": "Can I connect it to my own app?",
