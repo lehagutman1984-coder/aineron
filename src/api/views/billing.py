@@ -31,6 +31,7 @@ from api.serializers.billing import (
     TariffSerializer, PaymentHistorySerializer,
     PageSaleSettingsSerializer, UserSubscriptionSerializer,
 )
+from api.throttling import PromoCodeThrottle
 
 logger = logging.getLogger(__name__)
 
@@ -322,6 +323,8 @@ class PaymentHistoryView(APIView):
 class ApplyPromoView(APIView):
     """POST /api/v1/billing/promo/"""
     permission_classes = [IsAuthenticated]
+    # 2026-10-02 (аудит безопасности, LOW): см. PromoCodeThrottle.
+    throttle_classes = [PromoCodeThrottle]
 
     @extend_schema(summary='Применить промокод', tags=['Billing'])
     def post(self, request):
@@ -354,6 +357,8 @@ class PromoCheckView(APIView):
     Ничего не списывает и не фиксирует — только валидация и расчёт цены.
     """
     permission_classes = [IsAuthenticated]
+    # 2026-10-02 (аудит безопасности, LOW): см. PromoCodeThrottle.
+    throttle_classes = [PromoCodeThrottle]
 
     @extend_schema(summary='Проверить промокод', tags=['Billing'])
     def post(self, request):

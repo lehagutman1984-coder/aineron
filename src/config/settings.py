@@ -890,6 +890,7 @@ REST_FRAMEWORK = {
         'sandbox_exec': '30/min',
         'mail_relay': '60/min',
         'generation_like': '20/min',
+        'promo_code': '20/min',
     },
     'EXCEPTION_HANDLER': 'api.exceptions.openai_exception_handler',
 }

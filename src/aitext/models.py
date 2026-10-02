@@ -331,7 +331,20 @@ class ProjectCollaborator(models.Model):
 
 
 def project_file_upload_path(instance, filename):
-    return f'project_files/{instance.project_id}/{filename}'
+    # 2026-10-02 (аудит безопасности, LOW): путь был `project_files/<id>/<filename>` -
+    # nginx отдаёт /media/project_files/ напрямую БЕЗ проверки авторизации
+    # (location в nginx.conf/nginx.intl.conf), а <id> - последовательный PK
+    # проекта, <filename> - оригинальное имя файла (часто предсказуемое:
+    # "resume.pdf", "notes.txt") - файлы базы знаний чужого приватного проекта
+    # можно было перебрать по id+типичным именам без единого запроса к API.
+    # Токен делает путь неугадываемым - закрывает перебор для НОВЫХ загрузок
+    # (уже загруженные файлы остаются на старых путях: переименование задним
+    # числом рискует сломать ссылки на них в уже сохранённом project_md_content/
+    # эмбеддингах, не делаем). Полноценная проверка авторизации на отдачу
+    # (X-Accel-Redirect через Django-вьюху) - более крупный рефакторинг,
+    # отложен отдельно от этого точечного фикса.
+    token = uuid.uuid4().hex[:16]
+    return f'project_files/{instance.project_id}/{token}_{filename}'
 
 
 class ProjectFile(models.Model):
