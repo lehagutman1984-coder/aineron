@@ -136,6 +136,10 @@ def redeem_promo_code(user, code_str, intl=False, ip=None, require_email_verifie
     # успевали понять, что это дубль, а не новое погашение. При превышении
     # квоты _IpQuotaExceeded откатывает уже созданный UsedPromoCode — код
     # остаётся доступен для повтора завтра или с другого IP.
+    description = (
+        f'Promo code {code_str}: +{format_money(promo.kopecks)}' if intl
+        else f'Промокод {code_str}: +{format_money(promo.kopecks)}'
+    )
     try:
         with transaction.atomic():
             UsedPromoCode.objects.create(user=user, promo_code=promo)
@@ -149,6 +153,28 @@ def redeem_promo_code(user, code_str, intl=False, ip=None, require_email_verifie
             ).update(used_count=F('used_count') + 1)
             if not _slot:
                 raise _PromoExhausted
+            # 2026-10-02 (аудит безопасности, №28): начисление раньше происходило
+            # ПОСЛЕ выхода из этого atomic-блока - код уже был зафиксирован как
+            # использованный (used_count++, UsedPromoCode создан), а падение
+            # между commit'ом блока и add_kopecks() (обрыв соединения с БД,
+            # необработанное исключение) сжигало код без начисления денег
+            # НАВСЕГДА - тот же класс бага, что разобран для refund'а после
+            # долгой SSE-генерации (token_overage_plan). add_kopecks() сама
+            # открывает transaction.atomic() - вложенность безопасна (savepoint),
+            # и она же идемпотентна по reference, так что повторный вызов этой
+            # функции на уже закоммиченном промокоде (не должен случаться, но
+            # на всякий случай) не задвоит начисление.
+            user.add_kopecks(promo.kopecks, type='promo', reference=f'promo:{promo.pk}:{user.id}')
+            PaymentHistory.objects.create(
+                user=user,
+                payment_type='promo',
+                invoice_id=f'promo-{promo.pk}',
+                amount=0,
+                amount_kopecks=0,
+                pages_count=promo.stars,
+                status='success',
+                description=description,
+            )
     except _PromoExhausted:
         msg = 'Promo code is invalid or expired' if intl else 'Промокод недействителен или истёк'
         return {'ok': False, 'error_code': 'promo_expired', 'message': msg}
@@ -162,23 +188,6 @@ def redeem_promo_code(user, code_str, intl=False, ip=None, require_email_verifie
             'Слишком много промокодов погашено с этой сети сегодня — попробуйте завтра'
         )
         return {'ok': False, 'error_code': 'ip_limit_exceeded', 'message': msg}
-
-    user.add_kopecks(promo.kopecks, type='promo', reference=f'promo:{promo.pk}:{user.id}')
-
-    description = (
-        f'Promo code {code_str}: +{format_money(promo.kopecks)}' if intl
-        else f'Промокод {code_str}: +{format_money(promo.kopecks)}'
-    )
-    PaymentHistory.objects.create(
-        user=user,
-        payment_type='promo',
-        invoice_id=f'promo-{promo.pk}',
-        amount=0,
-        amount_kopecks=0,
-        pages_count=promo.stars,
-        status='success',
-        description=description,
-    )
 
     message = (
         f'Promo code accepted! Credited {format_money(promo.kopecks)}.' if intl
