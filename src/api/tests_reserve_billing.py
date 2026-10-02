@@ -83,7 +83,7 @@ class _FakeStream:
 BODY = {'model': 'opus-test', 'messages': [{'role': 'user', 'content': 'hi'}]}
 
 
-@override_settings(MIN_CHARGE_KOPECKS=10, CACHES=LOCMEM)
+@override_settings(MIN_CHARGE_KOPECKS=10, CACHES=LOCMEM, FREE_TIER_GUARD_ENABLED=False)
 class ReserveServiceTests(TestCase):
     def setUp(self):
         self.user = _user(100000)
@@ -139,7 +139,7 @@ class ReserveServiceTests(TestCase):
         self.assertEqual(charged, res.reserved_kopecks)  # не падает, логирует
 
 
-@override_settings(MIN_CHARGE_KOPECKS=10, CACHES=LOCMEM)
+@override_settings(MIN_CHARGE_KOPECKS=10, CACHES=LOCMEM, FREE_TIER_GUARD_ENABLED=False)
 class ChatCompletionsBillingTests(TestCase):
     URL = '/api/v1/chat/completions'
 
@@ -234,7 +234,7 @@ class ChatCompletionsBillingTests(TestCase):
         self.assertEqual(user.balance_kopecks, 100000)
 
 
-@override_settings(MIN_CHARGE_KOPECKS=10, CACHES=LOCMEM)
+@override_settings(MIN_CHARGE_KOPECKS=10, CACHES=LOCMEM, FREE_TIER_GUARD_ENABLED=False)
 class AnthropicBillingTests(TestCase):
     @mock.patch('api.views.anthropic.get_laozhang_client')
     def test_no_balance_no_upstream_call(self, get_client):
@@ -263,7 +263,7 @@ class AnthropicBillingTests(TestCase):
         self.assertEqual(user.balance_kopecks, 100000 - 30)
 
 
-@override_settings(MIN_CHARGE_KOPECKS=10, CACHES=LOCMEM)
+@override_settings(MIN_CHARGE_KOPECKS=10, CACHES=LOCMEM, FREE_TIER_GUARD_ENABLED=False)
 class EmbeddingsBillingTests(TestCase):
     URL = '/api/v1/embeddings'
 
@@ -296,7 +296,7 @@ class EmbeddingsBillingTests(TestCase):
         self.assertEqual(TokenUsage.objects.filter(user=user).count(), 1)
 
 
-@override_settings(MIN_CHARGE_KOPECKS=10, CACHES=LOCMEM)
+@override_settings(MIN_CHARGE_KOPECKS=10, CACHES=LOCMEM, FREE_TIER_GUARD_ENABLED=False)
 class AudioBillingTests(TestCase):
     def test_tts_no_balance_no_upstream_call(self):
         user = _user(0)
@@ -324,7 +324,7 @@ class AudioBillingTests(TestCase):
         self.assertEqual(user.balance_kopecks, 900)
 
 
-@override_settings(MIN_CHARGE_KOPECKS=10, CACHES=LOCMEM)
+@override_settings(MIN_CHARGE_KOPECKS=10, CACHES=LOCMEM, FREE_TIER_GUARD_ENABLED=False)
 class BatchBillingTests(TestCase):
     def _job(self, user, model):
         from api.models import BatchJob, BatchJobItem
@@ -371,7 +371,7 @@ class BatchBillingTests(TestCase):
         self.assertEqual(user.balance_kopecks, 100000 - 30)
 
 
-@override_settings(MIN_CHARGE_KOPECKS=10, CACHES=LOCMEM)
+@override_settings(MIN_CHARGE_KOPECKS=10, CACHES=LOCMEM, FREE_TIER_GUARD_ENABLED=False)
 class ParameterAbuseTests(TestCase):
     """n <= 0 / n > лимита не должны давать нулевую цену или необеспеченный расход."""
 
@@ -393,6 +393,45 @@ class ParameterAbuseTests(TestCase):
         sent = get_client.return_value.chat.completions.create.call_args.kwargs
         # 546 токенов на двоих => не больше ~273 на вариант, а не 546 на каждый
         self.assertLessEqual(sent['max_tokens'] * 2, 556)
+
+    @mock.patch('api.views.chat.get_laozhang_client')
+    def test_chat_n_returns_all_choices_not_just_first(self, get_client):
+        """2026-10-02 (аудит безопасности, №16): n=2 раньше оплачивался и
+        резервировался на оба варианта, но в ответе возвращался только
+        choices[0] — второй вариант, за который клиент уже заплатил, терялся."""
+        _network()
+        completion = _completion(prompt=10, completion=20)
+        completion.choices.append(SimpleNamespace(
+            message=SimpleNamespace(content='second variant', tool_calls=None),
+            finish_reason='stop', index=1,
+        ))
+        get_client.return_value.chat.completions.create.return_value = completion
+        user = _user(100000)
+        resp = _client(user).post('/api/v1/chat/completions', {**BODY, 'n': 2, 'max_tokens': 500}, format='json')
+        self.assertEqual(resp.status_code, 200)
+        choices = resp.json()['choices']
+        self.assertEqual(len(choices), 2)
+        self.assertEqual(choices[1]['message']['content'], 'second variant')
+        self.assertEqual(choices[1]['index'], 1)
+
+    @mock.patch('api.views.chat.get_laozhang_client')
+    def test_chat_n_streams_all_choice_indices(self, get_client):
+        """Стриминг с n>1: дельты index=1 не должны молча отбрасываться."""
+        _network()
+        multi_chunk = SimpleNamespace(
+            choices=[
+                SimpleNamespace(delta=SimpleNamespace(content='a', tool_calls=None), finish_reason=None, index=0),
+                SimpleNamespace(delta=SimpleNamespace(content='b', tool_calls=None), finish_reason=None, index=1),
+            ],
+            usage=None,
+        )
+        get_client.return_value.chat.completions.create.return_value = _FakeStream([multi_chunk])
+        user = _user(100000)
+        resp = _client(user).post('/api/v1/chat/completions', {**BODY, 'n': 2, 'stream': True, 'max_tokens': 500}, format='json')
+        body = b''.join(resp.streaming_content).decode()
+        import re
+        indices = sorted(set(int(i) for i in re.findall(r'"index":\s*(\d+)', body)))
+        self.assertIn(1, indices)  # индекс 1 дошёл до клиента, не отброшен
 
     def test_images_n_zero_rejected(self):
         user = _user(100000)

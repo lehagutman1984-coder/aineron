@@ -34,6 +34,85 @@ def tokens_to_kopecks(network, total_tokens: int) -> int:
     return apply_min_charge(raw)
 
 
+def _estimate_affordable_out_tokens(network, prompt_tokens: int, available: int) -> int:
+    """Грубая стартовая оценка числа output-токенов, которое помещается в
+    available копеек — нужна только как точка входа для итеративного сужения
+    max_tokens в reserve_for_request (точность каждой проверки по ходу даёт
+    message_cost_kopecks). Для аудированных моделей считает от реального
+    output-опта (не завязана на prompt_tokens — входной и выходной токен
+    стоят по-разному). Для неаудированных — старая blended-оценка по
+    ОБЩЕМУ числу токенов (prompt+out), поэтому отсюда дополнительно
+    вычитается prompt_tokens."""
+    from core import model_pricing
+    model_name = getattr(network, 'model_name', '') or ''
+    rates = model_pricing.wholesale_rates(model_name)
+    if rates is None:
+        rate = get_kopecks_per_1k(network)
+        if rate <= 0:
+            return 0
+        return int(Decimal(available) * 1000 / rate) - prompt_tokens
+
+    from django.conf import settings
+    _, out_usd_per_1m = rates
+    usd_rub = Decimal(str(getattr(settings, 'TOKEN_OVERAGE_USD_RUB', 80)))
+    markup = Decimal(str(getattr(settings, 'TOKEN_OVERAGE_MARKUP', 1.6)))
+    out_rate_per_1k = Decimal(str(out_usd_per_1m)) * usd_rub * Decimal('100') * markup / Decimal('1000')
+    if out_rate_per_1k <= 0:
+        return 0
+    return int(Decimal(available) * 1000 / out_rate_per_1k)
+
+
+def message_cost_kopecks(network, prompt_tokens: int, completion_tokens: int) -> int:
+    """
+    Реальная цена одного ответа dev-API в копейках.
+
+    2026-10-02 (аудит безопасности, п.15): для аудированных моделей (есть
+    реальный опт в core.model_pricing.MODEL_WHOLESALE) считаем от РЕАЛЬНОЙ
+    себестоимости (те же $/1M-ставки wholesale_rates(), что в web-переплате
+    за длинный ответ) × TOKEN_OVERAGE_MARKUP — тот же принцип и тот же
+    множитель маржи, что в aitext/token_metering.compute_overage (расчёт
+    не идёт через сам model_pricing.cost_kopecks() — та округляет до целой
+    копейки РАНЬШЕ наценки, см. комментарий ниже).
+    До фикса цена ЛЮБОЙ модели в dev-API бралась из цены ОДНОГО web-сообщения
+    (network.cost_kopecks), делённой на условные 500 токенов
+    (_DEFAULT_TOKENS_PER_MESSAGE) — неверная пропорция: реальное web-сообщение
+    часто тратит на порядок больше 500 токенов (амортизация в cost_kopecks
+    рассчитана на гораздо больший объём), поэтому клиент dev-API переплачивал
+    до ~15× против настоящей себестоимости модели. Для НЕаудированных моделей
+    (своего опта нет) оставлена старая blended-оценка через tokens_to_kopecks —
+    лучше не занизить цену, чем остаться совсем без ориентира.
+    """
+    prompt_tokens = max(0, int(prompt_tokens or 0))
+    completion_tokens = max(0, int(completion_tokens or 0))
+    total_tokens = prompt_tokens + completion_tokens
+    if total_tokens <= 0:
+        return 0
+
+    from core import model_pricing
+    model_name = getattr(network, 'model_name', '') or ''
+    rates = model_pricing.wholesale_rates(model_name)
+    if rates is None:
+        return tokens_to_kopecks(network, total_tokens)
+
+    from django.conf import settings
+    # Считаем $-себестоимость САМИ (не через model_pricing.cost_kopecks) и
+    # округляем ОДИН раз, в конце, через ceil — не round. cost_kopecks()
+    # внутри себя делает round() до целой копейки (нужно ей для сверки с
+    # compute_overage), что для совсем маленького запроса на дешёвой модели
+    # (пара сотен токенов deepseek-v4-flash) уже даёт 0 ДО применения наценки
+    # и MIN_CHARGE_KOPECKS — ниже пола незаметно проскакивал бы бесплатный
+    # расход. ceil здесь гарантирует то же "никогда не занижаем", что у
+    # ceil_kopecks/tokens_to_kopecks: total_tokens > 0 проверен выше, значит
+    # raw не должен схлопнуться в 0 раньше, чем до него дойдёт apply_min_charge.
+    in_usd_per_1m, out_usd_per_1m = rates
+    usd_rub = Decimal(str(getattr(settings, 'TOKEN_OVERAGE_USD_RUB', 80)))
+    markup = Decimal(str(getattr(settings, 'TOKEN_OVERAGE_MARKUP', 1.6)))
+    usd = (Decimal(prompt_tokens) * Decimal(str(in_usd_per_1m))
+           + Decimal(completion_tokens) * Decimal(str(out_usd_per_1m))) / Decimal('1000000')
+    raw = ceil_kopecks(usd * usd_rub * Decimal('100') * markup)
+    return apply_min_charge(raw)
+
+
 def _org_kopecks_per_star() -> int:
     from django.conf import settings
     return int(getattr(settings, 'ORG_KOPECKS_PER_STAR', 100))
@@ -53,7 +132,7 @@ def charge_for_tokens(user, network, usage: dict, api_key=None) -> int:
     from api.models import TokenUsage
 
     total_tokens = usage.get('total_tokens', 0)
-    kopecks = tokens_to_kopecks(network, total_tokens)
+    kopecks = message_cost_kopecks(network, usage.get('prompt_tokens', 0), usage.get('completion_tokens', 0))
     request_id = str(uuid.uuid4())[:8]
 
     organization = getattr(api_key, 'organization', None) if api_key else None
@@ -300,25 +379,26 @@ def reserve_for_request(user, api_key, network, prompt_tokens: int, max_tokens: 
     prompt_tokens = max(0, int(prompt_tokens or 0))
     max_tokens = max(1, int(max_tokens or 1))
     available = _available_kopecks(user, organization)
-    rate = get_kopecks_per_1k(network)
 
     floor_out = min(max_tokens, min_out_tokens)
-    min_cost = tokens_to_kopecks(network, prompt_tokens + floor_out)
+    min_cost = message_cost_kopecks(network, prompt_tokens, floor_out)
     if available < min_cost:
         raise _insufficient(min_cost, available)
 
     out = max_tokens
-    reserve = tokens_to_kopecks(network, prompt_tokens + out)
+    reserve = message_cost_kopecks(network, prompt_tokens, out)
     if reserve > available:
         # Сужаем ответ до доступного баланса (итерациями — из-за округления вверх).
-        affordable_total = int(Decimal(available) * 1000 / rate) if rate > 0 else 0
-        out = max(floor_out, min(max_tokens, affordable_total - prompt_tokens))
-        reserve = tokens_to_kopecks(network, prompt_tokens + out)
+        # Стартовая оценка приблизительна (см. _estimate_affordable_out_tokens);
+        # точный расход на каждой итерации считает message_cost_kopecks.
+        affordable_out = _estimate_affordable_out_tokens(network, prompt_tokens, available)
+        out = max(floor_out, min(max_tokens, affordable_out))
+        reserve = message_cost_kopecks(network, prompt_tokens, out)
         for _ in range(20):
             if reserve <= available or out <= floor_out:
                 break
             out = max(floor_out, int(out * 0.95))
-            reserve = tokens_to_kopecks(network, prompt_tokens + out)
+            reserve = message_cost_kopecks(network, prompt_tokens, out)
         if reserve > available:
             raise _insufficient(min_cost, available)
         logger.info(
@@ -368,8 +448,16 @@ def settle_reservation(res: ApiReservation, usage: dict, fallback_completion_tok
         total_tokens = prompt_tokens + completion_tokens
         logger.warning(f'[API] Апстрим не вернул usage ({res.network.model_name}) - '
                        f'расчёт по оценке: {total_tokens} токенов')
+    elif total_tokens != prompt_tokens + completion_tokens:
+        # 2026-10-02: апстрим иногда отдаёт total_tokens, не равный сумме
+        # prompt+completion (напр. служебные/reasoning-токены посчитаны
+        # отдельно) — message_cost_kopecks нужен реальный split, а не только
+        # total, поэтому досчитываем completion до total (а не наоборот:
+        # prompt_tokens из запроса обычно надёжнее, чем то, что досчитал
+        # апстрим), total_tokens остаётся авторитетным для TokenUsage.
+        completion_tokens = max(0, total_tokens - prompt_tokens)
 
-    actual = tokens_to_kopecks(res.network, total_tokens)
+    actual = message_cost_kopecks(res.network, prompt_tokens, completion_tokens)
     charged = res.reserved_kopecks
     if actual < res.reserved_kopecks:
         _credit(res.user, res.organization, res.reserved_kopecks - actual, f'api:{res.request_id}')

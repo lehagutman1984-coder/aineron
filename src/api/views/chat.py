@@ -46,29 +46,35 @@ def _resolve_network(model_id: str):
 
 
 def _build_openai_response(completion, model_id: str, request_id: str) -> dict:
-    choice = completion.choices[0]
+    # 2026-10-02 (аудит безопасности, №16): раньше бралось только choices[0] —
+    # при n>1 клиент резервировал и реально оплачивал (settle_reservation по
+    # usage.total_tokens апстрима) генерацию ВСЕХ n вариантов, но получал в
+    # ответе только первый, остальные молча терялись. Теперь возвращаются все
+    # choices, которые реально прислал апстрим (контракт OpenAI: n вариантов
+    # запрошено -> n вариантов в ответе).
     usage = completion.usage
-    message = {
-        'role': 'assistant',
-        'content': choice.message.content,
-    }
-    # 2026-09-06: tool_calls раньше не прокидывались в ответ — клиенты,
-    # использующие tools/tool_choice (см. PASSTHROUGH_PARAMS ниже), получали
-    # 200 OK без единого вызова функции, даже если апстрим его вернул.
-    if getattr(choice.message, 'tool_calls', None):
-        message['tool_calls'] = [tc.model_dump() for tc in choice.message.tool_calls]
+    choices_out = []
+    for i, choice in enumerate(completion.choices):
+        message = {
+            'role': 'assistant',
+            'content': choice.message.content,
+        }
+        # 2026-09-06: tool_calls раньше не прокидывались в ответ — клиенты,
+        # использующие tools/tool_choice (см. PASSTHROUGH_PARAMS ниже), получали
+        # 200 OK без единого вызова функции, даже если апстрим его вернул.
+        if getattr(choice.message, 'tool_calls', None):
+            message['tool_calls'] = [tc.model_dump() for tc in choice.message.tool_calls]
+        choices_out.append({
+            'index': getattr(choice, 'index', i),
+            'message': message,
+            'finish_reason': choice.finish_reason or 'stop',
+        })
     return {
         'id': f'chatcmpl-{request_id}',
         'object': 'chat.completion',
         'created': int(time.time()),
         'model': model_id,
-        'choices': [
-            {
-                'index': 0,
-                'message': message,
-                'finish_reason': choice.finish_reason or 'stop',
-            }
-        ],
+        'choices': choices_out,
         'usage': {
             'prompt_tokens': usage.prompt_tokens if usage else 0,
             'completion_tokens': usage.completion_tokens if usage else 0,
@@ -95,29 +101,39 @@ def _stream_completion(res, kwargs):
     try:
         with client.chat.completions.create(stream=True, **kwargs) as stream:
             for chunk in stream:
-                delta = chunk.choices[0].delta if chunk.choices else None
-                content = delta.content if delta else ''
-                finish_reason = chunk.choices[0].finish_reason if chunk.choices else None
-                if content:
-                    streamed_text.append(content)
+                # 2026-10-02 (аудит безопасности, №16): раньше читался только
+                # chunk.choices[0] — при n>1 дельты остальных вариантов (index
+                # 1, 2, 3) молча отбрасывались, хотя апстрим их уже сгенерировал
+                # и выставил счёт (settle_reservation ниже считает по
+                # usage.total_tokens апстрима, включающему все варианты).
+                # Теперь прокидываются все choices чанка, под их реальным index.
+                choices_out = []
+                for choice in (chunk.choices or []):
+                    delta = choice.delta
+                    content = delta.content if delta else ''
+                    if content:
+                        streamed_text.append(content)
 
-                delta_out = {'content': content or ''}
-                if delta is not None and getattr(delta, 'tool_calls', None):
-                    delta_out = {'tool_calls': [tc.model_dump() for tc in delta.tool_calls]}
-                    streamed_text.append(str(delta_out['tool_calls']))
+                    delta_out = {'content': content or ''}
+                    if delta is not None and getattr(delta, 'tool_calls', None):
+                        delta_out = {'tool_calls': [tc.model_dump() for tc in delta.tool_calls]}
+                        streamed_text.append(str(delta_out['tool_calls']))
+
+                    choices_out.append({
+                        'index': getattr(choice, 'index', 0),
+                        'delta': delta_out,
+                        'finish_reason': choice.finish_reason,
+                    })
+
+                if not choices_out:
+                    choices_out = [{'index': 0, 'delta': {'content': ''}, 'finish_reason': None}]
 
                 chunk_data = {
                     'id': f'chatcmpl-{request_id}',
                     'object': 'chat.completion.chunk',
                     'created': int(time.time()),
                     'model': model_id,
-                    'choices': [
-                        {
-                            'index': 0,
-                            'delta': delta_out,
-                            'finish_reason': finish_reason,
-                        }
-                    ],
+                    'choices': choices_out,
                 }
                 yield f'data: {json.dumps(chunk_data, ensure_ascii=False)}\n\n'
 
@@ -327,7 +343,10 @@ class ChatCompletionsView(APIView):
             'total_tokens': usage_obj.total_tokens if usage_obj else 0,
         }
         try:
-            _text = completion.choices[0].message.content or ''
+            # Фолбэк-оценка (используется, только если апстрим не вернул usage,
+            # см. settle_reservation) — по ВСЕМ choices, не только первому,
+            # иначе при n>1 недооценивает фактически сгенерированный объём.
+            _text = ''.join((c.message.content or '') for c in completion.choices)
         except Exception:
             _text = ''
         settle_reservation(res, usage, estimate_text_tokens(_text))
