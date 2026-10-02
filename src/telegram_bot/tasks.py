@@ -483,12 +483,54 @@ def execute_ai_task(self, task_id: int, run_iso: str):
         notify_user(chat_id, 'Не удалось выполнить AI-задачу — средства возвращены. Попробую в следующий раз.')
         return
 
+    # 2026-10-02 (аудит безопасности, №25): AI-задача биллилась ТОЛЬКО по
+    # плоской cost = network.cost_kopecks, независимо от реального размера
+    # prompt/ответа - в отличие от обычного чата (aitext/tasks.py, token_metering
+    # compute_overage/settle_overage), где доплата за длинный ответ защищает
+    # ровно от этого. task.network - произвольная модель (вкл. самые дорогие),
+    # task.prompt без ограничения длины (+ web-поиск добавляет ещё текста),
+    # до AITASK_DAILY_CAP раз в день - дорогая модель с гигантским промтом
+    # давала реальную себестоимость в разы выше списанной cost. Переиспользуем
+    # compute_overage() (чистая функция, без побочных эффектов) с лёгким
+    # duck-typed объектом вместо реальной MessageTokenUsage-строки - полноценный
+    # settle_overage недоступен (завязан на MessageTokenUsage.message, а задачи
+    # не создают Message/Chat); здесь достаточно идемпотентного spend_kopecks
+    # по отдельному reference (нет reserve-резерва, который нужно было бы
+    # неттовать, как в settle_overage). Уважает TOKEN_OVERAGE_ENABLED/DRY_RUN -
+    # тот же рубильник, что у остальной системы.
+    overage_ref = f'{reference}:overage'
+    if getattr(dj_settings, 'TOKEN_OVERAGE_ENABLED', False) and not getattr(dj_settings, 'TOKEN_OVERAGE_DRY_RUN', True):
+        try:
+            from types import SimpleNamespace
+            from aitext.models import MessageTokenUsage
+            from aitext.token_metering import compute_overage
+            usage_row = SimpleNamespace(
+                model_name=network.model_name,
+                prompt_tokens=getattr(resp.usage, 'prompt_tokens', 0) or 0,
+                completion_tokens=getattr(resp.usage, 'completion_tokens', 0) or 0,
+                flat_was_charged=True,
+                flat_kopecks=cost,
+                source=MessageTokenUsage.Source.PROVIDER,
+            )
+            _, overage = compute_overage(usage_row)
+            if overage > 0:
+                if user.spend_kopecks(overage, type='spend', reference=overage_ref):
+                    cost += overage
+                else:
+                    logger.warning(
+                        f'execute_ai_task {task_id}: доплата {overage} коп. не списана (баланс исчерпан)'
+                    )
+        except Exception as e:
+            logger.warning(f'execute_ai_task {task_id}: overage calc failed: {e}')
+
     title = task.title or 'AI-задача'
     md = f'**{title}**\n\n{content}\n\n_{network.name} · {format_rub(cost)} · управление: /tasks_'
     delivered = notify_user_rich(chat_id, md)
     if not delivered:
         # Пользователь заблокировал бота / чат недоступен: возврат средств
-        # и пауза задачи, чтобы не списывать деньги в никуда каждый запуск
+        # и пауза задачи, чтобы не списывать деньги в никуда каждый запуск.
+        # cost к этому моменту уже включает доплату (если она была списана
+        # выше) - один add_kopecks возвращает всё списанное за этот прогон.
         user.add_kopecks(cost, type='refund', reference=reference)
         AITask.objects.filter(pk=task_id).update(is_active=False, paused_reason='delivery')
         logger.warning(f'execute_ai_task {task_id}: delivery failed, refunded and paused')

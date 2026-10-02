@@ -341,9 +341,24 @@ password-reset; убрать code-fallback из GET-пути вообще (сс�
     в `users/tests_promo_atomicity.py` (вкл. прямую симуляцию падения через
     `mock.patch.object(User, 'add_kopecks', side_effect=DatabaseError(...))`).
 
+17. ✅ №25 AI-задачи по расписанию (`telegram_bot/tasks.py::execute_ai_task`)
+    биллились ТОЛЬКО по плоской `network.cost_kopecks`, независимо от реального
+    размера prompt/ответа — `task.network` произвольная (в т.ч. самая дорогая)
+    модель, `task.prompt` без ограничения длины, до `AITASK_DAILY_CAP` (30) раз
+    в день. Live-проверено: `TOKEN_OVERAGE_ENABLED=1`/`DRY_RUN=0` уже активны
+    на обоих инстансах для 19 аудированных моделей — дыра была реально
+    эксплуатируемой, не теоретической. Исправлено переиспользованием
+    `compute_overage()` (чистая функция из `aitext/token_metering.py`, та же
+    формула/пороги/капы, что у web-чата) с duck-typed объектом вместо реальной
+    `MessageTokenUsage`-строки — полноценный `settle_overage()` недоступен
+    (завязан на `MessageTokenUsage.message`, а AI-задачи не создают Message/Chat).
+    Доплата списывается идемпотентно по `{reference}:overage`, возвращается
+    вместе с плоской частью при неудачной доставке. Уважает общий рубильник
+    `TOKEN_OVERAGE_ENABLED`/`TOKEN_OVERAGE_DRY_RUN`. 4 новых теста в
+    `telegram_bot/tests_ai_task_overage.py`.
+
 **Остаток (не устранено)** — ни один пункт не требует немедленной реакции:
    - №13 — preview-service дефолтный токен (актуально только если/когда включат Sandbox API обратно).
-   - №25 — AI-задачи по расписанию без overage-доплаты (дорогая модель + гигантский промт по фиксированной цене).
    - №29 — пустой `TELEGRAM_BOT_TOKEN` делает HMAC предсказуемым (не актуально для .ru/.net — токен задан).
    - Sandbox API S0-S9/23/24/27 — условны, актуальны только при возврате к `SANDBOX_API_ENABLED=1`.
    - Остальное — LOW-раздел (оставшаяся часть) + расхождения `/api-docs/` сверх уже исправленных (Anthropic base_url, TTS-пример) + Swagger-рефакторинг выше.
