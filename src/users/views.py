@@ -1477,9 +1477,19 @@ def request_withdrawal(request):
         data = json.loads(request.body)
         amount = Decimal(data['amount'])
         payout_destination = data['payout_destination']
+        password = data.get('password') or ''
         user = request.user
         if not user.can_convert_to_rub:
             return JsonResponse({'success': False, 'message': 'Вывод недоступен'})
+        # 2026-10-01/02 (аудит безопасности, №18): этот legacy-эндпоинт —
+        # полный дубль api/views/referral.py::ReferralWithdrawView (найдено
+        # при фронтовой сверке после фикса DRF-версии паролем) — ни фронт,
+        # ни шаблоны его не вызывают (только старый тест), но URL смонтирован
+        # и доступен, и БЕЗ пароля полностью обходил защиту, добавленную в
+        # DRF-эндпоинт: same-site контент, не знающий пароль, но имеющий
+        # сессионную куку, мог вывести средства именно через этот путь.
+        if not password or not user.check_password(password):
+            return JsonResponse({'success': False, 'message': 'Неверный пароль'})
         # Раньше: amount не проверялся на > 0 (отрицательная сумма ПОВЫШАЛА rub_balance),
         # чтение-вычитание-save() без блокировки давало двойной вывод при параллельных
         # запросах, а полный user.save() затирал balance_kopecks/pages_count устаревшей копией.

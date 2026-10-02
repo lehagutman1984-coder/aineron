@@ -146,17 +146,31 @@ class WithdrawalTests(TestCase):
         self.assertEqual(WithdrawalRequest.objects.count(), 1)
 
     def test_legacy_endpoint_rejects_negative_and_keeps_kopecks(self):
+        # 2026-10-02 (аудит безопасности, №18): этот legacy-эндпоинт был полным
+        # обходом пароля, добавленного в DRF-версию — теперь требует его тоже
+        # (_user()/_partner() всегда создаёт пользователя с password='x').
         u = self._partner()
         u.set_kopecks(7777)
         c = _client(u)
         c.force_login(u)
-        r = c.post('/users/api/request-withdrawal/', {'amount': '-500', 'payout_destination': 'w'}, format='json')
+        r = c.post('/users/api/request-withdrawal/', {'amount': '-500', 'payout_destination': 'w', 'password': 'x'}, format='json')
         self.assertFalse(r.json()['success'])
-        r = c.post('/users/api/request-withdrawal/', {'amount': '40', 'payout_destination': 'w'}, format='json')
+        r = c.post('/users/api/request-withdrawal/', {'amount': '40', 'payout_destination': 'w', 'password': 'x'}, format='json')
         self.assertTrue(r.json()['success'], r.json())
         u.refresh_from_db()
         self.assertEqual(u.rub_balance, Decimal('60.00'))
         self.assertEqual(u.balance_kopecks, 7777)  # полный save() раньше затирал баланс
+
+    def test_legacy_endpoint_without_password_is_rejected(self):
+        # Регресс-тест на сам обход: до фикса это списывало деньги БЕЗ пароля.
+        u = self._partner('100.00')
+        c = _client(u)
+        c.force_login(u)
+        r = c.post('/users/api/request-withdrawal/', {'amount': '50', 'payout_destination': 'attacker'}, format='json')
+        self.assertFalse(r.json()['success'])
+        u.refresh_from_db()
+        self.assertEqual(u.rub_balance, Decimal('100.00'))
+        self.assertEqual(WithdrawalRequest.objects.count(), 0)
 
 
 @override_settings(CACHES=LOCMEM)

@@ -904,7 +904,12 @@ export const synthesizeSpeech = (text: string, voice = "alloy"): Promise<Blob> =
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
-    body: JSON.stringify({ input: text.slice(0, 2000), model: "tts-1", voice }),
+    // 2026-10-02: tts-1 реально сломан на apimart (400/500) и теперь ещё и
+    // явно отклоняется белым списком моделей на бэкенде (api/views/audio.py,
+    // ALLOWED_TTS_MODELS) — кнопка "озвучить" в чате падала на каждый клик
+    // молча (catch{} в вызывающем коде). gpt-4o-mini-tts — рабочая модель,
+    // уже дефолт на бэкенде для этого же эндпоинта.
+    body: JSON.stringify({ input: text.slice(0, 2000), model: "gpt-4o-mini-tts", voice }),
   }).then(async (res) => {
     if (!res.ok) {
       const body = await res.json().catch(() => ({})) as { error?: { message?: string } };
