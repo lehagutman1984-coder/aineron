@@ -239,6 +239,11 @@ function buildGroups(t: Awaited<ReturnType<typeof getTranslations>>): DocGroup[]
                 [t("chat.videoRowKlingModel"), t("chat.videoRowKlingFeatures")],
               ]}
             />
+            <P>
+              {t.rich("chat.videoCatalogCallout", {
+                a: (chunks) => <A href="/models/?category=video">{chunks}</A>,
+              })}
+            </P>
             <UL>
               <LI>{t.rich("chat.videoItem1", { b: (chunks) => <b>{chunks}</b> })}</LI>
               <LI>{t.rich("chat.videoItem2", { b: (chunks) => <b>{chunks}</b> })}</LI>

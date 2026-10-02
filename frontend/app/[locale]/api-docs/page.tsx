@@ -553,13 +553,13 @@ function buildGroups(t: Awaited<ReturnType<typeof getTranslations>>): DocGroup[]
             <StandaloneCodeBlock code={errorBody(t)} />
             <div className="pt-2">
               <DataTable
-                head={["HTTP", "type", t("intro.errorsTableHeadReason")]}
+                head={["HTTP", "type", t("intro.errorsTableHeadCode"), t("intro.errorsTableHeadReason")]}
                 rows={[
-                  ["401", <IC>authentication_error</IC>, t("intro.errorReason401")],
-                  ["402", <IC>insufficient_quota</IC>, t("intro.errorReason402")],
-                  ["403", <IC>permission_error</IC>, t("intro.errorReason403")],
-                  ["429", <IC>rate_limit_exceeded</IC>, t("intro.errorReason429")],
-                  ["400", <IC>invalid_request_error</IC>, t("intro.errorReason400")],
+                  ["401", <IC>authentication_error</IC>, <IC>invalid_api_key</IC>, t("intro.errorReason401")],
+                  ["402", <IC>insufficient_quota</IC>, <IC>insufficient_quota</IC>, t("intro.errorReason402")],
+                  ["403", <IC>permission_error</IC>, <IC>insufficient_permissions</IC>, t("intro.errorReason403")],
+                  ["429", <IC>requests</IC>, <IC>rate_limit_exceeded</IC>, t("intro.errorReason429")],
+                  ["400", <IC>invalid_request_error</IC>, t("intro.errorsCodeVaries"), t("intro.errorReason400")],
                 ]}
               />
             </div>
@@ -602,6 +602,12 @@ function buildGroups(t: Awaited<ReturnType<typeof getTranslations>>): DocGroup[]
                 a: (chunks) => <A href="/models/">{chunks}</A>,
               })}
             </Callout>
+            <P>
+              {t.rich("endpoints.chatNParamNote", {
+                ic1: () => <IC>n</IC>,
+                ic2: () => <IC>choices</IC>,
+              })}
+            </P>
           </DocSection>
         ),
       },
@@ -649,7 +655,7 @@ function buildGroups(t: Awaited<ReturnType<typeof getTranslations>>): DocGroup[]
               <LI><Method>GET</Method> <Path>/api/v1/generations/{"{id}"}/progress/</Path> — {t("endpoints.imagesProgress")}</LI>
               <LI><Method>POST</Method> <Path>/api/v1/generations/{"{id}"}/upscale/</Path> — {t("endpoints.imagesUpscale")}; <IC>/variations/</IC>, <IC>/remove-background/</IC></LI>
             </UL>
-            <Callout type="info">
+            <Callout type="warn">
               {t("endpoints.imagesVideoCallout")}
             </Callout>
           </DocSection>
@@ -883,6 +889,29 @@ function buildGroups(t: Awaited<ReturnType<typeof getTranslations>>): DocGroup[]
               <LI><Method>POST</Method> <Path>/api/v1/webhooks/</Path> — {t("resources.resWebhooksRowCreate")}</LI>
               <LI><Method>POST</Method> <Path>/api/v1/webhooks/{"{id}"}/test/</Path> — {t("resources.resWebhooksRowTest")}</LI>
             </UL>
+            <P>
+              {t.rich("resources.resWebhooksUrlRequirement", {
+                ic: (chunks) => <IC>{chunks}</IC>,
+                ic2: (chunks) => <IC>{chunks}</IC>,
+              })}
+            </P>
+            <P>
+              {t.rich("resources.resWebhooksSignatureNote", {
+                ic1: (chunks) => <IC>{chunks}</IC>,
+                ic2: (chunks) => <IC>{chunks}</IC>,
+                ic3: (chunks) => <IC>{chunks}</IC>,
+              })}
+            </P>
+            <H3>{t("resources.resWebhooksEventsTitle")}</H3>
+            <DataTable
+              head={["event", t("resources.tableHeadPurpose")]}
+              rows={[
+                [<IC>batch.completed</IC>, t("resources.resWebhooksEventBatchCompleted")],
+                [<IC>batch.failed</IC>, t("resources.resWebhooksEventBatchFailed")],
+                [<IC>payment.succeeded</IC>, t("resources.resWebhooksEventPaymentSucceeded")],
+                [<IC>generation.completed</IC>, t("resources.resWebhooksEventGenerationCompleted")],
+              ]}
+            />
             <H3>{t("resources.resWebhooksUsageTitle")}</H3>
             <UL>
               <LI><Method>GET</Method> <Path>/api/v1/usage/</Path> — {t("resources.resWebhooksRowUsage")}</LI>
@@ -1073,6 +1102,10 @@ function buildGroups(t: Awaited<ReturnType<typeof getTranslations>>): DocGroup[]
             <H3>{t("more.devFaqQ4")}</H3>
             <P>
               {t.rich("more.devFaqA4", {
+                header: () => <IC>X-Aineron-Balance-Kopecks</IC>,
+                ic1: () => <IC>/chat/completions</IC>,
+                ic2: () => <IC>/v1/messages</IC>,
+                ic3: () => <IC>/embeddings</IC>,
                 method: () => <Method>GET</Method>,
                 path: () => <Path>/api/v1/usage/</Path>,
                 a: (chunks) => <A href="/account/analytics/">{chunks}</A>,
