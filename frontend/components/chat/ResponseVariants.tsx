@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Layers } from "lucide-react";
 import type { MessageVariant } from "@/lib/api/types";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 interface Props {
   variants: MessageVariant[];
@@ -44,7 +45,7 @@ export function ResponseVariants({ variants }: Props) {
       {/* Active variant content */}
       <div
         className="px-4 py-3 text-[16px] leading-relaxed"
-        dangerouslySetInnerHTML={{ __html: active.content }}
+        dangerouslySetInnerHTML={{ __html: sanitizeHtml(active.content) }}
       />
     </div>
   );

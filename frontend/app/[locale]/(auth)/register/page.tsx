@@ -7,6 +7,7 @@ import { Check } from "lucide-react";
 import { authRegister } from "@/lib/api/client";
 import { APIError } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
+import { safeNextPath } from "@/lib/utils";
 import { useTranslations, useLocale } from "next-intl";
 
 function RegisterForm() {
@@ -21,7 +22,7 @@ function RegisterForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const next = params.get("next") ?? "/account/";
+  const next = safeNextPath(params.get("next"));
 
   // Уже авторизован (и подтверждён) — форма регистрации не нужна, сразу в
   // кабинет. См. аналогичный комментарий в login/page.tsx.

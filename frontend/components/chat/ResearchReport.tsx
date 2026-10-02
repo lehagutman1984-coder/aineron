@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { ChevronDown, ChevronRight, BookOpen, Download } from "lucide-react";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 interface Props {
   html: string;
@@ -27,7 +28,7 @@ function CollapsibleSection({ title, html }: { title: string; html: string }) {
       {open && (
         <div
           className="pb-3 ps-5 text-[15px] leading-relaxed text-[rgba(13,13,13,0.8)] dark:text-[rgba(236,236,236,0.75)]"
-          dangerouslySetInnerHTML={{ __html: html }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }}
         />
       )}
     </div>
@@ -83,7 +84,7 @@ export function ResearchReport({ html, plainText }: Props) {
         </div>
         <div
           className="px-4 py-3 text-[16px] leading-relaxed"
-          dangerouslySetInnerHTML={{ __html: html }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }}
         />
       </div>
     );

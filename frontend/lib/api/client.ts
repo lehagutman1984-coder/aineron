@@ -116,7 +116,13 @@ export async function request<T>(
       typeof window !== "undefined" &&
       !window.location.pathname.includes("/verify-email")
     ) {
-      window.location.href = "/verify-email/";
+      // 2026-10-02: редирект был без префикса локали — на .net (localePrefix
+      // "as-needed", не-дефолтные локали типа /fa/, /tr/ обязаны его иметь)
+      // пользователь с не-дефолтной локалью попадал на дефолтную (en) версию
+      // страницы верификации. Сохраняем текущий локаль-префикс, если он есть.
+      const localeMatch = window.location.pathname.match(/^\/([a-z]{2})(\/|$)/);
+      const prefix = localeMatch ? `/${localeMatch[1]}` : "";
+      window.location.href = `${prefix}/verify-email/`;
     }
     throw new APIError(res.status, msg, code);
   }

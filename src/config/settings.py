@@ -880,12 +880,19 @@ REST_FRAMEWORK = {
 
 # ========== CORS ==========
 CORS_ALLOWED_ORIGINS = [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
     'http://frontend:3000',
     'https://aineron.ru',
     'https://www.aineron.ru',
 ]
+# 2026-10-02 (аудит безопасности, LOW): localhost/127.0.0.1 были в проде
+# безусловно — с CORS_ALLOW_CREDENTIALS=True это расширяет поверхность для
+# атаки, требующей, чтобы у жертвы на localhost:3000 выполнялся чужой код
+# (локальный dev-сервер скомпрометирован/вредоносный пакет) — риск
+# невысокий (SameSite=Lax уже не пускает сессионную куку на кросс-сайтовый
+# fetch), но не нужен прод-пользователям вообще. Разрешаем только при
+# локальной разработке (DEBUG=1).
+if DEBUG:
+    CORS_ALLOWED_ORIGINS += ['http://localhost:3000', 'http://127.0.0.1:3000']
 CORS_ALLOW_CREDENTIALS = True
 # Allow CORS on /api/ (for external devs) and /users/api/ (for Next.js web-auth calls)
 CORS_URLS_REGEX = r'^/(api|users/api)/.*$'

@@ -12,6 +12,7 @@ import { listNetworks, compareModels, compareImages, getMessageStatus, voteArena
 import { MarkdownContent } from "@/components/chat/MarkdownContent";
 import { useAuthStore } from "@/lib/stores/auth";
 import { formatMoney } from "@/lib/money";
+import { sanitizeHtml } from "@/lib/sanitize";
 import type { NetworkListItem, WebMessage, CompareItem } from "@/lib/api/types";
 import { Trophy, Image as ImageIcon, MessageSquareText } from "lucide-react";
 
@@ -572,7 +573,7 @@ function MessageContent({ message }: { message: WebMessage }) {
     return (
       <div
         className="chat-prose"
-        dangerouslySetInnerHTML={{ __html: htmlSource }}
+        dangerouslySetInnerHTML={{ __html: sanitizeHtml(htmlSource) }}
       />
     );
   }

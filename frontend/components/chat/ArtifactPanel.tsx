@@ -117,7 +117,17 @@ function SandboxedPreview({ artifact }: { artifact: Artifact }) {
   return (
     <iframe
       ref={iframeRef}
-      sandbox="allow-scripts allow-same-origin"
+      // 2026-10-02 (аудит безопасности, HIGH): allow-same-origin вместе с
+      // allow-scripts на blob: URL эффективно снимал песочницу — blob:
+      // наследует origin создателя (aineron.ru), и скрипт из ответа LLM
+      // (прямая или косвенная prompt-инъекция через веб-поиск/коннекторы)
+      // получал доступ к parent.document, localStorage и мог ходить в
+      // /api/v1/* с cookie сессии жертвы. Без allow-same-origin iframe
+      // получает opaque-origin — скрипты (Mermaid и т.п.) по-прежнему
+      // работают внутри себя, но не могут дотянуться до родителя. Никакого
+      // postMessage/same-origin взаимодействия с parent в этом компоненте
+      // нет и не требуется.
+      sandbox="allow-scripts"
       className="h-full w-full border-0"
       title="Artifact preview"
     />

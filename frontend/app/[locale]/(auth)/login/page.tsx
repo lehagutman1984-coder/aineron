@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { authLogin } from "@/lib/api/client";
 import { APIError } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
+import { safeNextPath } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 
 function LoginForm() {
@@ -19,7 +20,7 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const next = params.get("next") ?? "/account/";
+  const next = safeNextPath(params.get("next"));
 
   // Уже авторизован и подтверждён (AuthInit подтвердил сессию через
   // /auth/me/) — форма логина ему не нужна, сразу в кабинет. Ждём

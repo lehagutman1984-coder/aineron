@@ -26,6 +26,7 @@ import { getChat, sendMessage, getMessageStatus, streamMessage, regenerateChat, 
 import { useAuthStore } from "@/lib/stores/auth";
 import { useUIStore } from "@/lib/stores/ui";
 import { formatMoney } from "@/lib/money";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { useTranslations } from "next-intl";
 import type { WebMessage, ChatDetail, UiSection, KBSource } from "@/lib/api/types";
 
@@ -2367,7 +2368,7 @@ function AssistantContent({
       <div
         ref={containerRef}
         className="chat-prose"
-        dangerouslySetInnerHTML={{ __html: htmlSource }}
+        dangerouslySetInnerHTML={{ __html: sanitizeHtml(htmlSource) }}
       />
     );
   }
