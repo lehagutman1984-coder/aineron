@@ -100,9 +100,10 @@ delete_bot = sync_to_async(_delete_bot, thread_sensitive=True)
 async def _setup_managed_webhook(managed_bot) -> bool:
     """Ставит вебхук личного бота на наш мультиплексор."""
     from aiogram import Bot
+    from telegram_bot.proxy import get_bot_session
     site_url = getattr(settings, 'SITE_URL', 'https://aineron.ru').rstrip('/')
     url = f'{site_url}/telegram/managed/{managed_bot.pk}/webhook/'
-    b = Bot(token=managed_bot.token)
+    b = Bot(token=managed_bot.token, session=get_bot_session())
     try:
         await b.set_webhook(
             url=url,
@@ -260,8 +261,9 @@ async def on_mybot_token(message: Message, state: FSMContext, tg_user=None):
         return
     # Проверяем токен через getMe (сессия закрывается в любом случае)
     from aiogram import Bot
+    from telegram_bot.proxy import get_bot_session
     username = ''
-    b = Bot(token=token)
+    b = Bot(token=token, session=get_bot_session())
     try:
         me = await b.get_me()
         username = me.username or ''
@@ -316,7 +318,8 @@ async def cb_mybot_del(query: CallbackQuery, tg_user=None):
     # Снимаем вебхук удалённого бота
     try:
         from aiogram import Bot
-        b = Bot(token=token)
+        from telegram_bot.proxy import get_bot_session
+        b = Bot(token=token, session=get_bot_session())
         await b.delete_webhook(drop_pending_updates=True)
         await b.session.close()
     except Exception:

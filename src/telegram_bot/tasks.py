@@ -167,7 +167,8 @@ def _send_digest_to_user(tg_user):
 async def _bot_send(telegram_id: int, text: str):
     from aiogram import Bot
     from django.conf import settings as dj_settings
-    bot = Bot(token=dj_settings.TELEGRAM_BOT_TOKEN)
+    from telegram_bot.proxy import get_bot_session
+    bot = Bot(token=dj_settings.TELEGRAM_BOT_TOKEN, session=get_bot_session())
     try:
         await bot.send_message(chat_id=telegram_id, text=text, parse_mode='Markdown')
     finally:
@@ -307,7 +308,8 @@ def summarize_poll(self, poll_session_id: int):
 async def _bot_send_html(telegram_id: int, text: str):
     from aiogram import Bot
     from django.conf import settings as dj_settings
-    bot = Bot(token=dj_settings.TELEGRAM_BOT_TOKEN)
+    from telegram_bot.proxy import get_bot_session
+    bot = Bot(token=dj_settings.TELEGRAM_BOT_TOKEN, session=get_bot_session())
     try:
         await bot.send_message(chat_id=telegram_id, text=text, parse_mode='HTML')
     finally:
@@ -1037,7 +1039,8 @@ def managed_bot_reply(self, bot_id: int, chat_id: int, text: str, message_id: in
         return
 
     async def _send(reply_text: str) -> bool:
-        b = Bot(token=managed.token)
+        from telegram_bot.proxy import get_bot_session
+        b = Bot(token=managed.token, session=get_bot_session())
         try:
             await b.send_message(chat_id=chat_id, text=reply_text[:4000])
             return True
@@ -1186,7 +1189,8 @@ def send_activity_gifts(self):
     async def _gift_all(users):
         nonlocal spent
         from aiogram import Bot
-        bot = Bot(token=dj.TELEGRAM_BOT_TOKEN)
+        from telegram_bot.proxy import get_bot_session
+        bot = Bot(token=dj.TELEGRAM_BOT_TOKEN, session=get_bot_session())
         try:
             send_gift = getattr(bot, 'send_gift', None)
             get_gifts = getattr(bot, 'get_available_gifts', None)

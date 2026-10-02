@@ -164,7 +164,8 @@ def telegram_prepare_share(request):
             InlineQueryResultPhoto, InlineQueryResultVideo,
             InlineKeyboardMarkup, InlineKeyboardButton,
         )
-        bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
+        from telegram_bot.proxy import get_bot_session
+        bot = Bot(token=settings.TELEGRAM_BOT_TOKEN, session=get_bot_session())
         try:
             save = getattr(bot, 'save_prepared_inline_message', None)
             if save is None:

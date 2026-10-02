@@ -27,6 +27,7 @@ class Command(BaseCommand):
         from aiogram.client.default import DefaultBotProperties
         from aiogram.enums import ParseMode
         from telegram_bot.bot import dp, register_routers
+        from telegram_bot.proxy import get_bot_session
 
         # register_routers() сама подключает AuthMiddleware на dp.message/
         # callback_query/inline_query (bot.py:33-35) — повторный вызов здесь
@@ -35,6 +36,7 @@ class Command(BaseCommand):
 
         bot = Bot(
             token=settings.TELEGRAM_STAGING_BOT_TOKEN,
+            session=get_bot_session(),
             default=DefaultBotProperties(parse_mode=ParseMode.HTML),
         )
         try:

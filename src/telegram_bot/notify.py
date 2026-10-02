@@ -204,8 +204,10 @@ def _send_sync(telegram_id: int, text: str, parse_mode: str = 'HTML') -> bool:
         from aiogram.client.default import DefaultBotProperties
         from aiogram.enums import ParseMode
         from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest, TelegramRetryAfter
+        from telegram_bot.proxy import get_bot_session
         async with Bot(
             token=settings.TELEGRAM_BOT_TOKEN,
+            session=get_bot_session(),
             default=DefaultBotProperties(parse_mode=ParseMode.HTML),
         ) as b:
             try:
@@ -281,8 +283,10 @@ def notify_user_rich(telegram_id: int, md_text: str, reply_markup=None) -> bool:
         from aiogram import Bot
         from aiogram.client.default import DefaultBotProperties
         from aiogram.enums import ParseMode
+        from telegram_bot.proxy import get_bot_session
         async with Bot(
             token=settings.TELEGRAM_BOT_TOKEN,
+            session=get_bot_session(),
             default=DefaultBotProperties(parse_mode=ParseMode.HTML),
         ) as b:
             try:
@@ -358,8 +362,10 @@ def send_media_to_telegram(telegram_chat_id: int, generated_image, network_name:
         from aiogram.enums import ParseMode
         from aiogram.types import URLInputFile
         from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest
+        from telegram_bot.proxy import get_bot_session
         async with Bot(
             token=settings.TELEGRAM_BOT_TOKEN,
+            session=get_bot_session(),
             default=DefaultBotProperties(parse_mode=ParseMode.HTML),
         ) as b:
             # S1: message effect при завершении долгой генерации (только личные чаты);

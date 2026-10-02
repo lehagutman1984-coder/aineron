@@ -28,9 +28,11 @@ class Command(BaseCommand):
         from aiogram import Bot
         from aiogram.client.default import DefaultBotProperties
         from aiogram.enums import ParseMode
+        from telegram_bot.proxy import get_bot_session
 
         bot = Bot(
             token=settings.TELEGRAM_BOT_TOKEN,
+            session=get_bot_session(),
             default=DefaultBotProperties(parse_mode=ParseMode.HTML),
         )
 

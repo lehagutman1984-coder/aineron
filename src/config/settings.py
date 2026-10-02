@@ -614,6 +614,14 @@ TELEGRAM_WEBHOOK_SECRET = os.getenv('TELEGRAM_WEBHOOK_SECRET', '')
 TELEGRAM_BOT_USERNAME   = os.getenv('TELEGRAM_BOT_USERNAME',   'aineron_bot')
 TELEGRAM_ADMIN_IDS      = [int(x) for x in os.getenv('TELEGRAM_ADMIN_IDS', '').split(',') if x.strip().isdigit()]
 
+# 2026-10-02: прямой доступ к api.telegram.org с продакшен-сервера (Hostkey RU)
+# нестабилен — наблюдалась выборочная блокировка/фильтрация для российских IP
+# (иногда проходит, иногда нет). Если задан — весь исходящий трафик aiogram
+# заворачивается через уже существующий прокси на aineron.net (см. TAVILY_PROXY_URL/
+# OPENROUTER_PROXY_URL по той же причине), см. telegram_bot/proxy.py.
+# Безопасный дефолт — пусто, прокси не используется.
+TELEGRAM_PROXY_URL      = os.getenv('TELEGRAM_PROXY_URL',      '')
+
 # Staging-бот (QA, живое тестирование через MTProto-аккаунт) — отдельный
 # токен от BotFather, свой webhook НЕ настраивается, работает polling'ом
 # через manage.py run_staging_bot. Тот же код/БД, что и прод — изолирован

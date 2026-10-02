@@ -45,8 +45,10 @@ async def _process_update(update_data: dict) -> None:
 
     # Все апдейты исполняются на одном loop-потоке — гонки при создании нет
     if _bot_instance is None:
+        from telegram_bot.proxy import get_bot_session
         _bot_instance = Bot(
             token=settings.TELEGRAM_BOT_TOKEN,
+            session=get_bot_session(),
             default=DefaultBotProperties(parse_mode=ParseMode.HTML),
         )
 
