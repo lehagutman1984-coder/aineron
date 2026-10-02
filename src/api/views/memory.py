@@ -72,7 +72,26 @@ class MemoryDetailView(RetrieveUpdateDestroyAPIView):
     http_method_names = ['patch', 'delete', 'head', 'options']
 
     def get_queryset(self):
-        return UserMemory.objects.filter(user=self.request.user)
+        # 2026-10-02 (аудит безопасности, №26): фильтр был только по
+        # user=request.user — создатель орг-факта (UserMemory.organization
+        # задан) сохранял право править/удалять его через этот ОБЩИЙ эндпоинт
+        # даже после выхода из организации (правильный org-aware путь с
+        # проверкой owner/admin — OrgMemoryView, DELETE /v1/orgs/<id>/memory/,
+        # но он не единственный маршрут к тем же строкам). Теперь для
+        # org-факта дополнительно требуется действующее членство (или
+        # owner) — иначе строка не попадает в queryset, DRF отдаёт 404,
+        # как для любого чужого объекта.
+        from teams.models import OrganizationMember
+        qs = UserMemory.objects.filter(user=self.request.user)
+        user = self.request.user
+        member_org_ids = OrganizationMember.objects.filter(
+            user=user).values_list('organization_id', flat=True)
+        from django.db.models import Q
+        return qs.filter(
+            Q(organization__isnull=True)
+            | Q(organization__owner_id=user.id)
+            | Q(organization_id__in=member_org_ids)
+        )
 
     def update(self, request, *args, **kwargs):
         kwargs['partial'] = True

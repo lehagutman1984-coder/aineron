@@ -7,7 +7,7 @@
 """
 from django.conf import settings
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import F, Q
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -15,6 +15,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from api.authentication import CsrfExemptSessionAuthentication
+from api.throttling import GenerationLikeThrottle
 from aitext.models import GeneratedImage
 
 
@@ -183,7 +184,16 @@ class GenerationUnshareView(APIView):
             GeneratedImage, _user_gens_q(request.user), id=pk
         )
         gen.is_public = False
-        gen.save(update_fields=['is_public'])
+        # 2026-10-02 (аудит безопасности, LOW): share_slug раньше оставался
+        # нетронутым - любая ссылка, разошедшаяся ДО unshare (закладка,
+        # пересланная переписка), снова начинала работать, стоило владельцу
+        # поделиться повторно (GenerationShareView переиспользует slug, если
+        # он уже задан). Очищаем slug здесь - повторный share выпустит НОВЫЙ,
+        # старые ссылки не оживают. None, не '' - поле unique=True, null=True
+        # (несколько NULL допустимы в уникальном индексе, несколько '' - нет;
+        # второй же unshare с '' уронил бы IntegrityError).
+        gen.share_slug = None
+        gen.save(update_fields=['is_public', 'share_slug'])
         return Response({
             'id': gen.id,
             'is_public': False,
@@ -195,8 +205,15 @@ class GenerationLikeView(APIView):
     """POST /v1/generations/<int:pk>/like/ — анонимный лайк публичной генерации."""
     authentication_classes = [CsrfExemptSessionAuthentication]
     permission_classes = [AllowAny]
+    throttle_classes = [GenerationLikeThrottle]
 
     def post(self, request, pk):
+        # 2026-10-02 (аудит безопасности, LOW): .update(likes=gen.likes + 1)
+        # читал likes ДО update() и не был атомарным - параллельные лайки
+        # той же генерации теряли инкременты (read-modify-write race).
+        # F() делает инкремент атомарным на уровне БД; throttle (см. класс
+        # выше) ограничивает скорость накрутки отдельно от общего лимита API.
         gen = get_object_or_404(GeneratedImage, id=pk, is_public=True)
-        GeneratedImage.objects.filter(id=pk).update(likes=gen.likes + 1)
-        return Response({'id': gen.id, 'likes': gen.likes + 1})
+        GeneratedImage.objects.filter(id=pk).update(likes=F('likes') + 1)
+        gen.refresh_from_db(fields=['likes'])
+        return Response({'id': gen.id, 'likes': gen.likes})

@@ -27,6 +27,11 @@ class APIStatusView(APIView):
         checks = {}
         overall = 'operational'
 
+        # 2026-10-02 (аудит безопасности, LOW): str(e) раньше уходил наружу на
+        # публичном (AllowAny) эндпоинте без аутентификации - сообщение об
+        # ошибке БД/кэша/Celery может содержать хост, путь, фрагмент DSN.
+        # Полный текст - только в лог, наружу - общее "unavailable".
+
         # Проверка БД
         t0 = time.monotonic()
         try:
@@ -34,7 +39,8 @@ class APIStatusView(APIView):
             connection.ensure_connection()
             checks['database'] = {'status': 'operational', 'latency_ms': round((time.monotonic() - t0) * 1000)}
         except Exception as e:
-            checks['database'] = {'status': 'degraded', 'error': str(e)}
+            logger.error(f'[status] database check failed: {e}')
+            checks['database'] = {'status': 'degraded', 'error': 'unavailable'}
             overall = 'degraded'
 
         # Проверка Redis (Celery broker)
@@ -45,7 +51,8 @@ class APIStatusView(APIView):
             assert cache.get('_status_check') == '1'
             checks['cache'] = {'status': 'operational', 'latency_ms': round((time.monotonic() - t0) * 1000)}
         except Exception as e:
-            checks['cache'] = {'status': 'degraded', 'error': str(e)}
+            logger.error(f'[status] cache check failed: {e}')
+            checks['cache'] = {'status': 'degraded', 'error': 'unavailable'}
             overall = 'degraded'
 
         # Upstream — просто проверяем доступность модели без реального запроса
@@ -54,7 +61,8 @@ class APIStatusView(APIView):
             count = NeuralNetwork.objects.filter(is_active=True).count()
             checks['upstream'] = {'status': 'operational', 'active_models': count}
         except Exception as e:
-            checks['upstream'] = {'status': 'unknown', 'error': str(e)}
+            logger.error(f'[status] upstream check failed: {e}')
+            checks['upstream'] = {'status': 'unknown', 'error': 'unavailable'}
 
         # Preview service (E2B) — informational, не влияет на overall
         try:

@@ -24,7 +24,11 @@ class KnowledgeGraphView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
-        project = get_project_for_user(request, pk)
+        # 2026-10-02 (аудит безопасности, LOW): аргументы были перепутаны
+        # (get_project_for_user(request, pk) вместо (pk, user)) - эндпоинт
+        # падал 500 на КАЖДОМ вызове (fail-closed, не дыра, но мёртвая
+        # фича - Knowledge Graph никогда не отдавал данные).
+        project = get_project_for_user(pk, request.user)
 
         # Build nodes from files with at least one embedded chunk
         files = list(

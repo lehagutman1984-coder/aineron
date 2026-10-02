@@ -288,6 +288,22 @@ CSRF_TRUSTED_ORIGINS = [
     'https://www.aineron.net',
 ]
 
+# 2026-10-02 (аудит безопасности, LOW): ни SESSION_COOKIE_SECURE, ни
+# CSRF_COOKIE_SECURE, ни SECURE_PROXY_SSL_HEADER не были выставлены вовсе -
+# сессионная/CSRF-кука уходила в открытом виде при любом заходе на http://
+# ДО 301-редиректа nginx на https (nginx.conf/nginx.intl.conf редиректят,
+# но сам первый запрос с кукой уже мог уйти в открытом виде, например по
+# ссылке из письма с http://). SECURE_PROXY_SSL_HEADER обязателен ПЕРЕД secure-
+# флагами куки - без него Django видит внутренний http-запрос от nginx
+# (proxy_pass идёт по http) и считает соединение небезопасным ВСЕГДА, что
+# при включённом SESSION_COOKIE_SECURE сломало бы вход всем; nginx уже
+# прокидывает X-Forwarded-Proto на всех Django-маршрутах (nginx.conf). В
+# DEBUG (локальная разработка без https) secure-флаги отключены - иначе
+# кука не читалась бы на http://localhost.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+
 
 # ========== ДОМЕН И URL ==========
 SITE_URL = os.environ.get('SITE_URL', 'https://aineron.ru')
@@ -873,6 +889,7 @@ REST_FRAMEWORK = {
         'sandbox_create': '10/min',
         'sandbox_exec': '30/min',
         'mail_relay': '60/min',
+        'generation_like': '20/min',
     },
     'EXCEPTION_HANDLER': 'api.exceptions.openai_exception_handler',
 }

@@ -58,6 +58,15 @@ class SandboxExecThrottle(APIKeyRateThrottle):
     cache_format = 'throttle_sandbox_exec_%(ident)s'
 
 
+class GenerationLikeThrottle(APIKeyRateThrottle):
+    """2026-10-02 (аудит безопасности, LOW): лайк публичной генерации был
+    анонимным, без выделенного лимита (жил только на общем 120/мин
+    api_key-throttle по IP) - 20/мин специально для этого low-value действия
+    ощутимо снижает скорость накрутки, не трогая общий лимит остального API."""
+    scope = 'generation_like'
+    cache_format = 'throttle_generation_like_%(ident)s'
+
+
 class PublicSpaceThrottle(SimpleRateThrottle):
     """60 req/min per IP для анонимов, 300/min для авторизованных."""
     scope = 'public_space'

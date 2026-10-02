@@ -68,7 +68,6 @@ from api.views.connectors import (
 )
 from api.views.deploy import InternalDeployView
 from api.views.usage_events import UsageEventListView, UsageEventSummaryView
-from api.views.bot_payment import BotPayUrlView
 from api.views.ab_tests import ABTestListCreateView, ABTestResultsView
 from api.views.telegram_link import TelegramLinkTokenView
 from api.views.telegram_webapp import (
@@ -277,8 +276,11 @@ urlpatterns = [
     path('v1/usage-events/', UsageEventListView.as_view(), name='usage_events'),
     path('v1/usage-events/summary/', UsageEventSummaryView.as_view(), name='usage_events_summary'),
 
-    # ========== Bot Robokassa Payment ==========
-    path('v1/billing/bot-pay-url/', BotPayUrlView.as_view(), name='bot_pay_url'),
+    # 2026-10-02 (аудит безопасности, LOW): v1/billing/bot-pay-url/ (BotPayUrlView)
+    # удалён — мёртвый код, нигде не вызывался (ни ботом, ни фронтом), и всегда
+    # падал 500 на sig_str.encode('cp1251') из-за "₽" в чеке (cp1251 не кодирует
+    # этот символ). Файл api/views/bot_payment.py оставлен неиспользуемым, не удалён
+    # физически — минимальный диф, легко восстановить, если фича понадобится.
 
     # ========== A/B Prompt Tests (admin) ==========
     path('v1/ab-tests/', ABTestListCreateView.as_view(), name='ab_test_list'),
