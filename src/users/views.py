@@ -820,14 +820,16 @@ def payment_success(request):
 
                 # ── Email-подтверждение оплаты ──
                 try:
-                    from users.email_service import send_payment_confirmation_email
+                    from users.email_service import send_payment_confirmation_email, send_admin_sale_notification
                     if payment.payment_type == 'pages':
+                        amount_kop = payment.amount_kopecks or payment.pages_count * 100
                         send_payment_confirmation_email(
                             user, kind='topup',
-                            amount_kopecks=payment.amount_kopecks or payment.pages_count * 100,
+                            amount_kopecks=amount_kop,
                             method='Robokassa',
                             balance_kopecks=user.balance_kopecks,
                         )
+                        send_admin_sale_notification(user, kind='topup', amount_kopecks=amount_kop, method='Robokassa')
                     else:
                         send_payment_confirmation_email(
                             user, kind='subscription',
@@ -835,6 +837,10 @@ def payment_success(request):
                             method='Robokassa',
                             tariff_name=tariff.display_name if tariff else None,
                             balance_kopecks=user.balance_kopecks,
+                        )
+                        send_admin_sale_notification(
+                            user, kind='subscription', amount_kopecks=tariff.balance_grant_kopecks,
+                            method='Robokassa', tariff_name=tariff.display_name if tariff else None,
                         )
                 except Exception as email_err:
                     logger.warning(f"[WARN] Payment confirmation email failed: {email_err}")

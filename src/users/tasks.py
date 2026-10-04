@@ -211,11 +211,15 @@ def attempt_auto_renewal(subscription):
                 logger.info(f"[OK] Пользователь {user.email} переведён с {tariff.display_name} на {new_tariff.display_name}")
 
                 try:
-                    from users.email_service import send_payment_confirmation_email
+                    from users.email_service import send_payment_confirmation_email, send_admin_sale_notification
                     send_payment_confirmation_email(
                         user, kind='subscription', amount_kopecks=new_tariff.balance_grant_kopecks,
                         method='Автопродление', tariff_name=new_tariff.display_name,
                         balance_kopecks=user.balance_kopecks,
+                    )
+                    send_admin_sale_notification(
+                        user, kind='subscription', amount_kopecks=new_tariff.balance_grant_kopecks,
+                        method='Автопродление', tariff_name=new_tariff.display_name,
                     )
                 except Exception as email_err:
                     logger.warning(f"[WARN] Payment confirmation email failed: {email_err}")
@@ -306,11 +310,15 @@ def attempt_auto_renewal(subscription):
             logger.info(f"[OK] Подписка {subscription.id} продлена, добавлено {tariff.pages_count} звезд, всего у пользователя: {user.pages_count}")
 
             try:
-                from users.email_service import send_payment_confirmation_email
+                from users.email_service import send_payment_confirmation_email, send_admin_sale_notification
                 send_payment_confirmation_email(
                     user, kind='subscription', amount_kopecks=tariff.balance_grant_kopecks,
                     method='Автопродление', tariff_name=tariff.display_name,
                     balance_kopecks=user.balance_kopecks,
+                )
+                send_admin_sale_notification(
+                    user, kind='subscription', amount_kopecks=tariff.balance_grant_kopecks,
+                    method='Автопродление', tariff_name=tariff.display_name,
                 )
             except Exception as email_err:
                 logger.warning(f"[WARN] Payment confirmation email failed: {email_err}")

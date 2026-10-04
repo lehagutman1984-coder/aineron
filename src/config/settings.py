@@ -329,6 +329,12 @@ EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
+# 2026-10-04: короткое уведомление владельцу о каждой продаже/автопродлении
+# (users/email_service.py::send_admin_sale_notification) — тот же паттерн,
+# что уже есть у dzgpt. Дефолт — общая почта, на которую и так форвардятся
+# support@ ящики всех трёх проектов.
+SALE_NOTIFICATION_EMAIL = os.environ.get('SALE_NOTIFICATION_EMAIL', 'leha.gutman.83@mail.ru')
+
 # 2026-09-28: aineron.net (Hostkey, VPS 66.151.32.164) блокирует ВСЕ исходящие
 # SMTP-порты (25/465/587), даже к внешним хостам (Beget, Gmail) — политика
 # провайдера, не чинится на уровне приложения. MAIL_RELAY_URL, если задан,

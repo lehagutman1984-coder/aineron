@@ -326,6 +326,57 @@ def send_payment_confirmation_email(user, kind, amount_kopecks, method, tariff_n
         return False
 
 
+def send_admin_sale_notification(user, kind, amount_kopecks, method, tariff_name=None):
+    """
+    Короткое уведомление владельцу сайта (settings.SALE_NOTIFICATION_EMAIL) о каждой
+    успешной продаже/продлении — аналог механизма dzgpt (users/email_service.py там же).
+    2026-10-04: добавлено после того, как владелец не узнал о реальном автопродлении
+    клиента без ручного похода в логи/БД.
+
+    Fail-open и асинхронно (отдельный поток, как send_payment_confirmation_email) —
+    сбой этого уведомления никогда не должен влиять на сам платёж.
+    """
+    try:
+        admin_email = getattr(settings, 'SALE_NOTIFICATION_EMAIL', '')
+        if not admin_email:
+            return False
+
+        from core.money import format_money
+        kind_label = {'subscription': 'Подписка/продление', 'topup': 'Пополнение баланса'}.get(kind, kind)
+        subject = f"[Продажа] {kind_label} — {user.email} — {format_money(amount_kopecks)}"
+        lines = [
+            f"Пользователь: {user.email} (id {user.id})",
+            f"Тип: {kind_label}",
+            f"Сумма: {format_money(amount_kopecks)}",
+            f"Способ: {method}",
+        ]
+        if tariff_name:
+            lines.append(f"Тариф: {tariff_name}")
+        body = '\n'.join(lines)
+
+        def send_email_thread():
+            try:
+                email = EmailMultiAlternatives(
+                    subject=subject,
+                    body=body,
+                    from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@example.com'),
+                    to=[admin_email],
+                )
+                email.send(fail_silently=False)
+                logger.info(f"[OK] Admin-уведомление о продаже отправлено на {admin_email}")
+            except Exception as e:
+                logger.error(f"[ERR] Ошибка отправки admin-уведомления о продаже: {e}")
+
+        thread = threading.Thread(target=send_email_thread)
+        thread.daemon = True
+        thread.start()
+        return True
+
+    except Exception as e:
+        logger.error(f"[ERR] Ошибка при подготовке admin-уведомления о продаже: {e}")
+        return False
+
+
 def verify_email_token(token):
     """
     Проверяет токен подтверждения email (длинная ссылка из письма).
