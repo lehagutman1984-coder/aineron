@@ -64,6 +64,33 @@ SaaS-платформа для доступа к AI-нейросетям без 
 
 **Старый сервер** (алиас `aineron-ru`, Beget) пока не выключен, держится как откат — не трогать без явного запроса пользователя.
 
+### Git и деплой на общем сервере (с 2026-10-05)
+
+Репозиторий: `https://github.com/lehagutman1984-coder/aineron.git`, ветка `main`. **Git на сервере настроен навсегда** — `credential.helper store` прописан локально в репозитории (`git config credential.helper store`, не `--global`), токен лежит в `~/.git-credentials`. Обычные команды работают без доп. флагов:
+
+```
+ssh hostkey-ru-hub
+cd /home/ubuntu/aineron
+git pull origin main
+git add <файлы> && git commit -m "..." && git push origin main
+```
+
+Если `git pull` ругается на конфликт с незакоммиченными изменениями — почти всегда это один из двух случаев, не паниковать:
+1. **CRLF-шум** — рабочая копия на сервере в Windows line-endings (`\r\n`), а в git — `\n`. Проверить реальную разницу: `git diff -b --stat` (`-b` игнорирует переносы строк) — если пусто, содержимое совпадает один в один.
+2. **Кто-то закинул файл вручную в обход git** (scp/редактирование прямо на сервере) с тем же содержимым, что уже запушено. Тоже проверяется через `git diff -b`.
+
+В обоих случаях: `git checkout origin/main -- <файл>` → `git pull` пройдёт чисто, без `reset --hard` (он необратим и блокируется защитным классификатором инструмента, и правильно).
+
+**Деплой после `git pull`:**
+```
+cd /home/ubuntu/aineron
+docker compose up -d --force-recreate --no-deps web celery_worker celery_beat   # если менялся backend
+docker compose build frontend && docker compose up -d --force-recreate --no-deps frontend   # если менялся frontend (сборка ~2-3 мин)
+docker compose restart nginx   # ОБЯЗАТЕЛЬНО после любого recreate web/frontend — см. ниже
+```
+
+**Критично:** после `--force-recreate`/`restart` контейнера `web` или `frontend` — сразу `docker compose restart nginx`. Иначе nginx держит старый (протухший) внутренний Docker IP пересозданного контейнера и отдаёт 502 всем посетителям, пока кто-нибудь не заметит и не перезапустит nginx вручную. Это уже случалось минимум дважды на этом сервере (на aineron.ru и на dzgpt).
+
 ---
 
 ## Стек технологий
