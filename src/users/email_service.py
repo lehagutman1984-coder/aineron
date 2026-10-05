@@ -377,6 +377,50 @@ def send_admin_sale_notification(user, kind, amount_kopecks, method, tariff_name
         return False
 
 
+def send_admin_new_registration(user, method):
+    """
+    Короткое уведомление владельцу (settings.SALE_NOTIFICATION_EMAIL) о каждой новой
+    регистрации — тот же паттерн, что и send_admin_sale_notification. 2026-10-05:
+    перенесено с yurist-center (там такое уведомление уже было).
+
+    method: как зарегистрировался — 'email' | 'Google' | 'Yandex' | 'VK' | 'Mail.ru' | 'GitHub'
+
+    Fail-open и асинхронно — сбой этого уведомления не должен ломать регистрацию.
+    """
+    try:
+        admin_email = getattr(settings, 'SALE_NOTIFICATION_EMAIL', '')
+        if not admin_email:
+            return False
+
+        subject = f"[Регистрация] {user.email} — {method}"
+        body = '\n'.join([
+            f"Пользователь: {user.email} (id {user.id})",
+            f"Способ: {method}",
+        ])
+
+        def send_email_thread():
+            try:
+                email = EmailMultiAlternatives(
+                    subject=subject,
+                    body=body,
+                    from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@example.com'),
+                    to=[admin_email],
+                )
+                email.send(fail_silently=False)
+                logger.info(f"[OK] Admin-уведомление о регистрации отправлено на {admin_email}")
+            except Exception as e:
+                logger.error(f"[ERR] Ошибка отправки admin-уведомления о регистрации: {e}")
+
+        thread = threading.Thread(target=send_email_thread)
+        thread.daemon = True
+        thread.start()
+        return True
+
+    except Exception as e:
+        logger.error(f"[ERR] Ошибка при подготовке admin-уведомления о регистрации: {e}")
+        return False
+
+
 def verify_email_token(token):
     """
     Проверяет токен подтверждения email (длинная ссылка из письма).

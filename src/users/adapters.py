@@ -50,6 +50,11 @@ class CustomAccountAdapter(DefaultAccountAdapter):
 
         if commit:
             user.save()
+            try:
+                from users.email_service import send_admin_new_registration
+                send_admin_new_registration(user, method='email')
+            except Exception as e:
+                logger.error(f"Ошибка admin-уведомления о регистрации: {e}")
 
         return user
 
@@ -136,6 +141,12 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
         user.save()
 
         logger.info(f"Создан социальный пользователь: {user.username} через {sociallogin.account.provider}")
+
+        try:
+            from users.email_service import send_admin_new_registration
+            send_admin_new_registration(user, method=sociallogin.account.provider)
+        except Exception as e:
+            logger.error(f"Ошибка admin-уведомления о регистрации: {e}")
 
         return user
 
