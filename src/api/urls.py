@@ -28,7 +28,7 @@ from api.views.invoices import InvoiceListCreateView
 from api.views.usage import UsageStatsView
 from api.views.blog import BlogCategoryListView, BlogPostListView, BlogPostDetailView
 from api.views.billing import (
-    TariffListView, TariffPayView, PageSaleSettingsView,
+    TariffListView, TariffPayView, TariffQuoteView, PageSaleSettingsView,
     BuyPagesView, PaymentHistoryView, ApplyPromoView, PromoCheckView,
     StarsUsageView, SubscriptionAutoRenewView,
 )
@@ -161,6 +161,7 @@ urlpatterns = [
     # ========== Billing (Phase 3) ==========
     path('v1/billing/tariffs/', TariffListView.as_view(), name='billing_tariffs'),
     path('v1/billing/tariffs/<int:tariff_id>/pay/', TariffPayView.as_view(), name='billing_tariff_pay'),
+    path('v1/billing/tariffs/<int:tariff_id>/quote/', TariffQuoteView.as_view(), name='billing_tariff_quote'),
     path('v1/billing/pages/', PageSaleSettingsView.as_view(), name='billing_pages_settings'),
     path('v1/billing/pages/buy/', BuyPagesView.as_view(), name='billing_buy_pages'),
     path('v1/billing/history/', PaymentHistoryView.as_view(), name='billing_history'),

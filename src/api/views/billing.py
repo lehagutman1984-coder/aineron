@@ -146,6 +146,13 @@ class TariffPayView(APIView):
         except Tariff.DoesNotExist:
             return Response({'error': {'message': 'Tariff not found', 'type': 'not_found', 'code': 'not_found'}}, status=status.HTTP_404_NOT_FOUND)
 
+        # Пока действует более дорогой тариф: переход на дешёвый/такой же по цене
+        # запрещён до конца срока — см. users/plan_change.py
+        from users.plan_change import classify as classify_purchase
+        plan_info = classify_purchase(request.user, tariff)
+        if plan_info['kind'] == 'blocked':
+            return Response({'error': {'message': plan_info['message'], 'type': 'blocked', 'code': 'downgrade_blocked'}}, status=status.HTTP_400_BAD_REQUEST)
+
         # Скидочный промокод: снижает сумму первого платежа, кредит тарифа — полный.
         # Использование фиксируется в вебхуке после успешной оплаты.
         promo = None
@@ -224,6 +231,35 @@ class TariffPayView(APIView):
                 'method': 'POST',
                 'fields': fields,
             },
+        })
+
+
+class TariffQuoteView(APIView):
+    """GET /api/v1/billing/tariffs/{id}/quote/ — что произойдёт при покупке
+    этого тарифа (продление / повышение с пересчётом дней / нельзя / новая
+    покупка), для окна оплаты на фронтенде. См. users/plan_change.py."""
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(summary='Превью покупки тарифа', tags=['Billing'])
+    def get(self, request, tariff_id):
+        if settings.INTL_MODE:
+            # Как и TariffPayView: на .net тарифы/Robokassa отключены, только крипта
+            return Response({'error': {'message': 'Not available', 'type': 'unavailable', 'code': 'intl_card_disabled'}}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            tariff = Tariff.objects.get(id=tariff_id, is_active=True, is_free=False)
+        except Tariff.DoesNotExist:
+            return Response({'error': {'message': 'Tariff not found', 'type': 'not_found', 'code': 'not_found'}}, status=status.HTTP_404_NOT_FOUND)
+
+        from users.plan_change import classify as classify_purchase
+        info = classify_purchase(request.user, tariff)
+        return Response({
+            'kind': info['kind'],
+            'current_tariff_name': info['current_tariff_name'],
+            'current_expires': info['current_expires'],
+            'new_expires': info['new_expires'],
+            'bonus_days': round(info['bonus_days'], 1),
+            'message': info['message'],
+            'auto_renew': bool(getattr(request.user.active_subscription, 'auto_renew', True)) if request.user.active_subscription else True,
         })
 
 

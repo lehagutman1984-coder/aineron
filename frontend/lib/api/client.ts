@@ -571,6 +571,19 @@ export const payTariff = (
     body: JSON.stringify(promoCode ? { promo_code: promoCode } : {}),
   });
 
+export interface TariffQuoteResponse {
+  kind: "new" | "extend" | "upgrade" | "blocked";
+  current_tariff_name: string | null;
+  current_expires: string | null;
+  new_expires: string | null;
+  bonus_days: number;
+  message: string | null;
+  auto_renew: boolean;
+}
+
+export const quoteTariff = (tariffId: number): Promise<TariffQuoteResponse> =>
+  request<TariffQuoteResponse>(`/billing/tariffs/${tariffId}/quote/`);
+
 export interface PromoCheckResponse {
   ok: boolean;
   code: string;

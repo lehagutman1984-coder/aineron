@@ -735,13 +735,20 @@ def payment_success(request):
 
                         if user.active_subscription:
                             subscription = user.active_subscription
-                            subscription.expires_at = timezone.now() + timedelta(days=tariff.duration_days)
+                            # Прорейтинг при апгрейде/продлении — см. users/plan_change.py.
+                            # Пересчитываем заново на момент вебхука (не доверяем тому, что
+                            # было на экране оплаты — состояние подписки могло измениться).
+                            from users.plan_change import classify as classify_purchase
+                            plan_info = classify_purchase(user, tariff)
+                            # blocked сюда в норме не должен долетать (TariffPayView отказывает
+                            # раньше) — защитный fallback на старое поведение, если всё же долетел.
+                            subscription.expires_at = plan_info['new_expires'] or (timezone.now() + timedelta(days=tariff.duration_days))
                             subscription.tariff = tariff
                             subscription.robokassa_invoice_id = inv_id
                             subscription.status = 'active'
                             subscription.is_active = True
                             subscription.save()
-                            logger.info(f"[RENEW] Продление подписки для {user.email} +{tariff.pages_count} страниц")
+                            logger.info(f"[RENEW] Продление подписки для {user.email} ({plan_info['kind']}, +{round(plan_info['bonus_days'], 1)} бонус. дн.) +{tariff.pages_count} страниц")
                         else:
                             subscription = UserSubscription.objects.create(
                                 user=user,

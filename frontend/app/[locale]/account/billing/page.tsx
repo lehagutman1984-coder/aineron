@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link, useRouter } from "@/i18n/navigation";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -25,6 +25,8 @@ import {
 import {
   getTariffs,
   payTariff,
+  quoteTariff,
+  type TariffQuoteResponse,
   getPageSaleSettings,
   buyPages,
   getPaymentHistory,
@@ -109,6 +111,20 @@ function ConfirmPurchaseModal({
 }) {
   const [agreed, setAgreed] = useState(false);
   const isSub = purchase.mode === "subscription";
+
+  // Что произойдёт с подпиской относительно уже действующего тарифа
+  // (продление / повышение с пересчётом дней / недоступно) — см. users/plan_change.py
+  const [quote, setQuote] = useState<TariffQuoteResponse | null>(null);
+  useEffect(() => {
+    if (!isSub || !tariffId) return;
+    let alive = true;
+    setQuote(null);
+    quoteTariff(tariffId)
+      .then((q) => { if (alive) setQuote(q); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [isSub, tariffId]);
+  const blocked = quote?.kind === "blocked";
 
   // Скидочный промокод (только для тарифов)
   const [promoInput, setPromoInput] = useState("");
@@ -212,6 +228,24 @@ function ConfirmPurchaseModal({
           </div>
         </div>
 
+        {quote && quote.kind !== "new" && (
+          <p
+            className={`mb-4 text-sm rounded-lg px-3 py-2 ${
+              blocked
+                ? "bg-red-500/8 border border-red-500/20 text-red-600"
+                : "bg-[var(--color-accent)]/8 border border-[var(--color-accent)]/20 text-[var(--color-text-primary)]"
+            }`}
+          >
+            {quote.kind === "blocked" && quote.message}
+            {quote.kind === "extend" &&
+              `Продление раньше срока: текущий тариф действует до ${formatDate(quote.current_expires!)}. ` +
+              `Срок увеличится на 30 дней — до ${formatDate(quote.new_expires!)}. Остаток баланса сохранится, добавится бонус нового периода.`}
+            {quote.kind === "upgrade" &&
+              `Повышение с тарифа «${quote.current_tariff_name}» (до ${formatDate(quote.current_expires!)}). ` +
+              `Оставшиеся дни пересчитаны в ${quote.bonus_days} бонусных дн. нового тарифа: он будет действовать до ${formatDate(quote.new_expires!)}.`}
+          </p>
+        )}
+
         {isSub && tariffId && (
           <div className="mb-4">
             {promoApplied ? (
@@ -300,7 +334,7 @@ function ConfirmPurchaseModal({
           </button>
           <button
             onClick={() => onConfirm(promoApplied?.code)}
-            disabled={!agreed || loading}
+            disabled={!agreed || loading || blocked}
             className="flex-1 py-2.5 rounded-lg text-sm font-medium bg-[var(--color-accent)] text-white
               hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
           >
