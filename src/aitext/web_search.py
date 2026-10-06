@@ -88,8 +88,14 @@ def _tavily_search(query: str, max_results: int = 6, time_sensitive: bool = Fals
     if time_sensitive:
         # Шаг 1: для time-sensitive вопросов (курсы, новости) сужаем окно
         # свежести у Tavily вместо того чтобы полагаться только на текст запроса.
+        # НЕ ставим topic='news' — проверено на golden-set (2026-10-06): переключает
+        # Tavily в новостной индекс и вырезает справочные/информационные страницы.
+        # Ломало, например, "ставка НДФЛ в 2026 году" (time_sensitive из-за упоминания
+        # года, но это не новость) — выдача уходила в kitco.com/bloomberg.com вместо
+        # klerk.ru/glavbukh.ru. Один time_range даёт нужный сдвиг к свежести без
+        # потери справочных источников — подтверждено отдельно на news/курс/ставка-ЦБ
+        # запросах, там результат не ухудшился.
         payload['time_range'] = 'week'
-        payload['topic'] = 'news'
 
     try:
         r = requests.post(
