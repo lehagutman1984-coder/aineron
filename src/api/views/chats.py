@@ -658,25 +658,37 @@ class StreamMessageView(APIView):
             messages_for_api.append({"role": "user", "content": message_text or "Привет"})
 
         # ── Шаг 1: веб-поиск СИНХРОННО до генератора ─────────────────────────
+        # Рерайт запроса с учётом истории диалога + needs_search/time_sensitive
+        # (WEB_SEARCH_ACCURACY_PLAN.md, шаг 1) — та же логика, что в Celery-пути
+        # tasks.py::generate_ai_response, продублирована здесь намеренно: этот
+        # путь синхронный (до генератора SSE), общую функцию с Celery-задачей
+        # не разделить без усложнения обеих сторон.
         from aitext.tasks import call_web_search, build_web_search_message
+        from aitext.web_search import rewrite_search_query
         search_context_text = ""
         if web_search:
-            search_context_text = call_web_search(
-                message_text or "информация",
-                log_prefix=f"[chat {chat.id}] ",
-            )
-            if search_context_text:
-                assistant_message.search_context = search_context_text
-                assistant_message.save(update_fields=['search_context'])
-                # Обрезаем поисковый контекст если KB уже большой (чтобы не превысить лимит)
-                ctx_so_far = sum(len(m.get("content", "")) for m in messages_for_api)
-                search_limit = 2000 if ctx_so_far > 30_000 else 4500
-                # Вставляем прямо перед последним user-сообщением — как делает Perplexity
-                insert_pos = max(len(messages_for_api) - 1, 0)
-                messages_for_api.insert(
-                    insert_pos,
-                    build_web_search_message(search_context_text[:search_limit], message_text or ""),
+            rewrite = rewrite_search_query(messages_for_api, log_prefix=f"[chat {chat.id}] ")
+            search_query = rewrite['query']
+            if rewrite['needs_search']:
+                search_context_text = call_web_search(
+                    search_query,
+                    time_sensitive=rewrite['time_sensitive'],
+                    log_prefix=f"[chat {chat.id}] ",
                 )
+                if search_context_text:
+                    assistant_message.search_context = search_context_text
+                    assistant_message.save(update_fields=['search_context'])
+                    # Обрезаем поисковый контекст если KB уже большой (чтобы не превысить лимит)
+                    ctx_so_far = sum(len(m.get("content", "")) for m in messages_for_api)
+                    search_limit = 2000 if ctx_so_far > 30_000 else 4500
+                    # Вставляем прямо перед последним user-сообщением — как делает Perplexity
+                    insert_pos = max(len(messages_for_api) - 1, 0)
+                    messages_for_api.insert(
+                        insert_pos,
+                        build_web_search_message(search_context_text[:search_limit], search_query),
+                    )
+            else:
+                logger.info(f"[chat {chat.id}] Поиск пропущен рерайтом (needs_search=False): '{search_query[:60]}'")
 
         # Capture values for the generator closure
         user = request.user

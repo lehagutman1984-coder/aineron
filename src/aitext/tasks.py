@@ -658,50 +658,22 @@ def build_web_search_message(search_results: str, user_query: str) -> dict:
         f"{search_results[:4500]}\n\n"
         "[Инструкция к использованию результатов]\n"
         "• Факты выше актуальны и получены из интернета только что — давай им приоритет над тренировочными данными\n"
-        "• При ссылке на конкретный факт из поиска укажи его номер в скобках, например [1], [2]\n"
-        "• Если источник неизвестен или факт общеизвестен — не придумывай ссылку\n"
+        "• Утверждай только то, что подтверждено источниками выше; каждый факт из поиска сопровождай номером источника в скобках, например [1], [2]\n"
+        "• Если в источниках нет ответа на вопрос — прямо скажи об этом, не придумывай\n"
+        "• Если источник неизвестен или факт общеизвестен (не из поиска) — не придумывай ссылку на номер\n"
         "• Отвечай на языке пользователя\n"
         "[Конец результатов поиска]"
     )
     return {"role": "system", "content": content}
 
 
-def call_web_search(user_query: str, log_prefix: str = "") -> str:
-    """Веб-поиск через Tavily."""
-    tavily_key = getattr(settings, "TAVILY_API_KEY", "")
-    if not tavily_key:
-        logger.error(f"{log_prefix}TAVILY_API_KEY не задан в .env")
-        return ""
-    proxy_url = getattr(settings, "TAVILY_PROXY_URL", "")
-    try:
-        r = _req.post(
-            "https://api.tavily.com/search",
-            json={
-                "api_key": tavily_key,
-                "query": user_query[:400],
-                "search_depth": "basic",
-                "max_results": 6,
-                "include_answer": False,
-            },
-            timeout=12,
-            proxies={"https": proxy_url} if proxy_url else None,
-        )
-        r.raise_for_status()
-        items = r.json().get("results", [])
-        if items:
-            lines = []
-            for i, item in enumerate(items, 1):
-                parts = [f"[{i}] {item['title']}", item.get("content", "")[:250],
-                         f"URL: {item['url']}"]
-                if item.get("published_date"):
-                    parts.append(f"Дата: {item['published_date']}")
-                lines.append("\n".join(p for p in parts if p))
-            logger.info(f"{log_prefix}Tavily OK: {len(items)} results")
-            return "\n\n".join(lines)
-        logger.warning(f"{log_prefix}Tavily вернул 0 результатов")
-    except Exception as e:
-        logger.error(f"{log_prefix}Tavily FAILED: {e}")
-    return ""
+def call_web_search(user_query: str, time_sensitive: bool = False, log_prefix: str = "") -> str:
+    """Веб-поиск через Tavily (обычный чат). Тонкая обёртка над aitext.web_search —
+    единая реализация HTTP-вызова + дедуп/буст RU-источников
+    (WEB_SEARCH_ACCURACY_PLAN.md, шаг 0 — раньше было 3 независимые копии)."""
+    from .web_search import _tavily_search, format_results_as_text
+    items = _tavily_search(user_query, max_results=6, time_sensitive=time_sensitive, log_prefix=log_prefix)
+    return format_results_as_text(items)
 
 
 @shared_task(bind=True, max_retries=3)
@@ -1050,26 +1022,26 @@ def generate_ai_response(self, message_id, web_search=False):
             messages_for_api.append({"role": "user", "content": "Привет"})
 
         # ── Двухэтапный веб-поиск ──────────────────────────────────────────────
+        # Шаг 1 (WEB_SEARCH_ACCURACY_PLAN.md): рерайт запроса с учётом истории
+        # диалога + needs_search/time_sensitive, вместо поиска буквального
+        # последнего сообщения ("а в евро?" теперь ищется как "курс доллара к евро").
         if web_search:
-            user_query = ""
-            for m in reversed(messages_for_api):
-                if m.get("role") == "user":
-                    c = m.get("content", "")
-                    user_query = c if isinstance(c, str) else " ".join(
-                        p.get("text", "") for p in c if isinstance(p, dict) and p.get("type") == "text"
-                    )
-                    break
-            if not user_query:
-                user_query = "информация"
+            from .web_search import rewrite_search_query
+            rewrite = rewrite_search_query(messages_for_api, log_prefix=f"[msg {message_id}] ")
+            user_query = rewrite['query']
 
-            search_results = call_web_search(user_query, log_prefix=f"[msg {message_id}] ")
-
-            if search_results:
-                message.search_context = search_results
-                message.save(update_fields=['search_context'])
-                # Вставляем прямо перед последним user-сообщением — как делает Perplexity
-                insert_pos = max(len(messages_for_api) - 1, 0)
-                messages_for_api.insert(insert_pos, build_web_search_message(search_results, user_query))
+            if rewrite['needs_search']:
+                search_results = call_web_search(
+                    user_query, time_sensitive=rewrite['time_sensitive'], log_prefix=f"[msg {message_id}] "
+                )
+                if search_results:
+                    message.search_context = search_results
+                    message.save(update_fields=['search_context'])
+                    # Вставляем прямо перед последним user-сообщением — как делает Perplexity
+                    insert_pos = max(len(messages_for_api) - 1, 0)
+                    messages_for_api.insert(insert_pos, build_web_search_message(search_results, user_query))
+            else:
+                logger.info(f"[msg {message_id}] Поиск пропущен рерайтом (needs_search=False): '{user_query[:60]}'")
 
         # ── AI-модерация (если включена) ──────────────────────────────────────
         if getattr(settings, 'MODERATION_ENABLED', False) and user_msg:
@@ -2328,24 +2300,14 @@ def _kb_search_chunks(project, query: str, top_k: int = 5) -> list[dict]:
 
 
 def _web_search_chunks(query: str) -> list[dict]:
-    """Search web via Tavily and return chunk dicts (empty if no key)."""
-    tavily_key = getattr(settings, "TAVILY_API_KEY", "")
-    if not tavily_key:
-        return []
-    proxy_url = getattr(settings, "TAVILY_PROXY_URL", "")
-    try:
-        r = _req.post(
-            "https://api.tavily.com/search",
-            json={"api_key": tavily_key, "query": query[:400], "search_depth": "basic", "max_results": 4},
-            timeout=10,
-            proxies={"https": proxy_url} if proxy_url else None,
-        )
-        r.raise_for_status()
-        items = r.json().get("results", [])
-        return [{'text': f"{it['title']}\n{it.get('content','')[:300]}", 'source': it['url'], 'kind': 'web'} for it in items]
-    except Exception as e:
-        logger.warning(f"[deep_research] web_search failed: {e}")
-    return []
+    """Search web via Tavily and return chunk dicts (empty if no key). Тонкая
+    обёртка над aitext.web_search — единая реализация HTTP-вызова + дедуп/буст
+    (WEB_SEARCH_ACCURACY_PLAN.md, шаг 0). Декомпозиция на подзапросы для deep
+    research остаётся как была (_plan_queries, вызывающая сторона) — этот шаг
+    не трогаем."""
+    from .web_search import _tavily_search, format_as_chunks
+    items = _tavily_search(query, max_results=4, log_prefix="[deep_research] ")
+    return format_as_chunks(items)
 
 
 def _synthesize_report(question: str, chunks: list[dict], model_name: str) -> str:
