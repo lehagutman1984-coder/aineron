@@ -50,7 +50,16 @@ function LoginForm() {
       // Незавершённая регистрация (код из письма не введён) — не пускаем
       // в кабинет через логин в обход подтверждения, ведём на тот же экран
       // ввода кода, что и сразу после регистрации.
-      router.push(user.email_verified ? next : "/verify-email/");
+      if (user.email_verified) {
+        // Жёсткая навигация, не router.push: клиентский роутер Next мог
+        // закешировать 307-редирект /account -> /login, полученный при
+        // префетче до входа, и вернул бы обратно на /login с вечным
+        // «Вход…» (loading не сбрасывается на успехе). Полная загрузка
+        // страницы обходит кеш роутера.
+        window.location.assign(next);
+      } else {
+        router.push("/verify-email/");
+      }
     } catch (err) {
       setError(
         err instanceof APIError ? err.message : t("loginError")
