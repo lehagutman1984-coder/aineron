@@ -164,22 +164,46 @@ class RegisterView(APIView):
         return response
 
 
+VERIFY_MAX_ATTEMPTS = 5
+VERIFY_LOCK_SECONDS = 900
+
+
 class VerifyEmailView(APIView):
-    permission_classes = [AllowAny]
+    """Подтверждение email 6-значным кодом.
+
+    Код сверяется ТОЛЬКО с текущим пользователем (сессия, выданная при
+    регистрации) и с лимитом попыток. Раньше код искался по всей таблице
+    пользователей без аутентификации и логинил найденного — перебором
+    6 цифр можно было захватить любой неподтверждённый аккаунт."""
+    permission_classes = [IsAuthenticated]
     authentication_classes = [CsrfExemptSessionAuthentication]
 
     def post(self, request):
+        from django.core.cache import cache
+        user = request.user
+        if user.email_verified:
+            return Response({'ok': True})
+
         code = (request.data.get('code') or '').strip()
         if not code or len(code) != 6:
             return Response({'error': {'message': 'Введите 6-значный код', 'code': 'invalid_code'}}, status=400)
 
-        try:
-            user = User.objects.get(email_verification_code=code)
-        except User.DoesNotExist:
+        key = f'verify_attempts:{user.pk}'
+        attempts = cache.get(key, 0)
+        if attempts >= VERIFY_MAX_ATTEMPTS:
+            return Response({'error': {
+                'message': 'Слишком много попыток. Подождите 15 минут или запросите новый код.',
+                'code': 'too_many_attempts',
+            }}, status=429)
+
+        import hmac
+        stored = user.email_verification_code or ''
+        if not stored or not hmac.compare_digest(stored, code):
+            cache.set(key, attempts + 1, timeout=VERIFY_LOCK_SECONDS)
             return Response({'error': {'message': 'Неверный или устаревший код', 'code': 'invalid_code'}}, status=400)
 
+        cache.delete(key)
         user.verify_email()
-        login(request, user, backend='django.contrib.auth.backends.ModelBackend')
         return Response({'ok': True})
 
 
@@ -232,10 +256,56 @@ class ResendVerificationView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        from django.core.cache import cache
         if request.user.email_verified:
             return Response({'error': {'message': 'Email уже подтверждён', 'code': 'already_verified'}}, status=400)
+        key = f'verify_resend:{request.user.pk}'
+        if not cache.add(key, 1, timeout=60):
+            return Response({'error': {'message': 'Подождите минуту перед повторной отправкой', 'code': 'rate_limited'}}, status=429)
         try:
-            send_verification_email(request.user, request)
+            ok = send_verification_email(request.user, request)
         except Exception:
+            ok = False
+        if not ok:
+            cache.delete(key)
             return Response({'error': {'message': 'Ошибка отправки письма', 'code': 'send_error'}}, status=500)
         return Response({'ok': True})
+
+
+class ChangeEmailView(APIView):
+    """Исправление email до подтверждения (опечатка при регистрации).
+    Только для неподтверждённых — подтверждённый email так не меняется."""
+    authentication_classes = [CsrfExemptSessionAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from django.core.cache import cache
+        from django.core.validators import validate_email
+        user = request.user
+        if user.email_verified:
+            return Response({'error': {'message': 'Email уже подтверждён', 'code': 'already_verified'}}, status=400)
+
+        email = (request.data.get('email') or '').strip().lower()
+        try:
+            validate_email(email)
+        except DjangoValidationError:
+            return Response({'error': {'message': 'Некорректный email', 'code': 'invalid_email'}}, status=400)
+        if User.objects.filter(email__iexact=email).exclude(pk=user.pk).exists():
+            return Response({'error': {'message': 'Пользователь с таким email уже существует', 'code': 'email_taken'}}, status=400)
+
+        key = f'change_email:{user.pk}'
+        count = cache.get(key, 0)
+        if count >= 5:
+            return Response({'error': {'message': 'Слишком много попыток, попробуйте позже', 'code': 'rate_limited'}}, status=429)
+        cache.set(key, count + 1, timeout=3600)
+
+        user.email = email
+        user.save(update_fields=['email'])
+        cache.delete(f'verify_attempts:{user.pk}')
+        try:
+            ok = send_verification_email(user, request)
+        except Exception:
+            ok = False
+        if not ok:
+            return Response({'error': {'message': 'Ошибка отправки письма', 'code': 'send_error'}}, status=500)
+        return Response(UserSerializer(user).data)

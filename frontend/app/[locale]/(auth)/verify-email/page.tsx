@@ -5,7 +5,7 @@ import { Link, useRouter } from "@/i18n/navigation";
 
 import { Mail } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { authVerifyEmail, authResendVerification, getMe } from "@/lib/api/client";
+import { authVerifyEmail, authResendVerification, authChangeEmail, getMe } from "@/lib/api/client";
 import { APIError } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 
@@ -21,6 +21,9 @@ function VerifyEmailForm() {
   const [resendCountdown, setResendCountdown] = useState(RESEND_TIMEOUT);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
+  const [changing, setChanging] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [changeLoading, setChangeLoading] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
@@ -90,6 +93,24 @@ function VerifyEmailForm() {
       setDigits(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
       setLoading(false);
+    }
+  };
+
+  const handleChangeEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (changeLoading) return;
+    setChangeLoading(true);
+    setError(null);
+    try {
+      const updated = await authChangeEmail(newEmail.trim().toLowerCase());
+      setUser(updated);
+      setChanging(false);
+      setResendSuccess(true);
+      setResendCountdown(RESEND_TIMEOUT);
+    } catch (err) {
+      setError(err instanceof APIError ? err.message : t("verifyResendFailed"));
+    } finally {
+      setChangeLoading(false);
     }
   };
 
@@ -167,6 +188,35 @@ function VerifyEmailForm() {
           ? t("verifySending")
           : t("verifyResend")}
       </button>
+
+      <div className="mt-4">
+        {!changing ? (
+          <button
+            onClick={() => { setChanging(true); setNewEmail(user?.email ?? ""); }}
+            className="text-[15px] text-[rgba(13,13,13,0.55)] hover:text-[#D97757] transition-colors"
+          >
+            {t("verifyChangeEmail")}
+          </button>
+        ) : (
+          <form onSubmit={handleChangeEmail} className="flex flex-col gap-2">
+            <input
+              type="email"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+              required
+              autoComplete="email"
+              className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3.5 py-2.5 text-[16px] text-[#1A1A1A] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
+            />
+            <button
+              type="submit"
+              disabled={changeLoading}
+              className="h-10 w-full rounded-[8px] border border-[#D97757] text-[16px] font-medium text-[#D97757] hover:bg-[rgba(217,119,87,0.08)] disabled:opacity-50 transition-colors"
+            >
+              {changeLoading ? t("verifySending") : t("verifyChangeEmailSend")}
+            </button>
+          </form>
+        )}
+      </div>
 
       <div className="mt-6 border-t border-[rgba(13,13,13,0.08)] pt-4">
         <Link href="/" className="text-[15px] text-[rgba(13,13,13,0.45)] hover:text-[#1A1A1A] transition-colors">

@@ -213,7 +213,13 @@ export const authVerifyEmail = (code: string): Promise<{ ok: boolean }> =>
 export const authResendVerification = (): Promise<{ ok: boolean }> =>
   request<{ ok: boolean }>("/auth/resend-verification/", { method: "POST" });
 
-export const authChangePassword = (currentPassword: string, newPassword: string): Promise<{ ok: boolean }> =>
+export const authChangeEmail = (email: string): Promise<AuthUser> =>
+  request<AuthUser>("/auth/change-email/", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+
+export const authChangePassword =(currentPassword: string, newPassword: string): Promise<{ ok: boolean }> =>
   request<{ ok: boolean }>("/auth/change-password/", {
     method: "POST",
     body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),

@@ -8,6 +8,7 @@ import { authRegister } from "@/lib/api/client";
 import { APIError } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth";
 import { safeNextPath } from "@/lib/utils";
+import { suggestEmail } from "@/lib/emailTypo";
 import { useTranslations, useLocale } from "next-intl";
 
 function RegisterForm() {
@@ -21,6 +22,8 @@ function RegisterForm() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [typoSuggestion, setTypoSuggestion] = useState<string | null>(null);
+  const [typoDismissed, setTypoDismissed] = useState<string | null>(null);
 
   const next = safeNextPath(params.get("next"));
 
@@ -47,10 +50,17 @@ function RegisterForm() {
       setError(t("passwordTooShort"));
       return;
     }
+    const normalized = email.trim().toLowerCase();
+    // Опечатка в домене (mai.ru): один раз предлагаем исправить, не блокируем навсегда.
+    const suggestion = suggestEmail(normalized);
+    if (suggestion && suggestion !== typoDismissed) {
+      setTypoSuggestion(suggestion);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
-      const user = await authRegister(email.trim().toLowerCase(), password, locale);
+      const user = await authRegister(normalized, password, locale);
       setUser(user);
       // На intl-инстансе email верифицируется при регистрации — сразу в кабинет
       router.push(user.email_verified ? next : "/verify-email/");
@@ -85,12 +95,33 @@ function RegisterForm() {
           <input
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => { setEmail(e.target.value); setTypoSuggestion(null); }}
             required
             autoComplete="email"
             placeholder="you@example.com"
             className="w-full rounded-[8px] border border-[rgba(13,13,13,0.15)] px-3.5 py-2.5 text-[16px] text-[#1A1A1A] placeholder-[rgba(13,13,13,0.38)] outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[rgba(217,119,87,0.12)] transition-all"
           />
+          {typoSuggestion && (
+            <div className="mt-2 rounded-[8px] bg-[rgba(217,119,87,0.10)] px-3.5 py-2.5 text-[15px] text-[#1A1A1A]">
+              {t("emailTypoHint", { suggestion: typoSuggestion })}
+              <div className="mt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setEmail(typoSuggestion); setTypoSuggestion(null); }}
+                  className="font-medium text-[#D97757] hover:underline underline-offset-2"
+                >
+                  {t("emailTypoFix")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setTypoDismissed(typoSuggestion); setTypoSuggestion(null); }}
+                  className="text-[rgba(13,13,13,0.55)] hover:underline underline-offset-2"
+                >
+                  {t("emailTypoKeep")}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
         <div>
           <label className="mb-1.5 block text-[15px] font-medium text-[#1A1A1A]">
