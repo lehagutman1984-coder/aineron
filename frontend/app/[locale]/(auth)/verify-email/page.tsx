@@ -89,7 +89,13 @@ function VerifyEmailForm() {
       // legacy Django verify_email (клик по ссылке в письме), который сам добавляет этот параметр.
       router.push("/welcome/?verified=1");
     } catch (err) {
-      setError(err instanceof APIError ? err.message : t("verifyInvalidCode"));
+      setError(
+        err instanceof APIError && err.code === "account_blocked"
+          ? t("verifyAccountBlocked")
+          : err instanceof APIError
+          ? err.message
+          : t("verifyInvalidCode")
+      );
       setDigits(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
       setLoading(false);
@@ -122,8 +128,12 @@ function VerifyEmailForm() {
       await authResendVerification();
       setResendSuccess(true);
       setResendCountdown(RESEND_TIMEOUT);
-    } catch {
-      setError(t("verifyResendFailed"));
+    } catch (err) {
+      setError(
+        err instanceof APIError && err.code === "account_blocked"
+          ? t("verifyAccountBlocked")
+          : t("verifyResendFailed")
+      );
     } finally {
       setResendLoading(false);
     }

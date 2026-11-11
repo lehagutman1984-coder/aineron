@@ -163,6 +163,7 @@
     "verifyResendIn": "إعادة الإرسال خلال {seconds} ثانية.",
     "verifySending": "جارٍ الإرسال...",
     "verifyResend": "إعادة إرسال الرمز",
+    "verifyAccountBlocked": "تعذر تأكيد البريد الإلكتروني: الحساب مقيّد (توجد حسابات أخرى مسجلة من عنوان IP الخاص بك). يرجى التواصل مع الدعم.",
     "emailTypoHint": "هل تقصد {suggestion}؟",
     "emailTypoFix": "تصحيح",
     "emailTypoKeep": "إبقاء كما هو",

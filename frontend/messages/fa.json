@@ -163,6 +163,7 @@
     "verifyResendIn": "ارسال مجدد در {seconds} ثانیه.",
     "verifySending": "در حال ارسال...",
     "verifyResend": "ارسال مجدد کد",
+    "verifyAccountBlocked": "تأیید ایمیل ممکن نشد: حساب محدود شده است (حساب‌های دیگری از آدرس IP شما ثبت شده‌اند). با پشتیبانی تماس بگیرید.",
     "emailTypoHint": "منظور شما {suggestion} است؟",
     "emailTypoFix": "اصلاح",
     "emailTypoKeep": "همین بماند",

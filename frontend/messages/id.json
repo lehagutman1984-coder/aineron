@@ -163,6 +163,7 @@
     "verifyResendIn": "Kirim ulang dalam {seconds} detik.",
     "verifySending": "Mengirim...",
     "verifyResend": "Kirim ulang kode",
+    "verifyAccountBlocked": "Email tidak dapat diverifikasi: akun dibatasi (akun lain sudah terdaftar dari alamat IP Anda). Hubungi dukungan.",
     "emailTypoHint": "Maksud Anda {suggestion}?",
     "emailTypoFix": "Perbaiki",
     "emailTypoKeep": "Biarkan",

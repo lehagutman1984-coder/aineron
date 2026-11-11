@@ -163,6 +163,7 @@
     "verifyResendIn": "Resend in {seconds} sec.",
     "verifySending": "Sending...",
     "verifyResend": "Resend code",
+    "verifyAccountBlocked": "Could not verify your email: this account is restricted (other accounts were registered from your IP address). Please contact support.",
     "emailTypoHint": "Did you mean {suggestion}?",
     "emailTypoFix": "Fix it",
     "emailTypoKeep": "Keep as is",

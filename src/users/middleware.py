@@ -105,6 +105,18 @@ class ShadowBanMiddleware(MiddlewareMixin):
                     logger.warning(
                         f"[BLOCK] Забаненный пользователь {request.user.email} пытался получить доступ к {request.path}")
 
+                    # DRF API (/api/): редирект на HTML-страницу fetch'ем молча
+                    # «проглатывался» (200 + HTML вместо JSON) — например,
+                    # экран кода подтверждения показывал «неверный код».
+                    # Отдаём JSON того же вида, что и остальные ошибки API.
+                    if request.path.startswith('/api/'):
+                        from django.http import JsonResponse
+                        return JsonResponse({'error': {
+                            'message': 'Аккаунт заблокирован',
+                            'type': 'permission_error',
+                            'code': 'account_blocked',
+                        }}, status=403)
+
                     # Для AJAX запросов возвращаем JSON
                     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                         from django.http import JsonResponse

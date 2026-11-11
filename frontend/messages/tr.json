@@ -163,6 +163,7 @@
     "verifyResendIn": "{seconds} sn içinde tekrar gönder.",
     "verifySending": "Gönderiliyor...",
     "verifyResend": "Kodu yeniden gönder",
+    "verifyAccountBlocked": "E-posta doğrulanamadı: hesap kısıtlandı (IP adresinizden başka hesaplar kayıtlı). Lütfen destekle iletişime geçin.",
     "emailTypoHint": "{suggestion} mı demek istediniz?",
     "emailTypoFix": "Düzelt",
     "emailTypoKeep": "Olduğu gibi bırak",

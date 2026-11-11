@@ -163,6 +163,7 @@
     "verifyResendIn": "Отправить повторно через {seconds} сек.",
     "verifySending": "Отправляем...",
     "verifyResend": "Отправить код повторно",
+    "verifyAccountBlocked": "Не удалось подтвердить почту: аккаунт ограничен (с вашего IP-адреса уже зарегистрированы другие аккаунты). Напишите в поддержку — support@aineron.ru.",
     "emailTypoHint": "Вы имели в виду {suggestion}?",
     "emailTypoFix": "Исправить",
     "emailTypoKeep": "Оставить как есть",
