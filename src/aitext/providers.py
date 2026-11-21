@@ -7,7 +7,8 @@
     Реестр сравнения текстовых моделей). Основной для видео — как и раньше.
   - cometapi.com — резервный для текста (там, где модель реально у него
     есть — не все 21 модели каталога, см. TEXT_COMETAPI_MODEL_OVERRIDES).
-  - laozhang.ai  — ЗАКОММЕНТИРОВАН как активный источник текста (был
+  - laozhang.ai  — с 2026-11-21 снова ТРЕТИЙ резерв текста (apimart -> cometapi ->
+    laozhang). Ранее был ЗАКОММЕНТИРОВАН как активный источник текста (был
     основным до 2026-09-06, см. `PRICING_SIMPLIFICATION_PLAN.md` §1.1 —
     частые перегрузки, недоступность свежих флагманов). Код НЕ удалён:
     `_order_for('laozhang')` по-прежнему работает (используется для
@@ -102,14 +103,23 @@ TEXT_COMETAPI_NO_MODEL = {'gpt-5.5'}
 TEXT_APIMART_NO_MODEL = {'qwen3.6-max-preview', 'gpt-5.5-pro'}
 
 
+# 2026-11-21: имена, которые у laozhang отличаются от наших (проверено живым
+# вызовом: claude-fable-5-2 -> 200 OK). Тот же дефис, что и у CometAPI.
+TEXT_LAOZHANG_MODEL_OVERRIDES = {
+    'claude-fable-5.1': 'claude-fable-5-1',
+    'claude-fable-5.2': 'claude-fable-5-2',
+}
+
+
 def _translate_kwargs(kwargs, provider):
     """Подменяет `model` в kwargs под конкретного провайдера, если для этой
     пары (модель, провайдер) имя отличается (см. TEXT_COMETAPI_MODEL_OVERRIDES).
     Возвращает kwargs как есть, если перевода не требуется — не копирует
     словарь без необходимости."""
-    if provider == 'cometapi':
+    if provider in ('cometapi', 'laozhang'):
         model = kwargs.get('model')
-        override = TEXT_COMETAPI_MODEL_OVERRIDES.get(model)
+        table = TEXT_COMETAPI_MODEL_OVERRIDES if provider == 'cometapi' else TEXT_LAOZHANG_MODEL_OVERRIDES
+        override = table.get(model)
         if override:
             kwargs = dict(kwargs)
             kwargs['model'] = override
@@ -449,7 +459,13 @@ def _order_for(primary):
         # пользователя, не удалён — см. docstring модуля наверху про то,
         # как вернуть). Раньше здесь стоял laozhang третьим "на крайний
         # случай" — сознательно убран, а не забыт.
-        chain = ['apimart', 'cometapi']  # , 'laozhang' — см. комментарий выше
+        chain = ['apimart', 'cometapi', 'laozhang']
+        # 2026-11-21: laozhang ВОЗВРАЩЁН третьим резервом по запросу владельца
+        # (инцидент: баланс apimart обнулён, при этом laozhang и CometAPI живы).
+        # Не все модели каталога есть у laozhang — для таких он отдаёт 503 «no
+        # available channels» (availability-ошибка), цепочка просто кончается
+        # ошибкой последнего провайдера, как и раньше. Имена Fable у него через
+        # дефис — см. TEXT_LAOZHANG_MODEL_OVERRIDES.
     elif primary == 'apimart_embed':
         # 2026-09-06: эмбеддинги — apimart основной, cometapi резерв. Оба
         # живьём подтверждены (text-embedding-3-small, 1536 dims у обоих,
