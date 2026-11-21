@@ -649,21 +649,6 @@ export const TEXT_MODELS: PreviewModel[] = [
     inputBadges: ["Текст"],
     outputBadges: ["Текст"],
   },
-  {
-    id: "qwen3-6-max",
-    name: "Qwen 3.6 Max",
-    provider: "Alibaba",
-    category: "text",
-    // Снята с публичного прайса OpenRouter (остались только 3.7/3.8,
-    // проверено 2026-09-02) — витринная цена ориентирована на тот же тир, что у 3.8 Max.
-    description: "Предыдущая топовая модель Qwen — код, рассуждения, многоязычность.",
-    contextLabel: "1M",
-    priceInRub: round(2),
-    priceOutRub: round(6),
-    priceRealKopecks: 262,
-    inputBadges: ["Текст"],
-    outputBadges: ["Текст"],
-  },
 ];
 
 const roundImg = (usd: number) => Math.round(usd * K * 10) / 10;
