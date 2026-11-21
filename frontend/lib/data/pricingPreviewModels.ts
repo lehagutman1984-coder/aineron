@@ -668,6 +668,42 @@ export const TEXT_MODELS: PreviewModel[] = [
 const roundImg = (usd: number) => Math.round(usd * K * 10) / 10;
 
 export const IMAGE_MODELS: PreviewModel[] = [
+  // 2026-11-21: 3 новые модели (add_media_models_2026_11_21.py). Цена =
+  // реальный опт apimart (поле cost задачи, USD) × K=105; priceGenRub = та же
+  // реальная цена за генерацию.
+  {
+    id: "seedream-5-5",
+    name: "Seedream 5.5",
+    provider: "ByteDance",
+    category: "image",
+    description: "Новая версия Seedream от ByteDance — детальные изображения по текстовому описанию.",
+    priceGenRub: 2.94,
+    priceRealKopecks: 294,
+    inputBadges: ["Текст"],
+    outputBadges: ["Изображение"],
+  },
+  {
+    id: "flux-3-image",
+    name: "Flux 3 Image",
+    provider: "Black Forest Labs",
+    category: "image",
+    description: "Flux 3 — новое поколение модели Flux для генерации изображений по тексту.",
+    priceGenRub: 4.03,
+    priceRealKopecks: 403,
+    inputBadges: ["Текст"],
+    outputBadges: ["Изображение"],
+  },
+  {
+    id: "nano-banana-2-1",
+    name: "Nano Banana 2.1",
+    provider: "Google",
+    category: "image",
+    description: "Новая версия Nano Banana от Google (Gemini) — генерация изображений по тексту.",
+    priceGenRub: 3.36,
+    priceRealKopecks: 336,
+    inputBadges: ["Текст"],
+    outputBadges: ["Изображение"],
+  },
   {
     id: "gpt-image-2",
     name: "GPT-Image-2",
@@ -906,6 +942,47 @@ export const IMAGE_MODELS: PreviewModel[] = [
 const roundVideo = (usd: number) => Math.round(usd * K * 10) / 10;
 
 export const VIDEO_MODELS: PreviewModel[] = [
+  // 2026-11-21: 3 новые модели (add_media_models_2026_11_21.py). Фиксированная
+  // конфигурация клипа (5 сек), цена за клип = реальный опт apimart × K=105.
+  {
+    id: "seedance-2-5-flash",
+    name: "Seedance 2.5 Flash",
+    provider: "ByteDance",
+    category: "video",
+    description: "Быстрая и доступная версия Seedance 2.5 от ByteDance — короткие видео по тексту.",
+    contextLabel: "5 сек, 480p",
+    priceVideoRub: 33.42,
+    priceUnit: "call",
+    priceRealKopecks: 3342,
+    inputBadges: ["Текст"],
+    outputBadges: ["Видео"],
+  },
+  {
+    id: "wan-3-0",
+    name: "Wan 3.0",
+    provider: "Alibaba",
+    category: "video",
+    description: "Новое поколение видеомодели Wan — видео по тексту.",
+    contextLabel: "5 сек, 720p",
+    priceVideoRub: 34.52,
+    priceUnit: "call",
+    priceRealKopecks: 3452,
+    inputBadges: ["Текст"],
+    outputBadges: ["Видео"],
+  },
+  {
+    id: "kling-v4",
+    name: "Kling v4",
+    provider: "Kuaishou",
+    category: "video",
+    description: "Новое поколение Kling — видео по тексту.",
+    contextLabel: "5 сек, 720p",
+    priceVideoRub: 73.5,
+    priceUnit: "call",
+    priceRealKopecks: 7350,
+    inputBadges: ["Текст"],
+    outputBadges: ["Видео"],
+  },
   {
     id: "veo-3-1-fast",
     name: "Veo 3.1 Fast",
