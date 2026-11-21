@@ -40,7 +40,9 @@
   gemini-4-neon         321 / 1603            4.11₽           3.10₽      411 коп.
   gemini-3.8-flash       80 / 401             1.03₽           0.77₽      103 коп.
   glm-5.3                 7 / 149             0.25₽           1.15₽      115 коп. (ПОЛ)
-  deepseek-v4.1-flash   5.85 / 23             0.07₽            н/д        10 коп. (MIN_CHARGE)
+  deepseek-v4.1-flash   5.85 / 23             0.07₽            0.26₽       29 коп. (ИСПРАВЛЕНО 2026-11-21: опт ИЗМЕРЕН
+                                                                          у apimart, вход $0.229/1M, выход $0.919/1M ->
+                                                                          0.0028$ x 105; RouterAI ниже себестоимости)
 GLM 5.3: у RouterAI в разы дешевле опта CometAPI (у них прямой Z.ai) — взят
 пол, т.к. реальный опт apimart по этой модели неизвестен. Если apimart
 дешевле — цену можно снижать. Haiku 5.5 и DeepSeek V4.1 Flash: оптовых цен у
@@ -119,7 +121,7 @@ MODELS = [
     },
     {
         'name': 'DeepSeek V4.1 Flash', 'slug': 'deepseek-v4-1-flash', 'model_name': 'deepseek-v4.1-flash',
-        'order': 96, 'cost_kopecks': 10, 'handle_photo': True, 'avatar_from': 'deepseek-v4-flash',
+        'order': 96, 'cost_kopecks': 29, 'handle_photo': True, 'avatar_from': 'deepseek-v4-flash',
         'description_ru': 'Быстрая и очень доступная модель DeepSeek V4.1 — для массовых запросов, кода и работы с изображениями.',
         'description_en': 'A fast, very affordable DeepSeek V4.1 model — for high-volume requests, coding and image input.',
     },

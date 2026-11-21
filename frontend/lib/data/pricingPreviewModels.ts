@@ -251,16 +251,17 @@ export const TEXT_MODELS: PreviewModel[] = [
     outputBadges: ["Текст"],
   },
   {
-    // 10 коп. = MIN_CHARGE_KOPECKS (расчётная по RouterAI 5.85/23 ₽/1М ~0.07₽).
+    // 29 коп.: опт apimart ИЗМЕРЕН (вход $0.229/1М, выход $0.919/1М) x K=105 по
+    // профилю 6000/1500. RouterAI (5.85/23 ₽/1М) ниже нашей себестоимости.
     id: "deepseek-v4-1-flash",
     name: "DeepSeek V4.1 Flash",
     provider: "DeepSeek",
     category: "text",
     description: "Быстрая и очень доступная модель DeepSeek V4.1 — для массовых запросов, кода и работы с изображениями.",
     contextLabel: "1M",
-    priceInRub: 6,
-    priceOutRub: 22,
-    priceRealKopecks: 10,
+    priceInRub: 24,
+    priceOutRub: 96,
+    priceRealKopecks: 29,
     inputBadges: ["Текст", "Изображения", "Файл"],
     outputBadges: ["Текст"],
   },
