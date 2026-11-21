@@ -333,14 +333,17 @@ function Badge({ label }: { label: string }) {
   );
 }
 
-function networkBadges(n: NetworkListItem): { input: string[]; output: string[] } {
+function networkBadges(
+  n: NetworkListItem,
+  t: (key: string) => string,
+): { input: string[]; output: string[] } {
   const isVideo = n.output_type === "video";
   const isImage = n.provider === "fal-ai" && !isVideo;
-  const input = ["Текст"];
-  if (n.handle_photo) input.push("Изображения");
-  if (n.handle_video) input.push("Видео");
-  if (n.handle_text_files || n.handle_archive) input.push("Файл");
-  const output = isVideo ? ["Видео"] : isImage ? ["Изображение"] : ["Текст"];
+  const input = [t("modalityText")];
+  if (n.handle_photo) input.push(t("modalityImages"));
+  if (n.handle_video) input.push(t("modalityVideo"));
+  if (n.handle_text_files || n.handle_archive) input.push(t("modalityFile"));
+  const output = isVideo ? [t("modalityVideo")] : isImage ? [t("modalityImage")] : [t("modalityText")];
   return { input, output };
 }
 
@@ -360,8 +363,8 @@ function PriceBlock({ network }: { network: NetworkListItem }) {
   if (network.is_free) {
     return (
       <div className="flex flex-col gap-1">
-        <PriceRow label="Цена" value={t("priceFree")} />
-        {network.messages_limit > 0 && <PriceRow label="Лимит" value={`${network.messages_limit} сообщ./день`} />}
+        <PriceRow label={t("priceLabel")} value={t("priceFree")} />
+        {network.messages_limit > 0 && <PriceRow label={t("limitLabel")} value={t("limitPerDay", { count: network.messages_limit })} />}
       </div>
     );
   }
@@ -369,7 +372,7 @@ function PriceBlock({ network }: { network: NetworkListItem }) {
     return (
       <div className="flex flex-col gap-1">
         {ref?.contextLabel && <PriceRow label="Контекст" value={ref.contextLabel} />}
-        <PriceRow label="Цена" value={t("priceUnlimited")} />
+        <PriceRow label={t("priceLabel")} value={t("priceUnlimited")} />
       </div>
     );
   }
@@ -406,7 +409,7 @@ function PriceBlock({ network }: { network: NetworkListItem }) {
   // платных моделей, но не падаем, если появится новая без ref-записи).
   return (
     <div className="flex flex-col gap-1">
-      <PriceRow label="Цена" value={formatMoney(network.cost_kopecks)} />
+      <PriceRow label={t("priceLabel")} value={formatMoney(network.cost_kopecks)} />
     </div>
   );
 }
@@ -417,7 +420,7 @@ function NetworkRow({ network, projectId }: { network: NetworkListItem; projectI
     ? `/models/${network.slug}/?project_id=${projectId}`
     : `/models/${network.slug}/`;
   const Icon = categoryIcon(network);
-  const { input, output } = networkBadges(network);
+  const { input, output } = networkBadges(network, t);
   const action =
     network.output_type === "video" ? t("actionVideo") : network.provider === "fal-ai" ? t("actionImage") : t("actionChat");
 
