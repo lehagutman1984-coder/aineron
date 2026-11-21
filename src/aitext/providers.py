@@ -87,6 +87,9 @@ _PROVIDER_META = {
 # остальные 20 моделей совпадают буквально без всякого паттерна.
 TEXT_COMETAPI_MODEL_OVERRIDES = {
     'claude-fable-5.1': 'claude-fable-5-1',
+    # 2026-11-21: apimart `claude-fable-5.2`, CometAPI `claude-fable-5-2`
+    # (проверено живыми вызовами: обратная пара даёт 404/503 model_not_found).
+    'claude-fable-5.2': 'claude-fable-5-2',
 }
 
 # 2026-09-06: модели каталога, для которых CometAPI подтверждён живым
