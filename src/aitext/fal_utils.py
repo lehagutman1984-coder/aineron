@@ -2964,6 +2964,25 @@ def generate_image_apimart_async(network, user_msg, message, user_settings=None)
     return f"Модель \"{model_name}\" не вернула изображение. Попробуйте изменить промт.", [], total_cost
 
 
+def _generate_image_via_laozhang_sync(network, user_msg, message, user_settings, lz_model):
+    """Резерв для apimart_async-моделей: тот же запрос по обычному синхронному пути
+    (laozhang images.generate, дальше apimart/CometAPI как у обычных моделей) под
+    именем модели у laozhang. Конфиг/имя модели подменяются только на время вызова."""
+    import copy
+    orig_model, orig_cfg = network.model_name, network.config_json
+    cfg = copy.deepcopy(orig_cfg or {})
+    md = cfg.setdefault('metadata', {})
+    for k in ('image_api', 'cometapi_fallback_model', 'laozhang_image_fallback_model'):
+        md.pop(k, None)
+    network.model_name = lz_model
+    network.config_json = cfg
+    try:
+        return generate_with_falai(network, user_msg, message, user_settings)
+    finally:
+        network.model_name = orig_model
+        network.config_json = orig_cfg
+
+
 def generate_with_falai(network, user_msg, message, user_settings=None):
     """
     Генерирует изображения/видео через laozhang.ai.
@@ -3041,16 +3060,32 @@ def generate_with_falai(network, user_msg, message, user_settings=None):
         try:
             return generate_image_apimart_async(network, user_msg, message, user_settings)
         except Exception as e:
-            fb_model = config.get('metadata', {}).get('cometapi_fallback_model')
+            meta = config.get('metadata', {})
+            fb_model = meta.get('cometapi_fallback_model')
+            # 2026-11-21: третий уровень — laozhang по синхронному контракту
+            # images.generate (metadata.laozhang_image_fallback_model). Нужен там,
+            # где у CometAPI модели нет вовсе (Seedream 5.5) или он тоже недоступен.
+            lz_fb = meta.get('laozhang_image_fallback_model')
             fallback_on = getattr(settings, 'AI_PROVIDER_FALLBACK', True)
             is_settings_err = str(e).startswith('Ошибки в настройках')
-            if fallback_on and fb_model and not is_settings_err:
-                logger.warning(
-                    "APIMart изображение недоступно (%s); фолбэк → CometAPI model=%s", e, fb_model
-                )
-                if config.get('metadata', {}).get('cometapi_contract') == 'midjourney':
-                    return generate_image_midjourney_cometapi(network, user_msg, message, user_settings)
-                return generate_image_cometapi(network, user_msg, message, user_settings, model_override=fb_model)
+            if fallback_on and not is_settings_err:
+                if fb_model:
+                    logger.warning(
+                        "APIMart изображение недоступно (%s); фолбэк → CometAPI model=%s", e, fb_model
+                    )
+                    try:
+                        if meta.get('cometapi_contract') == 'midjourney':
+                            return generate_image_midjourney_cometapi(network, user_msg, message, user_settings)
+                        return generate_image_cometapi(network, user_msg, message, user_settings, model_override=fb_model)
+                    except Exception as e2:
+                        if not lz_fb or str(e2).startswith('Ошибки в настройках'):
+                            raise
+                        e = e2
+                if lz_fb:
+                    logger.warning(
+                        "Изображение: предыдущие провайдеры недоступны (%s); фолбэк → laozhang model=%s", e, lz_fb
+                    )
+                    return _generate_image_via_laozhang_sync(network, user_msg, message, user_settings, lz_fb)
             raise
 
     model_id = network.model_name
