@@ -87,6 +87,14 @@ NO_TEMPERATURE_MODELS = {
     # "`temperature` is deprecated for this model" (прямой вызов apimart без
     # temperature отвечал нормально — ошибку давал именно наш дефолт 0.7).
     'claude-fable-5.2',
+    # Подтверждено живым вызовом CometAPI 2026-11-21 (резерв при отказе apimart):
+    # "Unsupported value: 'temperature' does not support 0.7 with this model.
+    # Only the default (1) value is supported." — gpt-6.2-sol/gpt-6.2-astra/
+    # gpt-6-sol/gpt-6-luna. Остальные GPT-6 добавлены профилактически (у семейства
+    # допустимо только значение 1, так что без temperature ничего не теряем).
+    'gpt-6-sol', 'gpt-6-luna', 'gpt-6-astra',
+    'gpt-6.1-sol', 'gpt-6.1-terra',
+    'gpt-6.2-sol', 'gpt-6.2-astra',
 }
 
 
