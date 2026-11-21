@@ -82,6 +82,11 @@ NO_TEMPERATURE_MODELS = {
     # предшественников.
     'claude-opus-5-5',
     'claude-sonnet-5-5',
+    # Подтверждено живым вызовом 2026-11-21 (add_new_models_2026_11_21):
+    # через /api/v1/chat/completions 502 с Bedrock ValidationException
+    # "`temperature` is deprecated for this model" (прямой вызов apimart без
+    # temperature отвечал нормально — ошибку давал именно наш дефолт 0.7).
+    'claude-fable-5.2',
 }
 
 
